@@ -1407,50 +1407,69 @@ export async function luuHoaDonccn1v2() {
 
     alert("✅ Đã lưu hóa đơn CCN (cả gốc và đối ứng)!");
 
-    // 🔥 GHI NGƯỢC VÀO BẢNG KIỂM NHẬP CHI TIẾT
+    // 🔥 GHI NGƯỢC VÀO BẢNG KIỂM NHẬP CHI TIẾT (taohdccn)
     try {
-        const ghichu = document.getElementById("ghichu")?.value || "";
+        const rawPayload = localStorage.getItem("ccn_prefill_payload");
+        const payload = rawPayload ? JSON.parse(rawPayload) : null;
 
-        if (ghichu.includes("Phiếu được tạo từ nhập kiểm kho")) {
-
-            // 👉 LẤY ID PHIẾU KIỂM NHẬP
-            const match = ghichu.match(/kiemnhap[^\s|]+/i);
-            const kiemnhap_id = match ? match[0] : "";
+        if (payload && payload.source === "kiem_nhap_kho") {
+            const kiemnhap_id = String(payload.so_hd_kiemnhap || "").trim();
+            const sohdMoi = String(sohd || "").trim();
 
             if (!kiemnhap_id) {
-                console.warn("⚠ Không tìm thấy kiemnhap_id");
+                console.warn("⚠ Không tìm thấy kiemnhap_id trong payload");
+            } else if (!sohdMoi) {
+                console.warn("⚠ Không tìm thấy số hóa đơn CCN vừa lưu");
             } else {
+                const items = Array.isArray(payload.items) ? payload.items : [];
 
-                // 🔥 LẤY DỮ LIỆU GRID (bảng đang hiển thị)
-                const grid = window.gridData || [];
+                for (const item of items) {
+                    const masp = String(item?.masp || "").trim().toUpperCase();
+                    if (!masp) continue;
 
-                for (const row of grid) {
-                    if (!row || !row.masp) continue;
+                    const dsItem = Array.isArray(item.items) ? item.items : [];
+                    if (!dsItem.length) continue;
 
-                    const masp = String(row.masp).trim();
+                    const sizeText = dsItem
+                        .map(x => `${String(x.size || "").trim()}/${Number(x.sl || 0)}`)
+                        .join(" ");
 
-                    // 👉 XÁC ĐỊNH THỪA / THIẾU
-                    let noidung = "";
+                    let loaiText = "";
+                    if (payload.dir === "2v1") loaiText = "Thừa";
+                    else if (payload.dir === "1v2") loaiText = "Thiếu";
+                    else loaiText = "CCN";
 
-                    if (row.trang_thai === "LECH") {
-                        noidung = `${sohd} | ${row.chi_tiet}`;
-                    }
+                    const noidung = `${sohdMoi} | ${loaiText}: ${sizeText}`;
 
-                    if (!noidung) continue;
+                    console.log("🟢 Ghi taohdccn:", {
+                        kiemnhap_id,
+                        masp,
+                        noidung
+                    });
 
-                    console.log("🟢 Ghi taohdccn:", masp, noidung);
-
-                    await supabase.rpc("rpc_capnhat_taohdccn_kiemnhap", {
+                    const { error } = await supabase.rpc("rpc_capnhat_taohdccn_kiemnhap", {
                         p_kiemnhap_id: kiemnhap_id,
                         p_masp: masp,
                         p_noidung: noidung
                     });
-                }
 
-                console.log("✅ Đã ghi taohdccn cho kiểm nhập:", kiemnhap_id);
+                    if (error) {
+                        console.error("❌ RPC taohdccn lỗi:", {
+                            kiemnhap_id,
+                            masp,
+                            noidung,
+                            error
+                        });
+                    } else {
+                        console.log("✅ Đã ghi taohdccn:", {
+                            kiemnhap_id,
+                            masp,
+                            noidung
+                        });
+                    }
+                }
             }
         }
-
     } catch (e) {
         console.error("❌ Lỗi ghi taohdccn:", e);
     }
