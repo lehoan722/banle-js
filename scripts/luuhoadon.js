@@ -1406,6 +1406,39 @@ export async function luuHoaDonccn1v2() {
     }
 
     alert("✅ Đã lưu hóa đơn CCN (cả gốc và đối ứng)!");
+
+    // 🔥 GỌI RPC ĐÁNH DẤU KIỂM NHẬP
+    try {
+        const payload = window.__ccn_payload;
+
+        if (payload && payload.source === "kiem_nhap_kho") {
+
+            const sohdKiemNhap = payload.so_hd_kiemnhap || "";
+            const manv = document.getElementById("manv")?.value || "";
+            const ngay = new Date().toISOString().slice(0, 10);
+
+            console.log("🔵 Đánh dấu CCN từ kiểm nhập:", sohd);
+
+            const { error } = await supabase.rpc(
+                "rpc_danh_dau_kiem_nhapkho_hoa_don",
+                {
+                    p_ds_sohd: [sohd], // 👉 chỉ cần đánh dấu hóa đơn GỐC
+                    p_so_hd_kiemnhap: sohdKiemNhap,
+                    p_ngay_kiem: ngay,
+                    p_nhanvienkiem: manv
+                }
+            );
+
+            if (error) {
+                console.error("❌ RPC lỗi:", error);
+            } else {
+                console.log("✅ Đã đánh dấu kiểm nhập:", sohd);
+            }
+        }
+    } catch (e) {
+        console.error("❌ Lỗi gọi RPC:", e);
+    }
+
     inHoaDon(hoadon, chitiet);
     await lamMoiSauKhiLuu();
     choPhepSua = false;
