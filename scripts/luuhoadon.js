@@ -1407,22 +1407,26 @@ export async function luuHoaDonccn1v2() {
 
     alert("✅ Đã lưu hóa đơn CCN (cả gốc và đối ứng)!");
 
-    // 🔥 GỌI RPC ĐÁNH DẤU KIỂM NHẬP
+    // 🔥 TỰ ĐỘNG NHẬN DIỆN CCN TỪ KIỂM NHẬP QUA GHI CHÚ
     try {
-        const payload = window.__ccn_payload;
+        const ghichu = document.getElementById("ghichu")?.value || "";
 
-        if (payload && payload.source === "kiem_nhap_kho") {
+        // ✅ CHỈ CHẠY KHI ĐÚNG NGHIỆP VỤ
+        if (ghichu.includes("Phiếu được tạo từ nhập kiểm kho")) {
 
-            const sohdKiemNhap = payload.so_hd_kiemnhap || "";
+            // 🔥 LẤY SỐ PHIẾU KIỂM NHẬP
+            const match = ghichu.match(/kiemnhap[^\s|]+/i);
+            const sohdKiemNhap = match ? match[0] : "";
+
             const manv = document.getElementById("manv")?.value || "";
             const ngay = new Date().toISOString().slice(0, 10);
 
-            console.log("🔵 Đánh dấu CCN từ kiểm nhập:", sohd);
+            console.log("🔵 Detect CCN từ kiểm nhập:", sohd, sohdKiemNhap);
 
             const { error } = await supabase.rpc(
                 "rpc_danh_dau_kiem_nhapkho_hoa_don",
                 {
-                    p_ds_sohd: [sohd], // 👉 chỉ cần đánh dấu hóa đơn GỐC
+                    p_ds_sohd: [sohd], // 👉 hóa đơn CCN vừa tạo
                     p_so_hd_kiemnhap: sohdKiemNhap,
                     p_ngay_kiem: ngay,
                     p_nhanvienkiem: manv
@@ -1435,8 +1439,9 @@ export async function luuHoaDonccn1v2() {
                 console.log("✅ Đã đánh dấu kiểm nhập:", sohd);
             }
         }
+
     } catch (e) {
-        console.error("❌ Lỗi gọi RPC:", e);
+        console.error("❌ Lỗi detect kiểm nhập:", e);
     }
 
     inHoaDon(hoadon, chitiet);
