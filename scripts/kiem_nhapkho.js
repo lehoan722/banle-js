@@ -60,8 +60,9 @@ import "./stockQuickPopup.js";
     xuatOrder: [],
     dsHoaDonNguon: [],
     dsHoaDonNguonInfo: [],
+    taoHdCcnByMasp: {},   // <-- thêm mới
     selectedMasp: "",
-    dmMaspCache: new Map() // key: masp, value: true/false
+    dmMaspCache: new Map()
   };
 
   let dangChonSizeTrongPopup = false;
@@ -1176,6 +1177,7 @@ import "./stockQuickPopup.js";
     const nhapMap = state.nhap || {};
     const xuatMap = state.xuat || {};
     const ketQuaMap = state.ketQua || {};
+    const taoHdCcnByMasp = state.taoHdCcnByMasp || {};
 
     const nhapGroupMap = groupByMasp(nhapMap);
     const xuatGroupMap = groupByMasp(xuatMap);
@@ -1193,6 +1195,7 @@ import "./stockQuickPopup.js";
       const sohdNguonText = formatSohdNguonDayDuTheoMasp(xuatGroup);
 
       const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
+      const taoHdCcnText = String(taoHdCcnByMasp[masp] || "").trim();
 
       const tr = document.createElement("tr");
       const selectedMasp = normalizeMasp(state.selectedMasp || "");
@@ -1237,9 +1240,12 @@ import "./stockQuickPopup.js";
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(xuatText)}</td>
   <td>${tongSoLuong(xuatGroup?.items || []) || ""}</td>
 
-  <td>${escapeHtml(kqTong.trangthai || "")}</td>
+    <td>${escapeHtml(kqTong.trangthai || "")}</td>
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(sohdNguonText || "")}</td>
+  <td style="white-space: pre-line; text-align:left; color:#7b1fa2; font-weight:600;">
+    ${escapeHtml(taoHdCcnText || "")}
+  </td>
 `;
       tbody.appendChild(tr);
     }
@@ -1608,6 +1614,7 @@ import "./stockQuickPopup.js";
       xuatOrder: [],
       dsHoaDonNguon: [],
       dsHoaDonNguonInfo: [],
+      taoHdCcnByMasp: {},   // <-- thêm mới
       selectedMasp: "",
       dmMaspCache: oldState?.dmMaspCache instanceof Map ? oldState.dmMaspCache : new Map()
     };
@@ -3588,6 +3595,11 @@ import "./stockQuickPopup.js";
       }
 
       ganSohdXuatCnChoStateXuat(masp, row.sohd_xuat_cn || "", state);
+      const taohdccnText = String(row.taohdccn || "").trim();
+      if (masp && taohdccnText) {
+        state.taoHdCcnByMasp[masp] = taohdccnText;
+      }
+      
     });
 
     renderBangKetQua();
