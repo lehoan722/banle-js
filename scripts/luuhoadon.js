@@ -1409,37 +1409,40 @@ export async function luuHoaDonccn1v2() {
 
     // 🔥 GHI NGƯỢC VÀO BẢNG KIỂM NHẬP CHI TIẾT (taohdccn)
     try {
-        const rawPayload = localStorage.getItem("ccn_prefill_payload");
-        const payload = rawPayload ? JSON.parse(rawPayload) : null;
+        const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
 
-        if (payload && payload.source === "kiem_nhap_kho") {
-            const kiemnhap_id = String(payload.so_hd_kiemnhap || "").trim();
-            const sohdMoi = String(sohd || "").trim();
+        // Chỉ xử lý cho phiếu CCN được tạo từ kiểm nhập kho
+        if (ghichu.includes("Phiếu được tạo từ nhập kiểm kho")) {
+
+            // Lấy số phiếu kiểm nhập từ ghi chú
+            const match = ghichu.match(/kiemnhap[^\s|]+/i);
+            const kiemnhap_id = match ? String(match[0] || "").trim() : "";
 
             if (!kiemnhap_id) {
-                console.warn("⚠ Không tìm thấy kiemnhap_id trong payload");
-            } else if (!sohdMoi) {
-                console.warn("⚠ Không tìm thấy số hóa đơn CCN vừa lưu");
+                console.warn("⚠ Không tìm thấy kiemnhap_id trong ghi chú:", ghichu);
             } else {
-                const items = Array.isArray(payload.items) ? payload.items : [];
+                const bangKetQuaNow = getBangKetQua() || {};
 
-                for (const item of items) {
+                for (const item of Object.values(bangKetQuaNow)) {
                     const masp = String(item?.masp || "").trim().toUpperCase();
                     if (!masp) continue;
 
-                    const dsItem = Array.isArray(item.items) ? item.items : [];
-                    if (!dsItem.length) continue;
+                    const sizes = Array.isArray(item?.sizes) ? item.sizes : [];
+                    const soluongs = Array.isArray(item?.soluongs) ? item.soluongs : [];
 
-                    const sizeText = dsItem
-                        .map(x => `${String(x.size || "").trim()}/${Number(x.sl || 0)}`)
+                    const sizeText = sizes
+                        .map((sz, i) => {
+                            const size = String(sz || "").trim();
+                            const sl = Number(soluongs[i] || 0);
+                            if (!size || sl <= 0) return "";
+                            return `${size}/${sl}`;
+                        })
+                        .filter(Boolean)
                         .join(" ");
 
-                    let loaiText = "";
-                    if (payload.dir === "2v1") loaiText = "Thừa";
-                    else if (payload.dir === "1v2") loaiText = "Thiếu";
-                    else loaiText = "CCN";
+                    if (!sizeText) continue;
 
-                    const noidung = `${sohdMoi} | ${loaiText}: ${sizeText}`;
+                    const noidung = `${sohd}, ${masp}, ${sizeText}`;
 
                     console.log("🟢 Ghi taohdccn:", {
                         kiemnhap_id,
