@@ -673,7 +673,7 @@
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
             <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button onclick="xacNhanSuaHoaDonCCN()">Xác nhận</button>
+            <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
             <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
         </div>
 
@@ -1031,8 +1031,9 @@
     <script>
         // goi phím F2
         setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonCCN;
+            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
         }, 1000);
+
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
