@@ -1493,10 +1493,10 @@ export async function luuHoaDonccn1v2() {
 
             console.log("🔵 Detect CCN từ kiểm nhập:", sohd, sohdKiemNhap);
 
-            const { error } = await supabase.rpc(
+            const { data, error } = await supabase.rpc(
                 "rpc_danh_dau_kiem_nhapkho_hoa_don",
                 {
-                    p_ds_sohd: [sohd], // 👉 hóa đơn CCN vừa tạo
+                    p_ds_sohd: [sohd],
                     p_so_hd_kiemnhap: sohdKiemNhap,
                     p_ngay_kiem: ngay,
                     p_nhanvienkiem: manv
@@ -1504,9 +1504,26 @@ export async function luuHoaDonccn1v2() {
             );
 
             if (error) {
-                console.error("❌ RPC lỗi:", error);
+                console.error("❌ RPC đánh dấu kiểm nhập lỗi:", error);
             } else {
-                console.log("✅ Đã đánh dấu kiểm nhập:", sohd);
+                console.log("🟦 Kết quả RPC đánh dấu kiểm nhập:", data);
+
+                if (!data || data.updated === 0) {
+                    console.warn("⚠ RPC có chạy nhưng không cập nhật dòng nào:", {
+                        sohd,
+                        sohdKiemNhap,
+                        manv,
+                        ngay,
+                        data
+                    });
+                } else {
+                    console.log("✅ Đã đánh dấu kiểm nhập:", {
+                        sohd,
+                        sohdKiemNhap,
+                        updated: data.updated,
+                        value: data.value
+                    });
+                }
             }
         }
 
