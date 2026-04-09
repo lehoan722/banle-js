@@ -1,1233 +1,1227 @@
 import {
-  playSuccessBeep,
-  playWaitSizeBeep,
-  playAlertBeep,
-  setupBeepUnlockOnce,
-  patchAlertWithBeep
+    playSuccessBeep,
+    playWaitSizeBeep,
+    playAlertBeep,
+    setupBeepUnlockOnce
 } from "./soundBeep.js";
 
 import "./stockQuickPopup.js";
 
-// scripts/nhapkiemkho.js
+// scripts/nhapkiemkho.js 
 (function () {
-  "use strict";
+    "use strict";
 
-  setupBeepUnlockOnce(document);
-  patchAlertWithBeep();
-
-  const CFG = {
-    ...getBranchInfoFromPath(),
-    ...(window.KIEM_NHAP_CONFIG || {})
-  };
-
-  function getBranchInfoFromPath() {
-    const path = String(window.location.pathname || "").toLowerCase();
-    const fileName = path.split("/").pop() || "";
-
-    // Ưu tiên đọc hậu tố cs1 / cs2 trong tên file
-    const isCs1 = /cs1(?=\.html?$|[_-]?)/.test(fileName);
-    const isCs2 = /cs2(?=\.html?$|[_-]?)/.test(fileName);
-
-    let toBranch = "cs1";
-
-    if (isCs2) toBranch = "cs2";
-    else if (isCs1) toBranch = "cs1";
-
-    const fromBranch = toBranch === "cs1" ? "cs2" : "cs1";
-    const suffix = toBranch;
-    const pageId = `kiemnhap_${suffix}`;
-    const soPhieuPrefix = toBranch === "cs1"
-      ? "kiemnhap2v1cs1_"
-      : "kiemnhap1v2cs2_";
-
-    return {
-      toBranch,
-      fromBranch,
-      pageId,
-      soPhieuPrefix,
-      title: `KIỂM NHẬP KHO ${toBranch.toUpperCase()}`
+    const CFG = {
+        ...getBranchInfoFromPath(),
+        ...(window.KIEM_TON_CONFIG || {})
     };
-  }
 
-  // =========================
-  // STATE
-  // =========================
-  window.kiemNhapState = {
-    nhap: {},
-    xuat: {},
-    ketQua: {},
-    nhapOrder: [],
-    xuatOrder: [],
-    dsHoaDonNguon: [],
-    dsHoaDonNguonInfo: [],
-    selectedMasp: "",
-    dmMaspCache: new Map() // key: masp, value: true/false
-  };
+    function getBranchInfoFromPath() {
+        const path = String(window.location.pathname || "").toLowerCase();
+        const fileName = path.split("/").pop() || "";
 
-  let dangChonSizeTrongPopup = false;
+        const isCs1 = /cs1(?=\.html?$|[_-]?)/.test(fileName);
+        const isCs2 = /cs2(?=\.html?$|[_-]?)/.test(fileName);
 
-  // =========================
-  // AUDIO CẢNH BÁO
-  // =========================
-  // =========================
-  // AUDIO (NEW - SOUND BEEP)
-  // =========================
-  function phatAmThanhLoi() {
-    try { playAlertBeep(); } catch (e) { }
-  }
+        let branch = "cs1";
+        if (isCs2) branch = "cs2";
+        else if (isCs1) branch = "cs1";
 
-  function phatAmThanhSize() {
-    try { playWaitSizeBeep(); } catch (e) { }
-  }
+        const pageId = `kiemton_${branch}`;
+        const soPhieuPrefix = branch === "cs1" ? "ktkcs1_" : "ktkcs2_";
 
-  function phatAmThanhThanhCong() {
-    try { playSuccessBeep(); } catch (e) { }
-  }
-
-  function phatAmThanhThanhCong3Lan() {
-    try { playSuccessBeep(); } catch (e) { }
-
-    setTimeout(() => {
-      try { playSuccessBeep(); } catch (e) { }
-    }, 180);
-
-    setTimeout(() => {
-      try { playSuccessBeep(); } catch (e) { }
-    }, 360);
-  }
-
-  // ========================= 
-  // HELPERS
-  // =========================
-  function byId(id) {
-    return document.getElementById(id);
-  }
-
-  // ✅ helper an toàn
-  function safeEl(id) {
-    return document.getElementById(id) || null;
-  }
-
-  function safeSetStyle(id, fn) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    fn(el);
-  }
-
-  function focusInputAtEnd(el) {
-    if (!el) return;
-    el.focus();
-
-    try {
-      const len = String(el.value || "").length;
-      el.setSelectionRange(len, len);
-    } catch (err) { }
-  }
-
-  function normalizeMasp(v) {
-    let s = String(v || "").trim().toUpperCase();
-
-    // Nếu mã có hậu tố sau dấu "_" như REDLEO-DEN_43
-    // thì chỉ lấy phần trước dấu "_"
-    const idx = s.indexOf("_");
-    if (idx > -1) {
-      s = s.slice(0, idx).trim();
+        return {
+            branch,
+            pageId,
+            soPhieuPrefix,
+            title: `KIỂM TỒN KHO ${branch.toUpperCase()}`
+        };
     }
 
-    return s;
-  }
 
-  function normalizeSize(v) {
-    return String(v || "").trim();
-  }
-  const VALID_SIZES = new Set(["0", "38", "39", "40", "41", "42", "43", "44", "45"]);
+    // =========================
+    // STATE
+    // =========================
 
-  function isValidSize(size) {
-    return VALID_SIZES.has(normalizeSize(size));
-  }
-
-  function makeKey(masp, size) {
-    return `${normalizeMasp(masp)}@@${normalizeSize(size)}`;
-  }
-
-  function splitKey(key) {
-    const [masp = "", size = ""] = String(key || "").split("@@");
-    return {
-      masp: normalizeMasp(masp),
-      size: normalizeSize(size)
+    window.kiemTonState = {
+        nhap: {},          // kiểm kho thường
+        bayMau: {},        // kiểm bày mẫu
+        xuat: {},
+        ketQua: {},
+        nhapOrder: [],
+        xuatOrder: [],
+        selectedMasp: "",
+        dmMaspCache: new Map(),
+        daKiemTra: false,
+        thoiDiemChotTon: null
     };
-  }
 
-  function parseSizeSlText(text) {
-    const raw = String(text || "").trim();
-    if (!raw) return [];
+    let dangChonSizeTrongPopup = false;
 
-    const parts = raw
-      .split(/\s+/)
-      .map(x => x.trim())
-      .filter(Boolean);
+    // =========================
+    // GOOGLE SHEET KIỂM MẪU
+    // =========================
+    const BAY_MAU_SHEET_CONFIG = {
+        cs1: {
+            spreadsheetId: "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA",
+            gid: "1239758850",
+            sheetName: "BAYMAUCS1"
+        },
+        cs2: {
+            spreadsheetId: "1VLsPb3yVtQzoc_rBm0f7bKRaaSt4Tq21A2j3ISgwWk8",
+            gid: "1391280527",
+            sheetName: "BAYMAUCS2"
+        }
+    };
 
-    const out = [];
-
-    for (const part of parts) {
-      const m = part.match(/^(.+?)\/(-?\d+(?:[.,]\d+)?)$/);
-      if (!m) continue;
-
-      const size = normalizeSize(m[1]);
-      const sl = normalizeNumber(m[2]);
-
-      if (!size) continue;
-      if (!isValidSize(size)) continue;
-      if (sl <= 0) continue;
-
-      out.push({ size, sl });
+    function getBayMauSheetConfig() {
+        return BAY_MAU_SHEET_CONFIG[CFG.branch] || BAY_MAU_SHEET_CONFIG.cs1;
     }
 
-    return out;
-  }
-
-  function hasRealSizeItems(items) {
-    return (items || []).some(x => {
-      const size = normalizeSize(x.size);
-      return size && size !== "0";
-    });
-  }
-
-  function getAvailableSizesForMasp(masp) {
-    masp = normalizeMasp(masp);
-    if (!masp) return [];
-
-    const state = getState();
-    const sizeMap = new Map();
-
-    Object.keys(state.xuat || {}).forEach((key) => {
-      const row = state.xuat[key];
-      if (!row) return;
-      if (normalizeMasp(row.masp) !== masp) return;
-
-      const size = normalizeSize(row.size);
-      const sl = normalizeNumber(row.sl);
-      if (!size) return;
-
-      sizeMap.set(size, {
-        size,
-        slXuat: sl,
-        slNhap: 0
-      });
-    });
-
-    Object.keys(state.nhap || {}).forEach((key) => {
-      const row = state.nhap[key];
-      if (!row) return;
-      if (normalizeMasp(row.masp) !== masp) return;
-
-      const size = normalizeSize(row.size);
-      const sl = normalizeNumber(row.sl);
-      if (!size) return;
-
-      if (!sizeMap.has(size)) {
-        sizeMap.set(size, {
-          size,
-          slXuat: 0,
-          slNhap: sl
-        });
-      } else {
-        sizeMap.get(size).slNhap = sl;
-      }
-    });
-
-    const arr = Array.from(sizeMap.values());
-    arr.sort((a, b) => {
-      const na = Number(a.size);
-      const nb = Number(b.size);
-      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-      return String(a.size).localeCompare(String(b.size), "vi");
-    });
-
-    return arr;
-  }
-
-  function hideSizePopup() {
-    const popup = byId("popup_size");
-    if (!popup) return;
-    popup.style.display = "none";
-    popup.innerHTML = "";
-  }
-
-  async function themNhanhTheoSize(size, giuPopup = true) {
-    const maspEl = byId("masp");
-    const sizeEl = byId("size");
-    const slEl = byId("soluong");
-
-    const masp = normalizeMasp(maspEl?.value);
-    const sizeVal = normalizeSize(size);
-    const sl = normalizeNumber(slEl?.value || 1) || 1;
-
-    if (!masp) return;
-    if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) return;
-
-    if (!isValidSize(sizeVal)) {
-      phatAmThanhLoi();
-      alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
-      return;
+    function getBayMauCsvUrl() {
+        const cfg = getBayMauSheetConfig();
+        return `https://docs.google.com/spreadsheets/d/${cfg.spreadsheetId}/gviz/tq?tqx=out:csv&gid=${cfg.gid}`;
     }
 
-    const key = makeKey(masp, sizeVal);
-    const state = getState();
+    const KIEM_KHO_SHEET_CONFIG = {
+        cs1: {
+            spreadsheetId: "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA",
+            gid: "1596489919",
+            sheetName: "KIEMKHOCS1"
+        },
+        cs2: {
+            spreadsheetId: "1VLsPb3yVtQzoc_rBm0f7bKRaaSt4Tq21A2j3ISgwWk8",
+            gid: "1009415488",
+            sheetName: "KIEMKHOCS2"
+        }
+    };
 
-    const isNewMasp = !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp);
-
-    if (!state.nhap[key]) {
-      state.nhap[key] = { masp, size: sizeVal, sl };
-    } else {
-      state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+    function getKiemKhoSheetConfig() {
+        return KIEM_KHO_SHEET_CONFIG[CFG.branch] || KIEM_KHO_SHEET_CONFIG.cs1;
     }
 
-    if (isNewMasp) {
-      state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
+    function getKiemKhoCsvUrl() {
+        const cfg = getKiemKhoSheetConfig();
+        return `https://docs.google.com/spreadsheets/d/${cfg.spreadsheetId}/gviz/tq?tqx=out:csv&gid=${cfg.gid}`;
     }
 
-    delete state.ketQua[key];
-    autoKiemTraSauNhap();
+    const VALID_BAY_MAU_SIZES = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
 
-    if (!baoThanhCongNeuMaspDaOK(masp)) {
-      phatAmThanhThanhCong();
+    function isValidBayMauSheetSize(v) {
+        return VALID_BAY_MAU_SIZES.has(String(v || "").trim());
     }
 
-    if (sizeEl) sizeEl.value = "";
-    if (slEl) slEl.value = "1";
+    function parseCsvLineSimple(line) {
+        const out = [];
+        let cur = "";
+        let inQuotes = false;
 
-    if (giuPopup && sizeEl) {
-      setTimeout(() => {
-        sizeEl.focus();
-        showSizePopup(masp, "");
-      }, 0);
-    }
-  }
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
 
-  async function themNhanhKhongCanSize() {
-    const maspEl = byId("masp");
-    const slEl = byId("soluong");
+            if (ch === '"') {
+                if (inQuotes && line[i + 1] === '"') {
+                    cur += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (ch === "," && !inQuotes) {
+                out.push(cur);
+                cur = "";
+            } else {
+                cur += ch;
+            }
+        }
 
-    const masp = normalizeMasp(maspEl?.value);
-    const sl = normalizeNumber(slEl?.value || 1) || 1;
-
-    if (!masp) return;
-    if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) return;
-
-    const key = makeKey(masp, "0");
-    const state = getState();
-
-    const isNewMasp = !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp);
-
-    if (!state.nhap[key]) {
-      state.nhap[key] = {
-        masp,
-        size: "0",
-        sl
-      };
-    } else {
-      state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
+        out.push(cur);
+        return out.map(x => String(x || "").trim());
     }
 
-    if (isNewMasp) {
-      state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
+    async function docDanhSachBayMauTuGoogleSheet() {
+        const cfg = getBayMauSheetConfig();
+        const csvUrl = getBayMauCsvUrl();
+
+        const res = await fetch(csvUrl, { cache: "no-store" });
+        if (!res.ok) {
+            throw new Error(
+                `Không đọc được Google Sheet kiểm mẫu ${cfg.sheetName} (${res.status})`
+            );
+        }
+        if (!res.ok) {
+            throw new Error(`Không đọc được Google Sheet kiểm mẫu (${res.status})`);
+        }
+
+        const raw = await res.text();
+        const csv = raw.replace(/^\uFEFF/, "");
+        const lines = csv.split(/\r?\n/).filter(x => String(x || "").trim());
+
+        if (!lines.length) return new Map();
+
+        let start = 0;
+        const first = String(lines[0] || "").toLowerCase();
+        if (first.includes("mã") || first.includes("masp") || first.includes("size")) {
+            start = 1;
+        }
+
+        const map = new Map();
+
+        for (let i = start; i < lines.length; i++) {
+            const cols = parseCsvLineSimple(lines[i]);
+            const masp = normalizeMasp(cols[0] || "");
+            const sizeRaw = String(cols[1] || "").trim();
+
+            if (!masp) continue;
+
+            if (!map.has(masp)) {
+                map.set(masp, []);
+            }
+
+            map.get(masp).push(sizeRaw);
+        }
+
+        return map;
     }
 
-    delete state.ketQua[key];
-    autoKiemTraSauNhap();
+    async function docDanhSachKiemKhoTuGoogleSheet() {
+        const cfg = getKiemKhoSheetConfig();
+        const csvUrl = getKiemKhoCsvUrl();
 
-    if (!baoThanhCongNeuMaspDaOK(masp)) {
-      phatAmThanhThanhCong();
+        const res = await fetch(csvUrl, { cache: "no-store" });
+        if (!res.ok) {
+            throw new Error(
+                `Không đọc được Google Sheet kiểm kho ${cfg.sheetName} (${res.status})`
+            );
+        }
+
+        const raw = await res.text();
+        const csv = raw.replace(/^\uFEFF/, "");
+        const lines = csv.split(/\r?\n/).filter(x => String(x || "").trim());
+
+        if (!lines.length) return new Map();
+
+        let start = 0;
+        const first = String(lines[0] || "").toLowerCase();
+        if (first.includes("mã") || first.includes("ma sp") || first.includes("masp") || first.includes("size")) {
+            start = 1;
+        }
+
+        const map = new Map();
+
+        for (let i = start; i < lines.length; i++) {
+            const cols = parseCsvLineSimple(lines[i]);
+            const masp = normalizeMasp(cols[0] || "");
+            const sizeRaw = String(cols[1] || "").trim();
+
+            if (!masp) continue;
+
+            const sizeToSave = isValidSize(sizeRaw) ? normalizeSize(sizeRaw) : "0";
+
+            if (!map.has(masp)) {
+                map.set(masp, []);
+            }
+
+            map.get(masp).push(sizeToSave);
+        }
+
+        return map;
     }
 
-    if (slEl) slEl.value = "1";
+    // =========================
+    // AUDIO CẢNH BÁO
+    // =========================
+    // =========================
+    // AUDIO (NEW - SOUND BEEP)
+    // =========================
+    function phatAmThanhLoi() {
+        try { playAlertBeep(); } catch (e) { }
+    }
 
-    if (maspEl) {
-      maspEl.value = masp;
-      maspEl.focus();
+    function phatAmThanhSize() {
+        try { playWaitSizeBeep(); } catch (e) { }
+    }
 
-      setTimeout(() => {
+    function phatAmThanhThanhCong() {
+        try { playSuccessBeep(); } catch (e) { }
+    }
+
+
+
+    // ========================= 
+    // HELPERS
+    // =========================
+    function byId(id) {
+        return document.getElementById(id);
+    }
+
+    // ✅ helper an toàn
+    function safeEl(id) {
+        return document.getElementById(id) || null;
+    }
+
+    function safeSetStyle(id, fn) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        fn(el);
+    }
+
+    function focusInputAtEnd(el) {
+        if (!el) return;
+        el.focus();
+
         try {
-          maspEl.select();
+            const len = String(el.value || "").length;
+            el.setSelectionRange(len, len);
         } catch (err) { }
-      }, 0);
     }
 
-    hideSizePopup();
-  }
+    function normalizeMasp(v) {
+        let s = String(v || "").trim().toUpperCase();
 
-  function showSizePopup(masp, keyword = "") {
-    const popup = byId("popup_size");
-    const sizeEl = byId("size");
+        // Nếu mã có hậu tố sau dấu "_" như REDLEO-DEN_43
+        // thì chỉ lấy phần trước dấu "_"
+        const idx = s.indexOf("_");
+        if (idx > -1) {
+            s = s.slice(0, idx).trim();
+        }
 
-    if (!popup || !sizeEl) return;
-
-    const list = getAvailableSizesForMasp(masp);
-    const kw = normalizeSize(keyword).toLowerCase();
-
-    const filtered = list.filter(item =>
-      !kw || String(item.size).toLowerCase().includes(kw)
-    );
-
-    if (!filtered.length) {
-      hideSizePopup();
-      return;
+        return s;
     }
 
-    popup.innerHTML = "";
+    function isPhieuDangXem() {
+        const hdState = document.getElementById("hd_state");
+        const v = String(hdState?.value || hdState?.getAttribute("data-state") || "")
+            .trim()
+            .toLowerCase();
+        return v === "xem";
+    }
 
-    filtered.forEach(item => {
-      const row = document.createElement("div");
-      row.style.padding = "6px 8px";
-      row.style.borderBottom = "1px solid #eee";
-      row.style.cursor = "pointer";
-      row.innerHTML = `
+    function getCurrentUserInfo() {
+        return {
+            manv: String(localStorage.getItem("manv") || byId("manv")?.value || "").trim(),
+            tennv: String(localStorage.getItem("tennv") || byId("tennv")?.value || "").trim()
+        };
+    }
+
+    function getNhapKiemPageUrl() {
+        return CFG.branch === "cs2" ? "nhapkiemcs2.html" : "nhapkiemcs1.html";
+    }
+
+    function getXuatKiemPageUrl() {
+        return CFG.branch === "cs2" ? "xuatkiemcs2.html" : "xuatkiemcs1.html";
+    }
+
+    function normalizeSize(v) {
+        return String(v || "").trim();
+    }
+    const VALID_SIZES = new Set(["0", "38", "39", "40", "41", "42", "43", "44", "45"]);
+
+    function isValidSize(size) {
+        return VALID_SIZES.has(normalizeSize(size));
+    }
+
+    function makeKey(masp, size) {
+        return `${normalizeMasp(masp)}@@${normalizeSize(size)}`;
+    }
+
+    function splitKey(key) {
+        const [masp = "", size = ""] = String(key || "").split("@@");
+        return {
+            masp: normalizeMasp(masp),
+            size: normalizeSize(size)
+        };
+    }
+
+    function parseSizeSlText(text) {
+        const raw = String(text || "").trim();
+        if (!raw) return [];
+
+        const parts = raw
+            .split(/\s+/)
+            .map(x => x.trim())
+            .filter(Boolean);
+
+        const out = [];
+
+        for (const part of parts) {
+            const m = part.match(/^(.+?)\/(-?\d+(?:[.,]\d+)?)$/);
+            if (!m) continue;
+
+            const size = normalizeSize(m[1]);
+            const sl = normalizeNumber(m[2]);
+
+            if (!size) continue;
+            if (!isValidSize(size)) continue;
+            if (sl <= 0) continue;
+
+            out.push({ size, sl });
+        }
+
+        return out;
+    }
+
+    function hasRealSizeItems(items) {
+        return (items || []).some(x => {
+            const size = normalizeSize(x.size);
+            return size && size !== "0";
+        });
+    }
+
+    function getAvailableSizesForMasp(masp) {
+        masp = normalizeMasp(masp);
+        if (!masp) return [];
+
+        const state = getState();
+        const sizeMap = new Map();
+
+        Object.keys(state.xuat || {}).forEach((key) => {
+            const row = state.xuat[key];
+            if (!row) return;
+            if (normalizeMasp(row.masp) !== masp) return;
+
+            const size = normalizeSize(row.size);
+            const sl = normalizeNumber(row.sl);
+            if (!size) return;
+
+            sizeMap.set(size, {
+                size,
+                slXuat: sl,
+                slNhap: 0
+            });
+        });
+
+        Object.keys(state.nhap || {}).forEach((key) => {
+            const row = state.nhap[key];
+            if (!row) return;
+            if (normalizeMasp(row.masp) !== masp) return;
+
+            const size = normalizeSize(row.size);
+            const sl = normalizeNumber(row.sl);
+            if (!size) return;
+
+            if (!sizeMap.has(size)) {
+                sizeMap.set(size, {
+                    size,
+                    slXuat: 0,
+                    slNhap: sl
+                });
+            } else {
+                sizeMap.get(size).slNhap = sl;
+            }
+        });
+
+        Object.keys(state.bayMau || {}).forEach((key) => {
+            const row = state.bayMau[key];
+            if (!row) return;
+            if (normalizeMasp(row.masp) !== masp) return;
+
+            const size = normalizeSize(row.size);
+            const sl = normalizeNumber(row.sl);
+            if (!size) return;
+
+            if (!sizeMap.has(size)) {
+                sizeMap.set(size, {
+                    size,
+                    slXuat: 0,
+                    slNhap: sl
+                });
+            } else {
+                sizeMap.get(size).slNhap += sl;
+            }
+        });
+
+        const arr = Array.from(sizeMap.values());
+        arr.sort((a, b) => {
+            const na = Number(a.size);
+            const nb = Number(b.size);
+            if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+            return String(a.size).localeCompare(String(b.size), "vi");
+        });
+
+        return arr;
+    }
+
+    function hideSizePopup() {
+        const popup = byId("popup_size");
+        if (!popup) return;
+        popup.style.display = "none";
+        popup.innerHTML = "";
+    }
+
+    async function themNhanhTheoSize(size, giuPopup = true) {
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
+
+        const masp = normalizeMasp(maspEl?.value);
+        const sizeVal = normalizeSize(size);
+        const sl = normalizeNumber(slEl?.value || 1) || 1;
+
+        if (!masp) return;
+        if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) return;
+
+        if (!isValidSize(sizeVal)) {
+            phatAmThanhLoi();
+            alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
+            return;
+        }
+
+        const key = makeKey(masp, sizeVal);
+        const state = getState();
+        const targetMapName = isKiemMauMode() ? "bayMau" : "nhap";
+        const targetMap = state[targetMapName] || (state[targetMapName] = {});
+
+        const isNewMasp =
+            !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp) &&
+            !Object.values(state.bayMau || {}).some(r => normalizeMasp(r?.masp) === masp);
+
+        if (!targetMap[key]) {
+            targetMap[key] = { masp, size: sizeVal, sl };
+        } else {
+            targetMap[key].sl = normalizeNumber(targetMap[key].sl) + sl;
+        }
+
+        if (isNewMasp) {
+            state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
+        }
+
+        delete state.ketQua[key];
+        renderBangKetQua();
+        phatAmThanhThanhCong();
+
+        if (sizeEl) sizeEl.value = "";
+        if (slEl) slEl.value = "1";
+
+        if (giuPopup && sizeEl) {
+            setTimeout(() => {
+                sizeEl.focus();
+                showSizePopup(masp, "");
+            }, 0);
+        }
+    }
+
+    async function themNhanhKhongCanSize() {
+        const maspEl = byId("masp");
+        const slEl = byId("soluong");
+
+        const masp = normalizeMasp(maspEl?.value);
+        const sl = normalizeNumber(slEl?.value || 1) || 1;
+
+        if (!masp) return;
+        if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) return;
+
+        const key = makeKey(masp, "0");
+        const state = getState();
+        const targetMapName = isKiemMauMode() ? "bayMau" : "nhap";
+        const targetMap = state[targetMapName] || (state[targetMapName] = {});
+
+        const isNewMasp =
+            !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp) &&
+            !Object.values(state.bayMau || {}).some(r => normalizeMasp(r?.masp) === masp);
+
+        if (!targetMap[key]) {
+            targetMap[key] = {
+                masp,
+                size: "0",
+                sl
+            };
+        } else {
+            targetMap[key].sl = normalizeNumber(targetMap[key].sl) + sl;
+        }
+
+        if (isNewMasp) {
+            state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
+        }
+
+        delete state.ketQua[key];
+        renderBangKetQua();
+        phatAmThanhThanhCong();
+
+        if (slEl) slEl.value = "1";
+
+        if (maspEl) {
+            maspEl.value = masp;
+            maspEl.focus();
+
+            setTimeout(() => {
+                try {
+                    maspEl.select();
+                } catch (err) { }
+            }, 0);
+        }
+
+        hideSizePopup();
+    }
+
+    function showSizePopup(masp, keyword = "") {
+        const popup = byId("popup_size");
+        const sizeEl = byId("size");
+
+        if (!popup || !sizeEl) return;
+
+        const list = getAvailableSizesForMasp(masp);
+        const kw = normalizeSize(keyword).toLowerCase();
+
+        const filtered = list.filter(item =>
+            !kw || String(item.size).toLowerCase().includes(kw)
+        );
+
+        if (!filtered.length) {
+            hideSizePopup();
+            return;
+        }
+
+        popup.innerHTML = "";
+
+        filtered.forEach(item => {
+            const row = document.createElement("div");
+            row.style.padding = "6px 8px";
+            row.style.borderBottom = "1px solid #eee";
+            row.style.cursor = "pointer";
+            row.innerHTML = `
       <div style="display:flex; justify-content:space-between; gap:8px;">
         <b>${escapeHtml(item.size)}</b>
         <span>X:${item.slXuat} | N:${item.slNhap}</span>
       </div>
     `;
 
-      row.addEventListener("mouseenter", () => {
-        row.style.background = "#f2f2f2";
-      });
+            row.addEventListener("mouseenter", () => {
+                row.style.background = "#f2f2f2";
+            });
 
-      row.addEventListener("mouseleave", () => {
-        row.style.background = "#fff";
-      });
+            row.addEventListener("mouseleave", () => {
+                row.style.background = "#fff";
+            });
 
-      row.addEventListener("mousedown", (e) => {
-        e.preventDefault(); // tránh blur làm popup tắt trước
-      });
+            row.addEventListener("mousedown", (e) => {
+                e.preventDefault(); // tránh blur làm popup tắt trước
+            });
 
-      row.addEventListener("click", () => {
-        dangChonSizeTrongPopup = true;
-        themNhanhTheoSize(item.size, true);
+            row.addEventListener("click", () => {
+                dangChonSizeTrongPopup = true;
+                themNhanhTheoSize(item.size, true);
 
-        setTimeout(() => {
-          dangChonSizeTrongPopup = false;
-        }, 0);
-      });
+                setTimeout(() => {
+                    dangChonSizeTrongPopup = false;
+                }, 0);
+            });
 
-      popup.appendChild(row);
-    });
-
-    popup.style.display = "block";
-  }
-
-  function splitKey(key) {
-    const [masp = "", size = ""] = String(key || "").split("@@");
-    return {
-      masp: normalizeMasp(masp),
-      size: normalizeSize(size)
-    };
-  }
-
-  function normalizeNumber(v) {
-    const raw = String(v ?? "")
-      .replace(/\./g, "")
-      .replace(/,/g, ".")
-      .replace(/[^\d.-]/g, "");
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : 0;
-  }
-
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
-
-  function formatDateTimeVN(input) {
-    if (!input) return "";
-
-    const d = new Date(input);
-    if (Number.isNaN(d.getTime())) return "";
-
-    const vn = new Date(d.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-
-    const dd = String(vn.getDate()).padStart(2, "0");
-    const mm = String(vn.getMonth() + 1).padStart(2, "0");
-    const yyyy = vn.getFullYear();
-    const hh = String(vn.getHours()).padStart(2, "0");
-    const mi = String(vn.getMinutes()).padStart(2, "0");
-
-    return `${dd}/${mm}/${yyyy} ${hh}h${mi}`;
-  }
-
-  function formatDateTimeForKiemNhapKho(input) {
-    if (!input) return "";
-
-    const d = new Date(input);
-    if (Number.isNaN(d.getTime())) return "";
-
-    const vn = new Date(d.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-
-    const dd = String(vn.getDate()).padStart(2, "0");
-    const mm = String(vn.getMonth() + 1).padStart(2, "0");
-    const yyyy = vn.getFullYear();
-    const hh = String(vn.getHours()).padStart(2, "0");
-    const mi = String(vn.getMinutes()).padStart(2, "0");
-
-    return `${dd}/${mm}/${yyyy} ${hh}h${mi}`;
-  }
-
-  function formatSohdNguonDayDuTheoMasp(xuatGroup) {
-    const state = getState();
-    const sohdSet = new Set();
-
-    (xuatGroup?.items || []).forEach(item => {
-      const rowKey = item.key;
-      const rowXuat = state.xuat?.[rowKey];
-
-      const ds = Array.isArray(rowXuat?.sohd_list) ? rowXuat.sohd_list : [];
-      ds.forEach(sohd => {
-        const s = String(sohd || "").trim();
-        if (s) sohdSet.add(s);
-      });
-    });
-
-    const dsInfo = Array.isArray(state.dsHoaDonNguonInfo) ? state.dsHoaDonNguonInfo : [];
-
-    const lines = Array.from(sohdSet).map((sohd) => {
-      const info = dsInfo.find(x => String(x?.sohd || "").trim() === sohd);
-
-      const createdAtText = String(info?.created_at_text || "").trim();
-      const ngayGio = createdAtText || formatDateTimeVN(info?.created_at || info?.ngay || "");
-      const manv = String(info?.manv || "").trim();
-
-      return [sohd, ngayGio, manv].filter(Boolean).join(" ");
-    });
-
-    return lines.join("\n");
-  }
-
-  function getState() {
-    return window.kiemNhapState;
-  }
-
-  async function kiemTraMaspTrongDanhMuc(masp) {
-    const m = normalizeMasp(masp);
-    if (!m) return false;
-
-    const state = getState();
-
-    if (state.dmMaspCache instanceof Map && state.dmMaspCache.has(m)) {
-      return state.dmMaspCache.get(m) === true;
-    }
-
-    if (!window.supabase) {
-      console.warn("[KNK] Không có Supabase để kiểm tra mã sản phẩm.");
-      return false;
-    }
-
-    const { data, error } = await window.supabase
-      .from("dmhanghoa")
-      .select("masp")
-      .eq("masp", m)
-      .limit(1);
-
-    if (error) {
-      console.error("[KNK] kiemTraMaspTrongDanhMuc error:", error);
-      throw error;
-    }
-
-    const ok = Array.isArray(data) && data.length > 0;
-
-    if (state.dmMaspCache instanceof Map) {
-      state.dmMaspCache.set(m, ok);
-    }
-
-    return ok;
-  }
-
-  async function baoLoiNeuMaspKhongCoTrongDanhMuc(masp) {
-    const m = normalizeMasp(masp);
-    if (!m) return true;
-
-    try {
-      const ok = await kiemTraMaspTrongDanhMuc(m);
-      if (ok) return true;
-
-      phatAmThanhLoi();
-      alert(`Mã sản phẩm (${m}) không có trong danh mục hàng hóa, không được nhập.`);
-      focusVaBoiDenOmaSanPham();
-      return false;
-    } catch (err) {
-      phatAmThanhLoi();
-      console.error("[KNK] Lỗi kiểm tra mã sản phẩm:", err);
-      alert("Lỗi khi kiểm tra mã sản phẩm trong danh mục hàng hóa.");
-      focusVaBoiDenOmaSanPham();
-      return false;
-    }
-  }
-
-
-  async function layMapHoaDonDaKiem() {
-    if (!window.supabase) return new Map();
-
-    const { data, error } = await window.supabase
-      .from("kiem_nhap_kho")
-      .select("sohdccn, nhanvienkiem, created_at");
-
-    if (error) {
-      console.error("[KNK] layMapHoaDonDaKiem error:", error);
-      return new Map();
-    }
-
-    const map = new Map();
-
-    (data || []).forEach((row) => {
-      const raw = String(row.sohdccn || "").trim();
-      if (!raw) return;
-
-      raw.split(";").forEach((item) => {
-        const sohd = String(item || "").trim();
-        if (!sohd) return;
-
-        map.set(sohd, {
-          nhanvienkiem: String(row.nhanvienkiem || "").trim(),
-          created_at: row.created_at || null
+            popup.appendChild(row);
         });
-      });
-    });
 
-    return map;
-  }
-
-  async function taoSoPhieuMoi() {
-    const prefix = String(CFG.soPhieuPrefix || "kiemnhap2v1cs1_").trim();
-
-    // Chờ Supabase sẵn sàng một lúc ngắn trước khi kết luận là chưa có
-    for (let i = 0; i < 30; i++) {
-      if (window.supabase) break;
-      await new Promise(resolve => setTimeout(resolve, 200));
+        popup.style.display = "block";
     }
 
-    if (!window.supabase) {
-      console.warn("[KNK] Supabase chưa sẵn sàng khi tạo số phiếu mới.");
-      return "";
-    }
-
-    const { data, error } = await window.supabase
-      .from("kiem_nhap_kho")
-      .select("so_hd_kiemnhap")
-      .ilike("so_hd_kiemnhap", `${prefix}%`);
-
-    if (error) {
-      console.error("[KNK] taoSoPhieuMoi error:", error);
-      return "";
-    }
-
-    let maxSo = 0;
-
-    (data || []).forEach((row) => {
-      const so = String(row.so_hd_kiemnhap || "").trim();
-      if (!so.startsWith(prefix)) return;
-
-      const tail = so.slice(prefix.length);
-      const n = Number(tail);
-
-      if (Number.isFinite(n) && n > maxSo) {
-        maxSo = n;
-      }
-    });
-
-    const next = String(maxSo + 1).padStart(5, "0");
-    return `${prefix}${next}`;
-  }
-
-  function updateTitle() {
-    document.title = CFG.title || document.title;
-  }
-
-  function setDefaultBranchInfo() {
-    const diadiem = byId("diadiem");
-    if (diadiem && !diadiem.value) diadiem.value = CFG.toBranch || "";
-
-    const hdState = byId("hd_state");
-    if (hdState) {
-      hdState.value = "moi";
-      hdState.setAttribute("data-state", "moi");
-    }
-
-    const ngay = byId("ngay");
-    if (ngay && !ngay.value) {
-      const d = new Date();
-      ngay.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    }
-
-    const gio = byId("gio");
-    if (gio) {
-      const tick = () => {
-        const d = new Date();
-        gio.value = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-      };
-      tick();
-      setInterval(tick, 1000 * 15);
-    }
-  }
-
-  async function khoiTaoSoPhieuBanDau() {
-    const sohdEl = byId("sohd");
-    if (!sohdEl) return;
-
-    // Nếu đang mở phiếu cũ thì không tự đè số phiếu
-    const hdState = byId("hd_state");
-    const isPhieuCu = String(hdState?.value || "").trim() === "cu";
-
-    if (isPhieuCu) return;
-
-    const soPhieuMoi = await taoSoPhieuMoi();
-    if (soPhieuMoi) {
-      sohdEl.value = soPhieuMoi;
-    }
-  }
-
-  function laySoPhieuLienTruoc(sohdHienTai) {
-    const raw = String(sohdHienTai || "").trim();
-    if (!raw) return "";
-
-    const m = raw.match(/^(.*?)(\d+)$/);
-    if (!m) return raw;
-
-    const prefix = m[1];
-    const soText = m[2];
-    const so = Number(soText);
-
-    if (!Number.isFinite(so) || so <= 1) {
-      return raw;
-    }
-
-    const soMoi = String(so - 1).padStart(soText.length, "0");
-    return `${prefix}${soMoi}`;
-  }
-
-  function laySoPhieuLienSau(sohdHienTai) {
-    const raw = String(sohdHienTai || "").trim();
-    if (!raw) return "";
-
-    const m = raw.match(/^(.*?)(\d+)$/);
-    if (!m) return raw;
-
-    const prefix = m[1];
-    const soText = m[2];
-    const so = Number(soText);
-
-    if (!Number.isFinite(so)) return raw;
-
-    const soMoi = String(so + 1).padStart(soText.length, "0");
-    return `${prefix}${soMoi}`;
-  }
-
-  function ensureMaspAtTop(orderArr, masp) {
-    const m = normalizeMasp(masp);
-    if (!m) return Array.isArray(orderArr) ? orderArr : [];
-
-    const arr = Array.isArray(orderArr) ? orderArr.filter(x => normalizeMasp(x) !== m) : [];
-    arr.unshift(m);
-    return arr;
-  }
-
-  function ensureMaspAtEnd(orderArr, masp) {
-    const m = normalizeMasp(masp);
-    if (!m) return Array.isArray(orderArr) ? orderArr : [];
-
-    const arr = Array.isArray(orderArr) ? orderArr.filter(x => normalizeMasp(x) !== m) : [];
-    arr.push(m);
-    return arr;
-  }
-
-  function buildOrderedMasps(nhapGroupMap, xuatGroupMap, state) {
-    const nhapOrder = Array.isArray(state.nhapOrder) ? state.nhapOrder.map(normalizeMasp).filter(Boolean) : [];
-    const xuatOrder = Array.isArray(state.xuatOrder) ? state.xuatOrder.map(normalizeMasp).filter(Boolean) : [];
-
-    const allSet = new Set([
-      ...Object.keys(nhapGroupMap || {}),
-      ...Object.keys(xuatGroupMap || {})
-    ]);
-
-    const result = [];
-    const pushed = new Set();
-
-    const pushOne = (masp) => {
-      const m = normalizeMasp(masp);
-      if (!m) return;
-      if (!allSet.has(m)) return;
-      if (pushed.has(m)) return;
-      pushed.add(m);
-      result.push(m);
-    };
-
-    nhapOrder.forEach(pushOne);
-    xuatOrder.forEach(pushOne);
-
-    Array.from(allSet).forEach(pushOne);
-
-    return result;
-  }
-
-
-  function getSortWeightByTrangThai(trangthai) {
-    const tt = String(trangthai || "").trim().toUpperCase();
-    if (tt === "THIEU") return 1;
-
-    if (tt === "LECH") return 2;
-
-    if (tt === "THUA") return 3;
-    if (tt === "OK") return 4;
-    return 5;
-  }
-
-  function sapXepLaiThuTuMaspTheoKetQua() {
-    const state = getState();
-    const nhapGroupMap = groupByMasp(state.nhap || {});
-    const xuatGroupMap = groupByMasp(state.xuat || {});
-    const ketQuaMap = state.ketQua || {};
-
-    const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
-
-    // lấy mã sản phẩm đang nằm trong ô nhập
-    const maspDangNhap = normalizeMasp(byId("masp")?.value || "");
-
-    // tách mã đang nhập ra khỏi danh sách sort chung
-    const dsConLai = allMasps.filter(m => normalizeMasp(m) !== maspDangNhap);
-
-    dsConLai.sort((a, b) => {
-      const kqA = buildKetQuaTheoMasp(nhapGroupMap[a], xuatGroupMap[a], ketQuaMap);
-      const kqB = buildKetQuaTheoMasp(nhapGroupMap[b], xuatGroupMap[b], ketQuaMap);
-
-      const wA = getSortWeightByTrangThai(kqA?.trangthai);
-      const wB = getSortWeightByTrangThai(kqB?.trangthai);
-
-      if (wA !== wB) return wA - wB;
-
-      return String(a || "").localeCompare(String(b || ""), "vi");
-    });
-
-    // nếu mã đang nhập có tồn tại trong bảng thì ép nó lên đầu
-    if (maspDangNhap && allMasps.includes(maspDangNhap)) {
-      state.nhapOrder = [maspDangNhap, ...dsConLai];
-    } else {
-      state.nhapOrder = dsConLai;
-    }
-  }
-
-  function tinhThongKeTheoMap(mapObj) {
-    const maspSet = new Set();
-    let tongSl = 0;
-
-    Object.values(mapObj || {}).forEach((row) => {
-      const masp = normalizeMasp(row?.masp);
-      const sl = normalizeNumber(row?.sl || 0);
-
-      if (!masp || sl <= 0) return;
-
-      maspSet.add(masp);
-      tongSl += sl;
-    });
-
-    return {
-      soMa: maspSet.size,
-      tongSl
-    };
-  }
-
-  function capNhatThongKeDauTrang() {
-    const el = byId("thongke_dautrang");
-    if (!el) return;
-
-    const state = getState();
-    const tkNhap = tinhThongKeTheoMap(state.nhap || {});
-    const tkXuat = tinhThongKeTheoMap(state.xuat || {});
-
-    el.textContent = `Nhập: ${tkNhap.soMa}/${tkNhap.tongSl} , Xuất: ${tkXuat.soMa}/${tkXuat.tongSl}`;
-  }
-
-  function autoKiemTraSauNhap() {
-    try {
-      // Bước 1: render trước để dòng mới được đẩy xuống bảng
-      renderBangKetQua();
-
-      // Bước 2: sau đó mới kiểm tra lại
-      kiemTraPhieu();
-    } catch (err) {
-      console.error("[KNK] autoKiemTraSauNhap error:", err);
-      renderBangKetQua();
-    }
-  }
-
-  function layTrangThaiTongTheoMasp(masp) {
-    const m = normalizeMasp(masp);
-    if (!m) return "";
-
-    const state = getState();
-    const nhapGroupMap = groupByMasp(state.nhap || {});
-    const xuatGroupMap = groupByMasp(state.xuat || {});
-    const ketQuaMap = state.ketQua || {};
-
-    const kqTong = buildKetQuaTheoMasp(
-      nhapGroupMap[m],
-      xuatGroupMap[m],
-      ketQuaMap
-    );
-
-    return String(kqTong?.trangthai || "").trim().toUpperCase();
-  }
-
-  function baoThanhCongNeuMaspDaOK(masp) {
-    const trangThai = layTrangThaiTongTheoMasp(masp);
-    if (trangThai === "OK") {
-      phatAmThanhThanhCong3Lan();
-      return true;
-    }
-    return false;
-  }
-
-  // =========================
-  // RENDER
-  // =========================
-  function groupByMasp(mapObj) {
-    const out = {};
-
-    for (const key of Object.keys(mapObj || {})) {
-      const row = mapObj[key];
-      if (!row || !row.masp) continue;
-
-      const masp = normalizeMasp(row.masp);
-      const size = normalizeSize(row.size);
-      const sl = normalizeNumber(row.sl);
-
-      if (!out[masp]) {
-        out[masp] = {
-          masp,
-          items: []
+    function splitKey(key) {
+        const [masp = "", size = ""] = String(key || "").split("@@");
+        return {
+            masp: normalizeMasp(masp),
+            size: normalizeSize(size)
         };
-      }
-
-      out[masp].items.push({
-        key,
-        size,
-        sl
-      });
     }
 
-    // sắp xếp size tăng dần cho dễ nhìn
-    Object.values(out).forEach(group => {
-      group.items.sort((a, b) => {
-        const na = Number(a.size);
-        const nb = Number(b.size);
+    function normalizeNumber(v) {
+        const raw = String(v ?? "")
+            .replace(/\./g, "")
+            .replace(/,/g, ".")
+            .replace(/[^\d.-]/g, "");
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : 0;
+    }
 
-        if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-        return String(a.size).localeCompare(String(b.size), "vi");
-      });
-    });
+    function escapeHtml(str) {
+        return String(str ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
 
-    return out;
-  }
+    function formatDateTimeVN(input) {
+        if (!input) return "";
 
-  function formatSizeSl(items) {
-    if (!Array.isArray(items) || items.length === 0) return "";
-    return items.map(x => `${x.size}/${x.sl}`).join("\n");
-  }
+        const d = new Date(input);
+        if (Number.isNaN(d.getTime())) return "";
 
-  function tongSoLuong(items) {
-    if (!Array.isArray(items)) return 0;
-    return items.reduce((sum, x) => sum + normalizeNumber(x.sl), 0);
-  }
+        const vn = new Date(d.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
 
-  function formatSohdNguonTheoMasp(xuatGroup) {
-    const sohdSet = new Set();
+        const yyyy = vn.getFullYear();
+        const mm = String(vn.getMonth() + 1).padStart(2, "0");
+        const dd = String(vn.getDate()).padStart(2, "0");
+        const hh = String(vn.getHours()).padStart(2, "0");
+        const mi = String(vn.getMinutes()).padStart(2, "0");
 
-    (xuatGroup?.items || []).forEach(item => {
-      const rowKey = item.key;
-      const state = getState();
-      const rowXuat = state.xuat?.[rowKey];
+        return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    }
 
-      const ds = Array.isArray(rowXuat?.sohd_list) ? rowXuat.sohd_list : [];
-      ds.forEach(sohd => {
-        const s = String(sohd || "").trim();
-        if (s) sohdSet.add(s);
-      });
-    });
+    function getState() {
+        return window.kiemTonState;
+    }
 
-    return Array.from(sohdSet).join("\n");
-  }
+    function isKiemMauMode() {
+        return !!document.getElementById("chkKiemMau")?.checked;
+    }
 
-  function formatSohdNguonLuuTheoMasp(xuatGroup) {
-    const state = getState();
-    const sohdSet = new Set();
+    function getMapNhapTong() {
+        const state = getState();
+        const out = {};
 
-    (xuatGroup?.items || []).forEach(item => {
-      const rowKey = item.key;
-      const rowXuat = state.xuat?.[rowKey];
+        const addMap = (mapObj) => {
+            Object.keys(mapObj || {}).forEach((key) => {
+                const row = mapObj[key];
+                if (!row) return;
 
-      const ds = Array.isArray(rowXuat?.sohd_list) ? rowXuat.sohd_list : [];
-      ds.forEach(sohd => {
-        const s = String(sohd || "").trim();
-        if (s) sohdSet.add(s);
-      });
-    });
+                if (!out[key]) {
+                    out[key] = {
+                        masp: normalizeMasp(row.masp),
+                        size: normalizeSize(row.size),
+                        sl: normalizeNumber(row.sl)
+                    };
+                } else {
+                    out[key].sl += normalizeNumber(row.sl);
+                }
+            });
+        };
 
-    const dsInfo = Array.isArray(state.dsHoaDonNguonInfo) ? state.dsHoaDonNguonInfo : [];
+        addMap(state.nhap || {});
+        addMap(state.bayMau || {});
 
-    const lines = Array.from(sohdSet).map((sohd) => {
-      const info = dsInfo.find(x => String(x?.sohd || "").trim() === sohd);
+        return out;
+    }
 
-      const ngayGio = formatDateTimeVN(info?.created_at || info?.ngay || "");
-      const manv = String(info?.manv || "").trim();
+    function capNhatUIKiemMau() {
+        const lbl = document.getElementById("lblKiemMau");
+        const checked = isKiemMauMode();
+        if (!lbl) return;
 
-      return [sohd, ngayGio, manv].filter(Boolean).join(" ");
-    });
+        lbl.style.background = checked ? "#e8f7ff" : "#fff";
+        lbl.style.borderColor = checked ? "#0b57d0" : "#999";
+        lbl.style.color = checked ? "#0b57d0" : "#000";
+        lbl.style.fontWeight = checked ? "700" : "400";
+    }
 
-    return lines.join("\n");
-  }
+    async function kiemTraMaspTrongDanhMuc(masp) {
+        const m = normalizeMasp(masp);
+        if (!m) return false;
 
-  function tachThongTinSohdXuatCn(text) {
-    const raw = String(text || "").replace(/\r/g, "").trim();
-    if (!raw) return [];
+        const state = getState();
 
-    return raw
-      .split("\n")
-      .map(line => String(line || "").trim())
-      .filter(Boolean)
-      .map(line => {
-        const m = line.match(/^(\S+)(?:\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}h\d{2}))?(?:\s+(\S+))?$/);
-
-        if (!m) {
-          return {
-            sohd: line,
-            created_at_text: "",
-            manv: ""
-          };
+        if (state.dmMaspCache instanceof Map && state.dmMaspCache.has(m)) {
+            return state.dmMaspCache.get(m) === true;
         }
+
+        if (!window.supabase) {
+            console.warn("[KNK] Không có Supabase để kiểm tra mã sản phẩm.");
+            return false;
+        }
+
+        const { data, error } = await window.supabase
+            .from("dmhanghoa")
+            .select("masp")
+            .eq("masp", m)
+            .limit(1);
+
+        if (error) {
+            console.error("[KNK] kiemTraMaspTrongDanhMuc error:", error);
+            throw error;
+        }
+
+        const ok = Array.isArray(data) && data.length > 0;
+
+        if (state.dmMaspCache instanceof Map) {
+            state.dmMaspCache.set(m, ok);
+        }
+
+        return ok;
+    }
+
+    async function baoLoiNeuMaspKhongCoTrongDanhMuc(masp) {
+        const m = normalizeMasp(masp);
+        if (!m) return true;
+
+        try {
+            const ok = await kiemTraMaspTrongDanhMuc(m);
+            if (ok) return true;
+
+            phatAmThanhLoi();
+            alert(`Mã sản phẩm (${m}) không có trong danh mục hàng hóa, không được nhập.`);
+            focusVaBoiDenOmaSanPham();
+            return false;
+        } catch (err) {
+            phatAmThanhLoi();
+            console.error("[KNK] Lỗi kiểm tra mã sản phẩm:", err);
+            alert("Lỗi khi kiểm tra mã sản phẩm trong danh mục hàng hóa.");
+            focusVaBoiDenOmaSanPham();
+            return false;
+        }
+    }
+
+
+    async function layMapHoaDonDaKiem() {
+        if (!window.supabase) return new Map();
+
+        const { data, error } = await window.supabase
+            .from("kiem_nhap_kho")
+            .select("sohdccn, nhanvienkiem, created_at");
+
+        if (error) {
+            console.error("[KNK] layMapHoaDonDaKiem error:", error);
+            return new Map();
+        }
+
+        const map = new Map();
+
+        (data || []).forEach((row) => {
+            const raw = String(row.sohdccn || "").trim();
+            if (!raw) return;
+
+            raw.split(";").forEach((item) => {
+                const sohd = String(item || "").trim();
+                if (!sohd) return;
+
+                map.set(sohd, {
+                    nhanvienkiem: String(row.nhanvienkiem || "").trim(),
+                    created_at: row.created_at || null
+                });
+            });
+        });
+
+        return map;
+    }
+
+    async function taoSoPhieuMoi() {
+        const prefix = String(CFG.soPhieuPrefix || "ktkcs1_").trim();
+
+        if (!window.supabase) {
+            return `${prefix}00001`;
+        }
+
+        const { data, error } = await window.supabase
+            .from("kiem_ton_kho")
+            .select("so_phieu")
+            .ilike("so_phieu", `${prefix}%`);
+
+        if (error) {
+            console.error("[KTK] taoSoPhieuMoi error:", error);
+            return `${prefix}00001`;
+        }
+
+        let maxSo = 0;
+
+        (data || []).forEach((row) => {
+            const so = String(row.so_phieu || "").trim();
+            if (!so.startsWith(prefix)) return;
+
+            const tail = so.slice(prefix.length);
+            const n = Number(tail);
+
+            if (Number.isFinite(n) && n > maxSo) {
+                maxSo = n;
+            }
+        });
+
+        const next = String(maxSo + 1).padStart(5, "0");
+        return `${prefix}${next}`;
+    }
+
+    function updateTitle() {
+        document.title = CFG.title || document.title;
+    }
+
+    function setDefaultBranchInfo() {
+        const diadiem = byId("diadiem");
+        if (diadiem && !diadiem.value) diadiem.value = CFG.branch || "";
+
+        const hdState = byId("hd_state");
+        if (hdState) {
+            hdState.value = "moi";
+            hdState.setAttribute("data-state", "moi");
+        }
+
+        const ngay = byId("ngay");
+        if (ngay && !ngay.value) {
+            const d = new Date();
+            ngay.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        }
+
+        const gio = byId("gio");
+        if (gio) {
+            const tick = () => {
+                const d = new Date();
+                gio.value = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+            };
+            tick();
+            setInterval(tick, 1000 * 15);
+        }
+    }
+
+    function ensureMaspAtTop(orderArr, masp) {
+        const m = normalizeMasp(masp);
+        if (!m) return Array.isArray(orderArr) ? orderArr : [];
+
+        const arr = Array.isArray(orderArr) ? orderArr.filter(x => normalizeMasp(x) !== m) : [];
+        arr.unshift(m);
+        return arr;
+    }
+
+    function ensureMaspAtEnd(orderArr, masp) {
+        const m = normalizeMasp(masp);
+        if (!m) return Array.isArray(orderArr) ? orderArr : [];
+
+        const arr = Array.isArray(orderArr) ? orderArr.filter(x => normalizeMasp(x) !== m) : [];
+        arr.push(m);
+        return arr;
+    }
+
+    function buildOrderedMasps(nhapGroupMap, xuatGroupMap, state) {
+        const nhapOrder = Array.isArray(state.nhapOrder) ? state.nhapOrder.map(normalizeMasp).filter(Boolean) : [];
+        const xuatOrder = Array.isArray(state.xuatOrder) ? state.xuatOrder.map(normalizeMasp).filter(Boolean) : [];
+
+        const allSet = new Set([
+            ...Object.keys(nhapGroupMap || {}),
+            ...Object.keys(xuatGroupMap || {})
+        ]);
+
+        const result = [];
+        const pushed = new Set();
+
+        const pushOne = (masp) => {
+            const m = normalizeMasp(masp);
+            if (!m) return;
+            if (!allSet.has(m)) return;
+            if (pushed.has(m)) return;
+            pushed.add(m);
+            result.push(m);
+        };
+
+        nhapOrder.forEach(pushOne);
+        xuatOrder.forEach(pushOne);
+
+        Array.from(allSet).forEach(pushOne);
+
+        return result;
+    }
+
+    function getSortWeightByTrangThai(trangthai) {
+        const tt = String(trangthai || "").trim().toUpperCase();
+        if (tt === "THUA") return 1;
+
+        if (tt === "THIEU") return 2;
+
+        if (tt === "LECH") return 3;
+        if (tt === "OK") return 4;
+        return 5;
+    }
+
+    function sapXepLaiThuTuMaspTheoKetQua() {
+        const state = getState();
+        const nhapGroupMap = groupByMasp(state.nhap || {});
+        const xuatGroupMap = groupByMasp(state.xuat || {});
+        const ketQuaMap = state.ketQua || {};
+
+        const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
+
+        allMasps.sort((a, b) => {
+            const kqA = buildKetQuaTheoMasp(nhapGroupMap[a], xuatGroupMap[a], ketQuaMap);
+            const kqB = buildKetQuaTheoMasp(nhapGroupMap[b], xuatGroupMap[b], ketQuaMap);
+
+            const wA = getSortWeightByTrangThai(kqA?.trangthai);
+            const wB = getSortWeightByTrangThai(kqB?.trangthai);
+
+            if (wA !== wB) return wA - wB;
+
+            return String(a || "").localeCompare(String(b || ""), "vi");
+        });
+
+        state.nhapOrder = [...allMasps];
+    }
+
+    function getSortWeightByTrangThai(trangthai) {
+        const tt = String(trangthai || "").trim().toUpperCase();
+        if (tt === "THUA") return 1;
+
+        if (tt === "THIEU") return 2;
+
+        if (tt === "LECH") return 3;
+        if (tt === "OK") return 4;
+        return 5;
+    }
+
+    function sapXepLaiThuTuMaspTheoKetQua() {
+        const state = getState();
+        const nhapGroupMap = groupByMasp(state.nhap || {});
+        const xuatGroupMap = groupByMasp(state.xuat || {});
+        const ketQuaMap = state.ketQua || {};
+
+        const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
+
+        allMasps.sort((a, b) => {
+            const kqA = buildKetQuaTheoMasp(nhapGroupMap[a], xuatGroupMap[a], ketQuaMap);
+            const kqB = buildKetQuaTheoMasp(nhapGroupMap[b], xuatGroupMap[b], ketQuaMap);
+
+            const wA = getSortWeightByTrangThai(kqA?.trangthai);
+            const wB = getSortWeightByTrangThai(kqB?.trangthai);
+
+            if (wA !== wB) return wA - wB;
+
+            return String(a || "").localeCompare(String(b || ""), "vi");
+        });
+
+        state.nhapOrder = [...allMasps];
+    }
+
+    function tinhThongKeTheoMap(mapObj) {
+        const maspSet = new Set();
+        let tongSl = 0;
+
+        Object.values(mapObj || {}).forEach((row) => {
+            const masp = normalizeMasp(row?.masp);
+            const sl = normalizeNumber(row?.sl || 0);
+
+            if (!masp || sl <= 0) return;
+
+            maspSet.add(masp);
+            tongSl += sl;
+        });
 
         return {
-          sohd: String(m[1] || "").trim(),
-          created_at_text: String(m[2] || "").trim(),
-          manv: String(m[3] || "").trim()
+            soMa: maspSet.size,
+            tongSl
         };
-      });
-  }
-
-  function ganSohdXuatCnChoStateXuat(masp, sohdXuatCnText, state) {
-    const dsInfo = tachThongTinSohdXuatCn(sohdXuatCnText);
-    if (!dsInfo.length) return;
-
-    const dsSohd = dsInfo
-      .map(x => String(x.sohd || "").trim())
-      .filter(Boolean);
-
-    if (!dsSohd.length) return;
-
-    Object.keys(state.xuat || {}).forEach((key) => {
-      const row = state.xuat[key];
-      if (!row) return;
-      if (normalizeMasp(row.masp) !== normalizeMasp(masp)) return;
-
-      row.sohd_list = [...dsSohd];
-    });
-
-    if (!Array.isArray(state.dsHoaDonNguonInfo)) {
-      state.dsHoaDonNguonInfo = [];
     }
 
-    dsInfo.forEach((item) => {
-      const sohd = String(item.sohd || "").trim();
-      if (!sohd) return;
+    function capNhatThongKeDauTrang() {
+        const el = byId("thongke_dautrang");
+        if (!el) return;
 
-      const daCo = state.dsHoaDonNguonInfo.some(
-        x => String(x?.sohd || "").trim() === sohd
-      );
+        const state = getState();
+        const tkNhap = tinhThongKeTheoMap(getMapNhapTong());
+        const tkXuat = tinhThongKeTheoMap(state.xuat || {});
 
-      if (!daCo) {
-        state.dsHoaDonNguonInfo.push({
-          sohd,
-          ngay: null,
-          created_at: null,
-          created_at_text: String(item.created_at_text || "").trim(),
-          diadiem: "",
-          manv: String(item.manv || "").trim(),
-          tennv: ""
+        el.textContent = `Kiểm: ${tkNhap.soMa}/${tkNhap.tongSl} , Tồn máy: ${tkXuat.soMa}/${tkXuat.tongSl}`;
+    }
+
+    // =========================
+    // RENDER
+    // =========================
+    function groupByMasp(mapObj) {
+        const out = {};
+
+        for (const key of Object.keys(mapObj || {})) {
+            const row = mapObj[key];
+            if (!row || !row.masp) continue;
+
+            const masp = normalizeMasp(row.masp);
+            const size = normalizeSize(row.size);
+            const sl = normalizeNumber(row.sl);
+
+            if (!out[masp]) {
+                out[masp] = {
+                    masp,
+                    items: []
+                };
+            }
+
+            out[masp].items.push({
+                key,
+                size,
+                sl
+            });
+        }
+
+        // sắp xếp size tăng dần cho dễ nhìn
+        Object.values(out).forEach(group => {
+            group.items.sort((a, b) => {
+                const na = Number(a.size);
+                const nb = Number(b.size);
+
+                if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+                return String(a.size).localeCompare(String(b.size), "vi");
+            });
         });
-      }
-    });
 
-    const dsNguonMoi = dsInfo
-      .map(x => String(x.sohd || "").trim())
-      .filter(Boolean);
-
-    state.dsHoaDonNguon = Array.from(
-      new Set([...(state.dsHoaDonNguon || []), ...dsNguonMoi])
-    );
-  }
-
-  function buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap) {
-    const masp = normalizeMasp(nhapGroup?.masp || xuatGroup?.masp || "");
-
-    const allSizeKeys = new Set([
-      ...((nhapGroup?.items || []).map(x => x.key)),
-      ...((xuatGroup?.items || []).map(x => x.key))
-    ]);
-
-    const thieuParts = [];
-    const thuaParts = [];
-    let tongThieu = 0;
-    let tongThua = 0;
-    let hasOk = false;
-    let hasAnyKetQua = false;
-
-    for (const key of allSizeKeys) {
-      const kq = ketQuaMap[key];
-      if (!kq) continue;
-
-      hasAnyKetQua = true;
-
-      const { size } = splitKey(key);
-      const diff = normalizeNumber(kq.chitiet || 0);
-
-      if (kq.trangthai === "THIEU") {
-        tongThieu += diff;
-        thieuParts.push(`${size}/${diff}`);
-      } else if (kq.trangthai === "THUA") {
-        tongThua += diff;
-        thuaParts.push(`${size}/${diff}`);
-      } else if (kq.trangthai === "OK") {
-        hasOk = true;
-      }
+        return out;
     }
 
-    // Fallback cho trường hợp kiểm theo tổng hoặc nhập trống nhưng xuất có dữ liệu
-    // Fallback cho trường hợp kiểm theo tổng hoặc nhập trống nhưng xuất có dữ liệu
-    if (!hasAnyKetQua && masp) {
-      const keyTong = makeKey(masp, "0");
-      const kqTong = ketQuaMap[keyTong];
+    function formatSizeSl(items) {
+        if (!Array.isArray(items) || items.length === 0) return "";
+        return items.map(x => `${x.size}/${x.sl}`).join("\n");
+    }
 
-      if (kqTong) {
-        const diff = normalizeNumber(kqTong.chitiet || 0);
-        const tongNhap = tongSoLuong(nhapGroup?.items || []);
-        const xuatItems = Array.isArray(xuatGroup?.items) ? xuatGroup.items : [];
+    function tongSoLuong(items) {
+        if (!Array.isArray(items)) return 0;
+        return items.reduce((sum, x) => sum + normalizeNumber(x.sl), 0);
+    }
 
-        if (kqTong.trangthai === "THIEU") {
-          // Nếu bên nhập trống hoàn toàn thì hiện chi tiết đúng theo toàn bộ size/sl của bên xuất
-          if (tongNhap <= 0 && xuatItems.length > 0) {
+    function buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap) {
+        const masp = normalizeMasp(nhapGroup?.masp || xuatGroup?.masp || "");
+
+        const allSizeKeys = new Set([
+            ...((nhapGroup?.items || []).map(x => x.key)),
+            ...((xuatGroup?.items || []).map(x => x.key))
+        ]);
+
+        const thieuParts = [];
+        const thuaParts = [];
+        let tongThieu = 0;
+        let tongThua = 0;
+        let hasOk = false;
+        let hasAnyKetQua = false;
+
+        for (const key of allSizeKeys) {
+            const kq = ketQuaMap[key];
+            if (!kq) continue;
+
+            hasAnyKetQua = true;
+
+            const { size } = splitKey(key);
+            const diff = normalizeNumber(kq.chitiet || 0);
+
+            if (kq.trangthai === "THIEU") {
+                tongThieu += diff;
+                thieuParts.push(`${size}/${diff}`);
+            } else if (kq.trangthai === "THUA") {
+                tongThua += diff;
+                thuaParts.push(`${size}/${diff}`);
+            } else if (kq.trangthai === "OK") {
+                hasOk = true;
+            }
+        }
+
+        // Fallback cho trường hợp kiểm theo tổng hoặc nhập trống nhưng xuất có dữ liệu
+        // Fallback cho trường hợp kiểm theo tổng hoặc nhập trống nhưng xuất có dữ liệu
+        if (!hasAnyKetQua && masp) {
+            const keyTong = makeKey(masp, "0");
+            const kqTong = ketQuaMap[keyTong];
+
+            if (kqTong) {
+                const diff = normalizeNumber(kqTong.chitiet || 0);
+                const tongNhap = tongSoLuong(nhapGroup?.items || []);
+                const xuatItems = Array.isArray(xuatGroup?.items) ? xuatGroup.items : [];
+
+                if (kqTong.trangthai === "THIEU") {
+                    // Nếu bên nhập trống hoàn toàn thì hiện chi tiết đúng theo toàn bộ size/sl của bên xuất
+                    if (tongNhap <= 0 && xuatItems.length > 0) {
+                        return {
+                            trangthai: "THIEU",
+                            chitiet: xuatItems.map(x => `${x.size}/${x.sl}`).join(" ")
+                        };
+                    }
+
+                    return {
+                        trangthai: "THIEU",
+                        chitiet: diff > 0 ? `0/${diff}` : ""
+                    };
+                }
+
+                if (kqTong.trangthai === "THUA") {
+                    return {
+                        trangthai: "THUA",
+                        chitiet: diff > 0 ? `0/${diff}` : ""
+                    };
+                }
+
+                if (kqTong.trangthai === "OK") {
+                    return { trangthai: "OK", chitiet: "" };
+                }
+            }
+        }
+
+        if (tongThieu > 0 && tongThua === 0) {
             return {
-              trangthai: "THIEU",
-              chitiet: xuatItems.map(x => `${x.size}/${x.sl}`).join(" ")
+                trangthai: "THIEU",
+                chitiet: thieuParts.join(" ")
             };
-          }
-
-          return {
-            trangthai: "THIEU",
-            chitiet: diff > 0 ? `0/${diff}` : ""
-          };
         }
 
-        if (kqTong.trangthai === "THUA") {
-          return {
-            trangthai: "THUA",
-            chitiet: diff > 0 ? `0/${diff}` : ""
-          };
+        if (tongThua > 0 && tongThieu === 0) {
+            return {
+                trangthai: "THUA",
+                chitiet: thuaParts.join(" ")
+            };
         }
 
-        if (kqTong.trangthai === "OK") {
-          return { trangthai: "OK", chitiet: "" };
+        if (tongThieu === 0 && tongThua === 0 && hasOk) {
+            return { trangthai: "OK", chitiet: "" };
         }
-      }
+
+        if (tongThieu > 0 && tongThua > 0) {
+            return {
+                trangthai: "LECH",
+                chitiet: `Thiếu: ${thieuParts.join(" ")} | Thừa: ${thuaParts.join(" ")}`
+            };
+        }
+
+        return { trangthai: "", chitiet: "" };
     }
 
-    if (tongThieu > 0 && tongThua === 0) {
-      return {
-        trangthai: "THIEU",
-        chitiet: thieuParts.join(" ")
-      };
-    }
+    function renderBangKetQua() {
+        const tbody = document.querySelector("#bangketqua tbody");
+        if (!tbody) return;
 
-    if (tongThua > 0 && tongThieu === 0) {
-      return {
-        trangthai: "THUA",
-        chitiet: thuaParts.join(" ")
-      };
-    }
+        const state = getState();
+        const nhapKhoMap = state.nhap || {};
+        const bayMauMap = state.bayMau || {};
+        const nhapTongMap = getMapNhapTong();
+        const xuatMap = state.xuat || {};
+        const ketQuaMap = state.ketQua || {};
 
-    if (tongThieu === 0 && tongThua === 0 && hasOk) {
-      return { trangthai: "OK", chitiet: "" };
-    }
+        const nhapKhoGroupMap = groupByMasp(nhapKhoMap);
+        const bayMauGroupMap = groupByMasp(bayMauMap);
+        const nhapTongGroupMap = groupByMasp(nhapTongMap);
+        const xuatGroupMap = groupByMasp(xuatMap);
 
-    if (tongThieu > 0 && tongThua > 0) {
-      return {
-        trangthai: "LECH",
-        chitiet: `Thiếu: ${thieuParts.join(" ")} | Thừa: ${thuaParts.join(" ")}`
-      };
-    }
+        const allMasps = buildOrderedMasps(nhapTongGroupMap, xuatGroupMap, state);
 
-    return { trangthai: "", chitiet: "" };
-  }
+        tbody.innerHTML = "";
 
-  function renderBangKetQua() {
-    const tbody = document.querySelector("#bangketqua tbody");
-    if (!tbody) return;
+        for (const masp of allMasps) {
+            const nhapKhoGroup = nhapKhoGroupMap[masp];
+            const bayMauGroup = bayMauGroupMap[masp];
+            const nhapTongGroup = nhapTongGroupMap[masp];
+            const xuatGroup = xuatGroupMap[masp];
 
-    const state = getState();
-    const nhapMap = state.nhap || {};
-    const xuatMap = state.xuat || {};
-    const ketQuaMap = state.ketQua || {};
+            const nhapKhoText = formatSizeSl(nhapKhoGroup?.items || []);
+            const bayMauText = formatSizeSl(bayMauGroup?.items || []);
+            const xuatText = formatSizeSl(xuatGroup?.items || []);
 
-    const nhapGroupMap = groupByMasp(nhapMap);
-    const xuatGroupMap = groupByMasp(xuatMap);
+            const kqTong = buildKetQuaTheoMasp(nhapTongGroup, xuatGroup, ketQuaMap);
 
-    const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
+            const tr = document.createElement("tr");
+            const selectedMasp = normalizeMasp(state.selectedMasp || "");
+            tr.dataset.masp = masp;
+            if (selectedMasp && selectedMasp === masp) {
+                tr.classList.add("row-selected");
+            }
 
-    tbody.innerHTML = "";
+            const tt = String(kqTong.trangthai || "").toUpperCase();
 
-    for (const masp of allMasps) {
-      const nhapGroup = nhapGroupMap[masp];
-      const xuatGroup = xuatGroupMap[masp];
+            if (tt === "THIEU") {
+                tr.style.background = "#fff7cc"; // vàng nhạt
+            } else if (tt === "THUA") {
+                tr.style.background = "#e8f7ff"; // xanh nhạt
+            } else if (tt === "LECH") {
+                tr.style.background = "#fcefdc"; // vàng cam nhạt
+            }
 
-      const nhapText = formatSizeSl(nhapGroup?.items || []);
-      const xuatText = formatSizeSl(xuatGroup?.items || []);
-      const sohdNguonText = formatSohdNguonDayDuTheoMasp(xuatGroup);
-
-      const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
-
-      const tr = document.createElement("tr");
-      const selectedMasp = normalizeMasp(state.selectedMasp || "");
-      const trangThaiTong = String(kqTong.trangthai || "").trim().toUpperCase();
-
-      tr.dataset.masp = masp;
-      tr.dataset.trangthai = trangThaiTong;
-
-      if (selectedMasp && selectedMasp === masp) {
-        tr.classList.add("row-selected");
-      }
-
-      // Tô màu theo kết quả kiểm
-      if (trangThaiTong === "THUA" || trangThaiTong === "THIEU" || trangThaiTong === "LECH") {
-        tr.style.background = "#e8f5e9"; // xanh nhạt
-      } else if (trangThaiTong === "OK") {
-        tr.style.background = "#ffffff"; // trắng
-      } else {
-        tr.style.background = "#ffffff"; // mặc định vẫn trắng
-      }
-
-      tr.innerHTML = `
+            tr.innerHTML = `
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
       style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
     ${escapeHtml(masp)}
   </td>
 
   <td contenteditable="true"
-      class="cell-nhap-sizesl"
-      data-masp="${escapeHtml(masp)}"
-      style="white-space: pre-line; text-align:left;">${escapeHtml(nhapText)}</td>
+    class="cell-nhap-sizesl"
+    data-masp="${escapeHtml(masp)}"
+    style="white-space: pre-line; text-align:left; cursor:text;">${escapeHtml(nhapKhoText)}</td>
 
-  <td contenteditable="true"
-      class="cell-nhap-tongsl"
-      data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapGroup?.items || []) || ""}</td>
+<td contenteditable="true"
+    class="cell-baymau-sizesl"
+    data-masp="${escapeHtml(masp)}"
+    style="white-space: pre-line; text-align:left; background:#eef7ff; cursor:text;">${escapeHtml(bayMauText)}</td>
+
+  <td data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapTongGroup?.items || []) || ""}</td>
 
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
       style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
@@ -1239,2409 +1233,2647 @@ import "./stockQuickPopup.js";
 
   <td>${escapeHtml(kqTong.trangthai || "")}</td>
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
-  <td style="white-space: pre-line; text-align:left;">${escapeHtml(sohdNguonText || "")}</td>
 `;
-      tbody.appendChild(tr);
-    }
+            tbody.appendChild(tr);
+        }
 
-    tbody.querySelectorAll(".cell-masp-click").forEach((el) => {
-      const masp = String(el.dataset.masp || "").trim().toUpperCase();
-      if (!masp) return;
+        tbody.querySelectorAll(".cell-masp-click").forEach((el) => {
+            const masp = String(el.dataset.masp || "").trim().toUpperCase();
+            if (!masp) return;
 
-      if (window.StockQuick && typeof window.StockQuick.attach === "function") {
-        window.StockQuick.attach(el, masp);
-      }
-    });
-
-    tbody.querySelectorAll(".cell-nhap-sizesl, .cell-nhap-tongsl").forEach((el) => {
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-      });
-
-      el.addEventListener("mousedown", (e) => {
-        e.stopPropagation();
-      });
-    });
-
-    capNhatThongKeDauTrang();
-  }
-
-  function docLaiNhapTuBangHTML() {
-    const tbody = document.querySelector("#bangketqua tbody");
-    if (!tbody) return;
-
-    const state = getState();
-    const rows = Array.from(tbody.querySelectorAll("tr"));
-    const nhapMoi = {};
-    const nhapOrderMoi = [];
-
-    rows.forEach((tr) => {
-      const tdMasp = tr.children[0];
-      const tdSizeSl = tr.querySelector(".cell-nhap-sizesl");
-      const tdTongSl = tr.querySelector(".cell-nhap-tongsl");
-
-      const masp = normalizeMasp(tdMasp?.innerText || "");
-      if (!masp) return;
-
-      if (!nhapOrderMoi.includes(masp)) {
-        nhapOrderMoi.push(masp);
-      }
-
-      const sizeSlText = String(tdSizeSl?.innerText || "").trim();
-      const tongSlText = String(tdTongSl?.innerText || "").trim();
-
-      const items = parseSizeSlText(sizeSlText);
-      const tongSl = normalizeNumber(tongSlText);
-
-      // Có size thật => ưu tiên kiểm chi tiết
-      if (hasRealSizeItems(items)) {
-        items.forEach((item) => {
-          const key = makeKey(masp, item.size);
-          nhapMoi[key] = {
-            masp,
-            size: item.size,
-            sl: item.sl
-          };
+            if (window.StockQuick && typeof window.StockQuick.attach === "function") {
+                window.StockQuick.attach(el, masp);
+            }
         });
-        return;
-      }
 
-      // Không có size thật nhưng có tổng => kiểm tổng bằng size 0
-      if (tongSl > 0) {
-        const key = makeKey(masp, "0");
-        nhapMoi[key] = {
-          masp,
-          size: "0",
-          sl: tongSl
-        };
-      }
-    });
+        bindRowSelection();
 
-    state.nhap = nhapMoi;
-    state.nhapOrder = nhapOrderMoi;
-  }
+        tbody.querySelectorAll(".cell-nhap-sizesl, .cell-baymau-sizesl").forEach((el) => {
+            if (el.dataset.syncBound === "1") return;
+            el.dataset.syncBound = "1";
 
-  // Expose để HTML cũ không lỗi nếu còn gọi
-  window.renderBangKetQua = renderBangKetQua;
-  window.capNhatTongTien = function () { return; };
+            el.addEventListener("input", () => {
+                docLaiNhapTuBangHTML();
+            });
 
-  // =========================
-  // NHẬP BÊN TRÁI
-  // =========================
-  async function themDongNhapBenTrai() {
-    const maspEl = byId("masp");
-    const sizeEl = byId("size");
-    const slEl = byId("soluong");
-
-    if (!maspEl || !slEl) return;
-
-    const masp = normalizeMasp(maspEl.value);
-    const size = normalizeSize(sizeEl?.value);
-    const sl = normalizeNumber(slEl.value || 1);
-
-    if (!masp) {
-      phatAmThanhLoi();
-      alert("Vui lòng nhập mã sản phẩm.");
-      maspEl.focus();
-      return;
+            el.addEventListener("blur", () => {
+                docLaiNhapTuBangHTML();
+                capNhatThongKeDauTrang();
+            });
+        });
+        capNhatThongKeDauTrang();
     }
 
-    if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) {
-      return;
+    function docLaiNhapTuBangHTML() {
+        const tbody = document.querySelector("#bangketqua tbody");
+        if (!tbody) return;
+
+        const state = getState();
+        const rows = Array.from(tbody.querySelectorAll("tr"));
+        const nhapMoi = {};
+        const bayMauMoi = {};
+        const nhapOrderMoi = [];
+
+        rows.forEach((tr) => {
+            const tdMasp = tr.children[0];
+            const tdKho = tr.querySelector(".cell-nhap-sizesl");
+            const tdBayMau = tr.querySelector(".cell-baymau-sizesl");
+
+            const masp = normalizeMasp(tdMasp?.innerText || "");
+            if (!masp) return;
+
+            if (!nhapOrderMoi.includes(masp)) {
+                nhapOrderMoi.push(masp);
+            }
+
+            const khoText = String(tdKho?.innerText || "").trim();
+            const bayMauText = String(tdBayMau?.innerText || "").trim();
+
+            const khoItems = parseSizeSlText(khoText);
+            const bayMauItems = parseSizeSlText(bayMauText);
+
+            khoItems.forEach((item) => {
+                const key = makeKey(masp, item.size);
+                nhapMoi[key] = {
+                    masp,
+                    size: item.size,
+                    sl: item.sl
+                };
+            });
+
+            bayMauItems.forEach((item) => {
+                const key = makeKey(masp, item.size);
+                bayMauMoi[key] = {
+                    masp,
+                    size: item.size,
+                    sl: item.sl
+                };
+            });
+        });
+
+        state.nhap = nhapMoi;
+        state.bayMau = bayMauMoi;
+        state.nhapOrder = nhapOrderMoi;
     }
 
-    if (!size) {
-      if (sizeEl) {
-        sizeEl.focus();
-        sizeEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
-      }
-      return;
+    async function layBayMauTuGoogleSheet() {
+        try {
+            docLaiNhapTuBangHTML();
+
+            const state = getState();
+            const nhapGroupMap = groupByMasp(state.nhap || {});
+            const xuatGroupMap = groupByMasp(state.xuat || {});
+            const orderedMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
+
+            if (!orderedMasps.length) {
+                alert("Chưa có dữ liệu trên bảng để đối chiếu bày mẫu.");
+                return;
+            }
+
+            const sheetMap = await docDanhSachBayMauTuGoogleSheet();
+
+            let soMaKhop = 0;
+            let soDongSheetKhop = 0;
+            let soDongDungSize = 0;
+            let soDongMacDinh0 = 0;
+
+            // Xóa dữ liệu bày mẫu cũ của các mã đang có trên bảng
+            Object.keys(state.bayMau || {}).forEach((key) => {
+                const info = splitKey(key);
+                if (orderedMasps.includes(normalizeMasp(info.masp))) {
+                    delete state.bayMau[key];
+                }
+            });
+
+            for (const masp of orderedMasps) {
+                if (!sheetMap.has(masp)) {
+                    continue; // không tìm thấy mã -> để trống
+                }
+
+                soMaKhop++;
+
+                const sizeList = Array.isArray(sheetMap.get(masp)) ? sheetMap.get(masp) : [];
+                if (!sizeList.length) continue;
+
+                for (const raw of sizeList) {
+                    const sizeRaw = String(raw || "").trim();
+                    const sizeToSave = isValidBayMauSheetSize(sizeRaw) ? sizeRaw : "0";
+                    const key = makeKey(masp, sizeToSave);
+
+                    if (!state.bayMau[key]) {
+                        state.bayMau[key] = {
+                            masp,
+                            size: sizeToSave,
+                            sl: 1
+                        };
+                    } else {
+                        state.bayMau[key].sl = normalizeNumber(state.bayMau[key].sl) + 1;
+                    }
+
+                    soDongSheetKhop++;
+
+                    if (sizeToSave === "0") {
+                        soDongMacDinh0++;
+                    } else {
+                        soDongDungSize++;
+                    }
+                }
+            }
+
+            state.ketQua = {};
+            renderBangKetQua();
+            capNhatThongKeDauTrang();
+
+            const cfgSheet = getBayMauSheetConfig();
+
+            alert(
+                `Đã tải dữ liệu bày mẫu từ Google Sheet (${cfgSheet.sheetName}).\n` +
+                `- Số mã khớp: ${soMaKhop}\n` +
+                `- Số dòng sheet đã lấy: ${soDongSheetKhop}\n` +
+                `- Dòng đúng size 38-45: ${soDongDungSize}\n` +
+                `- Dòng mặc định 0/1: ${soDongMacDinh0}`
+            );
+        } catch (err) {
+            console.error("[KTK] layBayMauTuGoogleSheet error:", err);
+            const cfgSheet = getBayMauSheetConfig();
+            alert(`Lỗi khi tải dữ liệu bày mẫu từ Google Sheet (${cfgSheet.sheetName}).`);
+        }
     }
 
-    if (!isValidSize(size)) {
-      phatAmThanhLoi();
-      alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
-      if (sizeEl) sizeEl.focus();
-      return;
+    async function layKiemKhoTuGoogleSheet() {
+        try {
+            docLaiNhapTuBangHTML();
+
+            const state = getState();
+            const sheetMap = await docDanhSachKiemKhoTuGoogleSheet();
+
+            if (!sheetMap.size) {
+                alert("Google Sheet kiểm kho không có dữ liệu.");
+                return;
+            }
+
+            let soMa = 0;
+            let soDongSheet = 0;
+            let soDongDungSize = 0;
+            let soDongMacDinh0 = 0;
+
+            // Xóa toàn bộ dữ liệu kiểm kho cũ bên cột kho
+            state.nhap = {};
+            state.nhapOrder = [];
+
+            for (const [masp, sizeList] of sheetMap.entries()) {
+                const maspNorm = normalizeMasp(masp);
+                if (!maspNorm) continue;
+
+                soMa++;
+                state.nhapOrder.push(maspNorm);
+
+                for (const rawSize of (sizeList || [])) {
+                    const sizeToSave = isValidSize(rawSize) ? normalizeSize(rawSize) : "0";
+                    const key = makeKey(maspNorm, sizeToSave);
+
+                    if (!state.nhap[key]) {
+                        state.nhap[key] = {
+                            masp: maspNorm,
+                            size: sizeToSave,
+                            sl: 1
+                        };
+                    } else {
+                        state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + 1;
+                    }
+
+                    soDongSheet++;
+
+                    if (sizeToSave === "0") soDongMacDinh0++;
+                    else soDongDungSize++;
+                }
+            }
+
+            state.selectedMasp = "";
+            state.ketQua = {};
+
+            renderBangKetQua();
+            capNhatThongKeDauTrang();
+
+            const cfgSheet = getKiemKhoSheetConfig();
+
+            alert(
+                `Đã tải dữ liệu kiểm kho từ Google Sheet (${cfgSheet.sheetName}).\n` +
+                `- Số mã đã lấy: ${soMa}\n` +
+                `- Số dòng sheet đã lấy: ${soDongSheet}\n` +
+                `- Dòng đúng size 38-45: ${soDongDungSize}\n` +
+                `- Dòng mặc định 0/1: ${soDongMacDinh0}`
+            );
+        } catch (err) {
+            console.error("[KTK] layKiemKhoTuGoogleSheet error:", err);
+            const cfgSheet = getKiemKhoSheetConfig();
+            alert(`Lỗi khi tải dữ liệu kiểm kho từ Google Sheet (${cfgSheet.sheetName}).`);
+        }
     }
 
-    if (sl <= 0) {
-      alert("Số lượng phải lớn hơn 0.");
-      slEl.focus();
-      return;
-    }
+    // Expose để HTML cũ không lỗi nếu còn gọi
+    window.renderBangKetQua = renderBangKetQua;
+    window.capNhatTongTien = function () { return; };
 
-    const key = makeKey(masp, size);
-    const state = getState();
+    // =========================
+    // NHẬP BÊN TRÁI
+    // =========================
+    async function themDongNhapBenTrai() {
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
 
-    const isNewMasp = !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp);
+        if (!maspEl || !slEl) return;
 
-    if (!state.nhap[key]) {
-      state.nhap[key] = {
-        masp,
-        size,
-        sl
-      };
-    } else {
-      state.nhap[key].sl = normalizeNumber(state.nhap[key].sl) + sl;
-    }
+        const masp = normalizeMasp(maspEl.value);
+        const size = normalizeSize(sizeEl?.value);
+        const sl = normalizeNumber(slEl.value || 1);
 
-    if (isNewMasp) {
-      state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
-    }
-
-    delete state.ketQua[key];
-    autoKiemTraSauNhap();
-    if (!baoThanhCongNeuMaspDaOK(masp)) {
-      phatAmThanhThanhCong();
-    }
-
-    if (sizeEl) sizeEl.value = "";
-
-    slEl.value = "1";
-
-    if (sizeEl) {
-      sizeEl.focus();
-      sizeEl.dispatchEvent(new Event("focus", { bubbles: true }));
-      sizeEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
-    } else {
-      maspEl.focus();
-    }
-  }
-
-  async function chuyenSizeSaiThanhMaSanPhamMoi(rawValue) {
-    const maspEl = byId("masp");
-    const sizeEl = byId("size");
-    const slEl = byId("soluong");
-
-    const maspMoi = normalizeMasp(rawValue);
-    if (!maspMoi || !maspEl) return false;
-
-    // Đưa dữ liệu size sai sang ô mã sản phẩm
-    maspEl.value = maspMoi;
-
-    // Xóa ô size cũ để chuẩn bị nhập size cho mã mới
-    if (sizeEl) sizeEl.value = "";
-
-    if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(maspMoi))) {
-      return true;
-    }
-    const chkNhapNhanh = byId("chkNhapNhanh");
-    const isNhapNhanh = !!chkNhapNhanh?.checked;
-
-    if (isNhapNhanh) {
-      await themNhanhKhongCanSize();
-      return true;
-    }
-
-    if (slEl && !normalizeNumber(slEl.value)) {
-      slEl.value = "1";
-    }
-
-    if (sizeEl) {
-      sizeEl.focus();
-      sizeEl.value = "";
-      showSizePopup(maspMoi, "");
-      phatAmThanhSize();
-    }
-
-    return true;
-  }
-
-  function bindInputEvents() {
-    const maspEl = byId("masp");
-    const sizeEl = byId("size");
-    const slEl = byId("soluong");
-
-    if (maspEl) {
-      maspEl.addEventListener("keydown", async (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-
-          const masp = normalizeMasp(maspEl.value);
-          if (!masp) {
+        if (!masp) {
             phatAmThanhLoi();
             alert("Vui lòng nhập mã sản phẩm.");
             maspEl.focus();
             return;
-          }
+        }
 
-          maspEl.value = masp;
-
-          if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) {
+        if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) {
             return;
-          }
+        }
 
-          const chkNhapNhanh = byId("chkNhapNhanh");
-          const isNhapNhanh = !!chkNhapNhanh?.checked;
+        if (!size) {
+            if (sizeEl) {
+                sizeEl.focus();
+                sizeEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+            }
+            return;
+        }
 
-          if (isNhapNhanh) {
+        if (!isValidSize(size)) {
+            phatAmThanhLoi();
+            alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
+            if (sizeEl) sizeEl.focus();
+            return;
+        }
+
+        if (sl <= 0) {
+            alert("Số lượng phải lớn hơn 0.");
+            slEl.focus();
+            return;
+        }
+
+        const key = makeKey(masp, size);
+        const state = getState();
+        const targetMapName = isKiemMauMode() ? "bayMau" : "nhap";
+        const targetMap = state[targetMapName] || (state[targetMapName] = {});
+
+        const isNewMasp =
+            !Object.values(state.nhap || {}).some(r => normalizeMasp(r?.masp) === masp) &&
+            !Object.values(state.bayMau || {}).some(r => normalizeMasp(r?.masp) === masp);
+
+        if (!targetMap[key]) {
+            targetMap[key] = {
+                masp,
+                size,
+                sl
+            };
+        } else {
+            targetMap[key].sl = normalizeNumber(targetMap[key].sl) + sl;
+        }
+
+        if (isNewMasp) {
+            state.nhapOrder = ensureMaspAtTop(state.nhapOrder, masp);
+        }
+
+
+        delete state.ketQua[key];
+
+        renderBangKetQua();
+
+        if (sizeEl) sizeEl.value = "";
+        slEl.value = "1";
+
+        if (sizeEl) {
+            sizeEl.focus();
+            sizeEl.dispatchEvent(new Event("focus", { bubbles: true }));
+            sizeEl.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+        } else {
+            maspEl.focus();
+        }
+    }
+
+    async function chuyenSizeSaiThanhMaSanPhamMoi(rawValue) {
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
+
+        const maspMoi = normalizeMasp(rawValue);
+        if (!maspMoi || !maspEl) return false;
+
+        // Đưa dữ liệu size sai sang ô mã sản phẩm
+        maspEl.value = maspMoi;
+
+        // Xóa ô size cũ để chuẩn bị nhập size cho mã mới
+        if (sizeEl) sizeEl.value = "";
+
+        if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(maspMoi))) {
+            return true;
+        }
+        const chkNhapNhanh = byId("chkNhapNhanh");
+        const isNhapNhanh = !!chkNhapNhanh?.checked;
+
+        if (isNhapNhanh) {
             await themNhanhKhongCanSize();
-            return;
-          }
+            return true;
+        }
 
-          if (slEl && !normalizeNumber(slEl.value)) {
+        if (slEl && !normalizeNumber(slEl.value)) {
             slEl.value = "1";
-          }
+        }
 
-          if (sizeEl) {
+        if (sizeEl) {
             sizeEl.focus();
             sizeEl.value = "";
-            showSizePopup(masp, "");
+            showSizePopup(maspMoi, "");
             phatAmThanhSize();
-          }
-        }
-      });
-
-      maspEl.addEventListener("blur", () => {
-        maspEl.value = normalizeMasp(maspEl.value);
-      });
-    }
-
-    if (sizeEl) {
-      sizeEl.addEventListener("focus", () => {
-        const masp = normalizeMasp(maspEl?.value);
-        if (!masp) return;
-        showSizePopup(masp, sizeEl.value);
-      });
-
-      sizeEl.addEventListener("input", () => {
-        const masp = normalizeMasp(maspEl?.value);
-        if (!masp) return;
-        showSizePopup(masp, sizeEl.value);
-      });
-
-      sizeEl.addEventListener("keydown", async (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-
-          const masp = normalizeMasp(maspEl?.value);
-          if (!masp) {
-            phatAmThanhLoi();
-            alert("Vui lòng nhập mã sản phẩm.");
-            maspEl?.focus();
-            return;
-          }
-
-          const typedSize = normalizeSize(sizeEl.value);
-
-          if (!typedSize) {
-            showSizePopup(masp, "");
-            return;
-          }
-
-          // Nếu size không hợp lệ thì hiểu là người dùng đang nhập mã sản phẩm mới
-          if (!isValidSize(typedSize)) {
-            await chuyenSizeSaiThanhMaSanPhamMoi(typedSize);
-            return;
-          }
-
-          await themNhanhTheoSize(typedSize);
         }
 
-        if (e.key === "Escape") {
-          hideSizePopup();
-          maspEl?.focus();
-        }
-      });
+        return true;
     }
 
-    if (slEl) {
-      slEl.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
+    function bindInputEvents() {
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
 
-          const masp = normalizeMasp(maspEl?.value);
-          if (!masp) {
-            phatAmThanhLoi();
-            alert("Vui lòng nhập mã sản phẩm.");
-            maspEl?.focus();
-            return;
-          }
+        if (maspEl) {
+            maspEl.addEventListener("keydown", async (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
 
-          if (sizeEl) {
-            sizeEl.focus();
-            showSizePopup(masp, sizeEl.value);
-          }
-        }
-      });
-    }
+                    const masp = normalizeMasp(maspEl.value);
+                    if (!masp) {
+                        phatAmThanhLoi();
+                        alert("Vui lòng nhập mã sản phẩm.");
+                        maspEl.focus();
+                        return;
+                    }
 
-    document.addEventListener("click", (e) => {
-      const popup = byId("popup_size");
-      if (!popup) return;
+                    maspEl.value = masp;
 
-      if (dangChonSizeTrongPopup) return;
-      if (e.target === sizeEl || e.target === maspEl || popup.contains(e.target)) return;
+                    if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) {
+                        return;
+                    }
 
-      hideSizePopup();
-    });
+                    const chkNhapNhanh = byId("chkNhapNhanh");
+                    const isNhapNhanh = !!chkNhapNhanh?.checked;
 
-    const sohdEl = byId("sohd");
-    if (sohdEl) {
-      sohdEl.addEventListener("keydown", async (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
+                    if (isNhapNhanh) {
+                        await themNhanhKhongCanSize();
+                        return;
+                    }
 
-          const sohdNhap = String(sohdEl.value || "").trim();
-          if (!sohdNhap) return;
+                    if (slEl && !normalizeNumber(slEl.value)) {
+                        slEl.value = "1";
+                    }
 
-          sohdEl.value = sohdNhap;
-          await moLaiPhieuKiemNhapCu(sohdNhap);
-        }
-      });
-    }
+                    if (sizeEl) {
+                        sizeEl.focus();
+                        sizeEl.value = "";
+                        showSizePopup(masp, "");
+                        phatAmThanhSize();
+                    }
+                }
+            });
 
-  }
-
-  // =========================
-  // RESET PHIẾU
-  // =========================
-  async function resetPhieu() {
-    const oldState = getState();
-
-    window.kiemNhapState = {
-      nhap: {},
-      xuat: {},
-      ketQua: {},
-      nhapOrder: [],
-      xuatOrder: [],
-      dsHoaDonNguon: [],
-      dsHoaDonNguonInfo: [],
-      selectedMasp: "",
-      dmMaspCache: oldState?.dmMaspCache instanceof Map ? oldState.dmMaspCache : new Map()
-    };
-
-    dangChonSizeTrongPopup = false;
-
-    const maspEl = byId("masp");
-    const sizeEl = byId("size");
-    const slEl = byId("soluong");
-    const sohdEl = byId("sohd");
-    const ghichuEl = byId("ghichu_top");
-
-    if (maspEl) maspEl.value = "";
-    if (sizeEl) sizeEl.value = "";
-    if (slEl) slEl.value = "1";
-    if (sohdEl) {
-      const soPhieuMoi = await taoSoPhieuMoi();
-      sohdEl.value = soPhieuMoi || "";
-    }
-    if (ghichuEl) ghichuEl.value = "";
-
-    const hdState = byId("hd_state");
-    if (hdState) {
-      hdState.value = "moi";
-      hdState.setAttribute("data-state", "moi");
-    }
-
-    renderBangKetQua();
-    capNhatThongKeDauTrang();
-    hideSizePopup();
-    if (maspEl) maspEl.focus();
-  }
-
-  // =========================
-  // KIỂM TRA
-  // Bản đầu: so tổng SL theo mã
-  // =========================
-  function kiemTraPhieu() {
-    // luôn đọc lại dữ liệu người dùng vừa sửa trực tiếp trên bảng
-    docLaiNhapTuBangHTML();
-
-    const state = getState();
-    const nhapMap = state.nhap || {};
-    const xuatMap = state.xuat || {};
-    const ketQua = {};
-
-    // Gom xuat theo mã để dùng cho chế độ kiểm tổng
-    const xuatTheoMasp = {};
-    Object.keys(xuatMap).forEach((key) => {
-      const row = xuatMap[key];
-      if (!row) return;
-      const masp = normalizeMasp(row.masp);
-      const sl = normalizeNumber(row.sl);
-      xuatTheoMasp[masp] = (xuatTheoMasp[masp] || 0) + sl;
-    });
-
-    // Gom nhap theo mã để biết mã nào đang ở chế độ tổng
-    const nhapTheoMasp = {};
-    Object.keys(nhapMap).forEach((key) => {
-      const row = nhapMap[key];
-      if (!row) return;
-      const masp = normalizeMasp(row.masp);
-      if (!nhapTheoMasp[masp]) nhapTheoMasp[masp] = [];
-      nhapTheoMasp[masp].push(row);
-    });
-
-    const allMasps = new Set([
-      ...Object.keys(nhapTheoMasp),
-      ...Object.keys(xuatTheoMasp),
-      ...Object.values(xuatMap).map(r => normalizeMasp(r.masp))
-    ]);
-
-    for (const masp of allMasps) {
-      const nhapRows = nhapTheoMasp[masp] || [];
-      const hasRealSize = nhapRows.some(r => normalizeSize(r.size) !== "0" && normalizeSize(r.size) !== "");
-
-      // CHẾ ĐỘ 1: kiểm chi tiết theo size
-      if (hasRealSize) {
-        const xuatKeys = Object.keys(xuatMap).filter(k => normalizeMasp(xuatMap[k]?.masp) === masp);
-        const nhapKeys = Object.keys(nhapMap).filter(k => normalizeMasp(nhapMap[k]?.masp) === masp);
-
-        const allKeys = new Set([...xuatKeys, ...nhapKeys]);
-
-        for (const key of allKeys) {
-          const nhap = nhapMap[key];
-          const xuat = xuatMap[key];
-
-          const slNhap = normalizeNumber(nhap?.sl || 0);
-          const slXuat = normalizeNumber(xuat?.sl || 0);
-
-          if (slNhap === slXuat) {
-            ketQua[key] = { trangthai: "OK", chitiet: "" };
-          } else if (slNhap < slXuat) {
-            ketQua[key] = { trangthai: "THIEU", chitiet: String(slXuat - slNhap) };
-          } else {
-            ketQua[key] = { trangthai: "THUA", chitiet: String(slNhap - slXuat) };
-          }
+            maspEl.addEventListener("blur", () => {
+                maspEl.value = normalizeMasp(maspEl.value);
+            });
         }
 
-        continue;
-      }
+        if (sizeEl) {
+            sizeEl.addEventListener("focus", () => {
+                const masp = normalizeMasp(maspEl?.value);
+                if (!masp) return;
+                showSizePopup(masp, sizeEl.value);
+            });
 
-      // CHẾ ĐỘ 2: kiểm tổng
-      const tongNhap = nhapRows.reduce((sum, r) => sum + normalizeNumber(r.sl), 0);
-      const tongXuat = xuatTheoMasp[masp] || 0;
+            sizeEl.addEventListener("input", () => {
+                const masp = normalizeMasp(maspEl?.value);
+                if (!masp) return;
+                showSizePopup(masp, sizeEl.value);
+            });
 
-      const keyTong = makeKey(masp, "0");
+            sizeEl.addEventListener("keydown", async (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
 
-      if (tongNhap === tongXuat) {
-        ketQua[keyTong] = { trangthai: "OK", chitiet: "" };
-      } else if (tongNhap < tongXuat) {
-        ketQua[keyTong] = { trangthai: "THIEU", chitiet: String(tongXuat - tongNhap) };
-      } else {
-        ketQua[keyTong] = { trangthai: "THUA", chitiet: String(tongNhap - tongXuat) };
-      }
-    }
+                    const masp = normalizeMasp(maspEl?.value);
+                    if (!masp) {
+                        phatAmThanhLoi();
+                        alert("Vui lòng nhập mã sản phẩm.");
+                        maspEl?.focus();
+                        return;
+                    }
 
-    state.ketQua = ketQua;
-    sapXepLaiThuTuMaspTheoKetQua();
-    renderBangKetQua();
-  }
+                    const typedSize = normalizeSize(sizeEl.value);
 
-  // =========================
-  // NẠP HÓA ĐƠN NGUỒN
-  // Bản đầu: chưa query thật, chỉ placeholder
-  // =========================
+                    if (!typedSize) {
+                        showSizePopup(masp, "");
+                        return;
+                    }
 
-  async function moPopupChonHoaDonNguon(dsHd, mapDaKiem = new Map()) {
-    return new Promise((resolve) => {
-      const popup = byId("popupChonHoaDonNguon");
-      const box = byId("dsHoaDonNguonPopup");
-      const btnDong = byId("btnDongPopupHoaDonNguon");
-      const btnOk = byId("btnXacNhanHoaDonNguon");
+                    // Nếu size không hợp lệ thì hiểu là người dùng đang nhập mã sản phẩm mới
+                    if (!isValidSize(typedSize)) {
+                        await chuyenSizeSaiThanhMaSanPhamMoi(typedSize);
+                        return;
+                    }
 
-      if (!popup || !box || !btnDong || !btnOk) {
-        resolve(null);
-        return;
-      }
+                    await themNhanhTheoSize(typedSize);
+                }
 
-      box.innerHTML = "";
-
-      dsHd.forEach((hd) => {
-        const sohd = String(hd.sohd || "").trim();
-        const diadiem = String(hd.diadiem || "").trim();
-        const ngayGio = formatDateTimeVN(hd.created_at || hd.ngay);
-
-        const row = document.createElement("label");
-        row.style.display = "flex";
-        row.style.alignItems = "center";
-        row.style.gap = "8px";
-        row.style.padding = "6px 4px";
-        row.style.borderBottom = "1px solid #eee";
-        row.style.cursor = "pointer";
-
-        const infoDaKiem = mapDaKiem.get(sohd);
-        const daKiem = !!infoDaKiem;
-        const tenNguoiKiem = String(infoDaKiem?.nhanvienkiem || "").trim();
-
-        const checked = daKiem ? "" : "checked";
-
-        row.innerHTML = `
-  <input type="checkbox" class="chk-hd-nguon" value="${escapeHtml(sohd)}" ${checked}>
-  <span>
-    ${escapeHtml(sohd)} | ${escapeHtml(ngayGio)} | ${escapeHtml(diadiem)}
-    ${daKiem ? `<b style="color:red; margin-left:8px;">[ĐÃ KIỂM]</b>` : `<b style="color:green; margin-left:8px;">[CHƯA KIỂM]</b>`}
-    ${daKiem && tenNguoiKiem ? ` | <b style="color:#333;">${escapeHtml(tenNguoiKiem)}</b>` : ""}
-  </span>
-`;
-
-        if (daKiem) {
-          row.style.background = "#fff3cd";
+                if (e.key === "Escape") {
+                    hideSizePopup();
+                    maspEl?.focus();
+                }
+            });
         }
 
-        box.appendChild(row);
-      });
+        if (slEl) {
+            slEl.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
 
-      popup.style.display = "block";
+                    const masp = normalizeMasp(maspEl?.value);
+                    if (!masp) {
+                        phatAmThanhLoi();
+                        alert("Vui lòng nhập mã sản phẩm.");
+                        maspEl?.focus();
+                        return;
+                    }
 
-      const closePopup = (result) => {
-        popup.style.display = "none";
-        btnDong.onclick = null;
-        btnOk.onclick = null;
-        resolve(result);
-      };
-
-      btnDong.onclick = () => closePopup(null);
-
-      btnOk.onclick = () => {
-        const checked = Array.from(
-          box.querySelectorAll(".chk-hd-nguon:checked")
-        ).map(x => x.value);
-
-        if (!checked.length) {
-          alert("Vui lòng chọn ít nhất 1 hóa đơn.");
-          return;
+                    if (sizeEl) {
+                        sizeEl.focus();
+                        showSizePopup(masp, sizeEl.value);
+                    }
+                }
+            });
         }
 
-        closePopup(checked);
-      };
-    });
-  }
-
-  function layDanhSachMaspDangNhap() {
-    const state = getState();
-    const ds = Object.values(state.nhap || {})
-      .map(r => normalizeMasp(r.masp))
-      .filter(Boolean);
-
-    return [...new Set(ds)];
-  }
-
-  function focusVaBoiDenOmaSanPham() {
-    const maspEl = byId("masp");
-    if (!maspEl) return;
-
-    maspEl.focus();
-    setTimeout(() => {
-      try {
-        maspEl.select();
-      } catch (err) { }
-    }, 0);
-  }
-
-  function batDauNgay(dateObj) {
-    const d = new Date(dateObj);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }
-
-  function truNgay(dateObj, soNgay) {
-    const d = new Date(dateObj);
-    d.setDate(d.getDate() - soNgay);
-    return d;
-  }
-
-  function toIsoLocal(dateObj) {
-    const d = new Date(dateObj);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mi = String(d.getMinutes()).padStart(2, "0");
-    const ss = String(d.getSeconds()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
-  }
-
-
-  function layKhoangNgayHoaDonNguonMacDinh() {
-    const now = new Date();
-
-    // hôm nay (end)
-    const end = new Date(now);
-
-    // hôm kia (start = today - 2 ngày)
-    const start = new Date(now);
-    start.setDate(start.getDate() - 5);
-    start.setHours(0, 0, 0, 0);
-
-    end.setHours(23, 59, 59, 999);
-
-    return { start, end };
-  }
-
-  async function layHoaDonNguonUngVienTheoMasp(dsMaspNhap) {
-    if (!window.supabase || !Array.isArray(dsMaspNhap) || !dsMaspNhap.length) {
-      return { dsHd: [], ctRows: [] };
-    }
-
-    const prefixNguon = CFG.fromBranch === "cs2" ? "xcncs2_" : "xcncs1_";
-    const { start, end } = layKhoangNgayHoaDonNguonMacDinh(1);
-
-    // Lấy cả hóa đơn CHƯA KIỂM và ĐÃ KIỂM
-    const { data: dsHd, error: errHd } = await window.supabase
-      .from("hoadon_banle")
-      .select("sohd, ngay, created_at, diadiem, tennv, manv, kiem_nhapkho")
-      .ilike("sohd", `${prefixNguon}%`)
-      .gte("created_at", toIsoLocal(start))
-      .lte("created_at", toIsoLocal(end))
-      .order("created_at", { ascending: false })
-      .limit(300);
-
-    if (errHd) {
-      console.error("[KNK] layHoaDonNguonUngVienTheoMasp - dsHd error:", errHd);
-      throw new Error("Lỗi khi lấy danh sách hóa đơn nguồn.");
-    }
-
-    if (!dsHd || !dsHd.length) {
-      return { dsHd: [], ctRows: [] };
-    }
-
-    const dsSoHd = dsHd
-      .map(x => String(x.sohd || "").trim())
-      .filter(Boolean);
-
-    if (!dsSoHd.length) {
-      return { dsHd: [], ctRows: [] };
-    }
-
-    const { data: ctRows, error: errCt } = await window.supabase
-      .from("ct_hoadon_banle")
-      .select("sohd, masp, size, soluong")
-      .in("sohd", dsSoHd)
-      .order("id", { ascending: true });
-
-    if (errCt) {
-      console.error("[KNK] layHoaDonNguonUngVienTheoMasp - ctRows error:", errCt);
-      throw new Error("Lỗi khi lấy chi tiết hóa đơn nguồn.");
-    }
-
-    return {
-      dsHd: dsHd || [],
-      ctRows: ctRows || []
-    };
-  }
-
-  function tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem = new Map()) {
-    const setNhap = new Set((dsMaspNhap || []).map(normalizeMasp).filter(Boolean));
-    const nhomCtTheoSoHd = {};
-
-    (ctRows || []).forEach((row) => {
-      const sohd = String(row.sohd || "").trim();
-      if (!sohd) return;
-      if (!nhomCtTheoSoHd[sohd]) nhomCtTheoSoHd[sohd] = [];
-      nhomCtTheoSoHd[sohd].push(row);
-    });
-
-    const ketQua = [];
-
-    (dsHd || []).forEach((hd) => {
-      const sohd = String(hd.sohd || "").trim();
-      if (!sohd) return;
-
-      const infoDaKiem = mapDaKiem.get(sohd);
-      const daKiem = !!infoDaKiem;
-
-      const rows = nhomCtTheoSoHd[sohd] || [];
-      if (!rows.length) return;
-
-      const maspTrongHoaDon = [...new Set(
-        rows.map(r => normalizeMasp(r.masp)).filter(Boolean)
-      )];
-
-      const dsMaspTrung = maspTrongHoaDon.filter(masp => setNhap.has(masp));
-      const soMaTrung = dsMaspTrung.length;
-      if (soMaTrung <= 0) return;
-
-      const tongMaNhap = setNhap.size || 1;
-      const tongMaHoaDon = maspTrongHoaDon.length || 1;
-
-      const tyLeTheoNhap = soMaTrung / tongMaNhap;
-      const tyLeTheoHoaDon = soMaTrung / tongMaHoaDon;
-
-      const createdAt = hd.created_at || hd.ngay || null;
-      let diemThoiGian = 0;
-      if (createdAt) {
-        const t = new Date(createdAt).getTime();
-        if (Number.isFinite(t)) {
-          const ageHours = Math.max(0, (Date.now() - t) / 3600000);
-          diemThoiGian = Math.max(0, 10 - Math.min(10, ageHours / 3));
+        const chkKiemMau = document.getElementById("chkKiemMau");
+        if (chkKiemMau) {
+            chkKiemMau.addEventListener("change", () => {
+                capNhatUIKiemMau();
+                document.getElementById("masp")?.focus();
+            });
         }
-      }
 
-      const score =
-        soMaTrung * 10 +
-        tyLeTheoNhap * 40 +
-        tyLeTheoHoaDon * 40 +
-        diemThoiGian;
+        document.addEventListener("click", (e) => {
+            const popup = byId("popup_size");
+            if (!popup) return;
 
-      ketQua.push({
-        sohd,
-        ngay: hd.ngay || null,
-        created_at: hd.created_at || null,
-        diadiem: String(hd.diadiem || "").trim(),
-        manv: String(hd.manv || "").trim(),
-        tennv: String(hd.tennv || "").trim(),
-        soMaTrung,
-        tongMaNhap,
-        tongMaHoaDon,
-        tyLeTheoNhap,
-        tyLeTheoHoaDon,
-        score,
-        dsMaspTrung,
-        daKiem,
-        infoDaKiem,
-        autoChecked:
-          !daKiem && (
-            soMaTrung >= 2 ||
-            tyLeTheoNhap >= 0.3 ||
-            tyLeTheoHoaDon >= 0.5
-          )
-      });
-    });
+            if (dangChonSizeTrongPopup) return;
+            if (e.target === sizeEl || e.target === maspEl || popup.contains(e.target)) return;
 
-    ketQua.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return String(b.created_at || "").localeCompare(String(a.created_at || ""));
-    });
-
-    return ketQua;
-  }
-
-  async function moPopupChonHoaDonNguonTheoMasp(dsDeXuat) {
-    return new Promise((resolve) => {
-      const popup = byId("popupChonHoaDonNguon");
-      const box = byId("dsHoaDonNguonPopup");
-      const btnDong = byId("btnDongPopupHoaDonNguon");
-      const btnOk = byId("btnXacNhanHoaDonNguon");
-
-      if (!popup || !box || !btnDong || !btnOk) {
-        resolve(null);
-        return;
-      }
-
-      box.innerHTML = "";
-
-      if (!dsDeXuat || !dsDeXuat.length) {
-        box.innerHTML = `<div style="padding:10px; color:#b00020; font-weight:bold;">
-          Không tìm thấy hóa đơn CCN phù hợp theo các mã sản phẩm đã nhập.
-        </div>`;
-      } else {
-        dsDeXuat.forEach((hd) => {
-          const row = document.createElement("label");
-          row.style.display = "block";
-          row.style.padding = "8px";
-          row.style.borderBottom = "1px solid #eee";
-          row.style.cursor = "pointer";
-
-          const ngayGio = formatDateTimeVN(hd.created_at || hd.ngay);
-          const dsMau = (hd.dsMaspTrung || []).slice(0, 6).join(", ");
-          const checked = hd.autoChecked ? "checked" : "";
-          const daKiem = !!hd.daKiem;
-          const tenNguoiKiem = String(hd.infoDaKiem?.nhanvienkiem || "").trim();
-
-          row.innerHTML = `
-            <div style="display:flex; align-items:flex-start; gap:8px;">
-              <input type="checkbox" class="chk-hd-nguon-theo-masp" value="${escapeHtml(hd.sohd)}" ${checked}>
-              <div style="flex:1;">
-                <div style="font-weight:bold; color:#003366;">
-                  ${escapeHtml(hd.sohd)}
-                  ${daKiem
-              ? `<b style="color:red; margin-left:8px;">[ĐÃ KIỂM]</b>`
-              : `<b style="color:green; margin-left:8px;">[CHƯA KIỂM]</b>`}
-                  ${daKiem && tenNguoiKiem
-              ? ` | <b style="color:#333;">${escapeHtml(tenNguoiKiem)}</b>`
-              : ""}
-                </div>
-                <div style="font-size:13px; color:#333; margin-top:2px;">
-                  ${escapeHtml(ngayGio)} | ${escapeHtml(hd.diadiem || "")}
-                </div>
-                <div style="font-size:13px; margin-top:3px;">
-                  Trùng: <b style="color:#c62828;">${hd.soMaTrung}</b> mã
-                  | Theo nhập: <b>${Math.round((hd.tyLeTheoNhap || 0) * 100)}%</b>
-                  | Theo HĐ: <b>${Math.round((hd.tyLeTheoHoaDon || 0) * 100)}%</b>
-                  | Điểm: <b>${Number(hd.score || 0).toFixed(1)}</b>
-                </div>
-                <div style="font-size:12px; color:#555; margin-top:3px;">
-                  Mã trùng: ${escapeHtml(dsMau || "(không có)")}
-                </div>
-              </div>
-            </div>
-          `;
-
-          if (daKiem) {
-            row.style.background = "#fff3cd";
-          } else if (hd.autoChecked) {
-            row.style.background = "#eef8ee";
-          }
-
-          box.appendChild(row);
+            hideSizePopup();
         });
-      }
+    }
 
-      popup.style.display = "block";
+    // =========================
+    // RESET PHIẾU
+    // =========================
+    async function resetPhieu() {
+        const oldState = getState();
 
-      const closePopup = (result) => {
-        popup.style.display = "none";
-        btnDong.onclick = null;
-        btnOk.onclick = null;
-        resolve(result);
-      };
+        window.kiemTonState = {
+            nhap: {},
+            bayMau: {},
+            xuat: {},
+            ketQua: {},
+            nhapOrder: [],
+            xuatOrder: [],
+            selectedMasp: "",
+            dmMaspCache: oldState?.dmMaspCache instanceof Map ? oldState.dmMaspCache : new Map(),
+            daKiemTra: false,
+            thoiDiemChotTon: null
+        };
 
-      btnDong.onclick = () => closePopup(null);
+        dangChonSizeTrongPopup = false;
 
-      btnOk.onclick = () => {
-        const checked = Array.from(
-          box.querySelectorAll(".chk-hd-nguon-theo-masp:checked")
-        ).map(x => String(x.value || "").trim()).filter(Boolean);
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
+        const sohdEl = byId("sohd");
+        const ghichuEl = byId("ghichu_top");
 
-        if (!checked.length) {
-          alert("Vui lòng chọn ít nhất 1 hóa đơn.");
-          return;
+        const thongkeEl = byId("thongke_dautrang");
+        if (thongkeEl) {
+            thongkeEl.title = "";
         }
 
-        closePopup(checked);
-      };
-    });
-  }
+        if (maspEl) maspEl.value = "";
+        if (sizeEl) sizeEl.value = "";
+        if (slEl) slEl.value = "1";
+        if (sohdEl) sohdEl.value = await taoSoPhieuMoi();
+        if (ghichuEl) ghichuEl.value = "";
 
-  async function napHoaDonNguonTheoMasp() {
-    try {
-      if (!window.supabase) {
-        alert("Không tìm thấy kết nối Supabase.");
-        return;
-      }
+        const hdState = byId("hd_state");
+        if (hdState) {
+            hdState.value = "moi";
+            hdState.setAttribute("data-state", "moi");
+        }
 
-      // đảm bảo state.nhap đang là dữ liệu mới nhất trên bảng
-      if (typeof docLaiNhapTuBangHTML === "function") {
+        renderBangKetQua();
+        capNhatThongKeDauTrang();
+        hideSizePopup();
+        if (maspEl) maspEl.focus();
+
+        focusNhapMasp(true);
+    }
+
+    function focusNhapMasp(selectAll = true) {
+        const el = byId("masp");
+        if (!el) return;
+
+        setTimeout(() => {
+            try {
+                el.focus();
+                if (selectAll && typeof el.select === "function") {
+                    el.select();
+                }
+            } catch (err) { }
+        }, 0);
+    }
+
+    // =========================
+    // KIỂM TRA
+    // Bản đầu: so tổng SL theo mã
+    // =========================
+    function kiemTraPhieu() {
+        // luôn đọc lại dữ liệu người dùng vừa sửa trực tiếp trên bảng
         docLaiNhapTuBangHTML();
-      }
 
-      const dsMaspNhap = layDanhSachMaspDangNhap();
-
-      if (!dsMaspNhap.length) {
-        alert("Bạn cần nhập dữ liệu kiểm bên trái trước rồi mới nạp CCN theo mã sản phẩm.");
-        return;
-      }
-
-      const mapDaKiem = await layMapHoaDonDaKiem();
-      const { dsHd, ctRows } = await layHoaDonNguonUngVienTheoMasp(dsMaspNhap);
-
-      if (!dsHd.length || !ctRows.length) {
-        phatAmThanhLoi();
-        alert("Không tìm thấy hóa đơn CCN phù hợp trong hôm qua và hôm nay.");
-        return;
-      }
-
-      const dsDeXuat = tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem);
-
-      if (!dsDeXuat.length) {
-        phatAmThanhLoi();
-        alert("Không tìm thấy hóa đơn CCN nào trong khung ngày đã chọn có mã sản phẩm trùng với phần nhập.");
-        return;
-      }
-
-      const dsSoHdChon = await moPopupChonHoaDonNguonTheoMasp(dsDeXuat);
-      if (!dsSoHdChon || !dsSoHdChon.length) return;
-
-      // lấy toàn bộ hóa đơn đã chọn, không chỉ lấy mã trùng
-      const dsHoaDonNguonInfo = dsHd
-        .filter(hd => dsSoHdChon.includes(String(hd.sohd || "").trim()))
-        .map(hd => ({
-          sohd: String(hd.sohd || "").trim(),
-          ngay: hd.ngay || null,
-          created_at: hd.created_at || null,
-          diadiem: hd.diadiem || "",
-          manv: String(hd.manv || "").trim(),
-          tennv: String(hd.tennv || "").trim()
-        }));
-
-      const ctRowsChon = (ctRows || []).filter(row =>
-        dsSoHdChon.includes(String(row.sohd || "").trim())
-      );
-
-      if (!ctRowsChon.length) {
-        alert("Các hóa đơn đã chọn không có chi tiết.");
-        return;
-      }
-
-      const xuatMap = {};
-      const xuatOrder = [];
-
-      for (const row of ctRowsChon) {
-        const masp = normalizeMasp(row.masp);
-        const size = normalizeSize(row.size);
-        const sl = normalizeNumber(row.soluong);
-        const sohdNguon = String(row.sohd || "").trim();
-
-        if (!masp || !size || sl <= 0) continue;
-
-        if (!xuatOrder.includes(masp)) {
-          xuatOrder.push(masp);
-        }
-
-        const key = makeKey(masp, size);
-
-        if (!xuatMap[key]) {
-          xuatMap[key] = {
-            masp,
-            size,
-            sl,
-            sohd_list: sohdNguon ? [sohdNguon] : []
-          };
-        } else {
-          xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
-
-          if (sohdNguon) {
-            const oldList = Array.isArray(xuatMap[key].sohd_list) ? xuatMap[key].sohd_list : [];
-            if (!oldList.includes(sohdNguon)) {
-              oldList.push(sohdNguon);
-            }
-            xuatMap[key].sohd_list = oldList;
-          }
-        }
-      }
-
-      const state = getState();
-      state.dsHoaDonNguon = dsSoHdChon;
-      state.dsHoaDonNguonInfo = dsHoaDonNguonInfo;
-
-      const ghichuEl = byId("ghichu_top");
-      if (ghichuEl) ghichuEl.value = dsSoHdChon.join(" ; ");
-
-      window.NhapKiemKho.setXuatData(xuatMap, xuatOrder);
-
-      alert(`Đã nạp ${dsSoHdChon.length} hóa đơn nguồn theo mã sản phẩm.`);
-    } catch (err) {
-      console.error("[nhapkiemkho] napHoaDonNguonTheoMasp exception:", err);
-      alert(err?.message || "Có lỗi khi nạp CCN theo mã sản phẩm.");
-    }
-  }
-
-  async function napHoaDonNguonPlaceholder() {
-    try {
-      if (!window.supabase) {
-        alert("Không tìm thấy kết nối Supabase.");
-        return;
-      }
-
-      const prefixNguon = CFG.fromBranch === "cs2" ? "xcncs2_" : "xcncs1_";
-      const { start, end } = layKhoangNgayHoaDonNguonMacDinh(3);
-      const mapDaKiem = await layMapHoaDonDaKiem();
-
-      const { data: dsHd, error: errHd } = await window.supabase
-        .from("hoadon_banle")
-        .select("sohd, ngay, created_at, diadiem, tennv, manv, kiem_nhapkho")
-        .ilike("sohd", `${prefixNguon}%`)
-        .gte("created_at", toIsoLocal(start))
-        .lte("created_at", toIsoLocal(end))
-        .order("created_at", { ascending: false })
-        .limit(300);
-
-      if (errHd) {
-        console.error("[nhapkiemkho] load ds hoa don nguon error:", errHd);
-        alert("Lỗi khi lấy danh sách hóa đơn nguồn.");
-        return;
-      }
-
-      if (!dsHd || dsHd.length === 0) {
-        alert("Không tìm thấy hóa đơn chuyển chi nhánh trong khung ngày đã chọn.");
-        return;
-      }
-
-      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd, mapDaKiem);
-      if (!dsSoHdChon || dsSoHdChon.length === 0) return;
-
-      const dsHoaDonNguonInfo = dsHd
-        .filter(hd => dsSoHdChon.includes(String(hd.sohd || "").trim()))
-        .map(hd => ({
-          sohd: String(hd.sohd || "").trim(),
-          ngay: hd.ngay || null,
-          created_at: hd.created_at || null,
-          diadiem: hd.diadiem || "",
-          manv: String(hd.manv || "").trim(),
-          tennv: String(hd.tennv || "").trim()
-        }));
-
-      const { data: ctRows, error: errCt } = await window.supabase
-        .from("ct_hoadon_banle")
-        .select("sohd, masp, size, soluong")
-        .in("sohd", dsSoHdChon)
-        .order("id", { ascending: true });
-
-      if (errCt) {
-        console.error("[nhapkiemkho] load ct_hoadon_banle error:", errCt);
-        alert("Lỗi khi lấy chi tiết hóa đơn nguồn.");
-        return;
-      }
-
-      if (!ctRows || ctRows.length === 0) {
-        alert("Hóa đơn nguồn không có chi tiết.");
-        return;
-      }
-
-      const xuatMap = {};
-      const xuatOrder = [];
-
-      for (const row of ctRows) {
-        const masp = normalizeMasp(row.masp);
-        const size = normalizeSize(row.size);
-        const sl = normalizeNumber(row.soluong);
-        const sohdNguon = String(row.sohd || "").trim();
-
-        if (!masp || !size || sl <= 0) continue;
-
-        if (!xuatOrder.includes(masp)) {
-          xuatOrder.push(masp);
-        }
-
-        const key = makeKey(masp, size);
-
-        if (!xuatMap[key]) {
-          xuatMap[key] = {
-            masp,
-            size,
-            sl,
-            sohd_list: sohdNguon ? [sohdNguon] : []
-          };
-        } else {
-          xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
-
-          if (sohdNguon) {
-            const oldList = Array.isArray(xuatMap[key].sohd_list) ? xuatMap[key].sohd_list : [];
-            if (!oldList.includes(sohdNguon)) {
-              oldList.push(sohdNguon);
-            }
-            xuatMap[key].sohd_list = oldList;
-          }
-        }
-      }
-
-      const state = getState();
-      state.dsHoaDonNguon = dsSoHdChon;
-      state.dsHoaDonNguonInfo = dsHoaDonNguonInfo;
-
-      const ghichuEl = byId("ghichu_top");
-      if (ghichuEl) ghichuEl.value = dsSoHdChon.join(" ; ");
-
-      window.NhapKiemKho.setXuatData(xuatMap, xuatOrder);
-
-      alert(`Đã nạp ${dsSoHdChon.length} hóa đơn nguồn.`);
-    } catch (err) {
-      console.error("[nhapkiemkho] napHoaDonNguonPlaceholder exception:", err);
-      alert("Có lỗi khi nạp hóa đơn nguồn.");
-    }
-  }
-
-  function taoGhiChuPhieuChuyenTuKiemNhap() {
-    const state = getState();
-    const soHdKiemNhap = String(byId("sohd")?.value || "").trim();
-    const dsNguon = (state.dsHoaDonNguon || []).join(" ; ");
-
-    let note = `Phiếu được tạo từ nhập kiểm kho`;
-    if (soHdKiemNhap) note += ` - ${soHdKiemNhap}`;
-    if (dsNguon) note += ` | HĐ nguồn: ${dsNguon}`;
-
-    return note;
-  }
-
-  function getTransferDirectionByTrangThai(trangThai) {
-    const tt = String(trangThai || "").trim().toUpperCase();
-    const toBranch = String(CFG.toBranch || "").trim().toLowerCase();
-
-    // NGHIỆP VỤ ĐÚNG:
-    // CS1:
-    //   THUA  -> 2v1
-    //   THIEU -> 1v2
-    //
-    // CS2:
-    //   THUA  -> 1v2
-    //   THIEU -> 2v1
-
-    if (toBranch === "cs2") {
-      if (tt === "THUA") return "1v2";
-      if (tt === "THIEU") return "2v1";
-      return "";
-    }
-
-    // mặc định CS1
-    if (tt === "THUA") return "2v1";
-    if (tt === "THIEU") return "1v2";
-    return "";
-  }
-
-  function getTransferPageUrlByDir(dir) {
-    const d = String(dir || "").trim().toLowerCase();
-    if (d === "1v2") return "https://banle-js.vercel.app/ccn1v2cs1.html";
-    if (d === "2v1") return "https://banle-js.vercel.app/ccn2v1cs2.html";
-    return "";
-  }
-
-  function getItemsForTransferByDir(dir) {
-    const d = String(dir || "").trim().toLowerCase();
-
-    if (d === "1v2") {
-      // chiều 1 -> 2
-      // CS1: dùng cho THIEU
-      // CS2: dùng cho THUA
-      return layDanhSachHangTheoTrangThai(CFG.toBranch === "cs2" ? "THUA" : "THIEU");
-    }
-
-    if (d === "2v1") {
-      // chiều 2 -> 1
-      // CS1: dùng cho THUA
-      // CS2: dùng cho THIEU
-      return layDanhSachHangTheoTrangThai(CFG.toBranch === "cs2" ? "THIEU" : "THUA");
-    }
-
-    return [];
-  }
-
-  function moTrangChuyenChiNhanhTheoTrangThai(trangThai) {
-    docLaiNhapTuBangHTML();
-    kiemTraPhieu();
-
-    const dir = getTransferDirectionByTrangThai(trangThai);
-    const url = getTransferPageUrlByDir(dir);
-    const items = getItemsForTransferByDir(dir);
-    const state = getState();
-
-    if (!dir || !url) {
-      phatAmThanhLoi();
-      alert("Không xác định được chiều chuyển chi nhánh.");
-      return;
-    }
-
-    if (!items || items.length === 0) {
-      phatAmThanhLoi();
-      if (String(trangThai).toUpperCase() === "THUA") {
-        alert(`Không có mã sản phẩm thừa để tạo phiếu CCN ${dir.toUpperCase()}.`);
-      } else {
-        alert(`Không có mã sản phẩm thiếu để tạo phiếu CCN ${dir.toUpperCase()}.`);
-      }
-      return;
-    }
-
-    const payload = {
-      dir,
-      source: "kiem_nhap_kho",
-      created_at: new Date().toISOString(),
-      so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
-      ds_hoa_don_nguon: state.dsHoaDonNguon || [],
-      note: taoGhiChuPhieuChuyenTuKiemNhap(),
-      items
-    };
-
-    try {
-      localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
-    } catch (err) {
-      console.error("[KNK] Lỗi lưu ccn_prefill_payload:", err);
-      alert(`Không lưu được dữ liệu tạm để chuyển sang trang CCN ${dir.toUpperCase()}.`);
-      return;
-    }
-
-    const newTab = window.open(url);
-    if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
-      window.location.href = url;
-    }
-  }
-
-  function getTrangThaiCanLayTheoDir(dir) {
-    const d = String(dir || "").trim().toLowerCase();
-    const toBranch = String(CFG.toBranch || "").trim().toLowerCase();
-
-    // CS1:
-    //   CCN2V1 = THUA
-    //   CCN1V2 = THIEU
-    //
-    // CS2:
-    //   CCN1V2 = THUA
-    //   CCN2V1 = THIEU
-
-    if (toBranch === "cs2") {
-      if (d === "1v2") return "THUA";
-      if (d === "2v1") return "THIEU";
-      return "";
-    }
-
-    // mặc định CS1
-    if (d === "2v1") return "THUA";
-    if (d === "1v2") return "THIEU";
-    return "";
-  }
-
-  function moTrangChuyenChiNhanhTheoDir(dir) {
-    docLaiNhapTuBangHTML();
-    kiemTraPhieu();
-
-    const d = String(dir || "").trim().toLowerCase();
-    const url = getTransferPageUrlByDir(d);
-    const items = getItemsForTransferByDir(d);
-    const state = getState();
-    const trangThaiCanLay = getTrangThaiCanLayTheoDir(d);
-
-    if (!d || !url) {
-      phatAmThanhLoi();
-      alert("Không xác định được chiều chuyển chi nhánh.");
-      return;
-    }
-
-    if (!items || items.length === 0) {
-      phatAmThanhLoi();
-      if (trangThaiCanLay === "THUA") {
-        alert(`Không có mã sản phẩm thừa để tạo phiếu CCN ${d.toUpperCase()}.`);
-      } else if (trangThaiCanLay === "THIEU") {
-        alert(`Không có mã sản phẩm thiếu để tạo phiếu CCN ${d.toUpperCase()}.`);
-      } else {
-        alert(`Không có dữ liệu để tạo phiếu CCN ${d.toUpperCase()}.`);
-      }
-      return;
-    }
-
-    const payload = {
-      dir: d,
-      source: "kiem_nhap_kho",
-      created_at: new Date().toISOString(),
-      so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
-      ds_hoa_don_nguon: state.dsHoaDonNguon || [],
-      note: taoGhiChuPhieuChuyenTuKiemNhap(),
-      items
-    };
-
-    try {
-      localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
-    } catch (err) {
-      console.error("[KNK] Lỗi lưu ccn_prefill_payload:", err);
-      alert(`Không lưu được dữ liệu tạm để chuyển sang trang CCN ${d.toUpperCase()}.`);
-      return;
-    }
-
-    const newTab = window.open(url);
-    if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
-      window.location.href = url;
-    }
-  }
-
-  // =========================
-  // TAO PHIEU CCN2V1 TU HANG THUA
-  // =========================
-  function groupByMaspForTransfer(items) {
-    const out = {};
-
-    (items || []).forEach((row) => {
-      const masp = normalizeMasp(row.masp);
-      const size = normalizeSize(row.size);
-      const sl = normalizeNumber(row.sl);
-
-      if (!masp || !size || sl <= 0) return;
-
-      if (!out[masp]) {
-        out[masp] = {
-          masp,
-          items: []
-        };
-      }
-
-      out[masp].items.push({
-        size,
-        sl
-      });
-    });
-
-    return Object.values(out);
-  }
-
-  function layDanhSachHangTheoTrangThai(trangThaiCanLay) {
-    const thongTinTong = xayDungDuLieuTongVaChiTietLech();
-    const chiTietLech = thongTinTong?.chiTietLech || [];
-    const state = getState();
-    const xuatMap = state.xuat || {};
-
-    const ttCanLay = String(trangThaiCanLay || "").trim().toLowerCase();
-    const rows = [];
-
-    chiTietLech.forEach((row) => {
-      const trangthai = String(row.trangthai_nhan || "").trim().toLowerCase();
-      if (trangthai !== ttCanLay) return;
-
-      const masp = normalizeMasp(row.masp);
-      const size = normalizeSize(row.size || "0");
-      const sl = normalizeNumber(row.sl_lech || 0);
-
-      if (!masp || sl <= 0) return;
-
-      // THIẾU + size=0 => bung toàn bộ size thật từ dữ liệu xuất nguồn
-      if (ttCanLay === "thieu" && (!size || size === "0")) {
-        const xuatRowsTheoMasp = Object.values(xuatMap)
-          .filter(r => normalizeMasp(r?.masp) === masp)
-          .map(r => ({
-            masp,
-            size: normalizeSize(r?.size || "0"),
-            sl: normalizeNumber(r?.sl || 0)
-          }))
-          .filter(r => r.masp && r.size && r.size !== "0" && r.sl > 0);
-
-        if (xuatRowsTheoMasp.length > 0) {
-          xuatRowsTheoMasp.forEach(r => rows.push(r));
-          return;
-        }
-      }
-
-      rows.push({
-        masp,
-        size: size || "0",
-        sl
-      });
-    });
-
-    return groupByMaspForTransfer(rows);
-  }
-
-  // =========================
-  // CHON DONG / COPY / PASTE / XOA DONG
-  // =========================
-  function chonDongTheoMasp(masp) {
-    const state = getState();
-    state.selectedMasp = normalizeMasp(masp);
-    renderBangKetQua();
-  }
-
-  function bindRowSelection() {
-    const tbody = document.querySelector("#bangketqua tbody");
-    if (!tbody || tbody.dataset.rowSelectBound === "1") return;
-
-    tbody.dataset.rowSelectBound = "1";
-
-    tbody.addEventListener("click", (e) => {
-      // Nếu đang click vào ô cho phép sửa trực tiếp thì không chọn dòng
-      const editableCell = e.target.closest(".cell-nhap-sizesl, .cell-nhap-tongsl");
-      if (editableCell) {
-        return;
-      }
-
-      const tr = e.target.closest("tr");
-      if (!tr) return;
-
-      const masp = normalizeMasp(tr.dataset.masp || "");
-      if (!masp) return;
-
-      chonDongTheoMasp(masp);
-    });
-  }
-
-  async function copyDuLieuNhap() {
-    try {
-      docLaiNhapTuBangHTML();
-
-      const tbody = document.querySelector("#bangketqua tbody");
-      if (!tbody) {
-        alert("Không tìm thấy bảng kết quả.");
-        return;
-      }
-
-      const rows = Array.from(tbody.querySelectorAll("tr"));
-      if (rows.length === 0) {
-        alert("Không có dữ liệu để copy.");
-        return;
-      }
-
-      const lines = rows.map((tr) => {
-        const col1 = String(tr.children[0]?.innerText || "").trim();
-
-        // đổi toàn bộ xuống dòng trong ô Size/SL thành khoảng trắng
-        const col2 = String(tr.children[1]?.innerText || "")
-          .replace(/\r/g, "")
-          .replace(/\n+/g, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-
-        const col3 = String(tr.children[2]?.innerText || "").trim();
-
-        return [col1, col2, col3].join("\t");
-      }).filter(Boolean);
-
-      const text = lines.join("\n");
-      await navigator.clipboard.writeText(text);
-
-      alert(`Đã copy ${lines.length} dòng dữ liệu phần nhập.`);
-    } catch (err) {
-      console.error("[KNK] copyDuLieuNhap error:", err);
-      alert("Không copy được dữ liệu.");
-    }
-  }
-
-  function parseClipboardToNhapMap(text) {
-    const lines = String(text || "")
-      .replace(/\r/g, "")
-      .split("\n")
-      .map(x => x.trim())
-      .filter(Boolean);
-
-    const nhapMoi = {};
-
-    for (const line of lines) {
-      const cols = line.split("\t");
-
-      const masp = normalizeMasp(cols[0] || "");
-      const sizeSlText = String(cols[1] || "").trim();
-      const tongSlText = String(cols[2] || "").trim();
-
-      if (!masp) continue;
-
-      const items = parseSizeSlText(sizeSlText);
-      const tongSl = normalizeNumber(tongSlText);
-
-      if (hasRealSizeItems(items)) {
-        items.forEach((item) => {
-          const key = makeKey(masp, item.size);
-          nhapMoi[key] = {
-            masp,
-            size: item.size,
-            sl: item.sl
-          };
+        const state = getState();
+        const nhapMap = getMapNhapTong();
+        const xuatMap = state.xuat || {};
+        const ketQua = {};
+
+        // Gom xuat theo mã để dùng cho chế độ kiểm tổng
+        const xuatTheoMasp = {};
+        Object.keys(xuatMap).forEach((key) => {
+            const row = xuatMap[key];
+            if (!row) return;
+            const masp = normalizeMasp(row.masp);
+            const sl = normalizeNumber(row.sl);
+            xuatTheoMasp[masp] = (xuatTheoMasp[masp] || 0) + sl;
         });
-        continue;
-      }
 
-      if (tongSl > 0) {
-        const key = makeKey(masp, "0");
-        nhapMoi[key] = {
-          masp,
-          size: "0",
-          sl: tongSl
-        };
-      }
-    }
+        // Gom nhap theo mã để biết mã nào đang ở chế độ tổng
+        const nhapTheoMasp = {};
+        Object.keys(nhapMap).forEach((key) => {
+            const row = nhapMap[key];
+            if (!row) return;
+            const masp = normalizeMasp(row.masp);
+            if (!nhapTheoMasp[masp]) nhapTheoMasp[masp] = [];
+            nhapTheoMasp[masp].push(row);
+        });
 
-    return nhapMoi;
-  }
-
-  async function pasteDuLieuNhap() {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (!String(text || "").trim()) {
-        alert("Clipboard đang trống.");
-        return;
-      }
-
-      const nhapMoi = parseClipboardToNhapMap(text);
-      const soDong = Object.keys(nhapMoi).length;
-
-      if (soDong === 0) {
-        alert("Dữ liệu dán không hợp lệ.");
-        return;
-      }
-
-      const ok = confirm("Dán dữ liệu sẽ thay toàn bộ phần nhập hiện tại. Bạn có muốn tiếp tục không?");
-      if (!ok) return;
-
-      const state = getState();
-      state.nhap = nhapMoi;
-      state.ketQua = {};
-      state.selectedMasp = "";
-      state.nhapOrder = [...new Set(Object.values(nhapMoi).map(x => normalizeMasp(x.masp)))];
-
-      autoKiemTraSauNhap();
-      alert(`Đã dán ${soDong} dòng dữ liệu nhập.`);
-    } catch (err) {
-      console.error("[KNK] pasteDuLieuNhap error:", err);
-      alert("Không đọc được dữ liệu từ clipboard.");
-    }
-  }
-
-  function xoaDongDangChon() {
-    docLaiNhapTuBangHTML();
-
-    const state = getState();
-    const masp = normalizeMasp(state.selectedMasp || "");
-
-    if (!masp) {
-      alert("Bạn chưa chọn dòng cần xóa.");
-      return;
-    }
-
-    // const ok = confirm(`Bạn có chắc muốn xóa dòng mã hàng: ${masp} ?`); 
-    // if (!ok) return;
-
-    Object.keys(state.nhap || {}).forEach((key) => {
-      const row = state.nhap[key];
-      if (normalizeMasp(row?.masp) === masp) {
-        delete state.nhap[key];
-      }
-    });
-
-    Object.keys(state.ketQua || {}).forEach((key) => {
-      const info = splitKey(key);
-      if (normalizeMasp(info.masp) === masp) {
-        delete state.ketQua[key];
-      }
-    });
-
-    state.selectedMasp = "";
-    autoKiemTraSauNhap();
-
-    const maspEl = byId("masp");
-    const sizeEl = byId("size");
-    const slEl = byId("soluong");
-
-    if (maspEl) {
-      maspEl.value = masp;
-      maspEl.focus();
-
-      setTimeout(() => {
-        try {
-          maspEl.select();
-        } catch (err) { }
-      }, 0);
-    }
-
-    if (sizeEl) sizeEl.value = "";
-    if (slEl) slEl.value = "1";
-
-    hideSizePopup();
-  }
-
-  // =========================
-  // BUTTONS
-  // =========================
-
-  // =========================
-  // SAVE KIEM NHAP KHO
-  // =========================
-
-  function tinhTongSoLuongTheoMap(mapObj) {
-    return Object.values(mapObj || {}).reduce((sum, row) => {
-      return sum + normalizeNumber(row?.sl || 0);
-    }, 0);
-  }
-
-  function groupRowsByMasp(mapObj) {
-    const out = {};
-
-    Object.keys(mapObj || {}).forEach((key) => {
-      const row = mapObj[key];
-      if (!row) return;
-
-      const masp = normalizeMasp(row.masp);
-      const size = normalizeSize(row.size);
-      const sl = normalizeNumber(row.sl);
-
-      if (!masp) return;
-
-      if (!out[masp]) {
-        out[masp] = [];
-      }
-
-      out[masp].push({
-        masp,
-        size,
-        sl,
-        key
-      });
-    });
-
-    return out;
-  }
-
-  function tinhTongTheoMasp(groupMap) {
-    const out = {};
-    Object.keys(groupMap || {}).forEach((masp) => {
-      out[masp] = (groupMap[masp] || []).reduce((sum, row) => sum + normalizeNumber(row.sl), 0);
-    });
-    return out;
-  }
-
-  function xayDungDuLieuTongVaChiTietLech() {
-    const state = getState();
-    const nhapMap = state.nhap || {};
-    const xuatMap = state.xuat || {};
-    const ketQuaMap = state.ketQua || {};
-
-    const nhapGroup = groupRowsByMasp(nhapMap);
-    const xuatGroup = groupRowsByMasp(xuatMap);
-
-    const tongNhapTheoMasp = tinhTongTheoMasp(nhapGroup);
-    const tongXuatTheoMasp = tinhTongTheoMasp(xuatGroup);
-
-    const allMasps = Array.from(new Set([
-      ...Object.keys(nhapGroup),
-      ...Object.keys(xuatGroup)
-    ])).sort();
-
-    const chiTietLech = [];
-    let tongSlLechThieu = 0;
-    let tongSlLechThua = 0;
-
-    for (const masp of allMasps) {
-      const nhapRows = nhapGroup[masp] || [];
-      const xuatRows = xuatGroup[masp] || [];
-
-      const hasRealSizeNhap = nhapRows.some(r => {
-        const s = normalizeSize(r.size);
-        return s && s !== "0";
-      });
-
-      if (hasRealSizeNhap) {
-        const allKeys = new Set([
-          ...nhapRows.map(r => r.key),
-          ...xuatRows.map(r => r.key)
+        const allMasps = new Set([
+            ...Object.keys(nhapTheoMasp),
+            ...Object.keys(xuatTheoMasp),
+            ...Object.values(xuatMap).map(r => normalizeMasp(r.masp))
         ]);
 
-        for (const key of allKeys) {
-          const kq = ketQuaMap[key];
-          if (!kq || kq.trangthai === "OK") continue;
+        for (const masp of allMasps) {
+            const nhapRows = nhapTheoMasp[masp] || [];
+            const hasRealSize = nhapRows.some(r => normalizeSize(r.size) !== "0" && normalizeSize(r.size) !== "");
 
-          const nhap = nhapMap[key];
-          const xuat = xuatMap[key];
+            // CHẾ ĐỘ 1: kiểm chi tiết theo size
+            if (hasRealSize) {
+                const xuatKeys = Object.keys(xuatMap).filter(k => normalizeMasp(xuatMap[k]?.masp) === masp);
+                const nhapKeys = Object.keys(nhapMap).filter(k => normalizeMasp(nhapMap[k]?.masp) === masp);
 
-          const slNhap = normalizeNumber(nhap?.sl || 0);
-          const slXuat = normalizeNumber(xuat?.sl || 0);
-          const slLech = Math.abs(slNhap - slXuat);
-          const size = splitKey(key).size || "0";
+                const allKeys = new Set([...xuatKeys, ...nhapKeys]);
 
-          let trangthai_nhan = "lech";
-          if (kq.trangthai === "THIEU") {
-            trangthai_nhan = "thieu";
-            tongSlLechThieu += slLech;
-          } else if (kq.trangthai === "THUA") {
-            trangthai_nhan = "thua";
-            tongSlLechThua += slLech;
-          }
+                for (const key of allKeys) {
+                    const nhap = nhapMap[key];
+                    const xuat = xuatMap[key];
 
-          chiTietLech.push({
-            masp,
-            size,
-            trangthai_nhan,
-            sl_xuat: slXuat,
-            sl_nhan: slNhap,
-            sl_lech: slLech,
-            chi_tiet: `${slNhap}/${slXuat}`
-          });
-        }
-      } else {
-        const keyTong = makeKey(masp, "0");
-        const kq = ketQuaMap[keyTong];
-        if (!kq || kq.trangthai === "OK") continue;
+                    const slNhap = normalizeNumber(nhap?.sl || 0);
+                    const slXuat = normalizeNumber(xuat?.sl || 0);
 
-        const slNhap = normalizeNumber(tongNhapTheoMasp[masp] || 0);
-        const slXuat = normalizeNumber(tongXuatTheoMasp[masp] || 0);
-        const slLech = Math.abs(slNhap - slXuat);
+                    if (slNhap === slXuat) {
+                        ketQua[key] = { trangthai: "OK", chitiet: "" };
+                    } else if (slNhap < slXuat) {
+                        ketQua[key] = { trangthai: "THIEU", chitiet: String(slXuat - slNhap) };
+                    } else {
+                        ketQua[key] = { trangthai: "THUA", chitiet: String(slNhap - slXuat) };
+                    }
+                }
 
-        let trangthai_nhan = "lech";
-        if (kq.trangthai === "THIEU") {
-          trangthai_nhan = "thieu";
-          tongSlLechThieu += slLech;
-        } else if (kq.trangthai === "THUA") {
-          trangthai_nhan = "thua";
-          tongSlLechThua += slLech;
+                continue;
+            }
+
+            // CHẾ ĐỘ 2: kiểm tổng
+            const tongNhap = nhapRows.reduce((sum, r) => sum + normalizeNumber(r.sl), 0);
+            const tongXuat = xuatTheoMasp[masp] || 0;
+
+            const keyTong = makeKey(masp, "0");
+
+            if (tongNhap === tongXuat) {
+                ketQua[keyTong] = { trangthai: "OK", chitiet: "" };
+            } else if (tongNhap < tongXuat) {
+                ketQua[keyTong] = { trangthai: "THIEU", chitiet: String(tongXuat - tongNhap) };
+            } else {
+                ketQua[keyTong] = { trangthai: "THUA", chitiet: String(tongNhap - tongXuat) };
+            }
         }
 
-        chiTietLech.push({
-          masp,
-          size: "0",
-          trangthai_nhan,
-          sl_xuat: slXuat,
-          sl_nhan: slNhap,
-          sl_lech: slLech,
-          chi_tiet: `${slNhap}/${slXuat}`
+        state.ketQua = ketQua;
+        sapXepLaiThuTuMaspTheoKetQua();
+        renderBangKetQua();
+    }
+
+    async function napTonMayTheoDanhSachMasp() {
+        if (!window.supabase) {
+            alert("Không tìm thấy kết nối Supabase.");
+            return false;
+        }
+
+        docLaiNhapTuBangHTML();
+
+        const state = getState();
+        const nhapMap = state.nhap || {};
+
+        const dsMasp = Array.from(
+            new Set(
+                Object.values(nhapMap)
+                    .map(row => normalizeMasp(row?.masp))
+                    .filter(Boolean)
+            )
+        );
+
+        if (!dsMasp.length) {
+            phatAmThanhLoi();
+            alert("Chưa có mã sản phẩm nào để kiểm tồn.");
+            return false;
+        }
+
+        const ngayDen = String(byId("ngay")?.value || "").trim();
+        if (!ngayDen) {
+            alert("Chưa có ngày kiểm.");
+            return false;
+        }
+
+        const { data, error } = await window.supabase.rpc("xntnhanh", {
+            p_masps: dsMasp,
+            p_den_ngay: ngayDen,
+            p_tonghop_size: false
         });
-      }
-    }
 
-    return {
-      tong_so_mat_hang: allMasps.length,
-      tong_so_luong_xuat: tinhTongSoLuongTheoMap(xuatMap),
-      tong_so_luong_nhan: tinhTongSoLuongTheoMap(nhapMap),
-      so_ma_lech: chiTietLech.length,
-      tong_sl_lech_thieu: tongSlLechThieu,
-      tong_sl_lech_thua: tongSlLechThua,
-      ket_qua_chung: chiTietLech.length > 0 ? "lech" : "ok",
-      chiTietLech
-    };
-  }
-
-  function buildChiTietHoaDonRows(kiemNhapId, so_hd_kiemnhap, sohdccn, ngay_kiem, nhanvienkiem) {
-    const state = getState();
-    const nhapMap = state.nhap || {};
-    const xuatMap = state.xuat || {};
-    const ketQuaMap = state.ketQua || {};
-
-    const nhapGroupMap = groupByMasp(nhapMap);
-    const xuatGroupMap = groupByMasp(xuatMap);
-
-    const allMasps = Array.from(
-      new Set([
-        ...Object.keys(nhapGroupMap),
-        ...Object.keys(xuatGroupMap)
-      ])
-    ).sort();
-
-    const rows = [];
-
-    allMasps.forEach((masp, index) => {
-      const nhapGroup = nhapGroupMap[masp];
-      const xuatGroup = xuatGroupMap[masp];
-
-      const nhapText = formatSizeSl(nhapGroup?.items || []);
-      const xuatText = formatSizeSl(xuatGroup?.items || []);
-      const sohdXuatCnText = formatSohdNguonLuuTheoMasp(xuatGroup);
-
-      const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
-
-      const hasRealSizeNhap = (nhapGroup?.items || []).some(x => {
-        const s = normalizeSize(x.size);
-        return s && s !== "0";
-      });
-
-      rows.push({
-        kiem_nhap_id: kiemNhapId,
-        so_hd_kiemnhap,
-        sohdccn,
-        ngay_kiem,
-        nhanvienkiem,
-        sort_order: index + 1,
-
-        masp_nhap: masp,
-        size_sl_nhap: nhapText || "",
-        tongsl_nhap: tongSoLuong(nhapGroup?.items || []) || 0,
-
-        masp_xuat: masp,
-        size_sl_xuat: xuatText || "",
-        tongsl_xuat: tongSoLuong(xuatGroup?.items || []) || 0,
-        sohd_xuat_cn: sohdXuatCnText || "",
-
-        trangthai: kqTong.trangthai || "",
-        chitiet: kqTong.chitiet || "",
-
-        masp_key: masp,
-        che_do_kiem: hasRealSizeNhap ? "size" : "tong",
-        ghi_chu: null
-      });
-    });
-
-    return rows;
-  }
-
-  async function danhDauHoaDonNguonDaKiemNhap(dsSoHd, soHdKiemNhap, ngayGioKiem, nhanVienKiem) {
-    if (!window.supabase) {
-      throw new Error("Không tìm thấy kết nối Supabase.");
-    }
-
-    const dsSach = Array.from(
-      new Set(
-        (Array.isArray(dsSoHd) ? dsSoHd : [])
-          .map(x => String(x || "").trim())
-          .filter(Boolean)
-      )
-    );
-
-    if (!dsSach.length) {
-      return { success: true, updated: 0, message: "Không có hóa đơn nguồn để đánh dấu." };
-    }
-
-    const { data, error } = await window.supabase.rpc("rpc_danh_dau_kiem_nhapkho_hoa_don", {
-      p_ds_sohd: dsSach,
-      p_so_hd_kiemnhap: String(soHdKiemNhap || "").trim(),
-      p_ngay_kiem: String(ngayGioKiem || "").trim(),
-      p_nhanvienkiem: String(nhanVienKiem || "").trim()
-    });
-
-    if (error) {
-      console.error("[KNK] rpc_danh_dau_kiem_nhapkho_hoa_don error:", error);
-      throw new Error("Lỗi khi đánh dấu hóa đơn nguồn đã kiểm nhập.");
-    }
-
-    return data || { success: true, updated: 0 };
-  }
-
-  async function xoaDuLieuPhieuKiemNhapCu(soHdKiemNhap) {
-    if (!window.supabase) {
-      throw new Error("Không tìm thấy kết nối Supabase.");
-    }
-
-    const sohd = String(soHdKiemNhap || "").trim();
-    if (!sohd) {
-      throw new Error("Thiếu số phiếu kiểm nhập để xóa dữ liệu cũ.");
-    }
-
-    // 1) tìm phiếu cũ
-    const { data: phieuCu, error: errTim } = await window.supabase
-      .from("kiem_nhap_kho")
-      .select("id, so_hd_kiemnhap")
-      .eq("so_hd_kiemnhap", sohd)
-      .maybeSingle();
-
-    if (errTim) {
-      console.error("[KNK] xoaDuLieuPhieuKiemNhapCu - tìm phiếu cũ lỗi:", errTim);
-      throw new Error("Lỗi khi tìm phiếu cũ.");
-    }
-
-    if (!phieuCu) {
-      return { deleted: false, message: "Không tìm thấy phiếu cũ để xóa." };
-    }
-
-    const kiemNhapId = phieuCu.id;
-
-    // 2) xóa chi tiết hóa đơn trước
-    const { error: errCtHd } = await window.supabase
-      .from("kiem_nhap_kho_chi_tiet_hoa_don")
-      .delete()
-      .eq("kiem_nhap_id", kiemNhapId);
-
-    if (errCtHd) {
-      console.error("[KNK] xóa kiem_nhap_kho_chi_tiet_hoa_don lỗi:", errCtHd);
-      throw new Error("Lỗi khi xóa chi tiết hóa đơn phiếu cũ.");
-    }
-
-    // 3) xóa chi tiết lệch
-    const { error: errLech } = await window.supabase
-      .from("kiem_nhap_kho_chitiet_lech")
-      .delete()
-      .eq("kiem_nhap_id", kiemNhapId);
-
-    if (errLech) {
-      console.error("[KNK] xóa kiem_nhap_kho_chitiet_lech lỗi:", errLech);
-      throw new Error("Lỗi khi xóa chi tiết lệch phiếu cũ.");
-    }
-
-    // 4) xóa bảng tổng sau cùng
-    const { error: errTong } = await window.supabase
-      .from("kiem_nhap_kho")
-      .delete()
-      .eq("id", kiemNhapId);
-
-    if (errTong) {
-      console.error("[KNK] xóa kiem_nhap_kho lỗi:", errTong);
-      throw new Error("Lỗi khi xóa phiếu tổng cũ.");
-    }
-
-    return {
-      deleted: true,
-      id: kiemNhapId,
-      so_hd_kiemnhap: sohd
-    };
-  }
-
-  async function luuPhieuKiemNhapKho() {
-    try {
-      if (!window.supabase) {
-        alert("Không tìm thấy kết nối Supabase.");
-        return;
-      }
-
-      if (window.dangLuuKiemNhapKho) return;
-      window.dangLuuKiemNhapKho = true;
-
-      const sohdEl = byId("sohd");
-      const ngayEl = byId("ngay");
-      const tennvEl = byId("tennv");
-      const ghichuEl = byId("ghichu_top");
-      const hdStateEl = byId("hd_state");
-
-      const so_hd_kiemnhap = String(sohdEl?.value || "").trim();
-      const ngay_kiem = String(ngayEl?.value || "").trim();
-      const nhanvienkiem = String(tennvEl?.value || "").trim();
-      const ghi_chu = String(ghichuEl?.value || "").trim();
-
-      if (!so_hd_kiemnhap) {
-        alert("Chưa có số phiếu kiểm nhập.");
-        sohdEl?.focus();
-        return;
-      }
-
-      if (!ngay_kiem) {
-        alert("Chưa có ngày kiểm.");
-        ngayEl?.focus();
-        return;
-      }
-
-      if (!nhanvienkiem) {
-        alert("Chưa có nhân viên kiểm.");
-        return;
-      }
-
-      const state = getState();
-
-      if (!state.dsHoaDonNguon || state.dsHoaDonNguon.length === 0) {
-        alert("Bạn chưa nạp hóa đơn nguồn.");
-        return;
-      }
-
-      docLaiNhapTuBangHTML();
-      kiemTraPhieu();
-
-      const stateSauKiem = getState();
-
-      if (!stateSauKiem.nhap || Object.keys(stateSauKiem.nhap).length === 0) {
-        alert("Chưa có dữ liệu nhập để lưu.");
-        return;
-      }
-
-      const thongTinTong = xayDungDuLieuTongVaChiTietLech();
-
-      const sohdccn = (stateSauKiem.dsHoaDonNguon || []).join(" ; ");
-
-      const dsNhanVienXuat = Array.from(
-        new Set(
-          (stateSauKiem.dsHoaDonNguonInfo || [])
-            .map(x => String(x.tennv || x.manv || "").trim())
-            .filter(Boolean)
-        )
-      );
-
-      const nhanvienxuat = dsNhanVienXuat.join(" ; ");
-
-      const hdState = String(hdStateEl?.value || "").trim().toLowerCase();
-
-      const { data: tonTaiCu, error: errCheck } = await window.supabase
-        .from("kiem_nhap_kho")
-        .select("id, so_hd_kiemnhap")
-        .eq("so_hd_kiemnhap", so_hd_kiemnhap)
-        .maybeSingle();
-
-      if (errCheck) {
-        console.error("[kiem_nhap_kho] check ton tai error:", errCheck);
-        alert("Lỗi khi kiểm tra phiếu đã tồn tại.");
-        return;
-      }
-
-      // ===== PHIẾU MỚI =====
-      if (hdState !== "cu") {
-        if (tonTaiCu) {
-          alert("Số phiếu kiểm nhập này đã được lưu rồi.");
-          return;
-        }
-      }
-
-      // ===== PHIẾU CŨ =====
-      if (hdState === "cu") {
-        const okSua = confirm(`Bạn có chắc chắn muốn sửa phiếu cũ ${so_hd_kiemnhap} không?`);
-        if (!okSua) {
-          return;
+        if (error) {
+            console.error("[KTK] rpc xntnhanh error:", error);
+            alert("Lỗi khi lấy tồn máy từ xntnhanh.");
+            return false;
         }
 
-        await xoaDuLieuPhieuKiemNhapCu(so_hd_kiemnhap);
-      }
+        const xuatMap = {};
+        const xuatOrder = [];
 
-      const rowTong = {
-        so_hd_kiemnhap,
-        ngay_kiem,
-        nhanvienkiem,
-        sohdccn,
-        nhanvienxuat,
-        tu_co_so: CFG.fromBranch || "",
-        den_co_so: CFG.toBranch || "",
-        tong_so_mat_hang: thongTinTong.tong_so_mat_hang,
-        tong_so_luong_xuat: thongTinTong.tong_so_luong_xuat,
-        tong_so_luong_nhan: thongTinTong.tong_so_luong_nhan,
-        so_ma_lech: thongTinTong.so_ma_lech,
-        tong_sl_lech_thieu: thongTinTong.tong_sl_lech_thieu,
-        tong_sl_lech_thua: thongTinTong.tong_sl_lech_thua,
-        ket_qua_chung: thongTinTong.ket_qua_chung,
-        ghi_chu
-      };
+        (data || []).forEach((row) => {
+            const masp = normalizeMasp(row.masp);
+            const size = normalizeSize(row.size);
+            const sl = normalizeNumber(CFG.branch === "cs1" ? row.ton_cs1 : row.ton_cs2);
 
-      const { data: insertedTong, error: errTong } = await window.supabase
-        .from("kiem_nhap_kho")
-        .insert([rowTong])
-        .select()
-        .single();
+            if (!masp || !size || sl <= 0) return;
 
-      if (errTong) {
-        console.error("[kiem_nhap_kho] insert tong error:", errTong);
-        alert("Lỗi khi lưu bảng kiem_nhap_kho: " + (errTong.message || ""));
-        return;
-      }
+            if (!xuatOrder.includes(masp)) {
+                xuatOrder.push(masp);
+            }
 
-      const rowsChiTietHoaDon = buildChiTietHoaDonRows(
-        insertedTong.id,
-        so_hd_kiemnhap,
-        sohdccn,
-        ngay_kiem,
-        nhanvienkiem
-      );
+            const key = makeKey(masp, size);
+            if (!xuatMap[key]) {
+                xuatMap[key] = { masp, size, sl };
+            } else {
+                xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
+            }
+        });
 
-      if (rowsChiTietHoaDon.length > 0) {
-        const { error: errChiTietHoaDon } = await window.supabase
-          .from("kiem_nhap_kho_chi_tiet_hoa_don")
-          .insert(rowsChiTietHoaDon);
+        state.xuat = xuatMap;
+        state.xuatOrder = xuatOrder;
+        state.ketQua = {};
+        state.daKiemTra = false;
+        state.thoiDiemChotTon = new Date().toISOString();
 
-        if (errChiTietHoaDon) {
-          console.error("[kiem_nhap_kho_chi_tiet_hoa_don] insert error:", errChiTietHoaDon);
-          alert("Đã lưu bảng tổng nhưng lỗi khi lưu chi tiết hóa đơn: " + (errChiTietHoaDon.message || ""));
-          return;
+        renderBangKetQua();
+        capNhatThongKeDauTrang();
+
+        const ghichuEl = byId("ghichu_top");
+        if (ghichuEl && !String(ghichuEl.value || "").trim()) {
+            ghichuEl.value = `Kiểm tồn ${CFG.branch?.toUpperCase?.() || ""}`;
         }
-      }
 
-      if (thongTinTong.chiTietLech.length > 0) {
-        const rowsLech = thongTinTong.chiTietLech.map((row) => ({
-          kiem_nhap_id: insertedTong.id,
-          so_hd_kiemnhap,
-          sohdccn,
-          masp: row.masp,
-          tenhang: "",
-          size: row.size,
-          trangthai_nhan: row.trangthai_nhan,
-          sl_xuat: row.sl_xuat,
-          sl_nhan: row.sl_nhan,
-          sl_lech: row.sl_lech,
-          chi_tiet: row.chi_tiet,
-          ghi_chu: null
-        }));
-
-        const { error: errLech } = await window.supabase
-          .from("kiem_nhap_kho_chitiet_lech")
-          .insert(rowsLech);
-
-        if (errLech) {
-          console.error("[kiem_nhap_kho_chitiet_lech] insert error:", errLech);
-          alert("Đã lưu bảng tổng nhưng lỗi khi lưu chi tiết lệch: " + (errLech.message || ""));
-          return;
-        }
-      }
-
-      const ngayGioKiemText = formatDateTimeForKiemNhapKho(new Date());
-
-      await danhDauHoaDonNguonDaKiemNhap(
-        stateSauKiem.dsHoaDonNguon || [],
-        so_hd_kiemnhap,
-        ngayGioKiemText,
-        nhanvienkiem
-      );
-
-      alert(`Đã lưu phiếu kiểm nhập: ${so_hd_kiemnhap}`);
-      await resetPhieu();
-
-    } catch (err) {
-      console.error("[luuPhieuKiemNhapKho] exception:", err);
-      alert("Có lỗi khi lưu dữ liệu kiểm nhập kho.");
-    } finally {
-      window.dangLuuKiemNhapKho = false;
-    }
-  }
-
-  function bindButtons() {
-    const btnThem = byId("them");
-    if (btnThem) {
-      btnThem.addEventListener("click", async (e) => {
-        e.preventDefault();
-        await resetPhieu();
-      });
+        return true;
     }
 
-    const btnNapTheoMasp1 = byId("btnNapHoaDonCCNTheoMasp");
-    const btnNapTheoMasp2 = byId("btnNapHoaDonCCNTheoMasp_footer");
-    [btnNapTheoMasp1, btnNapTheoMasp2].forEach((btn) => {
-      if (!btn) return;
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        napHoaDonNguonTheoMasp();
-      });
-    });
+    async function napTonMayVaKiemTra() {
+        const ok = await napTonMayTheoDanhSachMasp();
+        if (!ok) return;
 
-    const btnNap1 = byId("btnNapHoaDonCCN");
-    const btnNap2 = byId("btnNapHoaDonCCN_footer");
-    [btnNap1, btnNap2].forEach((btn) => {
-      if (!btn) return;
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        napHoaDonNguonPlaceholder();
-      });
-    });
-
-    const btnKiem1 = byId("btnKiemTraPhieu");
-    const btnKiem2 = byId("btnKiemTraPhieu_footer");
-    [btnKiem1, btnKiem2].forEach((btn) => {
-      if (!btn) return;
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
         kiemTraPhieu();
-      });
-    });
 
-    const btnTaoPhieuCCN2V1 = byId("btnTaoPhieuCCN2V1");
-    if (btnTaoPhieuCCN2V1) {
-      btnTaoPhieuCCN2V1.addEventListener("click", (e) => {
-        e.preventDefault();
-        moTrangChuyenChiNhanhTheoDir("2v1");
-      });
-    }
+        const state = getState();
+        state.daKiemTra = true;
 
-    const btnTaoPhieuCCN1V2 = byId("btnTaoPhieuCCN1V2");
-    if (btnTaoPhieuCCN1V2) {
-      btnTaoPhieuCCN1V2.addEventListener("click", (e) => {
-        e.preventDefault();
-        moTrangChuyenChiNhanhTheoDir("1v2");
-      });
-    }
+        const nhapTongMap = getMapNhapTong();
+        const tkNhap = tinhThongKeTheoMap(nhapTongMap);
+        const tkXuat = tinhThongKeTheoMap(state.xuat || {});
+        const allMasps = Array.from(new Set([
+            ...Object.values(nhapTongMap || {}).map(x => normalizeMasp(x?.masp)).filter(Boolean),
+            ...Object.values(state.xuat || {}).map(x => normalizeMasp(x?.masp)).filter(Boolean)
+        ]));
 
-    // ===== NÚT QUAY LẠI =====
-    const btnPrev = byId("btnPrevPhieu");
-    if (btnPrev) {
-      btnPrev.addEventListener("click", async () => {
-        const sohdHienTai = byId("sohd")?.value || "";
-        const sohdTruoc = laySoPhieuLienTruoc(sohdHienTai);
+        let soOk = 0;
+        let soThieu = 0;
+        let soThua = 0;
+        let soLech = 0;
 
-        if (!sohdTruoc) return;
+        const nhapGroupMap = groupByMasp(nhapTongMap);
+        const xuatGroupMap = groupByMasp(state.xuat || {});
+        const ketQuaMap = state.ketQua || {};
 
-        await moLaiPhieuKiemNhapCu(sohdTruoc);
-      });
-    }
-
-    // ===== NÚT TIẾP THEO =====
-    const btnNext = byId("btnNextPhieu");
-    if (btnNext) {
-      btnNext.addEventListener("click", async () => {
-        const sohdHienTai = byId("sohd")?.value || "";
-        const sohdSau = laySoPhieuLienSau(sohdHienTai);
-
-        if (!sohdSau) return;
-
-        await moLaiPhieuKiemNhapCu(sohdSau);
-      });
-    }
-
-    const btnCopy = byId("btn-copy-nhap");
-    if (btnCopy) {
-      btnCopy.addEventListener("click", async (e) => {
-        e.preventDefault();
-        await copyDuLieuNhap();
-      });
-    }
-
-    const btnPaste = byId("btn-paste-nhap");
-    if (btnPaste) {
-      btnPaste.addEventListener("click", async (e) => {
-        e.preventDefault();
-        await pasteDuLieuNhap();
-      });
-    }
-
-    const btnSua = byId("sua");
-    if (btnSua) {
-      btnSua.addEventListener("click", (e) => {
-        e.preventDefault();
-        xoaDongDangChon();
-      });
-    }
-
-    bindRowSelection();
-  }
-
-  async function moLaiPhieuKiemNhapCu(soHdKiemNhap) {
-    if (!window.supabase) {
-      alert("Không tìm thấy kết nối Supabase.");
-      return;
-    }
-
-    const sohd = String(soHdKiemNhap || "").trim();
-    if (!sohd) {
-      alert("Chưa có số phiếu kiểm nhập.");
-      return;
-    }
-
-    const { data: phieuTong, error: errTong } = await window.supabase
-      .from("kiem_nhap_kho")
-      .select("*")
-      .eq("so_hd_kiemnhap", sohd)
-      .maybeSingle();
-
-    if (errTong) {
-      console.error(errTong);
-      alert("Lỗi khi đọc phiếu kiểm nhập.");
-      return;
-    }
-
-    if (!phieuTong) {
-      alert("Không tìm thấy phiếu kiểm nhập.");
-      return;
-    }
-
-    const { data: rows, error: errRows } = await window.supabase
-      .from("kiem_nhap_kho_chi_tiet_hoa_don")
-      .select("*")
-      .eq("so_hd_kiemnhap", sohd)
-      .order("sort_order", { ascending: true });
-
-    if (errRows) {
-      console.error(errRows);
-      alert("Lỗi khi đọc chi tiết hóa đơn.");
-      return;
-    }
-
-    const state = getState();
-    state.nhap = {};
-    state.xuat = {};
-    state.ketQua = {};
-    state.nhapOrder = [];
-    state.xuatOrder = [];
-    state.dsHoaDonNguon = String(phieuTong.sohdccn || "")
-      .split(";")
-      .map(x => String(x || "").trim())
-      .filter(Boolean);
-    state.dsHoaDonNguonInfo = [];
-
-    byId("sohd").value = phieuTong.so_hd_kiemnhap || "";
-    byId("ngay").value = phieuTong.ngay_kiem || "";
-    byId("ghichu_top").value = phieuTong.sohdccn || "";
-
-    const tennvEl = byId("tennv");
-    if (tennvEl) {
-      tennvEl.value = phieuTong.nhanvienkiem || "";
-    }
-
-    const hdState = byId("hd_state");
-    if (hdState) {
-      hdState.value = "cu";
-      hdState.setAttribute("data-state", "cu");
-    }
-
-
-    (rows || []).forEach((row) => {
-      const masp = normalizeMasp(row.masp_key || row.masp_nhap || row.masp_xuat);
-      if (masp) {
-        if (!state.nhapOrder.includes(masp)) state.nhapOrder.push(masp);
-        if (!state.xuatOrder.includes(masp)) state.xuatOrder.push(masp);
-      }
-
-      const nhapItems = parseSizeSlText(row.size_sl_nhap || "");
-      if (nhapItems.length > 0) {
-        nhapItems.forEach(item => {
-          const key = makeKey(masp, item.size);
-          state.nhap[key] = {
-            masp,
-            size: item.size,
-            sl: item.sl
-          };
+        allMasps.forEach((masp) => {
+            const kq = buildKetQuaTheoMasp(nhapGroupMap[masp], xuatGroupMap[masp], ketQuaMap);
+            const tt = String(kq?.trangthai || "").toUpperCase();
+            if (tt === "OK") soOk++;
+            else if (tt === "THIEU") soThieu++;
+            else if (tt === "THUA") soThua++;
+            else if (tt === "LECH") soLech++;
         });
-      } else if (normalizeNumber(row.tongsl_nhap) > 0) {
-        const key = makeKey(masp, "0");
-        state.nhap[key] = {
-          masp,
-          size: "0",
-          sl: normalizeNumber(row.tongsl_nhap)
-        };
-      }
 
-      const xuatItems = parseSizeSlText(row.size_sl_xuat || "");
-      if (xuatItems.length > 0) {
-        xuatItems.forEach(item => {
-          const key = makeKey(masp, item.size);
-          state.xuat[key] = {
-            masp,
-            size: item.size,
-            sl: item.sl,
-            sohd_list: []
-          };
-        });
-      } else if (normalizeNumber(row.tongsl_xuat) > 0) {
-        const key = makeKey(masp, "0");
-        state.xuat[key] = {
-          masp,
-          size: "0",
-          sl: normalizeNumber(row.tongsl_xuat),
-          sohd_list: []
-        };
-      }
-
-      ganSohdXuatCnChoStateXuat(masp, row.sohd_xuat_cn || "", state);
-    });
-
-    renderBangKetQua();
-    kiemTraPhieu();
-  }
-
-  // =========================
-  // API công khai
-  // =========================
-  window.NhapKiemKho = {
-    resetPhieu,
-    renderBangKetQua,
-    kiemTraPhieu,
-    themDongNhapBenTrai,
-    getState,
-    moTrangChuyenChiNhanhTheoDir,
-
-    luuPhieuKiemNhapKho,
-    copyDuLieuNhap,
-    pasteDuLieuNhap,
-    xoaDongDangChon,
-    moLaiPhieuKiemNhapCu,
-
-    setXuatData(dataMap, orderArr) {
-      const state = getState();
-      state.xuat = dataMap || {};
-      state.xuatOrder = Array.isArray(orderArr) ? orderArr.map(normalizeMasp).filter(Boolean) : [];
-      state.ketQua = {};
-      autoKiemTraSauNhap();
-    }
-  };
-
-  // =========================
-  // INIT
-  // =========================
-  async function init() {
-    updateTitle();
-    setDefaultBranchInfo();
-    bindInputEvents();
-    bindButtons();
-
-    // Mở khóa beep cho trình duyệt
-    setupBeepUnlockOnce(document);
-
-    // Không reset phiếu ngay theo kiểu ép số 00001 nữa
-    await khoiTaoSoPhieuBanDau();
-
-    await resetPhieu();
-
-    const hdStateEl = byId("hd_state");
-    const trangThai = String(hdStateEl?.value || "").trim().toLowerCase();
-
-    const state = getState();
-    const daCoDuLieuXuat = !!Object.keys(state?.xuat || {}).length;
-    const dangLaPhieuMoi = !trangThai || trangThai === "moi";
-
-    if (dangLaPhieuMoi && !daCoDuLieuXuat) {
-      setTimeout(async () => {
-        try {
-          await napHoaDonNguonPlaceholder();
-        } catch (err) {
-          console.warn("[AUTO NAP HOA DON NGUON] lỗi:", err);
+        const thongkeEl = byId("thongke_dautrang");
+        if (thongkeEl) {
+            thongkeEl.textContent = `Kiểm: ${tkNhap.soMa}/${tkNhap.tongSl} , Tồn máy: ${tkXuat.soMa}/${tkXuat.tongSl}`;
+            thongkeEl.title = `OK: ${soOk} | Thiếu: ${soThieu} | Thừa: ${soThua} | Lệch: ${soLech}`;
         }
-      }, 200);
     }
 
-    console.log("[nhapkiemkho] init OK", CFG);
-  }
+    // =========================
+    // NẠP HÓA ĐƠN NGUỒN
+    // Bản đầu: chưa query thật, chỉ placeholder
+    // =========================
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
+
+    function layDanhSachMaspDangNhap() {
+        const ds = Object.values(getMapNhapTong() || {})
+            .map(r => normalizeMasp(r.masp))
+            .filter(Boolean);
+
+        return [...new Set(ds)];
+    }
+
+    function focusVaBoiDenOmaSanPham() {
+        const maspEl = byId("masp");
+        if (!maspEl) return;
+
+        maspEl.focus();
+        setTimeout(() => {
+            try {
+                maspEl.select();
+            } catch (err) { }
+        }, 0);
+    }
+
+    function batDauNgay(dateObj) {
+        const d = new Date(dateObj);
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+
+    function truNgay(dateObj, soNgay) {
+        const d = new Date(dateObj);
+        d.setDate(d.getDate() - soNgay);
+        return d;
+    }
+
+    function toIsoLocal(dateObj) {
+        const d = new Date(dateObj);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mi = String(d.getMinutes()).padStart(2, "0");
+        const ss = String(d.getSeconds()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
+    }
+
+
+
+    function tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem = new Map()) {
+        const setNhap = new Set((dsMaspNhap || []).map(normalizeMasp).filter(Boolean));
+        const nhomCtTheoSoHd = {};
+
+        (ctRows || []).forEach((row) => {
+            const sohd = String(row.sohd || "").trim();
+            if (!sohd) return;
+            if (!nhomCtTheoSoHd[sohd]) nhomCtTheoSoHd[sohd] = [];
+            nhomCtTheoSoHd[sohd].push(row);
+        });
+
+        const ketQua = [];
+
+        (dsHd || []).forEach((hd) => {
+            const sohd = String(hd.sohd || "").trim();
+            if (!sohd) return;
+
+            const infoDaKiem = mapDaKiem.get(sohd);
+            if (infoDaKiem) return; // bỏ qua hóa đơn đã kiểm
+
+            const rows = nhomCtTheoSoHd[sohd] || [];
+            if (!rows.length) return;
+
+            const maspTrongHoaDon = [...new Set(
+                rows.map(r => normalizeMasp(r.masp)).filter(Boolean)
+            )];
+
+            const dsMaspTrung = maspTrongHoaDon.filter(masp => setNhap.has(masp));
+            const soMaTrung = dsMaspTrung.length;
+            if (soMaTrung <= 0) return;
+
+            const tongMaNhap = setNhap.size || 1;
+            const tongMaHoaDon = maspTrongHoaDon.length || 1;
+
+            const tyLeTheoNhap = soMaTrung / tongMaNhap;
+            const tyLeTheoHoaDon = soMaTrung / tongMaHoaDon;
+
+            const createdAt = hd.created_at || hd.ngay || null;
+            let diemThoiGian = 0;
+            if (createdAt) {
+                const t = new Date(createdAt).getTime();
+                if (Number.isFinite(t)) {
+                    const ageHours = Math.max(0, (Date.now() - t) / 3600000);
+                    diemThoiGian = Math.max(0, 10 - Math.min(10, ageHours / 3));
+                }
+            }
+
+            const score =
+                soMaTrung * 10 +
+                tyLeTheoNhap * 40 +
+                tyLeTheoHoaDon * 40 +
+                diemThoiGian;
+
+            const hdState = String(byId("hd_state")?.value || "").trim().toLowerCase();
+            const dangMoPhieuCuHoacSua = (hdState === "cu" || hdState === "sua" || hdState === "xem");
+
+            const dieuKienTrungCao =
+                soMaTrung >= 2 ||
+                tyLeTheoNhap >= 0.3 ||
+                tyLeTheoHoaDon >= 0.5;
+
+            const autoChecked =
+                dieuKienTrungCao &&
+                (
+                    !daKiem ||                           // phiếu mới: chưa kiểm thì tự tick như cũ
+                    (dangMoPhieuCuHoacSua && daKiem)    // phiếu cũ / sửa / xem: đã kiểm nhưng trùng cao thì cũng tự tick
+                );
+
+            ketQua.push({
+                sohd,
+                ngay: hd.ngay || null,
+                created_at: hd.created_at || null,
+                diadiem: String(hd.diadiem || "").trim(),
+                manv: String(hd.manv || "").trim(),
+                tennv: String(hd.tennv || "").trim(),
+                soMaTrung,
+                tongMaNhap,
+                tongMaHoaDon,
+                tyLeTheoNhap,
+                tyLeTheoHoaDon,
+                score,
+                dsMaspTrung,
+                daKiem,
+                infoDaKiem,
+                autoChecked
+            });
+        });
+
+        ketQua.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+        });
+
+        return ketQua;
+    }
+
+
+    function taoGhiChuPhieuChuyenTuKiemNhap() {
+        const state = getState();
+        const soHdKiemNhap = String(byId("sohd")?.value || "").trim();
+        const dsNguon = (state.dsHoaDonNguon || []).join(" ; ");
+
+        let note = `Phiếu được tạo từ nhập kiểm kho`;
+        if (soHdKiemNhap) note += ` - ${soHdKiemNhap}`;
+        if (dsNguon) note += ` | HĐ nguồn: ${dsNguon}`;
+
+        return note;
+    }
+
+    // =========================
+    // TAO PHIEU CCN2V1 TU HANG THUA
+    // =========================
+    function groupByMaspForTransfer(items) {
+        const out = {};
+
+        (items || []).forEach((row) => {
+            const masp = normalizeMasp(row.masp);
+            const size = normalizeSize(row.size);
+            const sl = normalizeNumber(row.sl);
+
+            if (!masp || !size || sl <= 0) return;
+
+            if (!out[masp]) {
+                out[masp] = {
+                    masp,
+                    items: []
+                };
+            }
+
+            out[masp].items.push({
+                size,
+                sl
+            });
+        });
+
+        return Object.values(out);
+    }
+
+    function layDanhSachHangThuaDeTaoCCN2V1() {
+        const thongTinTong = xayDungDuLieuTongVaChiTietLech();
+        const chiTietLech = thongTinTong?.chiTietLech || [];
+
+        const rowsThua = chiTietLech
+            .filter(row => String(row.trangthai_nhan || "").trim().toLowerCase() === "thua")
+            .map(row => ({
+                masp: normalizeMasp(row.masp),
+                size: normalizeSize(row.size || "0"),
+                sl: normalizeNumber(row.sl_lech || 0)
+            }))
+            .filter(row => row.masp && row.size && row.sl > 0);
+
+        return groupByMaspForTransfer(rowsThua);
+    }
+
+    function layDanhSachHangThieuDeTaoCCN1V2() {
+        const thongTinTong = xayDungDuLieuTongVaChiTietLech();
+        const chiTietLech = thongTinTong?.chiTietLech || [];
+        const state = getState();
+        const xuatMap = state.xuat || {};
+
+        const rowsThieu = [];
+
+        chiTietLech.forEach((row) => {
+            const trangthai = String(row.trangthai_nhan || "").trim().toLowerCase();
+            if (trangthai !== "thieu") return;
+
+            const masp = normalizeMasp(row.masp);
+            const size = normalizeSize(row.size || "0");
+            const sl = normalizeNumber(row.sl_lech || 0);
+
+            if (!masp || sl <= 0) return;
+
+            // Nếu đã có size thật thì dùng luôn
+            if (size && size !== "0") {
+                rowsThieu.push({
+                    masp,
+                    size,
+                    sl
+                });
+                return;
+            }
+
+            // Nếu size = 0, nghĩa là trường hợp nhập trống / kiểm tổng
+            // -> bung ra toàn bộ size thật từ dữ liệu xuất nguồn của mã đó
+            const xuatRowsTheoMasp = Object.values(xuatMap)
+                .filter(r => normalizeMasp(r?.masp) === masp)
+                .map(r => ({
+                    masp,
+                    size: normalizeSize(r?.size || "0"),
+                    sl: normalizeNumber(r?.sl || 0)
+                }))
+                .filter(r => r.masp && r.size && r.size !== "0" && r.sl > 0);
+
+            if (xuatRowsTheoMasp.length > 0) {
+                xuatRowsTheoMasp.forEach(r => rowsThieu.push(r));
+                return;
+            }
+
+            // Nếu vẫn không có size thật thì mới giữ 0 như cũ
+            rowsThieu.push({
+                masp,
+                size,
+                sl
+            });
+        });
+
+        return groupByMaspForTransfer(rowsThieu);
+    }
+
+    function taoPayloadCCN1V2TuKiemNhap() {
+        const state = getState();
+        const items = layDanhSachHangThieuDeTaoCCN1V2();
+
+        if (!items || items.length === 0) return null;
+
+        return {
+            dir: "1v2",
+            source: "kiem_nhap_kho",
+            created_at: new Date().toISOString(),
+            so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
+            ds_hoa_don_nguon: state.dsHoaDonNguon || [],
+            note: taoGhiChuPhieuChuyenTuKiemNhap(),
+            items
+        };
+    }
+
+    function moTrangCCN1V2TuHangThieu() {
+        docLaiNhapTuBangHTML();
+        kiemTraPhieu();
+
+        const payload = taoPayloadCCN1V2TuKiemNhap();
+
+        if (!payload) {
+            phatAmThanhLoi();
+            alert("Không có mã sản phẩm thiếu để tạo phiếu CCN1V2.");
+            return;
+        }
+
+        try {
+            localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+        } catch (err) {
+            console.error("[KNK] Lỗi lưu ccn_prefill_payload:", err);
+            alert("Không lưu được dữ liệu tạm để chuyển sang trang CCN1V2.");
+            return;
+        }
+
+        const url = "https://banle-js.vercel.app/ccn1v2cs1.html";
+        const newTab = window.open(url);
+
+        if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
+            // mobile bị chặn popup → chuyển luôn
+            window.location.href = url;
+        }
+
+        // alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thiếu.`);
+    }
+
+    function taoPayloadCCN2V1TuKiemNhap() {
+        const state = getState();
+        const items = layDanhSachHangThuaDeTaoCCN2V1();
+
+        if (!items || items.length === 0) return null;
+
+        return {
+            dir: "2v1",
+            source: "kiem_nhap_kho",
+            created_at: new Date().toISOString(),
+            so_hd_kiemnhap: String(byId("sohd")?.value || "").trim(),
+            ds_hoa_don_nguon: state.dsHoaDonNguon || [],
+            note: taoGhiChuPhieuChuyenTuKiemNhap(),
+            items
+        };
+    }
+
+    function moTrangCCN2V1TuHangThua() {
+        docLaiNhapTuBangHTML();
+        kiemTraPhieu();
+
+        const payload = taoPayloadCCN2V1TuKiemNhap();
+        console.log("[KNK] payload CCN2V1 =", payload);
+
+        if (!payload) {
+            phatAmThanhLoi();
+            alert("Không có mã sản phẩm thừa để tạo phiếu CCN2V1.");
+            return;
+        }
+
+        try {
+            localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+        } catch (err) {
+            console.error("[KNK] Lỗi lưu ccn_prefill_payload:", err);
+            alert("Không lưu được dữ liệu tạm để chuyển sang trang CCN2V1.");
+            return;
+        }
+
+        const url = "https://banle-js.vercel.app/ccn2v1cs2.html";
+
+        const newTab = window.open(url);
+
+        if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
+            // mobile bị chặn popup → chuyển luôn
+            window.location.href = url;
+        }
+
+        // alert(`Đã tạo dữ liệu chuyển cho ${payload.items.length} mã hàng thừa.`);
+    }
+
+    // =========================
+    // CHON DONG / COPY / PASTE / XOA DONG
+    // =========================
+    function chonDongTheoMasp(masp) {
+        const state = getState();
+        state.selectedMasp = normalizeMasp(masp);
+        renderBangKetQua();
+    }
+
+    function bindRowSelection() {
+        const tbody = document.querySelector("#bangketqua tbody");
+        if (!tbody || tbody.dataset.rowSelectBound === "1") return;
+
+        tbody.dataset.rowSelectBound = "1";
+
+        tbody.addEventListener("click", (e) => {
+            const tr = e.target.closest("tr");
+            if (!tr) return;
+
+            // Nếu click vào ô cho phép sửa trực tiếp thì KHÔNG render lại
+            if (
+                e.target.closest(".cell-nhap-sizesl") ||
+                e.target.closest(".cell-baymau-sizesl")
+            ) {
+                return;
+            }
+
+            // Trước khi chọn dòng khác, luôn đồng bộ dữ liệu đang sửa từ DOM vào state
+            docLaiNhapTuBangHTML();
+
+            const masp = normalizeMasp(tr.dataset.masp || "");
+            if (!masp) return;
+
+            chonDongTheoMasp(masp);
+        });
+    }
+
+    function suaDongDangChon() {
+        docLaiNhapTuBangHTML();
+
+        const state = getState();
+        const masp = normalizeMasp(state.selectedMasp || "");
+
+        if (!masp) {
+            alert("Bạn chưa chọn dòng cần sửa.");
+            return;
+        }
+
+        // Xóa toàn bộ dữ liệu kiểm bên trái của mã đang chọn
+        Object.keys(state.nhap || {}).forEach((key) => {
+            const row = state.nhap[key];
+            if (normalizeMasp(row?.masp) === masp) {
+                delete state.nhap[key];
+            }
+        });
+
+        Object.keys(state.bayMau || {}).forEach((key) => {
+            const row = state.bayMau[key];
+            if (normalizeMasp(row?.masp) === masp) {
+                delete state.bayMau[key];
+            }
+        });
+
+        // Xóa kết quả kiểm liên quan đến mã đó
+        Object.keys(state.ketQua || {}).forEach((key) => {
+            const info = splitKey(key);
+            if (normalizeMasp(info.masp) === masp) {
+                delete state.ketQua[key];
+            }
+        });
+
+        // Giữ mã đó lên ô nhập để nhập lại nhanh
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
+
+        if (maspEl) maspEl.value = masp;
+        if (sizeEl) sizeEl.value = "";
+        if (slEl) slEl.value = "1";
+
+        state.selectedMasp = "";
+        renderBangKetQua();
+
+        if (maspEl) {
+            maspEl.focus();
+            setTimeout(() => {
+                try {
+                    maspEl.select();
+                } catch (err) { }
+            }, 0);
+        }
+    }
+
+    async function copyDuLieuNhap() {
+        try {
+            docLaiNhapTuBangHTML();
+
+            const tbody = document.querySelector("#bangketqua tbody");
+            if (!tbody) {
+                alert("Không tìm thấy bảng kết quả.");
+                return;
+            }
+
+            const rows = Array.from(tbody.querySelectorAll("tr"));
+            if (rows.length === 0) {
+                alert("Không có dữ liệu để copy.");
+                return;
+            }
+
+            const lines = rows.map((tr) => {
+                const col1 = String(tr.children[0]?.innerText || "").trim(); // mã hàng
+
+                const col2 = String(tr.children[1]?.innerText || "")         // kho
+                    .replace(/\r/g, "")
+                    .replace(/\n+/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+                const col3 = String(tr.children[2]?.innerText || "")         // mẫu
+                    .replace(/\r/g, "")
+                    .replace(/\n+/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+                const col4 = String(tr.children[3]?.innerText || "").trim(); // tổng SL
+
+                return [col1, col2, col3, col4].join("\t");
+            }).filter(Boolean);
+
+            const text = lines.join("\n");
+            await navigator.clipboard.writeText(text);
+
+            alert(`Đã copy ${lines.length} dòng dữ liệu phần nhập.`);
+        } catch (err) {
+            console.error("[KNK] copyDuLieuNhap error:", err);
+            alert("Không copy được dữ liệu.");
+        }
+    }
+
+    function parseClipboardToNhapMap(text) {
+        const lines = String(text || "")
+            .replace(/\r/g, "")
+            .split("\n")
+            .map(x => x.trim())
+            .filter(Boolean);
+
+        const nhapMoi = {};
+        const bayMauMoi = {};
+
+        for (const line of lines) {
+            const cols = line.split("\t");
+
+            const masp = normalizeMasp(cols[0] || "");
+            const khoText = String(cols[1] || "").trim();
+            const bayMauText = String(cols[2] || "").trim();
+            const tongSlText = String(cols[3] || "").trim();
+
+            if (!masp) continue;
+
+            const khoItems = parseSizeSlText(khoText);
+            const bayMauItems = parseSizeSlText(bayMauText);
+            const tongSl = normalizeNumber(tongSlText);
+
+            // 1) nạp kho
+            if (hasRealSizeItems(khoItems)) {
+                khoItems.forEach((item) => {
+                    const key = makeKey(masp, item.size);
+                    nhapMoi[key] = {
+                        masp,
+                        size: item.size,
+                        sl: item.sl
+                    };
+                });
+            }
+
+            // 2) nạp mẫu
+            if (hasRealSizeItems(bayMauItems)) {
+                bayMauItems.forEach((item) => {
+                    const key = makeKey(masp, item.size);
+                    bayMauMoi[key] = {
+                        masp,
+                        size: item.size,
+                        sl: item.sl
+                    };
+                });
+            }
+
+            // 3) fallback cho kiểu cũ: chỉ có mã + kho + tổng, chưa có mẫu
+            if (!hasRealSizeItems(khoItems) && !hasRealSizeItems(bayMauItems) && tongSl > 0) {
+                const key = makeKey(masp, "0");
+                nhapMoi[key] = {
+                    masp,
+                    size: "0",
+                    sl: tongSl
+                };
+            }
+        }
+
+        return { nhapMoi, bayMauMoi };
+    }
+
+    async function pasteDuLieuNhap() {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (!String(text || "").trim()) {
+                alert("Clipboard đang trống.");
+                return;
+            }
+
+            const { nhapMoi, bayMauMoi } = parseClipboardToNhapMap(text);
+
+            const soDong =
+                new Set([
+                    ...Object.values(nhapMoi).map(x => normalizeMasp(x.masp)),
+                    ...Object.values(bayMauMoi).map(x => normalizeMasp(x.masp))
+                ]).size;
+
+            if (soDong === 0) {
+                alert("Dữ liệu dán không hợp lệ.");
+                return;
+            }
+
+            const ok = confirm("Dán dữ liệu sẽ thay toàn bộ phần nhập hiện tại. Bạn có muốn tiếp tục không?");
+            if (!ok) return;
+
+            const state = getState();
+            state.nhap = nhapMoi;
+            state.bayMau = bayMauMoi;
+            state.ketQua = {};
+            state.selectedMasp = "";
+
+            state.nhapOrder = [...new Set([
+                ...Object.values(nhapMoi).map(x => normalizeMasp(x.masp)),
+                ...Object.values(bayMauMoi).map(x => normalizeMasp(x.masp))
+            ])];
+
+            renderBangKetQua();
+            alert(`Đã dán ${soDong} dòng dữ liệu nhập.`);
+        } catch (err) {
+            console.error("[KNK] pasteDuLieuNhap error:", err);
+            alert("Không đọc được dữ liệu từ clipboard.");
+        }
+    }
+
+    function xoaDongDangChon() {
+        docLaiNhapTuBangHTML();
+
+        const state = getState();
+        const masp = normalizeMasp(state.selectedMasp || "");
+
+        if (!masp) {
+            alert("Bạn chưa chọn dòng cần xóa.");
+            return;
+        }
+
+        // const ok = confirm(`Bạn có chắc muốn xóa dòng mã hàng: ${masp} ?`); 
+        // if (!ok) return;
+
+        Object.keys(state.nhap || {}).forEach((key) => {
+            const row = state.nhap[key];
+            if (normalizeMasp(row?.masp) === masp) {
+                delete state.nhap[key];
+            }
+        });
+
+        Object.keys(state.bayMau || {}).forEach((key) => {
+            const row = state.bayMau[key];
+            if (normalizeMasp(row?.masp) === masp) {
+                delete state.bayMau[key];
+            }
+        });
+
+        Object.keys(state.ketQua || {}).forEach((key) => {
+            const info = splitKey(key);
+            if (normalizeMasp(info.masp) === masp) {
+                delete state.ketQua[key];
+            }
+        });
+
+        state.selectedMasp = "";
+        renderBangKetQua();
+
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
+
+        if (maspEl) {
+            maspEl.value = masp;
+            maspEl.focus();
+
+            setTimeout(() => {
+                try {
+                    maspEl.select();
+                } catch (err) { }
+            }, 0);
+        }
+
+        if (sizeEl) sizeEl.value = "";
+        if (slEl) slEl.value = "1";
+
+        hideSizePopup();
+    }
+
+    // =========================
+    // BUTTONS
+    // =========================
+
+    // =========================
+    // SAVE KIEM NHAP KHO
+    // =========================
+
+    function tinhTongSoLuongTheoMap(mapObj) {
+        return Object.values(mapObj || {}).reduce((sum, row) => {
+            return sum + normalizeNumber(row?.sl || 0);
+        }, 0);
+    }
+
+    function groupRowsByMasp(mapObj) {
+        const out = {};
+
+        Object.keys(mapObj || {}).forEach((key) => {
+            const row = mapObj[key];
+            if (!row) return;
+
+            const masp = normalizeMasp(row.masp);
+            const size = normalizeSize(row.size);
+            const sl = normalizeNumber(row.sl);
+
+            if (!masp) return;
+
+            if (!out[masp]) {
+                out[masp] = [];
+            }
+
+            out[masp].push({
+                masp,
+                size,
+                sl,
+                key
+            });
+        });
+
+        return out;
+    }
+
+    function tinhTongTheoMasp(groupMap) {
+        const out = {};
+        Object.keys(groupMap || {}).forEach((masp) => {
+            out[masp] = (groupMap[masp] || []).reduce((sum, row) => sum + normalizeNumber(row.sl), 0);
+        });
+        return out;
+    }
+
+    function xayDungDuLieuTongVaChiTietLech() {
+        const state = getState();
+        const nhapMap = getMapNhapTong();
+        const xuatMap = state.xuat || {};
+        const ketQuaMap = state.ketQua || {};
+
+        const nhapGroup = groupRowsByMasp(nhapMap);
+        const xuatGroup = groupRowsByMasp(xuatMap);
+
+        const tongNhapTheoMasp = tinhTongTheoMasp(nhapGroup);
+        const tongXuatTheoMasp = tinhTongTheoMasp(xuatGroup);
+
+        const allMasps = Array.from(new Set([
+            ...Object.keys(nhapGroup),
+            ...Object.keys(xuatGroup)
+        ])).sort();
+
+        const chiTietLech = [];
+        let tongSlLechThieu = 0;
+        let tongSlLechThua = 0;
+
+        for (const masp of allMasps) {
+            const nhapRows = nhapGroup[masp] || [];
+            const xuatRows = xuatGroup[masp] || [];
+
+            const hasRealSizeNhap = nhapRows.some(r => {
+                const s = normalizeSize(r.size);
+                return s && s !== "0";
+            });
+
+            if (hasRealSizeNhap) {
+                const allKeys = new Set([
+                    ...nhapRows.map(r => r.key),
+                    ...xuatRows.map(r => r.key)
+                ]);
+
+                for (const key of allKeys) {
+                    const kq = ketQuaMap[key];
+                    if (!kq || kq.trangthai === "OK") continue;
+
+                    const nhap = nhapMap[key];
+                    const xuat = xuatMap[key];
+
+                    const slNhap = normalizeNumber(nhap?.sl || 0);
+                    const slXuat = normalizeNumber(xuat?.sl || 0);
+                    const slLech = Math.abs(slNhap - slXuat);
+                    const size = splitKey(key).size || "0";
+
+                    let trangthai_nhan = "lech";
+                    if (kq.trangthai === "THIEU") {
+                        trangthai_nhan = "thieu";
+                        tongSlLechThieu += slLech;
+                    } else if (kq.trangthai === "THUA") {
+                        trangthai_nhan = "thua";
+                        tongSlLechThua += slLech;
+                    }
+
+                    chiTietLech.push({
+                        masp,
+                        size,
+                        trangthai_nhan,
+                        sl_xuat: slXuat,
+                        sl_nhan: slNhap,
+                        sl_lech: slLech,
+                        chi_tiet: `${slNhap}/${slXuat}`
+                    });
+                }
+            } else {
+                const keyTong = makeKey(masp, "0");
+                const kq = ketQuaMap[keyTong];
+                if (!kq || kq.trangthai === "OK") continue;
+
+                const slNhap = normalizeNumber(tongNhapTheoMasp[masp] || 0);
+                const slXuat = normalizeNumber(tongXuatTheoMasp[masp] || 0);
+                const slLech = Math.abs(slNhap - slXuat);
+
+                let trangthai_nhan = "lech";
+                if (kq.trangthai === "THIEU") {
+                    trangthai_nhan = "thieu";
+                    tongSlLechThieu += slLech;
+                } else if (kq.trangthai === "THUA") {
+                    trangthai_nhan = "thua";
+                    tongSlLechThua += slLech;
+                }
+
+                chiTietLech.push({
+                    masp,
+                    size: "0",
+                    trangthai_nhan,
+                    sl_xuat: slXuat,
+                    sl_nhan: slNhap,
+                    sl_lech: slLech,
+                    chi_tiet: `${slNhap}/${slXuat}`
+                });
+            }
+        }
+
+        return {
+            tong_so_mat_hang: allMasps.length,
+            tong_so_luong_xuat: tinhTongSoLuongTheoMap(xuatMap),
+            tong_so_luong_nhan: tinhTongSoLuongTheoMap(nhapMap),
+            so_ma_lech: chiTietLech.length,
+            tong_sl_lech_thieu: tongSlLechThieu,
+            tong_sl_lech_thua: tongSlLechThua,
+            ket_qua_chung: chiTietLech.length > 0 ? "lech" : "ok",
+            chiTietLech
+        };
+    }
+
+    function buildChiTietKiemTonRows(so_phieu, diadiem) {
+        const state = getState();
+        const nhapKhoMap = state.nhap || {};
+        const bayMauMap = state.bayMau || {};
+        const nhapTongMap = getMapNhapTong();
+        const xuatMap = state.xuat || {};
+        const ketQuaMap = state.ketQua || {};
+
+        const nhapKhoGroupMap = groupByMasp(nhapKhoMap);
+        const bayMauGroupMap = groupByMasp(bayMauMap);
+        const nhapTongGroupMap = groupByMasp(nhapTongMap);
+        const xuatGroupMap = groupByMasp(xuatMap);
+
+        const allMasps = Array.from(
+            new Set([
+                ...Object.keys(nhapTongGroupMap),
+                ...Object.keys(xuatGroupMap)
+            ])
+        );
+
+        const orderedMasps = buildOrderedMasps(nhapTongGroupMap, xuatGroupMap, state);
+
+        return orderedMasps.map((masp, index) => {
+            const nhapKhoGroup = nhapKhoGroupMap[masp];
+            const bayMauGroup = bayMauGroupMap[masp];
+            const nhapTongGroup = nhapTongGroupMap[masp];
+            const xuatGroup = xuatGroupMap[masp];
+            const kqTong = buildKetQuaTheoMasp(nhapTongGroup, xuatGroup, ketQuaMap);
+
+            return {
+                so_phieu,
+                stt: index + 1,
+                diadiem,
+                masp,
+                tensp: "",
+                size_kiem: formatSizeSl(nhapTongGroup?.items || []) || "",
+                tong_sl_kiem: tongSoLuong(nhapTongGroup?.items || []) || 0,
+
+                size_kiem_kho: formatSizeSl(nhapKhoGroup?.items || []) || "",
+                tong_sl_kiem_kho: tongSoLuong(nhapKhoGroup?.items || []) || 0,
+
+                size_kiem_bay_mau: formatSizeSl(bayMauGroup?.items || []) || "",
+                tong_sl_kiem_bay_mau: tongSoLuong(bayMauGroup?.items || []) || 0,
+
+                size_ton_may: formatSizeSl(xuatGroup?.items || []) || "",
+                tong_sl_ton_may: tongSoLuong(xuatGroup?.items || []) || 0,
+                trang_thai: String(kqTong?.trangthai || "OK").toUpperCase(),
+                chi_tiet_chenh_lech: kqTong?.chitiet || "",
+
+                du_lieu_kiem_json: nhapTongGroup?.items || [],
+                du_lieu_kiem_kho_json: nhapKhoGroup?.items || [],
+                du_lieu_kiem_bay_mau_json: bayMauGroup?.items || [],
+
+                du_lieu_ton_json: xuatGroup?.items || []
+            };
+        });
+    }
+
+    async function luuPhieuKiemTonKho() {
+        try {
+            if (!window.supabase) {
+                alert("Không tìm thấy kết nối Supabase.");
+                return;
+            }
+
+            if (window.dangLuuKiemTonKho) return;
+            window.dangLuuKiemTonKho = true;
+
+            const sohdEl = byId("sohd");
+            const ngayEl = byId("ngay");
+            const tennvEl = byId("tennv");
+            const ghichuEl = byId("ghichu_top");
+
+            const so_phieu = String(sohdEl?.value || "").trim();
+            const ngay_ct = String(ngayEl?.value || "").trim();
+            const ten_nguoi_kiem = String(tennvEl?.value || "").trim();
+            const ghi_chu = String(ghichuEl?.value || "").trim();
+            const diadiem = String(CFG.branch || byId("diadiem")?.value || "").trim();
+
+            if (!so_phieu) {
+                alert("Chưa có số phiếu kiểm tồn.");
+                sohdEl?.focus();
+                return;
+            }
+
+            if (!ngay_ct) {
+                alert("Chưa có ngày kiểm.");
+                ngayEl?.focus();
+                return;
+            }
+
+            if (!ten_nguoi_kiem) {
+                alert("Chưa có nhân viên kiểm.");
+                return;
+            }
+
+            docLaiNhapTuBangHTML();
+
+            const state = getState();
+
+            if (!state.nhap || Object.keys(state.nhap).length === 0) {
+                alert("Chưa có dữ liệu kiểm để lưu.");
+                return;
+            }
+
+            // Tự động kiểm tra trước khi lưu
+            await napTonMayVaKiemTra();
+
+            if (!state.daKiemTra) {
+                alert("Bạn phải bấm KIỂM TRA trước khi lưu.");
+                return;
+            }
+
+            if (!state.xuat || Object.keys(state.xuat).length === 0) {
+                alert("Chưa có dữ liệu tồn máy. Hãy bấm KIỂM TRA lại.");
+                return;
+            }
+
+            const { data: tonTaiCu, error: errCheck } = await window.supabase
+                .from("kiem_ton_kho")
+                .select("id, so_phieu")
+                .eq("so_phieu", so_phieu)
+                .maybeSingle();
+
+            if (errCheck) {
+                console.error("[kiem_ton_kho] check ton tai error:", errCheck);
+                alert("Lỗi khi kiểm tra phiếu đã tồn tại.");
+                return;
+            }
+
+            const thongTinTong = xayDungDuLieuTongVaChiTietLech();
+            const rowsChiTiet = buildChiTietKiemTonRows(so_phieu, diadiem);
+
+            const so_dong_ok = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "OK").length;
+            const so_dong_thieu = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "THIEU").length;
+            const so_dong_thua = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "THUA").length;
+            const so_dong_lech = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "LECH").length;
+
+            const rowTong = {
+                so_phieu,
+                ngay_ct,
+                thoi_diem_kiem: new Date().toISOString(),
+                thoi_diem_chot_ton: state.thoiDiemChotTon || new Date().toISOString(),
+                diadiem,
+                nguoi_kiem: String(byId("manv")?.value || "").trim(),
+                ten_nguoi_kiem: ten_nguoi_kiem,
+                ghi_chu,
+                tong_masp: thongTinTong.tong_so_mat_hang || 0,
+                tong_sl_kiem: thongTinTong.tong_so_luong_nhan || 0,
+                tong_sl_ton_may: thongTinTong.tong_so_luong_xuat || 0,
+                tong_sl_lech_thieu: thongTinTong.tong_sl_lech_thieu || 0,
+                tong_sl_lech_thua: thongTinTong.tong_sl_lech_thua || 0,
+                so_dong_ok,
+                so_dong_thieu,
+                so_dong_thua,
+                so_dong_lech
+            };
+
+            if (tonTaiCu) {
+                const okSua = confirm(`Bạn có chắc chắn sửa phiếu cũ này không?\n\nSố phiếu: ${so_phieu}`);
+
+                if (!okSua) {
+                    return;
+                }
+
+                const { error: rpcError } = await window.supabase.rpc("rpc_update_kiem_ton_kho", {
+                    p_so_phieu: so_phieu,
+                    p_row_tong: rowTong,
+                    p_rows_chi_tiet: rowsChiTiet
+                });
+
+                if (rpcError) {
+                    console.error("[KTK] rpc_update_kiem_ton_kho error:", rpcError);
+                    alert("Lỗi khi cập nhật phiếu kiểm tồn cũ.");
+                    return;
+                }
+
+                const hdStateEl = byId("hd_state");
+                if (hdStateEl) {
+                    hdStateEl.value = "xem";
+                    hdStateEl.setAttribute("data-state", "xem");
+                }
+
+                alert(`Đã cập nhật phiếu cũ: ${so_phieu}`);
+                return;
+            }
+
+            const { error: errTong } = await window.supabase
+                .from("kiem_ton_kho")
+                .insert([rowTong]);
+
+            if (errTong) {
+                console.error("[kiem_ton_kho] insert tong error:", errTong);
+                alert("Lỗi khi lưu bảng kiem_ton_kho: " + (errTong.message || ""));
+                return;
+            }
+
+            if (rowsChiTiet.length > 0) {
+                const { error: errCt } = await window.supabase
+                    .from("ct_kiem_ton_kho")
+                    .insert(rowsChiTiet);
+
+                if (errCt) {
+                    console.error("[ct_kiem_ton_kho] insert error:", errCt);
+                    alert("Đã lưu bảng tổng nhưng lỗi khi lưu chi tiết kiểm tồn: " + (errCt.message || ""));
+                    return;
+                }
+            }
+
+            alert(`Đã lưu phiếu kiểm tồn: ${so_phieu}`);
+            await resetPhieu();
+
+        } catch (err) {
+            console.error("[luuPhieuKiemTonKho] exception:", err);
+            alert("Có lỗi khi lưu dữ liệu kiểm tồn kho.");
+        } finally {
+            window.dangLuuKiemTonKho = false;
+        }
+    }
+
+    function bindButtons() {
+        const btnThem = byId("them");
+        if (btnThem) {
+            btnThem.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await resetPhieu();
+            });
+        }
+
+        const btnKiemTra = byId("btnKiemTraPhieu_footer");
+        if (btnKiemTra) {
+            btnKiemTra.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await napTonMayVaKiemTra();
+            });
+        }
+
+        const btnPhieuTruoc = byId("btn-phieu-truoc");
+        if (btnPhieuTruoc) {
+            btnPhieuTruoc.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await moPhieuTruoc();
+            });
+        }
+
+        const btnPhieuSau = byId("btn-phieu-sau");
+        if (btnPhieuSau) {
+            btnPhieuSau.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await moPhieuSau();
+            });
+        }
+
+        const btnCopy = byId("btn-copy-nhap");
+        if (btnCopy) {
+            btnCopy.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await copyDuLieuNhap();
+            });
+        }
+
+        const btnPaste = byId("btn-paste-nhap");
+        if (btnPaste) {
+            btnPaste.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await pasteDuLieuNhap();
+            });
+        }
+
+        const btnSua = byId("sua");
+        if (btnSua) {
+            btnSua.addEventListener("click", async (e) => {
+                e.preventDefault();
+                suaDongDangChon();
+            });
+        }
+
+        const btnThuaNhapKiem = byId("btnThuaNhapKiem");
+        if (btnThuaNhapKiem) {
+            btnThuaNhapKiem.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await taoPhieuDieuChinhKiem("nhap");
+            });
+        }
+
+        const btnThieuXuatKiem = byId("btnThieuXuatKiem");
+        if (btnThieuXuatKiem) {
+            btnThieuXuatKiem.addEventListener("click", async (e) => {
+                e.preventDefault();
+                await taoPhieuDieuChinhKiem("xuat");
+            });
+        }
+
+        byId("btnLayBayMau")?.addEventListener("click", async () => {
+            await layBayMauTuGoogleSheet();
+        });
+
+        byId("btnLayKiemKho")?.addEventListener("click", async () => {
+            await layKiemKhoTuGoogleSheet();
+        });
+
+    }
+
+    async function moLaiPhieuKiemTonCu(soPhieu) {
+        if (!window.supabase) {
+            alert("Không tìm thấy kết nối Supabase.");
+            return;
+        }
+
+        const sohd = String(soPhieu || "").trim();
+        if (!sohd) {
+            alert("Chưa có số phiếu kiểm tồn.");
+            return;
+        }
+
+        const { data: phieuTong, error: errTong } = await window.supabase
+            .from("kiem_ton_kho")
+            .select("*")
+            .eq("so_phieu", sohd)
+            .maybeSingle();
+
+        if (errTong) {
+            console.error(errTong);
+            alert("Lỗi khi đọc phiếu kiểm tồn.");
+            return;
+        }
+
+        if (!phieuTong) {
+            alert("Không tìm thấy phiếu kiểm tồn.");
+            return;
+        }
+
+        const { data: rows, error: errRows } = await window.supabase
+            .from("ct_kiem_ton_kho")
+            .select("*")
+            .eq("so_phieu", sohd)
+            .order("stt", { ascending: true });
+
+        if (errRows) {
+            console.error(errRows);
+            alert("Lỗi khi đọc chi tiết phiếu kiểm tồn.");
+            return;
+        }
+
+        const state = getState();
+        state.nhap = {};
+        state.xuat = {};
+        state.ketQua = {};
+        state.nhapOrder = [];
+        state.xuatOrder = [];
+        state.daKiemTra = false;
+        state.thoiDiemChotTon = phieuTong.thoi_diem_chot_ton || null;
+
+        byId("sohd").value = phieuTong.so_phieu || "";
+        byId("ngay").value = phieuTong.ngay_ct || "";
+        byId("ghichu_top").value = phieuTong.ghi_chu || "";
+
+        const tennvEl = byId("tennv");
+        if (tennvEl) tennvEl.value = phieuTong.ten_nguoi_kiem || "";
+
+        const manvEl = byId("manv");
+        if (manvEl) manvEl.value = phieuTong.nguoi_kiem || "";
+
+        const hdState = byId("hd_state");
+        if (hdState) {
+            hdState.value = "xem";
+            hdState.setAttribute("data-state", "xem");
+        }
+
+        (rows || []).forEach((row) => {
+            const masp = normalizeMasp(row.masp);
+            if (masp) {
+                if (!state.nhapOrder.includes(masp)) state.nhapOrder.push(masp);
+                if (!state.xuatOrder.includes(masp)) state.xuatOrder.push(masp);
+            }
+
+            const khoItems =
+                Array.isArray(row.du_lieu_kiem_kho_json) && row.du_lieu_kiem_kho_json.length
+                    ? row.du_lieu_kiem_kho_json
+                    : parseSizeSlText(row.size_kiem_kho || "");
+
+            const bayMauItems =
+                Array.isArray(row.du_lieu_kiem_bay_mau_json) && row.du_lieu_kiem_bay_mau_json.length
+                    ? row.du_lieu_kiem_bay_mau_json
+                    : parseSizeSlText(row.size_kiem_bay_mau || "");
+
+            // fallback cho phiếu cũ chưa có dữ liệu tách kho / mẫu  moi2
+            const tongItemsFallback =
+                (!khoItems.length && !bayMauItems.length)
+                    ? (Array.isArray(row.du_lieu_kiem_json) && row.du_lieu_kiem_json.length
+                        ? row.du_lieu_kiem_json
+                        : parseSizeSlText(row.size_kiem || ""))
+                    : [];
+
+            khoItems.forEach(item => {
+                const key = makeKey(masp, item.size);
+                state.nhap[key] = {
+                    masp,
+                    size: item.size,
+                    sl: item.sl
+                };
+            });
+
+            bayMauItems.forEach(item => {
+                const key = makeKey(masp, item.size);
+                state.bayMau[key] = {
+                    masp,
+                    size: item.size,
+                    sl: item.sl
+                };
+            });
+
+            tongItemsFallback.forEach(item => {
+                const key = makeKey(masp, item.size);
+                state.nhap[key] = {
+                    masp,
+                    size: item.size,
+                    sl: item.sl
+                };
+            });
+
+            const xuatItems = parseSizeSlText(row.size_ton_may || "");
+            xuatItems.forEach(item => {
+                const key = makeKey(masp, item.size);
+                state.xuat[key] = {
+                    masp,
+                    size: item.size,
+                    sl: item.sl
+                };
+            });
+        });
+
+        renderBangKetQua();
+        kiemTraPhieu();
+        state.daKiemTra = true;
+    }
+
+    async function docPhieuKiemTonTuDB(soPhieu) {
+        const sohd = String(soPhieu || "").trim();
+        if (!sohd) throw new Error("Chưa có số phiếu.");
+
+        const { data: phieuTong, error: errTong } = await window.supabase
+            .from("kiem_ton_kho")
+            .select("*")
+            .eq("so_phieu", sohd)
+            .maybeSingle();
+
+        if (errTong) throw errTong;
+        if (!phieuTong) throw new Error("Không tìm thấy phiếu kiểm tồn.");
+
+        const { data: rows, error: errRows } = await window.supabase
+            .from("ct_kiem_ton_kho")
+            .select("*")
+            .eq("so_phieu", sohd)
+            .order("stt", { ascending: true });
+
+        if (errRows) throw errRows;
+
+        return { phieuTong, rows: rows || [] };
+    }
+
+    async function layDanhSachSoPhieuKiemTonTheoCoSo() {
+        if (!window.supabase) return [];
+
+        const prefix = String(CFG.soPhieuPrefix || "").trim();
+        const { data, error } = await window.supabase
+            .from("kiem_ton_kho")
+            .select("so_phieu, ngay_ct, created_at")
+            .ilike("so_phieu", `${prefix}%`)
+            .order("so_phieu", { ascending: true });
+
+        if (error) {
+            console.error("[KTK] layDanhSachSoPhieuKiemTonTheoCoSo error:", error);
+            return [];
+        }
+
+        return (data || []).map(x => String(x.so_phieu || "").trim()).filter(Boolean);
+    }
+
+    async function moPhieuLienKe(offset) {
+        const ds = await layDanhSachSoPhieuKiemTonTheoCoSo();
+        if (!ds.length) {
+            alert("Không có phiếu kiểm tồn nào.");
+            return;
+        }
+
+        const soHienTai = String(byId("sohd")?.value || "").trim();
+
+        // Nếu chưa có số phiếu hiện tại:
+        // - Quay lại => mở phiếu cuối cùng
+        // - Tiếp tục => mở phiếu đầu tiên
+        if (!soHienTai) {
+            const fallback = offset < 0 ? ds[ds.length - 1] : ds[0];
+            await moLaiPhieuKiemTonCu(fallback);
+            return;
+        }
+
+        const idx = ds.indexOf(soHienTai);
+
+        // Nếu số phiếu hiện tại chưa được lưu (ví dụ đang là phiếu mới kế tiếp),
+        // thì:
+        // - Quay lại => mở phiếu cuối cùng đã lưu
+        // - Tiếp tục => báo đã là phiếu cuối
+        if (idx < 0) {
+            if (offset < 0) {
+                await moLaiPhieuKiemTonCu(ds[ds.length - 1]);
+                return;
+            } else {
+                alert("Đây đã là phiếu cuối cùng.");
+                return;
+            }
+        }
+
+        const newIndex = idx + offset;
+        if (newIndex < 0 || newIndex >= ds.length) {
+            alert(offset < 0 ? "Đây đã là phiếu đầu tiên." : "Đây đã là phiếu cuối cùng.");
+            return;
+        }
+
+        await moLaiPhieuKiemTonCu(ds[newIndex]);
+    }
+
+    async function moPhieuTruoc() {
+        await moPhieuLienKe(-1);
+    }
+
+    async function moPhieuSau() {
+        await moPhieuLienKe(1);
+    }
+
+    async function moPopupChonPhieuCu() {
+        const ds = await layDanhSachSoPhieuKiemTonTheoCoSo();
+        if (!ds.length) {
+            alert("Không có phiếu kiểm tồn cũ.");
+            return;
+        }
+
+        const old = document.getElementById("popup_chon_phieu_cu");
+        if (old) old.remove();
+
+        const wrap = document.createElement("div");
+        wrap.id = "popup_chon_phieu_cu";
+        wrap.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.35);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+
+        const box = document.createElement("div");
+        box.style.cssText = `
+        width: 420px;
+        max-width: 95vw;
+        max-height: 80vh;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 8px 30px rgba(0,0,0,.25);
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    `;
+
+        box.innerHTML = `
+        <div style="font-weight:700; font-size:18px;">Chọn phiếu kiểm tồn cũ</div>
+        <input id="popup_chon_phieu_cu_kw" placeholder="Lọc số phiếu..." style="padding:6px 8px;">
+        <div id="popup_chon_phieu_cu_list" style="border:1px solid #ddd; overflow:auto; max-height:50vh;"></div>
+        <div style="text-align:right;">
+            <button id="popup_chon_phieu_cu_dong">Đóng</button>
+        </div>
+    `;
+
+        wrap.appendChild(box);
+        document.body.appendChild(wrap);
+
+        const listEl = box.querySelector("#popup_chon_phieu_cu_list");
+        const kwEl = box.querySelector("#popup_chon_phieu_cu_kw");
+        const btnDong = box.querySelector("#popup_chon_phieu_cu_dong");
+
+        function renderList(keyword = "") {
+            const kw = String(keyword || "").trim().toLowerCase();
+            const filtered = ds.filter(so => !kw || so.toLowerCase().includes(kw));
+
+            listEl.innerHTML = "";
+            filtered.slice().reverse().forEach((so) => {
+                const row = document.createElement("div");
+                row.textContent = so;
+                row.style.cssText = `
+                padding: 8px 10px;
+                border-bottom: 1px solid #eee;
+                cursor: pointer;
+            `;
+                row.addEventListener("mouseenter", () => row.style.background = "#f5f5f5");
+                row.addEventListener("mouseleave", () => row.style.background = "#fff");
+                row.addEventListener("click", async () => {
+                    wrap.remove();
+                    await moLaiPhieuKiemTonCu(so);
+                });
+                listEl.appendChild(row);
+            });
+        }
+
+        renderList("");
+
+        kwEl.addEventListener("input", () => renderList(kwEl.value));
+        btnDong.addEventListener("click", () => wrap.remove());
+        wrap.addEventListener("click", (e) => {
+            if (e.target === wrap) wrap.remove();
+        });
+
+        kwEl.focus();
+    }
+
+    // =========================
+    // API công khai
+    // =========================
+    window.KiemTonKho = {
+        resetPhieu,
+        renderBangKetQua,
+        kiemTraPhieu,
+        napTonMayVaKiemTra,
+        themDongNhapBenTrai,
+        getState,
+        luuPhieuKiemTonKho,
+        copyDuLieuNhap,
+        pasteDuLieuNhap,
+        xoaDongDangChon,
+        suaDongDangChon,
+        moLaiPhieuKiemTonCu,
+        moPopupChonPhieuCu,
+        moPhieuTruoc,
+        moPhieuSau,
+        layBayMauTuGoogleSheet,
+
+        setXuatData(dataMap, orderArr) {
+            const state = getState();
+            state.xuat = dataMap || {};
+            state.xuatOrder = Array.isArray(orderArr) ? orderArr.map(normalizeMasp).filter(Boolean) : [];
+            state.ketQua = {};
+            state.daKiemTra = false;
+            renderBangKetQua();
+        }
+    };
+
+
+    // =========================
+    // INIT
+    // =========================
+    async function init() {
+        updateTitle();
+        setDefaultBranchInfo();
+        bindInputEvents();
+        bindButtons();
+        bindRowSelection();
+
+        // Mở khóa beep cho trình duyệt
+        setupBeepUnlockOnce(document);
+
+        await resetPhieu();
+        focusNhapMasp(true);
+
+        console.log("[nhapkiemkho] init OK", CFG);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
+
+
+    // ✅ đảm bảo popup_size luôn tồn tại
+    document.addEventListener("DOMContentLoaded", () => {
+        let popup = document.getElementById("popup_size");
+
+        if (!popup) {
+            popup = document.createElement("div");
+            popup.id = "popup_size";
+
+            popup.style.position = "absolute";
+            popup.style.top = "100%";
+            popup.style.left = "0";
+            popup.style.width = "200px";
+            popup.style.maxHeight = "200px";
+            popup.style.background = "#fff";
+            popup.style.border = "1px solid #ccc";
+            popup.style.display = "none";
+            popup.style.overflowY = "auto";
+            popup.style.zIndex = "9999";
+
+            document.body.appendChild(popup);
+        }
+
+    });
+
+    document.addEventListener("keydown", function (e) {
+        const tag = (document.activeElement?.tagName || "").toUpperCase();
+        const isTyping =
+            tag === "INPUT" ||
+            tag === "TEXTAREA" ||
+            tag === "SELECT" ||
+            document.activeElement?.isContentEditable;
+
+        if (e.key === "F11") {
+            e.preventDefault();
+            moPopupChonPhieuCu();
+            return;
+        }
+
+        if (e.key === "F3") {
+            e.preventDefault();
+            suaDongDangChon();
+            return;
+        }
+    });
+
+    function buildTonMapFromSavedRows(rows) {
+        const out = {};
+        (rows || []).forEach(row => {
+            const masp = normalizeMasp(row.masp);
+            const arr = Array.isArray(row.du_lieu_ton_json) ? row.du_lieu_ton_json : [];
+            arr.forEach(it => {
+                const key = makeKey(masp, it.size || "0");
+                out[key] = {
+                    masp,
+                    size: normalizeSize(it.size || "0"),
+                    sl: normalizeNumber(it.sl || 0)
+                };
+            });
+        });
+        return out;
+    }
+
+    function buildTonMapFromRpcData(data) {
+        const out = {};
+        (data || []).forEach(item => {
+            const masp = normalizeMasp(item.masp);
+            const size = normalizeSize(item.size || "0");
+
+            const sl = normalizeNumber(
+                CFG.branch === "cs1"
+                    ? (item.ton_cs1 ?? item.ton_cuoi ?? item.ton ?? item.soluong ?? 0)
+                    : (item.ton_cs2 ?? item.ton_cuoi ?? item.ton ?? item.soluong ?? 0)
+            );
+
+            const key = makeKey(masp, size);
+            out[key] = { masp, size, sl };
+        });
+        return out;
+    }
+
+    function areTonMapsEqual(savedMap, currentMap) {
+        const keys = new Set([
+            ...Object.keys(savedMap || {}),
+            ...Object.keys(currentMap || {})
+        ]);
+
+        for (const key of keys) {
+            const a = normalizeNumber(savedMap?.[key]?.sl || 0);
+            const b = normalizeNumber(currentMap?.[key]?.sl || 0);
+            if (a !== b) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    async function kiemTraTonMayPhiếuConHopLe(rows, ngayCt) {
+        const dsMasp = Array.from(new Set(
+            (rows || []).map(r => normalizeMasp(r.masp)).filter(Boolean)
+        ));
+
+        if (!dsMasp.length) {
+            return { ok: false, message: "Phiếu không có mã sản phẩm." };
+        }
+
+        const { data, error } = await window.supabase.rpc("xntnhanh", {
+            p_masps: dsMasp,
+            p_den_ngay: ngayCt,
+            p_tonghop_size: false
+        });
+
+        if (error) {
+            console.error("[xntnhanh] kiemTraTonMayPhiếuConHopLe:", error);
+            return { ok: false, message: "Lỗi khi kiểm tra tồn máy hiện tại." };
+        }
+
+        const savedMap = buildTonMapFromSavedRows(rows);
+        const currentMap = buildTonMapFromRpcData(data || []);
+
+        console.log("[KTK] savedMap =", savedMap);
+        console.log("[KTK] currentMap =", currentMap);
+        console.log("[KTK] rpcData =", data || []);
+
+        const equal = areTonMapsEqual(savedMap, currentMap);
+
+        return {
+            ok: equal,
+            savedMap,
+            currentMap,
+            rpcData: data || [],
+            message: equal
+                ? "Tồn máy hiện tại khớp với tồn máy đã lưu."
+                : "Tồn máy hiện tại đã thay đổi so với thời điểm kiểm. Không được tạo phiếu điều chỉnh."
+        };
+    }
+
+    function tachItemsNhapXuatTuRowsKiemTon(rows, mode) {
+        const items = [];
+
+        (rows || []).forEach(row => {
+            const masp = normalizeMasp(row.masp);
+            const trangThai = String(row.trang_thai || "").trim().toUpperCase();
+
+            const duLieuKiem = Array.isArray(row.du_lieu_kiem_json) ? row.du_lieu_kiem_json : [];
+            const duLieuTon = Array.isArray(row.du_lieu_ton_json) ? row.du_lieu_ton_json : [];
+
+            const mapKiem = {};
+            const mapTon = {};
+
+            duLieuKiem.forEach(it => {
+                const key = makeKey(masp, it.size || "0");
+                mapKiem[key] = normalizeNumber(it.sl || 0);
+            });
+
+            duLieuTon.forEach(it => {
+                const key = makeKey(masp, it.size || "0");
+                mapTon[key] = normalizeNumber(it.sl || 0);
+            });
+
+            const keys = new Set([...Object.keys(mapKiem), ...Object.keys(mapTon)]);
+
+            for (const key of keys) {
+                const { size } = splitKey(key);
+                const slKiem = normalizeNumber(mapKiem[key] || 0);
+                const slTon = normalizeNumber(mapTon[key] || 0);
+
+                if (slKiem > slTon) {
+                    if (mode === "nhap") {
+                        items.push({
+                            masp,
+                            size: size || "0",
+                            sl: slKiem - slTon
+                        });
+                    }
+                } else if (slKiem < slTon) {
+                    if (mode === "xuat") {
+                        items.push({
+                            masp,
+                            size: size || "0",
+                            sl: slTon - slKiem
+                        });
+                    }
+                }
+            }
+        });
+
+        const merged = new Map();
+        items.forEach(it => {
+            const key = `${it.masp}@@${it.size}`;
+            if (!merged.has(key)) merged.set(key, { ...it });
+            else merged.get(key).sl += it.sl;
+        });
+
+        return Array.from(merged.values()).filter(x => normalizeNumber(x.sl) > 0);
+    }
+
+    async function kiemTraDaTaoPhieuDieuChinh(phieuTong, mode) {
+        if (mode === "nhap" && phieuTong.da_tao_nhap_kiem) {
+            return {
+                ok: false,
+                message: `Phiếu này đã tạo nhập kiểm rồi (${phieuTong.so_phieu_nhap_kiem || "không rõ số phiếu"}).`
+            };
+        }
+
+        if (mode === "xuat" && phieuTong.da_tao_xuat_kiem) {
+            return {
+                ok: false,
+                message: `Phiếu này đã tạo xuất kiểm rồi (${phieuTong.so_phieu_xuat_kiem || "không rõ số phiếu"}).`
+            };
+        }
+
+        return { ok: true };
+    }
+
+    async function capNhatTracePhieuKiemTon(soPhieuKiemTon, mode, payloadMeta) {
+        const { manv, tennv } = getCurrentUserInfo();
+        const nowIso = new Date().toISOString();
+
+        const patch = mode === "nhap"
+            ? {
+                da_tao_nhap_kiem: true,
+                so_phieu_nhap_kiem: payloadMeta.so_phieu_dich || null,
+                nguoi_tao_nhap_kiem: manv || null,
+                ten_nguoi_tao_nhap_kiem: tennv || null,
+                thoi_diem_tao_nhap_kiem: nowIso,
+                so_dong_nhap_kiem: payloadMeta.so_dong || 0,
+                nhap_kiem_meta_json: payloadMeta
+            }
+            : {
+                da_tao_xuat_kiem: true,
+                so_phieu_xuat_kiem: payloadMeta.so_phieu_dich || null,
+                nguoi_tao_xuat_kiem: manv || null,
+                ten_nguoi_tao_xuat_kiem: tennv || null,
+                thoi_diem_tao_xuat_kiem: nowIso,
+                so_dong_xuat_kiem: payloadMeta.so_dong || 0,
+                xuat_kiem_meta_json: payloadMeta
+            };
+
+        const { error } = await window.supabase
+            .from("kiem_ton_kho")
+            .update(patch)
+            .eq("so_phieu", soPhieuKiemTon);
+
+        if (error) throw error;
+    }
+
+    function moTrangDieuChinhKiem(mode, soPhieuKiemTon, items) {
+        const payload = {
+            source: mode === "nhap" ? "kiemton_nhapkiem" : "kiemton_xuatkiem",
+            cs: CFG.branch,
+            from_so_phieu_kiem_ton: soPhieuKiemTon,
+            created_at: new Date().toISOString(),
+            items: items.map(x => ({
+                masp: x.masp,
+                size: x.size || "0",
+                sl: normalizeNumber(x.sl || 0)
+            }))
+        };
+
+        const key = `imp_kiemton_${mode}_${Date.now()}`;
+        localStorage.setItem(key, JSON.stringify(payload));
+
+        const page = mode === "nhap" ? getNhapKiemPageUrl() : getXuatKiemPageUrl();
+        const url = `${location.origin}/${page}#impkey=${encodeURIComponent(key)}`;
+
+        window.open(url, "_blank");
+
+        return payload;
+    }
+
+    async function taoPhieuDieuChinhKiem(mode) {
+        try {
+            if (!window.supabase) {
+                alert("Không tìm thấy kết nối Supabase.");
+                return;
+            }
+
+            const hdStateEl = document.getElementById("hd_state");
+            const hdStateValue = String(
+                hdStateEl?.value || hdStateEl?.getAttribute("data-state") || ""
+            ).trim().toLowerCase();
+
+            if (hdStateValue !== "xem") {
+                alert("Chỉ được tạo phiếu điều chỉnh khi đang mở phiếu kiểm tồn cũ.");
+                return;
+            }
+
+            const soPhieu = String(document.getElementById("sohd")?.value || "").trim();
+            const ngayCt = String(document.getElementById("ngay")?.value || "").trim();
+
+            if (!soPhieu || !ngayCt) {
+                alert("Phiếu kiểm tồn không hợp lệ.");
+                return;
+            }
+
+            const { phieuTong, rows } = await docPhieuKiemTonTuDB(soPhieu);
+
+            const ckDup = await kiemTraDaTaoPhieuDieuChinh(phieuTong, mode);
+            if (!ckDup.ok) {
+                alert(ckDup.message);
+                return;
+            }
+
+            const ckTon = await kiemTraTonMayPhiếuConHopLe(rows, ngayCt);
+            if (!ckTon.ok) {
+                alert(ckTon.message);
+                return;
+            }
+
+            const items = tachItemsNhapXuatTuRowsKiemTon(rows, mode);
+            if (!items.length) {
+                alert(mode === "nhap"
+                    ? "Không có dữ liệu thừa để tạo phiếu nhập kiểm."
+                    : "Không có dữ liệu thiếu để tạo phiếu xuất kiểm.");
+                return;
+            }
+
+            const payload = moTrangDieuChinhKiem(mode, soPhieu, items);
+
+            await capNhatTracePhieuKiemTon(soPhieu, mode, {
+                so_phieu_kiem_ton: soPhieu,
+                so_phieu_dich: null,
+                mode,
+                so_dong: items.length,
+                tong_sl: items.reduce((s, x) => s + normalizeNumber(x.sl || 0), 0),
+                created_at: new Date().toISOString(),
+                items
+            });
+
+            //  alert(
+            //  mode === "nhap"
+            //     ? `Đã đẩy ${items.length} dòng sang trang nhập kiểm.`
+            //      : `Đã đẩy ${items.length} dòng sang trang xuất kiểm.`
+            // );
+
+        } catch (err) {
+            console.error(`[taoPhieuDieuChinhKiem:${mode}]`, err);
+            alert("Lỗi thật: " + (err?.message || err));
+        }
+    }
+
+    async function docPhieuKiemTonTuDB(soPhieu) {
+        const sohd = String(soPhieu || "").trim();
+        if (!sohd) throw new Error("Chưa có số phiếu.");
+
+        const { data: phieuTong, error: errTong } = await window.supabase
+            .from("kiem_ton_kho")
+            .select("*")
+            .eq("so_phieu", sohd)
+            .maybeSingle();
+
+        if (errTong) throw errTong;
+        if (!phieuTong) throw new Error("Không tìm thấy phiếu kiểm tồn.");
+
+        const { data: rows, error: errRows } = await window.supabase
+            .from("ct_kiem_ton_kho")
+            .select("*")
+            .eq("so_phieu", sohd)
+            .order("stt", { ascending: true });
+
+        if (errRows) throw errRows;
+
+        return { phieuTong, rows: rows || [] };
+    }
+
 })();
-
-// ✅ đảm bảo popup_size luôn tồn tại
-document.addEventListener("DOMContentLoaded", () => {
-  let popup = document.getElementById("popup_size");
-
-  if (!popup) {
-    popup = document.createElement("div");
-    popup.id = "popup_size";
-
-    popup.style.position = "absolute";
-    popup.style.top = "100%";
-    popup.style.left = "0";
-    popup.style.width = "200px";
-    popup.style.maxHeight = "200px";
-    popup.style.background = "#fff";
-    popup.style.border = "1px solid #ccc";
-    popup.style.display = "none";
-    popup.style.overflowY = "auto";
-    popup.style.zIndex = "9999";
-
-    document.body.appendChild(popup);
-  }
-});
-
