@@ -1477,26 +1477,32 @@ export async function luuHoaDonccn1v2() {
         console.error("❌ Lỗi ghi taohdccn:", e);
     }
 
-    // 🔥 TỰ ĐỘNG NHẬN DIỆN CCN TỪ KIỂM NHẬP QUA GHI CHÚ
+    // 🔥 TỰ ĐỘNG ĐÁNH DẤU KIỂM NHẬP CHO CẢ PHIẾU GỐC + ĐỐI ỨNG
     try {
-        const ghichu = document.getElementById("ghichu")?.value || "";
+        const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
 
-        // ✅ CHỈ CHẠY KHI ĐÚNG NGHIỆP VỤ
         if (ghichu.includes("Phiếu được tạo từ nhập kiểm kho")) {
-
-            // 🔥 LẤY SỐ PHIẾU KIỂM NHẬP
             const match = ghichu.match(/kiemnhap[^\s|]+/i);
-            const sohdKiemNhap = match ? match[0] : "";
+            const sohdKiemNhap = match ? String(match[0] || "").trim() : "";
 
-            const manv = document.getElementById("manv")?.value || "";
+            const manv = String(document.getElementById("manv")?.value || "").trim();
             const ngay = new Date().toISOString().slice(0, 10);
 
-            console.log("🔵 Detect CCN từ kiểm nhập:", sohd, sohdKiemNhap);
+            const dsSoHdCanDanhDau = [sohd, sohdDoiUng]
+                .map(x => String(x || "").trim())
+                .filter(Boolean);
+
+            console.log("🔵 Detect CCN từ kiểm nhập:", {
+                sohdKiemNhap,
+                dsSoHdCanDanhDau,
+                manv,
+                ngay
+            });
 
             const { data, error } = await supabase.rpc(
                 "rpc_danh_dau_kiem_nhapkho_hoa_don",
                 {
-                    p_ds_sohd: [sohd],
+                    p_ds_sohd: dsSoHdCanDanhDau,
                     p_so_hd_kiemnhap: sohdKiemNhap,
                     p_ngay_kiem: ngay,
                     p_nhanvienkiem: manv
@@ -1510,16 +1516,16 @@ export async function luuHoaDonccn1v2() {
 
                 if (!data || data.updated === 0) {
                     console.warn("⚠ RPC có chạy nhưng không cập nhật dòng nào:", {
-                        sohd,
                         sohdKiemNhap,
+                        dsSoHdCanDanhDau,
                         manv,
                         ngay,
                         data
                     });
                 } else {
-                    console.log("✅ Đã đánh dấu kiểm nhập:", {
-                        sohd,
+                    console.log("✅ Đã đánh dấu kiểm nhập cho các hóa đơn:", {
                         sohdKiemNhap,
+                        dsSoHdCanDanhDau,
                         updated: data.updated,
                         value: data.value
                     });
