@@ -1407,6 +1407,54 @@ export async function luuHoaDonccn1v2() {
 
     alert("✅ Đã lưu hóa đơn CCN (cả gốc và đối ứng)!");
 
+    // 🔥 GHI NGƯỢC VÀO BẢNG KIỂM NHẬP CHI TIẾT
+    try {
+        const ghichu = document.getElementById("ghichu")?.value || "";
+
+        if (ghichu.includes("Phiếu được tạo từ nhập kiểm kho")) {
+
+            // 👉 LẤY ID PHIẾU KIỂM NHẬP
+            const match = ghichu.match(/kiemnhap[^\s|]+/i);
+            const kiemnhap_id = match ? match[0] : "";
+
+            if (!kiemnhap_id) {
+                console.warn("⚠ Không tìm thấy kiemnhap_id");
+            } else {
+
+                // 🔥 LẤY DỮ LIỆU GRID (bảng đang hiển thị)
+                const grid = window.gridData || [];
+
+                for (const row of grid) {
+                    if (!row || !row.masp) continue;
+
+                    const masp = String(row.masp).trim();
+
+                    // 👉 XÁC ĐỊNH THỪA / THIẾU
+                    let noidung = "";
+
+                    if (row.trang_thai === "LECH") {
+                        noidung = `${sohd} | ${row.chi_tiet}`;
+                    }
+
+                    if (!noidung) continue;
+
+                    console.log("🟢 Ghi taohdccn:", masp, noidung);
+
+                    await supabase.rpc("rpc_capnhat_taohdccn_kiemnhap", {
+                        p_kiemnhap_id: kiemnhap_id,
+                        p_masp: masp,
+                        p_noidung: noidung
+                    });
+                }
+
+                console.log("✅ Đã ghi taohdccn cho kiểm nhập:", kiemnhap_id);
+            }
+        }
+
+    } catch (e) {
+        console.error("❌ Lỗi ghi taohdccn:", e);
+    }
+
     // 🔥 TỰ ĐỘNG NHẬN DIỆN CCN TỪ KIỂM NHẬP QUA GHI CHÚ
     try {
         const ghichu = document.getElementById("ghichu")?.value || "";
