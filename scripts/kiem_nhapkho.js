@@ -1819,6 +1819,30 @@ import "./stockQuickPopup.js";
     return [...new Set(ds)];
   }
 
+  function laySetHoaDonNguonCuaPhieuDangXem() {
+    const state = getState();
+
+    // Ưu tiên lấy từ state khi đã mở phiếu cũ
+    const dsState = Array.isArray(state?.dsHoaDonNguon)
+      ? state.dsHoaDonNguon
+      : [];
+
+    // Fallback thêm từ ô ghi chú trên form
+    const ghichuText = String(byId("ghichu_top")?.value || "").trim();
+    const dsText = ghichuText
+      ? ghichuText
+        .split(";")
+        .map(x => String(x || "").trim())
+        .filter(Boolean)
+      : [];
+
+    const ds = [...dsState, ...dsText]
+      .map(x => String(x || "").trim())
+      .filter(Boolean);
+
+    return new Set(ds);
+  }
+
   function focusVaBoiDenOmaSanPham() {
     const maspEl = byId("masp");
     if (!maspEl) return;
@@ -1935,6 +1959,9 @@ import "./stockQuickPopup.js";
     });
 
     const ketQua = [];
+    const hdState = String(byId("hd_state")?.value || "").trim().toLowerCase();
+    const dangMoPhieuCuHoacSua = (hdState === "cu" || hdState === "sua" || hdState === "xem");
+    const setHoaDonNguonCuaPhieuDangXem = laySetHoaDonNguonCuaPhieuDangXem();
 
     (dsHd || []).forEach((hd) => {
       const sohd = String(hd.sohd || "").trim();
@@ -1976,19 +2003,23 @@ import "./stockQuickPopup.js";
         tyLeTheoHoaDon * 40 +
         diemThoiGian;
 
-      const hdState = String(byId("hd_state")?.value || "").trim().toLowerCase();
-      const dangMoPhieuCuHoacSua = (hdState === "cu" || hdState === "sua" || hdState === "xem");
-
       const dieuKienTrungCao =
         soMaTrung >= 2 ||
         tyLeTheoNhap >= 0.3 ||
         tyLeTheoHoaDon >= 0.5;
 
+      const namTrongPhieuDangXem = setHoaDonNguonCuaPhieuDangXem.has(sohd);
+
       const autoChecked =
         dieuKienTrungCao &&
         (
-          !daKiem ||                           // phiếu mới: chưa kiểm thì tự tick như cũ
-          (dangMoPhieuCuHoacSua && daKiem)    // phiếu cũ / sửa / xem: đã kiểm nhưng trùng cao thì cũng tự tick
+          // Hóa đơn chưa kiểm: vẫn auto tick như logic cũ
+          !daKiem ||
+
+          // Hóa đơn đã kiểm: chỉ auto tick nếu
+          // đang mở phiếu cũ/sửa/xem
+          // và chính hóa đơn đó đã thuộc phiếu đang xem
+          (daKiem && dangMoPhieuCuHoacSua && namTrongPhieuDangXem)
         );
 
       ketQua.push({
@@ -2007,6 +2038,7 @@ import "./stockQuickPopup.js";
         dsMaspTrung,
         daKiem,
         infoDaKiem,
+        namTrongPhieuDangXem,
         autoChecked
       });
     });
