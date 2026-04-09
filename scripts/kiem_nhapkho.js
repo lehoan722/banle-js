@@ -2720,6 +2720,44 @@ import "./stockQuickPopup.js";
     }
   }
 
+  async function copyDuLieuXuat() {
+    try {
+      const tbody = document.querySelector("#bangketqua tbody");
+      if (!tbody) {
+        alert("Không tìm thấy bảng kết quả.");
+        return;
+      }
+
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      if (rows.length === 0) {
+        alert("Không có dữ liệu để copy.");
+        return;
+      }
+
+      const lines = rows.map((tr) => {
+        const col1 = String(tr.children[3]?.innerText || "").trim();
+
+        const col2 = String(tr.children[4]?.innerText || "")
+          .replace(/\r/g, "")
+          .replace(/\n+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        const col3 = String(tr.children[5]?.innerText || "").trim();
+
+        return [col1, col2, col3].join("\t");
+      }).filter(Boolean);
+
+      const text = lines.join("\n");
+      await navigator.clipboard.writeText(text);
+
+      alert(`Đã copy ${lines.length} dòng dữ liệu phần xuất.`);
+    } catch (err) {
+      console.error("[KNK] copyDuLieuXuat error:", err);
+      alert("Không copy được dữ liệu phần xuất.");
+    }
+  }
+
   function parseClipboardToNhapMap(text) {
     const lines = String(text || "")
       .replace(/\r/g, "")
@@ -3459,6 +3497,14 @@ import "./stockQuickPopup.js";
       });
     }
 
+    const btnCopyXuat = byId("btn-copy-xuat");
+    if (btnCopyXuat) {
+      btnCopyXuat.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await copyDuLieuXuat();
+      });
+    }
+
     const btnPaste = byId("btn-paste-nhap");
     if (btnPaste) {
       btnPaste.addEventListener("click", async (e) => {
@@ -3599,7 +3645,7 @@ import "./stockQuickPopup.js";
       if (masp && taohdccnText) {
         state.taoHdCcnByMasp[masp] = taohdccnText;
       }
-      
+
     });
 
     renderBangKetQua();
@@ -3619,6 +3665,7 @@ import "./stockQuickPopup.js";
 
     luuPhieuKiemNhapKho,
     copyDuLieuNhap,
+    copyDuLieuXuat,
     pasteDuLieuNhap,
     xoaDongDangChon,
     moLaiPhieuKiemNhapCu,
