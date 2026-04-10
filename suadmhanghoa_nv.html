@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sửa Danh Mục Hàng Hóa - Nhân Viên</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Handsontable, JSZip, FileSaver -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <!-- Script chính của trang -->
+    <script type="module" src="scripts/suadmhanghoa_nv.js"></script>
+</head>
+
+<body>
+    <div id="app-container" style="display:none;">
+        <h2>🛠️ Sửa Danh Mục Hàng Hóa - Nhân Viên</h2>
+
+        <div style="margin-bottom: 10px;">
+            <select id="col-select"></select>
+            <input id="filter-value" type="text" placeholder="Giá trị lọc (vd: A1, GIA27)"
+                style="width:220px; margin-left:8px;">
+            <label style="margin-left:10px;">Từ ngày</label>
+            <input id="date-from" type="date" style="width:140px; margin-left:6px;">
+            <label style="margin-left:10px;">Đến ngày</label>
+            <input id="date-to" type="date" style="width:140px; margin-left:6px;">
+
+            <button id="btn-load-filter">⬇️ Tải DS theo điều kiện</button>
+            <button id="btn-reset">🔁 Làm lại</button>
+            <button id="btn-kiemtra">🔍 Kiểm tra vị trí</button>
+            <button id="btn-xoa">🧹 Xóa sản phẩm đã có vị trí</button>
+            <button id="btn-backup">💾 Backup trước khi ghi</button>
+            <button id="btn-luu">💾 Lưu dữ liệu</button>
+            <button id="btn-restore">⏫ Phục hồi từ backup</button>
+        </div>
+
+        <div id="preview"></div>
+
+        <div id="backup-overlay" style="
+            display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:9999;
+            background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
+            <div style="position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);">
+                <img src="https://i.gifer.com/ZZ5H.gif" width="64" alt="loading...">
+                <div style="font-size:1.2em;font-weight:bold; color:#004;">
+                    Đang backup toàn bộ dữ liệu, vui lòng chờ...
+                </div>
+            </div>
+        </div>
+
+        <div id="hot"></div>
+    </div>
+</body>
+
+</html>
