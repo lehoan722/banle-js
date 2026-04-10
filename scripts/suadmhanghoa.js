@@ -310,11 +310,15 @@ async function xuLyNhapNhanhMaSanPham() {
 
     quickMaspInput.value = '';
     hideQuickMaspSuggest();
-    focusQuickMaspInput();
 
-    // Cuộn tới dòng vừa thêm nếu cần
-    hot.selectCell(rowIndex, 0);
+    // Chỉ cuộn tới dòng vừa thêm, KHÔNG chọn cell để tránh mất focus ô nhập mã
     hot.scrollViewportTo(rowIndex, 0);
+
+    // Trả focus lại ô nhập mã để nhập tiếp mã sau
+    setTimeout(() => {
+      focusQuickMaspInput();
+    }, 0);
+
   } catch (err) {
     console.error(err);
     alert("Lỗi khi kiểm tra mã sản phẩm: " + (err?.message || err));
