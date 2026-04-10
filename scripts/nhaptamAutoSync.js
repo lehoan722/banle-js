@@ -424,7 +424,7 @@ async function handleKiemTraDongBo() {
 
         if (!candidates.length) {
             const { coSo } = getNhapTamRpcNames();
-            alert(`Không tìm thấy hóa đơn nhập mới ${coSo} nào cho mã ${info.masp} trong hôm nay và hôm qua.`);
+            alert(`Không tìm thấy hóa đơn nhập mới ${coSo} nào cho mã ${info.masp} trong hôm nay và 3 ngày gần nhất.`);
             return;
         }
 
