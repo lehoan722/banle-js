@@ -316,6 +316,7 @@
     background: #dce9f9;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
+
     border-top: 1px solid #b7cbe6;
     box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.18);
     transition: transform 0.22s ease;
@@ -323,6 +324,9 @@
     touch-action: pan-y;
     max-height: 42dvh;
     overflow-y: auto;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
   }
 
   /* Mặc định: thu xuống, chỉ chừa tay nắm */
