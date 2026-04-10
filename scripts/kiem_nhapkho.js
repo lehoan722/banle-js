@@ -1,12 +1,111 @@
-import {
-  playSuccessBeep,
-  playWaitSizeBeep,
-  playAlertBeep,
-  setupBeepUnlockOnce,
-  patchAlertWithBeep
-} from "./soundBeep.js";
-
 import "./stockQuickPopup.js";
+
+// =========================
+// SOUND FALLBACK NỘI BỘ
+// =========================
+let __audioCtx = null;
+let __audioUnlocked = false;
+
+function getAudioCtx() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!__audioCtx) __audioCtx = new Ctx();
+    return __audioCtx;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function unlockAudioOnce() {
+  const ctx = getAudioCtx();
+  if (!ctx) return false;
+
+  try {
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+
+    if (!__audioUnlocked) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.0001;
+      osc.frequency.value = 440;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.01);
+      __audioUnlocked = true;
+    }
+
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function setupBeepUnlockOnce(target = document) {
+  const handler = async () => {
+    await unlockAudioOnce();
+  };
+
+  ["pointerdown", "touchstart", "keydown", "click"].forEach(evt => {
+    target.addEventListener(evt, handler, { passive: true, capture: true });
+  });
+}
+
+function playTone(freq = 880, duration = 0.12, volume = 0.05, type = "sine") {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+
+  const start = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, start);
+
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(start);
+  osc.stop(start + duration + 0.02);
+}
+
+function playSuccessBeep() {
+  unlockAudioOnce().then(() => {
+    playTone(980, 0.08, 0.05, "sine");
+    setTimeout(() => playTone(1320, 0.10, 0.05, "sine"), 90);
+  });
+}
+
+function playWaitSizeBeep() {
+  unlockAudioOnce().then(() => {
+    playTone(740, 0.10, 0.045, "triangle");
+  });
+}
+
+function playAlertBeep() {
+  unlockAudioOnce().then(() => {
+    playTone(420, 0.16, 0.06, "square");
+    setTimeout(() => playTone(420, 0.16, 0.06, "square"), 180);
+  });
+}
+
+function patchAlertWithBeep() {
+  if (window.__alertBeepPatched) return;
+  window.__alertBeepPatched = true;
+
+  const oldAlert = window.alert;
+  window.alert = function (...args) {
+    try { playAlertBeep(); } catch (e) { }
+    return oldAlert.apply(window, args);
+  };
+}
 
 // scripts/nhapkiemkho.js
 (function () {
@@ -568,36 +667,48 @@ import "./stockQuickPopup.js";
   }
 
 
-  async function layMapHoaDonDaKiem() {
-    if (!window.supabase) return new Map();
-
-    const { data, error } = await window.supabase
-      .from("kiem_nhap_kho")
-      .select("sohdccn, nhanvienkiem, created_at");
-
-    if (error) {
-      console.error("[KNK] layMapHoaDonDaKiem error:", error);
-      return new Map();
+  function phanTichTrangThaiKiemNhapKho(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return {
+        daKiem: false,
+        nhanvienkiem: "",
+        noiDung: ""
+      };
     }
 
-    const map = new Map();
+    const upper = raw.toUpperCase();
 
-    (data || []).forEach((row) => {
-      const raw = String(row.sohdccn || "").trim();
-      if (!raw) return;
+    // Chỉ coi là đã kiểm khi nội dung bắt đầu bằng DK
+    if (!upper.startsWith("DK")) {
+      return {
+        daKiem: false,
+        nhanvienkiem: "",
+        noiDung: raw
+      };
+    }
 
-      raw.split(";").forEach((item) => {
-        const sohd = String(item || "").trim();
-        if (!sohd) return;
+    // VD:
+    // "DK kiemnhap1v2cs2_00012 2026-04-10 HOAN"
+    // -> lấy phần cuối làm tên/mã nhân viên kiểm để hiển thị nếu có
+    const parts = raw.split(/\s+/).filter(Boolean);
+    const nhanvienkiem = parts.length >= 4 ? parts.slice(3).join(" ") : "";
 
-        map.set(sohd, {
-          nhanvienkiem: String(row.nhanvienkiem || "").trim(),
-          created_at: row.created_at || null
-        });
-      });
-    });
+    return {
+      daKiem: true,
+      nhanvienkiem,
+      noiDung: raw
+    };
+  }
 
-    return map;
+  function layInfoDaKiemTuHoaDon(hd) {
+    const parsed = phanTichTrangThaiKiemNhapKho(hd?.kiem_nhapkho);
+
+    return {
+      daKiem: parsed.daKiem,
+      nhanvienkiem: parsed.nhanvienkiem,
+      noiDung: parsed.noiDung
+    };
   }
 
   async function taoSoPhieuMoi() {
@@ -1742,7 +1853,7 @@ import "./stockQuickPopup.js";
   // Bản đầu: chưa query thật, chỉ placeholder
   // =========================
 
-  async function moPopupChonHoaDonNguon(dsHd, mapDaKiem = new Map()) {
+  async function moPopupChonHoaDonNguon(dsHd) {
     return new Promise((resolve) => {
       const popup = byId("popupChonHoaDonNguon");
       const box = byId("dsHoaDonNguonPopup");
@@ -1769,8 +1880,8 @@ import "./stockQuickPopup.js";
         row.style.borderBottom = "1px solid #eee";
         row.style.cursor = "pointer";
 
-        const infoDaKiem = mapDaKiem.get(sohd);
-        const daKiem = !!infoDaKiem;
+        const infoDaKiem = layInfoDaKiemTuHoaDon(hd);
+        const daKiem = !!infoDaKiem.daKiem;
         const tenNguoiKiem = String(infoDaKiem?.nhanvienkiem || "").trim();
 
         const checked = daKiem ? "" : "checked";
@@ -1954,7 +2065,7 @@ import "./stockQuickPopup.js";
     };
   }
 
-  function tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem = new Map()) {
+  function tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap) {
     const setNhap = new Set((dsMaspNhap || []).map(normalizeMasp).filter(Boolean));
     const nhomCtTheoSoHd = {};
 
@@ -1974,8 +2085,8 @@ import "./stockQuickPopup.js";
       const sohd = String(hd.sohd || "").trim();
       if (!sohd) return;
 
-      const infoDaKiem = mapDaKiem.get(sohd);
-      const daKiem = !!infoDaKiem;
+      const infoDaKiem = layInfoDaKiemTuHoaDon(hd);
+      const daKiem = !!infoDaKiem.daKiem;
 
       const rows = nhomCtTheoSoHd[sohd] || [];
       if (!rows.length) return;
@@ -2174,7 +2285,6 @@ import "./stockQuickPopup.js";
         return;
       }
 
-      const mapDaKiem = await layMapHoaDonDaKiem();
       const { dsHd, ctRows } = await layHoaDonNguonUngVienTheoMasp(dsMaspNhap);
 
       if (!dsHd.length || !ctRows.length) {
@@ -2183,7 +2293,7 @@ import "./stockQuickPopup.js";
         return;
       }
 
-      const dsDeXuat = tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap, mapDaKiem);
+      const dsDeXuat = tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap);
 
       if (!dsDeXuat.length) {
         phatAmThanhLoi();
@@ -2277,7 +2387,6 @@ import "./stockQuickPopup.js";
 
       const prefixNguon = CFG.fromBranch === "cs2" ? "xcncs2_" : "xcncs1_";
       const { start, end } = layKhoangNgayHoaDonNguonMacDinh(3);
-      const mapDaKiem = await layMapHoaDonDaKiem();
 
       const { data: dsHd, error: errHd } = await window.supabase
         .from("hoadon_banle")
@@ -2299,7 +2408,7 @@ import "./stockQuickPopup.js";
         return;
       }
 
-      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd, mapDaKiem);
+      const dsSoHdChon = await moPopupChonHoaDonNguon(dsHd);
       if (!dsSoHdChon || dsSoHdChon.length === 0) return;
 
       const dsHoaDonNguonInfo = dsHd
