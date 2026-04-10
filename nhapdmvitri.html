@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nhập danh mục vị trí</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f7f7f7;
+    }
+    .box {
+      background: white;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      max-width: 1100px;
+      margin: auto;
+    }
+    h2 {
+      margin-top: 0;
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    label {
+      font-weight: bold;
+      min-width: 90px;
+    }
+    select, input, textarea, button {
+      font-size: 14px;
+    }
+    select, input {
+      padding: 8px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 320px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      resize: vertical;
+      box-sizing: border-box;
+      font-family: Consolas, monospace;
+    }
+    button {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-save {
+      background: #1976d2;
+      color: white;
+    }
+    .btn-preview {
+      background: #43a047;
+      color: white;
+    }
+    .btn-clear {
+      background: #757575;
+      color: white;
+    }
+    .note {
+      font-size: 13px;
+      color: #444;
+      line-height: 1.5;
+      background: #fff8e1;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    #previewTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      background: white;
+    }
+    #previewTable th, #previewTable td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+      font-size: 13px;
+    }
+    #previewTable th {
+      background: #f0f0f0;
+    }
+    #status {
+      margin-top: 14px;
+      padding: 10px;
+      border-radius: 6px;
+      background: #eef5ff;
+      white-space: pre-wrap;
+    }
+    .ok { color: green; font-weight: bold; }
+    .err { color: #c62828; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>📦 Nhập danh mục vị trí</h2>
+
+    <div class="note">
+      <b>Cách dán dữ liệu:</b><br>
+      - Mỗi dòng là 1 vị trí<br>
+      - Có thể dán 2 cột: <b>mã vị trí</b> + <b>tên vị trí</b><br>
+      - Hoặc 3 cột: <b>mã vị trí</b> + <b>tên vị trí</b> + <b>cơ sở</b><br>
+      - Nếu không có cột cơ sở trong dữ liệu dán, hệ thống sẽ lấy theo ô chọn <b>Cơ sở mặc định</b><br>
+      - Hệ thống sẽ tự ghi <b>updated_at = thời gian hiện tại</b><br>
+      - Nếu <b>ma_vitri</b> đã tồn tại, hệ thống sẽ cập nhật lại dữ liệu
+    </div>
+
+    <div class="row">
+      <label for="coSoMacDinh">Cơ sở:</label>
+      <select id="coSoMacDinh">
+        <option value="cs1">cs1</option>
+        <option value="cs2">cs2</option>
+        <option value="spa">spa</option>
+        <option value="kho_tong">kho_tong</option>
+      </select>
+
+      <label for="loaiVitri">Loại vị trí:</label>
+      <select id="loaiVitri">
+        <option value="kho">kho</option>
+        <option value="treomau">treomau</option>
+        <option value="quay">quay</option>
+        <option value="khac">khac</option>
+      </select>
+
+      <label for="khuVucMacDinh">Khu vực:</label>
+      <input id="khuVucMacDinh" type="text" placeholder="Ví dụ: tầng 1 / khu A">
+
+      <label for="thuTuMacDinh">Thứ tự:</label>
+      <input id="thuTuMacDinh" type="number" value="0" style="width:100px;">
+    </div>
+
+    <textarea id="inputData" placeholder="Dán dữ liệu từ Excel vào đây...&#10;Ví dụ:&#10;GAMB19    Kho GAM B19&#10;GIAB19-1  Treo mẫu GIA B19-1"></textarea>
+
+    <div class="row" style="margin-top:12px;">
+      <button class="btn-preview" id="btnPreview">Xem trước</button>
+      <button class="btn-save" id="btnSave">Lưu vào dm_vitri</button>
+      <button class="btn-clear" id="btnClear">Xóa nội dung</button>
+    </div>
+
+    <div id="previewWrap"></div>
+    <div id="status">Chưa có dữ liệu.</div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './scripts/supabaseClient.js';
+
+    const inputData = document.getElementById('inputData');
+    const btnPreview = document.getElementById('btnPreview');
+    const btnSave = document.getElementById('btnSave');
+    const btnClear = document.getElementById('btnClear');
+    const statusEl = document.getElementById('status');
+    const previewWrap = document.getElementById('previewWrap');
+
+    const coSoMacDinhEl = document.getElementById('coSoMacDinh');
+    const loaiVitriEl = document.getElementById('loaiVitri');
+    const khuVucMacDinhEl = document.getElementById('khuVucMacDinh');
+    const thuTuMacDinhEl = document.getElementById('thuTuMacDinh');
+
+    function normalizeText(val) {
+      return (val || '').toString().trim();
+    }
+
+    function normalizeMaVitri(val) {
+      return normalizeText(val).toUpperCase().replace(/\s+/g, '');
+    }
+
+    function nowIso() {
+      return new Date().toISOString();
+    }
+
+    function parseInput() {
+      const raw = inputData.value || '';
+      const lines = raw
+        .split(/\r?\n/)
+        .map(x => x.trim())
+        .filter(Boolean);
+
+      const coSoMacDinh = normalizeText(coSoMacDinhEl.value);
+      const loaiVitri = normalizeText(loaiVitriEl.value);
+      const khuVucMacDinh = normalizeText(khuVucMacDinhEl.value);
+      const thuTuMacDinh = Number(thuTuMacDinhEl.value || 0);
+
+      const rows = [];
+      const errors = [];
+      const seen = new Set();
+
+      lines.forEach((line, index) => {
+        const parts = line.split('\t').map(x => normalizeText(x));
+
+        const ma_vitri = normalizeMaVitri(parts[0] || '');
+        const ten_vitri = normalizeText(parts[1] || '');
+        const co_so = normalizeText(parts[2] || coSoMacDinh);
+
+        if (!ma_vitri) {
+          errors.push(`Dòng ${index + 1}: thiếu mã vị trí`);
+          return;
+        }
+
+        if (!ten_vitri) {
+          errors.push(`Dòng ${index + 1}: thiếu tên vị trí`);
+          return;
+        }
+
+        if (!co_so) {
+          errors.push(`Dòng ${index + 1}: thiếu cơ sở`);
+          return;
+        }
+
+        const duplicateKey = ma_vitri;
+        if (seen.has(duplicateKey)) {
+          errors.push(`Dòng ${index + 1}: mã vị trí bị trùng trong dữ liệu dán: ${ma_vitri}`);
+          return;
+        }
+        seen.add(duplicateKey);
+
+        rows.push({
+          ma_vitri,
+          ten_vitri,
+          loai_vitri: loaiVitri,
+          co_so,
+          khu_vuc: khuVucMacDinh || null,
+          thu_tu: Number.isFinite(thuTuMacDinh) ? thuTuMacDinh : 0,
+          active: true,
+          updated_at: nowIso()
+        });
+      });
+
+      return { rows, errors };
+    }
+
+    function renderPreview(rows, errors) {
+      let html = '';
+
+      if (errors.length) {
+        html += `
+          <div style="margin-top:12px; padding:10px; background:#ffebee; border-radius:6px; color:#b71c1c;">
+            <b>Lỗi dữ liệu:</b><br>${errors.join('<br>')}
+          </div>
+        `;
+      }
+
+      if (rows.length) {
+        html += `
+          <table id="previewTable">
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>ma_vitri</th>
+                <th>ten_vitri</th>
+                <th>loai_vitri</th>
+                <th>co_so</th>
+                <th>khu_vuc</th>
+                <th>thu_tu</th>
+                <th>active</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((r, i) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td>${r.ma_vitri}</td>
+                  <td>${r.ten_vitri}</td>
+                  <td>${r.loai_vitri}</td>
+                  <td>${r.co_so}</td>
+                  <td>${r.khu_vuc || ''}</td>
+                  <td>${r.thu_tu}</td>
+                  <td>${r.active}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+
+      previewWrap.innerHTML = html || '';
+    }
+
+    btnPreview.onclick = () => {
+      const { rows, errors } = parseInput();
+      renderPreview(rows, errors);
+
+      statusEl.innerHTML =
+        `Xem trước hoàn tất.\n` +
+        `Số dòng hợp lệ: ${rows.length}\n` +
+        `Số lỗi: ${errors.length}`;
+    };
+
+    btnClear.onclick = () => {
+      inputData.value = '';
+      previewWrap.innerHTML = '';
+      statusEl.textContent = 'Đã xóa nội dung.';
+    };
+
+    btnSave.onclick = async () => {
+      const { rows, errors } = parseInput();
+      renderPreview(rows, errors);
+
+      if (errors.length > 0) {
+        statusEl.innerHTML = `<span class="err">Có lỗi dữ liệu. Hãy sửa trước khi lưu.</span>`;
+        return;
+      }
+
+      if (!rows.length) {
+        statusEl.innerHTML = `<span class="err">Không có dòng hợp lệ để lưu.</span>`;
+        return;
+      }
+
+      if (!confirm(`Bạn có chắc muốn lưu ${rows.length} dòng vào bảng dm_vitri không?`)) {
+        return;
+      }
+
+      statusEl.innerHTML = 'Đang lưu dữ liệu...';
+
+      try {
+        const { data, error } = await supabase
+          .from('dm_vitri')
+          .upsert(rows, { onConflict: 'ma_vitri' })
+          .select();
+
+        if (error) throw error;
+
+        statusEl.innerHTML =
+          `<span class="ok">Lưu thành công ${data?.length || rows.length} dòng.</span>\n` +
+          `Hệ thống đã cập nhật updated_at theo thời gian hiện tại.`;
+
+      } catch (err) {
+        console.error(err);
+        statusEl.innerHTML = `<span class="err">Lỗi khi lưu: ${err.message}</span>`;
+      }
+    };
+  </script>
+</body>
+</html>
