@@ -181,10 +181,13 @@ function focusQuickMaspInput(selectAll = false) {
 }
 
 async function loadQuickMaspSuggest(keyword) {
-  if (!quickMaspSuggestDiv) return;
+  if (!quickMaspSuggestDiv || !quickMaspInput) return;
 
   const q = String(keyword || '').trim();
-  if (!q) {
+  const currentInput = String(quickMaspInput.value || '').trim();
+
+  // Ô nhập đang trống thì tuyệt đối không hiện danh sách
+  if (!q || !currentInput) {
     hideQuickMaspSuggest();
     return;
   }
@@ -334,11 +337,20 @@ function attachQuickMaspEvents() {
   quickMaspInput.addEventListener('input', () => {
     quickMaspInput.value = quickMaspInput.value.toUpperCase();
     const v = quickMaspInput.value.trim();
+
     if (!v) {
       hideQuickMaspSuggest();
       return;
     }
+
     loadQuickMaspSuggest(v).catch(console.warn);
+  });
+
+  quickMaspInput.addEventListener('focus', () => {
+    const v = quickMaspInput.value.trim();
+    if (!v) {
+      hideQuickMaspSuggest();
+    }
   });
 
   quickMaspInput.addEventListener('keydown', async (e) => {
