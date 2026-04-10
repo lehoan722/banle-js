@@ -35,9 +35,31 @@
             <button id="btn-reset">🔁 Làm lại</button>
             <button id="btn-kiemtra">🔍 Kiểm tra vị trí</button>
             <button id="btn-xoa">🧹 Xóa sản phẩm đã có vị trí</button>
-            <button id="btn-backup">💾 Backup trước khi ghi</button>
+
+            <input id="quick-masp" type="text" placeholder="Nhập mã SP rồi Enter..." autocomplete="off"
+                style="width:220px; margin-left:8px; text-transform:uppercase;">
+
+            <div id="quick-masp-suggest" style="
+    display:none;
+    position:fixed;
+    z-index:9999;
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    box-shadow:0 12px 30px rgba(15,23,42,.18);
+    max-height:280px;
+    overflow-y:auto;
+    font-size:13px;
+    min-width:220px;
+">
+            </div>
+
             <button id="btn-luu">💾 Lưu dữ liệu</button>
+
+            <!--
             <button id="btn-restore">⏫ Phục hồi từ backup</button>
+            <button id="btn-backup">💾 Backup trước khi ghi</button>  -->
+
         </div>
 
         <div id="preview"></div>
