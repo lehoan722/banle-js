@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quản lý danh mục vị trí</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 16px;
+      background: #f5f6fa;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: auto;
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    h2, h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 14px;
+    }
+
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 10px;
+    }
+
+    .form-row label {
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .form-row input,
+    .form-row select,
+    .form-row textarea {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .form-row textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    button {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-primary { background: #1976d2; color: #fff; }
+    .btn-green   { background: #2e7d32; color: #fff; }
+    .btn-gray    { background: #757575; color: #fff; }
+    .btn-orange  { background: #ef6c00; color: #fff; }
+    .btn-red     { background: #c62828; color: #fff; }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: 180px 220px 160px 160px 140px 140px auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f0f0;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    tr:hover {
+      background: #f9fbff;
+    }
+
+    tr.selected-row {
+      background: #e3f2fd !important;
+    }
+
+    .table-wrap {
+      max-height: 72vh;
+      overflow: auto;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+
+    .status {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      background: #eef5ff;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+
+    .small-note {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.5;
+      background: #fff8e1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .text-green { color: #2e7d32; font-weight: bold; }
+    .text-red { color: #c62828; font-weight: bold; }
+    .text-orange { color: #ef6c00; font-weight: bold; }
+
+    @media (max-width: 1100px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .filter-row {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .filter-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <h2>📍 Quản lý danh mục vị trí</h2>
+      <div class="small-note">
+        - Chọn 1 dòng trong bảng để sửa nhanh.<br>
+        - <b>Lưu dữ liệu</b> sẽ thêm mới nếu chưa có mã, hoặc cập nhật nếu mã đã tồn tại.<br>
+        - <b>Ngưng dùng</b> chỉ đổi <b>active = false</b>, không xóa cứng dữ liệu.<br>
+        - <b>Kích hoạt lại</b> đổi <b>active = true</b>.
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- FORM -->
+      <div class="panel">
+        <h3>Biểu mẫu vị trí</h3>
+
+        <div class="form-row">
+          <label for="id">ID</label>
+          <input id="id" type="text" readonly placeholder="Tự động">
+        </div>
+
+        <div class="form-row">
+          <label for="ma_vitri">Mã vị trí *</label>
+          <input id="ma_vitri" type="text" placeholder="Ví dụ: GAMB19">
+        </div>
+
+        <div class="form-row">
+          <label for="ten_vitri">Tên vị trí *</label>
+          <input id="ten_vitri" type="text" placeholder="Ví dụ: Kho GAM B19">
+        </div>
+
+        <div class="form-row">
+          <label for="loai_vitri">Loại vị trí *</label>
+          <select id="loai_vitri">
+            <option value="kho">kho</option>
+            <option value="treomau">treomau</option>
+            <option value="quay">quay</option>
+            <option value="khac">khac</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label for="co_so">Cơ sở *</label>
+          <select id="co_so">
+            <option value="cs1">cs1</option>
+            <option value="cs2">cs2</option>
+            <option value="spa">spa</option>
+            <option value="kho_tong">kho_tong</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label for="khu_vuc">Khu vực</label>
+          <input id="khu_vuc" type="text" placeholder="Ví dụ: tầng 1 / khu A">
+        </div>
+
+        <div class="form-row">
+          <label for="thu_tu">Thứ tự</label>
+          <input id="thu_tu" type="number" value="0">
+        </div>
+
+        <div class="form-row">
+          <label for="active">Đang dùng?</label>
+          <select id="active">
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label for="ghi_chu">Ghi chú</label>
+          <textarea id="ghi_chu" placeholder="Ghi chú thêm..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <label for="created_at">Ngày tạo</label>
+          <input id="created_at" type="text" readonly>
+        </div>
+
+        <div class="form-row">
+          <label for="updated_at">Ngày sửa</label>
+          <input id="updated_at" type="text" readonly>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-primary" id="btnSave">💾 Lưu dữ liệu</button>
+          <button class="btn-green" id="btnNew">➕ Thêm mới</button>
+          <button class="btn-orange" id="btnDeactivate">🚫 Ngưng dùng</button>
+          <button class="btn-green" id="btnActivate">✅ Kích hoạt lại</button>
+          <button class="btn-gray" id="btnClear">🧹 Xóa form</button>
+        </div>
+
+        <div id="formStatus" class="status">Chưa thao tác.</div>
+      </div>
+
+      <!-- DANH SÁCH -->
+      <div class="panel">
+        <h3>Danh sách vị trí</h3>
+
+        <div class="filter-row">
+          <div class="form-row" style="margin:0;">
+            <label for="f_keyword">Từ khóa</label>
+            <input id="f_keyword" type="text" placeholder="Mã / tên / ghi chú">
+          </div>
+
+          <div class="form-row" style="margin:0;">
+            <label for="f_co_so">Cơ sở</label>
+            <select id="f_co_so">
+              <option value="">-- Tất cả --</option>
+              <option value="cs1">cs1</option>
+              <option value="cs2">cs2</option>
+              <option value="spa">spa</option>
+              <option value="kho_tong">kho_tong</option>
+            </select>
+          </div>
+
+          <div class="form-row" style="margin:0;">
+            <label for="f_loai_vitri">Loại vị trí</label>
+            <select id="f_loai_vitri">
+              <option value="">-- Tất cả --</option>
+              <option value="kho">kho</option>
+              <option value="treomau">treomau</option>
+              <option value="quay">quay</option>
+              <option value="khac">khac</option>
+            </select>
+          </div>
+
+          <div class="form-row" style="margin:0;">
+            <label for="f_active">Active</label>
+            <select id="f_active">
+              <option value="">-- Tất cả --</option>
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          </div>
+
+          <div class="form-row" style="margin:0;">
+            <label for="f_limit">Số dòng</label>
+            <select id="f_limit">
+              <option value="100">100</option>
+              <option value="300" selected>300</option>
+              <option value="500">500</option>
+              <option value="1000">1000</option>
+            </select>
+          </div>
+
+          <div class="btn-row" style="margin:0;">
+            <button class="btn-primary" id="btnSearch">🔍 Tải danh sách</button>
+            <button class="btn-gray" id="btnResetFilter">🔁 Bỏ lọc</button>
+          </div>
+        </div>
+
+        <div id="listStatus" class="status">Chưa tải dữ liệu.</div>
+
+        <div class="table-wrap">
+          <table id="tblVitri">
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>ma_vitri</th>
+                <th>ten_vitri</th>
+                <th>loai_vitri</th>
+                <th>co_so</th>
+                <th>khu_vuc</th>
+                <th>thu_tu</th>
+                <th>active</th>
+                <th>ghi_chu</th>
+                <th>created_at</th>
+                <th>updated_at</th>
+              </tr>
+            </thead>
+            <tbody id="tblBody">
+              <tr><td colspan="11">Chưa có dữ liệu</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from './scripts/supabaseClient.js';
+
+    const el = (id) => document.getElementById(id);
+
+    const formStatus = el('formStatus');
+    const listStatus = el('listStatus');
+    const tblBody = el('tblBody');
+
+    let currentRows = [];
+    let selectedId = null;
+
+    function normalizeText(v) {
+      return (v || '').toString().trim();
+    }
+
+    function normalizeMaVitri(v) {
+      return normalizeText(v).toUpperCase().replace(/\s+/g, '');
+    }
+
+    function nowIso() {
+      return new Date().toISOString();
+    }
+
+    function formatDateTime(v) {
+      if (!v) return '';
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return v;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+    }
+
+    function getFormData() {
+      return {
+        id: normalizeText(el('id').value),
+        ma_vitri: normalizeMaVitri(el('ma_vitri').value),
+        ten_vitri: normalizeText(el('ten_vitri').value),
+        loai_vitri: normalizeText(el('loai_vitri').value),
+        co_so: normalizeText(el('co_so').value),
+        khu_vuc: normalizeText(el('khu_vuc').value) || null,
+        thu_tu: Number(el('thu_tu').value || 0),
+        active: el('active').value === 'true',
+        ghi_chu: normalizeText(el('ghi_chu').value) || null,
+        created_at: normalizeText(el('created_at').value),
+        updated_at: normalizeText(el('updated_at').value)
+      };
+    }
+
+    function setFormData(row = null) {
+      if (!row) {
+        el('id').value = '';
+        el('ma_vitri').value = '';
+        el('ten_vitri').value = '';
+        el('loai_vitri').value = 'kho';
+        el('co_so').value = 'cs1';
+        el('khu_vuc').value = '';
+        el('thu_tu').value = '0';
+        el('active').value = 'true';
+        el('ghi_chu').value = '';
+        el('created_at').value = '';
+        el('updated_at').value = '';
+        selectedId = null;
+        paintSelectedRow();
+        return;
+      }
+
+      el('id').value = row.id || '';
+      el('ma_vitri').value = row.ma_vitri || '';
+      el('ten_vitri').value = row.ten_vitri || '';
+      el('loai_vitri').value = row.loai_vitri || 'kho';
+      el('co_so').value = row.co_so || 'cs1';
+      el('khu_vuc').value = row.khu_vuc || '';
+      el('thu_tu').value = Number.isFinite(Number(row.thu_tu)) ? row.thu_tu : 0;
+      el('active').value = String(!!row.active);
+      el('ghi_chu').value = row.ghi_chu || '';
+      el('created_at').value = formatDateTime(row.created_at);
+      el('updated_at').value = formatDateTime(row.updated_at);
+
+      selectedId = row.id || null;
+      paintSelectedRow();
+    }
+
+    function validateForm(data) {
+      const errors = [];
+
+      if (!data.ma_vitri) errors.push('Thiếu mã vị trí.');
+      if (!data.ten_vitri) errors.push('Thiếu tên vị trí.');
+      if (!data.loai_vitri) errors.push('Thiếu loại vị trí.');
+      if (!data.co_so) errors.push('Thiếu cơ sở.');
+      if (!Number.isFinite(data.thu_tu) || data.thu_tu < 0) {
+        errors.push('Thứ tự phải là số >= 0.');
+      }
+
+      return errors;
+    }
+
+    function paintSelectedRow() {
+      document.querySelectorAll('#tblBody tr').forEach(tr => {
+        tr.classList.remove('selected-row');
+        if (tr.dataset.id && tr.dataset.id === selectedId) {
+          tr.classList.add('selected-row');
+        }
+      });
+    }
+
+    function renderTable(rows) {
+      currentRows = rows || [];
+
+      if (!currentRows.length) {
+        tblBody.innerHTML = `<tr><td colspan="11">Không có dữ liệu</td></tr>`;
+        return;
+      }
+
+      tblBody.innerHTML = currentRows.map((r, index) => `
+        <tr data-id="${r.id || ''}">
+          <td>${index + 1}</td>
+          <td>${r.ma_vitri || ''}</td>
+          <td>${r.ten_vitri || ''}</td>
+          <td>${r.loai_vitri || ''}</td>
+          <td>${r.co_so || ''}</td>
+          <td>${r.khu_vuc || ''}</td>
+          <td>${r.thu_tu ?? ''}</td>
+          <td>${String(!!r.active)}</td>
+          <td>${r.ghi_chu || ''}</td>
+          <td>${formatDateTime(r.created_at)}</td>
+          <td>${formatDateTime(r.updated_at)}</td>
+        </tr>
+      `).join('');
+
+      document.querySelectorAll('#tblBody tr').forEach((tr, idx) => {
+        tr.onclick = () => {
+          const row = currentRows[idx];
+          setFormData(row);
+          formStatus.innerHTML = `Đã chọn dòng: <span class="text-green">${row.ma_vitri}</span>`;
+        };
+      });
+
+      paintSelectedRow();
+    }
+
+    async function loadList() {
+      try {
+        listStatus.innerHTML = 'Đang tải danh sách...';
+
+        const keyword = normalizeText(el('f_keyword').value);
+        const fCoSo = normalizeText(el('f_co_so').value);
+        const fLoaiVitri = normalizeText(el('f_loai_vitri').value);
+        const fActive = normalizeText(el('f_active').value);
+        const limit = Number(el('f_limit').value || 300);
+
+        let q = supabase
+          .from('dm_vitri')
+          .select('*')
+          .order('co_so', { ascending: true })
+          .order('loai_vitri', { ascending: true })
+          .order('thu_tu', { ascending: true })
+          .order('ma_vitri', { ascending: true })
+          .limit(limit);
+
+        if (fCoSo) q = q.eq('co_so', fCoSo);
+        if (fLoaiVitri) q = q.eq('loai_vitri', fLoaiVitri);
+        if (fActive === 'true') q = q.eq('active', true);
+        if (fActive === 'false') q = q.eq('active', false);
+
+        if (keyword) {
+          const kw = keyword.replaceAll(',', ' ').trim();
+          q = q.or(`ma_vitri.ilike.%${kw}%,ten_vitri.ilike.%${kw}%,ghi_chu.ilike.%${kw}%`);
+        }
+
+        const { data, error } = await q;
+
+        if (error) throw error;
+
+        renderTable(data || []);
+        listStatus.innerHTML = `Đã tải <span class="text-green">${data?.length || 0}</span> dòng.`;
+
+      } catch (err) {
+        console.error(err);
+        listStatus.innerHTML = `<span class="text-red">Lỗi tải danh sách: ${err.message}</span>`;
+      }
+    }
+
+    async function saveData() {
+      const data = getFormData();
+      const errors = validateForm(data);
+
+      if (errors.length) {
+        formStatus.innerHTML = `<span class="text-red">${errors.join('<br>')}</span>`;
+        return;
+      }
+
+      try {
+        formStatus.innerHTML = 'Đang lưu dữ liệu...';
+
+        const payload = {
+          ma_vitri: data.ma_vitri,
+          ten_vitri: data.ten_vitri,
+          loai_vitri: data.loai_vitri,
+          co_so: data.co_so,
+          khu_vuc: data.khu_vuc,
+          thu_tu: data.thu_tu,
+          active: data.active,
+          ghi_chu: data.ghi_chu,
+          updated_at: nowIso()
+        };
+
+        if (data.id) {
+          const { error } = await supabase
+            .from('dm_vitri')
+            .update(payload)
+            .eq('id', data.id);
+
+          if (error) throw error;
+
+          formStatus.innerHTML = `<span class="text-green">Đã cập nhật vị trí: ${data.ma_vitri}</span>`;
+        } else {
+          const { error } = await supabase
+            .from('dm_vitri')
+            .upsert([payload], { onConflict: 'ma_vitri' });
+
+          if (error) throw error;
+
+          formStatus.innerHTML = `<span class="text-green">Đã thêm mới / cập nhật theo mã vị trí: ${data.ma_vitri}</span>`;
+        }
+
+        await loadList();
+
+        // nạp lại dòng vừa lưu để đưa lên form
+        const justSaved = currentRows.find(x => x.ma_vitri === data.ma_vitri);
+        if (justSaved) setFormData(justSaved);
+
+      } catch (err) {
+        console.error(err);
+        formStatus.innerHTML = `<span class="text-red">Lỗi lưu dữ liệu: ${err.message}</span>`;
+      }
+    }
+
+    async function setActiveValue(activeValue) {
+      const data = getFormData();
+
+      if (!data.id) {
+        formStatus.innerHTML = `<span class="text-red">Bạn cần chọn 1 dòng trong bảng trước.</span>`;
+        return;
+      }
+
+      const msg = activeValue
+        ? `Bạn có chắc muốn kích hoạt lại vị trí "${data.ma_vitri}" không?`
+        : `Bạn có chắc muốn ngưng dùng vị trí "${data.ma_vitri}" không?`;
+
+      if (!confirm(msg)) return;
+
+      try {
+        formStatus.innerHTML = 'Đang cập nhật trạng thái...';
+
+        const { error } = await supabase
+          .from('dm_vitri')
+          .update({
+            active: activeValue,
+            updated_at: nowIso()
+          })
+          .eq('id', data.id);
+
+        if (error) throw error;
+
+        formStatus.innerHTML = activeValue
+          ? `<span class="text-green">Đã kích hoạt lại vị trí: ${data.ma_vitri}</span>`
+          : `<span class="text-orange">Đã ngưng dùng vị trí: ${data.ma_vitri}</span>`;
+
+        await loadList();
+
+        const updatedRow = currentRows.find(x => x.id === data.id);
+        if (updatedRow) setFormData(updatedRow);
+
+      } catch (err) {
+        console.error(err);
+        formStatus.innerHTML = `<span class="text-red">Lỗi cập nhật trạng thái: ${err.message}</span>`;
+      }
+    }
+
+    function clearFilters() {
+      el('f_keyword').value = '';
+      el('f_co_so').value = '';
+      el('f_loai_vitri').value = '';
+      el('f_active').value = '';
+      el('f_limit').value = '300';
+    }
+
+    // Nút
+    el('btnSave').onclick = saveData;
+
+    el('btnNew').onclick = () => {
+      setFormData(null);
+      formStatus.innerHTML = 'Đang ở chế độ thêm mới.';
+      el('ma_vitri').focus();
+    };
+
+    el('btnClear').onclick = () => {
+      setFormData(null);
+      formStatus.innerHTML = 'Đã xóa dữ liệu trên form.';
+    };
+
+    el('btnDeactivate').onclick = () => setActiveValue(false);
+    el('btnActivate').onclick = () => setActiveValue(true);
+
+    el('btnSearch').onclick = loadList;
+
+    el('btnResetFilter').onclick = async () => {
+      clearFilters();
+      await loadList();
+    };
+
+    el('f_keyword').addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        await loadList();
+      }
+    });
+
+    // Khởi tạo
+    setFormData(null);
+    loadList();
+  </script>
+</body>
+</html>
