@@ -1,12 +1,111 @@
-import {
-  playSuccessBeep,
-  playWaitSizeBeep,
-  playAlertBeep,
-  setupBeepUnlockOnce,
-  patchAlertWithBeep
-} from "./soundBeep.js";
-
 import "./stockQuickPopup.js";
+
+// =========================
+// SOUND FALLBACK NỘI BỘ
+// =========================
+let __audioCtx = null;
+let __audioUnlocked = false;
+
+function getAudioCtx() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!__audioCtx) __audioCtx = new Ctx();
+    return __audioCtx;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function unlockAudioOnce() {
+  const ctx = getAudioCtx();
+  if (!ctx) return false;
+
+  try {
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+
+    if (!__audioUnlocked) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.0001;
+      osc.frequency.value = 440;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.01);
+      __audioUnlocked = true;
+    }
+
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function setupBeepUnlockOnce(target = document) {
+  const handler = async () => {
+    await unlockAudioOnce();
+  };
+
+  ["pointerdown", "touchstart", "keydown", "click"].forEach(evt => {
+    target.addEventListener(evt, handler, { passive: true, capture: true });
+  });
+}
+
+function playTone(freq = 880, duration = 0.12, volume = 0.05, type = "sine") {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+
+  const start = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, start);
+
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(start);
+  osc.stop(start + duration + 0.02);
+}
+
+function playSuccessBeep() {
+  unlockAudioOnce().then(() => {
+    playTone(980, 0.08, 0.05, "sine");
+    setTimeout(() => playTone(1320, 0.10, 0.05, "sine"), 90);
+  });
+}
+
+function playWaitSizeBeep() {
+  unlockAudioOnce().then(() => {
+    playTone(740, 0.10, 0.045, "triangle");
+  });
+}
+
+function playAlertBeep() {
+  unlockAudioOnce().then(() => {
+    playTone(420, 0.16, 0.06, "square");
+    setTimeout(() => playTone(420, 0.16, 0.06, "square"), 180);
+  });
+}
+
+function patchAlertWithBeep() {
+  if (window.__alertBeepPatched) return;
+  window.__alertBeepPatched = true;
+
+  const oldAlert = window.alert;
+  window.alert = function (...args) {
+    try { playAlertBeep(); } catch (e) { }
+    return oldAlert.apply(window, args);
+  };
+}
 
 // scripts/nhapkiemkho.js
 (function () {
