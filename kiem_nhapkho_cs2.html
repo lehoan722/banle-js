@@ -1725,6 +1725,104 @@
         }, true);
     </script>
 
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const isMobile = window.matchMedia("(max-width: 480px)").matches;
+            if (!isMobile) return;
+
+            const body = document.body;
+            const footer = document.querySelector(".footer-buttons");
+            const handle = document.getElementById("mobileFooterHandle");
+
+            if (!footer || !handle) return;
+
+            // Mặc định thu gọn
+            body.classList.remove("mobile-footer-expanded");
+            body.classList.add("mobile-footer-collapsed");
+
+            function moFooter() {
+                body.classList.remove("mobile-footer-collapsed");
+                body.classList.add("mobile-footer-expanded");
+            }
+
+            function dongFooter() {
+                body.classList.remove("mobile-footer-expanded");
+                body.classList.add("mobile-footer-collapsed");
+            }
+
+            function toggleFooter() {
+                if (body.classList.contains("mobile-footer-expanded")) {
+                    dongFooter();
+                } else {
+                    moFooter();
+                }
+            }
+
+            document.addEventListener("click", function (e) {
+                if (!body.classList.contains("mobile-footer-expanded")) return;
+                if (footer.contains(e.target) || handle.contains(e.target)) return;
+                dongFooter();
+            });
+
+            handle.addEventListener("click", function (e) {
+                e.preventDefault();
+                toggleFooter();
+            });
+
+            let startY = 0;
+            let deltaY = 0;
+            let dragging = false;
+
+            function onStart(clientY) {
+                dragging = true;
+                startY = clientY;
+                deltaY = 0;
+            }
+
+            function onMove(clientY) {
+                if (!dragging) return;
+                deltaY = clientY - startY;
+            }
+
+            function onEnd() {
+                if (!dragging) return;
+                dragging = false;
+
+                if (deltaY < -30) {
+                    moFooter();     // vuốt lên
+                } else if (deltaY > 30) {
+                    dongFooter();   // vuốt xuống
+                }
+            }
+
+            handle.addEventListener("touchstart", function (e) {
+                if (!e.touches || !e.touches.length) return;
+                onStart(e.touches[0].clientY);
+            }, { passive: true });
+
+            handle.addEventListener("touchmove", function (e) {
+                if (!e.touches || !e.touches.length) return;
+                onMove(e.touches[0].clientY);
+            }, { passive: true });
+
+            handle.addEventListener("touchend", function () {
+                onEnd();
+            });
+
+            handle.addEventListener("mousedown", function (e) {
+                onStart(e.clientY);
+            });
+
+            window.addEventListener("mousemove", function (e) {
+                onMove(e.clientY);
+            });
+
+            window.addEventListener("mouseup", function () {
+                onEnd();
+            });
+        });
+    </script>
+
 </body>
 
 </html>
