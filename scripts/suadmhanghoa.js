@@ -158,6 +158,207 @@ function getColLabel(colname) {
   return colInfo ? colInfo.label : colname;
 }
 
+// ==== Ô nhập mã sản phẩm nhanh (giống upanhnhanh) ====
+let quickMaspInput = null;
+let quickMaspSuggestDiv = null;
+
+function positionQuickMaspSuggest() {
+  if (!quickMaspInput || !quickMaspSuggestDiv) return;
+  const rect = quickMaspInput.getBoundingClientRect();
+  quickMaspSuggestDiv.style.left = (rect.left + window.scrollX) + 'px';
+  quickMaspSuggestDiv.style.top = (rect.bottom + 4 + window.scrollY) + 'px';
+  quickMaspSuggestDiv.style.minWidth = rect.width + 'px';
+}
+
+function hideQuickMaspSuggest() {
+  if (quickMaspSuggestDiv) quickMaspSuggestDiv.style.display = 'none';
+}
+
+function focusQuickMaspInput(selectAll = false) {
+  if (!quickMaspInput) return;
+  quickMaspInput.focus();
+  if (selectAll) quickMaspInput.select();
+}
+
+async function loadQuickMaspSuggest(keyword) {
+  if (!quickMaspSuggestDiv) return;
+
+  const q = String(keyword || '').trim();
+  if (!q) {
+    hideQuickMaspSuggest();
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('dmhanghoa')
+    .select('masp, tensp')
+    .or(`masp.ilike.%${q}%,tensp.ilike.%${q}%`)
+    .order('masp')
+    .limit(100);
+
+  if (error) {
+    console.warn('Lỗi load gợi ý mã SP:', error);
+    hideQuickMaspSuggest();
+    return;
+  }
+
+  if (!data || !data.length) {
+    hideQuickMaspSuggest();
+    return;
+  }
+
+  let html = '<table style="border-collapse:collapse;width:100%;"><tbody>';
+  for (const row of data) {
+    const masp = (row.masp || '').toString().trim().toUpperCase();
+    const tensp = (row.tensp || '').toString();
+    html += `
+      <tr data-masp="${masp}" style="cursor:pointer;">
+        <td style="padding:4px 8px;border-bottom:1px solid #f3f4f6;font-weight:600;white-space:nowrap;width:120px;">${masp}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #f3f4f6;color:#4b5563;">${tensp}</td>
+      </tr>
+    `;
+  }
+  html += '</tbody></table>';
+
+  quickMaspSuggestDiv.innerHTML = html;
+  positionQuickMaspSuggest();
+  quickMaspSuggestDiv.style.display = 'block';
+
+  quickMaspSuggestDiv.querySelectorAll('tr').forEach(tr => {
+    tr.addEventListener('click', async () => {
+      const masp = (tr.dataset.masp || '').trim().toUpperCase();
+      quickMaspInput.value = masp;
+      hideQuickMaspSuggest();
+      await xuLyNhapNhanhMaSanPham();
+    });
+  });
+}
+
+function timDongTrongTiepTheo(colname) {
+  if (!hot) return -1;
+
+  for (let r = 0; r < hot.countRows(); r++) {
+    const masp = (hot.getDataAtCell(r, 0) || '').toString().trim();
+    const val = (hot.getDataAtCell(r, 1) || '').toString().trim();
+    const trangthai = (hot.getDataAtCell(r, 2) || '').toString().trim();
+
+    if (!masp && !val && !trangthai) return r;
+  }
+
+  hot.alter('insert_row_below', hot.countRows(), 1);
+  return hot.countRows() - 1;
+}
+
+async function kiemTraMaSanPhamTonTai(masp) {
+  const ma = String(masp || '').trim().toUpperCase();
+  if (!ma) return null;
+
+  const { data, error } = await supabase
+    .from('dmhanghoa')
+    .select('masp, tensp')
+    .eq('masp', ma)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+}
+
+async function xuLyNhapNhanhMaSanPham() {
+  const previewEl = document.getElementById('preview');
+  const colSelect = document.getElementById('col-select');
+
+  if (!hot) return;
+  if (!colSelect || !colSelect.value) {
+    alert("Bạn cần chọn mục cần ghi vào trước khi nhập mã sản phẩm!");
+    focusQuickMaspInput(true);
+    return;
+  }
+
+  const colname = colSelect.value;
+  const masp = (quickMaspInput?.value || '').toString().trim().toUpperCase();
+
+  if (!masp) {
+    focusQuickMaspInput(true);
+    return;
+  }
+
+  try {
+    const found = await kiemTraMaSanPhamTonTai(masp);
+
+    if (!found) {
+      alert("Mã sản phẩm không hợp lệ!");
+      if (previewEl) {
+        previewEl.innerHTML = `<span style="color:#e53935;">❌ Mã sản phẩm <b>${masp}</b> không tồn tại trong danh mục hàng hóa.</span>`;
+      }
+      quickMaspInput.value = '';
+      hideQuickMaspSuggest();
+      focusQuickMaspInput();
+      return;
+    }
+
+    const rowIndex = timDongTrongTiepTheo(colname);
+
+    hot.setDataAtCell(rowIndex, 0, masp);
+    hot.setDataAtCell(rowIndex, 1, null);
+    hot.setDataAtCell(rowIndex, 2, null);
+
+    currentTableMode = 'masp';
+
+    if (previewEl) {
+      previewEl.innerHTML = `<span style="color:#16a34a;">✅ Đã thêm mã <b>${masp}</b> vào bảng dữ liệu.</span>`;
+    }
+
+    quickMaspInput.value = '';
+    hideQuickMaspSuggest();
+    focusQuickMaspInput();
+
+    // Cuộn tới dòng vừa thêm nếu cần
+    hot.selectCell(rowIndex, 0);
+    hot.scrollViewportTo(rowIndex, 0);
+  } catch (err) {
+    console.error(err);
+    alert("Lỗi khi kiểm tra mã sản phẩm: " + (err?.message || err));
+    focusQuickMaspInput(true);
+  }
+}
+
+function attachQuickMaspEvents() {
+  quickMaspInput = document.getElementById('quick-masp');
+  quickMaspSuggestDiv = document.getElementById('quick-masp-suggest');
+
+  if (!quickMaspInput || !quickMaspSuggestDiv) return;
+
+  quickMaspInput.addEventListener('input', () => {
+    quickMaspInput.value = quickMaspInput.value.toUpperCase();
+    const v = quickMaspInput.value.trim();
+    if (!v) {
+      hideQuickMaspSuggest();
+      return;
+    }
+    loadQuickMaspSuggest(v).catch(console.warn);
+  });
+
+  quickMaspInput.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      await xuLyNhapNhanhMaSanPham();
+    }
+  });
+
+  quickMaspInput.addEventListener('blur', () => {
+    setTimeout(() => hideQuickMaspSuggest(), 150);
+  });
+
+  window.addEventListener('resize', positionQuickMaspSuggest);
+  window.addEventListener('scroll', positionQuickMaspSuggest, true);
+
+  document.addEventListener('click', (ev) => {
+    if (!quickMaspSuggestDiv || quickMaspSuggestDiv.style.display === 'none') return;
+    if (ev.target === quickMaspInput || quickMaspSuggestDiv.contains(ev.target)) return;
+    hideQuickMaspSuggest();
+  });
+}
+
 
 // ==== Hỗ trợ UX: double-click để đẩy giá trị vào ô "Giá trị lọc" ====
 function appendToFilterInput(value) {
@@ -198,7 +399,7 @@ async function fetchDistinctValuesFromDmHangHoa(colname, createdAtRange) {
       .select(colname)
       .not(colname, 'is', null)
       // áp dụng lọc created_at nếu có
-      
+
       .range(from, to);
 
     if (error) throw error;
@@ -344,7 +545,9 @@ function attachUIEvents() {
   if (colSelect) {
     colSelect.onchange = function () {
       initTable(this.value);
+      hideQuickMaspSuggest();
       if (previewEl) previewEl.innerHTML = "";
+      focusQuickMaspInput();
     };
   }
 
@@ -352,7 +555,10 @@ function attachUIEvents() {
     btnReset.onclick = function () {
       initTable(colSelect?.value || 'vitrikho1');
       if (inputFilter) inputFilter.value = "";
+      if (quickMaspInput) quickMaspInput.value = "";
+      hideQuickMaspSuggest();
       if (previewEl) previewEl.innerHTML = "";
+      focusQuickMaspInput();
     };
   }
 
@@ -381,6 +587,8 @@ function attachUIEvents() {
       if (e.key === 'Enter') taiDanhSachTheoDieuKien();
     });
   }
+
+  attachQuickMaspEvents();
 }
 
 // ==== Kiểm tra vị trí ====
@@ -508,7 +716,7 @@ async function taiDanhSachGiaTriCotDangChon() {
 
     if (previewEl) previewEl.innerHTML = `<span>⏳ Đang tải danh sách giá trị của cột <b>${colLabel}</b>${rangeNote}...</span>`;
 
-    
+
     const values = await fetchDistinctValuesFromDmHangHoa(colname, createdAtRange);
 
     const rows = values.map(v => ({
