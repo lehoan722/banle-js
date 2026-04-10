@@ -484,6 +484,22 @@ function renderColSelect() {
 // ==== Table Handsontable (chỉ gồm masp, cột cần sửa, trạng thái) ====
 let hot;
 let currentTableMode = 'masp';
+let duplicateMasps = new Set();
+
+function ensureDuplicateMaspStyle() {
+  if (document.getElementById('duplicate-masp-style')) return;
+
+  const style = document.createElement('style');
+  style.id = 'duplicate-masp-style';
+  style.textContent = `
+    .htCore td.masp-trung {
+      background: #ffe3e3 !important;
+      color: #b91c1c !important;
+      font-weight: 700 !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 function initTable(colname = 'vitrikho1') {
   currentTableMode = 'masp';
@@ -515,6 +531,15 @@ function initTable(colname = 'vitrikho1') {
     licenseKey: 'non-commercial-and-evaluation',
     cells: function (row, col) {
       const cellProperties = {};
+
+      // Tô màu cột mã sản phẩm nếu bị trùng
+      if (col === 0) {
+        const masp = (this.instance.getDataAtCell(row, 0) || '').toString().trim().toUpperCase();
+        if (masp && duplicateMasps.has(masp)) {
+          cellProperties.className = 'masp-trung';
+        }
+      }
+
       if (col === 2) {
         const val = this.instance.getDataAtCell(row, col);
         if (val === "OK") cellProperties.className = "trangthai-ok";
@@ -523,6 +548,7 @@ function initTable(colname = 'vitrikho1') {
         if (val === "MÃ KHÔNG TỒN TẠI") cellProperties.className = "trangthai-khongtontai";
         if (val === "CHƯA CÓ GIÁ TRỊ") cellProperties.className = "trangthai-chuacovitri";
       }
+
       return cellProperties;
     },
     afterOnCellMouseDown: function (event, coords) {
@@ -605,6 +631,26 @@ function attachUIEvents() {
   attachQuickMaspEvents();
 }
 
+function timDanhSachMaTrung() {
+  if (!hot) return new Set();
+
+  const counts = {};
+  const allRows = hot.getSourceData();
+
+  for (const row of allRows) {
+    const masp = (row.masp || '').toString().trim().toUpperCase();
+    if (!masp) continue;
+    counts[masp] = (counts[masp] || 0) + 1;
+  }
+
+  const result = new Set();
+  Object.keys(counts).forEach(masp => {
+    if (counts[masp] > 1) result.add(masp);
+  });
+
+  return result;
+}
+
 // ==== Kiểm tra vị trí ====
 async function kiemTraViTri() {
   const colSelect = document.getElementById('col-select');
@@ -618,24 +664,50 @@ async function kiemTraViTri() {
   }
 
   if (!hot) return;
+
+  // Luôn reset danh sách mã trùng trước mỗi lần kiểm tra
+  duplicateMasps = new Set();
+
+  // 1) Kiểm tra mã trùng trước
+  const duplicateSet = timDanhSachMaTrung();
+  if (duplicateSet.size > 0) {
+    duplicateMasps = duplicateSet;
+
+    hot.updateSettings({ cells: hot.getSettings().cells });
+    hot.render();
+
+    const dsTrung = Array.from(duplicateSet).join(', ');
+
+    if (previewEl) {
+      previewEl.innerHTML = `
+        <span style="color:#b91c1c; font-weight:700;">
+          ⚠️ Phát hiện mã sản phẩm bị trùng: ${dsTrung}.
+          Hãy tự xóa các dòng trùng rồi bấm lại "Kiểm tra vị trí".
+        </span>
+      `;
+    }
+
+    alert("Có mã sản phẩm bị trùng. Hệ thống đã tô màu để bạn nhận biết. Hãy xóa mã trùng rồi bấm lại Kiểm tra vị trí.");
+    return;
+  }
+
+  // Không có mã trùng -> bỏ highlight cũ nếu có
   hot.updateSettings({ cells: hot.getSettings().cells });
+  hot.render();
 
   const allRows = hot.getSourceData();
-  const uniqueMasps = [];
-  const uniqueRows = [];
-  const seen = {};
+  const maspRows = [];
 
   for (let row of allRows) {
     const masp = (row.masp || "").toString().trim().toUpperCase();
-    if (masp && !seen[masp]) {
-      seen[masp] = true;
-      uniqueMasps.push(masp);
-      uniqueRows.push({ masp, [colname]: null, trangthai: null });
+    if (masp) {
+      maspRows.push({ masp, [colname]: null, trangthai: null });
     }
   }
 
+  const uniqueMasps = maspRows.map(r => r.masp);
+
   if (uniqueMasps.length === 0) {
-    // Không có mã sản phẩm -> gợi ý tải danh sách giá trị “đơn nhất” của cột đang chọn
     const colLabel = getColLabel(colname);
 
     if (!isDistinctAllowed(colname)) {
@@ -656,7 +728,7 @@ async function kiemTraViTri() {
     return;
   }
 
-  hot.loadData(uniqueRows);
+  hot.loadData(maspRows);
 
   const { data: found, error } = await supabase
     .from('dmhanghoa')
@@ -669,7 +741,9 @@ async function kiemTraViTri() {
   }
 
   const maspMap = {};
-  found.forEach(row => { maspMap[row.masp.toUpperCase()] = row[colname]; });
+  found.forEach(row => {
+    maspMap[row.masp.toUpperCase()] = row[colname];
+  });
 
   hot.batch(() => {
     for (let r = 0; r < hot.countRows(); r++) {
@@ -698,10 +772,10 @@ async function kiemTraViTri() {
   if (previewEl) {
     previewEl.innerHTML = `<span>✅ Đã kiểm tra xong.</span>`;
   }
+
   hot.updateSettings({ cells: hot.getSettings().cells });
+  hot.render();
 }
-
-
 
 // ==== Tải danh sách GIÁ TRỊ (đơn nhất) của cột đang chọn để tham khảo ====
 async function taiDanhSachGiaTriCotDangChon() {
@@ -1039,6 +1113,7 @@ function normalizeDate(val) {
 // ==== KHỞI TẠO TRANG ====
 (function initPage() {
   // Khởi tạo dropdown & bảng (ẩn phía sau, chờ đăng nhập xong sẽ hiện app-container)
+  ensureDuplicateMaspStyle();
   renderColSelect();
   initTable();
   attachUIEvents();
