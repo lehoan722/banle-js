@@ -612,6 +612,7 @@ function attachUIEvents() {
   const btnReset = document.getElementById('btn-reset');
   const btnKiemTra = document.getElementById('btn-kiemtra');
   const btnXoaTrung = document.getElementById('btn-xoa-trung');
+  const btnDienCotB = document.getElementById('btn-dien-cot-b');
   const btnXoa = document.getElementById('btn-xoa');
   const btnBackup = document.getElementById('btn-backup');
   const btnLuu = document.getElementById('btn-luu');
@@ -646,6 +647,10 @@ function attachUIEvents() {
 
   if (btnXoaTrung) {
     btnXoaTrung.onclick = xoaMaSanPhamTrung;
+  }
+
+  if (btnDienCotB) {
+    btnDienCotB.onclick = dienCotBHangLoat;
   }
 
   if (btnXoa) {
@@ -755,6 +760,50 @@ function xoaMaSanPhamTrung() {
 
   if (previewEl) {
     previewEl.innerHTML = `<span style="color:#16a34a;">✅ Đã xóa các mã sản phẩm trùng. Mỗi mã chỉ giữ lại 1 dòng đầu tiên.</span>`;
+  }
+
+  if (quickMaspInput) {
+    quickMaspInput.focus();
+  }
+}
+
+function dienCotBHangLoat() {
+  const previewEl = document.getElementById('preview');
+  const colSelect = document.getElementById('col-select');
+
+  if (!hot) return;
+  if (!colSelect || !colSelect.value) {
+    alert("Bạn cần chọn mục cần ghi vào trước khi điền cột B!");
+    return;
+  }
+
+  const allRows = hot.getSourceData();
+  if (!allRows || allRows.length === 0) {
+    alert("Không có dữ liệu trong bảng.");
+    return;
+  }
+
+  const firstValue = (hot.getDataAtCell(0, 1) ?? '').toString().trim();
+
+  if (!firstValue) {
+    alert("Bạn cần nhập giá trị ở cột B dòng đầu tiên trước khi dùng nút Điền cột B.");
+    return;
+  }
+
+  let count = 0;
+
+  hot.batch(() => {
+    for (let r = 0; r < hot.countRows(); r++) {
+      const masp = (hot.getDataAtCell(r, 0) || '').toString().trim().toUpperCase();
+      if (!masp) continue;
+
+      hot.setDataAtCell(r, 1, firstValue);
+      count++;
+    }
+  });
+
+  if (previewEl) {
+    previewEl.innerHTML = `<span style="color:#16a34a;">✅ Đã điền giá trị <b>${firstValue}</b> xuống cột B cho <b>${count}</b> dòng có mã sản phẩm.</span>`;
   }
 
   if (quickMaspInput) {
