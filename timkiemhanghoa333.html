@@ -682,6 +682,10 @@
         let activeCameraId = '';
         let audioCtx = null;
 
+        // trạng thái tìm 1 mã
+        let singleSearchLastCode = '';
+        let singleSearchMode = 'exact'; // 'exact' | 'similar'
+
         function playScanBeep() {
             try {
                 const AC = window.AudioContext || window.webkitAudioContext;
@@ -727,6 +731,14 @@
             s = String(s || '').trim();
             const m = s.match(/^(.*)_[A-Za-z0-9.\-]+$/);
             return m ? m[1] : s;
+        }
+
+        function getSimilarPrefixFromCode(code) {
+            const s = normCode(stripSizeSuffixAtEnd(code));
+            if (!s) return '';
+            const idx = s.lastIndexOf('.');
+            if (idx <= 0) return '';
+            return s.slice(0, idx);
         }
 
         function detectBranchFromPage() {
@@ -885,6 +897,50 @@
             }
 
             return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale, nhomhang };
+        }
+
+        async function fetchSimilarCodesByPrefix(codeRaw) {
+            const prefix = getSimilarPrefixFromCode(codeRaw);
+            if (!prefix) return [];
+
+            const client = await waitForSupabaseReady(12000);
+            if (!client) return [];
+
+            try {
+                const { data, error } = await client
+                    .from('dmhanghoa')
+                    .select('masp')
+                    .ilike('masp', `${prefix}.%`)
+                    .order('masp', { ascending: true })
+                    .limit(100);
+
+                if (error || !Array.isArray(data)) return [];
+
+                const exactCode = normCode(stripSizeSuffixAtEnd(codeRaw));
+                const codes = data
+                    .map(r => normCode(r.masp))
+                    .filter(Boolean);
+
+                // đưa mã người dùng vừa tìm lên đầu
+                const unique = [];
+                const seen = new Set();
+
+                if (exactCode && codes.includes(exactCode)) {
+                    unique.push(exactCode);
+                    seen.add(exactCode);
+                }
+
+                for (const c of codes) {
+                    if (seen.has(c)) continue;
+                    unique.push(c);
+                    seen.add(c);
+                }
+
+                return unique;
+            } catch (e) {
+                console.warn('[quicksearch] fetchSimilarCodesByPrefix error:', e);
+                return [];
+            }
         }
 
         async function saveVitriKhoNhanh(maspRaw, cosoRaw, vitriRaw) {
@@ -1099,6 +1155,11 @@
             return map[key] || '';
         }
 
+        function resetSingleSearchMode() {
+            singleSearchLastCode = '';
+            singleSearchMode = 'exact';
+        }
+
         function parseBulkCodes() {
             const rawLines = String(bulkTextarea.value || '')
                 .split(/[\r\n]+/)
@@ -1133,15 +1194,62 @@
 
             const bulkCodes = parseBulkCodes();
             const singleCode = normCode(stripSizeSuffixAtEnd(maspInput.value));
-            const codes = bulkCodes.length ? bulkCodes : (singleCode ? [singleCode] : []);
 
-            if (!codes.length) {
+            // ===== Trường hợp tìm nhiều mã: giữ nguyên như cũ =====
+            if (bulkCodes.length) {
+                statusMsg.textContent = `Đang tìm ${bulkCodes.length} mã...`;
+                resultList.innerHTML = '<div class="empty">Đang tải dữ liệu...</div>';
+
+                const htmlParts = [];
+                for (const code of bulkCodes) {
+                    const html = await renderSingle(code);
+                    if (html) htmlParts.push(html);
+                }
+
+                if (!htmlParts.length) {
+                    resultList.innerHTML = '<div class="empty">Không tìm thấy dữ liệu.</div>';
+                    statusMsg.textContent = 'Không có dữ liệu phù hợp.';
+                    return;
+                }
+
+                resultList.innerHTML = htmlParts.join('');
+                statusMsg.textContent = `Hoàn thành: ${htmlParts.length} sản phẩm.`;
+                bindCardEvents();
+                return;
+            }
+
+            // ===== Trường hợp tìm 1 mã =====
+            if (!singleCode) {
                 statusMsg.textContent = 'Vui lòng nhập mã hoặc dán danh sách mã.';
                 return;
             }
 
-            statusMsg.textContent = `Đang tìm ${codes.length} mã...`;
+            // nếu đổi mã mới thì reset về exact
+            if (singleCode !== singleSearchLastCode) {
+                singleSearchLastCode = singleCode;
+                singleSearchMode = 'exact';
+            }
+
+            const currentMode = singleSearchMode;
             resultList.innerHTML = '<div class="empty">Đang tải dữ liệu...</div>';
+
+            let codes = [];
+
+            if (currentMode === 'exact') {
+                statusMsg.textContent = `Đang tìm chính xác: ${singleCode}`;
+                codes = [singleCode];
+            } else {
+                const prefix = getSimilarPrefixFromCode(singleCode);
+                statusMsg.textContent = prefix
+                    ? `Đang tìm các mã tương tự: ${prefix}`
+                    : `Mã không có hậu tố màu, đang tìm chính xác: ${singleCode}`;
+
+                codes = prefix ? await fetchSimilarCodesByPrefix(singleCode) : [singleCode];
+
+                if (!codes.length) {
+                    codes = [singleCode];
+                }
+            }
 
             const htmlParts = [];
             for (const code of codes) {
@@ -1156,7 +1264,15 @@
             }
 
             resultList.innerHTML = htmlParts.join('');
-            statusMsg.textContent = `Hoàn thành: ${htmlParts.length} sản phẩm.`;
+
+            if (currentMode === 'exact') {
+                statusMsg.textContent = `Đã tìm chính xác: ${singleCode}`;
+                singleSearchMode = 'similar';
+            } else {
+                statusMsg.textContent = `Đã tìm tương tự: ${htmlParts.length} mã`;
+                singleSearchMode = 'exact';
+            }
+
             bindCardEvents();
         }
 
@@ -1218,6 +1334,7 @@
             popupSearchList.querySelectorAll('[data-masp]').forEach(el => {
                 el.onclick = () => {
                     maspInput.value = el.getAttribute('data-masp') || '';
+                    resetSingleSearchMode();
                     closePopupSearch();
                     triggerSearch();
                 };
@@ -1310,6 +1427,7 @@
                         showToast(`Đã quét ${code}`);
 
                         maspInput.value = code;
+                        resetSingleSearchMode();
                         closeScanner();
                         triggerSearch();
                     }
@@ -1392,6 +1510,14 @@
 
             popupSearchInput.addEventListener('input', e => searchPopup(e.target.value.trim()));
             popupSearch.addEventListener('click', e => { if (e.target === popupSearch) closePopupSearch(); });
+
+            maspInput.addEventListener('input', () => {
+                const current = normCode(stripSizeSuffixAtEnd(maspInput.value));
+                if (current !== singleSearchLastCode) {
+                    resetSingleSearchMode();
+                }
+            });
+
             maspInput.addEventListener('keydown', e => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -1412,8 +1538,10 @@
             const urlMasp = new URLSearchParams(window.location.search).get('masp');
             if (urlMasp) {
                 maspInput.value = normCode(stripSizeSuffixAtEnd(urlMasp));
+                resetSingleSearchMode();
                 await triggerSearch();
             } else if (hasIncoming) {
+                resetSingleSearchMode();
                 await triggerSearch();
             }
         };
