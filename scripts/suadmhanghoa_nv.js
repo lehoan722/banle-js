@@ -613,6 +613,8 @@ function attachUIEvents() {
   const btnKiemTra = document.getElementById('btn-kiemtra');
   const btnXoaTrung = document.getElementById('btn-xoa-trung');
   const btnDienCotB = document.getElementById('btn-dien-cot-b');
+  const btnCopyAB = document.getElementById('btn-copy-ab');
+  const btnPasteAB = document.getElementById('btn-paste-ab');
   const btnXoa = document.getElementById('btn-xoa');
   const btnBackup = document.getElementById('btn-backup');
   const btnLuu = document.getElementById('btn-luu');
@@ -651,6 +653,14 @@ function attachUIEvents() {
 
   if (btnDienCotB) {
     btnDienCotB.onclick = dienCotBHangLoat;
+  }
+
+  if (btnCopyAB) {
+    btnCopyAB.onclick = copyCotAVaB;
+  }
+
+  if (btnPasteAB) {
+    btnPasteAB.onclick = danCotAVaB;
   }
 
   if (btnXoa) {
@@ -809,6 +819,113 @@ function dienCotBHangLoat() {
   if (quickMaspInput) {
     quickMaspInput.focus();
   }
+}
+
+async function copyCotAVaB() {
+  const previewEl = document.getElementById('preview');
+  if (!hot) return;
+
+  const allRows = hot.getSourceData();
+
+  const lines = allRows
+    .map(row => {
+      const masp = (row.masp || '').toString().trim().toUpperCase();
+      const valB = Object.keys(row).find(k => !['masp', 'trangthai'].includes(k));
+      const b = valB ? (row[valB] ?? '').toString().trim() : '';
+      return { masp, b };
+    })
+    .filter(r => r.masp || r.b);
+
+  if (lines.length === 0) {
+    alert("Không có dữ liệu để copy.");
+    return;
+  }
+
+  const text = lines.map(r => `${r.masp}\t${r.b}`).join('\n');
+
+  try {
+    await navigator.clipboard.writeText(text);
+    if (previewEl) {
+      previewEl.innerHTML = `<span style="color:#16a34a;">✅ Đã copy ${lines.length} dòng của cột A và cột B.</span>`;
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Không copy được vào clipboard: " + (err?.message || err));
+  }
+
+  if (quickMaspInput) quickMaspInput.focus();
+}
+
+async function danCotAVaB() {
+  const previewEl = document.getElementById('preview');
+  const colSelect = document.getElementById('col-select');
+
+  if (!hot) return;
+  if (!colSelect || !colSelect.value) {
+    alert("Bạn cần chọn mục cần ghi vào trước khi dán dữ liệu!");
+    return;
+  }
+
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text || !text.trim()) {
+      alert("Clipboard đang trống.");
+      return;
+    }
+
+    const lines = text
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    if (lines.length === 0) {
+      alert("Không có dữ liệu hợp lệ để dán.");
+      return;
+    }
+
+    const parsed = lines.map(line => {
+      const parts = line.split('\t');
+      return {
+        masp: (parts[0] || '').toString().trim().toUpperCase(),
+        valB: (parts[1] || '').toString().trim()
+      };
+    }).filter(r => r.masp || r.valB);
+
+    if (parsed.length === 0) {
+      alert("Dữ liệu clipboard không đúng định dạng cột A và cột B.");
+      return;
+    }
+
+    const colname = colSelect.value;
+
+    // Xóa màu trùng cũ trước khi dán
+    duplicateMasps = new Set();
+    duplicateMaspColorMap = new Map();
+
+    const rows = parsed.map(r => ({
+      masp: r.masp || null,
+      [colname]: r.valB || null,
+      trangthai: null
+    }));
+
+    // thêm 1 dòng trống cuối cho dễ nhập tiếp
+    rows.push({ masp: null, [colname]: null, trangthai: null });
+
+    hot.loadData(rows);
+    hot.updateSettings({ cells: hot.getSettings().cells });
+    hot.render();
+
+    if (previewEl) {
+      previewEl.innerHTML = `<span style="color:#16a34a;">✅ Đã dán ${parsed.length} dòng vào cột A và cột B.</span>`;
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Không đọc được clipboard: " + (err?.message || err));
+  }
+
+  if (quickMaspInput) quickMaspInput.focus();
 }
 
 // ==== Kiểm tra vị trí ====
