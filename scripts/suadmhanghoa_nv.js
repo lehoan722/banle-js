@@ -611,9 +611,11 @@ function attachUIEvents() {
   const colSelect = document.getElementById('col-select');
   const btnReset = document.getElementById('btn-reset');
   const btnKiemTra = document.getElementById('btn-kiemtra');
+  const btnXoaTrung = document.getElementById('btn-xoa-trung');
   const btnXoa = document.getElementById('btn-xoa');
   const btnBackup = document.getElementById('btn-backup');
   const btnLuu = document.getElementById('btn-luu');
+
   const inputFilter = document.getElementById('filter-value');
   const btnLoadFilter = document.getElementById('btn-load-filter');
   const previewEl = document.getElementById('preview');
@@ -640,6 +642,10 @@ function attachUIEvents() {
 
   if (btnKiemTra) {
     btnKiemTra.onclick = kiemTraViTri;
+  }
+
+  if (btnXoaTrung) {
+    btnXoaTrung.onclick = xoaMaSanPhamTrung;
   }
 
   if (btnXoa) {
@@ -687,6 +693,75 @@ function timDanhSachMaTrung() {
   return result;
 }
 
+function xoaMaSanPhamTrung() {
+  const previewEl = document.getElementById('preview');
+  const colSelect = document.getElementById('col-select');
+
+  if (!hot) return;
+
+  const allRows = hot.getSourceData();
+  const duplicateSet = timDanhSachMaTrung();
+
+  if (duplicateSet.size === 0) {
+    duplicateMasps = new Set();
+    duplicateMaspColorMap = new Map();
+    hot.updateSettings({ cells: hot.getSettings().cells });
+    hot.render();
+
+    if (previewEl) {
+      previewEl.innerHTML = `<span style="color:#16a34a;">✅ Không có mã sản phẩm trùng để xóa.</span>`;
+    }
+    alert("Không có mã sản phẩm trùng.");
+    return;
+  }
+
+  if (!confirm("Bạn có muốn xóa các mã sản phẩm trùng không?\nHệ thống sẽ giữ lại dòng đầu tiên của mỗi mã và xóa các dòng trùng phía sau.")) {
+    return;
+  }
+
+  const seen = new Set();
+  const filteredRows = [];
+
+  for (const row of allRows) {
+    const masp = (row.masp || '').toString().trim().toUpperCase();
+
+    // Giữ nguyên dòng trống
+    if (!masp) {
+      continue;
+    }
+
+    // Giữ lại dòng đầu tiên của mỗi mã
+    if (!seen.has(masp)) {
+      seen.add(masp);
+      filteredRows.push({
+        ...row,
+        masp
+      });
+    }
+  }
+
+  // Nếu sau khi lọc không còn dòng nào thì tạo 1 dòng trống
+  if (filteredRows.length === 0) {
+    const colname = colSelect?.value || 'vitrikho1';
+    filteredRows.push({ masp: null, [colname]: null, trangthai: null });
+  }
+
+  duplicateMasps = new Set();
+  duplicateMaspColorMap = new Map();
+
+  hot.loadData(filteredRows);
+  hot.updateSettings({ cells: hot.getSettings().cells });
+  hot.render();
+
+  if (previewEl) {
+    previewEl.innerHTML = `<span style="color:#16a34a;">✅ Đã xóa các mã sản phẩm trùng. Mỗi mã chỉ giữ lại 1 dòng đầu tiên.</span>`;
+  }
+
+  if (quickMaspInput) {
+    quickMaspInput.focus();
+  }
+}
+
 // ==== Kiểm tra vị trí ====
 async function kiemTraViTri() {
   const colSelect = document.getElementById('col-select');
@@ -725,7 +800,7 @@ async function kiemTraViTri() {
       previewEl.innerHTML = `
         <span style="color:#b91c1c; font-weight:700;">
           ⚠️ Phát hiện mã sản phẩm bị trùng: ${dsTrung}.
-          Hãy tự xóa các dòng trùng rồi bấm lại "Kiểm tra vị trí".
+          Hãy bấm nút "Xóa trùng" hoặc tự xóa các dòng trùng rồi bấm lại "Kiểm tra vị trí".
         </span>
       `;
     }
