@@ -485,6 +485,30 @@ function renderColSelect() {
 let hot;
 let currentTableMode = 'masp';
 let duplicateMasps = new Set();
+let duplicateMaspColorMap = new Map();
+
+function taoBangMauChoMaTrung(duplicateSet) {
+  duplicateMaspColorMap = new Map();
+
+  const palette = [
+    '#ffe3e3', // đỏ nhạt
+    '#fff3bf', // vàng nhạt
+    '#d3f9d8', // xanh lá nhạt
+    '#d0ebff', // xanh dương nhạt
+    '#e5dbff', // tím nhạt
+    '#ffd8a8', // cam nhạt
+    '#fcc2d7', // hồng nhạt
+    '#c5f6fa', // cyan nhạt
+    '#f8f0fc', // tím hồng nhạt
+    '#e9fac8'  // xanh chuối nhạt
+  ];
+
+  let i = 0;
+  for (const masp of duplicateSet) {
+    duplicateMaspColorMap.set(masp, palette[i % palette.length]);
+    i++;
+  }
+}
 
 function ensureDuplicateMaspStyle() {
   if (document.getElementById('duplicate-masp-style')) return;
@@ -493,9 +517,9 @@ function ensureDuplicateMaspStyle() {
   style.id = 'duplicate-masp-style';
   style.textContent = `
     .htCore td.masp-trung {
-      background: #ffe3e3 !important;
-      color: #b91c1c !important;
+      color: #7f1d1d !important;
       font-weight: 700 !important;
+      border: 1px solid rgba(127, 29, 29, 0.18) !important;
     }
   `;
   document.head.appendChild(style);
@@ -529,14 +553,25 @@ function initTable(colname = 'vitrikho1') {
     stretchH: 'all',
     manualColumnResize: true,
     licenseKey: 'non-commercial-and-evaluation',
+
     cells: function (row, col) {
       const cellProperties = {};
 
-      // Tô màu cột mã sản phẩm nếu bị trùng
+      // Tô màu cột mã sản phẩm nếu bị trùng, mỗi mã một màu riêng
       if (col === 0) {
         const masp = (this.instance.getDataAtCell(row, 0) || '').toString().trim().toUpperCase();
         if (masp && duplicateMasps.has(masp)) {
           cellProperties.className = 'masp-trung';
+
+          const bg = duplicateMaspColorMap.get(masp);
+          if (bg) {
+            cellProperties.renderer = function (instance, td, row, col, prop, value, cellProperties) {
+              Handsontable.renderers.TextRenderer.apply(this, arguments);
+              td.style.background = bg;
+              td.style.color = '#7f1d1d';
+              td.style.fontWeight = '700';
+            };
+          }
         }
       }
 
@@ -551,6 +586,7 @@ function initTable(colname = 'vitrikho1') {
 
       return cellProperties;
     },
+
     afterOnCellMouseDown: function (event, coords) {
       // Click ở cột giá trị (cột thứ 2) khi đang ở chế độ DANH SÁCH -> đẩy vào ô điều kiện lọc
       if (currentTableMode !== 'distinct') return;
@@ -667,11 +703,18 @@ async function kiemTraViTri() {
 
   // Luôn reset danh sách mã trùng trước mỗi lần kiểm tra
   duplicateMasps = new Set();
+  duplicateMaspColorMap = new Map();
+
+  duplicateMasps = new Set();
+  duplicateMaspColorMap = new Map();
+  hot.updateSettings({ cells: hot.getSettings().cells });
+  hot.render();
 
   // 1) Kiểm tra mã trùng trước
   const duplicateSet = timDanhSachMaTrung();
   if (duplicateSet.size > 0) {
     duplicateMasps = duplicateSet;
+    taoBangMauChoMaTrung(duplicateSet);
 
     hot.updateSettings({ cells: hot.getSettings().cells });
     hot.render();
