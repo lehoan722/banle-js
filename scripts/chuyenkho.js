@@ -505,15 +505,19 @@ function renderBang() {
   STATE.rows.forEach((row, idx) => {
     const tr = document.createElement("tr");
 
-    if (row.needReview) {
+    if (row.trang_thai_dong === "da_chuyen") {
+      tr.style.background = "#fff3cd"; // vàng nhạt cho dòng đã chuyển
+    } else if (row.needReview) {
       tr.style.background = "#fff3cd"; // vàng nhạt
     }
+
     if (row.done) tr.classList.add("done-row");
     if (idx === STATE.selectedIndex) tr.classList.add("highlight-row");
 
     tr.innerHTML = `
-      <td><input type="checkbox" data-role="selected" data-idx="${idx}" ${row.selected ? "checked" : ""}></td>
-      <td><input type="checkbox" data-role="done" data-idx="${idx}" ${row.done ? "checked" : ""} ${row.selected ? "" : "disabled"}></td>
+      <td><input type="checkbox" data-role="selected" data-idx="${idx}" ${row.selected ? "checked" : ""} ${row.trang_thai_dong === "da_chuyen" ? "disabled" : ""}></td>
+      <td><input type="checkbox" data-role="done" data-idx="${idx}" ${row.done ? "checked" : ""} ${row.selected ? "" : "disabled"} ${row.trang_thai_dong === "da_chuyen" ? "disabled" : ""}></td>
+
       <td class="col-masp" data-role="open-stock" data-idx="${idx}">${escapeHtml(row.masp)}</td>
       
       <td>${escapeHtml(row.size)}</td>
@@ -521,17 +525,19 @@ function renderBang() {
 <td>${row.ton_dich || ""}</td>
       <td>${escapeHtml(row.huong_goiy)}</td>
       <td>${row.sl_goiy || ""}</td>
-      <td class="col-slduyet"><input data-role="sl_duyet" data-idx="${idx}" value="${row.sl_duyet || ""}"></td>
-      <td class="col-slthuc">
+      <td class="col-slduyet"><input data-role="sl_duyet" data-idx="${idx}" value="${row.sl_duyet || ""}" ${row.trang_thai_dong === "da_chuyen" ? "disabled" : ""}></td>
+      
+            <td class="col-slthuc">
   <input data-role="sl_thuc"
     data-idx="${idx}"
     value="${row.sl_thuc || ""}"
     style="${row.needReview ? 'background:#ffeeba' : ''}"
+    ${row.trang_thai_dong === "da_chuyen" ? "disabled" : ""}
   >
 </td>
-      <td class="col-manv"><input data-role="manv_phutrach" data-idx="${idx}" value="${escapeAttr(row.manv_phutrach)}"></td>
+ <td class="col-manv"><input data-role="manv_phutrach" data-idx="${idx}" value="${escapeAttr(row.manv_phutrach)}" ${row.trang_thai_dong === "da_chuyen" ? "disabled" : ""}></td>
 <td>${row.needReview ? "cần kiểm tra" : escapeHtml(row.trang_thai_dong)}</td>
-<td class="col-ghichu"><input data-role="ghi_chu" data-idx="${idx}" value="${escapeAttr(row.ghi_chu)}"></td>
+<td class="col-ghichu"><input data-role="ghi_chu" data-idx="${idx}" value="${escapeAttr(row.ghi_chu)}" ${row.trang_thai_dong === "da_chuyen" ? "disabled" : ""}></td>
     `;
 
     tr.addEventListener("click", (e) => {
@@ -776,21 +782,27 @@ function updateTrangThaiPhieu() {
 }
 
 
-function applySelectedState(row, checked) {
-  row.selected = checked;
+function applyDoneState(row, checked) {
+  if (row.trang_thai_dong === "da_chuyen") return;
+
+  row.done = checked;
+
+  const manvDangNhap = String($("manv")?.value || "").trim().toUpperCase();
+  const tennvDangNhap = String($("tennv")?.value || "").trim();
 
   if (checked) {
-    row.sl_duyet = toNumber(row.sl_goiy);
-
-    if (!row.done) {
-      row.trang_thai_dong = "de_xuat";
-    }
+    row.trang_thai_dong = "dang_chuyen";
+    row.sl_thuc = toNumber(row.sl_duyet);
+    row.manv_phutrach = manvDangNhap;
+    row.tennv_phutrach = tennvDangNhap;
   } else {
-    row.sl_duyet = 0;
     row.sl_thuc = 0;
-    row.done = false;
-    row.trang_thai_dong = "";
+    row.trang_thai_dong = row.selected ? "de_xuat" : "";
+    row.manv_phutrach = "";
+    row.tennv_phutrach = "";
   }
+
+  updateTrangThaiPhieu();
 }
 
 function applyDoneState(row, checked) {
@@ -1221,7 +1233,9 @@ async function danhDauXong() {
    17) TẠO PHIẾU CCN TỪ CÁC DÒNG DONE
 ========================================================= */
 function buildCcnPayloadFromDoneRows() {
-  const rows = STATE.rows.filter((r) => r.done && toNumber(r.sl_thuc) > 0);
+  const rows = STATE.rows.filter((r) =>
+    r.trang_thai_dong === "dang_chuyen" && toNumber(r.sl_thuc) > 0
+  );
   if (!rows.length) return null;
 
   const grouped = new Map();
@@ -1284,6 +1298,13 @@ function xoaDongDangChon() {
     alert("Chưa chọn dòng.");
     return;
   }
+
+  const row = STATE.rows[STATE.selectedIndex];
+  if (row?.trang_thai_dong === "da_chuyen") {
+    alert("Dòng đã chuyển không được phép xóa.");
+    return;
+  }
+
   STATE.rows.splice(STATE.selectedIndex, 1);
   STATE.selectedIndex = -1;
   renderBang();
