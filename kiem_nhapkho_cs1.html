@@ -498,7 +498,7 @@
             <input id="soluong" value="1" placeholder="SL" />
             <input id="size" placeholder="SIZE" />
             <label style="display:flex; align-items:center; gap:4px; font-size:16px; white-space:nowrap;">
-                <input type="checkbox" id="chkNhapNhanh"  />
+                <input type="checkbox" id="chkNhapNhanh" />
                 Nhập nhanh
             </label>
 
@@ -1568,7 +1568,7 @@
             document.getElementById("chkNhapNhanh")?.addEventListener("change", dongBoNhapNhanhVaNhapSize);
         });
     </script>
-    
+
     <script type="module" src="scripts/kiem_nhapkho.js"></script>
 
     <div id="popupChonHoaDonNguon" style="
@@ -1660,7 +1660,7 @@
     </script>
 
     <script type="module">
-        import { requireAuth } from "./scripts/authModulemoi.js";
+        import { khoiTaoDangNhapDungChung, dangXuatDungChung } from "./scripts/authModule.js";
 
         async function khoiTaoTrangSauDangNhap() {
             // 1. đồng bộ UI nhân viên
@@ -1669,17 +1669,17 @@
             const diadiemInput = document.getElementById("diadiem");
 
             if (manvInput) {
-                manvInput.value = window.manv || "";
+                manvInput.value = window.manv || localStorage.getItem("manv") || "";
                 manvInput.readOnly = true;
             }
 
             if (tennvInput) {
-                tennvInput.value = window.tennv || "";
+                tennvInput.value = window.tennv || localStorage.getItem("tennv") || "";
                 tennvInput.readOnly = true;
             }
 
             if (diadiemInput) {
-                diadiemInput.value = window.diadiem || "cs1";
+                diadiemInput.value = window.diadiem || localStorage.getItem("diadiem") || "cs1";
                 diadiemInput.readOnly = true;
             }
 
@@ -1692,17 +1692,31 @@
                 window.capNhatQuyenGiaoDien();
             }
 
-            // 4. nếu file js nghiệp vụ có hàm init thì gọi ở đây
-            // Nếu chưa có thì để trống, vì trang hiện tại nhiều script đã tự bind sẵn
+            // 4. gắn nút logout dùng authModule.js
+            const btnLogout = document.getElementById("btn-logout");
+            if (btnLogout && !btnLogout.dataset.boundLogout) {
+                btnLogout.dataset.boundLogout = "1";
+                btnLogout.addEventListener("click", async () => {
+                    await dangXuatDungChung({
+                        loginContainerId: "login-container",
+                        appContainerId: "app-container",
+                        clearDraft: false,
+                        reloadPage: true
+                    });
+                });
+            }
         }
 
         document.addEventListener("DOMContentLoaded", async () => {
             const appContainer = document.getElementById("app-container");
             if (appContainer) appContainer.style.display = "none";
 
-            await requireAuth({
-                expectedBranch: "cs1",
-                onAuthenticated: khoiTaoTrangSauDangNhap
+            khoiTaoDangNhapDungChung({
+                loginContainerId: "login-container",
+                appContainerId: "app-container",
+                macDinhDiaDiem: "cs1",
+                tuDongKhoaCoSo: true,
+                onLoginSuccess: khoiTaoTrangSauDangNhap
             });
         });
     </script>
