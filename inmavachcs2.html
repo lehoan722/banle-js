@@ -1728,6 +1728,8 @@ Bạn chưa nhập màu sắc.
                 let insertCount = 0;
                 let updateCount = 0;
                 let errorList = [];
+                let savedRecords = [];   // chỉ chứa mã lưu thành công
+                let failedRecords = [];  // chứa mã lưu thất bại
 
                 for (const record of records) {
                     try {
@@ -1739,6 +1741,7 @@ Bạn chưa nhập màu sắc.
 
                         if (existErr) {
                             errorList.push(`${record.masp}: ${existErr.message}`);
+                            failedRecords.push(record);
                             continue;
                         }
 
@@ -1750,8 +1753,10 @@ Bạn chưa nhập màu sắc.
 
                             if (updErr) {
                                 errorList.push(`${record.masp}: ${updErr.message}`);
+                                failedRecords.push(record);
                             } else {
                                 updateCount++;
+                                savedRecords.push(record);
                             }
                         } else {
                             const { error: insErr } = await supabase
@@ -1760,12 +1765,15 @@ Bạn chưa nhập màu sắc.
 
                             if (insErr) {
                                 errorList.push(`${record.masp}: ${insErr.message}`);
+                                failedRecords.push(record);
                             } else {
                                 insertCount++;
+                                savedRecords.push(record);
                             }
                         }
                     } catch (err) {
                         errorList.push(`${record.masp}: ${err.message}`);
+                        failedRecords.push(record);
                     }
                 }
 
@@ -1799,16 +1807,38 @@ Bạn chưa nhập màu sắc.
 
                 if (errorList.length) {
                     msgEl.style.color = 'red';
-                    msgEl.textContent =
-                        `Xong một phần. Thêm mới: ${insertCount}, cập nhật: ${updateCount}, lỗi: ${errorList.length}.`;
-                    console.error('Chi tiết lỗi lưu nhiều màu:', errorList);
+
+                    const detailText = errorList.join('\n');
+
+                    if (savedRecords.length === 0) {
+                        msgEl.textContent = '❌ Không lưu được dữ liệu vào bảng danh mục hàng hóa.';
+                        alert(
+                            '❌ Không lưu được dữ liệu vào bảng danh mục hàng hóa.\n\n' +
+                            'Các lỗi gặp phải:\n' + detailText +
+                            '\n\nMã sản phẩm sẽ KHÔNG được đưa sang danh sách tem in.'
+                        );
+                    } else {
+                        msgEl.textContent =
+                            `⚠️ Lưu một phần. Thêm mới: ${insertCount}, cập nhật: ${updateCount}, lỗi: ${errorList.length}.`;
+                        alert(
+                            '⚠️ Có sản phẩm lưu không thành công vào bảng danh mục hàng hóa.\n\n' +
+                            'Các lỗi gặp phải:\n' + detailText +
+                            '\n\nChỉ những mã lưu thành công mới được đưa sang danh sách tem in.'
+                        );
+                    }
+
+                    console.error('Chi tiết lỗi lưu sản phẩm:', errorList);
                 } else {
                     msgEl.style.color = '#0a9e1c';
                     msgEl.textContent =
                         `Lưu thành công! Thêm mới: ${insertCount}, cập nhật: ${updateCount}.`;
                 }
 
-                const savedMaspGoc = records[0]?.masp || maspRaw;
+                if (savedRecords.length === 0) {
+                    return;
+                }
+
+                const savedMaspGoc = savedRecords[0]?.masp || maspRaw;
 
                 resetForm();
 
@@ -1827,8 +1857,8 @@ Bạn chưa nhập màu sắc.
                 loadDropdownOptions();
                 searchProducts(document.getElementById('search').value.trim().toLowerCase());
 
-                // Đẩy toàn bộ mã vừa tạo vào lưới tem in
-                records.forEach(pushProductToGrid);
+                // Chỉ đẩy các mã lưu THÀNH CÔNG vào lưới tem in
+                savedRecords.forEach(pushProductToGrid);
             };
 
             loadDropdownOptions();
