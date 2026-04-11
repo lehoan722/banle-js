@@ -583,11 +583,6 @@ function ganSuKienBang() {
 
       applyDoneState(row, checked);
 
-      // 👉 THÊM ĐOẠN NÀY
-      if (checked) {
-        openQuickStock(row.masp);
-      }
-
       renderBang();
       capNhatTong();
     });
@@ -774,7 +769,7 @@ function updateTrangThaiPhieu() {
   const allDone = STATE.rows.every(r => r.done);
 
   if (allDone) {
-    $("trang_thai").value = "dang_chuyen";
+    $("trang_thai").value = "da_chuyen";
   } else {
     $("trang_thai").value = "da_giao";
   }
@@ -805,7 +800,7 @@ function applyDoneState(row, checked) {
   const tennvDangNhap = String($("tennv")?.value || "").trim();
 
   if (checked) {
-    row.trang_thai_dong = "dang_chuyen";
+    row.trang_thai_dong = "da_chuyen";
     row.sl_thuc = toNumber(row.sl_duyet);
 
     // Tự động gán nhân viên đang thao tác
@@ -1042,10 +1037,9 @@ async function luuPhieu() {
       }]);
     }
 
-    $("hd_state").value = "sua";
-    await napPhieu(soCt);
-
     alert("Đã lưu phiếu chuyển kho.");
+    await taoPhieuMoi();
+
   } catch (e) {
     showError("Lưu phiếu thất bại.", e);
   }
@@ -1181,7 +1175,7 @@ async function giaoViec() {
       ...r,
       selected: true,
       done: !!r.done,
-      trang_thai_dong: r.done ? "dang_chuyen" : "de_xuat",
+      trang_thai_dong: r.done ? "da_chuyen" : "de_xuat",
     }));
 
     STATE.rows = rowsToSave;
@@ -1208,7 +1202,7 @@ async function danhDauXong() {
     rows.forEach((r) => {
       r.done = true;
 
-      r.trang_thai_dong = "dang_chuyen";
+      r.trang_thai_dong = "da_chuyen";
 
       r.sl_thuc = toNumber(r.sl_duyet);
     });
