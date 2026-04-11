@@ -268,6 +268,9 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     return (
       // p.includes("ccn1v2") ||
       // p.includes("ccn2v1")  ||chamcongcs1.html
+      p.includes("kiem_nhapkho_cs1") ||
+      p.includes("kiem_nhapkho_cs2") ||
+
       p.includes("chamcongcs1") ||
       p.includes("chamcongcs2") ||
       p.includes("banlemtcs1") ||
