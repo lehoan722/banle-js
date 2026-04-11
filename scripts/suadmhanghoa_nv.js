@@ -562,6 +562,16 @@ function initTable(colname = 'vitrikho1') {
     cells: function (row, col) {
       const cellProperties = {};
 
+      const trangthai = (this.instance.getDataAtCell(row, 2) || '').toString().trim();
+
+      // Nếu là dòng TẢI THÊM → tô cả dòng màu vàng nhạt
+      if (trangthai === "TẢI THÊM") {
+        cellProperties.renderer = function (instance, td, row, col, prop, value, cellProperties) {
+          Handsontable.renderers.TextRenderer.apply(this, arguments);
+          td.style.background = '#fff9c4'; // vàng nhạt đẹp, dễ nhìn
+        };
+      }
+
       // Tô màu cột mã sản phẩm nếu bị trùng, mỗi mã một màu riêng
       if (col === 0) {
         const masp = (this.instance.getDataAtCell(row, 0) || '').toString().trim().toUpperCase();
