@@ -54,9 +54,9 @@ function setupBeepUnlockOnce(target = document) {
   });
 }
 
-function playTone(freq = 880, duration = 0.12, volume = 0.05, type = "sine") {
+function playTone(freq = 1000, duration = 0.15, volume = 0.25, type = "sine") {
   const ctx = getAudioCtx();
-  if (!ctx) return;
+  if (!ctx) return false;
 
   const start = ctx.currentTime;
   const osc = ctx.createOscillator();
@@ -65,35 +65,48 @@ function playTone(freq = 880, duration = 0.12, volume = 0.05, type = "sine") {
   osc.type = type;
   osc.frequency.setValueAtTime(freq, start);
 
+  gain.gain.cancelScheduledValues(start);
   gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(volume, start + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  gain.gain.linearRampToValueAtTime(volume, start + 0.01);
+  gain.gain.setValueAtTime(volume, start + Math.max(0.02, duration - 0.04));
+  gain.gain.linearRampToValueAtTime(0.0001, start + duration);
 
   osc.connect(gain);
   gain.connect(ctx.destination);
 
   osc.start(start);
-  osc.stop(start + duration + 0.02);
+  osc.stop(start + duration);
+
+  return true;
 }
+
+let __alertBusy = false;
 
 function playSuccessBeep() {
   unlockAudioOnce().then(() => {
-    playTone(980, 0.08, 0.05, "sine");
-    setTimeout(() => playTone(1320, 0.10, 0.05, "sine"), 90);
+    playTone(2400, 0.12, 0.3, "sine");
   });
 }
 
 function playWaitSizeBeep() {
   unlockAudioOnce().then(() => {
-    playTone(740, 0.10, 0.045, "triangle");
+    playTone(1200, 0.18, 0.4, "sine");
   });
 }
 
 function playAlertBeep() {
+  if (__alertBusy) return false;
+  __alertBusy = true;
+
   unlockAudioOnce().then(() => {
-    playTone(420, 0.16, 0.06, "square");
-    setTimeout(() => playTone(420, 0.16, 0.06, "square"), 180);
+    playTone(800, 0.22, 0.28, "square");
+  }).finally(() => {
+    setTimeout(() => {
+      __alertBusy = false;
+    }, 260);
   });
+
+  return true;
 }
 
 function patchAlertWithBeep() {
