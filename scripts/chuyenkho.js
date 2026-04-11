@@ -769,7 +769,7 @@ function updateTrangThaiPhieu() {
   const allDone = STATE.rows.every(r => r.done);
 
   if (allDone) {
-    $("trang_thai").value = "da_chuyen";
+    $("trang_thai").value = "dang_chuyen";
   } else {
     $("trang_thai").value = "da_giao";
   }
@@ -800,7 +800,7 @@ function applyDoneState(row, checked) {
   const tennvDangNhap = String($("tennv")?.value || "").trim();
 
   if (checked) {
-    row.trang_thai_dong = "da_chuyen";
+    row.trang_thai_dong = "dang_chuyen";
     row.sl_thuc = toNumber(row.sl_duyet);
 
     // Tự động gán nhân viên đang thao tác
@@ -1177,7 +1177,7 @@ async function giaoViec() {
       ...r,
       selected: true,
       done: !!r.done,
-      trang_thai_dong: r.done ? "da_chuyen" : "de_xuat",
+      trang_thai_dong: r.done ? "dang_chuyen" : "de_xuat",
     }));
 
     STATE.rows = rowsToSave;
@@ -1204,7 +1204,7 @@ async function danhDauXong() {
     rows.forEach((r) => {
       r.done = true;
 
-      r.trang_thai_dong = "da_chuyen";
+      r.trang_thai_dong = "dang_chuyen";
 
       r.sl_thuc = toNumber(r.sl_duyet);
     });
@@ -1258,7 +1258,9 @@ function buildCcnPayloadFromDoneRows() {
 }
 
 async function taoPhieuCCN() {
-  try {    
+  try {
+    // Lưu phiếu hiện tại trước
+    await luuPhieu();
 
     // Sau khi lưu xong mới tạo payload CCN
     const payload = buildCcnPayloadFromDoneRows();
@@ -1272,9 +1274,6 @@ async function taoPhieuCCN() {
   } catch (e) {
     showError("Không tạo được phiếu CCN.", e);
   }
-
-  // Lưu phiếu hiện tại trước
-    await luuPhieu();
 }
 
 /* =========================================================
