@@ -774,7 +774,7 @@ function updateTrangThaiPhieu() {
   const allDone = STATE.rows.every(r => r.done);
 
   if (allDone) {
-    $("trang_thai").value = "da_chuyen";
+    $("trang_thai").value = "dang_chuyen";
   } else {
     $("trang_thai").value = "da_giao";
   }
@@ -802,7 +802,7 @@ function applyDoneState(row, checked) {
   row.done = checked;
 
   if (checked) {
-    row.trang_thai_dong = "da_chuyen";
+    row.trang_thai_dong = "dang_chuyen";
     row.sl_thuc = toNumber(row.sl_duyet);
   } else {
     row.sl_thuc = 0;
@@ -1170,7 +1170,7 @@ async function giaoViec() {
       ...r,
       selected: true,
       done: !!r.done,
-      trang_thai_dong: r.done ? "da_chuyen" : "de_xuat",
+      trang_thai_dong: r.done ? "dang_chuyen" : "de_xuat",
     }));
 
     STATE.rows = rowsToSave;
@@ -1197,7 +1197,7 @@ async function danhDauXong() {
     rows.forEach((r) => {
       r.done = true;
 
-      r.trang_thai_dong = "da_chuyen";
+      r.trang_thai_dong = "dang_chuyen";
 
       r.sl_thuc = toNumber(r.sl_duyet);
     });
