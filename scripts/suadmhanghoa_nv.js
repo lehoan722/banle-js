@@ -593,10 +593,21 @@ function initTable(colname = 'vitrikho1') {
     },
 
     afterOnCellMouseDown: function (event, coords) {
-      // Click ở cột giá trị (cột thứ 2) khi đang ở chế độ DANH SÁCH -> đẩy vào ô điều kiện lọc
-      if (currentTableMode !== 'distinct') return;
       if (!coords || coords.row < 0) return;
+
+      // 1) Nếu click vào cột mã sản phẩm -> mở stockQuickPopup
+      if (coords.col === 0) {
+        const masp = (this.getDataAtCell(coords.row, 0) || '').toString().trim().toUpperCase();
+        if (masp && typeof window.stockQuickPopup === 'function') {
+          window.stockQuickPopup(masp);
+        }
+        return;
+      }
+
+      // 2) Giữ nguyên logic cũ: ở chế độ danh sách thì click cột giá trị để đẩy sang ô lọc
+      if (currentTableMode !== 'distinct') return;
       if (coords.col !== 1) return;
+
       const val = this.getDataAtCell(coords.row, coords.col);
       appendToFilterInput(val);
     },
@@ -654,8 +665,8 @@ function attachUIEvents() {
   }
 
   if (btnTonNhanh) {
-  btnTonNhanh.onclick = tonNhanh;
-}
+    btnTonNhanh.onclick = tonNhanh;
+  }
 
   if (btnXoaTrung) {
     btnXoaTrung.onclick = xoaMaSanPhamTrung;
