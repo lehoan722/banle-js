@@ -782,6 +782,25 @@ function updateTrangThaiPhieu() {
 }
 
 
+function applySelectedState(row, checked) {
+  if (row.trang_thai_dong === "da_chuyen") return;
+
+  row.selected = checked;
+
+  if (checked) {
+    row.sl_duyet = toNumber(row.sl_goiy);
+
+    if (!row.done) {
+      row.trang_thai_dong = "de_xuat";
+    }
+  } else {
+    row.sl_duyet = 0;
+    row.sl_thuc = 0;
+    row.done = false;
+    row.trang_thai_dong = "";
+  }
+}
+
 function applyDoneState(row, checked) {
   if (row.trang_thai_dong === "da_chuyen") return;
 
@@ -798,31 +817,6 @@ function applyDoneState(row, checked) {
   } else {
     row.sl_thuc = 0;
     row.trang_thai_dong = row.selected ? "de_xuat" : "";
-    row.manv_phutrach = "";
-    row.tennv_phutrach = "";
-  }
-
-  updateTrangThaiPhieu();
-}
-
-function applyDoneState(row, checked) {
-  row.done = checked;
-
-  const manvDangNhap = String($("manv")?.value || "").trim().toUpperCase();
-  const tennvDangNhap = String($("tennv")?.value || "").trim();
-
-  if (checked) {
-    row.trang_thai_dong = "dang_chuyen";
-    row.sl_thuc = toNumber(row.sl_duyet);
-
-    // Tự động gán nhân viên đang thao tác
-    row.manv_phutrach = manvDangNhap;
-    row.tennv_phutrach = tennvDangNhap;
-  } else {
-    row.sl_thuc = 0;
-    row.trang_thai_dong = row.selected ? "de_xuat" : "";
-
-    // Bỏ tick thì xóa luôn người phụ trách tự động gán
     row.manv_phutrach = "";
     row.tennv_phutrach = "";
   }
