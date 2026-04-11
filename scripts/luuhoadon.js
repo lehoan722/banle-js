@@ -1335,6 +1335,16 @@ export async function luuHoaDonccn1v2() {
     const loaiDoiUng = CCN_CTX.loaihdDoiUng;
     const sohdDoiUng = `${loaiDoiUng}_${soStr}`;
 
+    console.log("🧭 CCN context khi lưu:", {
+        pathname: window.location.pathname,
+        sohd,
+        sohdDoiUng,
+        loaihdGoc: CCN_CTX?.loaihdGoc,
+        loaihdDoiUng: CCN_CTX?.loaihdDoiUng,
+        src: CCN_CTX?.src,
+        dst: CCN_CTX?.dst
+    });
+
     const hoadonDoiUng = {
         ...hoadon,
         sohd: sohdDoiUng,
@@ -1478,63 +1488,81 @@ export async function luuHoaDonccn1v2() {
     }
 
     // 🔥 TỰ ĐỘNG ĐÁNH DẤU KIỂM NHẬP CHO CẢ PHIẾU GỐC + ĐỐI ỨNG
+    // 🔥 ĐÁNH DẤU KIỂM NHẬP CHUẨN MỚI: không phụ thuộc text "Phiếu được tạo từ..."
     try {
         const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
 
-        if (ghichu.includes("Phiếu được tạo từ nhập kiểm kho")) {
-            const match = ghichu.match(/kiemnhap[^\s|]+/i);
-            const sohdKiemNhap = match ? String(match[0] || "").trim() : "";
+        // Chỉ cần ghi chú có số phiếu kiểm nhập là xử lý
+        const match = ghichu.match(/\b(kiemnhap[^\s|;,]+)/i);
+        const sohdKiemNhap = match ? String(match[1] || "").trim() : "";
 
+        if (!sohdKiemNhap) {
+            console.log("ℹ️ Không phát hiện số phiếu kiểm nhập trong ghi chú, bỏ qua đánh dấu DK.", {
+                ghichu
+            });
+        } else {
             const manv = String(document.getElementById("manv")?.value || "").trim();
             const ngay = new Date().toISOString().slice(0, 10);
 
-            const dsSoHdCanDanhDau = [sohd, sohdDoiUng]
-                .map(x => String(x || "").trim())
-                .filter(Boolean);
+            const dsSoHdCanDanhDau = Array.from(
+                new Set(
+                    [sohd, sohdDoiUng]
+                        .map(x => String(x || "").trim())
+                        .filter(Boolean)
+                )
+            );
 
-            console.log("🔵 Detect CCN từ kiểm nhập:", {
+            console.log("🔵 Đánh dấu DK chuẩn mới:", {
+                page: CCN_CTX?.page || "",
+                isCCN: !!CCN_CTX?.isCCN,
+                loaihdGoc: CCN_CTX?.loaihdGoc || "",
+                loaihdDoiUng: CCN_CTX?.loaihdDoiUng || "",
                 sohdKiemNhap,
                 dsSoHdCanDanhDau,
                 manv,
                 ngay
             });
 
-            const { data, error } = await supabase.rpc(
-                "rpc_danh_dau_kiem_nhapkho_hoa_don",
-                {
-                    p_ds_sohd: dsSoHdCanDanhDau,
-                    p_so_hd_kiemnhap: sohdKiemNhap,
-                    p_ngay_kiem: ngay,
-                    p_nhanvienkiem: manv
-                }
-            );
+            if (CCN_CTX?.isCCN && dsSoHdCanDanhDau.length > 0) {
+                const { data, error } = await supabase.rpc(
+                    "rpc_danh_dau_kiem_nhapkho_hoa_don",
+                    {
+                        p_ds_sohd: dsSoHdCanDanhDau,
+                        p_so_hd_kiemnhap: sohdKiemNhap,
+                        p_ngay_kiem: ngay,
+                        p_nhanvienkiem: manv
+                    }
+                );
 
-            if (error) {
-                console.error("❌ RPC đánh dấu kiểm nhập lỗi:", error);
-            } else {
-                console.log("🟦 Kết quả RPC đánh dấu kiểm nhập:", data);
-
-                if (!data || data.updated === 0) {
-                    console.warn("⚠ RPC có chạy nhưng không cập nhật dòng nào:", {
+                if (error) {
+                    console.error("❌ RPC đánh dấu kiểm nhập lỗi:", error, {
                         sohdKiemNhap,
-                        dsSoHdCanDanhDau,
-                        manv,
-                        ngay,
-                        data
+                        dsSoHdCanDanhDau
                     });
                 } else {
-                    console.log("✅ Đã đánh dấu kiểm nhập cho các hóa đơn:", {
-                        sohdKiemNhap,
-                        dsSoHdCanDanhDau,
-                        updated: data.updated,
-                        value: data.value
-                    });
+                    console.log("🟦 Kết quả RPC đánh dấu kiểm nhập:", data);
+
+                    if (!data || Number(data.updated || 0) <= 0) {
+                        console.warn("⚠ RPC có chạy nhưng không cập nhật dòng nào:", {
+                            sohdKiemNhap,
+                            dsSoHdCanDanhDau,
+                            manv,
+                            ngay,
+                            data
+                        });
+                    } else {
+                        console.log("✅ Đã đánh dấu DK cho hóa đơn CCN:", {
+                            sohdKiemNhap,
+                            dsSoHdCanDanhDau,
+                            updated: data.updated,
+                            value: data.value
+                        });
+                    }
                 }
             }
         }
-
     } catch (e) {
-        console.error("❌ Lỗi detect kiểm nhập:", e);
+        console.error("❌ Lỗi đánh dấu kiểm nhập chuẩn mới:", e);
     }
 
     inHoaDon(hoadon, chitiet);
