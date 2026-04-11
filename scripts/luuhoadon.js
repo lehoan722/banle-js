@@ -1089,6 +1089,38 @@ function inHoaDon(hoadon, chitiet, forceSpecial = false) {
     };
 }
 
+function extractSoCtYeuCauFromGhiChu(ghichu = "") {
+    const text = String(ghichu || "").trim();
+    const match = text.match(/Tạo từ phiếu yêu cầu\s+([A-Za-z0-9_]+)/i);
+    return match ? String(match[1] || "").trim() : "";
+}
+
+function buildYeuCauChuyenKhoRowsFromBangKetQua(bangKetQua = {}) {
+    const rows = [];
+
+    Object.values(bangKetQua || {}).forEach(item => {
+        const masp = String(item?.masp || "").trim().toUpperCase();
+        if (!masp) return;
+
+        const sizes = Array.isArray(item?.sizes) ? item.sizes : [];
+        const soluongs = Array.isArray(item?.soluongs) ? item.soluongs : [];
+
+        sizes.forEach((sz, i) => {
+            const size = String(sz ?? "").trim() || "0";
+            const sl = Number(soluongs[i] || 0);
+
+            if (sl <= 0) return;
+
+            rows.push({
+                masp,
+                size,
+                sl_thuc: sl
+            });
+        });
+    });
+
+    return rows;
+}
 
 /* ========================= LƯU CHUYỂN CHI NHÁNH – ĐÃ TÍCH HỢP CCN_CTX ========================= */
 export async function luuHoaDonccn1v2() {
@@ -1416,6 +1448,80 @@ export async function luuHoaDonccn1v2() {
     }
 
     alert("✅ Đã lưu hóa đơn CCN (cả gốc và đối ứng)!");
+
+    // 🔥 CẬP NHẬT TRẠNG THÁI PHIẾU YÊU CẦU CHUYỂN KHO
+    try {
+        const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
+        const soCtYeuCau = extractSoCtYeuCauFromGhiChu(ghichu);
+
+        if (!soCtYeuCau) {
+            console.log("ℹ️ Không phát hiện phiếu yêu cầu chuyển kho trong ghi chú, bỏ qua cập nhật yeucau_chuyenkho_ct.");
+        } else {
+            const manvPhuTrach = String(document.getElementById("manv")?.value || "").trim();
+            const tennvPhuTrach = String(document.getElementById("tennv")?.value || "").trim();
+
+            const dsDongCapNhat = buildYeuCauChuyenKhoRowsFromBangKetQua(bangKetQua);
+
+            console.log("🟣 Bắt đầu cập nhật yeucau_chuyenkho_ct:", {
+                soCtYeuCau,
+                manvPhuTrach,
+                tennvPhuTrach,
+                soDong: dsDongCapNhat.length,
+                dsDongCapNhat
+            });
+
+            let tongSoDongDaCapNhat = 0;
+
+            for (const row of dsDongCapNhat) {
+                const payloadUpdate = {
+                    trang_thai_dong: "da_chuyen",
+                    manv_phutrach: manvPhuTrach || null,
+                    tennv_phutrach: tennvPhuTrach || null,
+                    done: true,
+                    done_at: new Date().toISOString(),
+                    done_by: manvPhuTrach || null,
+                    done_by_name: tennvPhuTrach || null,
+                    updated_at: new Date().toISOString()
+                };
+
+                const { data, error } = await supabase
+                    .from("yeucau_chuyenkho_ct")
+                    .update(payloadUpdate)
+                    .eq("so_ct", soCtYeuCau)
+                    .eq("masp", row.masp)
+                    .eq("size", row.size)
+                    .eq("sl_thuc", row.sl_thuc)
+                    .eq("trang_thai_dong", "dang_chuyen")
+                    .select("id, so_ct, masp, size, sl_thuc, trang_thai_dong");
+
+                if (error) {
+                    console.error("❌ Lỗi cập nhật yeucau_chuyenkho_ct:", {
+                        soCtYeuCau,
+                        row,
+                        error
+                    });
+                    continue;
+                }
+
+                const updatedCount = Array.isArray(data) ? data.length : 0;
+                tongSoDongDaCapNhat += updatedCount;
+
+                console.log("✅ Đã cập nhật yeucau_chuyenkho_ct:", {
+                    soCtYeuCau,
+                    row,
+                    updatedCount,
+                    data
+                });
+            }
+
+            console.log("🟪 Hoàn tất cập nhật yeucau_chuyenkho_ct:", {
+                soCtYeuCau,
+                tongSoDongDaCapNhat
+            });
+        }
+    } catch (e) {
+        console.error("❌ Lỗi khối cập nhật trạng thái phiếu yêu cầu chuyển kho:", e);
+    }
 
     // 🔥 GHI NGƯỢC VÀO BẢNG KIỂM NHẬP CHI TIẾT (taohdccn)
     try {
