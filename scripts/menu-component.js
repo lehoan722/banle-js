@@ -717,12 +717,23 @@
           __sizeInput.dispatchEvent(new Event('input', { bubbles: true }));
           __sizeInput.dispatchEvent(new Event('change', { bubbles: true }));
 
+          // Giữ lại hành vi ổn định như file cũ trên desktop
+          if (isDesktopWide()) {
+            __sizeInput.focus();
+            __sizeInput.select();
+          }
+
           if (source === 'mouse') {
             const plannedValue = __sizeInput.value;
             setTimeout(() => {
               if (Date.now() - __lastTrustedEnterAt <= ENTER_WINDOW_MS) return;
+
+              // chỉ bắn Enter giả khi ô size vẫn còn là ô active
+              if (document.activeElement !== __sizeInput) return;
+
               if (!__sizeInput.value || __sizeInput.value.trim() === '') return;
               if (__sizeInput.value !== plannedValue) return;
+
               const kd = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true });
               const ku = new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true });
               __sizeInput.dispatchEvent(kd);
@@ -736,6 +747,13 @@
           masp.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
+
+              // Desktop: giữ cơ chế cũ để blur đóng popup ổn định
+              if (isDesktopWide()) {
+                __sizeInput.focus();
+                __sizeInput.select();
+              }
+
               __sizeDD.openFor(__sizeInput);
             }
           });
