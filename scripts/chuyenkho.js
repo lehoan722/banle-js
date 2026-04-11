@@ -801,12 +801,23 @@ function applySelectedState(row, checked) {
 function applyDoneState(row, checked) {
   row.done = checked;
 
+  const manvDangNhap = String($("manv")?.value || "").trim().toUpperCase();
+  const tennvDangNhap = String($("tennv")?.value || "").trim();
+
   if (checked) {
     row.trang_thai_dong = "dang_chuyen";
     row.sl_thuc = toNumber(row.sl_duyet);
+
+    // Tự động gán nhân viên đang thao tác
+    row.manv_phutrach = manvDangNhap;
+    row.tennv_phutrach = tennvDangNhap;
   } else {
     row.sl_thuc = 0;
     row.trang_thai_dong = row.selected ? "de_xuat" : "";
+
+    // Bỏ tick thì xóa luôn người phụ trách tự động gán
+    row.manv_phutrach = "";
+    row.tennv_phutrach = "";
   }
 
   updateTrangThaiPhieu();
