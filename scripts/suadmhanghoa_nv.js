@@ -638,6 +638,7 @@ function attachUIEvents() {
 
   const inputFilter = document.getElementById('filter-value');
   const btnLoadFilter = document.getElementById('btn-load-filter');
+  const btnKiemTraThuaThieu = document.getElementById('btn-kiem-tra-thua-thieu');
   const previewEl = document.getElementById('preview');
 
   if (colSelect) {
@@ -698,6 +699,10 @@ function attachUIEvents() {
 
   if (btnLoadFilter) {
     btnLoadFilter.onclick = taiDanhSachTheoDieuKien;
+  }
+
+  if (btnKiemTraThuaThieu) {
+    btnKiemTraThuaThieu.onclick = kiemTraThuaThieu;
   }
 
   if (inputFilter) {
@@ -1247,6 +1252,125 @@ async function taiDanhSachGiaTriCotDangChon() {
 }
 
 // ==== Tải danh sách sản phẩm theo điều kiện (cột đang chọn = giá trị lọc) ====
+
+// ==== Kiểm tra thừa thiếu: tải thêm mã theo điều kiện nhưng KHÔNG xóa bảng hiện có ====
+async function kiemTraThuaThieu() {
+  const colSelect = document.getElementById('col-select');
+  const inputFilter = document.getElementById('filter-value');
+  const previewEl = document.getElementById('preview');
+
+  if (!colSelect || !hot) return;
+
+  const colname = colSelect.value;
+  const colLabel = getColLabel(colname);
+  const rawFilter = (inputFilter?.value || '').toString();
+  const filterValues = rawFilter.split(',').map(v => v.trim()).filter(Boolean);
+
+  if (!colname) {
+    alert("Bạn cần chọn cột trước khi kiểm tra thừa thiếu!");
+    return;
+  }
+
+  if (filterValues.length === 0) {
+    alert(`Bạn cần nhập "Giá trị lọc" cho cột "${colLabel}" trước khi kiểm tra thừa thiếu!`);
+    return;
+  }
+
+  try {
+    const filterText = filterValues.join(', ');
+    const createdAtRange = getCreatedAtRangeISO();
+    const rangeNote = (createdAtRange?.fromISO || createdAtRange?.toISO)
+      ? ` (lọc theo created_at${createdAtRange?.fromISO ? ' từ ' + (document.getElementById('date-from')?.value || '') : ''}${createdAtRange?.toISO ? ' đến ' + (document.getElementById('date-to')?.value || '') : ''})`
+      : '';
+
+    if (previewEl) {
+      previewEl.innerHTML = `<span>⏳ Đang kiểm tra thừa thiếu theo <b>${colLabel}</b> thuộc: <b>${filterText}</b>${rangeNote}...</span>`;
+    }
+
+    const foundRows = await fetchRowsByFilterFromDmHangHoa(
+      colname,
+      (filterValues.length === 1 ? filterValues[0] : filterValues),
+      createdAtRange
+    );
+
+    if (!foundRows || foundRows.length === 0) {
+      if (previewEl) {
+        previewEl.innerHTML = `⚠️ Không tìm thấy sản phẩm nào có <b>${colLabel}</b> thuộc: <b>${filterText}</b>.`;
+      }
+      return;
+    }
+
+    // Danh sách mã đang có trên bảng
+    const existingRows = hot.getSourceData();
+    const existingMasps = new Set(
+      existingRows
+        .map(r => (r.masp || '').toString().trim().toUpperCase())
+        .filter(Boolean)
+    );
+
+    // Chỉ lấy các mã chưa có trên bảng để thêm vào
+    const rowsToAdd = [];
+    let skipped = 0;
+
+    for (const r of foundRows) {
+      const masp = (r.masp || '').toString().trim().toUpperCase();
+      if (!masp) continue;
+
+      if (existingMasps.has(masp)) {
+        skipped++;
+        continue;
+      }
+
+      existingMasps.add(masp);
+
+      rowsToAdd.push({
+        masp,
+        [colname]: r[colname],
+        trangthai: 'TẢI THÊM'
+      });
+    }
+
+    if (rowsToAdd.length === 0) {
+      if (previewEl) {
+        previewEl.innerHTML = `✅ Đã kiểm tra xong. Không có mã nào cần tải thêm. Có <b>${skipped}</b> mã đã có sẵn trên bảng.`;
+      }
+      return;
+    }
+
+    // Lấy dữ liệu hiện tại, bỏ các dòng trống hoàn toàn ở cuối để ghép cho gọn
+    const currentRows = hot.getSourceData().filter(row => {
+      const masp = (row.masp || '').toString().trim();
+      const valB = Object.keys(row)
+        .filter(k => !['masp', 'trangthai'].includes(k))
+        .some(k => (row[k] ?? '').toString().trim() !== '');
+      const trangthai = (row.trangthai || '').toString().trim();
+      return masp || valB || trangthai;
+    });
+
+    const mergedRows = [
+      ...currentRows,
+      ...rowsToAdd,
+      { masp: null, [colname]: null, trangthai: null }
+    ];
+
+    hot.loadData(mergedRows);
+    hot.updateSettings({ cells: hot.getSettings().cells });
+    hot.render();
+
+    if (previewEl) {
+      previewEl.innerHTML =
+        `✅ Đã tải thêm <b>${rowsToAdd.length}</b> mã để kiểm tra thừa thiếu. ` +
+        `Có <b>${skipped}</b> mã đã có sẵn trên bảng nên bỏ qua.`;
+    }
+
+    if (quickMaspInput) quickMaspInput.focus();
+  } catch (err) {
+    console.error(err);
+    alert("Lỗi khi kiểm tra thừa thiếu: " + (err?.message || err));
+    if (previewEl) previewEl.innerHTML = "";
+  }
+}
+
 async function taiDanhSachTheoDieuKien() {
   const colSelect = document.getElementById('col-select');
   const inputFilter = document.getElementById('filter-value');
