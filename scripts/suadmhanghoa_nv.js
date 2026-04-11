@@ -593,21 +593,10 @@ function initTable(colname = 'vitrikho1') {
     },
 
     afterOnCellMouseDown: function (event, coords) {
-      if (!coords || coords.row < 0) return;
-
-      // 1) Nếu click vào cột mã sản phẩm -> mở stockQuickPopup
-      if (coords.col === 0) {
-        const masp = (this.getDataAtCell(coords.row, 0) || '').toString().trim().toUpperCase();
-        if (masp && typeof window.stockQuickPopup === 'function') {
-          window.stockQuickPopup(masp);
-        }
-        return;
-      }
-
-      // 2) Giữ nguyên logic cũ: ở chế độ danh sách thì click cột giá trị để đẩy sang ô lọc
+      // Click ở cột giá trị (cột thứ 2) khi đang ở chế độ DANH SÁCH -> đẩy vào ô điều kiện lọc
       if (currentTableMode !== 'distinct') return;
+      if (!coords || coords.row < 0) return;
       if (coords.col !== 1) return;
-
       const val = this.getDataAtCell(coords.row, coords.col);
       appendToFilterInput(val);
     },
@@ -627,6 +616,7 @@ function attachUIEvents() {
   const colSelect = document.getElementById('col-select');
   const btnReset = document.getElementById('btn-reset');
   const btnKiemTra = document.getElementById('btn-kiemtra');
+  const btnTonNhanh = document.getElementById('btn-ton-nhanh');
   const btnXoaTrung = document.getElementById('btn-xoa-trung');
   const btnDienCotB = document.getElementById('btn-dien-cot-b');
   const btnCopyAB = document.getElementById('btn-copy-ab');
@@ -662,6 +652,10 @@ function attachUIEvents() {
   if (btnKiemTra) {
     btnKiemTra.onclick = kiemTraViTri;
   }
+
+  if (btnTonNhanh) {
+  btnTonNhanh.onclick = tonNhanh;
+}
 
   if (btnXoaTrung) {
     btnXoaTrung.onclick = xoaMaSanPhamTrung;
@@ -945,6 +939,119 @@ async function danCotAVaB() {
 }
 
 // ==== Kiểm tra vị trí ====
+
+// ==== Tồn nhanh: lấy tồn tổng theo mã qua RPC xntnhanh ====
+function getTodayVNDateYMD() {
+  const now = new Date();
+  const vnNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  const y = vnNow.getFullYear();
+  const m = String(vnNow.getMonth() + 1).padStart(2, '0');
+  const d = String(vnNow.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getUniqueMaspsFromTable() {
+  if (!hot) return [];
+
+  const rows = hot.getSourceData();
+  const seen = new Set();
+  const result = [];
+
+  for (const row of rows) {
+    const masp = (row.masp || '').toString().trim().toUpperCase();
+    if (!masp) continue;
+    if (seen.has(masp)) continue;
+    seen.add(masp);
+    result.push(masp);
+  }
+
+  return result;
+}
+
+async function fetchTonNhanhByMasps(masps) {
+  const resultMap = {};
+  if (!masps || masps.length === 0) return resultMap;
+
+  const chunkSize = 200;
+  const chunks = chunkArray(masps, chunkSize);
+  const denNgay = getTodayVNDateYMD();
+
+  for (let i = 0; i < chunks.length; i++) {
+    const arr = chunks[i];
+
+    const { data, error } = await supabase.rpc('xntnhanh', {
+      p_masps: arr,
+      p_den_ngay: denNgay,
+      p_tonghop_size: true
+    });
+
+    if (error) throw error;
+
+    (data || []).forEach(row => {
+      const masp = (row.masp || '').toString().trim().toUpperCase();
+      if (!masp) return;
+
+      resultMap[masp] = {
+        ton_cs1: Number(row.ton_cs1 || 0),
+        ton_cs2: Number(row.ton_cs2 || 0)
+      };
+    });
+  }
+
+  return resultMap;
+}
+
+async function tonNhanh() {
+  const previewEl = document.getElementById('preview');
+  if (!hot) return;
+
+  const masps = getUniqueMaspsFromTable();
+
+  if (masps.length === 0) {
+    alert('Chưa có mã sản phẩm nào ở cột A để lấy tồn nhanh.');
+    return;
+  }
+
+  try {
+    if (previewEl) {
+      previewEl.innerHTML = `<span>⏳ Đang lấy tồn nhanh cho <b>${masps.length}</b> mã sản phẩm...</span>`;
+    }
+
+    const tonMap = await fetchTonNhanhByMasps(masps);
+
+    let countUpdated = 0;
+
+    hot.batch(() => {
+      for (let r = 0; r < hot.countRows(); r++) {
+        const masp = (hot.getDataAtCell(r, 0) || '').toString().trim().toUpperCase();
+        if (!masp) {
+          hot.setDataAtCell(r, 2, null);
+          continue;
+        }
+
+        const ton = tonMap[masp] || { ton_cs1: 0, ton_cs2: 0 };
+        const text = `${ton.ton_cs1}/${ton.ton_cs2}`;
+        hot.setDataAtCell(r, 2, text);
+        countUpdated++;
+      }
+    });
+
+    if (previewEl) {
+      previewEl.innerHTML = `<span style="color:#16a34a;">✅ Đã lấy tồn nhanh cho <b>${countUpdated}</b> dòng. Định dạng: <b>CS1/CS2</b>.</span>`;
+    }
+
+    hot.render();
+
+    if (quickMaspInput) quickMaspInput.focus();
+  } catch (err) {
+    console.error(err);
+    alert('Lỗi khi lấy tồn nhanh: ' + (err?.message || err));
+    if (previewEl) {
+      previewEl.innerHTML = `<span style="color:#dc2626;">❌ Lỗi khi lấy tồn nhanh.</span>`;
+    }
+  }
+}
+
 async function kiemTraViTri() {
   const colSelect = document.getElementById('col-select');
   const previewEl = document.getElementById('preview');
