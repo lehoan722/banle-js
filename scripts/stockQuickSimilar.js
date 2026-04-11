@@ -1,5 +1,7 @@
 // stockQuickSimilar.js - JS FILTER THEO NHÓM (không dùng RPC riêng)
 
+// stockQuickSimilar.js chỉ lo phần mở sản phẩm cùng nhóm theo size.
+
 (function () {
   function getSupabaseClient() {
     const client = window.supabase;
