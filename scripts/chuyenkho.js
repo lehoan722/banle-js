@@ -1037,8 +1037,10 @@ async function luuPhieu() {
       }]);
     }
 
+    $("hd_state").value = "sua";
+    await napPhieu(soCt);
+
     alert("Đã lưu phiếu chuyển kho.");
-    await taoPhieuMoi();
 
   } catch (e) {
     showError("Lưu phiếu thất bại.", e);
@@ -1256,9 +1258,7 @@ function buildCcnPayloadFromDoneRows() {
 }
 
 async function taoPhieuCCN() {
-  try {
-    // Lưu phiếu hiện tại trước
-    await luuPhieu();
+  try {    
 
     // Sau khi lưu xong mới tạo payload CCN
     const payload = buildCcnPayloadFromDoneRows();
@@ -1272,6 +1272,9 @@ async function taoPhieuCCN() {
   } catch (e) {
     showError("Không tạo được phiếu CCN.", e);
   }
+
+  // Lưu phiếu hiện tại trước
+    await luuPhieu();
 }
 
 /* =========================================================
