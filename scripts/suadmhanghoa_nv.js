@@ -639,6 +639,7 @@ function attachUIEvents() {
   const btnKiemTra = document.getElementById('btn-kiemtra');
   const btnTonNhanh = document.getElementById('btn-ton-nhanh');
   const btnXoaTrung = document.getElementById('btn-xoa-trung');
+  const btnXoaDong = document.getElementById('btn-xoa-dong');
   const btnDienCotB = document.getElementById('btn-dien-cot-b');
   const btnCopyAB = document.getElementById('btn-copy-ab');
   const btnPasteAB = document.getElementById('btn-paste-ab');
@@ -695,6 +696,10 @@ function attachUIEvents() {
     btnPasteAB.onclick = danCotAVaB;
   }
 
+  if (btnXoaDong) {
+    btnXoaDong.onclick = xoaDongDangChon;
+  }
+
   if (btnXoa) {
     btnXoa.onclick = xoaSanPhamDaCoViTri;
   }
@@ -717,7 +722,14 @@ function attachUIEvents() {
 
   if (inputFilter) {
     inputFilter.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') taiDanhSachTheoDieuKien();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+
+        if (quickMaspInput) {
+          quickMaspInput.focus();
+          quickMaspInput.select();
+        }
+      }
     });
   }
 
@@ -962,6 +974,74 @@ async function danCotAVaB() {
   }
 
   if (quickMaspInput) quickMaspInput.focus();
+}
+
+function xoaDongDangChon() {
+  const previewEl = document.getElementById('preview');
+  const colSelect = document.getElementById('col-select');
+
+  if (!hot) return;
+
+  const selectedRanges = hot.getSelectedRange();
+  if (!selectedRanges || selectedRanges.length === 0) {
+    alert("Bạn chưa chọn ô nào để xóa dòng.");
+    return;
+  }
+
+  const rowsToDelete = new Set();
+
+  for (const range of selectedRanges) {
+    const fromRow = Math.min(range.from.row, range.to.row);
+    const toRow = Math.max(range.from.row, range.to.row);
+    const fromCol = Math.min(range.from.col, range.to.col);
+    const toCol = Math.max(range.from.col, range.to.col);
+
+    // Chỉ cho phép xóa khi vùng chọn có đụng tới cột B (col = 1)
+    if (toCol < 1 || fromCol > 1) continue;
+
+    for (let r = fromRow; r <= toRow; r++) {
+      if (r >= 0) rowsToDelete.add(r);
+    }
+  }
+
+  if (rowsToDelete.size === 0) {
+    alert("Bạn cần chọn ô ở cột B để xóa dòng tương ứng.");
+    return;
+  }
+
+  const rowIndexes = Array.from(rowsToDelete).sort((a, b) => b - a);
+
+  if (!confirm(`Bạn có chắc muốn xóa ${rowIndexes.length} dòng đã chọn không?`)) {
+    return;
+  }
+
+  hot.batch(() => {
+    for (const rowIndex of rowIndexes) {
+      if (rowIndex >= 0 && rowIndex < hot.countRows()) {
+        hot.alter('remove_row', rowIndex, 1);
+      }
+    }
+  });
+
+  // Nếu xóa xong mà bảng trống quá thì thêm lại 1 dòng trống
+  if (hot.countRows() === 0) {
+    const colname = colSelect?.value || 'vitrikho1';
+    hot.loadData([{ masp: null, [colname]: null, trangthai: null }]);
+  }
+
+  duplicateMasps = new Set();
+  duplicateMaspColorMap = new Map();
+  hot.updateSettings({ cells: hot.getSettings().cells });
+  hot.render();
+
+  if (previewEl) {
+    previewEl.innerHTML = `<span style="color:#16a34a;">✅ Đã xóa ${rowIndexes.length} dòng được chọn ở cột B.</span>`;
+  }
+
+  if (quickMaspInput) {
+    quickMaspInput.focus();
+    quickMaspInput.select();
+  }
 }
 
 // ==== Kiểm tra vị trí ====
