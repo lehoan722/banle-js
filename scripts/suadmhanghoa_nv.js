@@ -360,10 +360,21 @@ function attachToolsMenuEvents() {
     }
   });
 
+  // Bấm ra ngoài thì đóng
   document.addEventListener('click', (e) => {
     if (toolsPanel.style.display === 'none') return;
     if (toolsPanel.contains(e.target) || btnToggleTools.contains(e.target)) return;
     closeToolsPanel();
+  });
+
+  // Bấm vào bất kỳ nút nào bên trong panel công cụ thì tự đóng lại
+  const toolButtons = toolsPanel.querySelectorAll('button');
+  toolButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      setTimeout(() => {
+        closeToolsPanel();
+      }, 0);
+    });
   });
 }
 
