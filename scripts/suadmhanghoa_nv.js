@@ -491,6 +491,7 @@ let hot;
 let currentTableMode = 'masp';
 let duplicateMasps = new Set();
 let duplicateMaspColorMap = new Map();
+let lastSelectedRanges = null;
 
 function taoBangMauChoMaTrung(duplicateSet) {
   duplicateMaspColorMap = new Map();
@@ -628,7 +629,19 @@ function initTable(colname = 'vitrikho1') {
       if (coords.col !== 1) return;
       const val = this.getDataAtCell(coords.row, coords.col);
       appendToFilterInput(val);
+    },
+    afterSelectionEnd: function (row, column, row2, column2) {
+      lastSelectedRanges = [{
+        from: { row, col: column },
+        to: { row: row2, col: column2 }
+      }];
+    },
+
+    afterDeselect: function () {
+      // Không xóa lastSelectedRanges ở đây
+      // để khi bấm nút ngoài bảng vẫn giữ được vùng chọn cuối cùng
     }
+
   });
 }
 
@@ -697,7 +710,10 @@ function attachUIEvents() {
   }
 
   if (btnXoaDong) {
-    btnXoaDong.onclick = xoaDongDangChon;
+    btnXoaDong.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      xoaDongDangChon();
+    });
   }
 
   if (btnXoa) {
@@ -982,7 +998,12 @@ function xoaDongDangChon() {
 
   if (!hot) return;
 
-  const selectedRanges = hot.getSelectedRange();
+  // Ưu tiên lấy selection hiện tại, nếu mất rồi thì lấy selection đã lưu
+  let selectedRanges = hot.getSelectedRange();
+  if (!selectedRanges || selectedRanges.length === 0) {
+    selectedRanges = lastSelectedRanges;
+  }
+
   if (!selectedRanges || selectedRanges.length === 0) {
     alert("Bạn chưa chọn ô nào để xóa dòng.");
     return;
@@ -996,11 +1017,13 @@ function xoaDongDangChon() {
     const fromCol = Math.min(range.from.col, range.to.col);
     const toCol = Math.max(range.from.col, range.to.col);
 
-    // Chỉ cho phép xóa khi vùng chọn có đụng tới cột B (col = 1)
+    // Chỉ xóa nếu vùng chọn có dính tới cột B (col = 1)
     if (toCol < 1 || fromCol > 1) continue;
 
     for (let r = fromRow; r <= toRow; r++) {
-      if (r >= 0) rowsToDelete.add(r);
+      if (r >= 0 && r < hot.countRows()) {
+        rowsToDelete.add(r);
+      }
     }
   }
 
@@ -1023,7 +1046,7 @@ function xoaDongDangChon() {
     }
   });
 
-  // Nếu xóa xong mà bảng trống quá thì thêm lại 1 dòng trống
+  // Nếu bảng trống thì tạo lại 1 dòng trống
   if (hot.countRows() === 0) {
     const colname = colSelect?.value || 'vitrikho1';
     hot.loadData([{ masp: null, [colname]: null, trangthai: null }]);
@@ -1031,6 +1054,8 @@ function xoaDongDangChon() {
 
   duplicateMasps = new Set();
   duplicateMaspColorMap = new Map();
+  lastSelectedRanges = null;
+
   hot.updateSettings({ cells: hot.getSettings().cells });
   hot.render();
 
