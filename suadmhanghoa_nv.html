@@ -13,65 +13,243 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <!-- Script chính của trang -->
-     <script src="./scripts/stockQuickPopup.js"></script>
+    <script src="./scripts/stockQuickPopup.js"></script>
     <script type="module" src="scripts/suadmhanghoa_nv.js"></script>
+
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 12px;
+        background: #f6f7fb;
+    }
+
+    #app-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    h2 {
+        margin: 8px 0 14px;
+        font-size: 22px;
+        line-height: 1.25;
+    }
+
+    .toolbar-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .toolbar-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+
+    .toolbar-title {
+        font-weight: 700;
+        font-size: 15px;
+        margin-bottom: 10px;
+        color: #1f2937;
+    }
+
+    .toolbar-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .toolbar-grid select,
+    .toolbar-grid input,
+    .main-actions button,
+    .tools-grid button,
+    #btn-toggle-tools {
+        width: 100%;
+        min-height: 46px;
+        border-radius: 12px;
+        border: 1px solid #d1d5db;
+        font-size: 18px;
+        padding: 10px 12px;
+        box-sizing: border-box;
+    }
+
+    .toolbar-grid select,
+    .toolbar-grid input {
+        background: #fff;
+    }
+
+    .main-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .main-actions button {
+        background: #eef6ff;
+        color: #0f4aa3;
+        font-weight: 700;
+    }
+
+    .tools-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    #btn-toggle-tools {
+        width: auto;
+        min-width: 150px;
+        background: #f3f4f6;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .tools-panel {
+        margin-top: 10px;
+    }
+
+    .tools-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .tools-grid button {
+        background: #f9fafb;
+        color: #111827;
+        font-weight: 600;
+    }
+
+    .quick-suggest-panel {
+        display:none;
+        position:fixed;
+        z-index:9999;
+        background:#fff;
+        border:1px solid #e5e7eb;
+        border-radius:10px;
+        box-shadow:0 12px 30px rgba(15,23,42,.18);
+        max-height:280px;
+        overflow-y:auto;
+        font-size:13px;
+        min-width:220px;
+    }
+
+    #preview {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin-bottom: 12px;
+        font-size: 15px;
+    }
+
+    #hot {
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+        body {
+            padding: 10px;
+        }
+
+        h2 {
+            font-size: 18px;
+        }
+
+        .main-actions,
+        .tools-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .toolbar-grid select,
+        .toolbar-grid input,
+        .main-actions button,
+        .tools-grid button,
+        #btn-toggle-tools {
+            min-height: 44px;
+            font-size: 16px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .main-actions,
+        .tools-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .tools-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        #btn-toggle-tools {
+            width: 100%;
+        }
+    }
+</style>
+
 </head>
 
 <body>
     <div id="app-container" style="display:none;">
         <h2>🛠️ Sửa Danh Mục Hàng Hóa - Nhân Viên</h2>
 
-        <div style="margin-bottom: 10px;">
-            <select id="col-select"></select>
+        <div class="toolbar-wrap">
 
-            <button id="btn-xoa-trung">🧹 Xóa trùng</button>
+            <!-- KHỐI NHẬP CHÍNH -->
+            <div class="toolbar-card">
+                <div class="toolbar-title">Nhập và lọc dữ liệu</div>
 
-            <button id="btn-xoa-dong">Xóa dòng</button>
+                <div class="toolbar-grid">
+                    <select id="col-select"></select>
 
-            <input id="filter-value" type="text" placeholder="Giá trị lọc (vd: A1, GIA27)"
-                style="width:220px; margin-left:8px;">
+                    <input id="filter-value" type="text" placeholder="Giá trị lọc (vd: A1, GIA27)">
 
-            <button id="btn-dien-cot-b">Điền cột B</button>
+                    <input id="quick-masp" type="text" placeholder="Nhập mã SP rồi Enter..." autocomplete="off"
+                        style="text-transform:uppercase;">
 
-            <button id="btn-load-filter">⬇️ Tải DS theo điều kiện</button>
-
-            <!--- <label style="margin-left:10px;">Từ ngày</label>
-            <input id="date-from" type="date" style="width:140px; margin-left:6px;">
-            <label style="margin-left:10px;">Đến ngày</label>
-            <input id="date-to" type="date" style="width:140px; margin-left:6px;">
-
-            
-              <button id="btn-backup">💾 Backup trước khi ghi</button>
-              <button id="btn-restore">⏫ Phục hồi từ backup</button> 
-              <button id="btn-xoa">🧹 Xóa sản phẩm đã có vị trí</button> -->
-
-            <button id="btn-reset">🔁 Làm lại</button>
-            <button id="btn-kiemtra">🔍 Kiểm tra vị trí</button>
-
-            <input id="quick-masp" type="text" placeholder="Nhập mã SP rồi Enter..." autocomplete="off"
-                style="width:220px; margin-left:8px; text-transform:uppercase;">
-
-            <div id="quick-masp-suggest" style="
-    display:none;
-    position:fixed;
-    z-index:9999;
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:10px;
-    box-shadow:0 12px 30px rgba(15,23,42,.18);
-    max-height:280px;
-    overflow-y:auto;
-    font-size:13px;
-    min-width:220px;
-">
+                    <div id="quick-masp-suggest" class="quick-suggest-panel"></div>
+                </div>
             </div>
 
-            <button id="btn-luu">💾 Lưu dữ liệu</button>
+            <!-- KHỐI NÚT CHÍNH -->
+            <div class="toolbar-card">
+                <div class="toolbar-title">Thao tác chính</div>
 
-            <button id="btn-copy-ab">📋 Copy</button>
-            <button id="btn-paste-ab">📥 Dán</button>
-            <button id="btn-ton-nhanh">📦 Tồn nhanh</button>
-            <button id="btn-kiem-tra-thua-thieu">KT thiếu</button>
+                <div class="main-actions">
+                    <button id="btn-load-filter">⬇️ Tải DS theo điều kiện</button>
+                    <button id="btn-kiemtra">🔍 Kiểm tra vị trí</button>
+                    <button id="btn-kiem-tra-thua-thieu">KT thiếu</button>
+                    <button id="btn-luu">💾 Lưu dữ liệu</button>
+                </div>
+            </div>
+
+            <!-- KHỐI CÔNG CỤ -->
+            <div class="toolbar-card">
+                <div class="tools-header">
+                    <div class="toolbar-title" style="margin-bottom:0;">Công cụ</div>
+                    <button id="btn-toggle-tools" type="button">☰ Công cụ ▼</button>
+                </div>
+
+                <div id="tools-panel" class="tools-panel" style="display:none;">
+                    <div class="tools-grid">
+                        <button id="btn-xoa-trung">🧹 Xóa trùng</button>
+                        <button id="btn-xoa-dong">Xóa dòng</button>
+                        <button id="btn-dien-cot-b">Điền cột B</button>
+                        <button id="btn-copy-ab">📋 Copy</button>
+                        <button id="btn-paste-ab">📥 Dán</button>
+                        <button id="btn-ton-nhanh">📦 Tồn nhanh</button>
+                        <button id="btn-reset">🔁 Làm lại</button>
+                    </div>
+                </div>
+            </div>
 
         </div>
 
