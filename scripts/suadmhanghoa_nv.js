@@ -532,6 +532,47 @@ function ensureDuplicateMaspStyle() {
   document.head.appendChild(style);
 }
 
+function doiCotDangNhapMaKhongXoaDuLieu(newColname) {
+  if (!hot) {
+    initTable(newColname);
+    return;
+  }
+
+  const colInfo = COLS.find(c => c.name === newColname);
+  const colLabel = colInfo ? colInfo.label : newColname;
+
+  const oldSettings = hot.getSettings();
+  const oldColumns = oldSettings.columns || [];
+  const oldColname = oldColumns[1]?.data || 'vitrikho1';
+
+  // Nếu chọn lại đúng cột cũ thì không cần làm gì
+  if (oldColname === newColname) return;
+
+  const oldData = hot.getSourceData();
+
+  const newData = oldData.map(row => {
+    const oldVal = row?.[oldColname] ?? null;
+
+    return {
+      masp: row?.masp ?? null,
+      [newColname]: oldVal,
+      trangthai: row?.trangthai ?? null
+    };
+  });
+
+  hot.updateSettings({
+    columns: [
+      { data: 'masp', type: 'text', width: 150 },
+      { data: newColname, type: 'text', width: 150 },
+      { data: 'trangthai', type: 'text', width: 110 }
+    ],
+    colHeaders: ['Mã sản phẩm', colLabel, 'Trạng thái']
+  });
+
+  hot.loadData(newData);
+  hot.render();
+}
+
 function initTable(colname = 'vitrikho1') {
   currentTableMode = 'masp';
   const colInfo = COLS.find(c => c.name === colname);
@@ -678,9 +719,12 @@ function attachUIEvents() {
 
   if (colSelect) {
     colSelect.onchange = function () {
-      initTable(this.value);
+      doiCotDangNhapMaKhongXoaDuLieu(this.value);
       hideQuickMaspSuggest();
-      if (previewEl) previewEl.innerHTML = "";
+      if (previewEl) {
+        const colLabel = getColLabel(this.value);
+        previewEl.innerHTML = `<span style="color:#16a34a;">✅ Đã chuyển sang mục <b>${colLabel}</b> và giữ nguyên dữ liệu hiện có trên bảng.</span>`;
+      }
       focusQuickMaspInput();
     };
   }
