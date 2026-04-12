@@ -492,6 +492,7 @@ let currentTableMode = 'masp';
 let duplicateMasps = new Set();
 let duplicateMaspColorMap = new Map();
 let lastSelectedRanges = null;
+let currentLoginCoSo = 'cs1';
 
 function taoBangMauChoMaTrung(duplicateSet) {
   duplicateMaspColorMap = new Map();
@@ -1132,6 +1133,58 @@ async function fetchTonNhanhByMasps(masps) {
   return resultMap;
 }
 
+function layGiaTriTonDeSapXep(trangthai, coSo) {
+  const s = (trangthai || '').toString().trim();
+  if (!s) return Number.POSITIVE_INFINITY;
+
+  const parts = s.split('/');
+  if (parts.length < 2) return Number.POSITIVE_INFINITY;
+
+  const tonCs1 = Number(parts[0]);
+  const tonCs2 = Number(parts[1]);
+
+  if (coSo === 'cs2') {
+    return Number.isFinite(tonCs2) ? tonCs2 : Number.POSITIVE_INFINITY;
+  }
+
+  return Number.isFinite(tonCs1) ? tonCs1 : Number.POSITIVE_INFINITY;
+}
+
+function sapXepBangTheoTonNhanh() {
+  const colSelect = document.getElementById('col-select');
+  if (!hot) return;
+
+  const colname = colSelect?.value || 'vitrikho1';
+  const allRows = hot.getSourceData();
+
+  // Chỉ lấy các dòng có dữ liệu thật
+  const dataRows = allRows.filter(row => {
+    const masp = (row.masp || '').toString().trim();
+    const valB = (row[colname] || '').toString().trim();
+    const trangthai = (row.trangthai || '').toString().trim();
+    return masp || valB || trangthai;
+  });
+
+  if (dataRows.length === 0) return;
+
+  dataRows.sort((a, b) => {
+    const va = layGiaTriTonDeSapXep(a.trangthai, currentLoginCoSo);
+    const vb = layGiaTriTonDeSapXep(b.trangthai, currentLoginCoSo);
+
+    if (va !== vb) return va - vb;
+
+    const ma = (a.masp || '').toString().trim().toUpperCase();
+    const mb = (b.masp || '').toString().trim().toUpperCase();
+    return ma.localeCompare(mb, 'vi');
+  });
+
+  dataRows.push({ masp: null, [colname]: null, trangthai: null });
+
+  hot.loadData(dataRows);
+  hot.updateSettings({ cells: hot.getSettings().cells });
+  hot.render();
+}
+
 async function tonNhanh() {
   const previewEl = document.getElementById('preview');
   if (!hot) return;
@@ -1167,11 +1220,16 @@ async function tonNhanh() {
       }
     });
 
-    if (previewEl) {
-      previewEl.innerHTML = `<span style="color:#16a34a;">✅ Đã lấy tồn nhanh cho <b>${countUpdated}</b> dòng. Định dạng: <b>CS1/CS2</b>.</span>`;
-    }
+    sapXepBangTheoTonNhanh();
 
-    hot.render();
+    const tenCoSo = currentLoginCoSo === 'cs2' ? 'cơ sở 2' : 'cơ sở 1';
+
+    if (previewEl) {
+      previewEl.innerHTML =
+        `<span style="color:#16a34a;">✅ Đã lấy tồn nhanh cho <b>${countUpdated}</b> dòng. ` +
+        `Định dạng: <b>CS1/CS2</b>. ` +
+        `Bảng đã được sắp xếp tăng dần theo tồn của <b>${tenCoSo}</b>.</span>`;
+    }
 
     if (quickMaspInput) quickMaspInput.focus();
   } catch (err) {
@@ -1782,8 +1840,21 @@ function normalizeDate(val) {
     tuDongKhoaCoSo: true,
     loginApiPath: '/api/login-cs1',
     onLoginSuccess: async (nhanvien, context) => {
-      // Trang này cho phép cả admin và nhân viên đăng nhập sử dụng
-      console.log('Đăng nhập thành công vào suadmhanghoa_nv:', nhanvien.manv, 'is_admin=', nhanvien.is_admin);
+      currentLoginCoSo =
+        (context?.diadiem || nhanvien?.diadiem || 'cs1')
+          .toString()
+          .trim()
+          .toLowerCase();
+
+      console.log(
+        'Đăng nhập thành công vào suadmhanghoa_nv:',
+        nhanvien.manv,
+        'is_admin=',
+        nhanvien.is_admin,
+        'coSo=',
+        currentLoginCoSo
+      );
     }
   });
+  
 })();
