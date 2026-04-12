@@ -1589,6 +1589,31 @@ async function kiemTraThuaThieu() {
     const currentRows = hot.getSourceData();
     const thucTeMasps = new Set();
 
+    const dsMaspThucTe = currentRows
+      .map(row => (row.masp || '').toString().trim().toUpperCase())
+      .filter(Boolean);
+
+    const uniqueMaspThucTe = Array.from(new Set(dsMaspThucTe));
+
+    // Tải giá trị thật của cột đang chọn cho toàn bộ mã thực tế
+    let giaTriThucTeMap = {};
+    if (uniqueMaspThucTe.length > 0) {
+      const { data: foundCurrentRows, error: foundCurrentError } = await supabase
+        .from('dmhanghoa')
+        .select(`masp,${colname}`)
+        .in('masp', uniqueMaspThucTe);
+
+      if (foundCurrentError) {
+        throw foundCurrentError;
+      }
+
+      (foundCurrentRows || []).forEach(row => {
+        const masp = (row.masp || '').toString().trim().toUpperCase();
+        if (!masp) return;
+        giaTriThucTeMap[masp] = row[colname] ?? null;
+      });
+    }
+
     let soDung = 0;
     let soThua = 0;
 
@@ -1614,6 +1639,7 @@ async function kiemTraThuaThieu() {
       return {
         ...row,
         masp,
+        [colname]: giaTriThucTeMap[masp] ?? null,
         trangthai: 'THỪA'
       };
     });
