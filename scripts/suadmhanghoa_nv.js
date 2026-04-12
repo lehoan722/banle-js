@@ -333,6 +333,40 @@ async function xuLyNhapNhanhMaSanPham() {
   }
 }
 
+function attachToolsMenuEvents() {
+  const btnToggleTools = document.getElementById('btn-toggle-tools');
+  const toolsPanel = document.getElementById('tools-panel');
+
+  if (!btnToggleTools || !toolsPanel) return;
+
+  function closeToolsPanel() {
+    toolsPanel.style.display = 'none';
+    btnToggleTools.textContent = '☰ Công cụ ▼';
+  }
+
+  function openToolsPanel() {
+    toolsPanel.style.display = 'block';
+    btnToggleTools.textContent = '☰ Công cụ ▲';
+  }
+
+  btnToggleTools.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (toolsPanel.style.display === 'none' || !toolsPanel.style.display) {
+      openToolsPanel();
+    } else {
+      closeToolsPanel();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (toolsPanel.style.display === 'none') return;
+    if (toolsPanel.contains(e.target) || btnToggleTools.contains(e.target)) return;
+    closeToolsPanel();
+  });
+}
+
 function attachQuickMaspEvents() {
   quickMaspInput = document.getElementById('quick-masp');
   quickMaspSuggestDiv = document.getElementById('quick-masp-suggest');
@@ -805,6 +839,7 @@ function attachUIEvents() {
   }
 
   attachQuickMaspEvents();
+  attachToolsMenuEvents();
 }
 
 function timDanhSachMaTrung() {
