@@ -17,183 +17,144 @@
     <script type="module" src="scripts/suadmhanghoa_nv.js"></script>
 
     <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 12px;
-        background: #f6f7fb;
-    }
-
-    #app-container {
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-
-    h2 {
-        margin: 8px 0 14px;
-        font-size: 22px;
-        line-height: 1.25;
-    }
-
-    .toolbar-wrap {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-bottom: 12px;
-    }
-
-    .toolbar-card {
-        background: #fff;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        padding: 12px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-    }
-
-    .toolbar-title {
-        font-weight: 700;
-        font-size: 15px;
-        margin-bottom: 10px;
-        color: #1f2937;
-    }
-
-    .toolbar-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-
-    .toolbar-grid select,
-    .toolbar-grid input,
-    .main-actions button,
-    .tools-grid button,
-    #btn-toggle-tools {
-        width: 100%;
-        min-height: 46px;
-        border-radius: 12px;
-        border: 1px solid #d1d5db;
-        font-size: 18px;
-        padding: 10px 12px;
-        box-sizing: border-box;
-    }
-
-    .toolbar-grid select,
-    .toolbar-grid input {
-        background: #fff;
-    }
-
-    .main-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-    }
-
-    .main-actions button {
-        background: #eef6ff;
-        color: #0f4aa3;
-        font-weight: 700;
-    }
-
-    .tools-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-    }
-
-    #btn-toggle-tools {
-        width: auto;
-        min-width: 150px;
-        background: #f3f4f6;
-        font-weight: 700;
-        color: #111827;
-    }
-
-    .tools-panel {
-        margin-top: 10px;
-    }
-
-    .tools-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-    }
-
-    .tools-grid button {
-        background: #f9fafb;
-        color: #111827;
-        font-weight: 600;
-    }
-
-    .quick-suggest-panel {
-        display:none;
-        position:fixed;
-        z-index:9999;
-        background:#fff;
-        border:1px solid #e5e7eb;
-        border-radius:10px;
-        box-shadow:0 12px 30px rgba(15,23,42,.18);
-        max-height:280px;
-        overflow-y:auto;
-        font-size:13px;
-        min-width:220px;
-    }
-
-    #preview {
-        background: #fff;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 10px 12px;
-        margin-bottom: 12px;
-        font-size: 15px;
-    }
-
-    #hot {
-        background: #fff;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-
-    @media (max-width: 768px) {
         body {
-            padding: 10px;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 8px;
+            background: #f6f7fb;
+        }
+
+        #app-container {
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         h2 {
-            font-size: 18px;
+            margin: 6px 0 10px;
+            font-size: 20px;
+            line-height: 1.25;
         }
 
-        .main-actions,
-        .tools-grid {
+        .top-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: #f6f7fb;
+            padding-bottom: 8px;
+        }
+
+        .toolbar-card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .toolbar-row-2 {
+            display: grid;
             grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
         }
 
-        .toolbar-grid select,
-        .toolbar-grid input,
-        .main-actions button,
-        .tools-grid button,
-        #btn-toggle-tools {
-            min-height: 44px;
+        .toolbar-row-1 {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .toolbar-card select,
+        .toolbar-card input,
+        .toolbar-card button {
+            width: 100%;
+            min-height: 42px;
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            box-sizing: border-box;
+            padding: 8px 10px;
             font-size: 16px;
         }
-    }
 
-    @media (max-width: 480px) {
-        .main-actions,
-        .tools-grid {
-            grid-template-columns: 1fr 1fr;
-        }
-
-        .tools-header {
-            flex-direction: column;
-            align-items: stretch;
+        .toolbar-card select,
+        .toolbar-card input {
+            background: #fff;
         }
 
         #btn-toggle-tools {
-            width: 100%;
+            background: #eef2f7;
+            font-weight: 700;
+            color: #1f2937;
         }
-    }
-</style>
+
+        .tools-panel {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .tools-grid button {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #0f172a;
+            min-height: 40px;
+            font-size: 15px;
+        }
+
+        .quick-suggest-panel {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
+            max-height: 280px;
+            overflow-y: auto;
+            font-size: 13px;
+            min-width: 220px;
+        }
+
+        #preview {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        #hot {
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            h2 {
+                font-size: 18px;
+            }
+
+            .toolbar-card select,
+            .toolbar-card input,
+            .toolbar-card button {
+                min-height: 40px;
+                font-size: 15px;
+            }
+
+            .tools-grid button {
+                min-height: 38px;
+                font-size: 14px;
+            }
+        }
+    </style>
 
 </head>
 
@@ -201,56 +162,52 @@
     <div id="app-container" style="display:none;">
         <h2>🛠️ Sửa Danh Mục Hàng Hóa - Nhân Viên</h2>
 
-        <div class="toolbar-wrap">
-
-            <!-- KHỐI NHẬP CHÍNH -->
+        <div class="top-toolbar">
             <div class="toolbar-card">
-                <div class="toolbar-title">Nhập và lọc dữ liệu</div>
 
-                <div class="toolbar-grid">
+                <!-- Dòng 1: chọn mục cần ghi + giá trị lọc -->
+                <div class="toolbar-row-2">
                     <select id="col-select"></select>
 
-                    <input id="filter-value" type="text" placeholder="Giá trị lọc (vd: A1, GIA27)">
+                    <input id="filter-value" type="text" placeholder="Giá trị lọc (vd: 4-1, GIA27)">
+                </div>
 
+                <!-- Dòng 2: nhập mã sản phẩm -->
+                <div class="toolbar-row-1">
                     <input id="quick-masp" type="text" placeholder="Nhập mã SP rồi Enter..." autocomplete="off"
                         style="text-transform:uppercase;">
 
                     <div id="quick-masp-suggest" class="quick-suggest-panel"></div>
                 </div>
-            </div>
 
-            <!-- KHỐI NÚT CHÍNH -->
-            <div class="toolbar-card">
-                <div class="toolbar-title">Thao tác chính</div>
-
-                <div class="main-actions">
-                    <button id="btn-load-filter">⬇️ Tải DS theo điều kiện</button>
-                    <button id="btn-kiemtra">🔍 Kiểm tra vị trí</button>
-                    <button id="btn-kiem-tra-thua-thieu">KT thiếu</button>
-                    <button id="btn-luu">💾 Lưu dữ liệu</button>
-                </div>
-            </div>
-
-            <!-- KHỐI CÔNG CỤ -->
-            <div class="toolbar-card">
-                <div class="tools-header">
-                    <div class="toolbar-title" style="margin-bottom:0;">Công cụ</div>
+                <!-- Dòng 3: nút mở công cụ -->
+                <div class="toolbar-row-1" style="margin-bottom:0;">
                     <button id="btn-toggle-tools" type="button">☰ Công cụ ▼</button>
                 </div>
 
+                <!-- Panel công cụ xổ xuống -->
                 <div id="tools-panel" class="tools-panel" style="display:none;">
                     <div class="tools-grid">
+                        <button id="btn-load-filter">⬇️ Tải DS</button>
+                        <button id="btn-kiemtra">🔍 Kiểm tra vị trí</button>
+
+                        <button id="btn-kiem-tra-thua-thieu">KT thiếu</button>
+                        <button id="btn-luu">💾 Lưu dữ liệu</button>
+
                         <button id="btn-xoa-trung">🧹 Xóa trùng</button>
                         <button id="btn-xoa-dong">Xóa dòng</button>
+
                         <button id="btn-dien-cot-b">Điền cột B</button>
                         <button id="btn-copy-ab">📋 Copy</button>
+
                         <button id="btn-paste-ab">📥 Dán</button>
                         <button id="btn-ton-nhanh">📦 Tồn nhanh</button>
+
                         <button id="btn-reset">🔁 Làm lại</button>
                     </div>
                 </div>
-            </div>
 
+            </div>
         </div>
 
         <div id="preview"></div>
