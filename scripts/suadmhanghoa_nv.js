@@ -566,11 +566,19 @@ function initTable(colname = 'vitrikho1') {
 
       const trangthai = (this.instance.getDataAtCell(row, 2) || '').toString().trim();
 
-      // Nếu là dòng TẢI THÊM → tô cả dòng màu vàng nhạt
-      if (trangthai === "TẢI THÊM") {
+      // Dòng THỪA -> xanh nhạt
+      if (trangthai === "THỪA") {
         cellProperties.renderer = function (instance, td, row, col, prop, value, cellProperties) {
           Handsontable.renderers.TextRenderer.apply(this, arguments);
-          td.style.background = '#fff9c4'; // vàng nhạt đẹp, dễ nhìn
+          td.style.background = '#d9f2d9';
+        };
+      }
+
+      // Dòng THIẾU -> cam nhạt
+      if (trangthai === "THIẾU") {
+        cellProperties.renderer = function (instance, td, row, col, prop, value, cellProperties) {
+          Handsontable.renderers.TextRenderer.apply(this, arguments);
+          td.style.background = '#ffe0b3';
         };
       }
 
@@ -599,6 +607,8 @@ function initTable(colname = 'vitrikho1') {
         if (val === "LỖI") cellProperties.className = "trangthai-loi";
         if (val === "MÃ KHÔNG TỒN TẠI") cellProperties.className = "trangthai-khongtontai";
         if (val === "CHƯA CÓ GIÁ TRỊ") cellProperties.className = "trangthai-chuacovitri";
+        if (val === "THỪA") cellProperties.className = "trangthai-boqua";
+        if (val === "THIẾU") cellProperties.className = "trangthai-loi";
       }
 
       return cellProperties;
@@ -1427,6 +1437,7 @@ async function taiDanhSachGiaTriCotDangChon() {
 // ==== Tải danh sách sản phẩm theo điều kiện (cột đang chọn = giá trị lọc) ====
 
 // ==== Kiểm tra thừa thiếu: tải thêm mã theo điều kiện nhưng KHÔNG xóa bảng hiện có ====
+
 async function kiemTraThuaThieu() {
   const colSelect = document.getElementById('col-select');
   const inputFilter = document.getElementById('filter-value');
@@ -1460,6 +1471,7 @@ async function kiemTraThuaThieu() {
       previewEl.innerHTML = `<span>⏳ Đang kiểm tra thừa thiếu theo <b>${colLabel}</b> thuộc: <b>${filterText}</b>${rangeNote}...</span>`;
     }
 
+    // 1) Lấy danh sách chuẩn từ dmhanghoa theo điều kiện lọc
     const foundRows = await fetchRowsByFilterFromDmHangHoa(
       colname,
       (filterValues.length === 1 ? filterValues[0] : filterValues),
@@ -1473,56 +1485,76 @@ async function kiemTraThuaThieu() {
       return;
     }
 
-    // Danh sách mã đang có trên bảng
-    const existingRows = hot.getSourceData();
-    const existingMasps = new Set(
-      existingRows
-        .map(r => (r.masp || '').toString().trim().toUpperCase())
-        .filter(Boolean)
-    );
-
-    // Chỉ lấy các mã chưa có trên bảng để thêm vào
-    const rowsToAdd = [];
-    let skipped = 0;
-
+    // 2) Danh sách chuẩn
+    const chuanMap = new Map();
     for (const r of foundRows) {
       const masp = (r.masp || '').toString().trim().toUpperCase();
       if (!masp) continue;
+      if (!chuanMap.has(masp)) {
+        chuanMap.set(masp, r[colname] ?? null);
+      }
+    }
 
-      if (existingMasps.has(masp)) {
-        skipped++;
-        continue;
+    // 3) Danh sách thực tế từ bảng người dùng đã nhập
+    const currentRows = hot.getSourceData();
+    const thucTeMasps = new Set();
+
+    let soDung = 0;
+    let soThua = 0;
+
+    const updatedRows = currentRows.map(row => {
+      const masp = (row.masp || '').toString().trim().toUpperCase();
+
+      // Giữ nguyên dòng trống
+      if (!masp) return row;
+
+      thucTeMasps.add(masp);
+
+      if (chuanMap.has(masp)) {
+        soDung++;
+        return {
+          ...row,
+          masp,
+          [colname]: chuanMap.get(masp),
+          trangthai: 'ĐÚNG'
+        };
       }
 
-      existingMasps.add(masp);
-
-      rowsToAdd.push({
+      soThua++;
+      return {
+        ...row,
         masp,
-        [colname]: r[colname],
-        trangthai: 'TẢI THÊM'
+        trangthai: 'THỪA'
+      };
+    });
+
+    // 4) Tìm các mã thiếu: có trong chuẩn nhưng không có trong thực tế
+    const rowsThieu = [];
+    let soThieu = 0;
+
+    for (const [masp, valueB] of chuanMap.entries()) {
+      if (thucTeMasps.has(masp)) continue;
+
+      rowsThieu.push({
+        masp,
+        [colname]: valueB,
+        trangthai: 'THIẾU'
       });
+      soThieu++;
     }
 
-    if (rowsToAdd.length === 0) {
-      if (previewEl) {
-        previewEl.innerHTML = `✅ Đã kiểm tra xong. Không có mã nào cần tải thêm. Có <b>${skipped}</b> mã đã có sẵn trên bảng.`;
-      }
-      return;
-    }
-
-    // Lấy dữ liệu hiện tại, bỏ các dòng trống hoàn toàn ở cuối để ghép cho gọn
-    const currentRows = hot.getSourceData().filter(row => {
+    // 5) Bỏ các dòng trống cuối cho gọn, nhưng giữ nguyên thứ tự các dòng thực tế
+    const rowsCoDuLieu = updatedRows.filter(row => {
       const masp = (row.masp || '').toString().trim();
-      const valB = Object.keys(row)
-        .filter(k => !['masp', 'trangthai'].includes(k))
-        .some(k => (row[k] ?? '').toString().trim() !== '');
+      const valB = (row[colname] ?? '').toString().trim();
       const trangthai = (row.trangthai || '').toString().trim();
       return masp || valB || trangthai;
     });
 
+    // 6) Ghép: giữ nguyên dữ liệu thực tế ở trên, dữ liệu thiếu ở cuối
     const mergedRows = [
-      ...currentRows,
-      ...rowsToAdd,
+      ...rowsCoDuLieu,
+      ...rowsThieu,
       { masp: null, [colname]: null, trangthai: null }
     ];
 
@@ -1532,8 +1564,11 @@ async function kiemTraThuaThieu() {
 
     if (previewEl) {
       previewEl.innerHTML =
-        `✅ Đã tải thêm <b>${rowsToAdd.length}</b> mã để kiểm tra thừa thiếu. ` +
-        `Có <b>${skipped}</b> mã đã có sẵn trên bảng nên bỏ qua.`;
+        `<span style="color:#16a34a;">✅ Đã kiểm tra xong.</span> ` +
+        `Đúng: <b>${soDung}</b> &nbsp; ` +
+        `Thừa: <b style="color:#2e7d32;">${soThua}</b> &nbsp; ` +
+        `Thiếu: <b style="color:#ef6c00;">${soThieu}</b>. ` +
+        `Dòng <b>THỪA</b> được tô xanh nhạt, dòng <b>THIẾU</b> được thêm xuống cuối bảng và tô cam nhạt.`;
     }
 
     if (quickMaspInput) quickMaspInput.focus();
@@ -1542,6 +1577,25 @@ async function kiemTraThuaThieu() {
     alert("Lỗi khi kiểm tra thừa thiếu: " + (err?.message || err));
     if (previewEl) previewEl.innerHTML = "";
   }
+}
+
+function layDanhSachMaThucTeTuBang() {
+  if (!hot) return [];
+
+  const rows = hot.getSourceData();
+  const result = [];
+
+  for (const row of rows) {
+    const masp = (row.masp || '').toString().trim().toUpperCase();
+    if (!masp) continue;
+
+    result.push({
+      masp,
+      row
+    });
+  }
+
+  return result;
 }
 
 async function taiDanhSachTheoDieuKien() {
@@ -1856,5 +1910,5 @@ function normalizeDate(val) {
       );
     }
   });
-  
+
 })();
