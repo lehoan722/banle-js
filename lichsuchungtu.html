@@ -1,257 +1,417 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lịch sử chứng từ</title>
   <style>
-    :root{
-      --b1:#dcdcdc;
-      --b2:#f7f7f7;
-      --txt:#222;
-      --muted:#666;
-      --pri:#0b57d0;
-      --danger:#c62828;
-      --ok:#2e7d32;
-      --warn:#ef6c00;
-      --bg:#ffffff;
+    :root {
+      --b1: #dcdcdc;
+      --b2: #f7f7f7;
+      --txt: #222;
+      --muted: #666;
+      --pri: #0b57d0;
+      --danger: #c62828;
+      --ok: #2e7d32;
+      --warn: #ef6c00;
+      --bg: #ffffff;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:Arial, Helvetica, sans-serif;
-      color:var(--txt);
-      background:#fafafa;
+
+    * {
+      box-sizing: border-box
     }
-    .page{
-      max-width:1400px;
-      margin:0 auto;
-      padding:12px;
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--txt);
+      background: #fafafa;
     }
-    .bar{
-      background:#fff;
-      border:1px solid var(--b1);
-      border-radius:10px;
-      padding:10px;
-      margin-bottom:10px;
+
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 12px;
     }
-    .title{
-      font-size:22px;
-      font-weight:700;
-      margin-bottom:10px;
+
+    .bar {
+      background: #fff;
+      border: 1px solid var(--b1);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 10px;
     }
-    .filters{
-      display:grid;
+
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .filters {
+      display: grid;
       grid-template-columns: repeat(6, minmax(120px, 1fr));
-      gap:8px;
-      align-items:end;
-    }
-    .field label{
-      display:block;
-      font-size:12px;
-      color:var(--muted);
-      margin-bottom:4px;
-    }
-    .field input, .field select, .field textarea{
-      width:100%;
-      padding:8px 10px;
-      border:1px solid #cfcfcf;
-      border-radius:8px;
-      font-size:14px;
-      background:#fff;
-    }
-    .btns{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    button{
-      border:none;
-      border-radius:8px;
-      padding:9px 14px;
-      cursor:pointer;
-      font-size:14px;
-      font-weight:600;
-    }
-    .btn-primary{ background:var(--pri); color:#fff; }
-    .btn-gray{ background:#ececec; color:#222; }
-    .btn-danger{ background:var(--danger); color:#fff; }
-    .btn-ok{ background:var(--ok); color:#fff; }
-    .btn-warn{ background:var(--warn); color:#fff; }
-
-    .tabs{
-      display:flex;
-      gap:8px;
-      margin-bottom:10px;
-    }
-    .tab-btn{
-      background:#ececec;
-      color:#222;
-    }
-    .tab-btn.active{
-      background:var(--pri);
-      color:#fff;
+      gap: 8px;
+      align-items: end;
     }
 
-    .summary{
-      display:flex;
-      gap:16px;
-      flex-wrap:wrap;
-      font-size:13px;
-      color:#444;
-      margin-bottom:8px;
+    .field label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
     }
 
-    .table-wrap{
-      overflow:auto;
-      background:#fff;
-      border:1px solid var(--b1);
-      border-radius:10px;
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      min-width:1100px;
-      background:#fff;
-    }
-    th, td{
-      border-bottom:1px solid #ececec;
-      padding:8px 10px;
-      font-size:13px;
-      text-align:left;
-      vertical-align:top;
-    }
-    th{
-      position:sticky;
-      top:0;
-      background:#f3f5f7;
-      z-index:1;
-    }
-    tr:hover td{
-      background:#fafcff;
-    }
-    .muted{ color:var(--muted); }
-    .mono{ font-family:Consolas, Monaco, monospace; }
-    .pill{
-      display:inline-block;
-      padding:3px 8px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:700;
-      background:#ececec;
-    }
-    .pill.red{ background:#fde7e7; color:#b71c1c; }
-    .pill.green{ background:#e6f5ea; color:#1b5e20; }
-    .pill.orange{ background:#fff0df; color:#e65100; }
-    .pill.blue{ background:#e7f0ff; color:#0b57d0; }
-
-    .action-links{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-    }
-    .action-links button{
-      padding:6px 10px;
-      font-size:12px;
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #cfcfcf;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fff;
     }
 
-    .empty{
-      padding:18px;
-      text-align:center;
-      color:#666;
+    .btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
-    .modal{
-      position:fixed;
-      inset:0;
-      display:none;
-      z-index:9999;
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 9px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
     }
-    .modal.show{ display:block; }
-    .modal-mask{
-      position:absolute;
-      inset:0;
-      background:rgba(0,0,0,.35);
+
+    .btn-primary {
+      background: var(--pri);
+      color: #fff;
     }
-    .modal-box{
-      position:absolute;
-      left:50%;
-      top:50%;
-      transform:translate(-50%, -50%);
-      width:min(1200px, 96vw);
-      max-height:90vh;
-      overflow:auto;
-      background:#fff;
-      border-radius:12px;
-      box-shadow:0 20px 60px rgba(0,0,0,.2);
-      padding:14px;
+
+    .btn-gray {
+      background: #ececec;
+      color: #222;
     }
-    .modal-title{
-      font-size:18px;
-      font-weight:700;
-      margin-bottom:10px;
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
     }
-    .modal-actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:10px;
+
+    .btn-ok {
+      background: var(--ok);
+      color: #fff;
     }
-    .json-box{
-      background:#f7f7f7;
-      border:1px solid #ddd;
-      border-radius:8px;
-      padding:10px;
-      white-space:pre-wrap;
-      font-family:Consolas, Monaco, monospace;
-      font-size:13px;
-      overflow:auto;
+
+    .btn-warn {
+      background: var(--warn);
+      color: #fff;
     }
-    .grid2{
-      display:grid;
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .tab-btn {
+      background: #ececec;
+      color: #222;
+    }
+
+    .tab-btn.active {
+      background: var(--pri);
+      color: #fff;
+    }
+
+    .summary {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: #444;
+      margin-bottom: 8px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      background: #fff;
+      border: 1px solid var(--b1);
+      border-radius: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+      background: #fff;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #ececec;
+      padding: 8px 10px;
+      font-size: 13px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f3f5f7;
+      z-index: 1;
+    }
+
+    tr:hover td {
+      background: #fafcff;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .mono {
+      font-family: Consolas, Monaco, monospace;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #ececec;
+    }
+
+    .pill.red {
+      background: #fde7e7;
+      color: #b71c1c;
+    }
+
+    .pill.green {
+      background: #e6f5ea;
+      color: #1b5e20;
+    }
+
+    .pill.orange {
+      background: #fff0df;
+      color: #e65100;
+    }
+
+    .pill.blue {
+      background: #e7f0ff;
+      color: #0b57d0;
+    }
+
+    .action-links {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .action-links button {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .empty {
+      padding: 18px;
+      text-align: center;
+      color: #666;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      z-index: 9999;
+    }
+
+    .modal.show {
+      display: block;
+    }
+
+    .modal-mask {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, .35);
+    }
+
+    .modal-box {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(1200px, 96vw);
+      max-height: 90vh;
+      overflow: auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .2);
+      padding: 14px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .json-box {
+      background: #f7f7f7;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      white-space: pre-wrap;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      overflow: auto;
+      max-height: 58vh;
+    }
+
+    .grid2 {
+      display: grid;
       grid-template-columns: 1fr 1fr;
-      gap:10px;
+      gap: 12px;
     }
-    .section{
-      border:1px solid #e4e4e4;
-      border-radius:10px;
-      padding:10px;
-      background:#fff;
-    }
-    .section h3{
-      margin:0 0 8px 0;
-      font-size:15px;
-    }
-    .sub-table{
-      width:100%;
-      min-width:unset;
-    }
-    .sub-table th, .sub-table td{
-      font-size:12px;
-      padding:6px 8px;
-    }
-    .restore-box{
-      display:grid;
-      grid-template-columns: repeat(2, minmax(180px, 1fr));
-      gap:10px;
-      align-items:end;
-    }
-    .hidden{ display:none !important; }
 
-    @media (max-width: 900px){
-      .filters{
+    .section {
+      border: 1px solid #e4e4e4;
+      border-radius: 10px;
+      padding: 10px;
+      background: #fff;
+      min-height: 0;
+    }
+
+    .section h3 {
+      margin: 0 0 8px 0;
+      font-size: 15px;
+    }
+
+    .sub-table {
+      width: 100%;
+      min-width: unset;
+    }
+
+    .sub-table th,
+    .sub-table td {
+      font-size: 12px;
+      padding: 6px 8px;
+    }
+
+    .log-edit-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) minmax(420px, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .log-detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: unset;
+    }
+
+    .log-detail-table th,
+    .log-detail-table td {
+      border: 1px solid #e7e7e7;
+      padding: 6px 8px;
+      font-size: 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .log-detail-table th {
+      background: #f5f7fa;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 6px 10px;
+      font-size: 14px;
+    }
+
+    .meta-grid .k {
+      color: #555;
+      font-weight: 700;
+    }
+
+    .meta-grid .v {
+      word-break: break-word;
+    }
+
+    .table-mini-wrap {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: auto;
+      max-height: 58vh;
+      background: #fff;
+    }
+
+    @media (max-width: 900px) {
+      .filters {
         grid-template-columns: repeat(2, minmax(120px, 1fr));
       }
-      .grid2{
-        grid-template-columns:1fr;
+
+      .grid2 {
+        grid-template-columns: 1fr;
       }
-      .modal-box{
-        width:96vw;
+
+      .log-edit-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .modal-box {
+        width: 96vw;
+      }
+    }
+
+    .restore-box {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(180px, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 900px) {
+      .filters {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }
+
+      .grid2 {
+        grid-template-columns: 1fr;
+      }
+
+      .modal-box {
+        width: 96vw;
       }
     }
   </style>
 </head>
+
 <body>
   <div class="page">
     <div class="bar">
@@ -324,16 +484,43 @@
     <div class="modal-mask" data-close="modalLog"></div>
     <div class="modal-box">
       <div class="modal-title">Chi tiết log sửa</div>
-      <div class="grid2">
-        <div class="section">
-          <h3>Thông tin</h3>
-          <div id="logMeta"></div>
-        </div>
+
+      <div class="log-edit-layout">
         <div class="section">
           <h3>Diff JSON</h3>
           <div class="json-box" id="logDiff"></div>
         </div>
+
+        <div class="section">
+          <h3>Chi tiết</h3>
+          <div id="logMeta" style="margin-bottom:10px"></div>
+
+          <div class="table-mini-wrap">
+            <table class="log-detail-table">
+              <thead>
+                <tr>
+                  <th>masp</th>
+                  <th>tensp</th>
+                  <th>size</th>
+                  <th>sl</th>
+                  <th>gia</th>
+                  <th>km</th>
+                  <th>thanhtien</th>
+                  <th>ketqua</th>
+                  <th>created_at</th>
+                  <th>updated_at</th>
+                </tr>
+              </thead>
+              <tbody id="logDetailsTbody">
+                <tr>
+                  <td colspan="10" class="empty">Không có chi tiết.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
+
       <div class="modal-actions">
         <button class="btn-gray" data-close="modalLog">Đóng</button>
       </div>
@@ -491,4 +678,5 @@
 
   <script type="module" src="./scripts/lichsuchungtu.js"></script>
 </body>
+
 </html>
