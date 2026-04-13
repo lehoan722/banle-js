@@ -69,36 +69,6 @@ function formatTimeHHMM(dateInput) {
   return `${hh}:${mm}`;
 }
 
-async function moHoaDonCuTheoSo(sohdCanMo) {
-  const sohd = String(sohdCanMo || "").trim();
-  if (!sohd) {
-    alert("❌ Bạn chưa nhập số hóa đơn.");
-    return;
-  }
-
-  const sohdEl = document.getElementById("sohd");
-  if (sohdEl) {
-    sohdEl.value = sohd;
-    sohdEl.dispatchEvent(new Event("input", { bubbles: true }));
-    sohdEl.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-
-  const url = new URL(window.location.href);
-  url.searchParams.set("sohd", sohd);
-
-  const diadiem = (
-    document.getElementById("diadiem")?.value ||
-    localStorage.getItem("diadiem") ||
-    ""
-  ).trim();
-
-  if (diadiem) {
-    url.searchParams.set("diadiem", diadiem);
-  }
-
-  window.location.href = url.toString();
-}
-
 export function khoiTaoShortcut() {
   // ✅ Nếu đã khởi tạo rồi thì thoát luôn, không gắn thêm listener nữa
   if (_shortcutInited) return;
