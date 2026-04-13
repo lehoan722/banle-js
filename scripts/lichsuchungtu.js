@@ -64,6 +64,24 @@ function bindModalClose() {
       hideModal(el.getAttribute('data-close'));
     });
   });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+
+    const opened = Array.from(document.querySelectorAll('.modal.show'));
+    if (!opened.length) return;
+
+    const lastModal = opened[opened.length - 1];
+    if (lastModal?.id) hideModal(lastModal.id);
+  });
+
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('mousedown', (e) => {
+      if (e.target === modal) {
+        hideModal(modal.id);
+      }
+    });
+  });
 }
 
 function setActiveTab(tab) {
@@ -309,17 +327,80 @@ function bindTrashTableActions() {
   });
 }
 
+function extractLogDetailRows(diff) {
+  const d = diff || {};
+
+  if (Array.isArray(d.details)) return d.details;
+  if (Array.isArray(d.detail_rows)) return d.detail_rows;
+  if (Array.isArray(d.rows)) return d.rows;
+
+  if (Array.isArray(d._inserted)) return d._inserted;
+  if (Array.isArray(d._updated)) return d._updated;
+  if (Array.isArray(d._deleted)) return d._deleted;
+
+  if (d._inserted && typeof d._inserted === 'object') return [d._inserted];
+  if (d._updated && typeof d._updated === 'object') return [d._updated];
+  if (d._deleted && typeof d._deleted === 'object') return [d._deleted];
+
+  return [];
+}
+
+function renderLogDetailsTable(details) {
+  const arr = Array.isArray(details) ? details : [];
+
+  if (!arr.length) {
+    $('logDetailsTbody').innerHTML = `
+      <tr>
+        <td colspan="10" class="empty">Không có chi tiết.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  $('logDetailsTbody').innerHTML = arr.map(item => `
+    <tr>
+      <td class="mono">${escapeHtml(item.masp || '')}</td>
+      <td>${escapeHtml(item.tensp || '')}</td>
+      <td>${escapeHtml(item.size || '')}</td>
+      <td>${escapeHtml(item.soluong ?? item.sl ?? '')}</td>
+      <td>${escapeHtml(item.gia ?? '')}</td>
+      <td>${escapeHtml(item.km ?? '')}</td>
+      <td>${escapeHtml(item.thanhtien ?? '')}</td>
+      <td>${escapeHtml(item.ketqua || '')}</td>
+      <td>${escapeHtml(formatDateTime(item.created_at || ''))}</td>
+      <td>${escapeHtml(formatDateTime(item.updated_at || ''))}</td>
+    </tr>
+  `).join('');
+}
+
 function openLogModal(row) {
   $('logMeta').innerHTML = `
-    <div><b>ID:</b> ${row.id ?? ''}</div>
-    <div><b>logged_at:</b> ${formatDateTime(row.logged_at)}</div>
-    <div><b>sohd:</b> <span class="mono">${escapeHtml(row.sohd)}</span></div>
-    <div><b>table_name:</b> ${escapeHtml(row.table_name || '')}</div>
-    <div><b>row_id:</b> ${row.row_id ?? ''}</div>
-    <div><b>action:</b> ${escapeHtml(row.action || '')}</div>
-    <div><b>source:</b> ${escapeHtml(row.source || '')}</div>
+    <div class="meta-grid">
+      <div class="k">ID</div>
+      <div class="v">${row.id ?? ''}</div>
+
+      <div class="k">logged_at</div>
+      <div class="v">${formatDateTime(row.logged_at)}</div>
+
+      <div class="k">sohd</div>
+      <div class="v mono">${escapeHtml(row.sohd)}</div>
+
+      <div class="k">table_name</div>
+      <div class="v">${escapeHtml(row.table_name || '')}</div>
+
+      <div class="k">row_id</div>
+      <div class="v">${row.row_id ?? ''}</div>
+
+      <div class="k">action</div>
+      <div class="v">${escapeHtml(row.action || '')}</div>
+
+      <div class="k">source</div>
+      <div class="v">${escapeHtml(row.source || '')}</div>
+    </div>
   `;
+
   $('logDiff').textContent = formatJson(row.diff || {});
+  renderLogDetailsTable(extractLogDetailRows(row.diff || {}));
   showModal('modalLog');
 }
 
