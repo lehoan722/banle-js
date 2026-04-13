@@ -69,6 +69,35 @@ function formatTimeHHMM(dateInput) {
   return `${hh}:${mm}`;
 }
 
+async function moHoaDonCuTheoSo(sohdCanMo) {
+  const sohd = String(sohdCanMo || "").trim();
+  if (!sohd) {
+    alert("❌ Bạn chưa nhập số hóa đơn.");
+    return;
+  }
+
+  const sohdEl = document.getElementById("sohd");
+  if (sohdEl) {
+    sohdEl.value = sohd;
+    sohdEl.dispatchEvent(new Event("input", { bubbles: true }));
+    sohdEl.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("sohd", sohd);
+
+  const diadiem = (
+    document.getElementById("diadiem")?.value ||
+    localStorage.getItem("diadiem") ||
+    ""
+  ).trim();
+
+  if (diadiem) {
+    url.searchParams.set("diadiem", diadiem);
+  }
+
+  window.location.href = url.toString();
+}
 
 export function khoiTaoShortcut() {
   // ✅ Nếu đã khởi tạo rồi thì thoát luôn, không gắn thêm listener nữa
@@ -237,6 +266,17 @@ export function khoiTaoShortcut() {
         return;
       }
 
+      // F11: mở popup nhập số hóa đơn cũ
+      if (e.key === "F11") {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (typeof window.moPopupMoHoaDonCu === "function") {
+          window.moPopupMoHoaDonCu();
+        }
+        return;
+      }
+
       // 2) Xác định cơ sở đang đăng nhập (origin_cs)
       const csFromLS = (localStorage.getItem('diadiem') || "").toLowerCase();
       const csFromInput = (document.getElementById('diadiem')?.value || "").toLowerCase();
@@ -274,6 +314,30 @@ export function khoiTaoShortcut() {
       await luuHoaDonCaHaiBan();
     }
   });
+
+  const inputMoHdCu = document.getElementById("popupNhapSoHdCu");
+  if (inputMoHdCu && !inputMoHdCu.dataset.boundEnter) {
+    inputMoHdCu.dataset.boundEnter = "1";
+
+    inputMoHdCu.addEventListener("keydown", async function (e) {
+      if (e.key !== "Enter") return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const sohd = this.value.trim();
+      if (!sohd) {
+        alert("❌ Bạn chưa nhập số hóa đơn.");
+        this.focus();
+        this.select();
+        return;
+      }
+
+      window.dongPopupMoHoaDonCu?.();
+      await moHoaDonCuTheoSo(sohd);
+    });
+  }
+
 }
 
 async function taoMoiHoaDon() {
