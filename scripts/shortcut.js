@@ -313,30 +313,7 @@ export function khoiTaoShortcut() {
       }
       await luuHoaDonCaHaiBan();
     }
-  });
-
-  const inputMoHdCu = document.getElementById("popupNhapSoHdCu");
-  if (inputMoHdCu && !inputMoHdCu.dataset.boundEnter) {
-    inputMoHdCu.dataset.boundEnter = "1";
-
-    inputMoHdCu.addEventListener("keydown", async function (e) {
-      if (e.key !== "Enter") return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      const sohd = this.value.trim();
-      if (!sohd) {
-        alert("❌ Bạn chưa nhập số hóa đơn.");
-        this.focus();
-        this.select();
-        return;
-      }
-
-      window.dongPopupMoHoaDonCu?.();
-      await moHoaDonCuTheoSo(sohd);
-    });
-  }
+  }); 
 
 }
 
