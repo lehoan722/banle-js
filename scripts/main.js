@@ -88,12 +88,24 @@ function khoaOsoHoaDonVaTaoPopupDungChung() {
   window.moPopupMoHoaDonCu = function () {
     const sohdNow = document.getElementById("sohd")?.value || "";
     spanCurrent.textContent = sohdNow || "(trống)";
-    input.value = "";
+
+    // Đổ luôn số HĐ hiện tại vào ô nhập để người dùng sửa đuôi cho nhanh
+    input.value = sohdNow || "";
+
     popup.style.display = "block";
 
     setTimeout(() => {
       input.focus();
-      input.select();
+
+      // Bôi đen phần đuôi số để sửa nhanh, nếu không tách được thì select toàn bộ
+      const m = String(input.value).match(/^(.*_)(\d+)$/);
+      if (m) {
+        const start = m[1].length;
+        const end = input.value.length;
+        input.setSelectionRange(start, end);
+      } else {
+        input.select();
+      }
     }, 30);
   };
 
@@ -110,6 +122,46 @@ function khoaOsoHoaDonVaTaoPopupDungChung() {
 
   btnDong?.addEventListener("click", () => {
     window.dongPopupMoHoaDonCu?.();
+  });
+
+  // Enter ngay trong ô popup => mở hóa đơn
+  input.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const sohd = String(input.value || "").trim();
+    if (!sohd) {
+      alert("❌ Bạn chưa nhập số hóa đơn.");
+      input.focus();
+      input.select();
+      return;
+    }
+
+    // Đẩy về ô số HĐ trên form
+    const sohdEl = document.getElementById("sohd");
+    if (sohdEl) {
+      sohdEl.value = sohd;
+      sohdEl.dispatchEvent(new Event("input", { bubbles: true }));
+      sohdEl.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    // Mở lại trang với ?sohd=... để dùng đúng luồng cũ của main.js
+    const url = new URL(window.location.href);
+    url.searchParams.set("sohd", sohd);
+
+    const diadiem = (
+      document.getElementById("diadiem")?.value ||
+      localStorage.getItem("diadiem") ||
+      ""
+    ).trim();
+
+    if (diadiem) {
+      url.searchParams.set("diadiem", diadiem);
+    }
+
+    window.location.href = url.toString();
   });
 
   document.addEventListener("keydown", function (e) {
@@ -405,7 +457,7 @@ export async function khoiTaoUngDung() {
 
     khoiTaoShortcut();
     ganSuKienDuyetHoaDon();
-    ganSuKienNutLenh();    
+    ganSuKienNutLenh();
     khoaOsoHoaDonVaTaoPopupDungChung();
 
     ["masp", "soluong", "size"].forEach(id => {
