@@ -335,14 +335,33 @@ export async function luuHoaDonQuaAPI() {
     }
 
     if (tonTai && choPhepSua) {
-        const { error: delCTErr } = await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
+        try {
+            await snapshotInvoiceBeforeEdit(
+                sohd,
+                "Snapshot tự động trước khi sửa hóa đơn trong luuHoaDonQuaAPI"
+            );
+        } catch (e) {
+            alert("❌ Không tạo được bản lịch sử trước khi sửa hóa đơn. Đã dừng để tránh mất dữ liệu cũ.");
+            console.error(e);
+            return;
+        }
+
+        const { error: delCTErr } = await supabase
+            .from("ct_hoadon_banle")
+            .delete()
+            .eq("sohd", sohd);
+
         if (delCTErr) {
             alert("❌ Không xóa được chi tiết hóa đơn (không đủ quyền hoặc lỗi hệ thống).");
             console.error(delCTErr);
             return;
         }
 
-        const { error: delHDErr } = await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
+        const { error: delHDErr } = await supabase
+            .from("hoadon_banle")
+            .delete()
+            .eq("sohd", sohd);
+
         if (delHDErr) {
             alert("❌ Không xóa được hóa đơn (không đủ quyền hoặc lỗi hệ thống).");
             console.error(delHDErr);
