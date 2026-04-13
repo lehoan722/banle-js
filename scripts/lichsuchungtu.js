@@ -257,7 +257,7 @@ function renderEditLogs(rows) {
         <td class="mono">${escapeHtml(r.sohd)}</td>
         <td>${escapeHtml(r.loaihd_view || '')}</td>
         <td>${escapeHtml(r.diadiem_view || '')}</td>
-        <td class="mono">${escapeHtml(r.nguoi_thuc_hien_view || '')}</td>
+        <td>${escapeHtml(r.nguoi_thuc_hien_view || '')}</td>
         <td>${escapeHtml(r.table_name || '')}</td>
         <td>${r.row_id ?? ''}</td>
         <td>${renderActionPill(r.action)}</td>
@@ -377,58 +377,6 @@ function bindTrashTableActions() {
     });
 }
 
-function renderDiffRows(diff) {
-    const d = diff || {};
-    const keys = Object.keys(d);
-
-    if (!keys.length) {
-        return `<tr><td colspan="3" class="empty">Không có dữ liệu diff.</td></tr>`;
-    }
-
-    return keys.map(key => {
-        const val = d[key] || {};
-
-        // INSERT
-        if (key === '_inserted') {
-            return `
-        <tr>
-          <td class="mono">${escapeHtml(key)}</td>
-          <td></td>
-          <td><div class="json-box" style="margin:0">${formatJson(val)}</div></td>
-        </tr>
-      `;
-        }
-
-        // DELETE
-        if (key === '_deleted') {
-            return `
-        <tr>
-          <td class="mono">${escapeHtml(key)}</td>
-          <td><div class="json-box" style="margin:0">${formatJson(val)}</div></td>
-          <td></td>
-        </tr>
-      `;
-        }
-
-        // UPDATE old/new
-        if (typeof val === 'object' && ('old' in val || 'new' in val)) {
-            return `
-        <tr>
-          <td class="mono">${escapeHtml(key)}</td>
-          <td>${escapeHtml(val.old ?? '')}</td>
-          <td>${escapeHtml(val.new ?? '')}</td>
-        </tr>
-      `;
-        }
-
-        return `
-      <tr>
-        <td class="mono">${escapeHtml(key)}</td>
-        <td colspan="2"><div class="json-box" style="margin:0">${formatJson(val)}</div></td>
-      </tr>
-    `;
-    }).join('');
-}
 
 function openLogModal(row) {
     $('logMeta').innerHTML = `
@@ -437,7 +385,7 @@ function openLogModal(row) {
     <div><b>Số hóa đơn:</b> <span class="mono">${escapeHtml(row.sohd)}</span></div>
     <div><b>Loại hóa đơn:</b> ${escapeHtml(row.loaihd_view || '')}</div>
     <div><b>Địa điểm:</b> ${escapeHtml(row.diadiem_view || '')}</div>
-    <div><b>Người thực hiện:</b> <span class="mono">${escapeHtml(row.nguoi_thuc_hien_view || '')}</span></div>
+    <div><b>Người thực hiện:</b> ${escapeHtml(row.nguoi_thuc_hien_view || '')}</div>
     <div><b>Bảng:</b> ${escapeHtml(row.table_name || '')}</div>
     <div><b>Row ID:</b> ${row.row_id ?? ''}</div>
     <div><b>Action:</b> ${escapeHtml(row.action || '')}</div>
@@ -449,8 +397,8 @@ function openLogModal(row) {
       <table class="sub-table">
         <thead>
           <tr>
-            <th>Trường</th>
-            <th>Giá trị cũ</th>
+            <th>Nhóm</th>
+            <th>Trường / Giá trị cũ</th>
             <th>Giá trị mới</th>
           </tr>
         </thead>
@@ -465,62 +413,68 @@ function openLogModal(row) {
 }
 
 async function openVersionsModal(sohd) {
-    const { data, error } = await supabase
-        .from('invoice_version_history')
-        .select('*')
-        .eq('sohd', sohd)
-        .order('version_no', { ascending: false })
-        .limit(100);
+  const { data, error } = await supabase
+    .from('invoice_version_history')
+    .select('*')
+    .eq('sohd', sohd)
+    .order('version_no', { ascending: false })
+    .limit(100);
 
-    if (error) {
-        console.error(error);
-        alert('❌ Không tải được danh sách version.');
-        return;
-    }
+  if (error) {
+    console.error(error);
+    alert('❌ Không tải được danh sách version.');
+    return;
+  }
 
-    currentVersionList = Array.isArray(data) ? data : [];
+  currentVersionList = Array.isArray(data) ? data : [];
 
-    $('versionsTbody').innerHTML = currentVersionList.length
-        ? currentVersionList.map(r => `
-      <tr>
-        <td>${r.id}</td>
-        <td>${formatDateTime(r.saved_at)}</td>
-        <td class="mono">${escapeHtml(r.sohd)}</td>
-        <td>${r.version_no}</td>
-        <td>${escapeHtml(r.action || '')}</td>
-        <td>${escapeHtml(r.source || '')}</td>
-        <td>${escapeHtml(r.note || '')}</td>
-        <td>
-          <div class="action-links">
-            <button class="btn-gray btn-version-view" data-id="${r.id}">Xem</button>
-            <button class="btn-warn btn-version-restore" data-id="${r.id}">Restore</button>
-          </div>
-        </td>
-      </tr>
-    `).join('')
-        : `<tr><td colspan="8" class="empty">Không có version.</td></tr>`;
+  $('versionsTbody').innerHTML = currentVersionList.length
+    ? currentVersionList.map(r => {
+        const h = r.header || {};
+        return `
+          <tr>
+            <td>${r.id}</td>
+            <td>${formatDateTime(r.saved_at)}</td>
+            <td class="mono">${escapeHtml(r.sohd)}</td>
+            <td>${r.version_no}</td>
+            <td>${escapeHtml(h.loaihd || '')}</td>
+            <td>${escapeHtml(h.diadiem || '')}</td>
+            <td>${escapeHtml(h.manv || '')}</td>
+            <td>${escapeHtml(r.action || '')}</td>
+            <td>${escapeHtml(r.source || '')}</td>
+            <td>${escapeHtml(r.note || '')}</td>
+            <td>
+              <div class="action-links">
+                <button class="btn-gray btn-version-view" data-id="${r.id}">Xem</button>
+                <button class="btn-warn btn-version-restore" data-id="${r.id}">Restore</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('')
+    : `<tr><td colspan="11" class="empty">Không có version. Chỉ những hóa đơn đã được snapshot trước khi sửa mới hiện ở đây.</td></tr>`;
 
-    document.querySelectorAll('.btn-version-view').forEach(btn => {
-        btn.onclick = () => {
-            const id = Number(btn.dataset.id);
-            const row = currentVersionList.find(x => Number(x.id) === id);
-            if (!row) return;
-            openVersionView(row);
-        };
-    });
+  document.querySelectorAll('.btn-version-view').forEach(btn => {
+    btn.onclick = () => {
+      const id = Number(btn.dataset.id);
+      const row = currentVersionList.find(x => Number(x.id) === id);
+      if (!row) return;
+      openVersionView(row);
+    };
+  });
 
-    document.querySelectorAll('.btn-version-restore').forEach(btn => {
-        btn.onclick = () => {
-            const id = Number(btn.dataset.id);
-            const row = currentVersionList.find(x => Number(x.id) === id);
-            if (!row) return;
-            currentVersionRow = row;
-            $('restoreVersionNote').value = '';
-            showModal('modalRestoreVersion');
-        };
-    });
+  document.querySelectorAll('.btn-version-restore').forEach(btn => {
+    btn.onclick = () => {
+      const id = Number(btn.dataset.id);
+      const row = currentVersionList.find(x => Number(x.id) === id);
+      if (!row) return;
+      currentVersionRow = row;
+      $('restoreVersionNote').value = '';
+      showModal('modalRestoreVersion');
+    };
+  });
 
-    showModal('modalVersions');
+  showModal('modalVersions');
 }
 
 function openVersionView(row) {
@@ -535,6 +489,58 @@ function openTrashModal(row) {
     $('trashHeaderBox').textContent = formatJson(row.header || {});
     renderDetailsTable(row.details || [], $('trashDetailsTbody'));
     showModal('modalTrashView');
+}
+
+function renderDiffRows(diff) {
+    const d = diff || {};
+    const keys = Object.keys(d);
+
+    if (!keys.length) {
+        return `<tr><td colspan="3" class="empty">Không có dữ liệu diff.</td></tr>`;
+    }
+
+    return keys.map(key => {
+        const val = d[key] || {};
+
+        if (key === '_inserted') {
+            const obj = val || {};
+            return Object.keys(obj).map((k, idx) => `
+        <tr>
+          <td class="mono">${idx === 0 ? '_inserted' : ''}</td>
+          <td class="mono">${escapeHtml(k)}</td>
+          <td>${escapeHtml(obj[k] ?? '')}</td>
+        </tr>
+      `).join('');
+        }
+
+        if (key === '_deleted') {
+            const obj = val || {};
+            return Object.keys(obj).map((k, idx) => `
+        <tr>
+          <td class="mono">${idx === 0 ? '_deleted' : ''}</td>
+          <td class="mono">${escapeHtml(k)}</td>
+          <td>${escapeHtml(obj[k] ?? '')}</td>
+        </tr>
+      `).join('');
+        }
+
+        if (typeof val === 'object' && ('old' in val || 'new' in val)) {
+            return `
+        <tr>
+          <td class="mono">${escapeHtml(key)}</td>
+          <td>${escapeHtml(val.old ?? '')}</td>
+          <td>${escapeHtml(val.new ?? '')}</td>
+        </tr>
+      `;
+        }
+
+        return `
+      <tr>
+        <td class="mono">${escapeHtml(key)}</td>
+        <td colspan="2">${escapeHtml(JSON.stringify(val))}</td>
+      </tr>
+    `;
+    }).join('');
 }
 
 function renderDetailsTable(details, tbodyEl) {
