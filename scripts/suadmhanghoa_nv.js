@@ -538,6 +538,8 @@ let duplicateMasps = new Set();
 let duplicateMaspColorMap = new Map();
 let lastSelectedRanges = null;
 let currentLoginCoSo = 'cs1';
+let currentLoginManv = '';
+let currentLoginTenNv = '';
 
 function taoBangMauChoMaTrung(duplicateSet) {
   duplicateMaspColorMap = new Map();
@@ -1844,6 +1846,70 @@ function resolveUpdateValue(colname, rawVal) {
 
 
 // Tạo timestamp hiện tại (giờ máy) dạng YYYY-MM-DD HH:mm:ss
+
+function taoMaPhienLuuLichSu() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+
+  const manv = (currentLoginManv || 'UNKNOWN').toString().trim().toUpperCase();
+  return `DMHH_${yyyy}${mm}${dd}_${hh}${mi}${ss}_${manv}`;
+}
+
+function chuyenGiaTriLichSuThanhText(val) {
+  if (val === undefined || val === null) return null;
+  if (typeof val === 'boolean') return val ? 'true' : 'false';
+  return String(val);
+}
+
+function giaTriLichSuBangNhau(a, b) {
+  return chuyenGiaTriLichSuThanhText(a) === chuyenGiaTriLichSuThanhText(b);
+}
+
+async function taiDuLieuCuDeGhiLichSu(masps, colname) {
+  const resultMap = new Map();
+  if (!masps || masps.length === 0) return resultMap;
+
+  const chunkSize = 500;
+  const chunks = chunkArray(masps, chunkSize);
+
+  for (const arr of chunks) {
+    const { data, error } = await supabase
+      .from('dmhanghoa')
+      .select(`masp, ${colname}`)
+      .in('masp', arr);
+
+    if (error) throw error;
+
+    (data || []).forEach(row => {
+      const masp = (row.masp || '').toString().trim().toUpperCase();
+      if (!masp) return;
+      resultMap.set(masp, row[colname]);
+    });
+  }
+
+  return resultMap;
+}
+
+async function ghiLichSuDmHangHoa(records) {
+  if (!records || records.length === 0) return;
+
+  const chunkSize = 500;
+  const chunks = chunkArray(records, chunkSize);
+
+  for (const arr of chunks) {
+    const { error } = await supabase
+      .from('dmhanghoa_history')
+      .insert(arr);
+
+    if (error) throw error;
+  }
+}
+
 function nowLocalTimestamp() {
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -1856,6 +1922,7 @@ function nowLocalTimestamp() {
 }
 
 // ==== Lưu dữ liệu (PATCH từng dòng, chia chunk 100 dòng) ====
+
 async function luuDuLieu() {
   const colSelect = document.getElementById('col-select');
   const previewEl = document.getElementById('preview');
@@ -1878,7 +1945,8 @@ async function luuDuLieu() {
     .map((r, rowIndex) => ({
       rowIndex,
       masp: (r.masp || '').toString().trim().toUpperCase(),
-      rawVal: r[colname]
+      rawVal: r[colname],
+      newValue: resolveUpdateValue(colname, r[colname])
     }))
     .filter(r => r.masp); // chỉ cần có mã
 
@@ -1887,73 +1955,167 @@ async function luuDuLieu() {
     return;
   }
 
-  // Nhắc người dùng: sẽ GHI ĐÈ và có thể XÓA dữ liệu cũ (ghi null)
-  if (!confirm(`⚠️ Hành động này sẽ ghi đè cột "${colLabel}" cho các mã đã nhập.\nNếu ô để trống, hệ thống sẽ xóa giá trị cũ (ghi NULL).\nBạn chắc chắn muốn tiếp tục?`)) {
+  if (!confirm(`⚠️ Hành động này sẽ ghi đè cột "${colLabel}" cho các mã đã nhập.\nNếu ô để trống, hệ thống sẽ xóa giá trị cũ (ghi NULL).\nĐồng thời hệ thống sẽ lưu lại lịch sử dữ liệu cũ trước khi ghi đè.\nBạn chắc chắn muốn tiếp tục?`)) {
     if (previewEl) {
       previewEl.innerHTML = `<span style="color:orange;">⏹️ Đã hủy thao tác ghi đè.</span>`;
     }
     return;
   }
 
-  const chunkSize = 100;
-  const chunks = [];
-  for (let i = 0; i < rows.length; i += chunkSize) {
-    chunks.push(rows.slice(i, i + chunkSize));
-  }
+  try {
+    const sessionId = taoMaPhienLuuLichSu();
+    const dsMasp = Array.from(new Set(rows.map(r => r.masp)));
 
-  let success = 0, fail = 0, errorMsg = [];
-
-  for (let i = 0; i < chunks.length; i++) {
     if (previewEl) {
-      previewEl.innerHTML = `<span>⏳ Đang ghi nhóm ${i + 1}/${chunks.length}...</span>`;
+      previewEl.innerHTML = `<span>⏳ Đang lấy dữ liệu cũ để ghi lịch sử...</span>`;
     }
 
-    const promises = chunks[i].map((row) => {
-      const updateObj = {};
+    // 1) Lấy dữ liệu cũ của đúng các mã sắp bị ghi
+    const oldValueMap = await taiDuLieuCuDeGhiLichSu(dsMasp, colname);
 
-      // luôn cập nhật ngày kiểm khi bấm Lưu dữ liệu
-      updateObj.ngaykiem = nowKiem;
+    // 2) Tạo danh sách bản ghi lịch sử
+    const historyRecords = [];
+    for (const row of rows) {
+      const oldValue = oldValueMap.has(row.masp) ? oldValueMap.get(row.masp) : null;
+      const newValue = row.newValue;
 
-      // vẫn update cột đang chọn (trừ khi chính nó là ngaykiem)
-      if (colname !== 'ngaykiem') {
-        updateObj[colname] = resolveUpdateValue(colname, row.rawVal); // rỗng -> null
+      // Chỉ ghi lịch sử nếu giá trị thật sự thay đổi
+      if (giaTriLichSuBangNhau(oldValue, newValue)) {
+        continue;
       }
 
-      return supabase
-        .from('dmhanghoa')
-        .update(updateObj)
-        .eq('masp', row.masp)
-        .select()
-        .then(({ data, error }) => ({
-          rowIndex: row.rowIndex,
-          masp: row.masp,
-          success: !error && data && data.length === 1,
-          error: error?.message || (!data?.length && 'Không có dòng nào được cập nhật (mã không tồn tại)') || null
-        }));
+      historyRecords.push({
+        session_id: sessionId,
+        masp: row.masp,
+        column_name: colname,
+        old_value: chuyenGiaTriLichSuThanhText(oldValue),
+        new_value: chuyenGiaTriLichSuThanhText(newValue),
+        updated_by: (currentLoginManv || '').toString().trim().toUpperCase() || null,
+        updated_at: new Date().toISOString(),
+        action_type: 'UPDATE',
+        note: `Cập nhật từ trang sửa danh mục hàng hóa - ${colLabel}`
+      });
+    }
+
+    // 3) Ghi lịch sử trước
+    if (historyRecords.length > 0) {
+      if (previewEl) {
+        previewEl.innerHTML = `<span>⏳ Đang ghi <b>${historyRecords.length}</b> bản ghi lịch sử trước khi cập nhật dữ liệu mới...</span>`;
+      }
+
+      await ghiLichSuDmHangHoa(historyRecords);
+    }
+
+    // 4) Chỉ update các dòng thực sự có thay đổi
+    const rowsCanUpdate = rows.filter(row => {
+      const oldValue = oldValueMap.has(row.masp) ? oldValueMap.get(row.masp) : null;
+      return !giaTriLichSuBangNhau(oldValue, row.newValue);
     });
 
-    const results = await Promise.all(promises);
+    if (rowsCanUpdate.length === 0) {
+      hot.batch(() => {
+        rows.forEach(row => {
+          hot.setDataAtCell(row.rowIndex, 2, "OK");
+        });
+      });
 
-    results.forEach(res => {
-      if (res.success) {
-        hot.setDataAtCell(res.rowIndex, 2, "OK");     // dùng rowIndex gốc
-        success++;
-      } else {
-        hot.setDataAtCell(res.rowIndex, 2, "LỖI");    // dùng rowIndex gốc
-        fail++;
-        errorMsg.push(`Dòng ${res.rowIndex + 1} (${res.masp}): ${res.error}`);
+      if (previewEl) {
+        previewEl.innerHTML =
+          `<span style="color:#16a34a;">✅ Không có dữ liệu nào thay đổi nên hệ thống không cần ghi đè.</span>` +
+          `<br><span>Mã phiên lịch sử: <b>${sessionId}</b></span>`;
+      }
+
+      hot.updateSettings({ cells: hot.getSettings().cells });
+      return;
+    }
+
+    const chunkSize = 100;
+    const chunks = [];
+    for (let i = 0; i < rowsCanUpdate.length; i += chunkSize) {
+      chunks.push(rowsCanUpdate.slice(i, i + chunkSize));
+    }
+
+    let success = 0, fail = 0;
+    let errorMsg = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      if (previewEl) {
+        previewEl.innerHTML = `<span>⏳ Đang ghi dữ liệu nhóm ${i + 1}/${chunks.length}...</span>`;
+      }
+
+      const promises = chunks[i].map((row) => {
+        const updateObj = {};
+
+        updateObj.ngaykiem = nowKiem;
+
+        if (colname !== 'ngaykiem') {
+          updateObj[colname] = row.newValue;
+        }
+
+        return supabase
+          .from('dmhanghoa')
+          .update(updateObj)
+          .eq('masp', row.masp)
+          .select()
+          .then(({ data, error }) => ({
+            rowIndex: row.rowIndex,
+            masp: row.masp,
+            success: !error && data && data.length === 1,
+            error: error?.message || (!data?.length && 'Không có dòng nào được cập nhật (mã không tồn tại)') || null
+          }));
+      });
+
+      const results = await Promise.all(promises);
+
+      results.forEach(res => {
+        if (res.success) {
+          hot.setDataAtCell(res.rowIndex, 2, "OK");
+          success++;
+        } else {
+          hot.setDataAtCell(res.rowIndex, 2, "LỖI");
+          fail++;
+          errorMsg.push(`Dòng ${res.rowIndex + 1} (${res.masp}): ${res.error}`);
+        }
+      });
+    }
+
+    // Các dòng không thay đổi vẫn đánh dấu OK để người dùng dễ nhìn
+    const changedRowIndexes = new Set(rowsCanUpdate.map(r => r.rowIndex));
+    rows.forEach(row => {
+      if (!changedRowIndexes.has(row.rowIndex)) {
+        hot.setDataAtCell(row.rowIndex, 2, "OK");
       }
     });
-  }
 
-  let html = `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>`;
-  if (fail) {
-    html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
+    let html =
+      `<span>✅ Đã lưu xong: <b style="color:#e53935">${success} OK</b> &nbsp; <b style="color:orange">${fail} lỗi</b></span>` +
+      `<br><span>Đã ghi lịch sử trước khi cập nhật. Mã phiên lịch sử: <b>${sessionId}</b></span>`;
+
+    if (historyRecords.length > 0) {
+      html += `<br><span>Số bản ghi lịch sử đã lưu: <b>${historyRecords.length}</b></span>`;
+    } else {
+      html += `<br><span>Không có bản ghi lịch sử mới vì dữ liệu không thay đổi.</span>`;
+    }
+
+    if (fail) {
+      html += `<br><details><summary>Xem chi tiết lỗi</summary><div style="color:orange;text-align:left">${errorMsg.join('<br>')}</div></details>`;
+    }
+
+    if (previewEl) {
+      previewEl.innerHTML = html;
+    }
+
+    hot.updateSettings({ cells: hot.getSettings().cells });
+  } catch (err) {
+    console.error(err);
+    alert("Lỗi khi ghi lịch sử hoặc lưu dữ liệu: " + (err?.message || err));
+
+    if (previewEl) {
+      previewEl.innerHTML =
+        `<span style="color:#dc2626;">❌ Lưu dữ liệu thất bại.</span>` +
+        `<br><span style="color:#dc2626;">Hệ thống đã dừng trước khi ghi tiếp để tránh mất khả năng truy vết.</span>`;
+    }
   }
-  if (previewEl) {
-    previewEl.innerHTML = html;
-  }
-  hot.updateSettings({ cells: hot.getSettings().cells });
 }
 
 // ==== Tiện ích ====
@@ -2015,6 +2177,9 @@ function normalizeDate(val) {
           .toString()
           .trim()
           .toLowerCase();
+
+      currentLoginManv = (nhanvien?.manv || '').toString().trim().toUpperCase();
+      currentLoginTenNv = (nhanvien?.tennv || nhanvien?.hoten || '').toString().trim();
 
       console.log(
         'Đăng nhập thành công vào suadmhanghoa_nv:',
