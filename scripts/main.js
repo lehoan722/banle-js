@@ -28,6 +28,101 @@ function isMobileDevice() {
   //return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
 }
 
+function khoaOsoHoaDonVaTaoPopupDungChung() {
+  const sohdEl = document.getElementById("sohd");
+
+  // 1) Khóa ô số hóa đơn nếu có trên trang
+  if (sohdEl) {
+    sohdEl.readOnly = true;
+    sohdEl.style.background = "#f5f5f5";
+    sohdEl.style.cursor = "pointer";
+    sohdEl.title = "Nhấn F11 để mở hóa đơn cũ";
+  }
+
+  // 2) Nếu popup đã có rồi thì thôi
+  if (document.getElementById("popupMoHoaDonCu")) return;
+
+  // 3) Tạo popup bằng JS để khỏi phải sửa từng HTML
+  const popup = document.createElement("div");
+  popup.id = "popupMoHoaDonCu";
+  popup.style.cssText = `
+    display:none;
+    position:fixed;
+    top:35%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:#fff;
+    border:1px solid #999;
+    box-shadow:0 0 12px rgba(0,0,0,.35);
+    padding:16px;
+    z-index:10001;
+    min-width:320px;
+  `;
+
+  popup.innerHTML = `
+    <div style="font-weight:bold; margin-bottom:10px; font-size:18px;">
+      Mở hóa đơn cũ (F11)
+    </div>
+
+    <div style="margin-bottom:8px; color:#333;">
+      Số hóa đơn hiện tại:
+      <span id="popupSoHdHienTai" style="font-weight:bold; color:#c00;"></span>
+    </div>
+
+    <input id="popupNhapSoHdCu"
+           type="text"
+           placeholder="Nhập số hóa đơn cần mở"
+           style="width:100%; padding:8px; font-size:18px; box-sizing:border-box;" />
+
+    <div style="margin-top:10px; text-align:right;">
+      <button type="button" id="btnDongPopupMoHdCu">Đóng</button>
+    </div>
+  `;
+
+  document.body.appendChild(popup);
+
+  const input = document.getElementById("popupNhapSoHdCu");
+  const spanCurrent = document.getElementById("popupSoHdHienTai");
+  const btnDong = document.getElementById("btnDongPopupMoHdCu");
+
+  window.moPopupMoHoaDonCu = function () {
+    const sohdNow = document.getElementById("sohd")?.value || "";
+    spanCurrent.textContent = sohdNow || "(trống)";
+    input.value = "";
+    popup.style.display = "block";
+
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 30);
+  };
+
+  window.dongPopupMoHoaDonCu = function () {
+    popup.style.display = "none";
+    const masp = document.getElementById("masp");
+    if (masp) {
+      setTimeout(() => {
+        masp.focus();
+        masp.select?.();
+      }, 30);
+    }
+  };
+
+  btnDong?.addEventListener("click", () => {
+    window.dongPopupMoHoaDonCu?.();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (popup.style.display !== "block") return;
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      window.dongPopupMoHoaDonCu?.();
+    }
+  }, true);
+}
+
 async function checkInStoreLocation(pointsOverride) {
   // Nếu truyền vào mảng tọa độ thì dùng, không thì dùng mặc định (CS1)
   const STORE_POINTS = pointsOverride || [
@@ -310,7 +405,8 @@ export async function khoiTaoUngDung() {
 
     khoiTaoShortcut();
     ganSuKienDuyetHoaDon();
-    ganSuKienNutLenh();
+    ganSuKienNutLenh();    
+    khoaOsoHoaDonVaTaoPopupDungChung();
 
     ["masp", "soluong", "size"].forEach(id => {
       const input = document.getElementById(id);
@@ -601,13 +697,13 @@ export async function khoiTaoUngDung() {
       window.danhMucSize = dsSize.map(row => String(row.size).trim());
     } else {
       window.danhMucSize = []; // fallback rỗng nếu có lỗi
-    }   
+    }
 
     // Gán 3 hàm toàn cục để các module khác gọi như cũ
     window.soundSuccess = playSuccessBeep;
     window.soundWaitSize = playWaitSizeBeep;
     window.soundAlert = playAlertBeep;
-    
+
 
     // Tạo scanner, gắn callback khi đọc được mã
     const videoEl = document.getElementById("scanVideo");
