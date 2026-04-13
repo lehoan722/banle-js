@@ -234,7 +234,7 @@ export function khoiTaoShortcut() {
       if (set.size === 0) {
         alert("❌ Không có mã hàng nào trên bảng để mở nhập vị trí kho.");
         return;
-      }      
+      }
 
       // 2) Xác định cơ sở đang đăng nhập (origin_cs)
       const csFromLS = (localStorage.getItem('diadiem') || "").toLowerCase();
@@ -262,15 +262,25 @@ export function khoiTaoShortcut() {
     }
 
     // F11: mở popup nhập số hóa đơn cũ
-      if (e.key === "F11") {
-        e.preventDefault();
-        e.stopPropagation();
+    if (e.key === "F11") {
+      e.preventDefault();
+      e.stopPropagation();
 
-        if (typeof window.moPopupMoHoaDonCu === "function") {
-          window.moPopupMoHoaDonCu();
-        }
+      // 🔒 Kiểm tra quyền admin
+      const isAdmin =
+        (localStorage.getItem("is_admin") || "").toLowerCase() === "true" ||
+        (localStorage.getItem("role") || "").toLowerCase() === "admin";
+
+      if (!isAdmin) {
+        // Không phải admin → bỏ qua (không làm gì)
         return;
       }
+
+      if (typeof window.moPopupMoHoaDonCu === "function") {
+        window.moPopupMoHoaDonCu();
+      }
+      return;
+    }
 
 
     // Ctrl + T: lưu hóa đơn vào cả 2 bảng
@@ -283,7 +293,7 @@ export function khoiTaoShortcut() {
       }
       await luuHoaDonCaHaiBan();
     }
-  }); 
+  });
 
 }
 
