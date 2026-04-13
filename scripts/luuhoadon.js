@@ -76,6 +76,37 @@ function toastError(msg) {
     alert('❌ ' + msg);
 }
 
+async function snapshotInvoiceBeforeEdit(sohd, note = "") {
+    const sohdClean = String(sohd || "").trim();
+    if (!sohdClean) {
+        throw new Error("SNAPSHOT_MISSING_SOHD");
+    }
+
+    const source =
+        (window.location.pathname || "").split("/").pop() ||
+        window.location.pathname ||
+        "luuhoadon.js";
+
+    const actorText =
+        document.getElementById("manv")?.value?.trim() ||
+        localStorage.getItem("manv") ||
+        "";
+
+    const { data, error } = await supabase.rpc("rpc_snapshot_invoice_version", {
+        p_sohd: sohdClean,
+        p_source: source,
+        p_action: "SNAPSHOT_BEFORE_UPDATE",
+        p_note: note || "Tự động snapshot trước khi ghi đè hóa đơn cũ",
+        p_actor_text: actorText
+    });
+
+    if (error) {
+        console.error("rpc_snapshot_invoice_version lỗi:", error);
+        throw error;
+    }
+
+    return data;
+}
 
 
 // =========================
