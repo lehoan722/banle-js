@@ -174,7 +174,7 @@ const CCN_CTX = buildCCNCtxFromPathname();
 // luuhoadon.js
 
 
-export async function luuHoaDonQuaAPI() {
+export async function luuHoaDonQuaAPI_cu() {
     capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
 
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
