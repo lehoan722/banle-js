@@ -273,7 +273,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
       p.includes("chamcongcs1") ||
       p.includes("chamcongcs2") ||
-      p.includes("banlemtcs1") ||
+      //p.includes("banlemtcs1") ||
       p.includes("banlemtcs2")
     );
   }
