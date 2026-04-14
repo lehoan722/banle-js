@@ -71,6 +71,17 @@ import { buildCCNCtxFromPathname, ensureExistDialog, showExistDialog, getDiaDiem
 import { normalizeBangKetQua, calcTongThanhTienFromBangKetQua } from './luuhoadon/pricing.js';
 import { resolveGroupKeyFromSP, requireManagedAtBranch } from './luuhoadon/validators.js';
 
+import { saveHoaDonService } from './services/hoadonService.js';
+
+export async function luuHoaDonQuaAPI() {
+    try {
+        await saveHoaDonService();
+    } catch (e) {
+        alert(e.message);
+        throw e;
+    }
+}
+
 // ===== Toast fallback (tránh lỗi ReferenceError nếu chưa có UI toast) =====
 function toastError(msg) {
     alert('❌ ' + msg);
