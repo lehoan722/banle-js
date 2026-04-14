@@ -1,6 +1,6 @@
 // scripts/services/hoadonContext.js
 
-import { getBangKetQua } from './hoadon.js';
+import { getBangKetQua } from '../hoadon.js';
 
 export async function buildContext() {
   const bangKetQua = getBangKetQua();
