@@ -6,6 +6,9 @@ import { saveHoaDonNhap } from './hoadonNhap.js';
 import { saveHoaDonSpecial } from './hoadonSpecial.js';
 import { saveHoaDonCCN } from './hoadonCcn.js';
 
+console.log("✅ hoadonService.js đã được gọi");
+console.log("✅ saveHoaDonService() chạy");
+
 export async function saveHoaDonService() {
   const ctx = await buildContext();
 
