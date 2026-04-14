@@ -8,7 +8,8 @@ import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
 import {
   refreshSessionIfNeeded,
   hoaDonDaTonTaiAny,
-  capNhatUsedTuVanSauKhiLuuCT
+  capNhatUsedTuVanSauKhiLuuCT,
+  snapshotInvoiceBeforeEdit
 } from '../luuhoadon/api.js';
 
 import {
@@ -70,18 +71,6 @@ function validateBeforeSave() {
   if (!manvGuard || manvGuard.toUpperCase() === "ADMIN") {
     alert("❌ Lỗi xác định nhân viên (manv). Vui lòng đăng nhập lại.");
     console.error("GUARD BLOCKED SAVE – manv =", manvGuard);
-    return false;
-  }
-
-  const hdState = (getInput("hd_state")?.value || "moi").trim().toLowerCase();
-  if (hdState === "xem") {
-    const p = getInput("popupXacThucSua");
-    if (p) {
-      p.style.display = "block";
-      getInput("xacmanv")?.focus();
-    } else {
-      alert("❌ Bạn đang xem hóa đơn cũ. Vui lòng bấm SỬA để xác thực trước khi lưu.");
-    }
     return false;
   }
 
@@ -205,6 +194,8 @@ async function resetAfterSave() {
   if (getInput("ngay")) getInput("ngay").value = new Date().toISOString().slice(0, 10);
 
   window.HD_CTX = { mode: "NEW", version: null };
+  window.dangSuaHoaDon = false;
+  window.choPhepSua = false;
 
   await capNhatSoHoaDonTuDong();
 
@@ -282,12 +273,99 @@ async function saveNewBanLe() {
   };
 }
 
+async function saveEditBanLe() {
+  if (!validateBeforeSave()) return;
+
+  const sohd = getText("sohd");
+  if (!sohd) {
+    alert("❌ Không có số hóa đơn để sửa.");
+    return;
+  }
+
+  await refreshSessionIfNeeded();
+
+  try {
+    await snapshotInvoiceBeforeEdit({ sohd });
+  } catch (e) {
+    console.error("snapshotInvoiceBeforeEdit lỗi:", e);
+    alert("❌ Không snapshot được hóa đơn trước khi sửa.");
+    return;
+  }
+
+  let loai = getLoaiFromSoHDInput();
+  if (!loai) {
+    alert("❌ Không xác định được loại hóa đơn khi sửa.");
+    return;
+  }
+
+  const diadiemTrang = loai.includes("cs2") ? "cs2" : "cs1";
+  let bangKetQua = getBangKetQua();
+
+  const header = buildHeader(loai, diadiemTrang, bangKetQua);
+  const chitiet = buildDetails(sohd, diadiemTrang, bangKetQua);
+
+  const { error: errDelCT } = await supabase
+    .from("ct_hoadon_banle")
+    .delete()
+    .eq("sohd", sohd);
+
+  if (errDelCT) {
+    console.error(errDelCT);
+    alert("❌ Lỗi xóa chi tiết cũ.");
+    return;
+  }
+
+  const { error: errDelHD } = await supabase
+    .from("hoadon_banle")
+    .delete()
+    .eq("sohd", sohd);
+
+  if (errDelHD) {
+    console.error(errDelHD);
+    alert("❌ Lỗi xóa header cũ.");
+    return;
+  }
+
+  const { error: errInsertHD } = await supabase
+    .from("hoadon_banle")
+    .insert([{ ...header, sohd }]);
+
+  if (errInsertHD) {
+    console.error(errInsertHD);
+    alert("❌ Lỗi ghi lại header hóa đơn.");
+    return;
+  }
+
+  const { error: errInsertCT } = await supabase
+    .from("ct_hoadon_banle")
+    .insert(chitiet);
+
+  if (errInsertCT) {
+    console.error(errInsertCT);
+    alert("❌ Lỗi ghi lại chi tiết hóa đơn.");
+    return;
+  }
+
+  await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
+
+  const hoadonIn = { ...header, sohd };
+  printInvoice(hoadonIn, chitiet);
+  await resetAfterSave();
+
+  return {
+    ok: true,
+    mode: "EDIT",
+    sohd,
+    hoadon: hoadonIn,
+    chitiet
+  };
+}
+
 export async function saveHoaDonBanLe(ctx) {
   console.log("👉 Service bán lẻ chạy độc lập");
 
   if (isEditMode(ctx)) {
-    alert("⏳ Luồng SỬA bán lẻ thường trong service mới chưa bật. Tạm thời chỉ test luồng THÊM MỚI.");
-    return;
+    return await saveEditBanLe();
   }
 
   return await saveNewBanLe();
