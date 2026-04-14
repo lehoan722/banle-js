@@ -21,18 +21,22 @@ import {
   calcTongThanhTienFromBangKetQua
 } from '../luuhoadon/pricing.js';
 
+function getInput(id) {
+  return document.getElementById(id);
+}
+
+function getText(id) {
+  return getInput(id)?.value?.trim?.() || "";
+}
+
 function getIntValue(id) {
   return parseInt(
-    (document.getElementById(id)?.value || "").replace(/[.,]/g, "") || "0",
+    (getInput(id)?.value || "").replace(/[^\d-]/g, "") || "0",
     10
-  );
+  ) || 0;
 }
 
-function getInputValue(id) {
-  return document.getElementById(id)?.value?.trim?.() || "";
-}
-
-function getRealEditMode(ctx) {
+function isEditMode(ctx) {
   return !!(
     ctx?.isEdit ||
     window.HD_CTX?.mode === "EDIT" ||
@@ -40,12 +44,105 @@ function getRealEditMode(ctx) {
   );
 }
 
-function getLegacySaleSaveFn() {
-  return (
-    window.__LUU_HOADON_BANLE_CU__ ||
-    window.luuHoaDonQuaAPI_CU ||
-    null
-  );
+function validateBeforeSave() {
+  capNhatThongTinTong(getBangKetQua());
+
+  const maspChuaNhap = getText("masp");
+  if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
+    alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
+    getInput("masp")?.focus();
+    return false;
+  }
+
+  const sohd = getText("sohd");
+  if (!sohd) {
+    alert("❌ Chưa có số hóa đơn.");
+    return false;
+  }
+
+  const tennv = getText("tennv");
+  if (!tennv) {
+    alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
+    return false;
+  }
+
+  const manvGuard = getText("manv") || localStorage.getItem("manv") || "";
+  if (!manvGuard || manvGuard.toUpperCase() === "ADMIN") {
+    alert("❌ Lỗi xác định nhân viên (manv). Vui lòng đăng nhập lại.");
+    console.error("GUARD BLOCKED SAVE – manv =", manvGuard);
+    return false;
+  }
+
+  const hdState = (getInput("hd_state")?.value || "moi").trim().toLowerCase();
+  if (hdState === "xem") {
+    const p = getInput("popupXacThucSua");
+    if (p) {
+      p.style.display = "block";
+      getInput("xacmanv")?.focus();
+    } else {
+      alert("❌ Bạn đang xem hóa đơn cũ. Vui lòng bấm SỬA để xác thực trước khi lưu.");
+    }
+    return false;
+  }
+
+  const bangKetQua = getBangKetQua();
+  if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
+    alert("❌ Không có dữ liệu để lưu.");
+    return false;
+  }
+
+  return true;
+}
+
+function buildHeader(loai, diadiemTrang, bangKetQua) {
+  return {
+    ngay: getText("ngay"),
+    manv: getText("manv"),
+    tennv: getText("tennv"),
+    diadiem: diadiemTrang,
+    khachhang: getText("khachhang"),
+    tongsl: getIntValue("tongsl"),
+    tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
+    tongkm: getIntValue("tongkm"),
+    chietkhau: getIntValue("chietkhau"),
+    thanhtoan: getIntValue("phaithanhtoan"),
+    hinhthuctt: getInput("hinhthuctt")?.value || "",
+    ghichu: getText("ghichu"),
+    dvt: "",
+    loaihd: loai,
+    loai: loai,
+    nhacc: ""
+  };
+}
+
+function buildDetails(sohd, diadiemTrang, bangKetQua) {
+  const createdAt = new Date().toISOString();
+  const ngay = getText("ngay");
+  const rows = [];
+
+  Object.values(bangKetQua || {}).forEach(item => {
+    (item.sizes || []).forEach((sz, i) => {
+      const sl = Number(item.soluongs?.[i] || 0);
+      if (!sl) return;
+
+      rows.push({
+        sohd,
+        masp: item.masp,
+        tensp: item.tensp,
+        size: sz,
+        soluong: sl,
+        gia: item.gia,
+        km: item.km,
+        thanhtien: (item.gia - item.km) * sl,
+        dvt: item.dvt || '',
+        diadiem: diadiemTrang,
+        created_at: createdAt,
+        ngay
+      });
+    });
+  });
+
+  return rows;
 }
 
 function printInvoice(hoadon, chitiet, forceSpecial = false) {
@@ -53,13 +150,13 @@ function printInvoice(hoadon, chitiet, forceSpecial = false) {
   localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
   const isHoaDonDacBiet =
-    forceSpecial || (document.getElementById("sohd")?.getAttribute("data-mod3") === "yes");
+    forceSpecial || (getInput("sohd")?.getAttribute("data-mod3") === "yes");
 
   const url = isHoaDonDacBiet ? "/in-hoadon-db.html" : "/in-hoadon.html";
 
   if (typeof window.openPrintOverlay === "function") {
-    const fast1 = document.getElementById("inNhanh")?.checked;
-    const fast2 = document.getElementById("chk_innhanh")?.checked;
+    const fast1 = getInput("inNhanh")?.checked;
+    const fast2 = getInput("chk_innhanh")?.checked;
     const fast = !!(fast1 || fast2);
 
     if (fast && typeof window.quickPrint === "function") {
@@ -89,9 +186,9 @@ function printInvoice(hoadon, chitiet, forceSpecial = false) {
 }
 
 async function resetAfterSave() {
-  const diadiemVal = document.getElementById("diadiem")?.value || "";
-  const manvVal = document.getElementById("manv")?.value || "";
-  const tennvVal = document.getElementById("tennv")?.value || "";
+  const diadiemVal = getInput("diadiem")?.value || "";
+  const manvVal = getInput("manv")?.value || "";
+  const tennvVal = getInput("tennv")?.value || "";
 
   document.querySelectorAll("input").forEach(input => {
     if (!["diadiem", "manv", "tennv", "hd_state"].includes(input.id)) {
@@ -102,123 +199,27 @@ async function resetAfterSave() {
   resetBangKetQua();
   capNhatThongTinTong(getBangKetQua());
 
-  if (document.getElementById("diadiem")) {
-    document.getElementById("diadiem").value = diadiemVal;
-  }
-  if (document.getElementById("manv")) {
-    document.getElementById("manv").value = manvVal;
-  }
-  if (document.getElementById("tennv")) {
-    document.getElementById("tennv").value = tennvVal;
-  }
-  if (document.getElementById("ngay")) {
-    document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
-  }
+  if (getInput("diadiem")) getInput("diadiem").value = diadiemVal;
+  if (getInput("manv")) getInput("manv").value = manvVal;
+  if (getInput("tennv")) getInput("tennv").value = tennvVal;
+  if (getInput("ngay")) getInput("ngay").value = new Date().toISOString().slice(0, 10);
 
   window.HD_CTX = { mode: "NEW", version: null };
 
   await capNhatSoHoaDonTuDong();
 
-  const st = document.getElementById("hd_state");
-  if (st) st.value = "moi";
-
-  document.getElementById("masp")?.focus();
+  if (getInput("hd_state")) getInput("hd_state").value = "moi";
+  getInput("masp")?.focus();
 }
 
-function buildHeader(loai, diadiemTrang, bangKetQua) {
-  return {
-    ngay: getInputValue("ngay"),
-    manv: getInputValue("manv"),
-    tennv: getInputValue("tennv"),
-    diadiem: diadiemTrang,
-    khachhang: getInputValue("khachhang"),
-    tongsl: getIntValue("tongsl"),
-    tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
-    tongkm: getIntValue("tongkm"),
-    chietkhau: getIntValue("chietkhau"),
-    thanhtoan: getIntValue("phaithanhtoan"),
-    hinhthuctt: document.getElementById("hinhthuctt")?.value || "",
-    ghichu: getInputValue("ghichu"),
-    dvt: "",
-    loaihd: loai,
-    loai: loai,
-    nhacc: ""
-  };
-}
+async function saveNewBanLe() {
+  if (!validateBeforeSave()) return;
 
-function buildChiTiet(sohdThucTe, diadiemTrang, bangKetQua) {
-  const createdAt = new Date().toISOString();
-  const ngay = getInputValue("ngay");
-  const chitiet = [];
+  const sohdNhap = getText("sohd");
+  const existed = await hoaDonDaTonTaiAny(sohdNhap);
 
-  Object.values(bangKetQua || {}).forEach(item => {
-    (item.sizes || []).forEach((sz, i) => {
-      const sl = item.soluongs?.[i];
-      chitiet.push({
-        sohd: sohdThucTe,
-        masp: item.masp,
-        tensp: item.tensp,
-        size: sz,
-        soluong: sl,
-        gia: item.gia,
-        km: item.km,
-        thanhtien: (item.gia - item.km) * sl,
-        dvt: item.dvt || '',
-        diadiem: diadiemTrang,
-        created_at: createdAt,
-        ngay
-      });
-    });
-  });
-
-  return chitiet;
-}
-
-async function saveNewBanLe(ctx) {
-  capNhatThongTinTong(getBangKetQua());
-
-  const maspChuaNhap = getInputValue("masp");
-  if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
-    alert("❌ Bạn còn mã sản phẩm chưa thêm vào bảng! Hãy kiểm tra lại trước khi lưu hóa đơn.");
-    document.getElementById("masp")?.focus();
-    return;
-  }
-
-  let bangKetQua = ctx?.bangKetQua || getBangKetQua();
-  const sohd = getInputValue("sohd");
-  const tennv = getInputValue("tennv");
-
-  if (!sohd) {
-    alert("❌ Chưa có số hóa đơn.");
-    return;
-  }
-  if (!tennv) {
-    alert("❌ Bạn chưa nhập tên nhân viên bán hàng.");
-    return;
-  }
-
-  const manvGuard = getInputValue("manv") || localStorage.getItem("manv") || "";
-  if (!manvGuard || manvGuard.toUpperCase() === "ADMIN") {
-    alert("❌ Lỗi xác định nhân viên (manv). Vui lòng đăng nhập lại.");
-    console.error("GUARD BLOCKED SAVE – manv =", manvGuard);
-    return;
-  }
-
-  const hdState = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
-  if (hdState === "xem") {
-    const p = document.getElementById("popupXacThucSua");
-    if (p) {
-      p.style.display = "block";
-      document.getElementById("xacmanv")?.focus();
-    } else {
-      alert("❌ Bạn đang xem hóa đơn cũ. Vui lòng bấm SỬA để xác thực trước khi lưu.");
-    }
-    return;
-  }
-
-  const existed = await hoaDonDaTonTaiAny(sohd);
-  if (!existed && await handleSpecialSoHoaDon(supabase, sohd)) {
-    return;
+  if (!existed && await handleSpecialSoHoaDon(supabase, sohdNhap)) {
+    return { ok: true, mode: "SPECIAL" };
   }
 
   let loai = getLoaiFromSoHDInput();
@@ -232,6 +233,8 @@ async function saveNewBanLe(ctx) {
   }
 
   const diadiemTrang = loai.includes("cs2") ? "cs2" : "cs1";
+
+  let bangKetQua = getBangKetQua();
   const header = buildHeader(loai, diadiemTrang, bangKetQua);
 
   await refreshSessionIfNeeded();
@@ -249,12 +252,12 @@ async function saveNewBanLe(ctx) {
   }
 
   const sohdThucTe = rpcRes[0].sohd;
-  document.getElementById("sohd").value = sohdThucTe;
+  if (getInput("sohd")) getInput("sohd").value = sohdThucTe;
 
   normalizeBangKetQua(getBangKetQua());
   bangKetQua = getBangKetQua();
 
-  const chitiet = buildChiTiet(sohdThucTe, diadiemTrang, bangKetQua);
+  const chitiet = buildDetails(sohdThucTe, diadiemTrang, bangKetQua);
 
   const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
   if (errCT) {
@@ -280,15 +283,12 @@ async function saveNewBanLe(ctx) {
 }
 
 export async function saveHoaDonBanLe(ctx) {
-  const isEditReal = getRealEditMode(ctx);
+  console.log("👉 Service bán lẻ chạy độc lập");
 
-  if (isEditReal) {
-    const legacyFn = getLegacySaleSaveFn();
-    if (typeof legacyFn !== "function") {
-      throw new Error("❌ Chưa nối được luồng EDIT cũ cho bán lẻ.");
-    }
-    return await legacyFn();
+  if (isEditMode(ctx)) {
+    alert("⏳ Luồng SỬA bán lẻ thường trong service mới chưa bật. Tạm thời chỉ test luồng THÊM MỚI.");
+    return;
   }
 
-  return await saveNewBanLe(ctx);
+  return await saveNewBanLe();
 }
