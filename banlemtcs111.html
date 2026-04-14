@@ -711,7 +711,7 @@
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
             <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon1()">Xác nhận</button>
 
             <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
         </div>
@@ -1137,7 +1137,7 @@
         };
 
         // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs111
-        window.xacNhanSuaHoaDon = async function () {
+        window.xacNhanSuaHoaDon1 = async function () {
             const popup = document.getElementById("popupXacThucSua");
             const closePopup = () => {
                 if (popup) popup.style.display = "none";
@@ -1227,7 +1227,7 @@
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
         // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs111
-        window.xacNhanSuaHoaDon = async function () {
+        window.xacNhanSuaHoaDon1 = async function () {
             const popup = document.getElementById("popupXacThucSua");
             const closePopup = () => {
                 if (popup) popup.style.display = "none";
