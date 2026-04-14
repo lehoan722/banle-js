@@ -22,6 +22,41 @@ import {
 
 import { guiHoaDonViettel } from '../viettelInvoice.js';
 
+async function getNextSohdT(loaiT) {
+  const loai = String(loaiT || "").trim();
+
+  if (!loai) {
+    throw new Error("❌ Thiếu loại chứng từ T.");
+  }
+
+  // Tạo dòng trong sochungtu nếu chưa có
+  const { error: insErr } = await supabase
+    .from("sochungtu")
+    .upsert([{ loai, so_hientai: 0 }], { onConflict: "loai" });
+
+  if (insErr) {
+    console.error("Lỗi tạo dòng sochungtu cho hóa đơn T:", insErr);
+    throw insErr;
+  }
+
+  // Tăng số hiện tại lên 1
+  const { data: row, error: updErr } = await supabase
+    .from("sochungtu")
+    .update({})
+    .eq("loai", loai)
+    .select("so_hientai")
+    .single();
+
+  if (updErr) {
+    console.error("Lỗi đọc sochungtu cho hóa đơn T:", updErr);
+    throw updErr;
+  }
+
+  // vì update({}) không tăng được số, ta phải dùng RPC SQL hoặc update thủ công 2 bước
+  // nên dùng RPC SQL đơn giản hơn:
+  throw new Error("USE_RPC_FOR_SOCHUNGTU_T");
+}
+
 function getInput(id) {
   return document.getElementById(id);
 }
@@ -146,12 +181,6 @@ function buildDetails(sohd, diadiemTrang, bangKetQua) {
   });
 
   return rows;
-}
-
-function mapSohdT(sohdChinh) {
-  if (sohdChinh.startsWith("bancs1_")) return sohdChinh.replace(/^bancs1_/, "bancs1T_");
-  if (sohdChinh.startsWith("bancs2_")) return sohdChinh.replace(/^bancs2_/, "bancs2T_");
-  throw new Error("❌ Không tạo được số hóa đơn T từ số hóa đơn hiện tại.");
 }
 
 function printInvoice(hoadon, chitiet, forceSpecial = false) {
@@ -296,14 +325,25 @@ export async function saveHoaDonSpecial(ctx) {
   }
 
   const sohdChinh = rpcRes[0].sohd;
-  const sohdT = mapSohdT(sohdChinh);
+
+  const loaiT = loai + "T";
+  const { data: sohdT, error: sohdTErr } = await supabase.rpc("next_sohd_only", {
+    p_loai: loaiT
+  });
+
+  if (sohdTErr || !sohdT) {
+    console.error(sohdTErr);
+    alert("❌ Không cấp được số hóa đơn T.");
+    await supabase.from("hoadon_banle").delete().eq("sohd", sohdChinh);
+    return;
+  }
 
   if (getInput("sohd")) getInput("sohd").value = sohdChinh;
 
   const hoadonChinh = buildHeaderMain(loai, diadiemTrang, bangKetQua, sohdChinh);
   const chitietChinh = buildDetails(sohdChinh, diadiemTrang, bangKetQua);
 
-  const loaiT = loai + "T";
+
   const hoadonPhu = buildHeaderT(loaiT, diadiemTrang, bangKetQua, sohdT);
   const chitietPhu = buildDetails(sohdT, diadiemTrang, bangKetQua);
 
@@ -321,7 +361,7 @@ export async function saveHoaDonSpecial(ctx) {
 
   // 3) Lưu HEADER PHỤ (T)
   console.log("📄 hoadonPhu trước khi insert:", hoadonPhu);
-  
+
   const { error: errHDT } = await supabase
     .from("hoadon_banleT")
     .insert([hoadonPhu]);
