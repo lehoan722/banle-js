@@ -71,17 +71,6 @@ import { buildCCNCtxFromPathname, ensureExistDialog, showExistDialog, getDiaDiem
 import { normalizeBangKetQua, calcTongThanhTienFromBangKetQua } from './luuhoadon/pricing.js';
 import { resolveGroupKeyFromSP, requireManagedAtBranch } from './luuhoadon/validators.js';
 
-import { saveHoaDonService } from './services/hoadonService.js';
-
-export async function luuHoaDonQuaAPI() {
-    try {
-        await saveHoaDonService();
-    } catch (e) {
-        alert(e.message);
-        throw e;
-    }
-}
-
 // ===== Toast fallback (tránh lỗi ReferenceError nếu chưa có UI toast) =====
 function toastError(msg) {
     alert('❌ ' + msg);
@@ -174,7 +163,7 @@ const CCN_CTX = buildCCNCtxFromPathname();
 // luuhoadon.js
 
 
-export async function luuHoaDonQuaAPI_cu() {
+export async function luuHoaDonQuaAPI() {
     capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
 
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
