@@ -46,11 +46,7 @@ async function snapshotInvoiceBeforeEditLocal(sohd) {
 }
 
 function isEditMode(ctx) {
-  return !!(
-    ctx?.isEdit ||
-    window.HD_CTX?.mode === "EDIT" ||
-    window.choPhepSua === true
-  );
+  return !!ctx?.isEdit;
 }
 
 function validateBeforeSave() {
