@@ -10,9 +10,17 @@ export async function buildContext() {
   const state = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
   const hinhthuctt = document.getElementById("hinhthuctt")?.value || "";
 
+  const isEdit =
+    state === "sua" ||
+    window.HD_CTX?.mode === "EDIT" ||
+    window.choPhepSua === true;
+
   const isSpecialByTMT = hinhthuctt === "tmt";
   const isSpecialByMod3 = sohdEl?.getAttribute("data-mod3") === "yes";
-  const save2Ban = isSpecialByTMT || isSpecialByMod3;
+
+  // ✅ Chỉ hóa đơn MỚI mới được lưu 2 bản
+  // ✅ Hóa đơn đang SỬA thì dù là TMT hay data-mod3=yes cũng KHÔNG lưu 2 bản
+  const save2Ban = !isEdit && (isSpecialByTMT || isSpecialByMod3);
 
   return {
     bangKetQua,
@@ -21,7 +29,7 @@ export async function buildContext() {
     diadiem,
     hinhthuctt,
 
-    isEdit: state === "sua" || window.HD_CTX?.mode === "EDIT" || window.choPhepSua === true,
+    isEdit,
     isView: state === "xem",
     isNew: state === "moi",
 
