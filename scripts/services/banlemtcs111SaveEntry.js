@@ -12,8 +12,7 @@ export async function saveBanLe111(source = "unknown") {
   // ===== LUỒNG 2 BẢN =====
   if (hinhthuctt === "tmt") {
     console.log("📄 ĐANG VÀO LUỒNG LƯU 2 BẢN MỚI");
-    alert("📄 Đã gọi LUỒNG LƯU 2 BẢN (chưa implement)");
-    return;
+    return await saveHoaDonService();
   }
 
   // ===== LUỒNG SỬA =====
