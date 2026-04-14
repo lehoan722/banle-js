@@ -8,8 +8,7 @@ import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
 import {
   refreshSessionIfNeeded,
   hoaDonDaTonTaiAny,
-  capNhatUsedTuVanSauKhiLuuCT,
-  snapshotInvoiceBeforeEdit
+  capNhatUsedTuVanSauKhiLuuCT
 } from '../luuhoadon/api.js';
 
 import {
@@ -35,6 +34,15 @@ function getIntValue(id) {
     (getInput(id)?.value || "").replace(/[^\d-]/g, "") || "0",
     10
   ) || 0;
+}
+
+async function snapshotInvoiceBeforeEditLocal(sohd) {
+  const { data, error } = await supabase.rpc("rpc_snapshot_invoice_version", {
+    p_sohd: sohd
+  });
+
+  if (error) throw error;
+  return data;
 }
 
 function isEditMode(ctx) {
@@ -285,7 +293,7 @@ async function saveEditBanLe() {
   await refreshSessionIfNeeded();
 
   try {
-    await snapshotInvoiceBeforeEdit({ sohd });
+    await snapshotInvoiceBeforeEditLocal(sohd);
   } catch (e) {
     console.error("snapshotInvoiceBeforeEdit lỗi:", e);
     alert("❌ Không snapshot được hóa đơn trước khi sửa.");
