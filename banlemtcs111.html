@@ -412,43 +412,6 @@
         }
     </style>
 
-    <style>
-        #popupChonThanhToan {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.18);
-            z-index: 20000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #popupChonThanhToan .pptt-box {
-            width: 420px;
-            max-width: 90vw;
-            background: #fff;
-            border: 1px solid #bfbfbf;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-            padding: 18px;
-        }
-
-        #popupChonThanhToan .pptt-line {
-            font-size: 26px;
-            line-height: 1.45;
-            margin-bottom: 6px;
-        }
-
-        #popupChonThanhToan .pptt-input {
-            width: 100%;
-            box-sizing: border-box;
-            margin-top: 10px;
-            padding: 10px 12px;
-            font-size: 34px;
-            border: 2px solid #2f75ff;
-            outline: none;
-        }
-    </style>
-
     <script>
 
         function switchTab(tabName) {
@@ -636,6 +599,7 @@
                         <label>Hình thức TT <select id="hinhthuctt">
                                 <option value="tm">Tiền mặt</option>
                                 <option value="ck">Chuyển khoản</option>
+                                <option value="tmt">Tiền mặtt</option>
                             </select></label>
 
                         <label>Chiết khấu <input id="chietkhau" /></label>
@@ -716,6 +680,7 @@
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
             <button id="btnOpenInTem">In mã vạch</button>
+            <button id="btnCCN">CCN</button>
 
 
             <!-- Popup tìm khách hàng
@@ -731,8 +696,8 @@
 
 
         <div class="top-inputs">
-            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tim Kiem,
-            F8: nhập vị trí kho.
+            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tiếp tục,
+            F8: xem tồn kho nhanh, F9: nhập vị trí kho
         </div>
         <div class="top-inputs">
             ----------------------------------------------------------
@@ -758,15 +723,6 @@
             <div style="text-align:center; margin-top:10px;">
                 <button id="btnThemMoiCo">✅ Có</button>
                 <button id="btnThemMoiKhong" type="button">❌ Không</button>
-            </div>
-        </div>
-
-        <!-- Popup chọn hình thức thanh toán -->
-        <div id="popupChonThanhToan">
-            <div class="pptt-box">
-                <div class="pptt-line">Nhấn enter để lựa chọn tiền mặt.</div>
-                <div class="pptt-line">Nhập ký tự bất kỳ để chọn chuyển khoản.</div>
-                <input id="txtChonThanhToan" class="pptt-input" type="text" autocomplete="off" />
             </div>
         </div>
 
@@ -826,91 +782,8 @@
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
-    <script type="module">
-        import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
-        khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
-            tuDongKhoaCoSo: false,
-            loginApiPath: "/api/login-cs1", // API backend mới
-
-            // Hàm được gọi khi đăng nhập thành công
-            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
-                // 1. Lưu thông tin vào localStorage giống logic cũ
-                if (diadiem) {
-                    localStorage.setItem("diadiem", diadiem);
-                }
-                if (session && session.access_token) {
-                    localStorage.setItem("supabase_access_token", session.access_token);
-                }
-                localStorage.setItem("manv", nhanvien.manv);
-                localStorage.setItem("tennv", nhanvien.tennv);
-                localStorage.setItem(
-                    "quyen_sua_hoadon",
-                    nhanvien.sua_hoadon ? "true" : "false"
-                );
-
-                // 🔴 THÊM 3 DÒNG NÀY
-                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
-                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
-                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
-
-                // 2. Cho các script khác trên trang dùng
-                window.diadiem = diadiem;
-                window.dangLuu = false;
-
-                // 3. Cập nhật lên giao diện bán hàng
-                const manvInput = document.getElementById("manv");
-                const tennvInput = document.getElementById("tennv");
-                if (manvInput) {
-                    manvInput.value = nhanvien.manv;
-                    manvInput.readOnly = true;
-                }
-                if (tennvInput) {
-                    tennvInput.value = nhanvien.tennv;
-                    tennvInput.readOnly = true;
-                }
-
-                // 4. Cập nhật quyền giao diện nếu có hàm này
-                if (typeof window.capNhatQuyenGiaoDien === "function") {
-                    window.capNhatQuyenGiaoDien();
-                }
-
-                // 5. Import và khởi tạo logic chính của trang (giống code cũ)
-                try {
-                    const module = await import("./scripts/main.js");
-                    if (typeof module.khoiTaoUngDung === "function") {
-                        module.khoiTaoUngDung();
-                    }
-                } catch (e) {
-                    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
-                }
-
-                // 6. Chọn tab & checkbox mặc định giống code cũ
-                if (typeof window.switchTab === "function") {
-                    window.switchTab("thongtin");
-                }
-                const size45 = document.getElementById("size45");
-                if (size45) size45.checked = true;
-
-                const qlNhom = document.getElementById("quanlysizetheonhom");
-                if (qlNhom) qlNhom.checked = true;
-
-                // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
-                const appContainer = document.getElementById("app-container");
-                if (appContainer) appContainer.style.display = "";
-
-                const loginContainer = document.getElementById("login-container");
-                if (loginContainer) loginContainer.style.display = "none";
-            }
-        });
-    </script>
     <!-- het  Khung đăng nhập dùng module dùng chung -->
-
-
-
-
 
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
@@ -1038,184 +911,85 @@
         });
     </script>
 
-    <script>
-        (() => {
-            let daPatchHamLuu = false;
-            let dangLuuSauKhiChonThanhToan = false;
-            let argsLuuTam = [];
+    <script type="module">
+        import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-            function layTrangThaiHoaDon() {
-                return String(document.getElementById('hd_state')?.value || '').trim().toLowerCase();
-            }
+        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
+        khoiTaoDangNhapDungChung({
+            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
+            tuDongKhoaCoSo: false,
+            loginApiPath: "/api/login-cs1", // API backend mới
 
-            function laHoaDonMoi() {
-                return layTrangThaiHoaDon() === 'moi';
-            }
-
-            function focusMasp() {
-                const el = document.getElementById('masp');
-                if (!el) return;
-                setTimeout(() => {
-                    try {
-                        el.focus();
-                        el.select?.();
-                    } catch (e) { }
-                }, 0);
-            }
-
-            function moPopupChonThanhToan(args = []) {
-                argsLuuTam = args;
-                const popup = document.getElementById('popupChonThanhToan');
-                const input = document.getElementById('txtChonThanhToan');
-                if (!popup || !input) return;
-
-                input.value = '';
-                popup.style.display = 'flex';
-
-                setTimeout(() => {
-                    input.focus();
-                    input.select?.();
-                }, 0);
-            }
-
-            function dongPopupChonThanhToan(traFocusMasp = true) {
-                const popup = document.getElementById('popupChonThanhToan');
-                const input = document.getElementById('txtChonThanhToan');
-                if (popup) popup.style.display = 'none';
-                if (input) input.value = '';
-
-                if (traFocusMasp) {
-                    focusMasp();
+            // Hàm được gọi khi đăng nhập thành công
+            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
+                // 1. Lưu thông tin vào localStorage giống logic cũ
+                if (diadiem) {
+                    localStorage.setItem("diadiem", diadiem);
                 }
-            }
+                if (session && session.access_token) {
+                    localStorage.setItem("supabase_access_token", session.access_token);
+                }
+                localStorage.setItem("manv", nhanvien.manv);
+                localStorage.setItem("tennv", nhanvien.tennv);
+                localStorage.setItem(
+                    "quyen_sua_hoadon",
+                    nhanvien.sua_hoadon ? "true" : "false"
+                );
 
-            function ganHinhThucThanhToan(value) {
-                const select = document.getElementById('hinhthuctt');
-                if (!select) return;
+                // 🔴 THÊM 3 DÒNG NÀY
+                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
+                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
+                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
 
-                select.value = value;
-                select.dispatchEvent(new Event('change', { bubbles: true }));
-            }
+                // 2. Cho các script khác trên trang dùng
+                window.diadiem = diadiem;
+                window.dangLuu = false;
 
-            async function xacNhanVaLuuTiep() {
-                const input = document.getElementById('txtChonThanhToan');
-                const kieuThanhToan = input && input.value.trim() !== '' ? 'ck' : 'tm';
+                // 3. Cập nhật lên giao diện bán hàng
+                const manvInput = document.getElementById("manv");
+                const tennvInput = document.getElementById("tennv");
+                if (manvInput) {
+                    manvInput.value = nhanvien.manv;
+                    manvInput.readOnly = true;
+                }
+                if (tennvInput) {
+                    tennvInput.value = nhanvien.tennv;
+                    tennvInput.readOnly = true;
+                }
 
-                ganHinhThucThanhToan(kieuThanhToan);
-                dongPopupChonThanhToan(false);
+                // 4. Cập nhật quyền giao diện nếu có hàm này
+                if (typeof window.capNhatQuyenGiaoDien === "function") {
+                    window.capNhatQuyenGiaoDien();
+                }
 
-                dangLuuSauKhiChonThanhToan = true;
-
+                // 5. Import và khởi tạo logic chính của trang (giống code cũ)
                 try {
-
-                    const hinhThuc = (document.getElementById('hinhthuctt')?.value || '').toLowerCase();
-
-                    // ===============================
-                    // TIỀN MẶT
-                    // ===============================
-                    if (hinhThuc === 'tm') {
-
-                        if (typeof window.__luuHoaDonQuaAPI_Goc !== 'function') {
-                            throw new Error('Không tìm thấy hàm luuHoaDonQuaAPI');
-                        }
-
-                        await window.__luuHoaDonQuaAPI_Goc.apply(window, argsLuuTam);
+                    const module = await import("./scripts/main.js");
+                    if (typeof module.khoiTaoUngDung === "function") {
+                        module.khoiTaoUngDung();
                     }
-
-                    // ===============================
-                    // CHUYỂN KHOẢN
-                    // ===============================
-                    else if (hinhThuc === 'ck') {
-
-                        if (typeof window.luuHoaDonCaHaiBan !== 'function') {
-                            throw new Error('Không tìm thấy hàm luuHoaDonCaHaiBan để gửi hóa đơn Viettel');
-                        }
-
-                        await window.luuHoaDonCaHaiBan.apply(window, argsLuuTam);
-                    }
-
-                    else {
-                        throw new Error('Hình thức thanh toán không hợp lệ');
-                    }
-
-                } catch (err) {
-
-                    console.error('Lỗi khi lưu hóa đơn:', err);
-                    alert('Lưu hóa đơn thất bại: ' + err.message);
-
-                    throw err;
-
-                } finally {
-
-                    dangLuuSauKhiChonThanhToan = false;
-                    argsLuuTam = [];
+                } catch (e) {
+                    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
                 }
+
+                // 6. Chọn tab & checkbox mặc định giống code cũ
+                if (typeof window.switchTab === "function") {
+                    window.switchTab("thongtin");
+                }
+                const size45 = document.getElementById("size45");
+                if (size45) size45.checked = true;
+
+                const qlNhom = document.getElementById("quanlysizetheonhom");
+                if (qlNhom) qlNhom.checked = true;
+
+                // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
+                const appContainer = document.getElementById("app-container");
+                if (appContainer) appContainer.style.display = "";
+
+                const loginContainer = document.getElementById("login-container");
+                if (loginContainer) loginContainer.style.display = "none";
             }
-
-            function khoiTaoPopupThanhToan() {
-                const popup = document.getElementById('popupChonThanhToan');
-                const input = document.getElementById('txtChonThanhToan');
-                if (!popup || !input) return;
-
-                input.addEventListener('keydown', async (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        await xacNhanVaLuuTiep();
-                        return;
-                    }
-
-                    if (e.key === 'Escape') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        dongPopupChonThanhToan(true);
-                    }
-                });
-
-                popup.addEventListener('click', (e) => {
-                    if (e.target === popup) {
-                        dongPopupChonThanhToan(true);
-                    }
-                });
-            }
-
-            function patchHamLuu() {
-                if (daPatchHamLuu) return true;
-                if (typeof window.luuHoaDonQuaAPI !== 'function') return false;
-
-                window.__luuHoaDonQuaAPI_Goc = window.luuHoaDonQuaAPI;
-
-                window.luuHoaDonQuaAPI = async function (...args) {
-                    if (dangLuuSauKhiChonThanhToan) {
-                        return await window.__luuHoaDonQuaAPI_Goc.apply(this, args);
-                    }
-
-                    if (!laHoaDonMoi()) {
-                        return await window.__luuHoaDonQuaAPI_Goc.apply(this, args);
-                    }
-
-                    moPopupChonThanhToan(args);
-                    return false;
-                };
-
-                window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
-                daPatchHamLuu = true;
-                console.log('Đã gắn popup chọn hình thức thanh toán trước khi lưu.');
-                return true;
-            }
-
-            document.addEventListener('DOMContentLoaded', () => {
-                khoiTaoPopupThanhToan();
-
-                const timer = setInterval(() => {
-                    if (patchHamLuu()) {
-                        clearInterval(timer);
-                    }
-                }, 300);
-
-                setTimeout(() => clearInterval(timer), 15000);
-            });
-        })();
+        });
     </script>
 
     <!-- Overlay loading khi backup -->
@@ -1257,37 +1031,23 @@
             await dangXuatApp();
         };
 
-        async function dangXuatApp() {
-            // Copy logic đăng xuất cũ của anh
-            if (window.supabase && window.supabase.auth) {
-                await window.supabase.auth.signOut();
-                localStorage.clear();
-                sessionStorage.clear();
-                localStorage.removeItem("quyen_sua_hoadon");
+        document.getElementById('btn-logout').onclick = async function () {
+            const overlay = document.getElementById('backup-overlay');
+            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
+
+            if (muonBackup) {
+                overlay.style.display = "block";
+                try {
+                    await backupAllTablesToZip();
+                } catch (err) {
+                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+                } finally {
+                    overlay.style.display = "none";
+                }
             }
-            document.getElementById('login-manv').value = "";
-            document.getElementById('login-password-nv').value = "";
-            document.getElementById('login-error').textContent = "";
-            document.getElementById('login-container').style.display = '';
-            document.getElementById('app-container').style.display = 'none';
 
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            if (tbody) tbody.innerHTML = '';
-            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
-
-            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
-            idsToClear.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-
-            localStorage.removeItem('draft_hoadon');
-            sessionStorage.removeItem('draft_hoadon');
-
-            document.getElementById('login-manv').focus();
-            location.reload(); // ✅ reset sạch main.js, không bị init chồng
-        }
-
+            await window.dangXuatApp();
+        };
     </script>
 
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
@@ -1329,10 +1089,10 @@
             dispatchTarget.dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
+        // document.getElementById('btn-luu')?.addEventListener('click', () => {
+        //  const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+        //  dispatchTarget.dispatchEvent(ev);
+        // });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1413,6 +1173,111 @@
             this.innerText = "💾 Lưu";
         };
     </script>  -->
+
+    <script>
+        // Sau khi DOMContentLoaded hoặc ở script type="module" 
+        document.getElementById('btn-luu').onclick = async function () {
+            if (window.dangLuu) return;
+            window.dangLuu = true;
+            this.disabled = true;
+            this.innerText = "Đang lưu...";
+
+            try {
+                await window.luuHoaDonCaHaiBan?.();
+            } catch (e) {
+                alert("Lỗi lưu hóa đơn: " + e.message);
+            }
+
+            window.dangLuu = false;
+            this.disabled = false;
+            this.innerText = "💾 Lưu";
+        };
+    </script>
+
+    <script>
+        // ===== Điều khiển riêng cho Hình thức thanh toán: tm / tmt / ck =====
+        document.addEventListener('DOMContentLoaded', () => {
+            const hinhThucTT = document.getElementById('hinhthuctt');
+            const btnLuu = document.getElementById('btn-luu');
+
+            if (!hinhThucTT) return;
+
+            // Mặc định khi tải trang: Tiền mặt
+            hinhThucTT.value = 'tm';
+
+            function thongBaoNhanh(msg) {
+                // Ưu tiên dùng toast nếu trang có sẵn
+                if (typeof window.showToast === 'function') {
+                    window.showToast(msg);
+                } else {
+                    console.log(msg);
+                }
+            }
+
+            function toggleTienMatMode() {
+                // Chỉ toggle giữa tm <-> tmt
+                if (hinhThucTT.value === 'tmt') {
+                    hinhThucTT.value = 'tm';
+                    thongBaoNhanh('Đã chuyển về Tiền mặt');
+                } else {
+                    hinhThucTT.value = 'tmt';
+                    thongBaoNhanh('Đã chuyển sang Tiền mặtt');
+                }
+            }
+
+            async function luuTheoHinhThucThanhToan() {
+                if (window.dangLuu) return;
+
+                const isTienMatT = hinhThucTT.value === 'tmt';
+
+                if (isTienMatT) {
+                    // Tiền mặtt => chạy đúng kiểu của nút Lưu hiện tại
+                    if (!btnLuu) return;
+                    btnLuu.click();
+                    return;
+                }
+
+                // Các trường hợp còn lại => chạy F2 cũ
+                try {
+                    if (typeof window.LUU_HOADON_F2 === 'function') {
+                        await window.LUU_HOADON_F2();
+                    } else if (typeof window.luuHoaDonQuaAPI === 'function') {
+                        await window.luuHoaDonQuaAPI();
+                    } else {
+                        alert('Không tìm thấy hàm lưu F2 hiện tại.');
+                    }
+                } catch (e) {
+                    alert('Lỗi lưu hóa đơn: ' + (e?.message || e));
+                }
+            }
+
+            // Cho phép chỗ khác gọi nếu cần
+            window.toggleTienMatMode = toggleTienMatMode;
+            window.luuTheoHinhThucThanhToan = luuTheoHinhThucThanhToan;
+
+            // Phím F10: đổi Tiền mặt <-> Tiền mặtt
+            document.addEventListener('keydown', async (e) => {
+                const tag = (document.activeElement?.tagName || '').toUpperCase();
+                const id = document.activeElement?.id || '';
+
+                // F10 luôn cho phép đổi chế độ
+                if (e.key === 'F10') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleTienMatMode();
+                    return;
+                }
+
+                // F2: chỉ xử lý tại đây
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await luuTheoHinhThucThanhToan();
+                    return;
+                }
+            }, true);
+        });
+    </script>
 
     <script>
         //Điều khiển việc tô màu ô số hóa đơn và ô Trạng thái theo giá trị tiền trong ô tổng phải trả
@@ -1913,6 +1778,8 @@
     <script type="module" src="scripts/scanner.js"></script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
+
+    <script src="scripts/stockQuickSimilar.js"></script>
 
 </body>
 
