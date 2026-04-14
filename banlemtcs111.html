@@ -1223,6 +1223,61 @@
         });
     </script>
 
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs111
+        window.xacNhanSuaHoaDon1 = async function () {
+            const popup = document.getElementById("popupXacThucSua");
+            const closePopup = () => {
+                if (popup) popup.style.display = "none";
+            };
+
+            try {
+                const { data: { user } } = await window.supabase.auth.getUser();
+                if (!user) {
+                    alert("❌ Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được phiên đăng nhập.");
+                closePopup();
+                return;
+            }
+
+            try {
+                const { data: isAdmin, error } = await window.supabase.rpc("is_admin");
+                if (error || isAdmin !== true) {
+                    alert("❌ Bạn không có quyền sửa hóa đơn.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được quyền sửa hóa đơn.");
+                closePopup();
+                return;
+            }
+
+            // Đánh dấu trạng thái EDIT cho LUỒNG MỚI
+            window.dangSuaHoaDon = true;
+            window.choPhepSua = true;
+            window.HD_CTX = {
+                ...(window.HD_CTX || {}),
+                mode: "EDIT",
+                fromConfirm: true,
+                edit_at: new Date().toISOString()
+            };
+
+            closePopup();
+
+            console.log("🛠️ BANLE111 OVERRIDE: đang gọi LUỒNG SỬA MỚI");
+
+            // Gọi THẲNG service entry mới của trang test
+            await saveBanLe111("EDIT-CONFIRM");
+        };
+    </script>
+
 
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
