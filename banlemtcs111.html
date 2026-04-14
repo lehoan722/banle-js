@@ -1094,8 +1094,11 @@
         const dispatchTarget = document.body || document.documentElement;
 
         document.getElementById('sua')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
+            if (typeof window.moPopupXacThucSua === 'function') {
+                window.moPopupXacThucSua();
+            } else {
+                alert("❌ Chưa nạp được popup sửa mới.");
+            }
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
         // document.getElementById('btn-luu')?.addEventListener('click', () => {
@@ -1247,7 +1250,7 @@
             this.innerText = "💾 Lưu";
         };
     </script>
-    
+
 
     <script>
         //Điều khiển việc tô màu ô số hóa đơn và ô Trạng thái theo giá trị tiền trong ô tổng phải trả
