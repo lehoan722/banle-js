@@ -3,11 +3,16 @@ import { getBangKetQua } from '../hoadon.js';
 export async function buildContext() {
   const bangKetQua = getBangKetQua();
 
-  const sohd = document.getElementById("sohd")?.value?.trim();
+  const sohdEl = document.getElementById("sohd");
+  const sohd = sohdEl?.value?.trim();
   const ngay = document.getElementById("ngay")?.value;
   const diadiem = document.getElementById("diadiem")?.value;
   const state = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
   const hinhthuctt = document.getElementById("hinhthuctt")?.value || "";
+
+  const isSpecialByTMT = hinhthuctt === "tmt";
+  const isSpecialByMod3 = sohdEl?.getAttribute("data-mod3") === "yes";
+  const save2Ban = isSpecialByTMT || isSpecialByMod3;
 
   return {
     bangKetQua,
@@ -16,13 +21,16 @@ export async function buildContext() {
     diadiem,
     hinhthuctt,
 
-    isEdit: state === "sua" || state === "xem",
+    isEdit: state === "sua" || window.HD_CTX?.mode === "EDIT" || window.choPhepSua === true,
     isView: state === "xem",
     isNew: state === "moi",
 
     isCCN: checkIsCCN(),
     isNhap: checkIsNhap(),
-    save2Ban: hinhthuctt === "tmt"
+
+    isSpecialByTMT,
+    isSpecialByMod3,
+    save2Ban
   };
 }
 
