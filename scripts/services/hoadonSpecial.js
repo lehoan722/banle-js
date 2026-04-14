@@ -38,6 +38,106 @@ function getIntValue(id) {
   ) || 0;
 }
 
+function ensureSpecialSaveConfirmDialog() {
+  if (document.getElementById("special-save-confirm")) return;
+
+  const style = document.createElement("style");
+  style.id = "special-save-confirm-style";
+  style.textContent = `
+    .ssc-mask{
+      position:fixed; inset:0; background:rgba(0,0,0,.35);
+      z-index:99998;
+    }
+    .ssc-box{
+      position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:480px; max-width:92vw;
+      background:#fff; border-radius:18px;
+      box-shadow:0 14px 40px rgba(0,0,0,.2);
+      z-index:99999; font-family:Arial,sans-serif;
+      overflow:hidden;
+    }
+    .ssc-head{
+      padding:18px 20px 8px;
+      font-size:16px; font-weight:700; color:#222;
+    }
+    .ssc-body{
+      padding:0 20px 16px;
+      font-size:14px; line-height:1.55; color:#333;
+      white-space:pre-line;
+    }
+    .ssc-actions{
+      display:flex; justify-content:flex-end; gap:12px;
+      padding:0 20px 20px;
+    }
+    .ssc-btn{
+      min-width:76px; height:42px; border:none; border-radius:999px;
+      font-size:15px; font-weight:700; cursor:pointer;
+    }
+    .ssc-btn.ok{
+      background:#2e7d32; color:#fff;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.65);
+    }
+    .ssc-btn.cancel{
+      background:#b9ef9f; color:#234d20;
+    }
+  `;
+  document.head.appendChild(style);
+
+  const wrap = document.createElement("div");
+  wrap.id = "special-save-confirm";
+  wrap.style.display = "none";
+  wrap.innerHTML = `
+    <div class="ssc-mask"></div>
+    <div class="ssc-box" role="dialog" aria-modal="true">
+      <div class="ssc-head">banle-js.vercel.app cho biết</div>
+      <div class="ssc-body" id="ssc-message"></div>
+      <div class="ssc-actions">
+        <button class="ssc-btn ok" id="ssc-ok">OK</button>
+        <button class="ssc-btn cancel" id="ssc-cancel">Hủy</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+}
+
+function askConfirmSpecialSave() {
+  ensureSpecialSaveConfirmDialog();
+
+  const wrap = document.getElementById("special-save-confirm");
+  const msg = document.getElementById("ssc-message");
+  const okBtn = document.getElementById("ssc-ok");
+  const cancelBtn = document.getElementById("ssc-cancel");
+  const mask = wrap.querySelector(".ssc-mask");
+
+  msg.textContent =
+    "Bạn có chắc chắn muốn lưu hóa đơn này ?\nNhấn OK để lưu, Hủy để quay về giao diện hóa đơn.";
+
+  wrap.style.display = "block";
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      mask.removeEventListener("click", onCancel);
+      wrap.style.display = "none";
+    };
+
+    const onOk = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+    mask.addEventListener("click", onCancel);
+  });
+}
+
 function validateBeforeSave2Ban() {
   capNhatThongTinTong(getBangKetQua());
 
@@ -233,6 +333,14 @@ export async function saveHoaDonSpecial(ctx) {
   if (existedAny) {
     alert("❌ Số hóa đơn này đã tồn tại ở bảng chính hoặc bảng T. Không thể lưu 2 bản.");
     return;
+  }
+
+  const okConfirm = await askConfirmSpecialSave();
+  if (!okConfirm) {
+    return {
+      ok: false,
+      reason: "USER_CANCEL_SPECIAL_SAVE"
+    };
   }
 
   let loai = getLoaiFromSoHDInput();
