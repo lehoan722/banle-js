@@ -4,7 +4,7 @@ export async function saveBanLe111(source = "unknown") {
   console.log(`🚀 BANLE111 SAVE ENTRY: ${source}`);
 
   const hdState = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
-  const isEdit = hdState === "sua" || hdState === "xem";
+  const isEdit = hdState === "xem" || hdState === "moi";
   const hinhthuctt = document.getElementById("hinhthuctt")?.value || "";
 
   if (hinhthuctt === "tmt") {
