@@ -13,8 +13,11 @@ export async function saveBanLe111(source = "unknown") {
   const isSpecialByMod3 = sohdEl?.getAttribute("data-mod3") === "yes";
   const isSpecialInvoice = isSpecialByTMT || isSpecialByMod3;
 
-  if (isSpecialInvoice) {
-    console.log("📄 ĐANG VÀO LUỒNG LƯU 2 BẢN MỚI", {
+  // ✅ Ưu tiên luồng sửa trước
+  // Nếu đang sửa hóa đơn thì dù là TMT hay data-mod3=yes
+  // cũng chỉ lưu sửa như thông thường, không lưu 2 bản nữa
+  if (isEdit) {
+    console.log("🛠️ ĐANG VÀO LUỒNG SỬA THƯỜNG - BỎ QUA LƯU 2 BẢN", {
       isSpecialByTMT,
       isSpecialByMod3,
       sohd: sohdEl?.value || ""
@@ -22,8 +25,13 @@ export async function saveBanLe111(source = "unknown") {
     return await saveHoaDonService();
   }
 
-  if (isEdit) {
-    console.log("🛠️ ĐANG VÀO LUỒNG SỬA MỚI");
+  // ✅ Chỉ hóa đơn MỚI đặc biệt mới vào luồng lưu 2 bản
+  if (isSpecialInvoice) {
+    console.log("📄 ĐANG VÀO LUỒNG LƯU 2 BẢN MỚI", {
+      isSpecialByTMT,
+      isSpecialByMod3,
+      sohd: sohdEl?.value || ""
+    });
     return await saveHoaDonService();
   }
 
