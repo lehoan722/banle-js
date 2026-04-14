@@ -12,6 +12,7 @@ export async function buildContext() {
 
   const isEdit =
     state === "sua" ||
+    state === "xem" ||
     window.HD_CTX?.mode === "EDIT" ||
     window.choPhepSua === true;
 
