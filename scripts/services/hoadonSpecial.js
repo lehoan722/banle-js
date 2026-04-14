@@ -75,7 +75,7 @@ function validateBeforeSave2Ban() {
   return true;
 }
 
-function buildHeader(loai, diadiemTrang, bangKetQua, sohd) {
+function buildHeaderMain(loai, diadiemTrang, bangKetQua, sohd) {
   return {
     sohd,
     ngay: getText("ngay"),
@@ -93,6 +93,27 @@ function buildHeader(loai, diadiemTrang, bangKetQua, sohd) {
     dvt: "",
     loaihd: loai,
     loai: loai,
+    nhacc: ""
+  };
+}
+
+function buildHeaderT(loaiT, diadiemTrang, bangKetQua, sohdT) {
+  return {
+    sohd: sohdT,
+    ngay: getText("ngay"),
+    manv: getText("manv"),
+    tennv: getText("tennv"),
+    diadiem: diadiemTrang,
+    khachhang: getText("khachhang"),
+    tongsl: getIntValue("tongsl"),
+    tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
+    tongkm: getIntValue("tongkm"),
+    chietkhau: getIntValue("chietkhau"),
+    thanhtoan: getIntValue("phaithanhtoan"),
+    hinhthuctt: getInput("hinhthuctt")?.value || "",
+    ghichu: getText("ghichu"),
+    dvt: "",
+    loaihd: loaiT,
     nhacc: ""
   };
 }
@@ -279,11 +300,11 @@ export async function saveHoaDonSpecial(ctx) {
 
   if (getInput("sohd")) getInput("sohd").value = sohdChinh;
 
-  const hoadonChinh = buildHeader(loai, diadiemTrang, bangKetQua, sohdChinh);
+  const hoadonChinh = buildHeaderMain(loai, diadiemTrang, bangKetQua, sohdChinh);
   const chitietChinh = buildDetails(sohdChinh, diadiemTrang, bangKetQua);
 
   const loaiT = loai + "T";
-  const hoadonPhu = buildHeader(loaiT, diadiemTrang, bangKetQua, sohdT);
+  const hoadonPhu = buildHeaderT(loaiT, diadiemTrang, bangKetQua, sohdT);
   const chitietPhu = buildDetails(sohdT, diadiemTrang, bangKetQua);
 
   // 2) Lưu CHI TIẾT CHÍNH
@@ -299,6 +320,8 @@ export async function saveHoaDonSpecial(ctx) {
   }
 
   // 3) Lưu HEADER PHỤ (T)
+  console.log("📄 hoadonPhu trước khi insert:", hoadonPhu);
+  
   const { error: errHDT } = await supabase
     .from("hoadon_banleT")
     .insert([hoadonPhu]);
