@@ -110,7 +110,7 @@ function askConfirmSpecialSave() {
   const mask = wrap.querySelector(".ssc-mask");
 
   msg.textContent =
-    "Bạn có chắc chắn muốn lưu hóa đơn này ?\nNhấn OK để lưu, Hủy để quay về giao diện hóa đơn.";
+    "Bạn có chắc chắn muốn lưu hóa đơn nàyy ?\nNhấn OK để lưu, Hủy để quay về giao diện hóa đơn.";
 
   wrap.style.display = "block";
 
