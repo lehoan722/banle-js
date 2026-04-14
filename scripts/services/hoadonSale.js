@@ -102,6 +102,8 @@ function validateBeforeSave() {
 }
 
 function buildHeader(loai, diadiemTrang, bangKetQua) {
+  const nowIso = new Date().toISOString();
+
   return {
     ngay: getText("ngay"),
     manv: getText("manv"),
@@ -118,7 +120,8 @@ function buildHeader(loai, diadiemTrang, bangKetQua) {
     dvt: "",
     loaihd: loai,
     loai: loai,
-    nhacc: ""
+    nhacc: "",
+    updated_at: nowIso
   };
 }
 
