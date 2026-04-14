@@ -1,5 +1,3 @@
-// scripts/services/hoadonContext.js
-
 import { getBangKetQua } from '../hoadon.js';
 
 export async function buildContext() {
@@ -18,14 +16,12 @@ export async function buildContext() {
     diadiem,
     hinhthuctt,
 
-    isEdit: state === "sua" || window.HD_CTX?.mode === "EDIT" || window.choPhepSua === true,
+    isEdit: state === "sua" || state === "xem",
     isView: state === "xem",
     isNew: state === "moi",
 
     isCCN: checkIsCCN(),
     isNhap: checkIsNhap(),
-
-    // ✅ lấy trực tiếp từ UI, không phụ thuộc window.save2Ban nữa
     save2Ban: hinhthuctt === "tmt"
   };
 }
