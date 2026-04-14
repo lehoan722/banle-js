@@ -1117,50 +1117,165 @@
 
     </script>
 
-    <script>
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
         // Mở popup xác thực + focus ngay vào #xacmanv
-        function moPopupXacThucSua() {
-            const p = document.getElementById('popupXacThucSua');
-            p.style.display = 'block';
+        window.moPopupXacThucSua = function () {
+            const p = document.getElementById("popupXacThucSua");
+            if (!p) return;
+
+            p.style.display = "block";
+
             setTimeout(() => {
-                const manv = document.getElementById('xacmanv');
-                if (manv) { manv.focus(); manv.select(); }
+                const manv = document.getElementById("xacmanv");
+                if (manv) {
+                    manv.focus();
+                    manv.select?.();
+                }
             }, 0);
-        }
+        };
+
+        // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs111
+        window.xacNhanSuaHoaDon = async function () {
+            const popup = document.getElementById("popupXacThucSua");
+            const closePopup = () => {
+                if (popup) popup.style.display = "none";
+            };
+
+            try {
+                const { data: { user } } = await window.supabase.auth.getUser();
+                if (!user) {
+                    alert("❌ Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được phiên đăng nhập.");
+                closePopup();
+                return;
+            }
+
+            try {
+                const { data: isAdmin, error } = await window.supabase.rpc("is_admin");
+                if (error || isAdmin !== true) {
+                    alert("❌ Bạn không có quyền sửa hóa đơn.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được quyền sửa hóa đơn.");
+                closePopup();
+                return;
+            }
+
+            window.dangSuaHoaDon = true;
+            window.choPhepSua = true;
+            window.HD_CTX = {
+                ...(window.HD_CTX || {}),
+                mode: "EDIT",
+                fromConfirm: true,
+                edit_at: new Date().toISOString()
+            };
+
+            closePopup();
+
+            console.log("🛠️ BANLE111 OVERRIDE: đang gọi LUỒNG SỬA MỚI");
+
+            await saveBanLe111("EDIT-CONFIRM");
+        };
 
         // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
-        document.addEventListener('DOMContentLoaded', () => {
-            const manv = document.getElementById('xacmanv');
-            const mk = document.getElementById('xacmatkhau');
-            const btn = document.getElementById('btnXacNhanSua');
+        document.addEventListener("DOMContentLoaded", () => {
+            const manv = document.getElementById("xacmanv");
+            const mk = document.getElementById("xacmatkhau");
+            const btn = document.getElementById("btnXacNhanSua");
 
             if (manv) {
-                manv.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                manv.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
                         e.preventDefault();
-                        if (mk) { mk.focus(); mk.select(); }
+                        if (mk) {
+                            mk.focus();
+                            mk.select?.();
+                        }
                     }
                 });
             }
 
             if (mk) {
-                mk.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                mk.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
                         e.preventDefault();
-                        if (btn) { btn.focus(); }
+                        if (btn) btn.focus();
                     }
                 });
             }
 
             if (btn) {
-                btn.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                btn.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
                         e.preventDefault();
-                        btn.click(); // = gọi xacNhanSuaHoaDon() 
+                        btn.click();
                     }
                 });
             }
         });
+    </script>
+
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs111
+        window.xacNhanSuaHoaDon = async function () {
+            const popup = document.getElementById("popupXacThucSua");
+            const closePopup = () => {
+                if (popup) popup.style.display = "none";
+            };
+
+            try {
+                const { data: { user } } = await window.supabase.auth.getUser();
+                if (!user) {
+                    alert("❌ Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được phiên đăng nhập.");
+                closePopup();
+                return;
+            }
+
+            try {
+                const { data: isAdmin, error } = await window.supabase.rpc("is_admin");
+                if (error || isAdmin !== true) {
+                    alert("❌ Bạn không có quyền sửa hóa đơn.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được quyền sửa hóa đơn.");
+                closePopup();
+                return;
+            }
+
+            // Đánh dấu trạng thái EDIT cho LUỒNG MỚI
+            window.dangSuaHoaDon = true;
+            window.choPhepSua = true;
+            window.HD_CTX = {
+                ...(window.HD_CTX || {}),
+                mode: "EDIT",
+                fromConfirm: true,
+                edit_at: new Date().toISOString()
+            };
+
+            closePopup();
+
+            console.log("🛠️ BANLE111 OVERRIDE: đang gọi LUỒNG SỬA MỚI");
+
+            // Gọi THẲNG service entry mới của trang test
+            await saveBanLe111("EDIT-CONFIRM");
+        };
     </script>
 
 
