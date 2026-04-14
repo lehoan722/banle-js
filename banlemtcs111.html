@@ -1074,12 +1074,21 @@
         });
     </script>
 
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        setTimeout(function () {
+            window.LUU_HOADON_F2 = async () => {
+                return await saveBanLe111("F2");
+            };
+        }, 1000);
+    </script>
+
+
     <script>  //<!-- banlemobile -->
 
         // goi phím F2
-        setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
-        }, 1000);
+
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
@@ -1156,7 +1165,7 @@
 
 
     <script type="module">
-        import { saveHoaDonService } from "./scripts/services/hoadonService.js";
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
@@ -1166,15 +1175,11 @@
             this.innerText = "Đang lưu...";
 
             try {
-                console.log("🚀 ĐANG CHẠY SERVICE MỚI");
-
-                await saveHoaDonService();
-
-                alert("✅ Lưu thành công (service mới)");
-
+                await saveBanLe111("BTN-LUU");
+                alert("✅ Lưu thành công (banlemtcs111)");
             } catch (e) {
                 console.error(e);
-                alert("❌ Lỗi lưu: " + e.message);
+                alert("❌ Lỗi lưu: " + (e?.message || e));
             }
 
             window.dangLuu = false;
@@ -1182,7 +1187,7 @@
             this.innerText = "💾 Lưu";
         };
     </script>
-    
+
     <script>
         // ===== Điều khiển riêng cho Hình thức thanh toán: tm / tmt / ck =====
         document.addEventListener('DOMContentLoaded', () => {
