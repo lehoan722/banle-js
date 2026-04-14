@@ -22,40 +22,6 @@ import {
 
 import { guiHoaDonViettel } from '../viettelInvoice.js';
 
-async function getNextSohdT(loaiT) {
-  const loai = String(loaiT || "").trim();
-
-  if (!loai) {
-    throw new Error("❌ Thiếu loại chứng từ T.");
-  }
-
-  // Tạo dòng trong sochungtu nếu chưa có
-  const { error: insErr } = await supabase
-    .from("sochungtu")
-    .upsert([{ loai, so_hientai: 0 }], { onConflict: "loai" });
-
-  if (insErr) {
-    console.error("Lỗi tạo dòng sochungtu cho hóa đơn T:", insErr);
-    throw insErr;
-  }
-
-  // Tăng số hiện tại lên 1
-  const { data: row, error: updErr } = await supabase
-    .from("sochungtu")
-    .update({})
-    .eq("loai", loai)
-    .select("so_hientai")
-    .single();
-
-  if (updErr) {
-    console.error("Lỗi đọc sochungtu cho hóa đơn T:", updErr);
-    throw updErr;
-  }
-
-  // vì update({}) không tăng được số, ta phải dùng RPC SQL hoặc update thủ công 2 bước
-  // nên dùng RPC SQL đơn giản hơn:
-  throw new Error("USE_RPC_FOR_SOCHUNGTU_T");
-}
 
 function getInput(id) {
   return document.getElementById(id);
