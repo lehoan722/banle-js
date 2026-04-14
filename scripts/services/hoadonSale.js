@@ -82,6 +82,20 @@ function validateBeforeSave() {
     return false;
   }
 
+  const hdState = (getInput("hd_state")?.value || "moi").trim().toLowerCase();
+  const isEditReal =
+    window.HD_CTX?.mode === "EDIT" ||
+    window.choPhepSua === true;
+
+  if (hdState === "xem" && !isEditReal) {
+    if (typeof window.moPopupXacThucSua === "function") {
+      window.moPopupXacThucSua();
+    } else {
+      alert("❌ Bạn đang xem hóa đơn cũ. Vui lòng bấm SỬA để xác thực trước khi lưu.");
+    }
+    return false;
+  }
+
   const bangKetQua = getBangKetQua();
   if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
     alert("❌ Không có dữ liệu để lưu.");
