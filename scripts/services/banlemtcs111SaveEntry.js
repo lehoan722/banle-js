@@ -5,10 +5,20 @@ export async function saveBanLe111(source = "unknown") {
 
   const hdState = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
   const isEdit = hdState === "sua" || hdState === "xem";
-  const hinhthuctt = document.getElementById("hinhthuctt")?.value || "";
 
-  if (hinhthuctt === "tmt") {
-    console.log("📄 ĐANG VÀO LUỒNG LƯU 2 BẢN MỚI");
+  const hinhthuctt = document.getElementById("hinhthuctt")?.value || "";
+  const sohdEl = document.getElementById("sohd");
+
+  const isSpecialByTMT = hinhthuctt === "tmt";
+  const isSpecialByMod3 = sohdEl?.getAttribute("data-mod3") === "yes";
+  const isSpecialInvoice = isSpecialByTMT || isSpecialByMod3;
+
+  if (isSpecialInvoice) {
+    console.log("📄 ĐANG VÀO LUỒNG LƯU 2 BẢN MỚI", {
+      isSpecialByTMT,
+      isSpecialByMod3,
+      sohd: sohdEl?.value || ""
+    });
     return await saveHoaDonService();
   }
 
