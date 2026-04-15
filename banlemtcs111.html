@@ -1006,17 +1006,41 @@
     <script type="module">
         import { backupAllTablesToZip } from './scripts/backup.js';
 
+        // Gắn lại sự kiện cho nút THOAT PM
+        document.getElementById('btn-logout').onclick = async function () {
+            const overlay = document.getElementById('backup-overlay');
+
+            // Hỏi người dùng có muốn tạo file dự phòng không
+            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
+
+            if (muonBackup) {
+                // ✅ Trạng thái 1: CÓ backup → hiện overlay + chạy backup
+                overlay.style.display = "block";
+                try {
+                    await backupAllTablesToZip();
+                    // Có thể bật lại thông báo nếu muốn:
+                    // alert("Đã backup toàn bộ dữ liệu! Hãy lưu file ở nơi an toàn.");
+                } catch (err) {
+                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+                } finally {
+                    overlay.style.display = "none";
+                }
+            }
+            // ❌ Trạng thái 2: KHÔNG backup → không hiện overlay, chỉ đăng xuất
+
+            await dangXuatApp();
+        };
+
         async function dangXuatApp() {
+            // Copy logic đăng xuất cũ của anh
             if (window.supabase && window.supabase.auth) {
                 await window.supabase.auth.signOut();
                 localStorage.clear();
                 sessionStorage.clear();
                 localStorage.removeItem("quyen_sua_hoadon");
             }
-
             document.getElementById('login-manv').value = "";
             document.getElementById('login-password-nv').value = "";
-
             document.getElementById('login-error').textContent = "";
             document.getElementById('login-container').style.display = '';
             document.getElementById('app-container').style.display = 'none';
@@ -1035,29 +1059,11 @@
             sessionStorage.removeItem('draft_hoadon');
 
             document.getElementById('login-manv').focus();
+            location.reload(); // ✅ reset sạch main.js, không bị init chồng
         }
 
-        window.dangXuatApp = dangXuatApp;
-
-        document.getElementById('btn-logout').onclick = async function () {
-            const overlay = document.getElementById('backup-overlay');
-            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
-
-            if (muonBackup) {
-                overlay.style.display = "block";
-                try {
-                    await backupAllTablesToZip();
-                } catch (err) {
-                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
-                } finally {
-                    overlay.style.display = "none";
-                }
-            }
-
-            await dangXuatApp();
-        };
     </script>
-
+    
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
 
 
