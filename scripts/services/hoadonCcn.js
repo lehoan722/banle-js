@@ -973,15 +973,6 @@ async function saveEditCCNByModern(ctx, prep) {
   await resetAfterSave();
 }
 
-async function saveEditCCNByLegacy(ctx, prep) {
-  console.log("🛠️ saveEditCCNByLegacy", {
-    sohd: prep.meta.sohd,
-    sohdDoiUng: prep.meta.sohdDoiUng,
-    rowCount: prep.rows.length
-  });
-
-  return await luuHoaDonccn1v2();
-}
 
 export async function saveHoaDonCCN(ctx = {}) {
   const prep = await preflightCCN(ctx);
