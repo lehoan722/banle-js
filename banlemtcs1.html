@@ -1040,42 +1040,13 @@
                 try {
                     await backupAllTablesToZip();
                 } catch (err) {
-                    alert("Lỗi backup: " + err.message);
+                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
                 } finally {
                     overlay.style.display = "none";
                 }
-
-                // 👉 OK = logout bình thường
-                await window.supabase.auth.signOut();
-
-                localStorage.clear();
-                sessionStorage.clear();
-
-                location.reload();
-                return;
             }
 
-            // ❗ HỦY = THOÁT HẲN (QUAN TRỌNG NHẤT)
-
-            try {
-                await window.supabase.auth.signOut();
-            } catch (e) { }
-
-            // 🔥 XÓA TOÀN BỘ TOKEN (CHÌA KHÓA FIX LỖI)
-            localStorage.clear();
-            sessionStorage.clear();
-
-            // 🔥 XÓA cả token kiểu sb-xxx của Supabase
-            Object.keys(localStorage).forEach(k => {
-                if (k.startsWith("sb-")) localStorage.removeItem(k);
-            });
-
-            Object.keys(sessionStorage).forEach(k => {
-                if (k.startsWith("sb-")) sessionStorage.removeItem(k);
-            });
-
-            // 👉 chuyển sang trắng (không quay lại app nữa)
-            window.location.href = "about:blank";
+            await window.dangXuatApp();
         };
     </script>
 
