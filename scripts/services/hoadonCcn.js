@@ -92,6 +92,21 @@ function validateBeforeSaveCCN(ctx, ccnCtx) {
     return false;
   }
 
+  // ✅ CHẶN LƯU KHI ĐANG Ở TRẠNG THÁI XEM (GIỐNG BÁN LẺ)
+  const hdState = (getInput("hd_state")?.value || "moi").trim().toLowerCase();
+  const isEditReal =
+    window.HD_CTX?.mode === "EDIT" ||
+    window.choPhepSua === true;
+
+  if (hdState === "xem" && !isEditReal) {
+    if (typeof window.moPopupXacThucSua === "function") {
+      window.moPopupXacThucSua();
+    } else {
+      alert("❌ Bạn đang xem hóa đơn cũ. Vui lòng bấm SỬA để xác thực trước khi lưu.");
+    }
+    return false;
+  }
+
   const prefix = sohd.split("_")[0] || "";
   if (prefix !== ccnCtx.loaihdGoc) {
     alert(`🚫 Số chứng từ không khớp trang. Trang này yêu cầu prefix "${ccnCtx.loaihdGoc}_*".`);
@@ -106,20 +121,6 @@ function validateBeforeSaveCCN(ctx, ccnCtx) {
 
   return true;
 }
-
-  const hdState = (getInput("hd_state")?.value || "moi").trim().toLowerCase();
-  const isEditReal =
-    window.HD_CTX?.mode === "EDIT" ||
-    window.choPhepSua === true;
-
-  if (hdState === "xem" && !isEditReal) {
-    if (typeof window.moPopupXacThucSua === "function") {
-      window.moPopupXacThucSua();
-    } else {
-      alert("❌ Bạn đang xem hóa đơn cũ. Vui lòng bấm SỬA để xác thực trước khi lưu.");
-    }
-    return false;
-  }
 
 function buildCCNMeta(ctx, ccnCtx, bangKetQua) {
   const sohd = getText("sohd");
@@ -873,7 +874,7 @@ async function saveEditCCNByModern(ctx, prep) {
     rowCount: prep.rows.length
   });
 
-   // 1) Kiểm tra cặp phiếu cũ phải tồn tại
+  // 1) Kiểm tra cặp phiếu cũ phải tồn tại
   await ensureOldCcnPairExists(meta);
 
   // 1.1) Lấy snapshot cũ để giữ created_at
@@ -911,7 +912,7 @@ async function saveEditCCNByModern(ctx, prep) {
 
   chitietGoc.forEach(r => { r.updated_at = updatedAt; });
   chitietDoiUng.forEach(r => { r.updated_at = updatedAt; });
-   // Giữ nguyên created_at cũ khi sửa
+  // Giữ nguyên created_at cũ khi sửa
   applyOldCreatedAtForEdit(
     meta,
     oldSnap,
