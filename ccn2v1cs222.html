@@ -653,7 +653,7 @@
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
             <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button onclick="xacNhanSuaHoaDonCCN()">Xác nhận</button>
+            <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
             <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
         </div>
 
@@ -1002,7 +1002,7 @@
     <script>
         // goi phím F2
         setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonCCN;
+            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
         }, 1000);
 
 
@@ -1161,7 +1161,6 @@
         }
     </script>
 
-
     <script>
         /** Nạp dữ liệu chuyển CN từ localStorage vào bảng kết quả (chỉ cho 2v1) */
         function tryPrefillFromStorage(waitForRenderer = true, tries = 0) {
@@ -1177,6 +1176,7 @@
                     console.error('[CCN 2v1] Lỗi parse payload:', parseErr);
                     return;
                 }
+
                 if (!pf || pf.dir !== '2v1') {
                     console.log('[CCN 2v1] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
                     return;
@@ -1200,9 +1200,8 @@
                     }
                 }
 
-                console.log('[CCN] Payload OK, rows:', rows.length);
+                console.log('[CCN 2v1] Payload OK, rows:', rows.length);
 
-                // Ưu tiên dùng hàm render “chính chủ” nếu có public trên window
                 const renderFn = window.capNhatBangHTML || window.renderBangKetQua || null;
 
                 if (renderFn) {
@@ -1212,21 +1211,27 @@
 
                     localStorage.removeItem('ccn_prefill_payload');
                     console.log('[CCN 2v1] Đã render qua hàm chính & xóa payload.');
+
+                    setTimeout(() => {
+                        tryAutoSaveFromNhapTamCCN('2v1');
+                    }, 800);
                     return;
                 }
 
-                // Nếu chưa có renderFn: 1) nếu cho phép đợi & còn lượt thử -> retry
                 if (waitForRenderer && tries < 20) {
                     console.log('[CCN 2v1] Chưa có hàm render, thử lại...', tries + 1);
                     setTimeout(() => tryPrefillFromStorage(true, tries + 1), 300);
                     return;
                 }
 
-                // 2) HẾT LƯỢT HOẶC KHÔNG MUỐN ĐỢI: dùng fallback render trực tiếp vào bảng
                 const ok = renderRowsDirectIntoTable(rows);
                 if (ok) {
                     localStorage.removeItem('ccn_prefill_payload');
                     console.log('[CCN 2v1] Render Fallback ok & đã xoá payload.');
+
+                    setTimeout(() => {
+                        tryAutoSaveFromNhapTamCCN('2v1');
+                    }, 800);
                 } else {
                     console.warn('[CCN 2v1] Fallback render không thành công.');
                 }
@@ -1235,7 +1240,76 @@
             }
         }
 
-        // Gọi khi DOM sẵn sàng + sau load (bạn đã có sẵn 2 chỗ gọi này, cứ giữ nguyên)
+        function isNhapTamNote(text) {
+            const s = String(text || '').toLowerCase();
+            return s.includes('nhaptamcs1_') || s.includes('nhaptamcs2_');
+        }
+
+        function countBangKetQuaRows() {
+            const tbody = document.querySelector('#bangketqua tbody');
+            if (!tbody) return 0;
+            return tbody.querySelectorAll('tr').length;
+        }
+
+        function hasRequiredInfoForAutoSave() {
+            const ghichu = String(document.getElementById('ghichu')?.value || '').trim();
+            const sohd = String(document.getElementById('sohd')?.value || '').trim();
+            const manv = String(document.getElementById('manv')?.value || '').trim();
+            const tennv = String(document.getElementById('tennv')?.value || '').trim();
+            const hdState = String(document.getElementById('hd_state')?.value || 'moi').trim().toLowerCase();
+            const rowCount = countBangKetQuaRows();
+
+            return {
+                ok:
+                    isNhapTamNote(ghichu) &&
+                    hdState === 'moi' &&
+                    !!sohd &&
+                    !!manv &&
+                    !!tennv &&
+                    rowCount > 0,
+                ghichu,
+                sohd,
+                manv,
+                tennv,
+                hdState,
+                rowCount
+            };
+        }
+
+        function tryAutoSaveFromNhapTamCCN(dirExpected) {
+            if (window.__AUTO_SAVE_CCN_DONE__) {
+                console.log('[CCN 2v1] Auto-save đã chạy trước đó, bỏ qua.');
+                return;
+            }
+
+            const info = hasRequiredInfoForAutoSave();
+
+            console.log('[CCN 2v1] Kiểm tra điều kiện auto-save:', {
+                dirExpected,
+                ...info
+            });
+
+            if (!info.ok) return;
+
+            if (typeof window.luuHoaDonccn1v2 !== 'function') {
+                console.warn('[CCN 2v1] Chưa có hàm window.luuHoaDonccn1v2, bỏ qua auto-save.');
+                return;
+            }
+
+            window.__AUTO_SAVE_CCN_DONE__ = true;
+
+            console.log('[CCN 2v1] Đủ điều kiện, bắt đầu tự động lưu hóa đơn từ nhập tạm.');
+
+            setTimeout(async () => {
+                try {
+                    await window.luuHoaDonccn1v2();
+                } catch (err) {
+                    console.error('[CCN 2v1] Lỗi auto-save:', err);
+                    window.__AUTO_SAVE_CCN_DONE__ = false;
+                }
+            }, 300);
+        }
+
         document.addEventListener('DOMContentLoaded', () => tryPrefillFromStorage(true));
         window.addEventListener('load', () => setTimeout(() => tryPrefillFromStorage(true), 600));
     </script>
@@ -1342,6 +1416,19 @@
             };
 
         })();
+    </script>
+
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/banlemtcs111SaveEntry.js";
+
+        document.getElementById("btn-luu").addEventListener("click", async () => {
+            try {
+                await saveBanLe111("ccn");
+            } catch (e) {
+                console.error("Lỗi save:", e);
+                alert("❌ Lỗi khi lưu hóa đơn");
+            }
+        });
     </script>
 
 </body>
