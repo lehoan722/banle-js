@@ -787,6 +787,69 @@ async function ensureOldCcnPairExists(meta) {
   return results;
 }
 
+async function fetchOldCcnPairSnapshot(meta) {
+  const dsSoHd = [meta.sohd, meta.sohdDoiUng].filter(Boolean);
+
+  const { data: oldHeaders, error: errHd } = await supabase
+    .from("hoadon_banle")
+    .select("*")
+    .in("sohd", dsSoHd);
+
+  if (errHd) throw errHd;
+
+  const { data: oldDetails, error: errCt } = await supabase
+    .from("ct_hoadon_banle")
+    .select("*")
+    .in("sohd", dsSoHd);
+
+  if (errCt) throw errCt;
+
+  const headerMap = new Map();
+  (oldHeaders || []).forEach(h => {
+    headerMap.set(String(h.sohd || "").trim(), h);
+  });
+
+  const detailMap = new Map();
+  (oldDetails || []).forEach(r => {
+    const sohd = String(r.sohd || "").trim();
+    const masp = String(r.masp || "").trim().toUpperCase();
+    const size = String(r.size || "").trim();
+    const key = `${sohd}__${masp}__${size}`;
+    detailMap.set(key, r);
+  });
+
+  return { headerMap, detailMap };
+}
+
+function applyOldCreatedAtForEdit(meta, oldSnap, hoadonGoc, hoadonDoiUng, chitietGoc, chitietDoiUng) {
+  const oldHeaderGoc = oldSnap.headerMap.get(meta.sohd);
+  const oldHeaderDoiUng = oldSnap.headerMap.get(meta.sohdDoiUng);
+
+  if (oldHeaderGoc?.created_at) {
+    hoadonGoc.created_at = oldHeaderGoc.created_at;
+  }
+
+  if (oldHeaderDoiUng?.created_at) {
+    hoadonDoiUng.created_at = oldHeaderDoiUng.created_at;
+  }
+
+  chitietGoc.forEach(r => {
+    const key = `${r.sohd}__${String(r.masp || "").trim().toUpperCase()}__${String(r.size || "").trim()}`;
+    const oldRow = oldSnap.detailMap.get(key);
+    if (oldRow?.created_at) {
+      r.created_at = oldRow.created_at;
+    }
+  });
+
+  chitietDoiUng.forEach(r => {
+    const key = `${r.sohd}__${String(r.masp || "").trim().toUpperCase()}__${String(r.size || "").trim()}`;
+    const oldRow = oldSnap.detailMap.get(key);
+    if (oldRow?.created_at) {
+      r.created_at = oldRow.created_at;
+    }
+  });
+}
+
 async function saveEditCCNByModern(ctx, prep) {
   const { meta, bangKetQua } = prep;
 
@@ -796,8 +859,11 @@ async function saveEditCCNByModern(ctx, prep) {
     rowCount: prep.rows.length
   });
 
-  // 1) Kiểm tra cặp phiếu cũ phải tồn tại
+   // 1) Kiểm tra cặp phiếu cũ phải tồn tại
   await ensureOldCcnPairExists(meta);
+
+  // 1.1) Lấy snapshot cũ để giữ created_at
+  const oldSnap = await fetchOldCcnPairSnapshot(meta);
 
   // 2) Build lại dữ liệu mới
   const { chitietGoc, chitietDoiUng, createdAtGoc, createdAtDoiUng } =
@@ -831,6 +897,15 @@ async function saveEditCCNByModern(ctx, prep) {
 
   chitietGoc.forEach(r => { r.updated_at = updatedAt; });
   chitietDoiUng.forEach(r => { r.updated_at = updatedAt; });
+   // Giữ nguyên created_at cũ khi sửa
+  applyOldCreatedAtForEdit(
+    meta,
+    oldSnap,
+    hoadonGoc,
+    hoadonDoiUng,
+    chitietGoc,
+    chitietDoiUng
+  );
 
   // 3) Xóa cặp phiếu cũ
   await deleteOldCcnPair(meta);
