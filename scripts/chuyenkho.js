@@ -25,7 +25,7 @@ const PAGE_CFG = PATH.includes("chuyenkho2v1cs2")
     tuCoso: "cs1",
     denCoso: "cs2",
     dir: "1v2",
-    ccnTargetUrl: "https://banle-js.vercel.app/ccn1v2cs1.html",
+    ccnTargetUrl: "https://banle-js.vercel.app/ccn1v2cs111.html",
     macDinhDiaDiem: "cs1",
   };
 
