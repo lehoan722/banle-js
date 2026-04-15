@@ -710,7 +710,7 @@ async function saveNewCCNByModern(ctx, prep) {
     return;
   }
 
-    // 5) Cập nhật số chứng từ cho cả gốc + đối ứng
+  // 5) Cập nhật số chứng từ cho cả gốc + đối ứng
   await upsertSoChungTu(meta.loaihdGoc, soMoi);
   await upsertSoChungTu(meta.loaihdDoiUng, soMoi);
 
@@ -732,6 +732,172 @@ async function saveNewCCNByModern(ctx, prep) {
   await resetAfterSave();
 }
 
+async function deleteOldCcnPair(meta) {
+  // Xóa chi tiết trước, header sau
+  const dsSoHd = [meta.sohd, meta.sohdDoiUng].filter(Boolean);
+
+  for (const sohd of dsSoHd) {
+    const { error: errDelCt } = await supabase
+      .from("ct_hoadon_banle")
+      .delete()
+      .eq("sohd", sohd);
+
+    if (errDelCt) {
+      console.error("❌ Lỗi xóa chi tiết CCN cũ:", { sohd, errDelCt });
+      throw errDelCt;
+    }
+  }
+
+  for (const sohd of dsSoHd) {
+    const { error: errDelHd } = await supabase
+      .from("hoadon_banle")
+      .delete()
+      .eq("sohd", sohd);
+
+    if (errDelHd) {
+      console.error("❌ Lỗi xóa header CCN cũ:", { sohd, errDelHd });
+      throw errDelHd;
+    }
+  }
+}
+
+async function ensureOldCcnPairExists(meta) {
+  const dsSoHd = [meta.sohd, meta.sohdDoiUng].filter(Boolean);
+
+  const results = await Promise.all(
+    dsSoHd.map(async (sohd) => {
+      const { data, error } = await supabase
+        .from("hoadon_banle")
+        .select("sohd, created_at")
+        .eq("sohd", sohd)
+        .maybeSingle();
+
+      if (error) throw error;
+      return { sohd, exists: !!data, row: data || null };
+    })
+  );
+
+  const missing = results.filter(x => !x.exists);
+
+  if (missing.length) {
+    const dsThieu = missing.map(x => x.sohd).join(", ");
+    throw new Error(`❌ Không tìm thấy phiếu CCN cũ để sửa: ${dsThieu}`);
+  }
+
+  return results;
+}
+
+async function saveEditCCNByModern(ctx, prep) {
+  const { meta, bangKetQua } = prep;
+
+  console.log("🛠️ saveEditCCNByModern", {
+    sohd: meta.sohd,
+    sohdDoiUng: meta.sohdDoiUng,
+    rowCount: prep.rows.length
+  });
+
+  // 1) Kiểm tra cặp phiếu cũ phải tồn tại
+  await ensureOldCcnPairExists(meta);
+
+  // 2) Build lại dữ liệu mới
+  const { chitietGoc, chitietDoiUng, createdAtGoc, createdAtDoiUng } =
+    buildDetailRowsForSave(meta, bangKetQua);
+
+  if (!chitietGoc.length) {
+    alert("❌ Không có chi tiết hóa đơn để sửa.");
+    return;
+  }
+
+  const hoadonGoc = buildHeaderForSave(
+    meta,
+    meta.sohd,
+    meta.loaihdGoc,
+    meta.diadiemSrc,
+    createdAtGoc
+  );
+
+  const hoadonDoiUng = buildHeaderForSave(
+    meta,
+    meta.sohdDoiUng,
+    meta.loaihdDoiUng,
+    meta.diadiemDst,
+    createdAtDoiUng
+  );
+
+  // Đánh dấu updated_at cho nhánh EDIT
+  const updatedAt = new Date().toISOString();
+  hoadonGoc.updated_at = updatedAt;
+  hoadonDoiUng.updated_at = updatedAt;
+
+  chitietGoc.forEach(r => { r.updated_at = updatedAt; });
+  chitietDoiUng.forEach(r => { r.updated_at = updatedAt; });
+
+  // 3) Xóa cặp phiếu cũ
+  await deleteOldCcnPair(meta);
+
+  // 4) Insert lại phiếu gốc
+  const { error: errHD1 } = await supabase
+    .from("hoadon_banle")
+    .insert([hoadonGoc]);
+
+  if (errHD1) {
+    console.error("❌ Lỗi lưu lại header gốc khi sửa:", errHD1);
+    alert("❌ Không lưu lại được header phiếu gốc khi sửa.");
+    return;
+  }
+
+  const { error: errCT1 } = await supabase
+    .from("ct_hoadon_banle")
+    .insert(chitietGoc);
+
+  if (errCT1) {
+    console.error("❌ Lỗi lưu lại chi tiết gốc khi sửa:", errCT1);
+    await supabase.from("hoadon_banle").delete().eq("sohd", meta.sohd);
+    alert("❌ Không lưu lại được chi tiết phiếu gốc khi sửa.");
+    return;
+  }
+
+  // 5) Insert lại phiếu đối ứng
+  const { error: errHD2 } = await supabase
+    .from("hoadon_banle")
+    .insert([hoadonDoiUng]);
+
+  if (errHD2) {
+    console.error("❌ Lỗi lưu lại header đối ứng khi sửa:", errHD2);
+    await supabase.from("ct_hoadon_banle").delete().eq("sohd", meta.sohd);
+    await supabase.from("hoadon_banle").delete().eq("sohd", meta.sohd);
+    alert("❌ Không lưu lại được header phiếu đối ứng khi sửa.");
+    return;
+  }
+
+  const { error: errCT2 } = await supabase
+    .from("ct_hoadon_banle")
+    .insert(chitietDoiUng);
+
+  if (errCT2) {
+    console.error("❌ Lỗi lưu lại chi tiết đối ứng khi sửa:", errCT2);
+    await supabase.from("ct_hoadon_banle").delete().eq("sohd", meta.sohd);
+    await supabase.from("hoadon_banle").delete().eq("sohd", meta.sohd);
+    await supabase.from("hoadon_banle").delete().eq("sohd", meta.sohdDoiUng);
+    alert("❌ Không lưu lại được chi tiết phiếu đối ứng khi sửa.");
+    return;
+  }
+
+  // 6) Hook sau sửa
+  await capNhatYeuCauChuyenKhoCt(meta, bangKetQua);
+  await ghiTaoHdCcnChoKiemNhap(meta, bangKetQua);
+  await danhDauKiemNhapChoCaHaiPhieu(meta);
+
+  console.log("✅ EDIT CCN modern đã lưu xong:", {
+    sohd: meta.sohd,
+    sohdDoiUng: meta.sohdDoiUng
+  });
+
+  alert("✅ Đã sửa hóa đơn CCN (cả gốc và đối ứng)!");
+  printInvoice(hoadonGoc, chitietGoc);
+  await resetAfterSave();
+}
+
 async function saveEditCCNByLegacy(ctx, prep) {
   console.log("🛠️ saveEditCCNByLegacy", {
     sohd: prep.meta.sohd,
@@ -747,7 +913,7 @@ export async function saveHoaDonCCN(ctx = {}) {
   if (!prep) return;
 
   if (prep.meta.isEdit) {
-    return await saveEditCCNByLegacy(ctx, prep);
+    return await saveEditCCNByModern(ctx, prep);
   }
 
   return await saveNewCCNByModern(ctx, prep);
