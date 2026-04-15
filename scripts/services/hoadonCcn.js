@@ -5,6 +5,20 @@ import { getBangKetQua, resetBangKetQua } from '../hoadon.js';
 import { capNhatThongTinTong } from '../utils.js';
 import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
 
+import {
+  refreshSessionIfNeeded,
+  ensureCatalogsReady,
+  hoaDonDaTonTaiAny
+} from '../luuhoadon/api.js';
+
+import { buildCCNCtxFromPathname } from '../luuhoadon/builders.js';
+import {
+  normalizeBangKetQua,
+  calcTongThanhTienFromBangKetQua
+} from '../luuhoadon/pricing.js';
+
+import { requireManagedAtBranch } from '../luuhoadon/validators.js';
+import { luuHoaDonccn1v2 } from '../luuhoadon.js';
 
 function getInput(id) {
   return document.getElementById(id);
