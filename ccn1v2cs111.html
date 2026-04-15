@@ -1042,10 +1042,10 @@
             (document.body || document.documentElement).dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
+        //document.getElementById('btn-luu')?.addEventListener('click', () => {
+          //  const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+            //dispatchTarget.dispatchEvent(ev);
+        // });
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
@@ -1429,7 +1429,7 @@
     </script>
 
     <script type="module">
-        import { saveBanLe111 } from "./scripts/banlemtcs111SaveEntry.js";
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
         document.getElementById("btn-luu").addEventListener("click", async () => {
             try {
