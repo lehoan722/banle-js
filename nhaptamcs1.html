@@ -1488,73 +1488,110 @@
     </script>
 
     <script type="module">
-        import { autoSuggestAndOpenCcn } from "./scripts/chuyenkhoAutoEngine.js";
+    function layDanhSachDongTuBangNhapTam() {
+        if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+            window.capNhatBangKetQuaTuDOM();
+        }
 
-        function layDanhSachMaspTuBangNhapTam() {
-            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
-                window.capNhatBangKetQuaTuDOM();
-            }
+        const bang = window.bangKetQua || {};
+        const rows = [];
 
-            const bang = window.bangKetQua || {};
-            const masps = Object.keys(bang)
-                .map(x => String(x || "").trim().toUpperCase())
-                .filter(Boolean);
+        Object.values(bang).forEach(item => {
+            const masp = String(item?.masp || "").trim().toUpperCase();
+            if (!masp) return;
 
-            if (masps.length) return [...new Set(masps)];
+            const sizes = Array.isArray(item?.sizes) ? item.sizes : [];
+            const soluongs = Array.isArray(item?.soluongs) ? item.soluongs : [];
 
-            const rows = document.querySelectorAll("#bangketqua tbody tr");
-            const out = new Set();
+            sizes.forEach((sz, i) => {
+                const size = String(sz ?? "").trim() || "0";
+                const sl = Number(soluongs[i] || 0);
+                if (sl <= 0) return;
 
-            rows.forEach(tr => {
-                const maspCell = tr.cells[0];
-                const masp = String(maspCell?.innerText || "").trim().toUpperCase();
-                if (masp) out.add(masp);
+                rows.push({ masp, size, sl });
             });
+        });
 
-            return Array.from(out);
-        }
+        // fallback từ DOM nếu window.bangKetQua chưa có
+        if (rows.length) return rows;
 
-        async function goiYChuyenKhoTuNhapTamCs1() {
-            try {
-                const masps = layDanhSachMaspTuBangNhapTam();
+        const trs = document.querySelectorAll("#bangketqua tbody tr");
+        const out = [];
 
-                if (!masps.length) {
-                    alert("Phiếu chưa có mã sản phẩm.");
-                    return;
-                }
+        trs.forEach(tr => {
+            const masp = String(tr.cells?.[0]?.innerText || "").trim().toUpperCase();
+            const size = String(tr.cells?.[2]?.innerText || "").trim() || "0";
+            const sl = Number(String(tr.cells?.[3]?.innerText || "").trim()) || 0;
 
-                const manv = String(localStorage.getItem("manv") || "").trim().toUpperCase();
-                const sohd = String(document.getElementById("sohd")?.value || "").trim();
-                const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
-
-                const now = new Date();
-                const pad = n => String(n).padStart(2, "0");
-                const note =
-                    `Tạo tự động từ nhập tạm CS1 - ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}` +
-                    (manv ? ` - ${manv}` : "") +
-                    (sohd ? ` - ${sohd}` : "") +
-                    (ghichu ? ` - ${ghichu}` : "");
-
-                const rs = await autoSuggestAndOpenCcn({
-                    masps,
-                    pageKind: "cs1",
-                    note
-                });
-
-                if (!rs.ok) {
-                    alert(rs.message || "Không có mã nào cần chuyển kho.");
-                    return;
-                }
-
-                console.log("[NHAPTAM CS1] Đã mở phiếu chuyển kho:", rs);
-            } catch (e) {
-                console.error("[NHAPTAM CS1] Lỗi gợi ý chuyển kho:", e);
-                alert("Có lỗi khi tự động gợi ý chuyển kho.");
+            if (masp && sl > 0) {
+                out.push({ masp, size, sl });
             }
-        }
+        });
 
-        document.getElementById("btnGoiyChuyenKho")?.addEventListener("click", goiYChuyenKhoTuNhapTamCs1);
-    </script>
+        return out;
+    }
+
+    function buildPrefillPayload1v2(rows, note) {
+        const grouped = new Map();
+
+        rows.forEach(r => {
+            const masp = String(r.masp || "").trim().toUpperCase();
+            const size = String(r.size ?? "").trim() || "0";
+            const sl = Number(r.sl || 0);
+
+            if (!masp || sl <= 0) return;
+
+            if (!grouped.has(masp)) grouped.set(masp, []);
+            grouped.get(masp).push({ size, sl });
+        });
+
+        return {
+            dir: "1v2",
+            note: String(note || "").trim(),
+            items: Array.from(grouped.entries()).map(([masp, items]) => ({
+                masp,
+                items
+            }))
+        };
+    }
+
+    async function goiYChuyenKhoTuNhapTamCs1() {
+        try {
+            const rows = layDanhSachDongTuBangNhapTam();
+
+            if (!rows.length) {
+                alert("Phiếu chưa có mã sản phẩm.");
+                return;
+            }
+
+            const manv = String(localStorage.getItem("manv") || "").trim().toUpperCase();
+            const sohd = String(document.getElementById("sohd")?.value || "").trim();
+            const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
+
+            const now = new Date();
+            const pad = n => String(n).padStart(2, "0");
+            const note =
+                `Tạo tự động từ nhập tạm CS1 - ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}` +
+                (manv ? ` - ${manv}` : "") +
+                (sohd ? ` - ${sohd}` : "") +
+                (ghichu ? ` - ${ghichu}` : "");
+
+            const payload = buildPrefillPayload1v2(rows, note);
+
+            localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+
+            const targetUrl = `${location.origin}/ccn1v2cs1.html`;
+            window.open(targetUrl, "_blank");
+
+            console.log("[NHAPTAM CS1] Đã đẩy dữ liệu sang ccn1v2cs1:", payload);
+        } catch (e) {
+            console.error("[NHAPTAM CS1] Lỗi đẩy dữ liệu sang CCN mới:", e);
+            alert("Có lỗi khi đẩy dữ liệu sang trang chuyển chi nhánh mới.");
+        }
+    }
+
+    document.getElementById("btnGoiyChuyenKho")?.addEventListener("click", goiYChuyenKhoTuNhapTamCs1);
+</script>
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
