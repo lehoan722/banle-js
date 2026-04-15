@@ -347,6 +347,51 @@
             left: auto !important;
             transform: none !important;
         }
+
+        #printOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+        }
+
+        #printOverlay .po-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, .35);
+        }
+
+        #printOverlay .po-panel {
+            position: absolute;
+            inset: 10px;
+            background: #fff;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #printOverlay .po-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #printOverlay .po-title {
+            font-weight: 700;
+        }
+
+        #printOverlay .po-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        #printOverlay #poFrame {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
     </style>
     <style>
         /* hd_state = xem => chữ đỏ nền hồng */
@@ -554,6 +599,7 @@
                         <label>Hình thức TT <select id="hinhthuctt">
                                 <option value="tm">Tiền mặt</option>
                                 <option value="ck">Chuyển khoản</option>
+                                <option value="tmt">Tiền mặtt</option>
                             </select></label>
 
                         <label>Chiết khấu <input id="chietkhau" /></label>
@@ -588,7 +634,7 @@
                             <label><input id="size45" type="checkbox" />QL SIZE</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
                             <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
-                            <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
+                            <label><input id="inNhanh" type="checkbox" /> In nhanh </label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
                             <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
                             <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
@@ -633,6 +679,8 @@
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
+            <button id="btnOpenInTem">In mã vạch</button>
+            <button id="btnCCN">CCN</button>
 
 
             <!-- Popup tìm khách hàng
@@ -648,8 +696,8 @@
 
 
         <div class="top-inputs">
-            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size,
-            F7: xem tồn kho nhanh, F8: nhập vị trí kho
+            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tiếp tục,
+            F8: xem tồn kho nhanh, F9: nhập vị trí kho
         </div>
         <div class="top-inputs">
             ----------------------------------------------------------
@@ -674,102 +722,68 @@
             <h3>Bạn có thực sự muốn thêm mới?</h3>
             <div style="text-align:center; margin-top:10px;">
                 <button id="btnThemMoiCo">✅ Có</button>
-                <button onclick="dongTatCaPopup()">❌ Không</button>
+                <button id="btnThemMoiKhong" type="button">❌ Không</button>
             </div>
         </div>
 
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const popup = document.getElementById('popupThemMoi');
+            const btnCo = document.getElementById('btnThemMoiCo');
+            const btnKhong = document.getElementById('btnThemMoiKhong');
+
+            if (!popup) return;
+
+            function focusMasp() {
+                const el = document.getElementById('masp');
+                if (!el) return;
+                setTimeout(() => {
+                    try { el.focus(); el.select?.(); } catch (e) { }
+                }, 0);
+            }
+
+            function dongPopupThemMoi() {
+                popup.style.display = 'none';
+                focusMasp();
+            }
+
+            // ✅ Nút "Không" đóng popup
+            btnKhong?.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dongPopupThemMoi();
+            });
+
+            // ✅ ESC khi popup đang mở => đóng popup
+            document.addEventListener('keydown', (e) => {
+                if (popup.style.display !== 'block') return;
+
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dongPopupThemMoi();
+                }
+
+                // (tuỳ chọn) Enter = Có
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    btnCo?.click();
+                }
+            }, true); // capture: chặn từ sớm
+
+        });
+    </script>
 
     <script src="scripts/stockQuickPopup.js"></script>
 
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
-    <script type="module">
-        import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
-        khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
-            tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs1", // API backend mới
-
-            // Hàm được gọi khi đăng nhập thành công
-            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
-                // 1. Lưu thông tin vào localStorage giống logic cũ
-                if (diadiem) {
-                    localStorage.setItem("diadiem", diadiem);
-                }
-                if (session && session.access_token) {
-                    localStorage.setItem("supabase_access_token", session.access_token);
-                }
-                localStorage.setItem("manv", nhanvien.manv);
-                localStorage.setItem("tennv", nhanvien.tennv);
-                localStorage.setItem(
-                    "quyen_sua_hoadon",
-                    nhanvien.sua_hoadon ? "true" : "false"
-                );
-
-                // 🔴 THÊM 3 DÒNG NÀY
-                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
-                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
-                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
-
-                // 2. Cho các script khác trên trang dùng
-                window.diadiem = diadiem;
-                window.dangLuu = false;
-
-                // 3. Cập nhật lên giao diện bán hàng
-                const manvInput = document.getElementById("manv");
-                const tennvInput = document.getElementById("tennv");
-                if (manvInput) {
-                    manvInput.value = nhanvien.manv;
-                    manvInput.readOnly = true;
-                }
-                if (tennvInput) {
-                    tennvInput.value = nhanvien.tennv;
-                    tennvInput.readOnly = true;
-                }
-
-                // 4. Cập nhật quyền giao diện nếu có hàm này
-                if (typeof window.capNhatQuyenGiaoDien === "function") {
-                    window.capNhatQuyenGiaoDien();
-                }
-
-                // 5. Import và khởi tạo logic chính của trang (giống code cũ)
-                try {
-                    const module = await import("./scripts/main.js");
-                    if (typeof module.khoiTaoUngDung === "function") {
-                        module.khoiTaoUngDung();
-                    }
-                } catch (e) {
-                    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
-                }
-
-                // 6. Chọn tab & checkbox mặc định giống code cũ
-                if (typeof window.switchTab === "function") {
-                    window.switchTab("thongtin");
-                }
-                const size45 = document.getElementById("size45");
-                if (size45) size45.checked = true;
-
-                const qlNhom = document.getElementById("quanlysizetheonhom");
-                if (qlNhom) qlNhom.checked = true;
-
-                // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
-                const appContainer = document.getElementById("app-container");
-                if (appContainer) appContainer.style.display = "";
-
-                const loginContainer = document.getElementById("login-container");
-                if (loginContainer) loginContainer.style.display = "none";
-            }
-        });
-    </script>
     <!-- het  Khung đăng nhập dùng module dùng chung -->
-
-
-
-
 
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
@@ -897,6 +911,86 @@
         });
     </script>
 
+    <script type="module">
+        import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+
+        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
+        khoiTaoDangNhapDungChung({
+            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
+            tuDongKhoaCoSo: false,
+            loginApiPath: "/api/login-cs1", // API backend mới
+
+            // Hàm được gọi khi đăng nhập thành công
+            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
+                // 1. Lưu thông tin vào localStorage giống logic cũ
+                if (diadiem) {
+                    localStorage.setItem("diadiem", diadiem);
+                }
+                if (session && session.access_token) {
+                    localStorage.setItem("supabase_access_token", session.access_token);
+                }
+                localStorage.setItem("manv", nhanvien.manv);
+                localStorage.setItem("tennv", nhanvien.tennv);
+                localStorage.setItem(
+                    "quyen_sua_hoadon",
+                    nhanvien.sua_hoadon ? "true" : "false"
+                );
+
+                // 🔴 THÊM 3 DÒNG NÀY
+                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
+                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
+                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
+
+                // 2. Cho các script khác trên trang dùng
+                window.diadiem = diadiem;
+                window.dangLuu = false;
+
+                // 3. Cập nhật lên giao diện bán hàng
+                const manvInput = document.getElementById("manv");
+                const tennvInput = document.getElementById("tennv");
+                if (manvInput) {
+                    manvInput.value = nhanvien.manv;
+                    manvInput.readOnly = true;
+                }
+                if (tennvInput) {
+                    tennvInput.value = nhanvien.tennv;
+                    tennvInput.readOnly = true;
+                }
+
+                // 4. Cập nhật quyền giao diện nếu có hàm này
+                if (typeof window.capNhatQuyenGiaoDien === "function") {
+                    window.capNhatQuyenGiaoDien();
+                }
+
+                // 5. Import và khởi tạo logic chính của trang (giống code cũ)
+                try {
+                    const module = await import("./scripts/main.js");
+                    if (typeof module.khoiTaoUngDung === "function") {
+                        module.khoiTaoUngDung();
+                    }
+                } catch (e) {
+                    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
+                }
+
+                // 6. Chọn tab & checkbox mặc định giống code cũ
+                if (typeof window.switchTab === "function") {
+                    window.switchTab("thongtin");
+                }
+                const size45 = document.getElementById("size45");
+                if (size45) size45.checked = true;
+
+                const qlNhom = document.getElementById("quanlysizetheonhom");
+                if (qlNhom) qlNhom.checked = true;
+
+                // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
+                const appContainer = document.getElementById("app-container");
+                if (appContainer) appContainer.style.display = "";
+
+                const loginContainer = document.getElementById("login-container");
+                if (loginContainer) loginContainer.style.display = "none";
+            }
+        });
+    </script>
 
     <!-- Overlay loading khi backup -->
     <div id="backup-overlay" style="
@@ -913,6 +1007,30 @@
         import { backupAllTablesToZip } from './scripts/backup.js';
 
         // Gắn lại sự kiện cho nút THOAT PM
+        document.getElementById('btn-logout').onclick = async function () {
+            const overlay = document.getElementById('backup-overlay');
+
+            // Hỏi người dùng có muốn tạo file dự phòng không
+            const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
+
+            if (muonBackup) {
+                // ✅ Trạng thái 1: CÓ backup → hiện overlay + chạy backup
+                overlay.style.display = "block";
+                try {
+                    await backupAllTablesToZip();
+                    // Có thể bật lại thông báo nếu muốn:
+                    // alert("Đã backup toàn bộ dữ liệu! Hãy lưu file ở nơi an toàn.");
+                } catch (err) {
+                    alert("Lỗi backup: " + err.message + "\nVui lòng thử lại hoặc báo IT!");
+                } finally {
+                    overlay.style.display = "none";
+                }
+            }
+            // ❌ Trạng thái 2: KHÔNG backup → không hiện overlay, chỉ đăng xuất
+
+            await dangXuatApp();
+        };
+
         document.getElementById('btn-logout').onclick = async function () {
             const overlay = document.getElementById('backup-overlay');
             const muonBackup = confirm("Tạo file dự phòng (backup) trước khi thoát.");
@@ -959,38 +1077,6 @@
             // 👉 chuyển sang trắng (không quay lại app nữa)
             window.location.href = "about:blank";
         };
-        
-        async function dangXuatApp() {
-            // Copy logic đăng xuất cũ của anh
-            if (window.supabase && window.supabase.auth) {
-                await window.supabase.auth.signOut();
-                localStorage.clear();
-                sessionStorage.clear();
-                localStorage.removeItem("quyen_sua_hoadon");
-            }
-            document.getElementById('login-manv').value = "";
-            document.getElementById('login-password-nv').value = "";
-            document.getElementById('login-error').textContent = "";
-            document.getElementById('login-container').style.display = '';
-            document.getElementById('app-container').style.display = 'none';
-
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
-            if (tbody) tbody.innerHTML = '';
-            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
-
-            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
-            idsToClear.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-
-            localStorage.removeItem('draft_hoadon');
-            sessionStorage.removeItem('draft_hoadon');
-
-            document.getElementById('login-manv').focus();
-            location.reload(); // ✅ reset sạch main.js, không bị init chồng
-        }
-
     </script>
 
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
@@ -1017,17 +1103,12 @@
         });
     </script>
 
-    <script>
-        // Chặn riêng F2 cho trang này
-        window.CHAN_F2 = true;
-    </script>
-
     <script>  //<!-- banlemobile -->
 
         // goi phím F2
-        // setTimeout(function () {
-        // window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
-        //}, 1000);
+        setTimeout(function () {
+            window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
+        }, 1000);
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
@@ -1037,10 +1118,10 @@
             dispatchTarget.dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
-        //document.getElementById('btn-luu')?.addEventListener('click', () => {
-        // const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-        // dispatchTarget.dispatchEvent(ev);
-        //});
+        // document.getElementById('btn-luu')?.addEventListener('click', () => {
+        //  const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+        //  dispatchTarget.dispatchEvent(ev);
+        // });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1102,6 +1183,26 @@
         });
     </script>
 
+    <!-- <script>
+        // Sau khi DOMContentLoaded hoặc ở script type="module" 
+        document.getElementById('btn-luu').onclick = async function () {
+            if (window.dangLuu) return;
+            window.dangLuu = true;
+            this.disabled = true;
+            this.innerText = "Đang lưu...";
+
+            try {
+                await window.luuHoaDonCaHaiBan?.();
+            } catch (e) {
+                alert("Lỗi lưu hóa đơn: " + e.message);
+            }
+
+            window.dangLuu = false;
+            this.disabled = false;
+            this.innerText = "💾 Lưu";
+        };
+    </script>  -->
+
     <script>
         // Sau khi DOMContentLoaded hoặc ở script type="module" 
         document.getElementById('btn-luu').onclick = async function () {
@@ -1120,6 +1221,91 @@
             this.disabled = false;
             this.innerText = "💾 Lưu";
         };
+    </script>
+
+    <script>
+        // ===== Điều khiển riêng cho Hình thức thanh toán: tm / tmt / ck =====
+        document.addEventListener('DOMContentLoaded', () => {
+            const hinhThucTT = document.getElementById('hinhthuctt');
+            const btnLuu = document.getElementById('btn-luu');
+
+            if (!hinhThucTT) return;
+
+            // Mặc định khi tải trang: Tiền mặt
+            hinhThucTT.value = 'tm';
+
+            function thongBaoNhanh(msg) {
+                // Ưu tiên dùng toast nếu trang có sẵn
+                if (typeof window.showToast === 'function') {
+                    window.showToast(msg);
+                } else {
+                    console.log(msg);
+                }
+            }
+
+            function toggleTienMatMode() {
+                // Chỉ toggle giữa tm <-> tmt
+                if (hinhThucTT.value === 'tmt') {
+                    hinhThucTT.value = 'tm';
+                    thongBaoNhanh('Đã chuyển về Tiền mặt');
+                } else {
+                    hinhThucTT.value = 'tmt';
+                    thongBaoNhanh('Đã chuyển sang Tiền mặtt');
+                }
+            }
+
+            async function luuTheoHinhThucThanhToan() {
+                if (window.dangLuu) return;
+
+                const isTienMatT = hinhThucTT.value === 'tmt';
+
+                if (isTienMatT) {
+                    // Tiền mặtt => chạy đúng kiểu của nút Lưu hiện tại
+                    if (!btnLuu) return;
+                    btnLuu.click();
+                    return;
+                }
+
+                // Các trường hợp còn lại => chạy F2 cũ
+                try {
+                    if (typeof window.LUU_HOADON_F2 === 'function') {
+                        await window.LUU_HOADON_F2();
+                    } else if (typeof window.luuHoaDonQuaAPI === 'function') {
+                        await window.luuHoaDonQuaAPI();
+                    } else {
+                        alert('Không tìm thấy hàm lưu F2 hiện tại.');
+                    }
+                } catch (e) {
+                    alert('Lỗi lưu hóa đơn: ' + (e?.message || e));
+                }
+            }
+
+            // Cho phép chỗ khác gọi nếu cần
+            window.toggleTienMatMode = toggleTienMatMode;
+            window.luuTheoHinhThucThanhToan = luuTheoHinhThucThanhToan;
+
+            // Phím F10: đổi Tiền mặt <-> Tiền mặtt
+            document.addEventListener('keydown', async (e) => {
+                const tag = (document.activeElement?.tagName || '').toUpperCase();
+                const id = document.activeElement?.id || '';
+
+                // F10 luôn cho phép đổi chế độ
+                if (e.key === 'F10') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleTienMatMode();
+                    return;
+                }
+
+                // F2: chỉ xử lý tại đây
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await luuTheoHinhThucThanhToan();
+                    return;
+                }
+            }, true);
+        });
     </script>
 
     <script>
@@ -1224,6 +1410,371 @@
         });
     </script>
 
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const hdState = document.getElementById("hd_state");
+            const btnXemIn = document.getElementById("xemin");
+            if (!hdState || !btnXemIn) return;
+
+            function normalizeState(v) {
+                return String(v || "")
+                    .trim()
+                    .toLowerCase()
+                    .replace(/\s+/g, " "); // gộp khoảng trắng
+            }
+
+            function isChuaXemState(v) {
+                const s = normalizeState(v);
+                // chấp nhận nhiều biến thể để khỏi lệ thuộc chính tả/dấu
+                return (
+                    s === "chua xem" ||
+                    s === "chưa xem" ||
+                    s === "chuaxem" ||
+                    s === "xem"
+                );
+            }
+
+            // Double click / double tap vào ô trạng thái -> gọi "Xem in"
+            hdState.addEventListener("click", (e) => {
+                if (!isChuaXemState(hdState.value)) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Gọi đúng logic hiện có của nút "Xem in"
+                btnXemIn.click();
+            });
+
+            // (Tùy chọn) nếu điện thoại đôi khi không bắn dblclick tốt,
+            // bạn có thể bật "double tap" thủ công (giữ an toàn, không ảnh hưởng PC)
+            let lastTap = 0;
+            hdState.addEventListener("touchend", () => {
+                const now = Date.now();
+                if (now - lastTap < 300) {
+                    if (isChuaXemState(hdState.value)) btnXemIn.click();
+                }
+                lastTap = now;
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chk = document.getElementById('inNhanh') || document.getElementById('chk_innhanh');
+            const overlay = document.getElementById('printOverlay');
+            const frame = document.getElementById('poFrame');
+            const btnClose = document.getElementById('poBtnClose');
+            const btnPrint = document.getElementById('poBtnPrint');
+
+            // Nếu trang không có overlay thì vẫn tạo móc tối thiểu
+            if (!overlay || !frame) {
+                window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
+                window.openPrintOverlay = (url) => window.open(url, '_blank'); // fallback
+                window.quickPrint = (url) => window.open(url, '_blank');
+                return;
+            }
+
+            // nhớ lựa chọn In nhanh theo máy
+            const saved = localStorage.getItem('banle_print_fast');
+            if (saved !== null && chk) chk.checked = (saved === '1');
+            chk?.addEventListener('change', () => {
+                localStorage.setItem('banle_print_fast', chk.checked ? '1' : '0');
+            });
+
+            // ====== CHỐT CHẶN ENTER “DỘI” sau khi đóng dialog in ======
+            // (ngăn Enter từ hộp thoại in rơi xuống hoadon.js làm bật alert mã SP)
+            let __blockEnterUntil = 0;
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && Date.now() < __blockEnterUntil) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true); // capture
+
+            let printedOnce = false;
+
+            function focusMasp() {
+                // bạn đổi id nếu ô mã của bạn không phải "masp"
+                const el = document.getElementById('masp')
+                    || document.querySelector('#masp, input[name="masp"], input[data-field="masp"]');
+
+                if (!el) return;
+                setTimeout(() => {
+                    try { el.focus(); el.select?.(); } catch (e) { }
+                }, 0);
+            }
+
+            function openOverlay(url) {
+                printedOnce = false;
+                overlay.style.display = 'block';
+                frame.src = url;
+
+                // đưa focus lên overlay để Enter không dính ô masp phía sau
+                setTimeout(() => {
+                    (btnPrint || btnClose || overlay).focus?.();
+                }, 0);
+            }
+
+            // Đóng “mềm”: chỉ ẩn overlay, giữ iframe để print không lỗi
+            function hideOverlayOnly() {
+                overlay.style.display = 'none';
+            }
+
+            // Đóng “cứng”: dọn iframe + reset
+            function closeOverlayHard() {
+                try { frame.src = 'about:blank'; } catch (e) { }
+                overlay.style.display = 'none';
+                printedOnce = false;
+
+                // ✅ trả focus về ô mã sản phẩm để nhập tiếp
+                focusMasp();
+            }
+
+            // Sau khi in xong (đóng dialog in), tự đóng cứng overlay
+            function bindAutoCloseAfterPrint(win) {
+                if (!win) return;
+
+                const handler = () => {
+                    closeOverlayHard();
+                    try { win.removeEventListener('afterprint', handler); } catch (e) { }
+                };
+
+                try { win.addEventListener('afterprint', handler); } catch (e) { }
+
+                // fallback nếu afterprint không chạy ổn định
+                setTimeout(() => {
+                    try { closeOverlayHard(); } catch (e) { }
+                    try { win.removeEventListener('afterprint', handler); } catch (e) { }
+                }, 2000);
+            }
+
+            // In và thoát luôn về màn bán hàng (không quay lại overlay)
+            function doPrintAndExit() {
+                try {
+                    // chặn Enter “dội” ~ 1.5s
+                    __blockEnterUntil = Date.now() + 1500;
+
+                    // gắn auto-close sau in
+                    bindAutoCloseAfterPrint(frame.contentWindow);
+
+                    // ẩn overlay ngay để in xong quay về màn bán hàng
+                    hideOverlayOnly();
+
+                    // gọi in
+                    frame.contentWindow?.focus();
+                    frame.contentWindow?.print();
+                } catch (e) { }
+
+                printedOnce = true;
+            }
+
+            btnClose?.addEventListener('click', closeOverlayHard);
+            overlay.querySelector('.po-backdrop')?.addEventListener('click', closeOverlayHard);
+
+            // Nút In trong overlay: In xong thoát luôn
+            btnPrint?.addEventListener('click', (e) => {
+                e.preventDefault?.();
+                e.stopPropagation?.();
+                doPrintAndExit();
+            });
+
+            // ✅ Overlay: Enter => In & thoát | ESC => đóng overlay & về màn bán hàng
+            document.addEventListener('keydown', (e) => {
+                if (overlay.style.display !== 'block') return;
+
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    doPrintAndExit();
+                }
+
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeOverlayHard();
+                }
+            }, true); // capture
+
+            // ====== API cho luuhoadon.js dùng chung ======
+            window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
+
+            // Mở overlay để xem/in
+            window.openPrintOverlay = (url, { autoPrint = false } = {}) => {
+                openOverlay(url);
+
+                frame.onload = () => {
+                    if (autoPrint) {
+                        // autoPrint: in luôn và thoát luôn
+                        setTimeout(doPrintAndExit, 150);
+                    }
+                };
+            };
+
+            // ✅ In nhanh thật sự: KHÔNG mở overlay, chỉ gọi print bằng iframe ẩn
+            window.quickPrint = (url) => {
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                document.body.appendChild(iframe);
+
+                // ✅ gom lại 1 hàm “dọn + focus” để gọi ở mọi nhánh
+                const cleanupAndFocus = () => {
+                    try { iframe.remove(); } catch (e) { }
+                    try {
+                        // focus về trang chính trước (một số máy cần)
+                        window.focus?.();
+                    } catch (e) { }
+
+                    // ✅ trả focus về ô mã sản phẩm
+                    try { focusMasp(); } catch (e) { }
+                };
+
+                iframe.onload = () => {
+                    setTimeout(() => {
+                        try {
+                            // chặn Enter “dội” sau khi in nhanh
+                            __blockEnterUntil = Date.now() + 1500;
+
+                            const w = iframe.contentWindow;
+
+                            // cleanup 1 lần thôi
+                            let cleaned = false;
+                            const cleanupOnce = () => {
+                                if (cleaned) return;
+                                cleaned = true;
+                                try { w?.removeEventListener?.('afterprint', cleanupOnce); } catch (e) { }
+                                cleanupAndFocus();
+                            };
+
+                            // gắn tự cleanup sau in (nếu afterprint chạy)
+                            try { w?.addEventListener?.('afterprint', cleanupOnce); } catch (e) { }
+
+                            // gọi in
+                            w?.focus();
+                            w?.print();
+
+                            // fallback: nếu afterprint không chạy → vẫn cleanup + focus
+                            setTimeout(cleanupOnce, 2000);
+                        } catch (e) {
+                            console.error(e);
+                            cleanupAndFocus();
+                        }
+                    }, 150);
+                };
+            };
+
+        });
+
+
+    </script>
+
+    <script>
+        // ===== FALLBACK: nếu banlemt chưa có capNhatBangKetQuaTuDOM thì tự gom từ bảng HTML =====
+        function capNhatBangKetQuaTuDOM_Fallback_BanLe() {
+            const tbody = document.querySelector("#bangketqua tbody");
+            const rows = tbody ? Array.from(tbody.querySelectorAll("tr")) : [];
+            const bangObj = {};
+
+            rows.forEach(tr => {
+                const cells = tr.querySelectorAll("td");
+                // Bảng bán lẻ của bạn: Mã, Tên, Size, SL, ĐVT, Đơn giá, ...
+                if (cells.length >= 6) {
+                    const masp = (cells[0].innerText || "").toUpperCase().trim();
+                    const tensp = (cells[1].innerText || "").trim();
+                    const size = (cells[2].innerText || "0").trim();
+                    const sl = Number((cells[3].innerText || "0").toString().replace(/[^\d.-]/g, "")) || 0;
+                    const dvt = (cells[4].innerText || "sp").trim();
+                    const gia = Number((cells[5].innerText || "0").toString().replace(/[^\d.-]/g, "")) || 0;
+
+                    if (!masp) return;
+
+                    if (!bangObj[masp]) {
+                        bangObj[masp] = { masp, tensp, dvt, gia, km: 0, sizes: [], soluongs: [] };
+                    }
+                    bangObj[masp].sizes.push(size);
+                    bangObj[masp].soluongs.push(sl);
+                }
+            });
+
+            window.bangKetQua = bangObj;
+            console.log("✅ [BanLe] Fallback capNhatBangKetQuaTuDOM ->", bangObj);
+            return bangObj;
+        }
+
+        // ===== GỬI DỮ LIỆU SANG TRANG IN MÃ VẠCH (GIỐNG NHẬP MỚI) =====
+        function openInTemFromBanLe(bangKetQua) {
+            if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
+                alert("Chưa có dữ liệu để in mã vạch");
+                return;
+            }
+
+            const items = [];
+            Object.values(bangKetQua).forEach(row => {
+                (row.sizes || []).forEach((sz, i) => {
+                    const sl = (row.soluongs && row.soluongs[i]) ? row.soluongs[i] : 0;
+                    if (!sl) return; // bỏ dòng SL=0
+
+                    items.push({
+                        masp: row.masp,
+                        tensp: row.tensp || "",
+                        size: sz || "0",
+                        sl: sl,
+                        dvt: row.dvt || "sp",
+                        // giữ key "gianhap" để tương thích trang inmavach (như trang Nhập Mới)
+                        gianhap: row.gia || 0
+                    });
+                });
+            });
+
+            // Lấy cơ sở động theo input #diadiem (cs1/cs2). File bạn đang là cs1 nên sẽ ra cs1.
+            const csRaw = (document.getElementById("diadiem")?.value || "cs1").toLowerCase();
+            const cs = (csRaw.includes("2")) ? "cs2" : "cs1";
+            const page = (cs === "cs2") ? "inmavachcs2.html" : "inmavachcs1.html";
+
+            const payload = { source: "banle", cs, items };
+            const json = JSON.stringify(payload);
+
+            // base64url (giống nhapmoimtcs1)
+            let b64 = btoa(unescape(encodeURIComponent(json)))
+                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+            const url = `${location.origin}/${page}#imp=${b64}`;
+            console.log("[BANLE] Mở trang in với dữ liệu:", items);
+            window.open(url, "_blank");
+        }
+
+        // ===== GẮN NÚT "In mã vạch" =====
+        document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
+            console.log("🔎 [BanLe In mã vạch] Bắt đầu thu thập dữ liệu...");
+
+            // 1) Ưu tiên dùng hàm sẵn có của bạn (nếu banlemt đã có)
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            } else {
+                capNhatBangKetQuaTuDOM_Fallback_BanLe();
+            }
+
+            // 2) Mở trang in tem
+            openInTemFromBanLe(window.bangKetQua || {});
+        });
+    </script>
+
+    <!-- ✅ Overlay in/xem in (đè lên trang, không mở tab mới) -->
+    <div id="printOverlay" style="display:none;">
+        <div class="po-backdrop"></div>
+
+        <div class="po-panel">
+            <div class="po-header">
+                <div class="po-title">In hóa đơn</div>
+                <div class="po-actions">
+                    <button id="poBtnPrint" type="button">In</button>
+                    <button id="poBtnClose" type="button">Đóng</button>
+                </div>
+            </div>
+
+            <iframe id="poFrame" src="about:blank"></iframe>
+        </div>
+    </div>
 
 
     <!-- Overlay quét -->
@@ -1256,6 +1807,8 @@
     <script type="module" src="scripts/scanner.js"></script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
+
+    <script src="scripts/stockQuickSimilar.js"></script>
 
 </body>
 
