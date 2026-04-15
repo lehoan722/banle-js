@@ -101,7 +101,7 @@ function getDirByPageKind(pageKind) {
 function getTargetUrlByPageKind(pageKind) {
   return pageKind === 'cs2'
     ? 'https://banle-js.vercel.app/ccn2v1cs2.html'
-    : 'https://banle-js.vercel.app/ccn1v2cs1.html';
+    : 'https://banle-js.vercel.app/ccn1v2cs111.html';
 }
 
 async function fetchXntNhanhRows(masps) {
