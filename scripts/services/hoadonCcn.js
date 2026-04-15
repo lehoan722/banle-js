@@ -264,6 +264,125 @@ async function upsertSoChungTu(loai, soMoi) {
   }
 }
 
+function extractSoCtYeuCauFromGhiChu(ghichu) {
+  const s = String(ghichu || "").trim();
+
+  // Ưu tiên mẫu có chữ "yêu cầu"
+  let m =
+    s.match(/(?:so[_\s-]*ct|số[_\s-]*ct)\s*(?:yêu\s*cầu\s*chuyển\s*kho)?\s*[:\-]?\s*([A-Za-z0-9_./-]+)/i) ||
+    s.match(/yêu\s*cầu\s*chuyển\s*kho\s*[:\-]?\s*([A-Za-z0-9_./-]+)/i) ||
+    s.match(/yeucau[^\s|;,]*/i);
+
+  if (!m) return "";
+
+  if (m[1]) return String(m[1] || "").trim();
+  return String(m[0] || "").trim();
+}
+
+function buildYeuCauChuyenKhoRowsFromBangKetQua(bangKetQua) {
+  const rows = [];
+
+  Object.values(bangKetQua || {}).forEach(item => {
+    const masp = String(item?.masp || "").trim().toUpperCase();
+    if (!masp) return;
+
+    const sizes = Array.isArray(item?.sizes) ? item.sizes : [];
+    const soluongs = Array.isArray(item?.soluongs) ? item.soluongs : [];
+
+    sizes.forEach((sz, i) => {
+      const size = String(sz ?? "").trim() || "0";
+      const sl_thuc = Number(soluongs[i] || 0);
+      if (sl_thuc <= 0) return;
+
+      rows.push({
+        masp,
+        size,
+        sl_thuc
+      });
+    });
+  });
+
+  return rows;
+}
+
+async function capNhatYeuCauChuyenKhoCt(meta, bangKetQua) {
+  try {
+    const ghichu = String(meta.ghichu || "").trim();
+    const soCtYeuCau = extractSoCtYeuCauFromGhiChu(ghichu);
+
+    if (!soCtYeuCau) {
+      console.log("ℹ️ Không phát hiện phiếu yêu cầu chuyển kho trong ghi chú, bỏ qua cập nhật yeucau_chuyenkho_ct.");
+      return;
+    }
+
+    const manvPhuTrach = String(meta.manv || "").trim();
+    const tennvPhuTrach = String(meta.tennv || "").trim();
+
+    const dsDongCapNhat = buildYeuCauChuyenKhoRowsFromBangKetQua(bangKetQua);
+
+    console.log("🟣 Bắt đầu cập nhật yeucau_chuyenkho_ct:", {
+      soCtYeuCau,
+      manvPhuTrach,
+      tennvPhuTrach,
+      soDong: dsDongCapNhat.length,
+      dsDongCapNhat
+    });
+
+    let tongSoDongDaCapNhat = 0;
+
+    for (const row of dsDongCapNhat) {
+      const nowIso = new Date().toISOString();
+
+      const payloadUpdate = {
+        trang_thai_dong: "da_chuyen",
+        manv_phutrach: manvPhuTrach || null,
+        tennv_phutrach: tennvPhuTrach || null,
+        done: true,
+        done_at: nowIso,
+        done_by: manvPhuTrach || null,
+        done_by_name: tennvPhuTrach || null,
+        updated_at: nowIso
+      };
+
+      const { data, error } = await supabase
+        .from("yeucau_chuyenkho_ct")
+        .update(payloadUpdate)
+        .eq("so_ct", soCtYeuCau)
+        .eq("masp", row.masp)
+        .eq("size", row.size)
+        .eq("sl_thuc", row.sl_thuc)
+        .eq("trang_thai_dong", "dang_chuyen")
+        .select("id, so_ct, masp, size, sl_thuc, trang_thai_dong");
+
+      if (error) {
+        console.error("❌ Lỗi cập nhật yeucau_chuyenkho_ct:", {
+          soCtYeuCau,
+          row,
+          error
+        });
+        continue;
+      }
+
+      const updatedCount = Array.isArray(data) ? data.length : 0;
+      tongSoDongDaCapNhat += updatedCount;
+
+      console.log("✅ Đã cập nhật yeucau_chuyenkho_ct:", {
+        soCtYeuCau,
+        row,
+        updatedCount,
+        data
+      });
+    }
+
+    console.log("🟪 Hoàn tất cập nhật yeucau_chuyenkho_ct:", {
+      soCtYeuCau,
+      tongSoDongDaCapNhat
+    });
+  } catch (e) {
+    console.error("❌ Lỗi khối cập nhật trạng thái phiếu yêu cầu chuyển kho:", e);
+  }
+}
+
 async function ghiTaoHdCcnChoKiemNhap(meta, bangKetQua) {
   try {
     const ghichu = String(meta.ghichu || "").trim();
@@ -591,11 +710,14 @@ async function saveNewCCNByModern(ctx, prep) {
     return;
   }
 
-  // 5) Cập nhật số chứng từ cho cả gốc + đối ứng
+    // 5) Cập nhật số chứng từ cho cả gốc + đối ứng
   await upsertSoChungTu(meta.loaihdGoc, soMoi);
   await upsertSoChungTu(meta.loaihdDoiUng, soMoi);
 
-  // 6) Hook kiểm nhập nhìn thấy rõ trong code cũ
+  // 6) Hook yêu cầu chuyển kho
+  await capNhatYeuCauChuyenKhoCt(meta, bangKetQua);
+
+  // 7) Hook kiểm nhập
   await ghiTaoHdCcnChoKiemNhap(meta, bangKetQua);
   await danhDauKiemNhapChoCaHaiPhieu(meta);
 
