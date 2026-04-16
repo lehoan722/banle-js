@@ -10,8 +10,7 @@ export async function buildContext() {
   const state = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
   const hinhthuctt = document.getElementById("hinhthuctt")?.value || "";
 
-  const isEdit =
-    state === "sua" ||
+  const isEdit =    
     state === "xem" ||
     window.HD_CTX?.mode === "EDIT" ||
     window.choPhepSua === true;
