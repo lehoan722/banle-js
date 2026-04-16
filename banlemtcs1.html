@@ -711,9 +711,9 @@
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
             <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon1()">Xác nhận</button>
 
-            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
+            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủyhh</button>
         </div>
 
         <!-- Popup xác nhận thêm mới -->
@@ -1063,8 +1063,7 @@
         }
 
     </script>
-
-
+    
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
 
 
@@ -1089,19 +1088,31 @@
         });
     </script>
 
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        setTimeout(function () {
+            window.LUU_HOADON_F2 = async () => {
+                return await saveBanLe111("F2");
+            };
+        }, 1000);
+    </script>
+
+
     <script>  //<!-- banlemobile -->
 
         // goi phím F2
-        setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
-        }, 1000);
+
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
         document.getElementById('sua')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
+            if (typeof window.moPopupXacThucSua === 'function') {
+                window.moPopupXacThucSua();
+            } else {
+                alert("❌ Chưa nạp được popup sửa mới.");
+            }
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
         // document.getElementById('btn-luu')?.addEventListener('click', () => {
@@ -1123,89 +1134,139 @@
 
     </script>
 
-    <script>
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
         // Mở popup xác thực + focus ngay vào #xacmanv
-        function moPopupXacThucSua() {
-            const p = document.getElementById('popupXacThucSua');
-            p.style.display = 'block';
+        window.moPopupXacThucSua = function () {
+            const p = document.getElementById("popupXacThucSua");
+            if (!p) return;
+
+            p.style.display = "block";
+
             setTimeout(() => {
-                const manv = document.getElementById('xacmanv');
-                if (manv) { manv.focus(); manv.select(); }
+                const manv = document.getElementById("xacmanv");
+                if (manv) {
+                    manv.focus();
+                    manv.select?.();
+                }
             }, 0);
-        }
+        };
+
+        // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs111 
+        window.xacNhanSuaHoaDon1 = async function () {
+            const popup = document.getElementById("popupXacThucSua");
+            const closePopup = () => {
+                if (popup) popup.style.display = "none";
+            };
+
+            try {
+                const { data: { user } } = await window.supabase.auth.getUser();
+                if (!user) {
+                    alert("❌ Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được phiên đăng nhập.");
+                closePopup();
+                return;
+            }
+
+            try {
+                const { data: isAdmin, error } = await window.supabase.rpc("is_admin");
+                if (error || isAdmin !== true) {
+                    alert("❌ Bạn không có quyền sửa hóa đơn.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được quyền sửa hóa đơn.");
+                closePopup();
+                return;
+            }
+
+            window.dangSuaHoaDon = true;
+            window.choPhepSua = true;
+            window.HD_CTX = {
+                ...(window.HD_CTX || {}),
+                mode: "EDIT",
+                fromConfirm: true,
+                edit_at: new Date().toISOString()
+            };
+
+            closePopup();
+
+            console.log("🛠️ BANLE111 OVERRIDE: đang gọi LUỒNG SỬA MỚI");
+
+            await saveBanLe111("EDIT-CONFIRM");
+        };
 
         // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
-        document.addEventListener('DOMContentLoaded', () => {
-            const manv = document.getElementById('xacmanv');
-            const mk = document.getElementById('xacmatkhau');
-            const btn = document.getElementById('btnXacNhanSua');
+        document.addEventListener("DOMContentLoaded", () => {
+            const manv = document.getElementById("xacmanv");
+            const mk = document.getElementById("xacmatkhau");
+            const btn = document.getElementById("btnXacNhanSua");
 
             if (manv) {
-                manv.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                manv.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
                         e.preventDefault();
-                        if (mk) { mk.focus(); mk.select(); }
+                        if (mk) {
+                            mk.focus();
+                            mk.select?.();
+                        }
                     }
                 });
             }
 
             if (mk) {
-                mk.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                mk.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
                         e.preventDefault();
-                        if (btn) { btn.focus(); }
+                        if (btn) btn.focus();
                     }
                 });
             }
 
             if (btn) {
-                btn.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                btn.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
                         e.preventDefault();
-                        btn.click(); // = gọi xacNhanSuaHoaDon() 
+                        btn.click();
                     }
                 });
             }
         });
     </script>
 
-    <!-- <script>
-        // Sau khi DOMContentLoaded hoặc ở script type="module" 
+
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
+
             window.dangLuu = true;
             this.disabled = true;
             this.innerText = "Đang lưu...";
 
             try {
-                await window.luuHoaDonCaHaiBan?.();
+                const result = await saveBanLe111("BTN-LUU");
+
+                if (result?.ok) {
+                    // alert("✅ Lưu thành công (banlemtcs111)");
+                } else {
+                    console.warn("saveBanLe111 không trả về ok=true:", result);
+                }
             } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + e.message);
+                console.error(e);
+                alert("❌ Lỗi lưu: " + (e?.message || e));
+            } finally {
+                window.dangLuu = false;
+                this.disabled = false;
+                this.innerText = "💾 Lưu";
             }
-
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
-        };
-    </script>  -->
-
-    <script>
-        // Sau khi DOMContentLoaded hoặc ở script type="module" 
-        document.getElementById('btn-luu').onclick = async function () {
-            if (window.dangLuu) return;
-            window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
-
-            try {
-                await window.luuHoaDonCaHaiBan?.();
-            } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + e.message);
-            }
-
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
         };
     </script>
 
