@@ -413,270 +413,273 @@
 </head>
 
 <body>
-  <div class="page">
-    <div class="bar">
-      <div class="title">Lịch sử chứng từ</div>
+  <div id="app-container">
+    <div class="page">
+      <div class="bar">
+        <div class="title">Lịch sử chứng từ</div>
 
-      <div class="filters">
-        <div class="field">
-          <label for="tuNgay">Từ ngày</label>
-          <input type="date" id="tuNgay">
-        </div>
-        <div class="field">
-          <label for="denNgay">Đến ngày</label>
-          <input type="date" id="denNgay">
-        </div>
-        <div class="field">
-          <label for="sohdFilter">Số hóa đơn</label>
-          <input type="text" id="sohdFilter" placeholder="Ví dụ: bancs1_00123">
-        </div>
-        <div class="field">
-          <label for="maspFilter">Mã sản phẩm</label>
-          <input type="text" id="maspFilter" placeholder="Ví dụ: AP01">
-        </div>
-        <div class="field">
-          <label for="actionFilter">Action</label>
-          <select id="actionFilter">
-            <option value="">Tất cả</option>
-            <option value="UPDATE">UPDATE</option>
-            <option value="INSERT">INSERT</option>
-            <option value="DELETE">DELETE</option>
-            <option value="RESTORE">RESTORE</option>
-            <option value="RESTORE_VERSION">RESTORE_VERSION</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="sourceFilter">Source</label>
-          <input type="text" id="sourceFilter" placeholder="Ví dụ: xemhoadon111.html">
-        </div>
-      </div>
-
-      <div style="height:8px"></div>
-
-      <div class="btns">
-        <button class="btn-primary" id="btnTim">Tìm</button>
-        <button class="btn-gray" id="btnLamMoi">Làm mới</button>
-      </div>
-    </div>
-
-    <div class="tabs">
-      <button class="tab-btn active" id="tabSua">Lịch sử sửa</button>
-      <button class="tab-btn" id="tabXoa">Lịch sử xóa</button>
-    </div>
-
-    <div class="bar">
-      <div class="summary">
-        <div>Tổng bản ghi: <b id="tongBanGhi">0</b></div>
-        <div>Tab hiện tại: <b id="tenTabHienTai">Lịch sử sửa</b></div>
-      </div>
-
-      <div class="table-wrap">
-        <table id="mainTable">
-          <thead id="mainThead"></thead>
-          <tbody id="mainTbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal chi tiết log -->
-  <div class="modal" id="modalLog">
-    <div class="modal-mask" data-close="modalLog"></div>
-    <div class="modal-box">
-      <div class="modal-title">Chi tiết log sửa</div>
-
-      <div class="log-edit-layout">
-        <div class="section">
-          <h3>Diff JSON</h3>
-          <div class="json-box" id="logDiff"></div>
-        </div>
-
-        <div class="section">
-          <h3>Chi tiết</h3>
-          <div id="logMeta" style="margin-bottom:10px"></div>
-
-          <div class="table-mini-wrap">
-            <table class="log-detail-table">
-              <thead>
-                <tr>
-                  <th>masp</th>
-                  <th>tensp</th>
-                  <th>size</th>
-                  <th>sl</th>
-                  <th>gia</th>
-                  <th>km</th>
-                  <th>thanhtien</th>
-                  <th>ketqua</th>
-                  <th>created_at</th>
-                  <th>updated_at</th>
-                </tr>
-              </thead>
-              <tbody id="logDetailsTbody">
-                <tr>
-                  <td colspan="10" class="empty">Không có chi tiết.</td>
-                </tr>
-              </tbody>
-            </table>
+        <div class="filters">
+          <div class="field">
+            <label for="tuNgay">Từ ngày</label>
+            <input type="date" id="tuNgay">
+          </div>
+          <div class="field">
+            <label for="denNgay">Đến ngày</label>
+            <input type="date" id="denNgay">
+          </div>
+          <div class="field">
+            <label for="sohdFilter">Số hóa đơn</label>
+            <input type="text" id="sohdFilter" placeholder="Ví dụ: bancs1_00123">
+          </div>
+          <div class="field">
+            <label for="maspFilter">Mã sản phẩm</label>
+            <input type="text" id="maspFilter" placeholder="Ví dụ: AP01">
+          </div>
+          <div class="field">
+            <label for="actionFilter">Action</label>
+            <select id="actionFilter">
+              <option value="">Tất cả</option>
+              <option value="UPDATE">UPDATE</option>
+              <option value="INSERT">INSERT</option>
+              <option value="DELETE">DELETE</option>
+              <option value="RESTORE">RESTORE</option>
+              <option value="RESTORE_VERSION">RESTORE_VERSION</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sourceFilter">Source</label>
+            <input type="text" id="sourceFilter" placeholder="Ví dụ: xemhoadon111.html">
           </div>
         </div>
-      </div>
 
-      <div class="modal-actions">
-        <button class="btn-gray" data-close="modalLog">Đóng</button>
-      </div>
-    </div>
-  </div>
+        <div style="height:8px"></div>
 
-  <!-- Modal danh sách version -->
-  <div class="modal" id="modalVersions">
-    <div class="modal-mask" data-close="modalVersions"></div>
-    <div class="modal-box">
-      <div class="modal-title">Danh sách version</div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>saved_at</th>
-              <th>sohd</th>
-              <th>version_no</th>
-              <th>action</th>
-              <th>source</th>
-              <th>note</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody id="versionsTbody"></tbody>
-        </table>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-gray" data-close="modalVersions">Đóng</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal xem version -->
-  <div class="modal" id="modalVersionView">
-    <div class="modal-mask" data-close="modalVersionView"></div>
-    <div class="modal-box">
-      <div class="modal-title">Xem version</div>
-      <div class="grid2">
-        <div class="section">
-          <h3>Header</h3>
-          <div class="json-box" id="versionHeaderBox"></div>
+        <div class="btns">
+          <button class="btn-primary" id="btnTim">Tìm</button>
+          <button class="btn-gray" id="btnLamMoi">Làm mới</button>
         </div>
-        <div class="section">
-          <h3>Chi tiết</h3>
-          <div class="table-wrap">
-            <table class="sub-table">
-              <thead>
-                <tr>
-                  <th>masp</th>
-                  <th>tensp</th>
-                  <th>size</th>
-                  <th>sl</th>
-                  <th>gia</th>
-                  <th>km</th>
-                  <th>thanhtien</th>
-                  <th>ketqua</th>
-                </tr>
-              </thead>
-              <tbody id="versionDetailsTbody"></tbody>
-            </table>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" id="tabSua">Lịch sử sửa</button>
+        <button class="tab-btn" id="tabXoa">Lịch sử xóa</button>
+      </div>
+
+      <div class="bar">
+        <div class="summary">
+          <div>Tổng bản ghi: <b id="tongBanGhi">0</b></div>
+          <div>Tab hiện tại: <b id="tenTabHienTai">Lịch sử sửa</b></div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="mainTable">
+            <thead id="mainThead"></thead>
+            <tbody id="mainTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal chi tiết log -->
+    <div class="modal" id="modalLog">
+      <div class="modal-mask" data-close="modalLog"></div>
+      <div class="modal-box">
+        <div class="modal-title">Chi tiết log sửa</div>
+
+        <div class="log-edit-layout">
+          <div class="section">
+            <h3>Diff JSON</h3>
+            <div class="json-box" id="logDiff"></div>
+          </div>
+
+          <div class="section">
+            <h3>Chi tiết</h3>
+            <div id="logMeta" style="margin-bottom:10px"></div>
+
+            <div class="table-mini-wrap">
+              <table class="log-detail-table">
+                <thead>
+                  <tr>
+                    <th>masp</th>
+                    <th>tensp</th>
+                    <th>size</th>
+                    <th>sl</th>
+                    <th>gia</th>
+                    <th>km</th>
+                    <th>thanhtien</th>
+                    <th>ketqua</th>
+                    <th>created_at</th>
+                    <th>updated_at</th>
+                  </tr>
+                </thead>
+                <tbody id="logDetailsTbody">
+                  <tr>
+                    <td colspan="10" class="empty">Không có chi tiết.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-warn" id="btnRestoreVersionNow">Restore version này</button>
-        <button class="btn-gray" data-close="modalVersionView">Đóng</button>
+
+        <div class="modal-actions">
+          <button class="btn-gray" data-close="modalLog">Đóng</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Modal xem trash -->
-  <div class="modal" id="modalTrashView">
-    <div class="modal-mask" data-close="modalTrashView"></div>
-    <div class="modal-box">
-      <div class="modal-title">Xem snapshot hóa đơn đã xóa</div>
-      <div class="grid2">
-        <div class="section">
-          <h3>Header</h3>
-          <div class="json-box" id="trashHeaderBox"></div>
+    <!-- Modal danh sách version -->
+    <div class="modal" id="modalVersions">
+      <div class="modal-mask" data-close="modalVersions"></div>
+      <div class="modal-box">
+        <div class="modal-title">Danh sách version</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>saved_at</th>
+                <th>sohd</th>
+                <th>version_no</th>
+                <th>action</th>
+                <th>source</th>
+                <th>note</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="versionsTbody"></tbody>
+          </table>
         </div>
-        <div class="section">
-          <h3>Chi tiết</h3>
-          <div class="table-wrap">
-            <table class="sub-table">
-              <thead>
-                <tr>
-                  <th>masp</th>
-                  <th>tensp</th>
-                  <th>size</th>
-                  <th>sl</th>
-                  <th>gia</th>
-                  <th>km</th>
-                  <th>thanhtien</th>
-                  <th>ketqua</th>
-                </tr>
-              </thead>
-              <tbody id="trashDetailsTbody"></tbody>
-            </table>
+        <div class="modal-actions">
+          <button class="btn-gray" data-close="modalVersions">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal xem version -->
+    <div class="modal" id="modalVersionView">
+      <div class="modal-mask" data-close="modalVersionView"></div>
+      <div class="modal-box">
+        <div class="modal-title">Xem version</div>
+        <div class="grid2">
+          <div class="section">
+            <h3>Header</h3>
+            <div class="json-box" id="versionHeaderBox"></div>
+          </div>
+          <div class="section">
+            <h3>Chi tiết</h3>
+            <div class="table-wrap">
+              <table class="sub-table">
+                <thead>
+                  <tr>
+                    <th>masp</th>
+                    <th>tensp</th>
+                    <th>size</th>
+                    <th>sl</th>
+                    <th>gia</th>
+                    <th>km</th>
+                    <th>thanhtien</th>
+                    <th>ketqua</th>
+                  </tr>
+                </thead>
+                <tbody id="versionDetailsTbody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-ok" id="btnOpenRestoreTrash">Restore</button>
-        <button class="btn-gray" data-close="modalTrashView">Đóng</button>
+        <div class="modal-actions">
+          <button class="btn-warn" id="btnRestoreVersionNow">Restore version này</button>
+          <button class="btn-gray" data-close="modalVersionView">Đóng</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Modal restore trash -->
-  <div class="modal" id="modalRestoreTrash">
-    <div class="modal-mask" data-close="modalRestoreTrash"></div>
-    <div class="modal-box">
-      <div class="modal-title">Khôi phục hóa đơn từ trash</div>
-      <div class="restore-box">
+    <!-- Modal xem trash -->
+    <div class="modal" id="modalTrashView">
+      <div class="modal-mask" data-close="modalTrashView"></div>
+      <div class="modal-box">
+        <div class="modal-title">Xem snapshot hóa đơn đã xóa</div>
+        <div class="grid2">
+          <div class="section">
+            <h3>Header</h3>
+            <div class="json-box" id="trashHeaderBox"></div>
+          </div>
+          <div class="section">
+            <h3>Chi tiết</h3>
+            <div class="table-wrap">
+              <table class="sub-table">
+                <thead>
+                  <tr>
+                    <th>masp</th>
+                    <th>tensp</th>
+                    <th>size</th>
+                    <th>sl</th>
+                    <th>gia</th>
+                    <th>km</th>
+                    <th>thanhtien</th>
+                    <th>ketqua</th>
+                  </tr>
+                </thead>
+                <tbody id="trashDetailsTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-ok" id="btnOpenRestoreTrash">Restore</button>
+          <button class="btn-gray" data-close="modalTrashView">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal restore trash -->
+    <div class="modal" id="modalRestoreTrash">
+      <div class="modal-mask" data-close="modalRestoreTrash"></div>
+      <div class="modal-box">
+        <div class="modal-title">Khôi phục hóa đơn từ trash</div>
+        <div class="restore-box">
+          <div class="field">
+            <label for="restoreMode">Chế độ restore</label>
+            <select id="restoreMode">
+              <option value="original">Khôi phục đúng số cũ</option>
+              <option value="new_number">Khôi phục sang số mới</option>
+            </select>
+          </div>
+          <div class="field" id="newSohdWrap">
+            <label for="restoreNewSohd">Số hóa đơn mới</label>
+            <input type="text" id="restoreNewSohd" placeholder="Ví dụ: bancs1_00999">
+          </div>
+          <div class="field" style="grid-column:1 / -1;">
+            <label for="restoreTrashNote">Ghi chú restore</label>
+            <textarea id="restoreTrashNote" rows="3" placeholder="Nhập lý do khôi phục"></textarea>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-ok" id="btnRestoreTrashNow">Xác nhận restore</button>
+          <button class="btn-gray" data-close="modalRestoreTrash">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal restore version -->
+    <div class="modal" id="modalRestoreVersion">
+      <div class="modal-mask" data-close="modalRestoreVersion"></div>
+      <div class="modal-box" style="width:min(700px, 96vw)">
+        <div class="modal-title">Khôi phục version</div>
         <div class="field">
-          <label for="restoreMode">Chế độ restore</label>
-          <select id="restoreMode">
-            <option value="original">Khôi phục đúng số cũ</option>
-            <option value="new_number">Khôi phục sang số mới</option>
-          </select>
+          <label for="restoreVersionNote">Ghi chú restore version</label>
+          <textarea id="restoreVersionNote" rows="4" placeholder="Ví dụ: Khôi phục bản trước do sửa nhầm"></textarea>
         </div>
-        <div class="field" id="newSohdWrap">
-          <label for="restoreNewSohd">Số hóa đơn mới</label>
-          <input type="text" id="restoreNewSohd" placeholder="Ví dụ: bancs1_00999">
+        <div class="modal-actions">
+          <button class="btn-warn" id="btnRestoreVersionConfirm">Xác nhận restore version</button>
+          <button class="btn-gray" data-close="modalRestoreVersion">Đóng</button>
         </div>
-        <div class="field" style="grid-column:1 / -1;">
-          <label for="restoreTrashNote">Ghi chú restore</label>
-          <textarea id="restoreTrashNote" rows="3" placeholder="Nhập lý do khôi phục"></textarea>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-ok" id="btnRestoreTrashNow">Xác nhận restore</button>
-        <button class="btn-gray" data-close="modalRestoreTrash">Đóng</button>
       </div>
     </div>
-  </div>
 
-  <!-- Modal restore version -->
-  <div class="modal" id="modalRestoreVersion">
-    <div class="modal-mask" data-close="modalRestoreVersion"></div>
-    <div class="modal-box" style="width:min(700px, 96vw)">
-      <div class="modal-title">Khôi phục version</div>
-      <div class="field">
-        <label for="restoreVersionNote">Ghi chú restore version</label>
-        <textarea id="restoreVersionNote" rows="4" placeholder="Ví dụ: Khôi phục bản trước do sửa nhầm"></textarea>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-warn" id="btnRestoreVersionConfirm">Xác nhận restore version</button>
-        <button class="btn-gray" data-close="modalRestoreVersion">Đóng</button>
-      </div>
-    </div>
-  </div>
+    <script type="module" src="./scripts/lichsuchungtu.js"></script>
 
-  <script type="module" src="./scripts/lichsuchungtu.js"></script>
+  </div>
 </body>
 
 </html>
