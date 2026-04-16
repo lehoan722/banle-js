@@ -805,6 +805,21 @@ async function initPageAfterLogin() {
       return;
     }
 
+    const isAdmin = localStorage.getItem('is_admin') === 'true';
+
+    if (!isAdmin) {
+      alert('❌ Bạn không có quyền truy cập trang Lịch sử chứng từ.');
+
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.warn('Không signOut được khi chặn truy cập non-admin:', e);
+      }
+
+      location.reload();
+      return;
+    }
+
     appReady = true;
     await loadData();
   } catch (err) {
@@ -819,8 +834,40 @@ function init() {
       appContainerId: 'app-container',
       loginContainerId: 'login-container',
       macDinhDiaDiem: localStorage.getItem('diadiem') || 'cs1',
-      onLoginSuccess: async () => {
-        debugLog('login success -> initPageAfterLogin');
+      onLoginSuccess: async (userInfo, context) => {
+        debugLog('login success candidate', { userInfo, context });
+
+        const isAdmin =
+          userInfo?.is_admin === true ||
+          localStorage.getItem('is_admin') === 'true';
+
+        if (!isAdmin) {
+          alert('❌ Trang Lịch sử chứng từ chỉ dành cho admin.');
+
+          try {
+            await supabase.auth.signOut();
+          } catch (e) {
+            console.warn('Không signOut được sau khi chặn non-admin:', e);
+          }
+
+          try {
+            localStorage.removeItem('manv');
+            localStorage.removeItem('tennv');
+            localStorage.removeItem('is_admin');
+            localStorage.removeItem('quyen_sua_hoadon');
+            sessionStorage.removeItem('manv');
+            sessionStorage.removeItem('tennv');
+            sessionStorage.removeItem('is_admin');
+            sessionStorage.removeItem('quyen_sua_hoadon');
+          } catch (e) {
+            console.warn('Không xóa được cache quyền:', e);
+          }
+
+          location.reload();
+          return false;
+        }
+
+        debugLog('admin accepted -> initPageAfterLogin');
         await initPageAfterLogin();
         return true;
       }
