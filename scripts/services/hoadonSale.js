@@ -306,7 +306,7 @@ async function saveEditBanLe() {
   await refreshSessionIfNeeded();
 
   try {
-    await snapshotInvoiceBeforeEditLocal(sohd);
+    const oldSnap = await snapshotInvoiceBeforeEditLocal(sohd);
   } catch (e) {
     console.error("snapshotInvoiceBeforeEdit lỗi:", e);
     alert("❌ Không snapshot được hóa đơn trước khi sửa.");
@@ -324,6 +324,24 @@ async function saveEditBanLe() {
 
   const header = buildHeader(loai, diadiemTrang, bangKetQua);
   const chitiet = buildDetails(sohd, diadiemTrang, bangKetQua);
+
+  // ===== LOG SỬA HÓA ĐƠN =====
+  const newSnap = {
+    header: { ...header, sohd },
+    details: chitiet
+  };
+
+  try {
+    await supabase.rpc("rpc_log_edit_invoice", {
+      p_sohd: sohd,
+      p_old: oldSnap,
+      p_new: newSnap,
+      p_source: "banle_edit"
+    });
+    console.log("🟢 Đã ghi log sửa hóa đơn");
+  } catch (e) {
+    console.error("❌ Lỗi ghi log sửa hóa đơn:", e);
+  }
 
   const { error: errDelCT } = await supabase
     .from("ct_hoadon_banle")
