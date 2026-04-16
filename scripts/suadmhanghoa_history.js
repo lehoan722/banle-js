@@ -8,6 +8,32 @@ let currentLoginManv = '';
 let currentLoginTenNv = '';
 let currentLoginCoSo = 'cs1';
 
+async function blockNonAdminAccess(message = '❌ Bạn không được phép truy cập trang này.') {
+  alert(message);
+
+  try {
+    await supabase.auth.signOut();
+  } catch (e) {
+    console.warn('Không signOut được khi chặn non-admin:', e);
+  }
+
+  try {
+    localStorage.removeItem('manv');
+    localStorage.removeItem('tennv');
+    localStorage.removeItem('is_admin');
+    localStorage.removeItem('quyen_sua_hoadon');
+
+    sessionStorage.removeItem('manv');
+    sessionStorage.removeItem('tennv');
+    sessionStorage.removeItem('is_admin');
+    sessionStorage.removeItem('quyen_sua_hoadon');
+  } catch (e) {
+    console.warn('Không xóa được cache quyền:', e);
+  }
+
+  location.reload();
+}
+
 function vnDateTimeText(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -355,6 +381,15 @@ function attachEvents() {
     tuDongKhoaCoSo: true,
     loginApiPath: '/api/login-cs1',
     onLoginSuccess: async (nhanvien, context) => {
+      const isAdmin =
+        nhanvien?.is_admin === true ||
+        localStorage.getItem('is_admin') === 'true';
+
+      if (!isAdmin) {
+        await blockNonAdminAccess('❌ Chỉ admin mới được phép đăng nhập vào trang lịch sử sửa danh mục hàng hóa.');
+        return false;
+      }
+
       currentLoginCoSo =
         (context?.diadiem || nhanvien?.diadiem || 'cs1')
           .toString()
@@ -363,6 +398,8 @@ function attachEvents() {
 
       currentLoginManv = (nhanvien?.manv || '').toString().trim().toUpperCase();
       currentLoginTenNv = (nhanvien?.tennv || nhanvien?.hoten || '').toString().trim();
+
+      return true;
     }
   });
 })();
