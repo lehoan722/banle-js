@@ -1,4 +1,6 @@
-import { supabase } from './supabaseClient.js';
+import { khoiTaoDangNhapDungChung, getSupabaseClient } from './authModule.js';
+
+const supabase = getSupabaseClient();
 
 let activeTab = 'sua'; // 'sua' | 'xoa'
 let currentRows = [];
@@ -8,6 +10,8 @@ let currentVersionList = [];
 
 let isLoading = false;
 let loadRequestId = 0;
+let appReady = false;
+let pageInitialized = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -160,6 +164,11 @@ function getFilters() {
 }
 
 async function loadData() {
+  if (!appReady) {
+    debugLog('skip loadData because app not ready');
+    return;
+  }
+
   const requestId = ++loadRequestId;
   const currentTab = activeTab;
 
@@ -762,22 +771,41 @@ function bindEvents() {
   $('btnRestoreVersionConfirm').onclick = restoreVersionNow;
 }
 
-async function init() {
+async function initPageAfterLogin() {
   try {
+    if (pageInitialized) {
+      appReady = true;
+      await loadData();
+      return;
+    }
+
     bindModalClose();
     bindEvents();
     setDefaultDates();
     toggleRestoreNewSohd();
     ensureStatusBox();
+    pageInitialized = true;
 
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    debugLog('supabase session check', {
+    debugLog('supabase session check after auth', {
       hasError: !!sessionError,
       hasSession: !!sessionData?.session,
       userId: sessionData?.session?.user?.id || null,
       email: sessionData?.session?.user?.email || null
     });
 
+    if (sessionError) {
+      console.error(sessionError);
+      alert('❌ Không kiểm tra được phiên đăng nhập Supabase.');
+      return;
+    }
+
+    if (!sessionData?.session) {
+      alert('❌ Chưa có phiên đăng nhập hợp lệ.');
+      return;
+    }
+
+    appReady = true;
     await loadData();
   } catch (err) {
     console.error(err);
@@ -785,4 +813,24 @@ async function init() {
   }
 }
 
+function init() {
+  try {
+    khoiTaoDangNhapDungChung({
+      appContainerId: 'app-container',
+      loginContainerId: 'login-container',
+      macDinhDiaDiem: localStorage.getItem('diadiem') || 'cs1',
+      onLoginSuccess: async () => {
+        debugLog('login success -> initPageAfterLogin');
+        await initPageAfterLogin();
+        return true;
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    alert('❌ Không khởi tạo được đăng nhập chung cho trang lịch sử chứng từ.');
+  }
+}
+
 init();
+
+
