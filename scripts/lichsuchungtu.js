@@ -842,7 +842,7 @@ function init() {
           localStorage.getItem('is_admin') === 'true';
 
         if (!isAdmin) {
-          alert('❌ Trang Lịch sử chứng từ chỉ dành cho admin.');
+          alert('❌ Bạn không được phép truy cập trang này.');
 
           try {
             await supabase.auth.signOut();
