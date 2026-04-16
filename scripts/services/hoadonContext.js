@@ -10,10 +10,9 @@ export async function buildContext() {
   const state = (document.getElementById("hd_state")?.value || "moi").trim().toLowerCase();
   const hinhthuctt = document.getElementById("hinhthuctt")?.value || "";
 
-  const isEdit =    
+  const isEdit =
     state === "xem" ||
-    window.HD_CTX?.mode === "EDIT" ||
-    window.choPhepSua === true;
+    window.HD_CTX?.mode === "EDIT";
 
   const isSpecialByTMT = hinhthuctt === "tmt";
   const isSpecialByMod3 = sohdEl?.getAttribute("data-mod3") === "yes";
