@@ -201,8 +201,19 @@ async function loadEditLogs(requestId) {
   if (f.source) query = query.ilike('source', `%${f.source}%`);
 
   debugLog('query edit logs', { requestId, filters: f });
+  debugLog('edit logs date range', {
+    from: f.tuNgay ? `${f.tuNgay}T00:00:00` : '(none)',
+    to: f.denNgay ? `${f.denNgay}T23:59:59` : '(none)'
+  });
 
   const { data, error } = await query;
+
+  debugLog('raw edit log response', {
+    requestId,
+    hasError: !!error,
+    rawLength: Array.isArray(data) ? data.length : '(not array)',
+    firstRow: Array.isArray(data) && data.length ? data[0] : null
+  });
 
   if (requestId !== loadRequestId) {
     debugLog('discard outdated edit log result', { requestId, latest: loadRequestId });
@@ -213,6 +224,21 @@ async function loadEditLogs(requestId) {
     console.error(error);
     alert('❌ Không tải được lịch sử sửa.');
     return;
+  }
+
+  if (Array.isArray(data) && data.length === 0) {
+    const { data: sampleData, error: sampleError } = await supabase
+      .from('invoice_edit_log')
+      .select('*')
+      .order('logged_at', { ascending: false })
+      .limit(3);
+
+    debugLog('sample edit logs without filters', {
+      requestId,
+      hasError: !!sampleError,
+      sampleLength: Array.isArray(sampleData) ? sampleData.length : '(not array)',
+      sampleFirstRow: Array.isArray(sampleData) && sampleData.length ? sampleData[0] : null
+    });
   }
 
   let rows = Array.isArray(data) ? data : [];
@@ -247,8 +273,19 @@ async function loadTrashLogs(requestId) {
   if (f.source) query = query.ilike('source', `%${f.source}%`);
 
   debugLog('query trash logs', { requestId, filters: f });
+  debugLog('trash logs date range', {
+    from: f.tuNgay ? `${f.tuNgay}T00:00:00` : '(none)',
+    to: f.denNgay ? `${f.denNgay}T23:59:59` : '(none)'
+  });
 
   const { data, error } = await query;
+
+  debugLog('raw trash log response', {
+    requestId,
+    hasError: !!error,
+    rawLength: Array.isArray(data) ? data.length : '(not array)',
+    firstRow: Array.isArray(data) && data.length ? data[0] : null
+  });
 
   if (requestId !== loadRequestId) {
     debugLog('discard outdated trash log result', { requestId, latest: loadRequestId });
@@ -259,6 +296,21 @@ async function loadTrashLogs(requestId) {
     console.error(error);
     alert('❌ Không tải được lịch sử xóa.');
     return;
+  }
+
+  if (Array.isArray(data) && data.length === 0) {
+    const { data: sampleData, error: sampleError } = await supabase
+      .from('invoice_trash')
+      .select('*')
+      .order('trashed_at', { ascending: false })
+      .limit(3);
+
+    debugLog('sample trash logs without filters', {
+      requestId,
+      hasError: !!sampleError,
+      sampleLength: Array.isArray(sampleData) ? sampleData.length : '(not array)',
+      sampleFirstRow: Array.isArray(sampleData) && sampleData.length ? sampleData[0] : null
+    });
   }
 
   let rows = Array.isArray(data) ? data : [];
@@ -717,6 +769,15 @@ async function init() {
     setDefaultDates();
     toggleRestoreNewSohd();
     ensureStatusBox();
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    debugLog('supabase session check', {
+      hasError: !!sessionError,
+      hasSession: !!sessionData?.session,
+      userId: sessionData?.session?.user?.id || null,
+      email: sessionData?.session?.user?.email || null
+    });
+
     await loadData();
   } catch (err) {
     console.error(err);
