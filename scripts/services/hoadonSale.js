@@ -305,8 +305,9 @@ async function saveEditBanLe() {
 
   await refreshSessionIfNeeded();
 
+  let oldSnap;
   try {
-    const oldSnap = await snapshotInvoiceBeforeEditLocal(sohd);
+    oldSnap = await snapshotInvoiceBeforeEditLocal(sohd);
   } catch (e) {
     console.error("snapshotInvoiceBeforeEdit lỗi:", e);
     alert("❌ Không snapshot được hóa đơn trước khi sửa.");
