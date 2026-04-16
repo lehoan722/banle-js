@@ -623,12 +623,10 @@
 
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
-            <button id="btn-luu">💾 Lưu</button>
-            <button id="btn-sua" class="btn edit" type="button">SỬA</button>
-            <button id="quaylai">Quay lại</button>
-            <button id="xoa" class="xoaDongDangChon" type="button">xoa</button>
-
+            <button id="btn-luu">💾 Lưu</button>            
+            <button id="quaylai">Quay lại</button>            
             <button id="tieptuc">Tiếp tục</button>
+            <button id="xoa" class="xoaDongDangChon" type="button">xoa</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
             <button id="xuatexcel">Xuất Excel</button>
@@ -639,6 +637,7 @@
             </div>
 
             <!-- Popup tìm khách hàng
+             <button id="btn-sua" class="btn edit" type="button">SỬA</button>
              <button onclick="luuHoaDonccn1v2()">💾 Lưu</button>
              <button id="xuatexcel">Xuất Excel</button>
              <button id="timkiem">Tìm kiếm</button>
@@ -673,8 +672,8 @@
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
             <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
-            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
+            <button onclick="xacNhanSuaHoaDon1()">Xác nhận</button>
+            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủyyy</button>
         </div>
 
         <!-- Popup xác nhận thêm mới -->
@@ -1028,36 +1027,138 @@
     </script>
 
 
-    <script>
-        // goi phím F2
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
         setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+            window.LUU_HOADON_F2 = async () => {
+                return await saveBanLe111("F2-CCN");
+            };
         }, 1000);
+    </script>
 
-
-        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+    <script>
         const dispatchTarget = document.body || document.documentElement;
+
         document.getElementById('btn-sua')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            (document.body || document.documentElement).dispatchEvent(ev);
+            if (typeof window.moPopupXacThucSua === 'function') {
+                window.moPopupXacThucSua();
+            } else {
+                alert("❌ Chưa nạp được popup sửa mới.");
+            }
         });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
-        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
+
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
 
-        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
         document.getElementById('ghivitri')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
+    </script>
 
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        window.moPopupXacThucSua = function () {
+            const p = document.getElementById("popupXacThucSua");
+            if (!p) return;
+
+            p.style.display = "block";
+
+            setTimeout(() => {
+                const manv = document.getElementById("xacmanv");
+                if (manv) {
+                    manv.focus();
+                    manv.select?.();
+                }
+            }, 0);
+        };
+
+        window.xacNhanSuaHoaDon1 = async function () {
+            const popup = document.getElementById("popupXacThucSua");
+            const closePopup = () => {
+                if (popup) popup.style.display = "none";
+            };
+
+            try {
+                const { data: { user } } = await window.supabase.auth.getUser();
+                if (!user) {
+                    alert("❌ Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được phiên đăng nhập.");
+                closePopup();
+                return;
+            }
+
+            try {
+                const { data: isAdmin, error } = await window.supabase.rpc("is_admin");
+                if (error || isAdmin !== true) {
+                    alert("❌ Bạn không có quyền sửa hóa đơn.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được quyền sửa hóa đơn.");
+                closePopup();
+                return;
+            }
+
+            window.dangSuaHoaDon = true;
+            window.choPhepSua = true;
+            window.HD_CTX = {
+                ...(window.HD_CTX || {}),
+                mode: "EDIT",
+                fromConfirm: true,
+                edit_at: new Date().toISOString()
+            };
+
+            closePopup();
+
+            console.log("🛠️ CCN111 OVERRIDE: đang gọi LUỒNG SỬA MỚI");
+            await saveBanLe111("EDIT-CONFIRM-CCN");
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const manv = document.getElementById("xacmanv");
+            const mk = document.getElementById("xacmatkhau");
+            const btn = document.getElementById("btnXacNhanSua");
+
+            if (manv) {
+                manv.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (mk) {
+                            mk.focus();
+                            mk.select?.();
+                        }
+                    }
+                });
+            }
+
+            if (mk) {
+                mk.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (btn) btn.focus();
+                    }
+                });
+            }
+
+            if (btn) {
+                btn.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        btn.click();
+                    }
+                });
+            }
+        });
     </script>
 
     <!-- Overlay quét -->
@@ -1305,39 +1406,43 @@
         }
 
         function tryAutoSaveFromNhapTamCCN(dirExpected) {
+            // ❌ Đã chạy rồi thì không chạy lại
             if (window.__AUTO_SAVE_CCN_DONE__) {
-                console.log('[CCN 1v2] Auto-save đã chạy trước đó, bỏ qua.');
+                console.log('[CCN] Auto-save đã chạy trước đó, bỏ qua.');
                 return;
             }
 
             const info = hasRequiredInfoForAutoSave();
 
-            console.log('[CCN 1v2] Kiểm tra điều kiện auto-save:', {
+            console.log('[CCN] Kiểm tra điều kiện auto-save:', {
                 dirExpected,
                 ...info
             });
 
             if (!info.ok) return;
 
-            if (typeof window.luuHoaDonccn1v2 !== 'function') {
-                console.warn('[CCN 1v2] Chưa có hàm window.luuHoaDonccn1v2, bỏ qua auto-save.');
+            // ✅ DÙNG LUỒNG MỚI (KHÔNG gọi trực tiếp hàm cũ nữa)
+            if (typeof window.saveHoaDonCCN !== 'function') {
+                console.warn('[CCN] Chưa có window.saveHoaDonCCN, bỏ qua auto-save.');
                 return;
             }
 
+            // ✅ Đánh dấu đã chạy
             window.__AUTO_SAVE_CCN_DONE__ = true;
 
-            console.log('[CCN 1v2] Đủ điều kiện, bắt đầu tự động lưu hóa đơn từ nhập tạm.');
+            console.log('[CCN] Đủ điều kiện, bắt đầu auto-save từ nhập tạm...');
 
             setTimeout(async () => {
                 try {
-                    await window.luuHoaDonccn1v2();
+                    await window.saveHoaDonCCN(); // 🔥 LUỒNG MỚI
                 } catch (err) {
-                    console.error('[CCN 1v2] Lỗi auto-save:', err);
+                    console.error('[CCN] Lỗi auto-save:', err);
+
+                    // ❗ Nếu lỗi thì cho phép retry
                     window.__AUTO_SAVE_CCN_DONE__ = false;
                 }
             }, 300);
         }
-
         document.addEventListener('DOMContentLoaded', () => tryPrefillFromStorage(true));
         window.addEventListener('load', () => setTimeout(() => tryPrefillFromStorage(true), 600));
     </script>
@@ -1426,6 +1531,35 @@
             };
 
         })();
+    </script>
+
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        document.getElementById('btn-luu').onclick = async function () {
+            if (window.dangLuu) return;
+
+            window.dangLuu = true;
+            this.disabled = true;
+            this.innerText = "Đang lưu...";
+
+            try {
+                const result = await saveBanLe111("BTN-LUU-CCN");
+
+                if (result?.ok) {
+                    // có thể để trống
+                } else {
+                    console.warn("saveBanLe111 không trả về ok=true:", result);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("❌ Lỗi lưu: " + (e?.message || e));
+            } finally {
+                window.dangLuu = false;
+                this.disabled = false;
+                this.innerText = "💾 Lưu";
+            }
+        };
     </script>
 
 </body>
