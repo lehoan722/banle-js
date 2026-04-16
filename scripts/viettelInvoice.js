@@ -17,8 +17,8 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       sellerAddressLine: "Số nhà 540, đường 3/2, tổ 8, Phường Tích Lương, Tỉnh Thái Nguyên, Việt Nam",
       sellerPhoneNumber: "0916747401",
       sellerEmail: "lehoan722@gmail.com",
-      sellerBankAccount: "2662222333",
-      sellerBankName: "Techcombank"
+      sellerBankAccount: "555445725",
+      sellerBankName: "VPBank"
     },
     cs2: {
       sellerLegalName: "NGUYỄN ÁNH TUYẾT",
@@ -26,8 +26,8 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
       sellerAddressLine: "Số 561, Tổ 11, Phường Phan Đình Phùng, Tỉnh Thái Nguyên, Việt Nam",
       sellerPhoneNumber: "0763424342",
       sellerEmail: "nguyenanhtuyet140175@gmail.com",
-      sellerBankAccount: "2552222333",
-      sellerBankName: "Techcombank"
+      sellerBankAccount: "554758266",
+      sellerBankName: "VPBank"
     }
   };
 
