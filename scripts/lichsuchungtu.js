@@ -6,7 +6,61 @@ let currentTrashRow = null;
 let currentVersionRow = null;
 let currentVersionList = [];
 
+let isLoading = false;
+let loadRequestId = 0;
+
 const $ = (id) => document.getElementById(id);
+
+function formatDateInputLocal(date) {
+  const d = new Date(date);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function ensureStatusBox() {
+  let el = document.getElementById('loadingStatus');
+  if (el) return el;
+
+  const summaryBar = document.querySelector('.summary');
+  if (!summaryBar) return null;
+
+  el = document.createElement('div');
+  el.id = 'loadingStatus';
+  el.style.fontSize = '13px';
+  el.style.fontWeight = '600';
+  el.style.color = '#c62828';
+  el.style.marginLeft = 'auto';
+  el.style.display = 'none';
+  summaryBar.appendChild(el);
+
+  return el;
+}
+
+function setLoadingState(loading, text = 'Đang tải dữ liệu...') {
+  isLoading = loading;
+
+  const statusEl = ensureStatusBox();
+  if (statusEl) {
+    statusEl.textContent = loading ? text : '';
+    statusEl.style.display = loading ? 'block' : 'none';
+  }
+
+  const btnTim = $('btnTim');
+  const btnLamMoi = $('btnLamMoi');
+  const tabSua = $('tabSua');
+  const tabXoa = $('tabXoa');
+
+  if (btnTim) btnTim.disabled = loading;
+  if (btnLamMoi) btnLamMoi.disabled = loading;
+  if (tabSua) tabSua.disabled = loading;
+  if (tabXoa) tabXoa.disabled = loading;
+}
+
+function debugLog(...args) {
+  console.log('[lichsuchungtu]', ...args);
+}
 
 function formatDateTime(v) {
   if (!v) return '';
@@ -46,8 +100,8 @@ function setDefaultDates() {
   const from = new Date();
   from.setDate(today.getDate() - 14);
 
-  $('tuNgay').value = from.toISOString().slice(0, 10);
-  $('denNgay').value = today.toISOString().slice(0, 10);
+  $('tuNgay').value = formatDateInputLocal(from);
+  $('denNgay').value = formatDateInputLocal(today);
 }
 
 function showModal(id) {
@@ -85,6 +139,8 @@ function bindModalClose() {
 }
 
 function setActiveTab(tab) {
+  if (isLoading) return;
+
   activeTab = tab;
   $('tabSua').classList.toggle('active', tab === 'sua');
   $('tabXoa').classList.toggle('active', tab === 'xoa');
@@ -104,14 +160,32 @@ function getFilters() {
 }
 
 async function loadData() {
-  if (activeTab === 'sua') {
-    await loadEditLogs();
-  } else {
-    await loadTrashLogs();
+  const requestId = ++loadRequestId;
+  const currentTab = activeTab;
+
+  setLoadingState(true, `Đang tải ${currentTab === 'sua' ? 'lịch sử sửa' : 'lịch sử xóa'}...`);
+  debugLog('start loadData', { requestId, activeTab: currentTab, filters: getFilters() });
+
+  try {
+    if (currentTab === 'sua') {
+      await loadEditLogs(requestId);
+    } else {
+      await loadTrashLogs(requestId);
+    }
+  } catch (err) {
+    console.error(err);
+    alert('❌ Có lỗi khi tải dữ liệu lịch sử chứng từ.');
+  } finally {
+    if (requestId === loadRequestId) {
+      setLoadingState(false);
+      debugLog('finish loadData', { requestId, activeTab: currentTab });
+    } else {
+      debugLog('skip finish because outdated request', { requestId, latest: loadRequestId });
+    }
   }
 }
 
-async function loadEditLogs() {
+async function loadEditLogs(requestId) {
   const f = getFilters();
 
   let query = supabase
@@ -126,7 +200,14 @@ async function loadEditLogs() {
   if (f.action) query = query.eq('action', f.action);
   if (f.source) query = query.ilike('source', `%${f.source}%`);
 
+  debugLog('query edit logs', { requestId, filters: f });
+
   const { data, error } = await query;
+
+  if (requestId !== loadRequestId) {
+    debugLog('discard outdated edit log result', { requestId, latest: loadRequestId });
+    return;
+  }
 
   if (error) {
     console.error(error);
@@ -140,11 +221,18 @@ async function loadEditLogs() {
     rows = rows.filter(r => JSON.stringify(r.diff || {}).toUpperCase().includes(f.masp));
   }
 
+  if (requestId !== loadRequestId) {
+    debugLog('discard outdated edit log rows after filter', { requestId, latest: loadRequestId });
+    return;
+  }
+
+  debugLog('edit logs loaded', { requestId, count: rows.length });
+
   currentRows = rows;
   renderEditLogs(rows);
 }
 
-async function loadTrashLogs() {
+async function loadTrashLogs(requestId) {
   const f = getFilters();
 
   let query = supabase
@@ -158,7 +246,14 @@ async function loadTrashLogs() {
   if (f.sohd) query = query.ilike('sohd', `%${f.sohd}%`);
   if (f.source) query = query.ilike('source', `%${f.source}%`);
 
+  debugLog('query trash logs', { requestId, filters: f });
+
   const { data, error } = await query;
+
+  if (requestId !== loadRequestId) {
+    debugLog('discard outdated trash log result', { requestId, latest: loadRequestId });
+    return;
+  }
 
   if (error) {
     console.error(error);
@@ -171,6 +266,13 @@ async function loadTrashLogs() {
   if (f.masp) {
     rows = rows.filter(r => JSON.stringify(r.details || []).toUpperCase().includes(f.masp));
   }
+
+  if (requestId !== loadRequestId) {
+    debugLog('discard outdated trash log rows after filter', { requestId, latest: loadRequestId });
+    return;
+  }
+
+  debugLog('trash logs loaded', { requestId, count: rows.length });
 
   currentRows = rows;
   renderTrashLogs(rows);
@@ -574,8 +676,13 @@ function bindEvents() {
   $('tabSua').onclick = () => setActiveTab('sua');
   $('tabXoa').onclick = () => setActiveTab('xoa');
 
-  $('btnTim').onclick = () => loadData();
+  $('btnTim').onclick = () => {
+    if (isLoading) return;
+    loadData();
+  };
+
   $('btnLamMoi').onclick = () => {
+    if (isLoading) return;
     $('sohdFilter').value = '';
     $('maspFilter').value = '';
     $('actionFilter').value = '';
@@ -604,11 +711,17 @@ function bindEvents() {
 }
 
 async function init() {
-  bindModalClose();
-  bindEvents();
-  setDefaultDates();
-  toggleRestoreNewSohd();
-  await loadData();
+  try {
+    bindModalClose();
+    bindEvents();
+    setDefaultDates();
+    toggleRestoreNewSohd();
+    ensureStatusBox();
+    await loadData();
+  } catch (err) {
+    console.error(err);
+    alert('❌ Khởi tạo trang lịch sử chứng từ thất bại.');
+  }
 }
 
 init();
