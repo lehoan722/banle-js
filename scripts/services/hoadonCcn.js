@@ -889,6 +889,44 @@ async function saveEditCCNByModern(ctx, prep) {
     return;
   }
 
+  // ===== LOG SỬA CCN =====
+  const newSnap = {
+    header: {
+      sohd: meta.sohd,
+      ngay: meta.ngay,
+      manv: meta.manv,
+      tennv: meta.tennv,
+      diadiem: meta.diadiemSrc,
+      khachhang: meta.khachhang,
+      tongsl: meta.tongsl,
+      tongthanhtien: meta.tongthanhtien,
+      tongkm: meta.tongkm,
+      chietkhau: meta.chietkhau,
+      thanhtoan: meta.thanhtoan,
+      hinhthuctt: meta.hinhthuctt,
+      ghichu: meta.ghichu
+    },
+    details: chitietGoc
+  };
+
+  try {
+    await supabase.rpc("rpc_log_edit_invoice", {
+      p_sohd: meta.sohd,
+      p_old: {
+        header: oldSnap.headerMap.get(meta.sohd),
+        details: Array.from(oldSnap.detailMap.values()).filter(
+          x => x.sohd === meta.sohd
+        )
+      },
+      p_new: newSnap,
+      p_source: "ccn_edit"
+    });
+
+    console.log("🟢 Đã ghi log sửa CCN");
+  } catch (e) {
+    console.error("❌ Lỗi log CCN:", e);
+  }
+
   const hoadonGoc = buildHeaderForSave(
     meta,
     meta.sohd,
