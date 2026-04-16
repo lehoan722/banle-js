@@ -115,10 +115,25 @@ function askConfirmSpecialSave() {
   wrap.style.display = "block";
 
   return new Promise((resolve) => {
+    const onKeyDown = (e) => {
+      if (wrap.style.display !== "block") return;
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        onOk();
+      } else if (e.key === "Escape" || e.key === "Esc") {
+        e.preventDefault();
+        e.stopPropagation();
+        onCancel();
+      }
+    };
+
     const cleanup = () => {
       okBtn.removeEventListener("click", onOk);
       cancelBtn.removeEventListener("click", onCancel);
       mask.removeEventListener("click", onCancel);
+      document.removeEventListener("keydown", onKeyDown, true);
       wrap.style.display = "none";
     };
 
@@ -135,6 +150,12 @@ function askConfirmSpecialSave() {
     okBtn.addEventListener("click", onOk);
     cancelBtn.addEventListener("click", onCancel);
     mask.addEventListener("click", onCancel);
+    document.addEventListener("keydown", onKeyDown, true);
+
+    // Ưu tiên focus nút OK để Enter hoạt động tự nhiên hơn
+    setTimeout(() => {
+      okBtn.focus();
+    }, 0);
   });
 }
 
