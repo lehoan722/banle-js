@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>nhaptamcs1</title>
+    <title>nhaptamCS1</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -668,42 +668,18 @@
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
-
     <script type="module">
-        import { setupBeepUnlockOnce, unlockBeepAudio, playAlertBeep, playSuccessBeep, playWaitSizeBeep } from "./scripts/soundBeep.js";
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Gắn unlock NGAY từ đầu trang
-        setupBeepUnlockOnce(document);
-
-        // Gắn sẵn hàm global để các đoạn code sớm cũng gọi được
-        window.soundSuccess = playSuccessBeep;
-        window.soundWaitSize = playWaitSizeBeep;
-        window.soundAlert = playAlertBeep;
-
-        // Patch alert NGAY từ đầu, không chờ main.js
-        if (!window.__alertBeepPatched) {
-            window.__alertBeepPatched = true;
-            window.__nativeAlert = window.__nativeAlert || window.alert.bind(window);
-
-            window.alert = function (message) {
-                try { window.soundAlert?.(); } catch { }
-                setTimeout(() => window.__nativeAlert(String(message ?? "")), 120);
-            };
-        }
-
-        // Nếu người dùng vừa chạm vào màn hình thì mở khóa luôn
-        document.addEventListener("pointerdown", () => {
-            unlockBeepAudio();
-        }, { once: true, passive: true });
-
-        // Khởi tạo đăng nhập như cũ
+        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs1",
+            macDinhDiaDiem: "CS1",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs1",
+            loginApiPath: "/api/login-CS1", // API backend mới
 
+            // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
+                // 1. Lưu thông tin vào localStorage giống logic cũ
                 if (diadiem) {
                     localStorage.setItem("diadiem", diadiem);
                 }
@@ -717,9 +693,11 @@
                     nhanvien.sua_hoadon ? "true" : "false"
                 );
 
+                // 2. Cho các script khác trên trang dùng
                 window.diadiem = diadiem;
                 window.dangLuu = false;
 
+                // 3. Cập nhật lên giao diện bán hàng
                 const manvInput = document.getElementById("manv");
                 const tennvInput = document.getElementById("tennv");
                 if (manvInput) {
@@ -731,10 +709,12 @@
                     tennvInput.readOnly = true;
                 }
 
+                // 4. Cập nhật quyền giao diện nếu có hàm này
                 if (typeof window.capNhatQuyenGiaoDien === "function") {
                     window.capNhatQuyenGiaoDien();
                 }
 
+                // 5. Import và khởi tạo logic chính của trang (giống code cũ)
                 try {
                     const module = await import("./scripts/main.js");
                     if (typeof module.khoiTaoUngDung === "function") {
@@ -744,6 +724,7 @@
                     console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
                 }
 
+                // 6. Chọn tab & checkbox mặc định giống code cũ
                 if (typeof window.switchTab === "function") {
                     window.switchTab("thongtin");
                 }
@@ -753,6 +734,7 @@
                 const qlNhom = document.getElementById("quanlysizetheonhom");
                 if (qlNhom) qlNhom.checked = true;
 
+                // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
                 const appContainer = document.getElementById("app-container");
                 if (appContainer) appContainer.style.display = "";
 
@@ -761,7 +743,6 @@
             }
         });
     </script>
-
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
 
@@ -940,7 +921,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
+        const cs = (localStorage.diadiem || "CS1");       // vd: "CS1" / "CS1"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -961,7 +942,7 @@
 
         // goi phím F2
         //setTimeout(function () {
-        // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+        // window.LUU_HOADON_F2 = window.luuHoaDonccn1v2; 
         //}, 1000);
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
@@ -1238,18 +1219,18 @@
                 });
             });
 
-            const payload = { source: "nhap-hd", cs: "cs1", items };
+            const payload = { source: "nhap-hd", cs: "CS1", items };
             const json = JSON.stringify(payload);
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-            const url = `${location.origin}/inmavachcs1.html#imp=${b64}`;
+            const url = `${location.origin}/inmavachCS1.html#imp=${b64}`;
             console.log("[NHAP] Mở trang in với dữ liệu:", items);
             window.open(url, "_blank");
         }
 
         // Gắn vào nút
-        // nhapmoimtcs1.html (hoặc module xử lý nút in mã vạch)
+        // nhapmoimtCS1.html (hoặc module xử lý nút in mã vạch)
 
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
         // ===== NÚT IN MÃ VẠCH TỪ TRANG NHẬP MỚI =====
@@ -1283,14 +1264,14 @@
 
             const payload = {
                 source: "nhapmoi",
-                cs: localStorage.getItem("diadiem") || "cs1",
+                cs: localStorage.getItem("diadiem") || "CS1",
                 items
             };
             console.log("📤 [In mã vạch] payload gửi đi:", payload);
 
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-            const url = `${location.origin}/inmavachcs1.html#imp=${encoded}`;
+            const url = `${location.origin}/inmavachCS1.html#imp=${encoded}`;
             window.open(url, "_blank");
         });
 
@@ -1376,7 +1357,7 @@
 
         async function importFromGoogleSheet() {
             const sheetId = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA";
-            const sheetName = "kiemkhocs1";
+            const sheetName = "kiemkhoCS1";
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
 
             try {
@@ -1488,110 +1469,73 @@
     </script>
 
     <script type="module">
-    function layDanhSachDongTuBangNhapTam() {
-        if (typeof window.capNhatBangKetQuaTuDOM === "function") {
-            window.capNhatBangKetQuaTuDOM();
-        }
+        import { autoSuggestAndOpenCcn } from "./scripts/chuyenkhoAutoEngine.js";
 
-        const bang = window.bangKetQua || {};
-        const rows = [];
+        function layDanhSachMaspTuBangNhapTam() {
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            }
 
-        Object.values(bang).forEach(item => {
-            const masp = String(item?.masp || "").trim().toUpperCase();
-            if (!masp) return;
+            const bang = window.bangKetQua || {};
+            const masps = Object.keys(bang)
+                .map(x => String(x || "").trim().toUpperCase())
+                .filter(Boolean);
 
-            const sizes = Array.isArray(item?.sizes) ? item.sizes : [];
-            const soluongs = Array.isArray(item?.soluongs) ? item.soluongs : [];
+            if (masps.length) return [...new Set(masps)];
 
-            sizes.forEach((sz, i) => {
-                const size = String(sz ?? "").trim() || "0";
-                const sl = Number(soluongs[i] || 0);
-                if (sl <= 0) return;
+            const rows = document.querySelectorAll("#bangketqua tbody tr");
+            const out = new Set();
 
-                rows.push({ masp, size, sl });
+            rows.forEach(tr => {
+                const maspCell = tr.cells[0];
+                const masp = String(maspCell?.innerText || "").trim().toUpperCase();
+                if (masp) out.add(masp);
             });
-        });
 
-        // fallback từ DOM nếu window.bangKetQua chưa có
-        if (rows.length) return rows;
-
-        const trs = document.querySelectorAll("#bangketqua tbody tr");
-        const out = [];
-
-        trs.forEach(tr => {
-            const masp = String(tr.cells?.[0]?.innerText || "").trim().toUpperCase();
-            const size = String(tr.cells?.[2]?.innerText || "").trim() || "0";
-            const sl = Number(String(tr.cells?.[3]?.innerText || "").trim()) || 0;
-
-            if (masp && sl > 0) {
-                out.push({ masp, size, sl });
-            }
-        });
-
-        return out;
-    }
-
-    function buildPrefillPayload1v2(rows, note) {
-        const grouped = new Map();
-
-        rows.forEach(r => {
-            const masp = String(r.masp || "").trim().toUpperCase();
-            const size = String(r.size ?? "").trim() || "0";
-            const sl = Number(r.sl || 0);
-
-            if (!masp || sl <= 0) return;
-
-            if (!grouped.has(masp)) grouped.set(masp, []);
-            grouped.get(masp).push({ size, sl });
-        });
-
-        return {
-            dir: "1v2",
-            note: String(note || "").trim(),
-            items: Array.from(grouped.entries()).map(([masp, items]) => ({
-                masp,
-                items
-            }))
-        };
-    }
-
-    async function goiYChuyenKhoTuNhapTamCs1() {
-        try {
-            const rows = layDanhSachDongTuBangNhapTam();
-
-            if (!rows.length) {
-                alert("Phiếu chưa có mã sản phẩm.");
-                return;
-            }
-
-            const manv = String(localStorage.getItem("manv") || "").trim().toUpperCase();
-            const sohd = String(document.getElementById("sohd")?.value || "").trim();
-            const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
-
-            const now = new Date();
-            const pad = n => String(n).padStart(2, "0");
-            const note =
-                `Tạo tự động từ nhập tạm CS1 - ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}` +
-                (manv ? ` - ${manv}` : "") +
-                (sohd ? ` - ${sohd}` : "") +
-                (ghichu ? ` - ${ghichu}` : "");
-
-            const payload = buildPrefillPayload1v2(rows, note);
-
-            localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
-
-            const targetUrl = `${location.origin}/ccn1v2cs1.html`;
-            window.open(targetUrl, "_blank");
-
-            console.log("[NHAPTAM CS1] Đã đẩy dữ liệu sang ccn1v2cs1:", payload);
-        } catch (e) {
-            console.error("[NHAPTAM CS1] Lỗi đẩy dữ liệu sang CCN mới:", e);
-            alert("Có lỗi khi đẩy dữ liệu sang trang chuyển chi nhánh mới.");
+            return Array.from(out);
         }
-    }
 
-    document.getElementById("btnGoiyChuyenKho")?.addEventListener("click", goiYChuyenKhoTuNhapTamCs1);
-</script>
+        async function goiYChuyenKhoTuNhapTamCS1() {
+            try {
+                const masps = layDanhSachMaspTuBangNhapTam();
+
+                if (!masps.length) {
+                    alert("Phiếu chưa có mã sản phẩm.");
+                    return;
+                }
+
+                const manv = String(localStorage.getItem("manv") || "").trim().toUpperCase();
+                const sohd = String(document.getElementById("sohd")?.value || "").trim();
+                const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
+
+                const now = new Date();
+                const pad = n => String(n).padStart(2, "0");
+                const note =
+                    `Tạo tự động từ nhập tạm CS1 - ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}` +
+                    (manv ? ` - ${manv}` : "") +
+                    (sohd ? ` - ${sohd}` : "") +
+                    (ghichu ? ` - ${ghichu}` : "");
+
+                const rs = await autoSuggestAndOpenCcn({
+                    masps,
+                    pageKind: "CS1",
+                    note
+                });
+
+                if (!rs.ok) {
+                    alert(rs.message || "Không có mã nào cần chuyển kho.");
+                    return;
+                }
+
+                console.log("[NHAPTAM CS1] Đã mở phiếu chuyển kho:", rs);
+            } catch (e) {
+                console.error("[NHAPTAM CS1] Lỗi gợi ý chuyển kho:", e);
+                alert("Có lỗi khi tự động gợi ý chuyển kho.");
+            }
+        }
+
+        document.getElementById("btnGoiyChuyenKho")?.addEventListener("click", goiYChuyenKhoTuNhapTamCS1);
+    </script>
 
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
@@ -1726,12 +1670,12 @@
     </script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const diadiem = document.getElementById("diadiem");
-            if (diadiem) diadiem.value = "cs1";
-            localStorage.setItem("diadiem", "cs1");
-        });
-    </script>
+document.addEventListener("DOMContentLoaded", () => {
+    const diadiem = document.getElementById("diadiem");
+    if (diadiem) diadiem.value = "CS1";
+    localStorage.setItem("diadiem", "CS1");
+});
+</script>
 
 </body>
 
