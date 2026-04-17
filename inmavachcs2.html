@@ -2204,19 +2204,31 @@ Bạn chưa nhập màu sắc.
                 e.preventDefault();
                 e.stopPropagation();
 
-                const value = (mausacInput.value || '').trim();
+                const rawValue = (mausacInput.value || '').trim();
 
                 // Nếu ô màu sắc đang trống
                 // => giữ nguyên focus tại đây, không chuyển sang ô khác
-                if (!value) {
+                if (!rawValue) {
                     mausacInput.focus();
                     return;
                 }
 
-                // Nếu ô màu sắc đã có dữ liệu
-                // => đóng popup màu và chuyển sang ô khuyến mãi
+                // Chuẩn hóa dữ liệu màu
+                let colors = parseColorsFromInput(mausacInput.value);
+
+                // Xóa các mục màu chỉ có 1 ký tự
+                // vì đó chỉ là ký tự người dùng gõ để tìm kiếm
+                colors = colors.filter(c => (c || '').trim().length > 1);
+
+                selectedColorOrder = [...colors];
+                updateInputFromSelectedColorOrder();
+                syncPopupChecksFromInput();
+                updateMauSacPreview();
+
+                // Đóng popup màu
                 closeMauSacPopup();
 
+                // Nhảy sang ô khuyến mãi
                 const km = document.getElementById('khuyenmaiInput');
                 if (km) {
                     km.focus();
