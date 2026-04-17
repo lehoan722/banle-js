@@ -282,11 +282,15 @@ async function upsertSoChungTu(loai, soMoi) {
 function extractSoCtYeuCauFromGhiChu(ghichu) {
   const s = String(ghichu || "").trim();
 
-  // Ưu tiên mẫu có chữ "yêu cầu"
   let m =
+    // ✅ Mẫu cũ mà file legacy đang dùng
+    s.match(/Tạo từ phiếu yêu cầu\s+([A-Za-z0-9_./-]+)/i) ||
+
+    // ✅ Các mẫu linh hoạt hơn
     s.match(/(?:so[_\s-]*ct|số[_\s-]*ct)\s*(?:yêu\s*cầu\s*chuyển\s*kho)?\s*[:\-]?\s*([A-Za-z0-9_./-]+)/i) ||
     s.match(/yêu\s*cầu\s*chuyển\s*kho\s*[:\-]?\s*([A-Za-z0-9_./-]+)/i) ||
-    s.match(/yeucau[^\s|;,]*/i);
+    s.match(/phiếu\s*yêu\s*cầu\s*[:\-]?\s*([A-Za-z0-9_./-]+)/i) ||
+    s.match(/\b(yeucau[^\s|;,]*)\b/i);
 
   if (!m) return "";
 
