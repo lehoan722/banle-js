@@ -2177,11 +2177,12 @@ Bạn chưa nhập màu sắc.
 
             mausacInput?.addEventListener('blur', function () {
                 const colors = parseColorsFromInput(mausacInput.value);
+                // Xóa các màu chỉ có 1 ký tự
+                colors = colors.filter(c => (c || '').trim().length > 1);
                 selectedColorOrder = [...colors];
                 updateInputFromSelectedColorOrder();
                 syncPopupChecksFromInput();
-                // Xóa các màu chỉ có 1 ký tự
-                colors = colors.filter(c => (c || '').trim().length > 1);
+                
 
             });
 
