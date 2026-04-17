@@ -2313,7 +2313,7 @@ Bạn chưa nhập màu sắc.
                 'tenspInput',
                 'gianhapInput',
                 'gialeInput',
-                //'mausacInput',
+                'mausacInput',
                 'khuyenmaiInput',
                 'nhaccInput',     // NHÀ CUNG CẤP trước
                 'nhomhangInput',  // rồi NHÓM HÀNG
@@ -2352,9 +2352,9 @@ Bạn chưa nhập màu sắc.
                     const el = document.getElementById(id);
                     if (!el) return;
 
-                    // Riêng ô mã sản phẩm đã có logic Enter riêng,
+                    // Riêng ô mã sản phẩm và ô màu sắc đã có logic Enter riêng
                     // nên không gắn điều hướng Enter tuần tự ở đây nữa
-                    if (id === 'maspInput') {
+                    if (id === 'maspInput' || id === 'mausacInput') {
                         el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
                         return;
                     }
