@@ -1391,10 +1391,15 @@
                         if (pop) pop.style.display = 'none';
                     } catch (_) { }
 
-                    justSavedReturnToMasp = true;
+                    justSavedReturnToMasp = false;
 
                     checkExistAndFillForm();
-                    
+
+                    const tensp = document.getElementById('tenspInput');
+                    if (tensp) {
+                        tensp.focus();
+                        setTimeout(() => tensp.select?.(), 10);
+                    }
                 }
             });
 
@@ -2349,7 +2354,7 @@ Bạn chưa nhập màu sắc.
 
                     // Riêng ô mã sản phẩm và ô màu sắc đã có logic Enter riêng
                     // nên không gắn điều hướng Enter tuần tự ở đây nữa
-                    if (id === 'maspInput' || id === 'mausacInput') {
+                    if ( id === 'mausacInput') {
                         el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
                         return;
                     }
