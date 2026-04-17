@@ -2176,20 +2176,13 @@ Bạn chưa nhập màu sắc.
             });
 
             mausacInput?.addEventListener('blur', function () {
-                setTimeout(() => {
-                    if (isClickingMauSacPopup) return;
+                const colors = parseColorsFromInput(mausacInput.value);
+                selectedColorOrder = [...colors];
+                updateInputFromSelectedColorOrder();
+                syncPopupChecksFromInput();
+                // Xóa các màu chỉ có 1 ký tự
+                colors = colors.filter(c => (c || '').trim().length > 1);
 
-                    let colors = parseColorsFromInput(mausacInput.value);
-
-                    // Xóa các màu chỉ có 1 ký tự
-                    colors = colors.filter(c => (c || '').trim().length > 1);
-
-                    selectedColorOrder = [...colors];
-                    updateInputFromSelectedColorOrder();
-                    syncPopupChecksFromInput();
-                    updateMauSacPreview();
-                    closeMauSacPopup();
-                }, 120);
             });
 
             mausacInput?.addEventListener('focus', function () {
