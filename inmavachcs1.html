@@ -1391,15 +1391,10 @@
                         if (pop) pop.style.display = 'none';
                     } catch (_) { }
 
-                    justSavedReturnToMasp = false;
+                    justSavedReturnToMasp = true;
 
                     checkExistAndFillForm();
-
-                    const tensp = document.getElementById('tenspInput');
-                    if (tensp) {
-                        tensp.focus();
-                        setTimeout(() => tensp.select?.(), 10);
-                    }
+                    
                 }
             });
 
