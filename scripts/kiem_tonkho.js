@@ -352,8 +352,8 @@ import "./stockQuickPopup.js";
 
             if (!size) continue;
             if (!isValidSize(size)) continue;
+            if (sl <= 0) continue;
 
-            // Giữ lại cả số âm và số 0 để không làm mất bản chất dữ liệu tồn
             out.push({ size, sl });
         }
 
@@ -979,7 +979,7 @@ import "./stockQuickPopup.js";
             const masp = normalizeMasp(row?.masp);
             const sl = normalizeNumber(row?.sl || 0);
 
-            if (!masp) return;
+            if (!masp || sl <= 0) return;
 
             maspSet.add(masp);
             tongSl += sl;
@@ -1944,9 +1944,7 @@ import "./stockQuickPopup.js";
             const size = normalizeSize(row.size);
             const sl = normalizeNumber(CFG.branch === "cs1" ? row.ton_cs1 : row.ton_cs2);
 
-            // Chỉ bỏ dòng không có mã hoặc không có size
-            // Giữ lại cả tồn dương, tồn 0, tồn âm để phản ánh đúng bản chất kho
-            if (!masp || !size) return;
+            if (!masp || !size || sl === 0) return;
 
             if (!xuatOrder.includes(masp)) {
                 xuatOrder.push(masp);
