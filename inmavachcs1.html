@@ -2195,15 +2195,34 @@ Bạn chưa nhập màu sắc.
             });
 
             mausacInput?.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
+                if (e.key !== 'Enter') return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const currentValue = (mausacInput.value || '').trim();
+
+                // Nếu ô màu sắc đã có dữ liệu
+                // => đóng popup và chuyển sang ô khuyến mãi
+                if (currentValue) {
+                    const colors = parseColorsFromInput(mausacInput.value);
+                    selectedColorOrder = [...colors];
+                    updateInputFromSelectedColorOrder();
+                    syncPopupChecksFromInput();
                     closeMauSacPopup();
+
                     const km = document.getElementById('khuyenmaiInput');
                     if (km) {
                         km.focus();
                         setTimeout(() => km.select?.(), 10);
                     }
+                    return;
                 }
+
+                // Nếu ô màu sắc đang trống
+                // => vẫn giữ focus tại ô màu sắc, không thoát ra ngoài
+                mausacInput.focus();
+                openMauSacPopup('');
             });
 
             document.addEventListener('mousedown', function (e) {
