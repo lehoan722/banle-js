@@ -1529,7 +1529,7 @@ function patchAlertWithBeep() {
       const tdSizeSl = tr.querySelector(".cell-nhap-sizesl");
       const tdTongSl = tr.querySelector(".cell-nhap-tongsl");
 
-      const masp = normalizeMasp(tdMasp?.innerText || "");
+      const masp = normalizeMasp(tdMasp?.dataset?.masp || "");
       if (!masp) return;
 
       if (!nhapOrderMoi.includes(masp)) {
@@ -1850,17 +1850,21 @@ function patchAlertWithBeep() {
     const oldState = getState();
 
     window.kiemNhapState = {
-      nhap: {},
-      xuat: {},
-      ketQua: {},
-      nhapOrder: [],
-      xuatOrder: [],
-      dsHoaDonNguon: [],
-      dsHoaDonNguonInfo: [],
-      taoHdCcnByMasp: {},   // <-- thêm mới
-      selectedMasp: "",
-      dmMaspCache: oldState?.dmMaspCache instanceof Map ? oldState.dmMaspCache : new Map()
-    };
+  nhap: {},
+  xuat: {},
+  ketQua: {},
+  nhapOrder: [],
+  xuatOrder: [],
+  dsHoaDonNguon: [],
+  dsHoaDonNguonInfo: [],
+  taoHdCcnByMasp: {},
+  selectedMasp: "",
+  dmMaspCache: oldState?.dmMaspCache instanceof Map ? oldState.dmMaspCache : new Map(),
+
+  // NEW: phải tạo lại khi reset phiếu
+  vitriCache: new Map(),
+  vitriDangTai: new Set()
+};
 
     dangChonSizeTrongPopup = false;
 
