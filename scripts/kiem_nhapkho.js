@@ -627,35 +627,44 @@ function patchAlertWithBeep() {
     return window.kiemNhapState;
   }
 
+  function buildVitriText(khoRaw, baymauRaw) {
+    const kho = String(khoRaw || "").trim() || "-";
+    const baymau = String(baymauRaw || "").trim() || "-";
+    return `${kho} / ${baymau}`;
+  }
+
   function getPlaceholderVitriInfo() {
     return {
-      kho: "-",
-      baymau: "-",
-      text: "- / -"
+      cs1: {
+        kho: "-",
+        baymau: "-",
+        text: "- / -"
+      },
+      cs2: {
+        kho: "-",
+        baymau: "-",
+        text: "- / -"
+      }
     };
   }
 
-  function chonThongTinVitriTheoCoSo(row) {
-    const toBranch = String(CFG.toBranch || "").trim().toLowerCase();
-
-    let kho = "";
-    let baymau = "";
-
-    if (toBranch === "cs1") {
-      kho = String(row?.vitrikho1 || "").trim();
-      baymau = String(row?.treomaucs1 || "").trim();
-    } else {
-      kho = String(row?.vitrikho2 || "").trim();
-      baymau = String(row?.treomaucs2 || "").trim();
-    }
-
-    if (!kho) kho = "-";
-    if (!baymau) baymau = "-";
+  function chonThongTinVitriTheo2CoSo(row) {
+    const kho1 = String(row?.vitrikho1 || "").trim() || "-";
+    const kho2 = String(row?.vitrikho2 || "").trim() || "-";
+    const baymau1 = String(row?.treomaucs1 || "").trim() || "-";
+    const baymau2 = String(row?.treomaucs2 || "").trim() || "-";
 
     return {
-      kho,
-      baymau,
-      text: `${kho} / ${baymau}`
+      cs1: {
+        kho: kho1,
+        baymau: baymau1,
+        text: buildVitriText(kho1, baymau1)
+      },
+      cs2: {
+        kho: kho2,
+        baymau: baymau2,
+        text: buildVitriText(kho2, baymau2)
+      }
     };
   }
 
@@ -693,7 +702,7 @@ function patchAlertWithBeep() {
         return fallback;
       }
 
-      const info = chonThongTinVitriTheoCoSo(data || {});
+      const info = chonThongTinVitriTheo2CoSo(data || {});
       state.vitriCache.set(m, info);
       return info;
     } catch (err) {
@@ -1432,7 +1441,9 @@ function patchAlertWithBeep() {
       const taoHdCcnText = String(taoHdCcnByMasp[masp] || "").trim();
 
       const vitriInfo = layThongTinViTriTheoMaspTuCache(masp);
-      const vitriText = String(vitriInfo?.text || "- / -").trim() || "- / -";
+
+      const vitriTextNhap = String(vitriInfo?.cs1?.text || "- / -").trim() || "- / -";
+      const vitriTextXuat = String(vitriInfo?.cs2?.text || "- / -").trim() || "- / -";
 
       const tr = document.createElement("tr");
       const selectedMasp = normalizeMasp(state.selectedMasp || "");
@@ -1456,12 +1467,12 @@ function patchAlertWithBeep() {
 
       tr.innerHTML = `
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
-    style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline; padding-top:4px; padding-bottom:4px;">
-  <div style="line-height:1.05; margin:0; padding:0;">
+  style="cursor:pointer; color:#0b57d0; font-weight:400; text-decoration:none; padding-top:4px; padding-bottom:4px;">
+  <div style="line-height:1.05; margin:0; padding:0; font-weight:400; text-decoration:none;">
     ${escapeHtml(masp)}
   </div>
-  <div style="line-height:1.05; margin:0; padding:0; color:#d32f2f; font-weight:600; text-decoration:none;">
-    ${escapeHtml(vitriText)}
+  <div style="line-height:1.05; margin:0; padding:0; color:#d32f2f; font-weight:400; text-decoration:none;">
+    ${escapeHtml(vitriTextNhap)}
   </div>
 </td>
 
@@ -1475,12 +1486,12 @@ function patchAlertWithBeep() {
       data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapGroup?.items || []) || ""}</td>
 
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
-    style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline; padding-top:4px; padding-bottom:4px;">
-  <div style="line-height:1.05; margin:0; padding:0;">
+  style="cursor:pointer; color:#0b57d0; font-weight:400; text-decoration:none; padding-top:4px; padding-bottom:4px;">
+  <div style="line-height:1.05; margin:0; padding:0; font-weight:400; text-decoration:none;">
     ${escapeHtml(masp)}
   </div>
-  <div style="line-height:1.05; margin:0; padding:0; color:#d32f2f; font-weight:600; text-decoration:none;">
-    ${escapeHtml(vitriText)}
+  <div style="line-height:1.05; margin:0; padding:0; color:#d32f2f; font-weight:400; text-decoration:none;">
+    ${escapeHtml(vitriTextXuat)}
   </div>
 </td>
 
