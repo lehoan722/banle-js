@@ -172,9 +172,13 @@ function patchAlertWithBeep() {
     xuatOrder: [],
     dsHoaDonNguon: [],
     dsHoaDonNguonInfo: [],
-    taoHdCcnByMasp: {},   // <-- thêm mới
+    taoHdCcnByMasp: {},
     selectedMasp: "",
-    dmMaspCache: new Map()
+    dmMaspCache: new Map(),
+
+    // NEW: cache vị trí kho / bày mẫu theo mã
+    vitriCache: new Map(),
+    vitriDangTai: new Set()
   };
 
   let dangChonSizeTrongPopup = false;
@@ -621,6 +625,112 @@ function patchAlertWithBeep() {
 
   function getState() {
     return window.kiemNhapState;
+  }
+
+  function getPlaceholderVitriInfo() {
+    return {
+      kho: "-",
+      baymau: "-",
+      text: "- / -"
+    };
+  }
+
+  function chonThongTinVitriTheoCoSo(row) {
+    const toBranch = String(CFG.toBranch || "").trim().toLowerCase();
+
+    let kho = "";
+    let baymau = "";
+
+    if (toBranch === "cs1") {
+      kho = String(row?.vitrikho1 || "").trim();
+      baymau = String(row?.treomaucs1 || "").trim();
+    } else {
+      kho = String(row?.vitrikho2 || "").trim();
+      baymau = String(row?.treomaucs2 || "").trim();
+    }
+
+    if (!kho) kho = "-";
+    if (!baymau) baymau = "-";
+
+    return {
+      kho,
+      baymau,
+      text: `${kho} / ${baymau}`
+    };
+  }
+
+  async function napThongTinViTriTheoMasp(masp) {
+    const state = getState();
+    const m = normalizeMasp(masp);
+
+    if (!m) return getPlaceholderVitriInfo();
+
+    if (state.vitriCache instanceof Map && state.vitriCache.has(m)) {
+      return state.vitriCache.get(m);
+    }
+
+    if (state.vitriDangTai instanceof Set && state.vitriDangTai.has(m)) {
+      return getPlaceholderVitriInfo();
+    }
+
+    if (!window.supabase) {
+      return getPlaceholderVitriInfo();
+    }
+
+    state.vitriDangTai.add(m);
+
+    try {
+      const { data, error } = await window.supabase
+        .from("dmhanghoa")
+        .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2")
+        .eq("masp", m)
+        .maybeSingle();
+
+      if (error) {
+        console.error("[KNK] Lỗi lấy vị trí theo mã:", m, error);
+        const fallback = getPlaceholderVitriInfo();
+        state.vitriCache.set(m, fallback);
+        return fallback;
+      }
+
+      const info = chonThongTinVitriTheoCoSo(data || {});
+      state.vitriCache.set(m, info);
+      return info;
+    } catch (err) {
+      console.error("[KNK] Exception lấy vị trí theo mã:", m, err);
+      const fallback = getPlaceholderVitriInfo();
+      state.vitriCache.set(m, fallback);
+      return fallback;
+    } finally {
+      state.vitriDangTai.delete(m);
+
+      // tải xong thì render lại để dòng vị trí hiện ra
+      setTimeout(() => {
+        try {
+          renderBangKetQua();
+        } catch (e) {
+          console.error("[KNK] renderBangKetQua sau khi nạp vị trí bị lỗi:", e);
+        }
+      }, 0);
+    }
+  }
+
+  function layThongTinViTriTheoMaspTuCache(masp) {
+    const state = getState();
+    const m = normalizeMasp(masp);
+
+    if (!m) return getPlaceholderVitriInfo();
+
+    if (state.vitriCache instanceof Map && state.vitriCache.has(m)) {
+      return state.vitriCache.get(m);
+    }
+
+    // chưa có cache thì chạy nền để lấy
+    napThongTinViTriTheoMasp(m).catch(err => {
+      console.error("[KNK] napThongTinViTriTheoMasp lỗi:", err);
+    });
+
+    return getPlaceholderVitriInfo();
   }
 
   async function kiemTraMaspTrongDanhMuc(masp) {
@@ -1321,6 +1431,9 @@ function patchAlertWithBeep() {
       const kqTong = buildKetQuaTheoMasp(nhapGroup, xuatGroup, ketQuaMap);
       const taoHdCcnText = String(taoHdCcnByMasp[masp] || "").trim();
 
+      const vitriInfo = layThongTinViTriTheoMaspTuCache(masp);
+      const vitriText = String(vitriInfo?.text || "- / -").trim() || "- / -";
+
       const tr = document.createElement("tr");
       const selectedMasp = normalizeMasp(state.selectedMasp || "");
       const trangThaiTong = String(kqTong.trangthai || "").trim().toUpperCase();
@@ -1343,8 +1456,11 @@ function patchAlertWithBeep() {
 
       tr.innerHTML = `
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
-      style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
-    ${escapeHtml(masp)}
+      style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline; white-space:pre-line; line-height:1.35;">
+    <div>${escapeHtml(masp)}</div>
+    <div style="color:#0b57d0; font-weight:600; text-decoration:none; margin-top:2px;">
+      ${escapeHtml(vitriText)}
+    </div>
   </td>
 
   <td contenteditable="true"
@@ -1357,14 +1473,17 @@ function patchAlertWithBeep() {
       data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapGroup?.items || []) || ""}</td>
 
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
-      style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
-    ${escapeHtml(masp)}
+      style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline; white-space:pre-line; line-height:1.35;">
+    <div>${escapeHtml(masp)}</div>
+    <div style="color:#0b57d0; font-weight:600; text-decoration:none; margin-top:2px;">
+      ${escapeHtml(vitriText)}
+    </div>
   </td>
 
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(xuatText)}</td>
   <td>${tongSoLuong(xuatGroup?.items || []) || ""}</td>
 
-    <td>${escapeHtml(kqTong.trangthai || "")}</td>
+  <td>${escapeHtml(kqTong.trangthai || "")}</td>
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(sohdNguonText || "")}</td>
   <td style="white-space: pre-line; text-align:left; color:#7b1fa2; font-weight:600;">
@@ -1759,6 +1878,11 @@ function patchAlertWithBeep() {
       sohdEl.value = soPhieuMoi || "";
     }
     if (ghichuEl) ghichuEl.value = "";
+
+    if (window.kiemNhapState) {
+      window.kiemNhapState.vitriCache = new Map();
+      window.kiemNhapState.vitriDangTai = new Set();
+    }
 
     const hdState = byId("hd_state");
     if (hdState) {
