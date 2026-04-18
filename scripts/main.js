@@ -1395,7 +1395,10 @@ function showBayMauPopup(tasks, context) {
       const noteUpdates = [];
       noteInputs.forEach(({ input, old }) => {
         const note = input.value.trim();
-        if (note !== (old || "")) {
+        const oldNote = (old || "").trim();
+
+        // Chỉ gửi update khi note mới KHÔNG RỖNG và thực sự khác note cũ
+        if (note && note !== oldNote) {
           noteUpdates.push({
             id_ct: Number(input.dataset.idCt),
             note,
