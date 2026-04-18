@@ -1456,12 +1456,14 @@ function patchAlertWithBeep() {
 
       tr.innerHTML = `
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
-      style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline; white-space:pre-line; line-height:1.35;">
-    <div>${escapeHtml(masp)}</div>
-    <div style="color:#0b57d0; font-weight:600; text-decoration:none; margin-top:2px;">
-      ${escapeHtml(vitriText)}
-    </div>
-  </td>
+    style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline; padding-top:4px; padding-bottom:4px;">
+  <div style="line-height:1.05; margin:0; padding:0;">
+    ${escapeHtml(masp)}
+  </div>
+  <div style="line-height:1.05; margin:0; padding:0; color:#d32f2f; font-weight:600; text-decoration:none;">
+    ${escapeHtml(vitriText)}
+  </div>
+</td>
 
   <td contenteditable="true"
       class="cell-nhap-sizesl"
@@ -1473,12 +1475,14 @@ function patchAlertWithBeep() {
       data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapGroup?.items || []) || ""}</td>
 
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
-      style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline; white-space:pre-line; line-height:1.35;">
-    <div>${escapeHtml(masp)}</div>
-    <div style="color:#0b57d0; font-weight:600; text-decoration:none; margin-top:2px;">
-      ${escapeHtml(vitriText)}
-    </div>
-  </td>
+    style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline; padding-top:4px; padding-bottom:4px;">
+  <div style="line-height:1.05; margin:0; padding:0;">
+    ${escapeHtml(masp)}
+  </div>
+  <div style="line-height:1.05; margin:0; padding:0; color:#d32f2f; font-weight:600; text-decoration:none;">
+    ${escapeHtml(vitriText)}
+  </div>
+</td>
 
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(xuatText)}</td>
   <td>${tongSoLuong(xuatGroup?.items || []) || ""}</td>
@@ -1850,21 +1854,21 @@ function patchAlertWithBeep() {
     const oldState = getState();
 
     window.kiemNhapState = {
-  nhap: {},
-  xuat: {},
-  ketQua: {},
-  nhapOrder: [],
-  xuatOrder: [],
-  dsHoaDonNguon: [],
-  dsHoaDonNguonInfo: [],
-  taoHdCcnByMasp: {},
-  selectedMasp: "",
-  dmMaspCache: oldState?.dmMaspCache instanceof Map ? oldState.dmMaspCache : new Map(),
+      nhap: {},
+      xuat: {},
+      ketQua: {},
+      nhapOrder: [],
+      xuatOrder: [],
+      dsHoaDonNguon: [],
+      dsHoaDonNguonInfo: [],
+      taoHdCcnByMasp: {},
+      selectedMasp: "",
+      dmMaspCache: oldState?.dmMaspCache instanceof Map ? oldState.dmMaspCache : new Map(),
 
-  // NEW: phải tạo lại khi reset phiếu
-  vitriCache: new Map(),
-  vitriDangTai: new Set()
-};
+      // NEW: phải tạo lại khi reset phiếu
+      vitriCache: new Map(),
+      vitriDangTai: new Set()
+    };
 
     dangChonSizeTrongPopup = false;
 
