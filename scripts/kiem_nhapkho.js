@@ -1879,11 +1879,6 @@ function patchAlertWithBeep() {
     }
     if (ghichuEl) ghichuEl.value = "";
 
-    if (window.kiemNhapState) {
-      window.kiemNhapState.vitriCache = new Map();
-      window.kiemNhapState.vitriDangTai = new Set();
-    }
-
     const hdState = byId("hd_state");
     if (hdState) {
       hdState.value = "moi";
