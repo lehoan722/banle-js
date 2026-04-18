@@ -2433,11 +2433,6 @@ function patchAlertWithBeep() {
   }
 
   async function napHoaDonNguonPlaceholder() {
-
-    if (!daDangNhapKiemNhapKho) {
-      return { ok: false, message: "Chưa đăng nhập.", cancelled: false };
-    }
-
     try {
       if (!window.supabase) {
         alert("Không tìm thấy kết nối Supabase.");
