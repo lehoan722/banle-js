@@ -1456,14 +1456,14 @@ function patchAlertWithBeep() {
 
       tr.innerHTML = `
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
-    style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline; padding-top:4px; padding-bottom:4px;">
-  <div style="line-height:1.05; margin:0; padding:0;">
-    ${escapeHtml(masp)}
-  </div>
-  <div style="line-height:1.05; margin:0; padding:0; color:#d32f2f; font-weight:600; text-decoration:none;">
-    ${escapeHtml(vitriText)}
-  </div>
-</td>
+    style="cursor:pointer; color:#0b57d0; font-weight:400; text-decoration:none; padding-top:4px; padding-bottom:4px;">
+    <div style="line-height:1.05; margin:0; padding:0; font-weight:400; text-decoration:none;">
+      ${escapeHtml(masp)}
+    </div>
+    <div style="line-height:1.05; margin:0; padding:0; color:#d32f2f; font-weight:400; text-decoration:none;">
+      ${escapeHtml(vitriText)}
+    </div>
+  </td>
 
   <td contenteditable="true"
       class="cell-nhap-sizesl"
@@ -1475,14 +1475,11 @@ function patchAlertWithBeep() {
       data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapGroup?.items || []) || ""}</td>
 
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
-    style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline; padding-top:4px; padding-bottom:4px;">
-  <div style="line-height:1.05; margin:0; padding:0;">
-    ${escapeHtml(masp)}
-  </div>
-  <div style="line-height:1.05; margin:0; padding:0; color:#d32f2f; font-weight:600; text-decoration:none;">
-    ${escapeHtml(vitriText)}
-  </div>
-</td>
+    style="cursor:pointer; color:#0b57d0; font-weight:400; text-decoration:none; padding-top:4px; padding-bottom:4px;">
+    <div style="line-height:1.05; margin:0; padding:0; font-weight:400; text-decoration:none;">
+      ${escapeHtml(masp)}
+    </div>
+  </td>
 
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(xuatText)}</td>
   <td>${tongSoLuong(xuatGroup?.items || []) || ""}</td>
@@ -1494,6 +1491,7 @@ function patchAlertWithBeep() {
     ${escapeHtml(taoHdCcnText || "")}
   </td>
 `;
+
       tbody.appendChild(tr);
     }
 
