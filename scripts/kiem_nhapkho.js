@@ -2091,7 +2091,7 @@ function patchAlertWithBeep() {
 
     const ketQua = [];
     const hdState = String(byId("hd_state")?.value || "").trim().toLowerCase();
-    const dangMoPhieuCuHoacSua = (hdState === "xem" || hdState === "sua" );
+    const dangMoPhieuCuHoacSua = (hdState === "xem" || hdState === "sua");
     const setHoaDonNguonCuaPhieuDangXem = laySetHoaDonNguonCuaPhieuDangXem();
 
     (dsHd || []).forEach((hd) => {
@@ -2373,6 +2373,12 @@ function patchAlertWithBeep() {
             xuatMap[key].sohd_list = oldList;
           }
         }
+      }
+
+      const hdStateEl = document.getElementById("hd_state");
+      if (hdStateEl) {
+        hdStateEl.value = "da_nap";
+        hdStateEl.setAttribute("data-state", "da_nap");
       }
 
       const state = getState();
@@ -3333,6 +3339,14 @@ function patchAlertWithBeep() {
   }
 
   async function luuPhieuKiemNhapKho() {
+
+    const hdState = document.getElementById("hd_state")?.value;
+
+    if (hdState !== "da_nap") {
+      alert("❌ Bạn phải nhấn 'Nạp chuyển chi nhánh theo mã sản phẩm' trước khi lưu!");
+      return;
+    }
+
     try {
       if (!window.supabase) {
         alert("Không tìm thấy kết nối Supabase.");
