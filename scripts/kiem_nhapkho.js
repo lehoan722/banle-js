@@ -178,9 +178,6 @@ function patchAlertWithBeep() {
   };
 
   let dangChonSizeTrongPopup = false;
-  let daDangNhapKiemNhapKho = false;
-  let daTuDongNapSauDangNhap = false;
-  let dangTienXuLyLuu = false;
 
   // =========================
   // AUDIO CẢNH BÁO
@@ -806,7 +803,7 @@ function patchAlertWithBeep() {
 
     // Nếu đang mở phiếu cũ thì không tự đè số phiếu
     const hdState = byId("hd_state");
-    const isPhieuCu = String(hdState?.value || "").trim() === "cu";
+    const isPhieuCu = String(hdState?.value || "").trim() === "xem";
 
     if (isPhieuCu) return;
 
@@ -2094,7 +2091,7 @@ function patchAlertWithBeep() {
 
     const ketQua = [];
     const hdState = String(byId("hd_state")?.value || "").trim().toLowerCase();
-    const dangMoPhieuCuHoacSua = (hdState === "cu" || hdState === "sua" || hdState === "xem");
+    const dangMoPhieuCuHoacSua = (hdState === "xem" || hdState === "sua" );
     const setHoaDonNguonCuaPhieuDangXem = laySetHoaDonNguonCuaPhieuDangXem();
 
     (dsHd || []).forEach((hd) => {
@@ -2282,18 +2279,11 @@ function patchAlertWithBeep() {
     });
   }
 
-  async function napHoaDonNguonTheoMasp(options = {}) {
-    const {
-      mode = "manual",              // "manual" | "save"
-      showSuccessAlert = true,
-      showCancelAlert = false
-    } = options || {};
-
+  async function napHoaDonNguonTheoMasp() {
     try {
       if (!window.supabase) {
-        const message = "Không tìm thấy kết nối Supabase.";
-        if (mode === "manual") alert(message);
-        return { ok: false, message, cancelled: false };
+        alert("Không tìm thấy kết nối Supabase.");
+        return;
       }
 
       // đảm bảo state.nhap đang là dữ liệu mới nhất trên bảng
@@ -2304,38 +2294,30 @@ function patchAlertWithBeep() {
       const dsMaspNhap = layDanhSachMaspDangNhap();
 
       if (!dsMaspNhap.length) {
-        const message = "Bạn cần nhập dữ liệu kiểm bên trái trước rồi mới nạp CCN theo mã sản phẩm.";
-        if (mode === "manual") alert(message);
-        return { ok: false, message, cancelled: false };
+        alert("Bạn cần nhập dữ liệu kiểm bên trái trước rồi mới nạp CCN theo mã sản phẩm.");
+        return;
       }
 
       const { dsHd, ctRows } = await layHoaDonNguonUngVienTheoMasp(dsMaspNhap);
 
       if (!dsHd.length || !ctRows.length) {
         phatAmThanhLoi();
-        const message = "Không tìm thấy hóa đơn CCN phù hợp trong hôm qua và hôm nay.";
-        if (mode === "manual") alert(message);
-        return { ok: false, message, cancelled: false };
+        alert("Không tìm thấy hóa đơn CCN phù hợp trong hôm qua và hôm nay.");
+        return;
       }
 
       const dsDeXuat = tinhDeXuatHoaDonTheoMasp(dsHd, ctRows, dsMaspNhap);
 
       if (!dsDeXuat.length) {
         phatAmThanhLoi();
-        const message = "Không tìm thấy hóa đơn CCN nào trong khung ngày đã chọn có mã sản phẩm trùng với phần nhập.";
-        if (mode === "manual") alert(message);
-        return { ok: false, message, cancelled: false };
+        alert("Không tìm thấy hóa đơn CCN nào trong khung ngày đã chọn có mã sản phẩm trùng với phần nhập.");
+        return;
       }
 
       const dsSoHdChon = await moPopupChonHoaDonNguonTheoMasp(dsDeXuat);
+      if (!dsSoHdChon || !dsSoHdChon.length) return;
 
-      if (!dsSoHdChon || !dsSoHdChon.length) {
-        if (mode === "manual" && showCancelAlert) {
-          alert("Bạn đã hủy nạp hóa đơn nguồn theo mã sản phẩm.");
-        }
-        return { ok: false, cancelled: true, message: "Người dùng đã hủy chọn hóa đơn nguồn." };
-      }
-
+      // lấy toàn bộ hóa đơn đã chọn, không chỉ lấy mã trùng
       const dsHoaDonNguonInfo = dsHd
         .filter(hd => dsSoHdChon.includes(String(hd.sohd || "").trim()))
         .map(hd => ({
@@ -2347,88 +2329,65 @@ function patchAlertWithBeep() {
           tennv: String(hd.tennv || "").trim()
         }));
 
-      const { data: ctRowsChon, error: errCtChon } = await window.supabase
-        .from("ct_hoadon_banle")
-        .select("sohd, masp, size, soluong")
-        .in("sohd", dsSoHdChon)
-        .order("id", { ascending: true });
+      const ctRowsChon = (ctRows || []).filter(row =>
+        dsSoHdChon.includes(String(row.sohd || "").trim())
+      );
 
-      if (errCtChon) {
-        console.error("[nhapkiemkho] load ct_hoadon_banle theo dsSoHdChon error:", errCtChon);
-        const message = "Lỗi khi lấy chi tiết hóa đơn nguồn đã chọn.";
-        if (mode === "manual") alert(message);
-        return { ok: false, message, cancelled: false };
+      if (!ctRowsChon.length) {
+        alert("Các hóa đơn đã chọn không có chi tiết.");
+        return;
       }
 
       const xuatMap = {};
       const xuatOrder = [];
 
-      (ctRowsChon || []).forEach((row) => {
+      for (const row of ctRowsChon) {
         const masp = normalizeMasp(row.masp);
-        const size = normalizeSize(row.size || "0");
+        const size = normalizeSize(row.size);
         const sl = normalizeNumber(row.soluong);
+        const sohdNguon = String(row.sohd || "").trim();
 
-        if (!masp || sl <= 0) return;
-
-        const key = makeKey(masp, size || "0");
-
-        if (!xuatMap[key]) {
-          xuatMap[key] = {
-            masp,
-            size: size || "0",
-            sl,
-            sohd_list: [String(row.sohd || "").trim()]
-          };
-        } else {
-          xuatMap[key].sl += sl;
-          if (!Array.isArray(xuatMap[key].sohd_list)) {
-            xuatMap[key].sohd_list = [];
-          }
-          xuatMap[key].sohd_list.push(String(row.sohd || "").trim());
-        }
+        if (!masp || !size || sl <= 0) continue;
 
         if (!xuatOrder.includes(masp)) {
           xuatOrder.push(masp);
         }
-      });
 
-      Object.values(xuatMap).forEach((row) => {
-        row.sohd_list = Array.from(
-          new Set((row.sohd_list || []).map(x => String(x || "").trim()).filter(Boolean))
-        );
-      });
+        const key = makeKey(masp, size);
+
+        if (!xuatMap[key]) {
+          xuatMap[key] = {
+            masp,
+            size,
+            sl,
+            sohd_list: sohdNguon ? [sohdNguon] : []
+          };
+        } else {
+          xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
+
+          if (sohdNguon) {
+            const oldList = Array.isArray(xuatMap[key].sohd_list) ? xuatMap[key].sohd_list : [];
+            if (!oldList.includes(sohdNguon)) {
+              oldList.push(sohdNguon);
+            }
+            xuatMap[key].sohd_list = oldList;
+          }
+        }
+      }
 
       const state = getState();
-      state.dsHoaDonNguon = [...dsSoHdChon];
+      state.dsHoaDonNguon = dsSoHdChon;
       state.dsHoaDonNguonInfo = dsHoaDonNguonInfo;
 
       const ghichuEl = byId("ghichu_top");
-      if (ghichuEl) {
-        ghichuEl.value = dsSoHdChon.join(" ; ");
-      }
+      if (ghichuEl) ghichuEl.value = dsSoHdChon.join(" ; ");
 
       window.NhapKiemKho.setXuatData(xuatMap, xuatOrder);
 
-      const message = `Đã nạp ${dsSoHdChon.length} hóa đơn nguồn theo mã sản phẩm.`;
-
-      if (showSuccessAlert) {
-        alert(message);
-      }
-
-      return {
-        ok: true,
-        cancelled: false,
-        message,
-        soHoaDon: dsSoHdChon.length,
-        dsSoHdChon
-      };
+      alert(`Đã nạp ${dsSoHdChon.length} hóa đơn nguồn theo mã sản phẩm.`);
     } catch (err) {
       console.error("[nhapkiemkho] napHoaDonNguonTheoMasp exception:", err);
-      const message = err?.message || "Có lỗi khi nạp CCN theo mã sản phẩm.";
-      if (mode === "manual") {
-        alert(message);
-      }
-      return { ok: false, cancelled: false, message };
+      alert(err?.message || "Có lỗi khi nạp CCN theo mã sản phẩm.");
     }
   }
 
@@ -3457,7 +3416,7 @@ function patchAlertWithBeep() {
       }
 
       // ===== PHIẾU MỚI =====
-      if (hdState !== "cu") {
+      if (hdState !== "xem") {
         if (tonTaiCu) {
           alert("Số phiếu kiểm nhập này đã được lưu rồi.");
           return;
@@ -3465,7 +3424,7 @@ function patchAlertWithBeep() {
       }
 
       // ===== PHIẾU CŨ =====
-      if (hdState === "cu") {
+      if (hdState === "xem") {
         const okSua = confirm(`Bạn có chắc chắn muốn sửa phiếu cũ ${so_hd_kiemnhap} không?`);
         if (!okSua) {
           return;
@@ -3571,43 +3530,6 @@ function patchAlertWithBeep() {
     }
   }
 
-  async function xuLyLuuSauKhiNapTheoMasp() {
-    if (dangTienXuLyLuu) return;
-    dangTienXuLyLuu = true;
-
-    try {
-      const ketQuaNap = await napHoaDonNguonTheoMasp({
-        mode: "save",
-        showSuccessAlert: false,
-        showCancelAlert: false
-      });
-
-      if (ketQuaNap?.cancelled) {
-        return;
-      }
-
-      if (!ketQuaNap?.ok) {
-        alert(ketQuaNap?.message || "Không thể nạp hóa đơn nguồn theo mã sản phẩm trước khi lưu.");
-        return;
-      }
-
-      const xacNhan = confirm(
-        `${ketQuaNap.message}\n\nBạn có muốn tiếp tục lưu dữ liệu không?`
-      );
-
-      if (!xacNhan) {
-        return;
-      }
-
-      await luuPhieuKiemNhapKho();
-    } catch (err) {
-      console.error("[KNK] xuLyLuuSauKhiNapTheoMasp error:", err);
-      alert("Có lỗi trong bước tiền xử lý trước khi lưu.");
-    } finally {
-      dangTienXuLyLuu = false;
-    }
-  }
-
   function bindButtons() {
     const btnThem = byId("them");
     if (btnThem) {
@@ -3621,13 +3543,9 @@ function patchAlertWithBeep() {
     const btnNapTheoMasp2 = byId("btnNapHoaDonCCNTheoMasp_footer");
     [btnNapTheoMasp1, btnNapTheoMasp2].forEach((btn) => {
       if (!btn) return;
-      btn.addEventListener("click", async (e) => {
+      btn.addEventListener("click", (e) => {
         e.preventDefault();
-        await napHoaDonNguonTheoMasp({
-          mode: "manual",
-          showSuccessAlert: true,
-          showCancelAlert: false
-        });
+        napHoaDonNguonTheoMasp();
       });
     });
 
@@ -3792,8 +3710,8 @@ function patchAlertWithBeep() {
 
     const hdState = byId("hd_state");
     if (hdState) {
-      hdState.value = "cu";
-      hdState.setAttribute("data-state", "cu");
+      hdState.value = "xem";
+      hdState.setAttribute("data-state", "xem");
     }
 
 
@@ -3886,29 +3804,6 @@ function patchAlertWithBeep() {
   // =========================
   // INIT
   // =========================
-
-  async function autoNapHoaDonNguonSauDangNhapNeuCan() {
-    if (!daDangNhapKiemNhapKho) return;
-    if (daTuDongNapSauDangNhap) return;
-
-    const hdStateEl = byId("hd_state");
-    const trangThai = String(hdStateEl?.value || "").trim().toLowerCase();
-
-    const state = getState();
-    const daCoDuLieuXuat = !!Object.keys(state?.xuat || {}).length;
-    const dangLaPhieuMoi = !trangThai || trangThai === "moi";
-
-    if (!dangLaPhieuMoi || daCoDuLieuXuat) return;
-
-    daTuDongNapSauDangNhap = true;
-
-    try {
-      await napHoaDonNguonPlaceholder();
-    } catch (err) {
-      console.warn("[AUTO NAP HOA DON NGUON SAU DANG NHAP] lỗi:", err);
-    }
-  }
-
   async function init() {
     updateTitle();
     setDefaultBranchInfo();
@@ -3923,10 +3818,22 @@ function patchAlertWithBeep() {
 
     await resetPhieu();
 
-    // Không tự nạp hóa đơn nguồn khi vừa load trang.
-    // Chỉ nạp sau khi đăng nhập thành công.
-    daDangNhapKiemNhapKho = false;
-    daTuDongNapSauDangNhap = false;
+    const hdStateEl = byId("hd_state");
+    const trangThai = String(hdStateEl?.value || "").trim().toLowerCase();
+
+    const state = getState();
+    const daCoDuLieuXuat = !!Object.keys(state?.xuat || {}).length;
+    const dangLaPhieuMoi = !trangThai || trangThai === "moi";
+
+    if (dangLaPhieuMoi && !daCoDuLieuXuat) {
+      setTimeout(async () => {
+        try {
+          await napHoaDonNguonPlaceholder();
+        } catch (err) {
+          console.warn("[AUTO NAP HOA DON NGUON] lỗi:", err);
+        }
+      }, 200);
+    }
 
     console.log("[nhapkiemkho] init OK", CFG);
   }
