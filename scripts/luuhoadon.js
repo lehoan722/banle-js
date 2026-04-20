@@ -66,7 +66,16 @@ import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 import { guiHoaDonViettel } from './viettelInvoice.js';
 
-import { refreshSessionIfNeeded, hoaDonDaTonTai, hoaDonDaTonTaiAny, ensureCatalogsReady, capNhatUsedTuVanSauKhiLuuCT } from './luuhoadon/api.js';
+import {
+    refreshSessionIfNeeded,
+    hoaDonDaTonTai,
+    hoaDonDaTonTaiAny,
+    ensureCatalogsReady,
+    capNhatUsedTuVanSauKhiLuuCT,
+    getServerNowISO,
+    getServerTodayVN
+} from './luuhoadon/api.js';
+
 import { buildCCNCtxFromPathname, ensureExistDialog, showExistDialog, getDiaDiemFromLoai, getDiaDiemFromPageName, getLoaiFromSoHDInput, handleSpecialSoHoaDon, inferBranches } from './luuhoadon/builders.js';
 import { normalizeBangKetQua, calcTongThanhTienFromBangKetQua } from './luuhoadon/pricing.js';
 import { resolveGroupKeyFromSP, requireManagedAtBranch } from './luuhoadon/validators.js';
@@ -288,7 +297,7 @@ export async function luuHoaDonQuaAPI() {
         document.getElementById("sohd").value = sohdThucTe;
 
         normalizeBangKetQua(getBangKetQua());
-        const createdAt = new Date().toISOString();
+        const createdAt = await getServerNowISO();
         const bangKetQuaNEW = getBangKetQua();
 
         const chitiet = [];
@@ -401,8 +410,17 @@ export async function luuHoaDonQuaAPI() {
     }
 
     const isConfirmEdit = (window.HD_CTX?.fromConfirm === true) && (window.HD_CTX?.mode === "EDIT");
-    const updatedAt = isConfirmEdit ? (window.HD_CTX?.edit_at || new Date().toISOString()) : null;
-    const createdAt = (tonTai && choPhepSua && tonTai.created_at) ? tonTai.created_at : new Date().toISOString();
+    let updatedAt = null;
+    if (isConfirmEdit) {
+        updatedAt = window.HD_CTX?.edit_at || await getServerNowISO();
+    }
+
+    let createdAt = null;
+    if (tonTai && choPhepSua && tonTai.created_at) {
+        createdAt = tonTai.created_at;
+    } else {
+        createdAt = await getServerNowISO();
+    }
 
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
@@ -589,7 +607,7 @@ export async function luuHoaDonNhapQuaAPI() {
         const sohdThucTe = rpcRes[0].sohd;
         document.getElementById("sohd").value = sohdThucTe;
         normalizeBangKetQua(getBangKetQua());
-        const createdAt = new Date().toISOString();
+        const createdAt = await getServerNowISO();
         const bangKetQuaNEW = getBangKetQua();
 
 
@@ -661,8 +679,17 @@ export async function luuHoaDonNhapQuaAPI() {
         await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
     }
     const isConfirmEdit = (window.HD_CTX?.fromConfirm === true) && (window.HD_CTX?.mode === "EDIT");
-    const updatedAt = isConfirmEdit ? (window.HD_CTX?.edit_at || new Date().toISOString()) : null;
-    const createdAt = (tonTai && choPhepSua && tonTai.created_at) ? tonTai.created_at : new Date().toISOString();
+    let updatedAt = null;
+    if (isConfirmEdit) {
+        updatedAt = window.HD_CTX?.edit_at || await getServerNowISO();
+    }
+
+    let createdAt = null;
+    if (tonTai && choPhepSua && tonTai.created_at) {
+        createdAt = tonTai.created_at;
+    } else {
+        createdAt = await getServerNowISO();
+    }
 
     const getIntValue = (id) =>
         parseInt(document.getElementById(id).value.replace(/[.,]/g, "") || "0", 10);
@@ -773,7 +800,10 @@ export async function luuHoaDonCaHaiBan() {
     if (!sohd) return alert("❌2b Chưa có số hóa đơn.");
 
     const isConfirmEdit = (window.HD_CTX?.fromConfirm === true) && (window.HD_CTX?.mode === "EDIT");
-    const updatedAt = isConfirmEdit ? (window.HD_CTX?.edit_at || new Date().toISOString()) : null;
+    let updatedAt = null;
+    if (isConfirmEdit) {
+        updatedAt = window.HD_CTX?.edit_at || await getServerNowISO();
+    }
 
     // Chuẩn hoá size trước khi build chi tiết
     normalizeBangKetQua(getBangKetQua());
@@ -873,7 +903,9 @@ export async function luuHoaDonCaHaiBan() {
         await supabase.from("hoadon_banleT").delete().eq("sohd", sohd);
     }
 
-    const createdAt = (isConfirmEdit && createdAtGoc) ? createdAtGoc : new Date().toISOString();
+    const createdAt = (isConfirmEdit && createdAtGoc)
+        ? createdAtGoc
+        : await getServerNowISO();
     const loaiT = diadiem === "cs1" ? "bancs1T" : "bancs2T";
 
     // Lấy số hiện tại từ bảng sochungtu
@@ -1006,7 +1038,7 @@ async function lamMoiSauKhiLuu() {
     document.getElementById("diadiem").value = diadiemVal;
     document.getElementById("manv").value = manvVal;
     document.getElementById("tennv").value = tennvVal;
-    document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
+    document.getElementById("ngay").value = await getServerTodayVN();
     // Reset mode về NEW sau khi lưu
     window.HD_CTX = { mode: "NEW", version: null };
     await capNhatSoHoaDonTuDong();
@@ -1063,7 +1095,7 @@ export async function xacNhanSuaHoaDon() {
     choPhepSua = true;
 
     // 4) Ghi thời điểm sửa để lưu vào updated_at (hoadon + chi tiết)
-    const editAt = new Date().toISOString();
+    const editAt = await getServerNowISO();
     window.HD_CTX = {
         ...(window.HD_CTX || {}),
         mode: "EDIT",
