@@ -547,18 +547,23 @@
           let accountNo = "8848543915";
           let accountName = "  cs1   ";
 
-          //if (isCS2) {
-          //  bankId = "BIDV";
-          //  bankLabel = "BIDV";
-          //  accountNo = "8898174130";
-          //  accountName = "  cs2   ";
-         //  }
+          const sohdText = (hoadon.sohd || "").toString().trim();
+          const soCuoiMatch = sohdText.match(/(\d+)\s*$/);
+          const soCuoiHoaDon = soCuoiMatch ? Number(soCuoiMatch[1]) : 0;
+          const laSoChan = soCuoiHoaDon % 2 === 0;
 
           if (isCS2) {
-            bankId = "MB";
-            bankLabel = "MB";
-            accountNo = "0963486775";
-            accountName = "  cs2   ";
+            if (laSoChan) {
+              bankId = "MB";
+              bankLabel = "MB";
+              accountNo = "0963486775";
+              accountName = "  cs2   ";
+            } else {
+              bankId = "BIDV";
+              bankLabel = "BIDV";
+              accountNo = "8898174130";
+              accountName = "  cs2   ";
+            }
           }
 
           // ===== Nếu đang bật chế độ F2 thì ép về Techcombank theo cơ sở =====
@@ -575,7 +580,7 @@
             }
           }
 
-          const sohdText = (hoadon.sohd || "").toString().trim();
+
           const addInfo = " CK ";
 
           // ✅ Nếu đang bật chế độ nhập tay số tiền thì QR = 0
