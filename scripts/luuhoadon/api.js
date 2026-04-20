@@ -29,6 +29,24 @@ export async function refreshSessionIfNeeded() {
     return session;
 }
 
+export async function getServerNowISO() {
+    const { data, error } = await supabase.rpc("server_now_iso");
+    if (error || !data) {
+        console.error("server_now_iso error:", error);
+        throw new Error("GET_SERVER_NOW_FAILED");
+    }
+    return String(data);
+}
+
+export async function getServerTodayVN() {
+    const { data, error } = await supabase.rpc("server_today_vn");
+    if (error || !data) {
+        console.error("server_today_vn error:", error);
+        throw new Error("GET_SERVER_TODAY_FAILED");
+    }
+    return String(data);
+}
+
 export async function hoaDonDaTonTai(sohd) {
     if (!sohd) return false;
     const { data, error } = await supabase
@@ -100,7 +118,8 @@ export async function capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang) {
         const dia = String(diadiemTrang || "").toLowerCase();
         const prefixNV = dia === "cs2" ? "bannvcs2_" : "bannvcs1_";
 
-        const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const serverNowIso = await getServerNowISO();
+        const oneHourAgoIso = new Date(new Date(serverNowIso).getTime() - 60 * 60 * 1000).toISOString();
 
         // Tập mã sản phẩm duy nhất có trong hóa đơn vừa lưu
         const maspSet = new Set();
