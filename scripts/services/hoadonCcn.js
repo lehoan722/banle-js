@@ -8,7 +8,9 @@ import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
 import {
   refreshSessionIfNeeded,
   ensureCatalogsReady,
-  hoaDonDaTonTaiAny
+  hoaDonDaTonTaiAny,
+  getServerNowISO,
+  getServerTodayVN
 } from '../luuhoadon/api.js';
 
 import { buildCCNCtxFromPathname } from '../luuhoadon/builders.js';
@@ -205,9 +207,9 @@ function buildHeaderForSave(meta, sohd, loaihd, diadiem, createdAt) {
   };
 }
 
-function buildDetailRowsForSave(meta, bangKetQua) {
-  const createdAtGoc = new Date().toISOString();
-  const createdAtDoiUng = new Date().toISOString();
+async function buildDetailRowsForSave(meta, bangKetQua) {
+  const createdAtGoc = await getServerNowISO();
+  const createdAtDoiUng = await getServerNowISO();
 
   const chitietGoc = [];
   const chitietDoiUng = [];
@@ -350,7 +352,7 @@ async function capNhatYeuCauChuyenKhoCt(meta, bangKetQua) {
     let tongSoDongDaCapNhat = 0;
 
     for (const row of dsDongCapNhat) {
-      const nowIso = new Date().toISOString();
+      const nowIso = await getServerNowISO();
 
       const payloadUpdate = {
         trang_thai_dong: "da_chuyen",
@@ -481,7 +483,7 @@ async function danhDauKiemNhapChoCaHaiPhieu(meta) {
 
     const dsSoHdCanDanhDau = [meta.sohd, meta.sohdDoiUng].filter(Boolean);
     const manv = String(meta.manv || "").trim();
-    const ngay = new Date().toISOString().slice(0, 10);
+    const ngay = await getServerTodayVN();
 
     console.log("🔵 Đánh dấu DK chuẩn mới:", {
       page: meta.page || "",
@@ -656,7 +658,7 @@ async function saveNewCCNByModern(ctx, prep) {
   }
 
   const { chitietGoc, chitietDoiUng, createdAtGoc, createdAtDoiUng } =
-    buildDetailRowsForSave(meta, bangKetQua);
+  await buildDetailRowsForSave(meta, bangKetQua);
 
   if (!chitietGoc.length) {
     alert("❌ Không có chi tiết hóa đơn để lưu.");
@@ -886,7 +888,7 @@ async function saveEditCCNByModern(ctx, prep) {
 
   // 2) Build lại dữ liệu mới
   const { chitietGoc, chitietDoiUng, createdAtGoc, createdAtDoiUng } =
-    buildDetailRowsForSave(meta, bangKetQua);
+  await buildDetailRowsForSave(meta, bangKetQua);
 
   if (!chitietGoc.length) {
     alert("❌ Không có chi tiết hóa đơn để sửa.");
@@ -948,7 +950,7 @@ async function saveEditCCNByModern(ctx, prep) {
   );
 
   // Đánh dấu updated_at cho nhánh EDIT
-  const updatedAt = new Date().toISOString();
+  const updatedAt = await getServerNowISO();
   hoadonGoc.updated_at = updatedAt;
   hoadonDoiUng.updated_at = updatedAt;
 
