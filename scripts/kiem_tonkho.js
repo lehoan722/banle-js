@@ -3752,46 +3752,7 @@ import "./stockQuickPopup.js";
         }
         return true;
     }
-
-    async function kiemTraTonMayPhiếuConHopLe(rows, ngayCt) {
-        const dsMasp = Array.from(new Set(
-            (rows || []).map(r => normalizeMasp(r.masp)).filter(Boolean)
-        ));
-
-        if (!dsMasp.length) {
-            return { ok: false, message: "Phiếu không có mã sản phẩm." };
-        }
-
-        const { data, error } = await window.supabase.rpc("xntnhanh", {
-            p_masps: dsMasp,
-            p_den_ngay: ngayCt,
-            p_tonghop_size: false
-        });
-
-        if (error) {
-            console.error("[xntnhanh] kiemTraTonMayPhiếuConHopLe:", error);
-            return { ok: false, message: "Lỗi khi kiểm tra tồn máy hiện tại." };
-        }
-
-        const savedMap = buildTonMapFromSavedRows(rows);
-        const currentMap = buildTonMapFromRpcData(data || []);
-
-        console.log("[KTK] savedMap =", savedMap);
-        console.log("[KTK] currentMap =", currentMap);
-        console.log("[KTK] rpcData =", data || []);
-
-        const equal = areTonMapsEqual(savedMap, currentMap);
-
-        return {
-            ok: equal,
-            savedMap,
-            currentMap,
-            rpcData: data || [],
-            message: equal
-                ? "Tồn máy hiện tại khớp với tồn máy đã lưu."
-                : "Tồn máy hiện tại đã thay đổi so với thời điểm kiểm. Không được tạo phiếu điều chỉnh."
-        };
-    }
+    
 
     function tachItemsNhapXuatTuRowsKiemTon(rows, mode) {
         const items = [];
@@ -3958,13 +3919,7 @@ import "./stockQuickPopup.js";
             if (!ckDup.ok) {
                 alert(ckDup.message);
                 return;
-            }
-
-            const ckTon = await kiemTraTonMayPhiếuConHopLe(rows, ngayCt);
-            if (!ckTon.ok) {
-                alert(ckTon.message);
-                return;
-            }
+            }            
 
             const items = tachItemsNhapXuatTuRowsKiemTon(rows, mode);
             if (!items.length) {
