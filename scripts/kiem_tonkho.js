@@ -2017,6 +2017,82 @@ import "./stockQuickPopup.js";
         }
     }
 
+    async function canDoiSizeKiemTon() {
+    try {
+        if (!window.supabase) {
+            alert("Không tìm thấy kết nối Supabase.");
+            return;
+        }
+
+        const state = getState();
+
+        if (!state.daKiemTra) {
+            alert("Phải bấm 'Kiểm tra' trước khi cân đối size.");
+            return;
+        }
+
+        const hdStateEl = byId("hd_state");
+        const hdStateValue = String(
+            hdStateEl?.value || hdStateEl?.getAttribute("data-state") || ""
+        ).trim().toLowerCase();
+
+        if (hdStateValue !== "xem") {
+            alert("Chỉ được cân đối size khi đang mở phiếu kiểm tồn cũ.");
+            return;
+        }
+
+        const soPhieu = String(byId("sohd")?.value || "").trim();
+        if (!soPhieu) {
+            alert("Chưa có số phiếu kiểm tồn.");
+            return;
+        }
+
+        const { manv, tennv } = getCurrentUserInfo();
+
+        const ok = confirm(
+            "Bạn có chắc muốn CÂN ĐỐI SIZE theo phiếu này?\n\n" +
+            "- Chỉ admin mới được phép chạy.\n" +
+            "- Hệ thống sẽ sửa size trên hóa đơn bán cơ sở.\n" +
+            "- Sau khi chạy xong sẽ nạp lại tồn máy và kiểm tra lại."
+        );
+        if (!ok) return;
+
+        phatAmThanhSize();
+
+        const { data, error } = await window.supabase.rpc("rpc_can_doi_size_kiem_ton", {
+            p_so_phieu: soPhieu,
+            p_nguoi_thuc_hien: manv || null,
+            p_ten_nguoi_thuc_hien: tennv || null
+        });
+
+        if (error) {
+            console.error("[KTK] rpc_can_doi_size_kiem_ton error:", error);
+            phatAmThanhLoi();
+            alert("Lỗi cân đối size: " + (error.message || error));
+            return;
+        }
+
+        console.log("[KTK] rpc_can_doi_size_kiem_ton result:", data);
+
+        phatAmThanhThanhCong();
+
+        alert(
+            "Đã chạy cân đối size xong.\n\n" +
+            "- Mã xử lý: " + normalizeNumber(data?.masp_done || 0) + "\n" +
+            "- Mã bỏ qua: " + normalizeNumber(data?.masp_skip || 0) + "\n" +
+            "- Số dòng đã sửa: " + normalizeNumber(data?.rows_updated || 0)
+        );
+
+        // Nạp lại tồn máy theo dữ liệu hiện tại rồi kiểm tra lại
+        await napTonMayVaKiemTra();
+
+    } catch (err) {
+        console.error("[KTK] canDoiSizeKiemTon exception:", err);
+        phatAmThanhLoi();
+        alert("Lỗi hệ thống khi cân đối size.");
+    }
+}
+
     // =========================
     // NẠP HÓA ĐƠN NGUỒN
     // Bản đầu: chưa query thật, chỉ placeholder
@@ -3116,6 +3192,8 @@ import "./stockQuickPopup.js";
             });
         }
 
+        byId("btnCanDoiSize")?.addEventListener("click", canDoiSizeKiemTon);
+
         byId("btnLayBayMau")?.addEventListener("click", async () => {
             await layBayMauTuGoogleSheet();
         });
@@ -3459,6 +3537,7 @@ import "./stockQuickPopup.js";
         moPhieuTruoc,
         moPhieuSau,
         layBayMauTuGoogleSheet,
+        canDoiSizeKiemTon,
 
         setXuatData(dataMap, orderArr) {
             const state = getState();
