@@ -8,7 +8,9 @@ import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
 import {
   refreshSessionIfNeeded,
   hoaDonDaTonTaiAny,
-  capNhatUsedTuVanSauKhiLuuCT
+  capNhatUsedTuVanSauKhiLuuCT,
+  getServerNowISO,
+  getServerTodayVN
 } from '../luuhoadon/api.js';
 
 import {
@@ -101,8 +103,8 @@ function validateBeforeSave() {
   return true;
 }
 
-function buildHeader(loai, diadiemTrang, bangKetQua) {
-  const nowIso = new Date().toISOString();
+async function buildHeader(loai, diadiemTrang, bangKetQua) {
+  const nowIso = await getServerNowISO();
 
   return {
     ngay: getText("ngay"),
@@ -125,8 +127,8 @@ function buildHeader(loai, diadiemTrang, bangKetQua) {
   };
 }
 
-function buildDetails(sohd, diadiemTrang, bangKetQua) {
-  const createdAt = new Date().toISOString();
+async function buildDetails(sohd, diadiemTrang, bangKetQua) {
+  const createdAt = await getServerNowISO();
   const ngay = getText("ngay");
   const rows = [];
 
@@ -212,7 +214,7 @@ async function resetAfterSave() {
   if (getInput("diadiem")) getInput("diadiem").value = diadiemVal;
   if (getInput("manv")) getInput("manv").value = manvVal;
   if (getInput("tennv")) getInput("tennv").value = tennvVal;
-  if (getInput("ngay")) getInput("ngay").value = new Date().toISOString().slice(0, 10);
+  if (getInput("ngay")) getInput("ngay").value = await getServerTodayVN();
 
   window.HD_CTX = { mode: "NEW", version: null };
   window.dangSuaHoaDon = false;
@@ -247,7 +249,7 @@ async function saveNewBanLe() {
   const diadiemTrang = loai.includes("cs2") ? "cs2" : "cs1";
 
   let bangKetQua = getBangKetQua();
-  const header = buildHeader(loai, diadiemTrang, bangKetQua);
+  const header = await buildHeader(loai, diadiemTrang, bangKetQua);
 
   await refreshSessionIfNeeded();
 
@@ -269,7 +271,7 @@ async function saveNewBanLe() {
   normalizeBangKetQua(getBangKetQua());
   bangKetQua = getBangKetQua();
 
-  const chitiet = buildDetails(sohdThucTe, diadiemTrang, bangKetQua);
+  const chitiet = await buildDetails(sohdThucTe, diadiemTrang, bangKetQua);
 
   const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
   if (errCT) {
@@ -303,6 +305,17 @@ async function saveEditBanLe() {
     return;
   }
 
+  const { data: tonTai } = await supabase
+    .from("hoadon_banle")
+    .select("sohd, created_at")
+    .eq("sohd", sohd)
+    .maybeSingle();
+
+  if (!tonTai) {
+    alert("❌ Không tìm thấy hóa đơn để sửa.");
+    return;
+  }
+
   await refreshSessionIfNeeded();
 
   let oldSnap;
@@ -323,8 +336,8 @@ async function saveEditBanLe() {
   const diadiemTrang = loai.includes("cs2") ? "cs2" : "cs1";
   let bangKetQua = getBangKetQua();
 
-  const header = buildHeader(loai, diadiemTrang, bangKetQua);
-  const chitiet = buildDetails(sohd, diadiemTrang, bangKetQua);
+  const header = await buildHeader(loai, diadiemTrang, bangKetQua);
+  const chitiet = await buildDetails(sohd, diadiemTrang, bangKetQua);
 
   // ===== LOG SỬA HÓA ĐƠN =====
   const newSnap = {
@@ -385,6 +398,16 @@ async function saveEditBanLe() {
     alert("❌ Lỗi ghi lại chi tiết hóa đơn.");
     return;
   }
+
+  const createdAt = tonTai?.created_at || await getServerNowISO();
+  header.created_at = createdAt;
+  chitiet.forEach(r => {
+    r.created_at = createdAt;
+  });
+  header.updated_at = window.HD_CTX?.edit_at || await getServerNowISO();
+  chitiet.forEach(r => {
+    r.updated_at = header.updated_at;
+  });
 
   await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
 
