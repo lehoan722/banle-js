@@ -8,7 +8,9 @@ import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
 import {
   refreshSessionIfNeeded,
   hoaDonDaTonTaiAny,
-  capNhatUsedTuVanSauKhiLuuCT
+  capNhatUsedTuVanSauKhiLuuCT,
+  getServerNowISO,
+  getServerTodayVN
 } from '../luuhoadon/api.js';
 
 import {
@@ -125,8 +127,8 @@ function buildHeaderT(loaiT, diadiemTrang, bangKetQua, sohdT) {
   };
 }
 
-function buildDetails(sohd, diadiemTrang, bangKetQua) {
-  const createdAt = new Date().toISOString();
+async function buildDetails(sohd, diadiemTrang, bangKetQua) {
+  const createdAt = await getServerNowISO();
   const ngay = getText("ngay");
   const rows = [];
 
@@ -212,7 +214,7 @@ async function resetAfterSave() {
   if (getInput("diadiem")) getInput("diadiem").value = diadiemVal;
   if (getInput("manv")) getInput("manv").value = manvVal;
   if (getInput("tennv")) getInput("tennv").value = tennvVal;
-  if (getInput("ngay")) getInput("ngay").value = new Date().toISOString().slice(0, 10);
+  if (getInput("ngay")) getInput("ngay").value = await getServerTodayVN();
 
   window.HD_CTX = { mode: "NEW", version: null };
   window.dangSuaHoaDon = false;
@@ -321,11 +323,11 @@ export async function saveHoaDonSpecial(ctx) {
   if (getInput("sohd")) getInput("sohd").value = sohdChinh;
 
   const hoadonChinh = buildHeaderMain(loai, diadiemTrang, bangKetQua, sohdChinh);
-  const chitietChinh = buildDetails(sohdChinh, diadiemTrang, bangKetQua);
+  const chitietChinh = await buildDetails(sohdChinh, diadiemTrang, bangKetQua);
 
 
   const hoadonPhu = buildHeaderT(loaiT, diadiemTrang, bangKetQua, sohdT);
-  const chitietPhu = buildDetails(sohdT, diadiemTrang, bangKetQua);
+  const chitietPhu = await buildDetails(sohdT, diadiemTrang, bangKetQua);
 
   // 2) Lưu CHI TIẾT CHÍNH
   const { error: errCTChinh } = await supabase
