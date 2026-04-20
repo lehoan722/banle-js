@@ -1156,6 +1156,70 @@ import "./stockQuickPopup.js";
         return { trangthai: "", chitiet: "" };
     }
 
+    function buildGoiYDieuChinhCCN(nhapGroup, xuatGroup, ketQuaMap) {
+        const masp = normalizeMasp(nhapGroup?.masp || xuatGroup?.masp || "");
+        if (!masp) return "";
+
+        const allSizeKeys = new Set([
+            ...((nhapGroup?.items || []).map(x => x.key)),
+            ...((xuatGroup?.items || []).map(x => x.key))
+        ]);
+
+        const dsThieu = [];
+        const dsThua = [];
+
+        let tongNhap = tongSoLuong(nhapGroup?.items || []);
+        let tongXuat = tongSoLuong(xuatGroup?.items || []);
+
+        // Chỉ gợi ý khi tổng bằng nhau
+        if (tongNhap !== tongXuat) return "";
+
+        for (const key of allSizeKeys) {
+            const kq = ketQuaMap[key];
+            if (!kq) continue;
+
+            const { size } = splitKey(key);
+            const diff = normalizeNumber(kq.chitiet || 0);
+            const tt = String(kq.trangthai || "").toUpperCase();
+
+            if (!size || size === "0" || diff <= 0) continue;
+
+            if (tt === "THIEU") {
+                dsThieu.push({ size, sl: diff });
+            } else if (tt === "THUA") {
+                dsThua.push({ size, sl: diff });
+            }
+        }
+
+        if (!dsThieu.length || !dsThua.length) return "";
+
+        dsThieu.sort((a, b) => Number(a.size) - Number(b.size));
+        dsThua.sort((a, b) => Number(a.size) - Number(b.size));
+
+        const goiY = [];
+        let i = 0;
+        let j = 0;
+
+        while (i < dsThieu.length && j < dsThua.length) {
+            const thieu = dsThieu[i];
+            const thua = dsThua[j];
+
+            const sl = Math.min(thieu.sl, thua.sl);
+            if (sl > 0) {
+                goiY.push(`Đổi ${thieu.size} -> ${thua.size} (${sl})`);
+                thieu.sl -= sl;
+                thua.sl -= sl;
+            }
+
+            if (thieu.sl <= 0) i++;
+            if (thua.sl <= 0) j++;
+        }
+
+        if (!goiY.length) return "";
+
+        return goiY.join(" | ");
+    }
+
     function renderBangKetQua() {
         const tbody = document.querySelector("#bangketqua tbody");
         if (!tbody) return;
@@ -1187,6 +1251,7 @@ import "./stockQuickPopup.js";
             const xuatText = formatSizeSl(xuatGroup?.items || []);
 
             const kqTong = buildKetQuaTheoMasp(nhapTongGroup, xuatGroup, ketQuaMap);
+            const goiYCCN = buildGoiYDieuChinhCCN(nhapTongGroup, xuatGroup, ketQuaMap);
 
             const tr = document.createElement("tr");
             const selectedMasp = normalizeMasp(state.selectedMasp || "");
@@ -1233,6 +1298,9 @@ import "./stockQuickPopup.js";
 
   <td>${escapeHtml(kqTong.trangthai || "")}</td>
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(kqTong.chitiet || "")}</td>
+  <td style="white-space: pre-line; text-align:left; color:#8a2b06; font-weight:600;">
+    ${escapeHtml(goiYCCN || "")}
+  </td>
 `;
             tbody.appendChild(tr);
         }
