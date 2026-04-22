@@ -343,7 +343,7 @@
     </style>
 
     <style>
-        /* Cột size của bảng kết quả CCN1V2:
+        /* Cột size của bảng kết quả CCN2v1:
      đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
         #bangketqua th:nth-child(3),
         #bangketqua td:nth-child(3) {
@@ -639,7 +639,7 @@
             </div>
 
             <!-- Popup tìm khách hàng
-             <button onclick="luuHoaDonccn1v2()">💾 Lưu</button>
+             <button onclick="luuHoaDonccn2v1()">💾 Lưu</button>
              <button id="xuatexcel">Xuất Excel</button>
              <button id="timkiem">Tìm kiếm</button>
              <button id="luu">Lưu</button>
@@ -1292,7 +1292,7 @@
     </script>
 
     <script>
-        /** Nạp dữ liệu chuyển CN từ localStorage vào bảng kết quả (chỉ cho 1v2) */
+        /** Nạp dữ liệu chuyển CN từ localStorage vào bảng kết quả (chỉ cho 2v1) */
         function tryPrefillFromStorage(waitForRenderer = true, tries = 0) {
             try {
                 const raw = localStorage.getItem('ccn_prefill_payload');
@@ -1307,7 +1307,7 @@
                     return;
                 }
 
-                if (!pf || pf.dir !== '1v2') {
+                if (!pf || pf.dir !== '2v1') {
                     console.log('[CCN 2v1] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
                     return;
                 }
@@ -1343,7 +1343,7 @@
                     console.log('[CCN 2v1] Đã render qua hàm chính & xóa payload.');
 
                     setTimeout(() => {
-                        tryAutoSaveFromNhapTamCCN('1v2');
+                        tryAutoSaveFromNhapTamCCN('2v1');
                     }, 800);
                     return;
                 }
@@ -1360,7 +1360,7 @@
                     console.log('[CCN 2v1] Render Fallback ok & đã xoá payload.');
 
                     setTimeout(() => {
-                        tryAutoSaveFromNhapTamCCN('1v2');
+                        tryAutoSaveFromNhapTamCCN('2v1');
                     }, 800);
                 } else {
                     console.warn('[CCN 2v1] Fallback render không thành công.');
