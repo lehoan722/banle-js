@@ -1373,7 +1373,18 @@
 
         async function renderSingle(masp) {
             const payload = await fetchTonBanByMasp(masp);
-            if (!payload.masp) return '';
+
+            const hasRealData =
+                !!String(payload?.giale || '').trim() ||
+                !!String(payload?.nhomhang || '').trim() ||
+                !!String(payload?.vitri_cs1 || '').trim() ||
+                !!String(payload?.vitri_cs2 || '').trim() ||
+                !!String(payload?.baymau_cs1 || '').trim() ||
+                !!String(payload?.baymau_cs2 || '').trim() ||
+                (Array.isArray(payload?.rows) && payload.rows.length > 0);
+
+            if (!hasRealData) return '';
+
             return buildCardHtml(payload);
         }
 
