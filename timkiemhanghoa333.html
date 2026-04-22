@@ -1504,20 +1504,33 @@
             resultList.innerHTML = '<div class="empty">Đang tải dữ liệu...</div>';
 
             let codes = [];
+            let searchedByInclude = false;
 
-            if (currentMode === 'exact') {
-                statusMsg.textContent = `Đang tìm chính xác: ${singleCode}`;
-                codes = [singleCode];
-            } else {
-                const prefix = getSimilarPrefixFromCode(singleCode);
-                statusMsg.textContent = prefix
-                    ? `Đang tìm các mã tương tự: ${prefix}`
-                    : `Mã không có hậu tố màu, đang tìm chính xác: ${singleCode}`;
+            // nếu mã không có dấu chấm thì ưu tiên tìm include luôn
+            const shouldSearchIncludeFirst = !singleCode.includes('.');
 
-                codes = prefix ? await fetchSimilarCodesByPrefix(singleCode) : [singleCode];
+            if (shouldSearchIncludeFirst) {
+                searchedByInclude = true;
+                statusMsg.textContent = `Đang tìm các mã tương tự: ${singleCode}`;
+                codes = await fetchSimilarCodesByPrefix(singleCode);
 
                 if (!codes.length) {
                     codes = [singleCode];
+                    searchedByInclude = false;
+                    statusMsg.textContent = `Đang tìm chính xác: ${singleCode}`;
+                }
+            } else if (currentMode === 'exact') {
+                statusMsg.textContent = `Đang tìm chính xác: ${singleCode}`;
+                codes = [singleCode];
+            } else {
+                searchedByInclude = true;
+                statusMsg.textContent = `Đang tìm các mã tương tự: ${singleCode}`;
+                codes = await fetchSimilarCodesByPrefix(singleCode);
+
+                if (!codes.length) {
+                    codes = [singleCode];
+                    searchedByInclude = false;
+                    statusMsg.textContent = `Đang tìm chính xác: ${singleCode}`;
                 }
             }
 
@@ -1556,7 +1569,10 @@
 
             resultList.innerHTML = htmlParts.join('');
 
-            if (currentMode === 'exact') {
+            if (searchedByInclude) {
+                statusMsg.textContent = `Đã tìm tương tự: ${htmlParts.length} mã`;
+                singleSearchMode = 'exact';
+            } else if (currentMode === 'exact') {
                 statusMsg.textContent = `Đã tìm chính xác: ${singleCode}`;
                 singleSearchMode = 'similar';
             } else {
