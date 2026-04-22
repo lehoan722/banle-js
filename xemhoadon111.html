@@ -473,6 +473,19 @@
       }
     }
 
+    function setDefaultLoaiChungTu() {
+      const select = document.getElementById('loaiChungTu');
+      if (!select) return;
+
+      const macDinh = new Set(['bancs1', 'bancs2']);
+
+      Array.from(select.options).forEach(opt => {
+        opt.selected = macDinh.has(opt.value);
+      });
+
+      updateLoaiChungTuDisplay();
+    }
+
     function renderLoaiChungTuPopup() {
       const select = document.getElementById('loaiChungTu');
       const popupList = document.getElementById('loaiChungTuPopupList');
@@ -565,6 +578,22 @@
           if (e.target.classList.contains('loai-ct-check')) {
             syncLoaiChungTuSelectFromPopup();
           }
+        });
+      }
+
+      if (popupList) {
+        popupList.addEventListener('click', function (e) {
+          const row = e.target.closest('.loai-ct-row');
+          if (!row) return;
+
+          // Nếu bấm trực tiếp vào checkbox thì để sự kiện change xử lý
+          if (e.target.classList.contains('loai-ct-check')) return;
+
+          const chk = row.querySelector('.loai-ct-check');
+          if (!chk) return;
+
+          chk.checked = !chk.checked;
+          syncLoaiChungTuSelectFromPopup();
         });
       }
 
@@ -1380,10 +1409,18 @@
         return;
       }
 
-      // Không có ?sohd= -> mặc định ngày hôm nay
+      // Không có ?sohd= -> mặc định ngày hôm nay + mặc định loại chứng từ bán cs1, cs2
       const today = new Date().toISOString().slice(0, 10);
       document.getElementById('tuNgay').value = today;
       document.getElementById('denNgay').value = today;
+
+      const selectLoai = document.getElementById("loaiChungTu");
+      if (selectLoai) {
+        Array.from(selectLoai.options).forEach(o => {
+          o.selected = (o.value === 'bancs1' || o.value === 'bancs2');
+        });
+        updateLoaiChungTuDisplay();
+      }
     }
 
     function bindEventsAfterAdmin() {
