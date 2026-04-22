@@ -258,8 +258,8 @@
 
         <option value="xcncs1">xuat cn cs1</option>
         <option value="xcncs2">xuat cn cs2</option>
-
-        <option value="ncncs1">nhap cn cs1</option>
+        
+        <option value="ncncs1">nhap cn cs1</option>        
         <option value="ncncs2">nhap cn cs2</option>
 
         <option value="nhapkiemcs1">nhap kiem cs1</option>
@@ -1469,8 +1469,8 @@
         Array.from(tr.cells).map(td => (td.innerText || "").replace(/\n/g, " ")).join("\t")
       ).join("\n");
 
-      navigator.clipboard.writeText(all).then(() => {
-        showToastCopy("✅ Đã copy bảng!");
+      navigator.clipboard.writeText(text).then(() => {
+        //alert("✅ Đã copy chi tiết hóa đơn (không gồm tiêu đề). Ctrl+V để dán vào Excel!");
       });
     };
 
@@ -1746,43 +1746,10 @@
       return new Date(isoStr);
     }
 
-    function showToastCopy(message = "✅ Đã copy!") {
-      const toast = document.getElementById("toastCopy");
-      if (!toast) return;
-
-      toast.textContent = message;
-      toast.style.display = "block";
-      toast.style.opacity = "1";
-
-      clearTimeout(toast._hideTimer);
-
-      toast._hideTimer = setTimeout(() => {
-        toast.style.opacity = "0";
-        setTimeout(() => {
-          toast.style.display = "none";
-        }, 300);
-      }, 3000);
-    }
-
   </script>
+
+
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
-  <div id="toastCopy"
-  style="
-    display:none;
-    position:fixed;
-    bottom:20px;
-    right:20px;
-    background:#28a745;
-    color:#fff;
-    padding:10px 16px;
-    border-radius:6px;
-    font-size:14px;
-    box-shadow:0 2px 10px rgba(0,0,0,0.2);
-    z-index:99999;
-    transition:opacity 0.3s;
-  ">
-  ✅ Đã copy bảng!
-</div>
 
 </body>
 
