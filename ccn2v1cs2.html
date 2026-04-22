@@ -999,11 +999,17 @@
         }
     </script>
 
-    <script>
-        // goi phím F2
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
         setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonccn1v2;
+            window.LUU_HOADON_F2 = async () => {
+                return await saveBanLe111("F2-CCN");
+            };
         }, 1000);
+    </script>
+
+    <script>
 
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
@@ -1277,34 +1283,39 @@
         }
 
         function tryAutoSaveFromNhapTamCCN(dirExpected) {
+            // ❌ Đã chạy rồi thì không chạy lại
             if (window.__AUTO_SAVE_CCN_DONE__) {
-                console.log('[CCN 2v1] Auto-save đã chạy trước đó, bỏ qua.');
+                console.log('[CCN] Auto-save đã chạy trước đó, bỏ qua.');
                 return;
             }
 
             const info = hasRequiredInfoForAutoSave();
 
-            console.log('[CCN 2v1] Kiểm tra điều kiện auto-save:', {
+            console.log('[CCN] Kiểm tra điều kiện auto-save:', {
                 dirExpected,
                 ...info
             });
 
             if (!info.ok) return;
 
-            if (typeof window.luuHoaDonccn1v2 !== 'function') {
-                console.warn('[CCN 2v1] Chưa có hàm window.luuHoaDonccn1v2, bỏ qua auto-save.');
+            // ✅ DÙNG LUỒNG MỚI (KHÔNG gọi trực tiếp hàm cũ nữa)
+            if (typeof window.saveHoaDonCCN !== 'function') {
+                console.warn('[CCN] Chưa có window.saveHoaDonCCN, bỏ qua auto-save.');
                 return;
             }
 
+            // ✅ Đánh dấu đã chạy
             window.__AUTO_SAVE_CCN_DONE__ = true;
 
-            console.log('[CCN 2v1] Đủ điều kiện, bắt đầu tự động lưu hóa đơn từ nhập tạm.');
+            console.log('[CCN] Đủ điều kiện, bắt đầu auto-save từ nhập tạm...');
 
             setTimeout(async () => {
                 try {
-                    await window.luuHoaDonccn1v2();
+                    await window.saveHoaDonCCN(); // 🔥 LUỒNG MỚI
                 } catch (err) {
-                    console.error('[CCN 2v1] Lỗi auto-save:', err);
+                    console.error('[CCN] Lỗi auto-save:', err);
+
+                    // ❗ Nếu lỗi thì cho phép retry
                     window.__AUTO_SAVE_CCN_DONE__ = false;
                 }
             }, 300);
@@ -1360,8 +1371,7 @@
             });
         });
     </script>
-
-    </script>
+    
     <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
     <script src="./scripts/ccnBangKetQuaAdapter.js"></script>
     <script>
@@ -1417,6 +1427,35 @@
 
         })();
     </script>
+
+    <script type="module">
+    import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+    document.getElementById('btn-luu').onclick = async function () {
+        if (window.dangLuu) return;
+
+        window.dangLuu = true;
+        this.disabled = true;
+        this.innerText = "Đang lưu...";
+
+        try {
+            const result = await saveBanLe111("BTN-LUU-CCN");
+
+            if (result?.ok) {
+                // có thể để trống
+            } else {
+                console.warn("saveBanLe111 không trả về ok=true:", result);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("❌ Lỗi lưu: " + (e?.message || e));
+        } finally {
+            window.dangLuu = false;
+            this.disabled = false;
+            this.innerText = "💾 Lưu";
+        }
+    };
+</script>
 
 </body>
 
