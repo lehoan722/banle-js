@@ -767,6 +767,16 @@
             return m ? m[1] : s;
         }
 
+        function stripTransferQtySuffix(s) {
+            let out = String(s || '').trim();
+
+            // chỉ cắt khi dạng: "MASP / 2" hoặc "MASP/2"
+            // không cắt các mã màu kiểu: 166317-G/DEN
+            out = out.replace(/\s*\/\s*\d+\s*$/, '').trim();
+
+            return out;
+        }
+
         function getSimilarPrefixFromCode(code) {
             const s = normCode(stripSizeSuffixAtEnd(code));
             if (!s) return '';
@@ -1292,8 +1302,8 @@
             if (/^\s*\/\s*\d+\s*$/.test(s)) return false;
             if (/^\d{1,2}(,\d+)*(,[A-Z0-9]+)*$/.test(s)) return false;
 
-            // lấy phần trước dấu " / " nếu có kiểu: MDN600.NAU / 2
-            const leftPart = s.split(/\s*\/\s*/)[0].trim();
+            // chỉ bỏ hậu tố /số lượng, không cắt mã màu kiểu /DEN
+            const leftPart = stripTransferQtySuffix(s);
 
             // mã hàng của bạn thường có chữ
             if (!/[A-Z]/.test(leftPart)) return false;
@@ -1308,8 +1318,8 @@
             let s = normCode(line);
             if (!s) return '';
 
-            // kiểu: MDN600.NAU / 2  -> lấy MDN600.NAU
-            s = s.split(/\s*\/\s*/)[0].trim();
+            // chỉ bỏ hậu tố /số lượng, còn /DEN, /NAU... thì giữ nguyên
+            s = stripTransferQtySuffix(s);
 
             s = stripSizeSuffixAtEnd(s);
             return normCode(s);
