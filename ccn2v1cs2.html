@@ -500,7 +500,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="CCN1V2" autocomplete="off" />
+                <input id="masp" placeholder="CCN2V1" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -1297,18 +1297,18 @@
             try {
                 const raw = localStorage.getItem('ccn_prefill_payload');
                 if (!raw) {
-                    console.log('[CCN 1v2] Không thấy payload trong localStorage.');
+                    console.log('[CCN 2v1] Không thấy payload trong localStorage.');
                     return;
                 }
 
                 let pf;
                 try { pf = JSON.parse(raw); } catch (parseErr) {
-                    console.error('[CCN 1v2] Lỗi parse payload:', parseErr);
+                    console.error('[CCN 2v1] Lỗi parse payload:', parseErr);
                     return;
                 }
 
                 if (!pf || pf.dir !== '1v2') {
-                    console.log('[CCN 1v2] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
+                    console.log('[CCN 2v1] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
                     return;
                 }
 
@@ -1330,7 +1330,7 @@
                     }
                 }
 
-                console.log('[CCN 1v2] Payload OK, rows:', rows.length);
+                console.log('[CCN 2v1] Payload OK, rows:', rows.length);
 
                 const renderFn = window.capNhatBangHTML || window.renderBangKetQua || null;
 
@@ -1340,7 +1340,7 @@
                     renderFn(window.bangKetQua);
 
                     localStorage.removeItem('ccn_prefill_payload');
-                    console.log('[CCN 1v2] Đã render qua hàm chính & xóa payload.');
+                    console.log('[CCN 2v1] Đã render qua hàm chính & xóa payload.');
 
                     setTimeout(() => {
                         tryAutoSaveFromNhapTamCCN('1v2');
@@ -1349,7 +1349,7 @@
                 }
 
                 if (waitForRenderer && tries < 20) {
-                    console.log('[CCN 1v2] Chưa có hàm render, thử lại...', tries + 1);
+                    console.log('[CCN 2v1] Chưa có hàm render, thử lại...', tries + 1);
                     setTimeout(() => tryPrefillFromStorage(true, tries + 1), 300);
                     return;
                 }
@@ -1357,16 +1357,16 @@
                 const ok = renderRowsDirectIntoTable(rows);
                 if (ok) {
                     localStorage.removeItem('ccn_prefill_payload');
-                    console.log('[CCN 1v2] Render Fallback ok & đã xoá payload.');
+                    console.log('[CCN 2v1] Render Fallback ok & đã xoá payload.');
 
                     setTimeout(() => {
                         tryAutoSaveFromNhapTamCCN('1v2');
                     }, 800);
                 } else {
-                    console.warn('[CCN 1v2] Fallback render không thành công.');
+                    console.warn('[CCN 2v1] Fallback render không thành công.');
                 }
             } catch (e) {
-                console.error('[CCN 1v2] Lỗi nạp payload:', e);
+                console.error('[CCN 2v1] Lỗi nạp payload:', e);
             }
         }
 
