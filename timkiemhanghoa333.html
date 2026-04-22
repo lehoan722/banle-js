@@ -1627,8 +1627,20 @@
         <div data-masp="${String(r.masp || '').replace(/"/g, '&quot;')}"><b>${r.masp}</b>${r.tensp ? ' - ' + r.tensp : ''}</div>
       `).join('');
             popupSearchList.querySelectorAll('[data-masp]').forEach(el => {
-                el.onclick = () => {
-                    maspInput.value = el.getAttribute('data-masp') || '';
+                el.onclick = async () => {
+                    const masp = normCode(el.getAttribute('data-masp') || '');
+                    if (!masp) return;
+
+                    // vẫn đẩy vào ô tìm 1 mã như cũ
+                    maspInput.value = masp;
+
+                    // đồng thời đẩy xuống danh sách nhiều mã giống luồng quét camera
+                    const branch = getCurrentBranch();
+                    const payload = await fetchTonBanByMasp(masp);
+                    const bulkLine = buildBulkLineWithVitri(masp, payload, branch);
+
+                    prependScannedLineToBulk(bulkLine, masp);
+
                     resetSingleSearchMode();
                     closePopupSearch();
                     triggerSearch();
