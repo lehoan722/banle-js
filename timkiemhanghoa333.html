@@ -1371,6 +1371,21 @@
             return out;
         }
 
+        function prependScannedCodeToBulk(codeRaw) {
+            const code = normCode(stripSizeSuffixAtEnd(codeRaw));
+            if (!code) return;
+
+            const oldLines = String(bulkTextarea.value || '')
+                .split(/[\r\n]+/)
+                .map(x => normCode(x))
+                .filter(Boolean);
+
+            const newLines = [code, ...oldLines.filter(x => x !== code)];
+            bulkTextarea.value = newLines.join('\n');
+
+            toggleTools(true);
+        }
+
         async function renderSingle(masp) {
             const payload = await fetchTonBanByMasp(masp);
 
@@ -1650,7 +1665,11 @@
                         showFlash();
                         showToast(`Đã quét ${code}`);
 
-                        maspInput.value = code;
+                        prependScannedCodeToBulk(code);
+
+                        // có thể để ô tìm 1 mã trống để tránh hiểu nhầm là đang tìm exact
+                        maspInput.value = '';
+
                         resetSingleSearchMode();
                         closeScanner();
                         triggerSearch();
