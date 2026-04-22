@@ -823,14 +823,38 @@
 
         async function fetchTonBanByMasp(maspRaw) {
             const masp = normCode(maspRaw);
-            if (!masp) return { masp: '', rows: [], vitri_cs1: '', vitri_cs2: '', nhap_dau_ma: '', nhap_cuoi_ma: '', giale: '', nhomhang: '' };
+            if (!masp) return {
+                masp: '',
+                rows: [],
+                vitri_cs1: '',
+                vitri_cs2: '',
+                baymau_cs1: '',
+                baymau_cs2: '',
+                nhap_dau_ma: '',
+                nhap_cuoi_ma: '',
+                giale: '',
+                nhomhang: ''
+            };
 
             const client = await waitForSupabaseReady(12000);
-            if (!client) return { masp, rows: [], vitri_cs1: '', vitri_cs2: '', nhap_dau_ma: '', nhap_cuoi_ma: '', giale: '', nhomhang: '' };
+            if (!client) return {
+                masp,
+                rows: [],
+                vitri_cs1: '',
+                vitri_cs2: '',
+                baymau_cs1: '',
+                baymau_cs2: '',
+                nhap_dau_ma: '',
+                nhap_cuoi_ma: '',
+                giale: '',
+                nhomhang: ''
+            };
 
             let rows = [];
             let vitri_cs1 = '';
             let vitri_cs2 = '';
+            let baymau_cs1 = '';
+            let baymau_cs2 = '';
             let nhap_dau_ma = '';
             let nhap_cuoi_ma = '';
             let giale = '';
@@ -846,7 +870,7 @@
                     }),
                     client
                         .from('dmhanghoa')
-                        .select('vitrikho1, vitrikho2, nhapdau, giale, nhomhang')
+                        .select('vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, giale, nhomhang')
                         .eq('masp', masp)
                         .maybeSingle()
                 ]);
@@ -880,8 +904,11 @@
                 if (hhRes?.data) {
                     vitri_cs1 = hhRes.data.vitrikho1 || '';
                     vitri_cs2 = hhRes.data.vitrikho2 || '';
+                    baymau_cs1 = hhRes.data.treomaucs1 || '';
+                    baymau_cs2 = hhRes.data.treomaucs2 || '';
                     giale = hhRes.data.giale || '';
                     nhomhang = hhRes.data.nhomhang || '';
+
                     if (hhRes.data.nhapdau && !nhap_dau_ma) {
                         const d = new Date(hhRes.data.nhapdau);
                         if (!isNaN(d.getTime())) {
@@ -896,7 +923,18 @@
                 console.warn('[quicksearch] fetchTonBanByMasp error:', e);
             }
 
-            return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma, giale, nhomhang };
+            return {
+                masp,
+                rows,
+                vitri_cs1,
+                vitri_cs2,
+                baymau_cs1,
+                baymau_cs2,
+                nhap_dau_ma,
+                nhap_cuoi_ma,
+                giale,
+                nhomhang
+            };
         }
 
         async function fetchSimilarCodesByPrefix(codeRaw) {
@@ -1062,9 +1100,23 @@
           <div class="card-body">
             <div class="main-pane">
               <div class="meta-grid">
-                <div class="meta-item"><div class="k">Vị trí CS1</div><div class="v">${payload.vitri_cs1 || ''}</div></div>
-                <div class="meta-item"><div class="k">Vị trí CS2</div><div class="v">${payload.vitri_cs2 || ''}</div></div>
-              </div>
+  <div class="meta-item">
+    <div class="k">Vị trí CS1</div>
+    <div class="v">${payload.vitri_cs1 || ''}</div>
+  </div>
+  <div class="meta-item">
+    <div class="k">Bày mẫu CS1</div>
+    <div class="v">${payload.baymau_cs1 || ''}</div>
+  </div>
+  <div class="meta-item">
+    <div class="k">Vị trí CS2</div>
+    <div class="v">${payload.vitri_cs2 || ''}</div>
+  </div>
+  <div class="meta-item">
+    <div class="k">Bày mẫu CS2</div>
+    <div class="v">${payload.baymau_cs2 || ''}</div>
+  </div>
+</div>
               ${buildStockTable(masp, payload)}
               <div class="bulk-note-line">${bulkNote || ''}</div>
 
