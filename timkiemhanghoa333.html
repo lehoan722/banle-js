@@ -1404,20 +1404,19 @@
             const masp = normCode(code);
             const coso = String(branch || '').toLowerCase();
 
-            const vitriKho = coso === 'cs2'
+            const rawKho = coso === 'cs2'
                 ? String(payload?.vitri_cs2 || '').trim()
                 : String(payload?.vitri_cs1 || '').trim();
 
-            const vitriBayMau = coso === 'cs2'
+            const rawBayMau = coso === 'cs2'
                 ? String(payload?.baymau_cs2 || '').trim()
                 : String(payload?.baymau_cs1 || '').trim();
 
-            const parts = [masp];
+            // 👉 hiển thị dấu "-" nếu trống
+            const vitriKho = rawKho || '-';
+            const vitriBayMau = rawBayMau || '-';
 
-            if (vitriKho || vitriBayMau) {
-                parts.push(vitriKho);
-                parts.push(vitriBayMau);
-            }
+            const parts = [masp, vitriKho, vitriBayMau];
 
             return parts.join(', ');
         }
