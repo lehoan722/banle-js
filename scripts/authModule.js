@@ -17,12 +17,11 @@ if (
   window.supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
       persistSession: true,
-      storage: sessionStorage,   // ✅ tách session theo từng tab
+      storage: localStorage,   // ✅ giữ đăng nhập lâu dài trên máy riêng
       autoRefreshToken: true,
       detectSessionInUrl: true
     }
   });
-
 }
 
 // Helper: lấy client Supabase chuẩn (cho page nào muốn dùng chung)
@@ -46,6 +45,52 @@ export function getCurrentUserInfo() {
   };
 }
 
+function clearLocalAuthProfile({ keepBranch = true, keepIdentifier = true } = {}) {
+  const savedBranch = keepBranch ? (localStorage.getItem("diadiem") || "") : "";
+  const savedIdentifier = keepIdentifier ? (localStorage.getItem("last_login_identifier") || "") : "";
+
+  [
+    "manv",
+    "tennv",
+    "is_admin",
+    "quyen_sua_hoadon"
+  ].forEach((k) => {
+    try { localStorage.removeItem(k); } catch { }
+    try { sessionStorage.removeItem(k); } catch { }
+  });
+
+  if (keepBranch && savedBranch) localStorage.setItem("diadiem", savedBranch);
+  if (keepIdentifier && savedIdentifier) localStorage.setItem("last_login_identifier", savedIdentifier);
+}
+
+let authStateListenerRegistered = false;
+
+function registerAuthStateListener() {
+  if (authStateListenerRegistered) return;
+  authStateListenerRegistered = true;
+
+  window.supabase.auth.onAuthStateChange(async (event, session) => {
+    try {
+      if (event === "SIGNED_OUT" || !session) {
+        clearLocalAuthProfile({ keepBranch: true, keepIdentifier: true });
+        return;
+      }
+
+      if (
+        event === "INITIAL_SESSION" ||
+        event === "SIGNED_IN" ||
+        event === "TOKEN_REFRESHED" ||
+        event === "USER_UPDATED"
+      ) {
+        // Không cần tự lưu access/refresh token nữa.
+        // Chỉ cần giữ session do supabase-js tự quản.
+      }
+    } catch (err) {
+      console.warn("onAuthStateChange error:", err);
+    }
+  });
+}
+
 // =======================================================
 // 3) ĐỒNG BỘ / KHÔI PHỤC SESSION KHI MỞ TAB/TRANG MỚI
 // =======================================================
@@ -57,22 +102,7 @@ export function getCurrentUserInfo() {
 //
 // Khi mở tab mới: nếu Supabase chưa có session nhưng 2 key này còn,
 // sẽ gọi setSession() để khôi phục (không cần nhập mật khẩu lại).
-async function tryRestoreSessionFromLegacyTokens() {
-  try {
-    const at = localStorage.getItem("supabase_access_token") || "";
-    const rt = localStorage.getItem("supabase_refresh_token") || "";
-    if (!at || !rt) return false;
 
-    const { error } = await window.supabase.auth.setSession({
-      access_token: at,
-      refresh_token: rt,
-    });
-    if (error) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // =======================================================
 // 4) MODULE ĐĂNG NHẬP DÙNG CHUNG
@@ -87,6 +117,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     onLoginSuccess,
   } = options;
   // ✅ đăng ký 1 lần để các trang gọi window.capNhatQuyenGiaoDien()
+  registerAuthStateListener();
   registerGlobalUiPermissionHook();
 
   // Tạo/đảm bảo có div login
@@ -230,10 +261,13 @@ export function khoiTaoDangNhapDungChung(options = {}) {
         if (res === false) return;
         syncGlobalsFromLocalStorage();
 
+        // Nếu là trang cần xác thực lại thì đánh dấu đã unlock trong tab này
+        try {
+          if (isReAuthRequiredPage()) setCcnUnlockedForThisTab();
+        } catch { }
+
         // ✅ áp quyền UI ngay sau login/auto-session
         try { window.capNhatQuyenGiaoDien?.(); } catch { }
-        // hoặc gọi thẳng:
-        // try { applyBanLeHeaderEditPermission(); } catch {}
 
         if (appContainer) appContainer.style.display = "";
         loginContainer.style.display = "none";
@@ -260,17 +294,14 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     return `/api/login-${cs}`;
   }
 
-  function isForceLoginNoRememberPage() {
+
+  function isReAuthRequiredPage() {
     const p = (location.pathname || "").toLowerCase();
 
-    // ✅ Chỉ cần match theo tên file/đường dẫn bạn dùng thực tế
-    // Ví dụ: /ccn2v1cs2.html, /ccn1v2cs1.html ...
+    // Các trang nhạy cảm: đã có session chung vẫn phải xác thực lại trong tab này
     return (
-      // p.includes("ccn1v2") ||
-      // p.includes("ccn2v1")  ||chamcongcs1.html
       p.includes("kiem_nhapkho_cs1") ||
       p.includes("kiem_nhapkho_cs2") ||
-
       p.includes("chamcongcs1") ||
       p.includes("chamcongcs2") ||
       p.includes("banlemtcs1") ||
@@ -292,44 +323,13 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     try { sessionStorage.setItem(getCcnUnlockKey(), "1"); } catch { }
   }
 
-
   function clearAuthMemoryForThisPage() {
-    // Xóa các key “nhớ đăng nhập” của app
-    [
-      "supabase_access_token",
-      "supabase_refresh_token",
-      "manv",
-      "tennv",
-      "is_admin",
-      "quyen_sua_hoadon",
-      "last_login_identifier",
-    ].forEach((k) => {
-      try { localStorage.removeItem(k); } catch { }
-      try { sessionStorage.removeItem(k); } catch { }
-    });
+    // Chỉ xóa profile local của app tại trang này nếu cần
+    // Không đụng vào session Supabase toàn cục
+    clearLocalAuthProfile({ keepBranch: true, keepIdentifier: true });
 
-    // Xóa token supabase-js (sb-...-auth-token) để không có session auto
-    try {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
-          localStorage.removeItem(key);
-        }
-      }
-      for (let i = sessionStorage.length - 1; i >= 0; i--) {
-        const key = sessionStorage.key(i);
-        if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
-          sessionStorage.removeItem(key);
-        }
-      }
-    } catch { }
-  }
-
-  function saveSessionLegacy(session) {
-    try {
-      if (session?.access_token) localStorage.setItem("supabase_access_token", session.access_token);
-      if (session?.refresh_token) localStorage.setItem("supabase_refresh_token", session.refresh_token);
-    } catch { }
+    // Xóa cờ unlock của tab hiện tại để lần vào lại trang nhạy cảm phải xác thực lại
+    try { sessionStorage.removeItem(getCcnUnlockKey()); } catch { }
   }
 
   async function tryEmployeeLogin(cs, manvUpper, password) {
@@ -372,7 +372,6 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     localStorage.setItem("quyen_sua_hoadon", nhanvien?.sua_hoadon ? "true" : "false");
     localStorage.setItem("is_admin", "false");
 
-    saveSessionLegacy(setSessionData?.session || session);
     syncGlobalsFromLocalStorage();
 
     return {
@@ -430,7 +429,6 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     localStorage.setItem("tennv", tenAdmin);
     localStorage.setItem("quyen_sua_hoadon", "true");
 
-    saveSessionLegacy(signInData.session);
     addEmailToHistory(email);
     syncGlobalsFromLocalStorage();
 
@@ -511,7 +509,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     try {
       // ✅ Nếu là trang chuyển chi nhánh: không nhớ đăng nhập, không auto điền
       // ✅ Trang chuyển chi nhánh: bắt xác nhận lại (unlock theo tab), KHÔNG xóa nhớ đăng nhập
-      if (isForceLoginNoRememberPage() && !isCcnUnlockedInThisTab()) {
+      if (isReAuthRequiredPage() && !isCcnUnlockedInThisTab()) {
         // đảm bảo overlay login vẫn hiện, app vẫn ẩn
         if (appContainer) appContainer.style.display = "none";
         loginContainer.style.display = "flex";
@@ -530,13 +528,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       if (savedId) manvInput.value = savedId;
       if (savedBranch) csSelect.value = savedBranch;
 
-      // 1) Nếu supabase chưa có session, thử phục hồi từ legacy tokens
-      const { data: pre } = await window.supabase.auth.getSession();
-      if (!pre?.session) {
-        await tryRestoreSessionFromLegacyTokens();
-      }
-
-      // 2) Lấy session lần nữa
+      // Lấy session trực tiếp từ supabase-js (đã tự persist bằng localStorage)
       const { data } = await window.supabase.auth.getSession();
       const session = data?.session;
       if (!session) return;
@@ -621,8 +613,6 @@ export function khoiTaoDangNhapDungChung(options = {}) {
         localStorage.setItem("diadiem", macDinhDiaDiem || "cs1");
       }
 
-      // lưu legacy tokens để tab khác phục hồi
-      saveSessionLegacy(session);
       syncGlobalsFromLocalStorage();
 
       showAppAfterLogin(getCurrentUserInfo(), {
@@ -678,11 +668,15 @@ export async function dangXuatDungChung(options = {}) {
   const keepBranch = localStorage.getItem('diadiem');
   const keepId = localStorage.getItem('last_login_identifier');
 
-  localStorage.removeItem('supabase_access_token');
   localStorage.removeItem('manv');
   localStorage.removeItem('tennv');
   localStorage.removeItem('is_admin');
   localStorage.removeItem('quyen_sua_hoadon');
+
+  try {
+    const p = (location.pathname || "").toLowerCase();
+    sessionStorage.removeItem(`ccn_unlocked:${p}`);
+  } catch (e) { }
 
   // sessionStorage: xóa sạch cho chắc (reload cũng sẽ sạch)
   try { sessionStorage.clear(); } catch (e) { }
