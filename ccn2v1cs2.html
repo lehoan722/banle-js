@@ -5,8 +5,8 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>CCN2V1</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <title>CCN2V1_CS2</title>
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
 
@@ -342,6 +342,23 @@
         }
     </style>
 
+    <style>
+        /* Cột size của bảng kết quả CCN1V2:
+     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
+        #bangketqua th:nth-child(3),
+        #bangketqua td:nth-child(3) {
+            width: 40px;
+            max-width: 40px;
+            white-space: normal;
+            /* cho phép xuống dòng */
+
+            /* nếu cần thì bẻ từ */
+            text-align: left;
+            /* tùy, thích center thì bỏ dòng này */
+        }
+    </style>
+
+
 
     <script>
 
@@ -369,7 +386,6 @@
 </head>
 
 <body class="popupnhanh">
-
     <style>
         /* Popup tồn kho nhanh hiển thị ở góc trên bên phải trang Gợi ý nhập bù */
         body.popupnhanh .sq-stock-popup {
@@ -380,7 +396,7 @@
         }
 
         .menu-bar {
-            background: #be00cc;
+            background: #cc00b8;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -468,6 +484,7 @@
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
+
         </div>
 
         <div id="app-menu" class="menu-item"></div>
@@ -483,7 +500,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="CCN2V1" autocomplete="off" />
+                <input id="masp" placeholder="CCN1V2" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -501,7 +518,6 @@
             <button id="ghivitri">✏️</button>
 
         </div>
-
 
         <div class="main">
             <div class="table-area">
@@ -567,14 +583,15 @@
                     </div>
                     <div class="tab-pane" id="tacvu">
                         <div class="checkbox-list">
-                            <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
-                            <label><input id="size45" type="checkbox" />QL SIZE</label>
+                            <label><input id="nhapnhanh" type="checkbox" /> quan size all</label>
+                            <label><input id="size45" type="checkbox" />quan size GD</label>
                             <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
                             <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
+                            <label><input id="inSauKhiLuu" type="checkbox" /> In sau khi lưu</label>
                             <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
                             <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
                             <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
-                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
+                            <label><input type="checkbox" /> Cộng dồn số lượng</label>
                         </div>
                     </div>
                 </div>
@@ -596,10 +613,13 @@
                         readonly />
                 </div>
 
+
+
                 <img alt="Ảnh sản phẩm" class="product-image"
                     src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
             </div>
         </div>
+
 
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
@@ -653,7 +673,7 @@
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
             <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+            <button onclick="xacNhanSuaHoaDon1()">Xác nhận</button>
             <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
         </div>
 
@@ -726,12 +746,13 @@
         </div>
     </div>
 
+
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
+        // Khởi tạo đăng nhập cho trang bán lẻ MT CS2
         khoiTaoDangNhapDungChung({
             macDinhDiaDiem: "cs2",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
@@ -791,7 +812,7 @@
                 const size45 = document.getElementById("size45");
                 if (size45) size45.checked = true;
 
-                const qlNhom = document.getElementById("quanlysizetheonhom"); nhapsize
+                const qlNhom = document.getElementById("quanlysizetheonhom");
                 if (qlNhom) qlNhom.checked = true;
 
                 const qlnhapsize = document.getElementById("nhapsize");
@@ -815,12 +836,12 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
-        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles 
+        const cs = (localStorage.diadiem || "cs2");       // vd: "cs1" / "cs1"
+        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
         const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk';
-        const SHEET_NAME = 'menubanlemtTTTT';
+        const SHEET_NAME = 'menubanlemtTTT';
 
         MenuComponent.mount({
             el: '#app-menu',
@@ -836,6 +857,13 @@
         // Nút kính lúp cạnh ô nhập mã KH
         document.getElementById('btnPopupKH').onclick = showPopupTimKH;
 
+        // Nhấn F2 trong ô mã khách cũng bật popup
+        document.getElementById('makh').addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                showPopupTimKH();
+            }
+        });
 
         // Hàm show popup
         function showPopupTimKH() {
@@ -878,6 +906,8 @@
             });
         }
 
+
+
         // Copy bảng sang clipboard, có cả dòng tiêu đề
         document.getElementById('btnCopy').onclick = function () {
             const table = document.getElementById('bangketqua');
@@ -908,41 +938,39 @@
         };
 
 
-        // Dán từ clipboard (Excel) vào bảng web 
+        // Dán từ clipboard (Excel) vào bảng web
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
             const rows = text.trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.querySelector('#bangketqua tbody');
-
-            // ❌ KHÔNG xoá dữ liệu cũ nữa
-            // tbody.innerHTML = '';
-
-            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            tbody.innerHTML = '';
             rows.forEach(rowArr => {
                 if (rowArr.length < 2) return;
                 const tr = document.createElement('tr');
-                rowArr.forEach((cell) => {
+                rowArr.forEach(cell => {
                     const td = document.createElement('td');
                     td.innerText = cell;
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
             });
+            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
+            capNhatBangKetQuaTuDOM();
 
-            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
-            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-                window.capNhatBangKetQuaTuDOM();
-            }
-
-            // ✅ Cập nhật tổng
-            if (typeof capNhatThongTinTong === 'function') {
+            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
+            if (typeof capNhatThongTinTong === "function") {
                 capNhatThongTinTong(window.bangKetQua || {});
             }
 
-            // Log kiểm tra
-            console.log('window.bangKetQua:', window.bangKetQua);
+            // Log để kiểm tra
+            console.log("window.bangKetQua:", window.bangKetQua);
+            if (typeof bangKetQua !== "undefined") {
+                console.log("bangKetQua:", bangKetQua);
+            }
         });
+
+
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
         document.addEventListener('keydown', function (e) {
@@ -999,6 +1027,7 @@
         }
     </script>
 
+
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
@@ -1010,28 +1039,126 @@
     </script>
 
     <script>
-        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
         document.getElementById('btn-sua')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
+            if (typeof window.moPopupXacThucSua === 'function') {
+                window.moPopupXacThucSua();
+            } else {
+                alert("❌ Chưa nạp được popup sửa mới.");
+            }
         });
 
-        // ❌ btn-luu KHÔNG dispatch F2 nữa
-        // Vì nút Lưu đã có luồng module mới riêng ở cuối file:
-        // saveBanLe111("BTN-LUU-CCN")
-
-        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
 
-        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
         document.getElementById('ghivitri')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
+        });
+    </script>
+
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        window.moPopupXacThucSua = function () {
+            const p = document.getElementById("popupXacThucSua");
+            if (!p) return;
+
+            p.style.display = "block";
+
+            setTimeout(() => {
+                const manv = document.getElementById("xacmanv");
+                if (manv) {
+                    manv.focus();
+                    manv.select?.();
+                }
+            }, 0);
+        };
+
+        window.xacNhanSuaHoaDon1 = async function () {
+            const popup = document.getElementById("popupXacThucSua");
+            const closePopup = () => {
+                if (popup) popup.style.display = "none";
+            };
+
+            try {
+                const { data: { user } } = await window.supabase.auth.getUser();
+                if (!user) {
+                    alert("❌ Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được phiên đăng nhập.");
+                closePopup();
+                return;
+            }
+
+            try {
+                const { data: isAdmin, error } = await window.supabase.rpc("is_admin");
+                if (error || isAdmin !== true) {
+                    alert("❌ Bạn không có quyền sửa hóa đơn.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được quyền sửa hóa đơn.");
+                closePopup();
+                return;
+            }
+
+            window.dangSuaHoaDon = true;
+            window.choPhepSua = true;
+            window.HD_CTX = {
+                ...(window.HD_CTX || {}),
+                mode: "EDIT",
+                fromConfirm: true,
+                edit_at: new Date().toISOString()
+            };
+
+            closePopup();
+
+            console.log("🛠️ CCN111 OVERRIDE: đang gọi LUỒNG SỬA MỚI");
+            await saveBanLe111("EDIT-CONFIRM-CCN");
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const manv = document.getElementById("xacmanv");
+            const mk = document.getElementById("xacmatkhau");
+            const btn = document.getElementById("btnXacNhanSua");
+
+            if (manv) {
+                manv.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (mk) {
+                            mk.focus();
+                            mk.select?.();
+                        }
+                    }
+                });
+            }
+
+            if (mk) {
+                mk.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (btn) btn.focus();
+                    }
+                });
+            }
+
+            if (btn) {
+                btn.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        btn.click();
+                    }
+                });
+            }
         });
     </script>
 
@@ -1059,7 +1186,6 @@
     <!-- Flash + Toast -->
     <div id="flashOverlay"></div>
     <div id="toastMsg"></div>
-
 
     <script>
 
@@ -1166,23 +1292,23 @@
     </script>
 
     <script>
-        /** Nạp dữ liệu chuyển CN từ localStorage vào bảng kết quả (chỉ cho 2v1) */
+        /** Nạp dữ liệu chuyển CN từ localStorage vào bảng kết quả (chỉ cho 1v2) */
         function tryPrefillFromStorage(waitForRenderer = true, tries = 0) {
             try {
                 const raw = localStorage.getItem('ccn_prefill_payload');
                 if (!raw) {
-                    console.log('[CCN 2v1] Không thấy payload trong localStorage.');
+                    console.log('[CCN 1v2] Không thấy payload trong localStorage.');
                     return;
                 }
 
                 let pf;
                 try { pf = JSON.parse(raw); } catch (parseErr) {
-                    console.error('[CCN 2v1] Lỗi parse payload:', parseErr);
+                    console.error('[CCN 1v2] Lỗi parse payload:', parseErr);
                     return;
                 }
 
-                if (!pf || pf.dir !== '2v1') {
-                    console.log('[CCN 2v1] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
+                if (!pf || pf.dir !== '1v2') {
+                    console.log('[CCN 1v2] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
                     return;
                 }
 
@@ -1204,7 +1330,7 @@
                     }
                 }
 
-                console.log('[CCN 2v1] Payload OK, rows:', rows.length);
+                console.log('[CCN 1v2] Payload OK, rows:', rows.length);
 
                 const renderFn = window.capNhatBangHTML || window.renderBangKetQua || null;
 
@@ -1214,16 +1340,16 @@
                     renderFn(window.bangKetQua);
 
                     localStorage.removeItem('ccn_prefill_payload');
-                    console.log('[CCN 2v1] Đã render qua hàm chính & xóa payload.');
+                    console.log('[CCN 1v2] Đã render qua hàm chính & xóa payload.');
 
                     setTimeout(() => {
-                        tryAutoSaveFromNhapTamCCN('2v1');
+                        tryAutoSaveFromNhapTamCCN('1v2');
                     }, 800);
                     return;
                 }
 
                 if (waitForRenderer && tries < 20) {
-                    console.log('[CCN 2v1] Chưa có hàm render, thử lại...', tries + 1);
+                    console.log('[CCN 1v2] Chưa có hàm render, thử lại...', tries + 1);
                     setTimeout(() => tryPrefillFromStorage(true, tries + 1), 300);
                     return;
                 }
@@ -1231,16 +1357,16 @@
                 const ok = renderRowsDirectIntoTable(rows);
                 if (ok) {
                     localStorage.removeItem('ccn_prefill_payload');
-                    console.log('[CCN 2v1] Render Fallback ok & đã xoá payload.');
+                    console.log('[CCN 1v2] Render Fallback ok & đã xoá payload.');
 
                     setTimeout(() => {
-                        tryAutoSaveFromNhapTamCCN('2v1');
+                        tryAutoSaveFromNhapTamCCN('1v2');
                     }, 800);
                 } else {
-                    console.warn('[CCN 2v1] Fallback render không thành công.');
+                    console.warn('[CCN 1v2] Fallback render không thành công.');
                 }
             } catch (e) {
-                console.error('[CCN 2v1] Lỗi nạp payload:', e);
+                console.error('[CCN 1v2] Lỗi nạp payload:', e);
             }
         }
 
@@ -1318,11 +1444,9 @@
                 }
             }, 300);
         }
-
         document.addEventListener('DOMContentLoaded', () => tryPrefillFromStorage(true));
         window.addEventListener('load', () => setTimeout(() => tryPrefillFromStorage(true), 600));
     </script>
-
 
     <script type="module" src="scripts/feedback.js"></script>
     <script type="module" src="scripts/scanner.js"></script>
@@ -1377,22 +1501,6 @@
             window.initCCNAdapter();
         }
     </script>
-
-    <style>
-        /* Cột size của bảng kết quả CCN1V2:
-     đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
-        #bangketqua th:nth-child(3),
-        #bangketqua td:nth-child(3) {
-            width: 40px;
-            max-width: 40px;
-            white-space: normal;
-            /* cho phép xuống dòng */
-
-            /* nếu cần thì bẻ từ */
-            text-align: left;
-            /* tùy, thích center thì bỏ dòng này */
-        }
-    </style>
 
     <script>
         (function () {
