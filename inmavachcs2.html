@@ -632,8 +632,9 @@
                 'SM': 'SM',
                 'QB': 'QB',
                 'QT': 'QT',
-                'NG': 'NGO',
-                'BOC': 'BOC',                
+                'NGB': 'NGOBO',
+                'BOC': 'BOC',
+                'NGV': 'NGOVAI',
                 'QV': 'QV',
                 'QNI': 'QNI',
                 'BOD': 'BOD'
@@ -682,7 +683,6 @@
                 } else if (force) {
                     // Nếu là mã mới và không khớp quy tắc thì để trống cho người dùng tự nhập
                     nhomhangInput.value = '';
-                    mausacInput.value = '';
                 }
             }
 
@@ -1380,7 +1380,7 @@
 
             // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
             document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
-            document.getElementById('maspInput').addEventListener('keydown', async function (e) {
+            document.getElementById('maspInput').addEventListener('keydown', function (e) {
                 if (e.key === "Enter") {
                     e.preventDefault();
                     e.stopPropagation();
@@ -1392,12 +1392,12 @@
 
                     justSavedReturnToMasp = false;
 
-                    await checkExistAndFillForm();
+                    checkExistAndFillForm();
 
-                    const maspInput = document.getElementById('maspInput');
-                    if (maspInput) {
-                        maspInput.focus();
-                        setTimeout(() => maspInput.select?.(), 10);
+                    const tensp = document.getElementById('tenspInput');
+                    if (tensp) {
+                        tensp.focus();
+                        setTimeout(() => tensp.select?.(), 10);
                     }
                 }
             });
@@ -1951,16 +1951,13 @@ Bạn chưa nhập màu sắc.
 
                 // Sự kiện chọn
                 maspSuggestDiv.querySelectorAll('tr[data-masp]').forEach(row => {
-                    row.onclick = async function () {
+                    row.onclick = function () {
                         maspInput.value = row.dataset.masp;
                         document.getElementById('tenspInput').value = row.dataset.tensp;
                         maspSuggestDiv.style.display = 'none';
                         autoFillNhomHangFromMasp();
-
-                        await checkExistAndFillForm(); // Tải info nếu có
-
-                        maspInput.focus();
-                        setTimeout(() => maspInput.select?.(), 10);
+                        checkExistAndFillForm(); // Tải info nếu có
+                        document.getElementById('tenspInput').focus();
                     }
                 });
             });
@@ -2198,40 +2195,14 @@ Bạn chưa nhập màu sắc.
             });
 
             mausacInput?.addEventListener('keydown', function (e) {
-                if (e.key !== 'Enter') return;
-
-                e.preventDefault();
-                e.stopPropagation();
-
-                const rawValue = (mausacInput.value || '').trim();
-
-                // Nếu ô màu sắc đang trống
-                // => giữ nguyên focus tại đây, không chuyển sang ô khác
-                if (!rawValue) {
-                    mausacInput.focus();
-                    return;
-                }
-
-                // Chuẩn hóa dữ liệu màu
-                let colors = parseColorsFromInput(mausacInput.value);
-
-                // Xóa các mục màu chỉ có 1 ký tự
-                // vì đó chỉ là ký tự người dùng gõ để tìm kiếm
-                colors = colors.filter(c => (c || '').trim().length > 1);
-
-                selectedColorOrder = [...colors];
-                updateInputFromSelectedColorOrder();
-                syncPopupChecksFromInput();
-                updateMauSacPreview();
-
-                // Đóng popup màu
-                closeMauSacPopup();
-
-                // Nhảy sang ô khuyến mãi
-                const km = document.getElementById('khuyenmaiInput');
-                if (km) {
-                    km.focus();
-                    setTimeout(() => km.select?.(), 10);
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    closeMauSacPopup();
+                    const km = document.getElementById('khuyenmaiInput');
+                    if (km) {
+                        km.focus();
+                        setTimeout(() => km.select?.(), 10);
+                    }
                 }
             });
 
@@ -2366,9 +2337,9 @@ Bạn chưa nhập màu sắc.
                     const el = document.getElementById(id);
                     if (!el) return;
 
-                    // Riêng ô mã sản phẩm và ô màu sắc đã có logic Enter riêng
+                    // Riêng ô mã sản phẩm đã có logic Enter riêng,
                     // nên không gắn điều hướng Enter tuần tự ở đây nữa
-                    if (id === 'mausacInput') {
+                    if (id === 'maspInput') {
                         el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
                         return;
                     }
