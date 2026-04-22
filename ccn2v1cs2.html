@@ -1010,19 +1010,18 @@
     </script>
 
     <script>
-
-
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
+
         document.getElementById('btn-sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            (document.body || document.documentElement).dispatchEvent(ev);
-        });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
+
+        // ❌ btn-luu KHÔNG dispatch F2 nữa
+        // Vì nút Lưu đã có luồng module mới riêng ở cuối file:
+        // saveBanLe111("BTN-LUU-CCN")
+
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
@@ -1034,7 +1033,6 @@
             const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-
     </script>
 
     <!-- Overlay quét -->
@@ -1371,7 +1369,7 @@
             });
         });
     </script>
-    
+
     <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
     <script src="./scripts/ccnBangKetQuaAdapter.js"></script>
     <script>
@@ -1429,33 +1427,33 @@
     </script>
 
     <script type="module">
-    import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
-    document.getElementById('btn-luu').onclick = async function () {
-        if (window.dangLuu) return;
+        document.getElementById('btn-luu').onclick = async function () {
+            if (window.dangLuu) return;
 
-        window.dangLuu = true;
-        this.disabled = true;
-        this.innerText = "Đang lưu...";
+            window.dangLuu = true;
+            this.disabled = true;
+            this.innerText = "Đang lưu...";
 
-        try {
-            const result = await saveBanLe111("BTN-LUU-CCN");
+            try {
+                const result = await saveBanLe111("BTN-LUU-CCN");
 
-            if (result?.ok) {
-                // có thể để trống
-            } else {
-                console.warn("saveBanLe111 không trả về ok=true:", result);
+                if (result?.ok) {
+                    // có thể để trống
+                } else {
+                    console.warn("saveBanLe111 không trả về ok=true:", result);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("❌ Lỗi lưu: " + (e?.message || e));
+            } finally {
+                window.dangLuu = false;
+                this.disabled = false;
+                this.innerText = "💾 Lưu";
             }
-        } catch (e) {
-            console.error(e);
-            alert("❌ Lỗi lưu: " + (e?.message || e));
-        } finally {
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
-        }
-    };
-</script>
+        };
+    </script>
 
 </body>
 
