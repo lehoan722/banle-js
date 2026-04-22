@@ -972,8 +972,8 @@
         }
 
         async function fetchSimilarCodesByPrefix(codeRaw) {
-            const prefix = getSimilarPrefixFromCode(codeRaw);
-            if (!prefix) return [];
+            const keyword = normCode(stripSizeSuffixAtEnd(codeRaw));
+            if (!keyword) return [];
 
             const client = await waitForSupabaseReady(12000);
             if (!client) return [];
@@ -982,21 +982,21 @@
                 const { data, error } = await client
                     .from('dmhanghoa')
                     .select('masp')
-                    .ilike('masp', `${prefix}.%`)
+                    .ilike('masp', `%${keyword}%`)
                     .order('masp', { ascending: true })
-                    .limit(100);
+                    .limit(20);
 
                 if (error || !Array.isArray(data)) return [];
 
-                const exactCode = normCode(stripSizeSuffixAtEnd(codeRaw));
+                const exactCode = keyword;
                 const codes = data
                     .map(r => normCode(r.masp))
                     .filter(Boolean);
 
-                // đưa mã người dùng vừa tìm lên đầu
                 const unique = [];
                 const seen = new Set();
 
+                // nếu có mã trùng chính xác thì đẩy lên đầu
                 if (exactCode && codes.includes(exactCode)) {
                     unique.push(exactCode);
                     seen.add(exactCode);
@@ -1008,7 +1008,7 @@
                     seen.add(c);
                 }
 
-                return unique;
+                return unique.slice(0, 20);
             } catch (e) {
                 console.warn('[quicksearch] fetchSimilarCodesByPrefix error:', e);
                 return [];
@@ -1446,6 +1446,27 @@
             }
 
             if (!htmlParts.length) {
+                // nếu đang tìm chính xác mà không có kết quả -> tự chuyển sang tìm tương tự include
+                if (currentMode === 'exact') {
+                    const similarCodes = await fetchSimilarCodesByPrefix(singleCode);
+
+                    if (similarCodes.length) {
+                        const similarHtmlParts = [];
+                        for (const code of similarCodes) {
+                            const html = await renderSingle(code);
+                            if (html) similarHtmlParts.push(html);
+                        }
+
+                        if (similarHtmlParts.length) {
+                            resultList.innerHTML = similarHtmlParts.join('');
+                            statusMsg.textContent = `Không có mã chính xác, đã tìm tương tự: ${similarHtmlParts.length} mã`;
+                            singleSearchMode = 'exact';
+                            bindCardEvents();
+                            return;
+                        }
+                    }
+                }
+
                 resultList.innerHTML = '<div class="empty">Không tìm thấy dữ liệu.</div>';
                 statusMsg.textContent = 'Không có dữ liệu phù hợp.';
                 return;
