@@ -749,6 +749,14 @@
             return client;
         }
 
+        function getIsAdminLocal() {
+            try {
+                return (sessionStorage.getItem('is_admin') || localStorage.getItem('is_admin')) === 'true';
+            } catch (_) {
+                return false;
+            }
+        }
+
         function normCode(s) {
             return String(s || '').trim().toUpperCase();
         }
@@ -1125,6 +1133,10 @@
             const branchLabel = branch === 'cs2' ? 'CS2' : 'CS1';
             const imgUrl = `${IMG_BASE}${encodeURIComponent(masp)}.JPG`;
             const bulkNote = getBulkNoteByMasp(masp);
+            const isAdmin = getIsAdminLocal();
+
+            const canEditKho = isAdmin || !String(currentVitri || '').trim();
+            const canEditBaymau = isAdmin || !String(currentBaymau || '').trim();
 
             return `
         <div class="product-card" data-masp="${masp}">
@@ -1159,7 +1171,7 @@
               ${buildStockTable(masp, payload)}
               <div class="bulk-note-line">${bulkNote || ''}</div>
 
-              <div class="vitri-row">
+<div class="vitri-row">
   <div class="vitri-box">
     <div class="vitri-head">
       <span>Lưu vị trí nhanh ${branchLabel}</span>
@@ -1170,45 +1182,92 @@
       <div class="vitri-col">
         <div class="vitri-col-title">Vị trí kho</div>
         <div class="vitri-input-row">
-          <input
-            type="text"
-            class="vitri-input"
-            data-masp="${masp}"
-            data-branch="${branch || ''}"
-            data-loai="kho"
-            value="${String(currentVitri || '').replace(/"/g, '&quot;')}"
-            placeholder="Nhập vị trí kho"
-          />
-          <button
-            class="small-btn save-vitri-btn"
-            data-masp="${masp}"
-            data-loai="kho"
-          >Lưu</button>
+          ${canEditKho
+                    ? `
+                <input
+                  type="text"
+                  class="vitri-input"
+                  data-masp="${masp}"
+                  data-branch="${branch || ''}"
+                  data-loai="kho"
+                  value="${String(currentVitri || '').replace(/"/g, '&quot;')}"
+                  placeholder="Nhập vị trí kho"
+                />
+                <button
+                  class="small-btn save-vitri-btn"
+                  data-masp="${masp}"
+                  data-loai="kho"
+                >Lưu</button>
+              `
+                    : `
+                <input
+                  type="text"
+                  class="vitri-input"
+                  data-masp="${masp}"
+                  data-branch="${branch || ''}"
+                  data-loai="kho"
+                  value="${String(currentVitri || '').replace(/"/g, '&quot;')}"
+                  readonly
+                  style="background:#f3f4f6;color:#111827;font-weight:700;"
+                />
+                <button
+                  class="small-btn save-vitri-btn"
+                  data-masp="${masp}"
+                  data-loai="kho"
+                  disabled
+                  style="opacity:.6;cursor:not-allowed;"
+                >Lưu</button>
+              `
+                }
         </div>
       </div>
 
       <div class="vitri-col">
         <div class="vitri-col-title">Vị trí bày mẫu</div>
         <div class="vitri-input-row">
-          <input
-            type="text"
-            class="vitri-input"
-            data-masp="${masp}"
-            data-branch="${branch || ''}"
-            data-loai="baymau"
-            value="${String(currentBaymau || '').replace(/"/g, '&quot;')}"
-            placeholder="Nhập vị trí bày mẫu"
-          />
-          <button
-            class="small-btn save-vitri-btn"
-            data-masp="${masp}"
-            data-loai="baymau"
-          >Lưu</button>
+          ${canEditBaymau
+                    ? `
+                <input
+                  type="text"
+                  class="vitri-input"
+                  data-masp="${masp}"
+                  data-branch="${branch || ''}"
+                  data-loai="baymau"
+                  value="${String(currentBaymau || '').replace(/"/g, '&quot;')}"
+                  placeholder="Nhập vị trí bày mẫu"
+                />
+                <button
+                  class="small-btn save-vitri-btn"
+                  data-masp="${masp}"
+                  data-loai="baymau"
+                >Lưu</button>
+              `
+                    : `
+                <input
+                  type="text"
+                  class="vitri-input"
+                  data-masp="${masp}"
+                  data-branch="${branch || ''}"
+                  data-loai="baymau"
+                  value="${String(currentBaymau || '').replace(/"/g, '&quot;')}"
+                  readonly
+                  style="background:#f3f4f6;color:#111827;font-weight:700;"
+                />
+                <button
+                  class="small-btn save-vitri-btn"
+                  data-masp="${masp}"
+                  data-loai="baymau"
+                  disabled
+                  style="opacity:.6;cursor:not-allowed;"
+                >Lưu</button>
+              `
+                }
         </div>
       </div>
     </div>
   </div>
 </div>
+
             </div>
 
             <div class="side-pane">
