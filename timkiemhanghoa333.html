@@ -1318,6 +1318,10 @@
             let s = normCode(line);
             if (!s) return '';
 
+            // nếu dòng có dạng: MASP, vitri kho, vitri bay mau
+            // thì chỉ lấy phần mã trước dấu phẩy đầu tiên
+            s = s.split(',')[0].trim();
+
             // chỉ bỏ hậu tố /số lượng, còn /DEN, /NAU... thì giữ nguyên
             s = stripTransferQtySuffix(s);
 
@@ -1393,6 +1397,49 @@
             const newLines = [code, ...oldLines.filter(x => x !== code)];
             bulkTextarea.value = newLines.join('\n');
 
+            toggleTools(true);
+        }
+
+        function buildBulkLineWithVitri(code, payload, branch) {
+            const masp = normCode(code);
+            const coso = String(branch || '').toLowerCase();
+
+            const vitriKho = coso === 'cs2'
+                ? String(payload?.vitri_cs2 || '').trim()
+                : String(payload?.vitri_cs1 || '').trim();
+
+            const vitriBayMau = coso === 'cs2'
+                ? String(payload?.baymau_cs2 || '').trim()
+                : String(payload?.baymau_cs1 || '').trim();
+
+            const parts = [masp];
+
+            if (vitriKho || vitriBayMau) {
+                parts.push(vitriKho);
+                parts.push(vitriBayMau);
+            }
+
+            return parts.join(', ');
+        }
+
+        function prependScannedLineToBulk(lineRaw, codeRaw) {
+            const line = String(lineRaw || '').trim();
+            const code = normCode(codeRaw);
+
+            if (!line || !code) return;
+
+            const oldLines = String(bulkTextarea.value || '')
+                .split(/[\r\n]+/)
+                .map(x => String(x || '').trim())
+                .filter(Boolean);
+
+            // bỏ các dòng cũ có cùng mã để tránh trùng
+            const filtered = oldLines.filter(x => {
+                const oldCode = normalizeIncomingProductCode(x);
+                return oldCode !== code;
+            });
+
+            bulkTextarea.value = [line, ...filtered].join('\n');
             toggleTools(true);
         }
 
@@ -1673,11 +1720,16 @@
 
                         playScanBeep();
                         showFlash();
+
+                        const branch = getCurrentBranch();
+                        const payload = await fetchTonBanByMasp(code);
+                        const bulkLine = buildBulkLineWithVitri(code, payload, branch);
+
+                        prependScannedLineToBulk(bulkLine, code);
+
                         showToast(`Đã quét ${code}`);
 
-                        prependScannedCodeToBulk(code);
-
-                        // có thể để ô tìm 1 mã trống để tránh hiểu nhầm là đang tìm exact
+                        // xóa ô tìm 1 mã để tránh hiểu nhầm là đang tìm exact
                         maspInput.value = '';
 
                         resetSingleSearchMode();
