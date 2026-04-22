@@ -1713,7 +1713,7 @@
             try {
                 const useId = deviceId || activeCameraId;
                 activeCameraId = useId;
-                scanControls = await codeReader.decodeFromVideoDevice(useId || undefined, scannerVideo, (result, err, controls) => {
+                scanControls = await codeReader.decodeFromVideoDevice(useId || undefined, scannerVideo, async (result, err, controls) => {
                     if (result?.getText) {
                         const code = normCode(stripSizeSuffixAtEnd(result.getText()));
                         if (!code) return;
