@@ -1465,8 +1465,8 @@
             const bulkCodes = parseBulkCodes();
             const singleCode = normCode(stripSizeSuffixAtEnd(maspInput.value));
 
-            // ===== Trường hợp tìm nhiều mã: giữ nguyên như cũ =====
-            if (bulkCodes.length) {
+            // ===== Nếu ô tìm 1 mã đang có dữ liệu thì ưu tiên ô này =====
+            if (!singleCode && bulkCodes.length) {
                 statusMsg.textContent = `Đang tìm ${bulkCodes.length} mã...`;
                 resultList.innerHTML = '<div class="empty">Đang tải dữ liệu...</div>';
 
@@ -1802,7 +1802,12 @@
             document.getElementById('popupBtn').onclick = openPopupSearch;
             document.getElementById('closePopupBtn').onclick = closePopupSearch;
             document.getElementById('searchBtn').onclick = triggerSearch;
-            document.getElementById('searchBulkBtn').onclick = () => { toggleTools(true); triggerSearch(); };
+            document.getElementById('searchBulkBtn').onclick = () => {
+                toggleTools(true);
+                maspInput.value = '';
+                resetSingleSearchMode();
+                triggerSearch();
+            };
             document.getElementById('clearBulkBtn').onclick = () => { bulkTextarea.value = ''; showToast('Đã xóa danh sách'); };
             document.getElementById('pasteFromTransferBtn').onclick = () => {
                 const ok = applyIncomingBulk();
