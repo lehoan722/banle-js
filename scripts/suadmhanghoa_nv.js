@@ -101,12 +101,12 @@ function applyCreatedAtRange(q, range) {
 
 
 function applyFilterQuery(q, colname, rawValue) {
-
-
-  // Hỗ trợ nhiều giá trị cách nhau bằng dấu phẩy: dùng .in() (match chính xác)
-  // rawValue có thể là mảng (đã được split/trim ở nơi gọi)
+  // Hỗ trợ nhiều giá trị cách nhau bằng dấu phẩy: match đúng giá trị, không phân biệt hoa/thường
   if (Array.isArray(rawValue)) {
-    const vals = rawValue.map(v => String(v).trim()).filter(Boolean);
+    const vals = rawValue
+      .map(v => String(v).trim())
+      .filter(Boolean);
+
     if (vals.length === 0) return q.eq(colname, null);
 
     // Boolean
@@ -117,7 +117,6 @@ function applyFilterQuery(q, colname, rawValue) {
         .filter(v => v !== null);
 
       if (bools.length === 0) return q.eq(colname, null);
-      // nếu có cả true và false -> không cần lọc
       if (bools.includes(true) && bools.includes(false)) return q;
       return q.eq(colname, bools[0]);
     }
@@ -127,34 +126,39 @@ function applyFilterQuery(q, colname, rawValue) {
       const nums = vals
         .map(v => Number(String(v).replace(',', '.')))
         .filter(n => Number.isFinite(n));
+
       if (nums.length === 0) return q.eq(colname, null);
       return q.in(colname, nums);
     }
 
-    // Text: OR + ilike dạng contains (không phân biệt hoa/thường)
-    // Ví dụ: nhập noc4 -> match mọi giá trị có chứa noc4
-    const orExpr = vals.map(v => `${colname}.ilike.%${v}%`).join(',');
-    return q.or(orExpr);
+    // Text: match đúng giá trị, không phân biệt hoa/thường
+    const orExpr = vals
+      .map(v => `${colname}.ilike.${v}`)
+      .join(',');
 
-  }  // Nếu là boolean
+    return q.or(orExpr);
+  }
+
+  // Boolean
   if (FILTER_BOOLEAN_COLS.has(colname)) {
     const v = String(rawValue).trim().toLowerCase();
     if (v === '1' || v === 'true') return q.eq(colname, true);
     if (v === '0' || v === 'false') return q.eq(colname, false);
-    // nếu nhập sai -> trả về query sẽ không có kết quả
     return q.eq(colname, null);
   }
 
-  // Nếu là số
+  // Số
   if (FILTER_NUMERIC_COLS.has(colname)) {
     const n = Number(String(rawValue).trim().replace(',', '.'));
     if (Number.isFinite(n)) return q.eq(colname, n);
     return q.eq(colname, null);
   }
 
-  // Mặc định: text -> ilike contains để không phân biệt hoa thường
+  // Text: match đúng giá trị, không phân biệt hoa/thường
   const pattern = String(rawValue).trim();
-  return q.ilike(colname, `%${pattern}%`);
+  if (!pattern) return q.eq(colname, null);
+
+  return q.ilike(colname, pattern);
 }
 
 
