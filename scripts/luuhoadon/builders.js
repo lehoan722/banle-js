@@ -149,6 +149,11 @@ export async function handleSpecialSoHoaDon(sb, sohd) {
     const prefixFull = (sohd.split("_")[0] || "").toLowerCase();
     if (prefixFull !== "bancs1" && prefixFull !== "bancs2") return false;
 
+    // TẠM NGỪNG hóa đơn đặc biệt của cơ sở 1 nếu muốn mở lại thì xóa đoạn mã dưới là lại mở lại bình thường
+    if (prefixFull === "bancs1") {
+        return false;
+    }
+
     const diadiem = (prefixFull === "bancs2") ? "cs2" : "cs1";
     const ngayRaw = document.getElementById("ngay")?.value;
     const ngay = ngayRaw ? String(ngayRaw).trim() : "";
