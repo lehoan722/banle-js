@@ -73,7 +73,7 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     ],
     itemInfo: chitiet.map((item, index) => ({
       lineNumber: index + 1,
-      itemCode: item.masp,
+     // itemCode: item.masp,
       itemName: item.tensp,
       unitName: item.dvt || "",
       quantity: Number(item.soluong),
