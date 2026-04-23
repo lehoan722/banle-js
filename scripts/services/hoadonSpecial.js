@@ -266,6 +266,12 @@ export async function saveHoaDonSpecial(ctx) {
     return;
   }
 
+  // ✅ TẠM NGỪNG hóa đơn đặc biệt của CS1
+  if (loai === "bancs1") {
+    console.warn("⛔ Đã tạm ngừng luồng lưu 2 bản + gửi Viettel cho CS1");
+    return await import('./hoadonSale.js').then(m => m.saveHoaDonBanLe(ctx));
+  }
+
   const diadiemTrang = loai.includes("cs2") ? "cs2" : "cs1";
 
   await refreshSessionIfNeeded();
