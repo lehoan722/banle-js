@@ -266,12 +266,6 @@ export async function saveHoaDonSpecial(ctx) {
     return;
   }
 
-  // ✅ TẠM NGỪNG hóa đơn đặc biệt của CS1
-  if (loai === "bancs1") {
-    console.warn("⛔ Đã tạm ngừng luồng lưu 2 bản + gửi Viettel cho CS1");
-    return await import('./hoadonSale.js').then(m => m.saveHoaDonBanLe(ctx));
-  }
-
   const diadiemTrang = loai.includes("cs2") ? "cs2" : "cs1";
 
   await refreshSessionIfNeeded();
@@ -382,12 +376,23 @@ export async function saveHoaDonSpecial(ctx) {
   // 6) In bản chính
   printInvoice(hoadonChinh, chitietChinh, true);
 
-  // 7) Gửi Viettel cho bản T
-  try {
-    await guiHoaDonViettel(sohdT);
-  } catch (e) {
-    console.error("guiHoaDonViettel lỗi:", e);
-    alert("⚠️ Đã lưu xong 2 bản nhưng gửi Viettel thất bại. Bạn có thể gửi lại sau ở trang xem hóa đơn T.");
+    // 7) Gửi Viettel cho bản T
+  // ✅ Tạm ngừng gửi Viettel cho CS1, nhưng vẫn lưu đầy đủ 2 bản như cũ
+  if (loai === "bancs1") {
+    console.warn("⛔ Tạm ngừng gửi Viettel cho hóa đơn đặc biệt CS1:", sohdT);
+
+    // Nếu muốn hiển thị trạng thái dễ theo dõi trong trang xem hóa đơn T
+    await supabase
+      .from("hoadon_banleT")
+      .update({ trang_thai_gui: "ngừng gửi CS1" })
+      .eq("sohd", sohdT);
+  } else {
+    try {
+      await guiHoaDonViettel(sohdT);
+    } catch (e) {
+      console.error("guiHoaDonViettel lỗi:", e);
+      alert("⚠️ Đã lưu xong 2 bản nhưng gửi Viettel thất bại. Bạn có thể gửi lại sau ở trang xem hóa đơn T.");
+    }
   }
 
   await resetAfterSave();
