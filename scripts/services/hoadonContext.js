@@ -17,18 +17,9 @@ export async function buildContext() {
   const isSpecialByTMT = hinhthuctt === "tmt";
   const isSpecialByMod3 = sohdEl?.getAttribute("data-mod3") === "yes";
 
-  const loaiSohd = (sohd || "").split("_")[0].toLowerCase();
-  const isBanCs1 = loaiSohd === "bancs1";
-  const isBanCs2 = loaiSohd === "bancs2";
-
-  // ✅ TẠM NGỪNG luồng hóa đơn đặc biệt của CS1
-  // - CS1: luôn không lưu 2 bản
-  // - CS2: vẫn giữ logic cũ
-  // - Hóa đơn sửa: vẫn không lưu 2 bản như cũ
-  const save2Ban =
-    !isEdit &&
-    isBanCs2 &&
-    (isSpecialByTMT || isSpecialByMod3);
+  // ✅ Chỉ hóa đơn MỚI mới được lưu 2 bản
+  // ✅ Hóa đơn đang SỬA thì dù là TMT hay data-mod3=yes cũng KHÔNG lưu 2 bản
+  const save2Ban = !isEdit && (isSpecialByTMT || isSpecialByMod3);
 
   return {
     bangKetQua,
