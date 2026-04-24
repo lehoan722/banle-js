@@ -737,51 +737,7 @@
 
     </div>
 
-    <script type="module">
-        window.napThongTinDiemKhach = async function (makh) {
-            if (!makh) return;
-
-            const { data, error } = await window.supabase
-                .from("dmkhachhang")
-                .select("makh, tenkh, diem_hientai, hang_khach, tong_chi_tieu, so_lan_mua")
-                .eq("makh", makh)
-                .maybeSingle();
-
-            if (error || !data) {
-                alert("Không đọc được thông tin điểm khách hàng.");
-                return;
-            }
-
-            document.getElementById("diem_hientai").value = data.diem_hientai || 0;
-            document.getElementById("hang_khach").value = data.hang_khach || "THUONG";
-            document.getElementById("diem_tru").value = 0;
-            document.getElementById("tien_doi_diem").value = "0";
-        };
-
-        function parseMoney(v) {
-            return Number(String(v || "0").replace(/\D/g, "")) || 0;
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            const diemTruEl = document.getElementById("diem_tru");
-
-            diemTruEl?.addEventListener("input", () => {
-                const diemHienTai = Number(document.getElementById("diem_hientai")?.value || 0);
-                let diemTru = Number(diemTruEl.value || 0);
-
-                if (diemTru < 0) diemTru = 0;
-
-                if (diemTru > diemHienTai) {
-                    alert("Khách không đủ điểm để đổi.");
-                    diemTru = diemHienTai;
-                    diemTruEl.value = diemTru;
-                }
-
-                const tienGiam = diemTru * 500;
-                document.getElementById("tien_doi_diem").value = tienGiam.toLocaleString("vi-VN");
-            });
-        });
-    </script>
+    
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -834,6 +790,23 @@
 
     <script src="scripts/stockQuickPopup.js"></script>
 
+    <script type="module">
+    import { mountKhachHangSuggest } from "./scripts/dmkhachhang.js";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        mountKhachHangSuggest({
+            inputId: "makh",
+            tenInputId: "khachhang",
+            suggestBoxId: "khSuggestList",
+            btnSearchId: "btnPopupKH",
+            diemInputId: "diem_hientai",
+            hangInputId: "hang_khach",
+            diemTruInputId: "diem_tru",
+            tienDoiDiemInputId: "tien_doi_diem",
+            nhapKhachUrl: "/nhapdmkhachhang.html"
+        });
+    });
+</script>
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
@@ -841,194 +814,7 @@
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
     <script type="module">
-        // ===============================
-        // GỢI Ý KHÁCH HÀNG NGAY TẠI Ô MÃ KH
-        // ===============================
-
-        const makhInput = document.getElementById("makh");
-        const khSuggestList = document.getElementById("khSuggestList");
-        const btnPopupKH = document.getElementById("btnPopupKH");
-
-        let dsKhachHangSuggest = [];
-        let khSuggestIndex = -1;
-        let khSearchTimer = null;
-
-        function clearThongTinKhachHang() {
-            document.getElementById("khachhang").value = "";
-            document.getElementById("diem_hientai").value = "";
-            document.getElementById("hang_khach").value = "";
-            document.getElementById("diem_tru").value = "0";
-            document.getElementById("tien_doi_diem").value = "0";
-        }
-
-        function renderKhSuggest(data) {
-            dsKhachHangSuggest = data || [];
-            khSuggestIndex = dsKhachHangSuggest.length ? 0 : -1;
-
-            if (!dsKhachHangSuggest.length) {
-                khSuggestList.innerHTML = `
-            <div style="padding:8px;color:#777;">
-                Không có khách phù hợp. Nhấn Enter để thêm mới.
-            </div>
-        `;
-                khSuggestList.style.display = "block";
-                return;
-            }
-
-            khSuggestList.innerHTML = dsKhachHangSuggest.map((kh, i) => `
-        <div class="kh-suggest-item"
-            data-idx="${i}"
-            style="padding:7px 8px; cursor:pointer; border-bottom:1px solid #eee; ${i === 0 ? 'background:#eaf4ff;' : ''}">
-            <b>${kh.makh || ""}</b> - ${kh.tenkh || ""}
-            <div style="font-size:12px;color:#666;">
-                Điểm: ${kh.diem_hientai || 0} | Hạng: ${kh.hang_khach || "THUONG"}
-            </div>
-        </div>
-    `).join("");
-
-            khSuggestList.style.display = "block";
-
-            khSuggestList.querySelectorAll(".kh-suggest-item").forEach(item => {
-                item.addEventListener("mousedown", async (e) => {
-                    e.preventDefault();
-                    const idx = Number(item.dataset.idx);
-                    await chonKhachHangSuggest(idx);
-                });
-            });
-        }
-
-        function updateKhSuggestActive() {
-            khSuggestList.querySelectorAll(".kh-suggest-item").forEach((item, i) => {
-                item.style.background = i === khSuggestIndex ? "#eaf4ff" : "#fff";
-                if (i === khSuggestIndex) {
-                    item.scrollIntoView({ block: "nearest" });
-                }
-            });
-        }
-
-        async function timKhachHangTheoMa(keyword) {
-            const kw = String(keyword || "").trim();
-
-            if (!kw) {
-                khSuggestList.style.display = "none";
-                clearThongTinKhachHang();
-                return;
-            }
-
-            const { data, error } = await window.supabase
-                .from("dmkhachhang")
-                .select("makh, tenkh, diem_hientai, hang_khach")
-                .or(`makh.ilike.%${kw}%,tenkh.ilike.%${kw}%,dienthoai.ilike.%${kw}%`)
-                .order("makh", { ascending: true })
-                .limit(20);
-
-            if (error) {
-                console.error("Lỗi tìm khách hàng:", error);
-                khSuggestList.innerHTML = `<div style="padding:8px;color:red;">Lỗi tìm khách hàng</div>`;
-                khSuggestList.style.display = "block";
-                return;
-            }
-
-            renderKhSuggest(data || []);
-        }
-
-        async function chonKhachHangSuggest(idx) {
-            const kh = dsKhachHangSuggest[idx];
-            if (!kh) return;
-
-            makhInput.value = kh.makh || "";
-            document.getElementById("khachhang").value = kh.tenkh || "";
-            khSuggestList.style.display = "none";
-
-            if (typeof window.napThongTinDiemKhach === "function") {
-                await window.napThongTinDiemKhach(kh.makh);
-            }
-        }
-
-        function moTrangNhapKhachMoi() {
-            const makh = String(makhInput.value || "").trim();
-            if (!makh) return;
-
-            localStorage.setItem("pending_makh_banle", makh);
-            localStorage.setItem("return_to_banle_after_kh", "1");
-
-            const url = `/nhapdmkhachhang.html?makh=${encodeURIComponent(makh)}&from=banle`;
-            window.open(url, "_blank");
-        }
-
-        makhInput?.addEventListener("input", () => {
-            const kw = makhInput.value.trim();
-
-            clearTimeout(khSearchTimer);
-            khSearchTimer = setTimeout(() => {
-                timKhachHangTheoMa(kw);
-            }, 180);
-        });
-
-        makhInput?.addEventListener("focus", () => {
-            const kw = makhInput.value.trim();
-            if (kw) timKhachHangTheoMa(kw);
-        });
-
-        makhInput?.addEventListener("keydown", async (e) => {
-            const popupOpen = khSuggestList.style.display !== "none";
-
-            if (e.key === "ArrowDown" && popupOpen && dsKhachHangSuggest.length) {
-                e.preventDefault();
-                khSuggestIndex = (khSuggestIndex + 1) % dsKhachHangSuggest.length;
-                updateKhSuggestActive();
-                return;
-            }
-
-            if (e.key === "ArrowUp" && popupOpen && dsKhachHangSuggest.length) {
-                e.preventDefault();
-                khSuggestIndex = (khSuggestIndex - 1 + dsKhachHangSuggest.length) % dsKhachHangSuggest.length;
-                updateKhSuggestActive();
-                return;
-            }
-
-            if (e.key === "Enter") {
-                e.preventDefault();
-
-                if (dsKhachHangSuggest.length && khSuggestIndex >= 0) {
-                    await chonKhachHangSuggest(khSuggestIndex);
-                    return;
-                }
-
-                moTrangNhapKhachMoi();
-                return;
-            }
-
-            if (e.key === "Escape") {
-                khSuggestList.style.display = "none";
-            }
-        });
-
-        btnPopupKH?.addEventListener("click", () => {
-            const kw = makhInput.value.trim();
-            timKhachHangTheoMa(kw);
-            makhInput.focus();
-        });
-
-        document.addEventListener("mousedown", (e) => {
-            const box = document.getElementById("khBox");
-            if (!box) return;
-            if (!box.contains(e.target)) {
-                khSuggestList.style.display = "none";
-            }
-        });
-
-        // Khi quay lại từ trang nhập khách hàng, tự nạp lại mã khách vừa nhập
-        document.addEventListener("visibilitychange", async () => {
-            if (document.visibilityState !== "visible") return;
-
-            const pending = localStorage.getItem("pending_makh_banle");
-            if (!pending) return;
-
-            makhInput.value = pending;
-            await timKhachHangTheoMa(pending);
-        });
-
+        
         // Copy bảng sang clipboard,
         document.getElementById('btnCopy').onclick = function () {
             const table = document.getElementById('bangketqua');
