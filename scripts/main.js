@@ -1423,7 +1423,17 @@ function showBayMauPopup(tasks, context) {
       }
     };
 
-    const tdCheck = document.createElement("td");    
+    const tdCheck = document.createElement("td");
+    tdCheck.style.border = "1px solid #ccc";
+    tdCheck.style.padding = "4px 6px";
+    tdCheck.style.textAlign = "center";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.dataset.idCt = row.id_ct;
+    tdCheck.appendChild(cb);
+    tr.appendChild(tdCheck);
+    bayMauCheckboxes.push(cb);
 
     tdImage.appendChild(btnCam);
     tdImage.appendChild(fileInput);
@@ -1433,15 +1443,7 @@ function showBayMauPopup(tasks, context) {
     // lưu lại
     row._fileInput = fileInput;
     row._selectedFileRef = () => selectedFile;
-
-    tdCheck.style.border = "1px solid #ccc";
-    tdCheck.style.padding = "4px 6px";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.dataset.idCt = row.id_ct;
-    tdCheck.appendChild(cb);
-    tr.appendChild(tdCheck);
-    bayMauCheckboxes.push(cb);
+    row._tr = tr;
 
     // 2. MÃ SP (click = mở popup nhanh)
     const tdMasp = document.createElement("td");
@@ -1603,6 +1605,13 @@ function showBayMauPopup(tasks, context) {
           alert("Lỗi lưu trạng thái bày mẫu.");
           return;
         }
+
+        // Ẩn ngay các dòng đã bày mẫu khỏi popup
+        tasks.forEach((row) => {
+          if (idsBayMau.includes(Number(row.id_ct))) {
+            row._tr?.remove();
+          }
+        });
       }
 
       // 3. GHI NHẬN GHI CHÚ + XÁC NHẬN ADMIN
