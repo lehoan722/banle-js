@@ -509,8 +509,14 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
             });
 
             cb.addEventListener("change", () => {
-                btnPhoto.style.display = cb.checked ? "" : "none";
-                if (!cb.checked) {
+                if (cb.checked && t.can_chup_anh_baymau) {
+                    btnPhoto.style.display = "";
+                    setTimeout(() => fileInput.click(), 50);
+                } else {
+                    btnPhoto.style.display = "none";
+                }
+
+                if (!cb.checked || !t.can_chup_anh_baymau) {
                     fileInput.value = "";
                     photoStatus.textContent = "";
                 }
@@ -547,6 +553,7 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
             rowStates.push({
                 id_ct: t.id_ct,
                 masp: t.masp || "",
+                canChupAnh: !!t.can_chup_anh_baymau,
                 checkbox: cb,
                 inputNote,
                 fileInput,
@@ -651,7 +658,7 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
                 const isChecked = row.checkbox.checked;
                 const hasNewPhoto = row.fileInput?.files && row.fileInput.files[0];
                 const hasOldPhoto = !!row.oldImagePath;
-                return isChecked && !hasNewPhoto && !hasOldPhoto;
+                return row.canChupAnh && isChecked && !hasNewPhoto && !hasOldPhoto;
             });
 
             if (missingPhoto.length > 0) {
