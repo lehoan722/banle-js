@@ -1263,6 +1263,7 @@ function showBayMauPopup(tasks, context) {
   }
 
   trHead.appendChild(mkTh("bày mẫu"));
+  trHead.appendChild(mkTh("ảnh"));
   trHead.appendChild(mkTh("mã sp"));
   trHead.appendChild(mkTh("nv bán"));
   trHead.appendChild(mkTh("GHI CHÚ"));
@@ -1291,6 +1292,46 @@ function showBayMauPopup(tasks, context) {
     tr.style.background = "#fdf1d6";
 
     // 1. checkbox BÀY MẪU
+
+    // === ẢNH BÀY MẪU ===
+    const tdImage = document.createElement("td");
+    tdImage.style.border = "1px solid #ccc";
+    tdImage.style.padding = "4px";
+
+    const btnCam = document.createElement("button");
+    btnCam.textContent = "📷";
+    btnCam.style.fontSize = "14px";
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.capture = "environment"; // 👉 mở camera điện thoại
+    fileInput.style.display = "none";
+
+    const status = document.createElement("div");
+    status.style.fontSize = "11px";
+    status.style.color = "green";
+
+    let selectedFile = null;
+
+    btnCam.onclick = () => fileInput.click();
+
+    fileInput.onchange = (e) => {
+      selectedFile = e.target.files[0] || null;
+      if (selectedFile) {
+        status.textContent = "Đã chọn ảnh";
+      }
+    };
+
+    tdImage.appendChild(btnCam);
+    tdImage.appendChild(fileInput);
+    tdImage.appendChild(status);
+    tr.appendChild(tdImage);
+
+    // lưu lại
+    row._fileInput = fileInput;
+    row._selectedFileRef = () => selectedFile;
+
     const tdCheck = document.createElement("td");
     tdCheck.style.border = "1px solid #ccc";
     tdCheck.style.padding = "4px 6px";
@@ -1375,7 +1416,76 @@ function showBayMauPopup(tasks, context) {
   // === Hàm đóng popup: lưu bày mẫu + ghi chú + xác nhận ===
   async function closePopup() {
     try {
-      // 1. GHI NHẬN BÀY MẪU (baymau_set_done)
+      // 0. Kiểm tra: nếu tick bày mẫu thì bắt buộc phải có ảnh
+      const rowsNeedSave = [];
+
+      for (const row of tasks) {
+        const idCt = Number(row.id_ct);
+        const checkbox = bayMauCheckboxes.find(c => Number(c.dataset.idCt) === idCt);
+        const file = row._selectedFileRef?.() || null;
+
+        if (checkbox?.checked && !file && !row.baymau_image_path) {
+          alert("Bạn phải chụp ảnh bày mẫu trước khi lưu.");
+          return;
+        }
+
+        if (checkbox?.checked) {
+          rowsNeedSave.push({ row, idCt, file });
+        }
+      }
+
+      // 1. Upload ảnh + ghi path ảnh vào DB
+      for (const item of rowsNeedSave) {
+        const { row, idCt, file } = item;
+        if (!file) continue;
+
+        let blob;
+        try {
+          blob = await resizeBayMauImageFixed(
+            file,
+            0.62,
+            row.masp,
+            context.manvDangNhap,
+            context.diadiem
+          );
+        } catch (e) {
+          console.error("Lỗi xử lý ảnh bày mẫu:", e);
+          alert("Không xử lý được ảnh bày mẫu, vui lòng chụp lại.");
+          return;
+        }
+
+        const today = new Date().toISOString().slice(0, 10);
+        const filePath =
+          `${context.diadiem}/${context.manvDangNhap}/${today}/${idCt}_${Date.now()}.jpg`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("ANHBAYMAU")
+          .upload(filePath, blob, {
+            upsert: true,
+            cacheControl: "3600",
+            contentType: "image/jpeg"
+          });
+
+        if (uploadError) {
+          console.error("Lỗi upload ảnh bày mẫu:", uploadError);
+          alert("Lỗi lưu ảnh bày mẫu: " + (uploadError.message || "Không rõ lỗi"));
+          return;
+        }
+
+        const { error: imgErr } = await supabase.rpc("baymau_update_image", {
+          p_id_ct: idCt,
+          p_path: filePath,
+          p_manv: context.manvDangNhap
+        });
+
+        if (imgErr) {
+          console.error("Lỗi lưu đường dẫn ảnh bày mẫu:", imgErr);
+          alert("Ảnh đã upload nhưng chưa lưu được vào dữ liệu bày mẫu.");
+          return;
+        }
+      }
+
+      // 2. GHI NHẬN BÀY MẪU
       const idsBayMau = bayMauCheckboxes
         .filter((c) => c.checked)
         .map((c) => Number(c.dataset.idCt))
@@ -1386,18 +1496,20 @@ function showBayMauPopup(tasks, context) {
           p_ids: idsBayMau,
           p_manv: context.manvDangNhap,
         });
+
         if (error) {
           console.error("Lỗi RPC baymau_set_done:", error);
+          alert("Lỗi lưu trạng thái bày mẫu.");
+          return;
         }
       }
 
-      // 2. GHI NHẬN GHI CHÚ + XÁC NHẬN ADMIN
+      // 3. GHI NHẬN GHI CHÚ + XÁC NHẬN ADMIN
       const noteUpdates = [];
       noteInputs.forEach(({ input, old }) => {
         const note = input.value.trim();
         const oldNote = (old || "").trim();
 
-        // Chỉ gửi update khi note mới KHÔNG RỖNG và thực sự khác note cũ
         if (note && note !== oldNote) {
           noteUpdates.push({
             id_ct: Number(input.dataset.idCt),
@@ -1423,18 +1535,22 @@ function showBayMauPopup(tasks, context) {
             p_admin: isAdmin ? currentManv : null,
           }
         );
+
         if (errNote) {
           console.error("Lỗi RPC baymau_update_note_and_confirm:", errNote);
+          alert("Lỗi lưu ghi chú hoặc xác nhận admin.");
+          return;
         }
       }
     } catch (e) {
       console.error("Lỗi khi đóng popup bày mẫu:", e);
       alert("Có lỗi khi lưu thông tin bày mẫu, vui lòng thử lại.");
-    } finally {
-      bayMauPopupDangMo = false;
-      if (overlay && overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
+      return;
+    }
+
+    bayMauPopupDangMo = false;
+    if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
     }
   }
 
