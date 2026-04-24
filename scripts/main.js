@@ -1171,6 +1171,106 @@ async function fetchBayMauTasks({ diadiem, mode, manvDangNhap }) {
  *   (có thêm các field: baymau_note, baymau_admin_confirm_by)
  * - context: { diadiem, mode, manvDangNhap }
  */
+
+function fileToImageBayMau(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Không đọc được ảnh"));
+    };
+
+    img.src = url;
+  });
+}
+
+function formatBayMauTime(d = new Date()) {
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+}
+
+async function resizeBayMauImageFixed(file, quality = 0.62, masp = "", manv = "", diadiem = "") {
+  const img = await fileToImageBayMau(file);
+
+  const isLandscape = img.width >= img.height;
+  const targetW = isLandscape ? 480 : 360;
+  const targetH = isLandscape ? 360 : 480;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+
+  const ctx = canvas.getContext("2d", { alpha: false });
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, targetW, targetH);
+
+  const scale = Math.min(targetW / img.width, targetH / img.height);
+  const drawW = Math.round(img.width * scale);
+  const drawH = Math.round(img.height * scale);
+  const dx = Math.round((targetW - drawW) / 2);
+  const dy = Math.round((targetH - drawH) / 2);
+
+  ctx.drawImage(img, dx, dy, drawW, drawH);
+
+  // ===== ĐÓNG DẤU THÔNG TIN CHỐNG DÙNG ẢNH CŨ =====
+  const lines = [
+    `MÃ SP: ${String(masp || "").toUpperCase()}`,
+    `THỜI GIAN: ${formatBayMauTime(new Date())}`,
+    `NHÂN VIÊN: ${String(manv || "").toUpperCase()}`,
+    `CƠ SỞ: ${String(diadiem || "").toUpperCase()}`
+  ];
+
+  const fontSize = Math.max(15, Math.round(Math.min(targetW, targetH) * 0.045));
+  const pad = 10;
+  const lineH = Math.round(fontSize * 1.35);
+  const boxH = lineH * lines.length + pad * 2;
+  const boxW = Math.round(targetW * 0.82);
+  const boxX = 8;
+  const boxY = targetH - boxH - 8;
+
+  ctx.fillStyle = "rgba(0,0,0,0.58)";
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+
+  ctx.font = `700 ${fontSize}px Arial, sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#ffeb3b";
+  ctx.strokeStyle = "rgba(0,0,0,0.9)";
+  ctx.lineWidth = 2;
+
+  lines.forEach((txt, i) => {
+    const x = boxX + pad;
+    const y = boxY + pad + i * lineH;
+    ctx.strokeText(txt, x, y);
+    ctx.fillText(txt, x, y);
+  });
+
+  return await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Không nén được ảnh"));
+          return;
+        }
+        resolve(blob);
+      },
+      "image/jpeg",
+      quality
+    );
+  });
+}
+
 function showBayMauPopup(tasks, context) {
   if (!tasks || !tasks.length) return;
   if (bayMauPopupDangMo) return;
@@ -1323,6 +1423,16 @@ function showBayMauPopup(tasks, context) {
       }
     };
 
+    const tdCheck = document.createElement("td");
+    tdCheck.style.border = "1px solid #ccc";
+    tdCheck.style.padding = "4px 6px";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.dataset.idCt = row.id_ct;
+    tdCheck.appendChild(cb);
+    tr.appendChild(tdCheck);
+    bayMauCheckboxes.push(cb);
+
     tdImage.appendChild(btnCam);
     tdImage.appendChild(fileInput);
     tdImage.appendChild(status);
@@ -1332,7 +1442,6 @@ function showBayMauPopup(tasks, context) {
     row._fileInput = fileInput;
     row._selectedFileRef = () => selectedFile;
 
-    const tdCheck = document.createElement("td");
     tdCheck.style.border = "1px solid #ccc";
     tdCheck.style.padding = "4px 6px";
     const cb = document.createElement("input");
