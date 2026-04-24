@@ -754,47 +754,13 @@
 
         // ✅ Ưu tiên ND từ dmhanghoa.nhapdau (nếu có)
         const ndRaw = hh.nhapdau ? String(hh.nhapdau).trim() : "";
-        if (ndRaw) {
+        if (ndRaw && !nhap_dau_ma) {
           nhap_dau_ma = normalizeND(ndRaw);
         }
       }
 
       // 3) Fallback ND/NC theo hóa đơn nếu còn thiếu (giống trang tìm kiếm 333)
-      // - Chỉ chạy khi thiếu ND hoặc thiếu NC
-      if (!nhap_dau_ma || !nhap_cuoi_ma) {
-        try {
-          const { data: nhapList, error: nhapErr } = await client
-            .from("hoadon_banle")
-            .select("ngay, sohd")
-            .in("loaihd", ["nmcs1", "nmcs2"])
-            .order("ngay", { ascending: true });
-
-          if (nhapErr) throw nhapErr;
-
-          const list = nhapList || [];
-          if (list.length) {
-            const sohdArr = list.map((e) => e.sohd);
-
-            const { data: cts, error: ctErr } = await client
-              .from("ct_hoadon_banle")
-              .select("sohd")
-              .in("sohd", sohdArr)
-              .eq("masp", masp);
-
-            if (ctErr) throw ctErr;
-
-            const setSohd = new Set((cts || []).map((e) => e.sohd));
-            const filtered = list.filter((e) => setSohd.has(e.sohd));
-
-            if (filtered.length) {
-              if (!nhap_dau_ma) nhap_dau_ma = normalizeND(filtered[0].ngay);
-              if (!nhap_cuoi_ma) nhap_cuoi_ma = normalizeND(filtered[filtered.length - 1].ngay);
-            }
-          }
-        } catch (e) {
-          console.warn("[StockQuickPopup] fallback ND/NC lỗi:", e);
-        }
-      }
+      // - Chỉ chạy khi thiếu ND hoặc thiếu NC   
 
       // 4) Chuẩn hoá lại lần cuối (phòng khi RPC trả rỗng hoặc dữ liệu lạ)
       if (nhap_dau_ma) nhap_dau_ma = String(nhap_dau_ma).trim();
