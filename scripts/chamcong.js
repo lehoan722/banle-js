@@ -202,6 +202,15 @@ async function compressImageForBayMau(file, maxWidth = 900, quality = 0.72) {
     });
 }
 
+function formatBayMauTime(d = new Date()) {
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+}
+
 function fileToImageBayMau(file) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -221,11 +230,10 @@ function fileToImageBayMau(file) {
     });
 }
 
-async function resizeBayMauImageFixed(file, quality = 0.62) {
+async function resizeBayMauImageFixed(file, quality = 0.62, masp = "", manv = "", diadiem = "") {
     const img = await fileToImageBayMau(file);
 
     const isLandscape = img.width >= img.height;
-
     const targetW = isLandscape ? 480 : 360;
     const targetH = isLandscape ? 360 : 480;
 
@@ -244,6 +252,38 @@ async function resizeBayMauImageFixed(file, quality = 0.62) {
     const dy = Math.round((targetH - drawH) / 2);
 
     ctx.drawImage(img, dx, dy, drawW, drawH);
+
+    const lines = [
+        `MÃ SP: ${String(masp || "").toUpperCase()}`,
+        `THỜI GIAN: ${formatBayMauTime(new Date())}`,
+        `NHÂN VIÊN: ${String(manv || "").toUpperCase()}`,
+        `CƠ SỞ: ${String(diadiem || "").toUpperCase()}`
+    ];
+
+    const fontSize = Math.max(15, Math.round(Math.min(targetW, targetH) * 0.045));
+    const pad = 10;
+    const lineH = Math.round(fontSize * 1.35);
+    const boxH = lineH * lines.length + pad * 2;
+    const boxW = Math.round(targetW * 0.82);
+    const boxX = 8;
+    const boxY = targetH - boxH - 8;
+
+    ctx.fillStyle = "rgba(0,0,0,0.58)";
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+
+    ctx.font = `700 ${fontSize}px Arial, sans-serif`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#ffeb3b";
+    ctx.strokeStyle = "rgba(0,0,0,0.9)";
+    ctx.lineWidth = 2;
+
+    lines.forEach((txt, i) => {
+        const x = boxX + pad;
+        const y = boxY + pad + i * lineH;
+        ctx.strokeText(txt, x, y);
+        ctx.fillText(txt, x, y);
+    });
 
     return await new Promise((resolve, reject) => {
         canvas.toBlob(
@@ -279,20 +319,16 @@ async function saveBayMauRowsFromChamCong(changes, { manv, diadiem }) {
         }
 
         if (row.imageFile) {
-            let uploadFile;
-
-            try {
-                uploadFile = await compressImageForBayMau(row.imageFile);
-            } catch (e) {
-                console.error("Lỗi nén ảnh bày mẫu:", e);
-                alert("Không xử lý được ảnh vừa chụp, vui lòng chụp lại.");
-                return false;
-            }
-
             let uploadBlob;
 
             try {
-                uploadBlob = await resizeBayMauImageFixed(row.imageFile, 0.62);
+                uploadBlob = await resizeBayMauImageFixed(
+                    row.imageFile,
+                    0.62,
+                    row.masp || "",
+                    manv,
+                    diadiem
+                );
             } catch (e) {
                 console.error("Lỗi resize ảnh bày mẫu:", e);
                 alert("Không xử lý được ảnh vừa chụp, vui lòng chụp lại.");
@@ -510,6 +546,7 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
 
             rowStates.push({
                 id_ct: t.id_ct,
+                masp: t.masp || "",
                 checkbox: cb,
                 inputNote,
                 fileInput,
@@ -587,6 +624,7 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
                 if (newBayMauBy !== row.oldBayMauBy || newNote !== row.oldNote || imageFile) {
                     changes.push({
                         id_ct: row.id_ct,
+                        masp: row.masp || "",
                         newBayMauBy,
                         newNote,
                         oldBayMauBy: row.oldBayMauBy,
