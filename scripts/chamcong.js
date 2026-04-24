@@ -202,6 +202,64 @@ async function compressImageForBayMau(file, maxWidth = 900, quality = 0.72) {
     });
 }
 
+function fileToImageBayMau(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("Không đọc được ảnh"));
+        };
+
+        img.src = url;
+    });
+}
+
+async function resizeBayMauImageFixed(file, quality = 0.62) {
+    const img = await fileToImageBayMau(file);
+
+    const isLandscape = img.width >= img.height;
+
+    const targetW = isLandscape ? 480 : 360;
+    const targetH = isLandscape ? 360 : 480;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetW;
+    canvas.height = targetH;
+
+    const ctx = canvas.getContext("2d", { alpha: false });
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, targetW, targetH);
+
+    const scale = Math.min(targetW / img.width, targetH / img.height);
+    const drawW = Math.round(img.width * scale);
+    const drawH = Math.round(img.height * scale);
+    const dx = Math.round((targetW - drawW) / 2);
+    const dy = Math.round((targetH - drawH) / 2);
+
+    ctx.drawImage(img, dx, dy, drawW, drawH);
+
+    return await new Promise((resolve, reject) => {
+        canvas.toBlob(
+            (blob) => {
+                if (!blob) {
+                    reject(new Error("Không nén được ảnh"));
+                    return;
+                }
+                resolve(blob);
+            },
+            "image/jpeg",
+            quality
+        );
+    });
+}
+
 async function saveBayMauRowsFromChamCong(changes, { manv, diadiem }) {
     if (!changes.length) return true;
 
@@ -231,11 +289,21 @@ async function saveBayMauRowsFromChamCong(changes, { manv, diadiem }) {
                 return false;
             }
 
+            let uploadBlob;
+
+            try {
+                uploadBlob = await resizeBayMauImageFixed(row.imageFile, 0.62);
+            } catch (e) {
+                console.error("Lỗi resize ảnh bày mẫu:", e);
+                alert("Không xử lý được ảnh vừa chụp, vui lòng chụp lại.");
+                return false;
+            }
+
             const filePath = `${diadiem}/${manv}/${new Date().toISOString().slice(0, 10)}/${row.id_ct}_${Date.now()}.jpg`;
 
             const { error: uploadError } = await sp.storage
                 .from("ANHBAYMAU")
-                .upload(filePath, uploadFile, {
+                .upload(filePath, uploadBlob, {
                     cacheControl: "3600",
                     upsert: true,
                     contentType: "image/jpeg"
