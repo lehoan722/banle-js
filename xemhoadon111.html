@@ -39,8 +39,8 @@
       display: none;
       position: fixed;
       top: 10px;
-      right: 10px;
-      left: auto;
+      left: 10px;
+      right: auto;
       width: 600px;
 
       min-width: 350px;
@@ -258,8 +258,8 @@
 
         <option value="xcncs1">xuat cn cs1</option>
         <option value="xcncs2">xuat cn cs2</option>
-        
-        <option value="ncncs1">nhap cn cs1</option>        
+
+        <option value="ncncs1">nhap cn cs1</option>
         <option value="ncncs2">nhap cn cs2</option>
 
         <option value="nhapkiemcs1">nhap kiem cs1</option>
@@ -1188,29 +1188,96 @@
       });
     }
 
+    async function copyText111(text) {
+      const t = String(text || "").trim();
+      if (!t) return false;
 
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(t);
+          return true;
+        }
+      } catch (e) { }
 
-
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = t;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return !!ok;
+      } catch (e) {
+        return false;
+      }
+    }
 
     async function xemChiTiet(sohd) {
       const popupEl = document.getElementById("popup");
       popupEl.style.display = "block";
 
-      // Luôn neo popup ở góc trên bên phải (mở lần nào cũng reset về vị trí này)
+      // Neo popup chi tiết ở góc trên bên trái
       popupEl.style.top = "10px";
-      popupEl.style.right = "10px";
-      popupEl.style.left = "auto";
+      popupEl.style.left = "10px";
+      popupEl.style.right = "auto";
 
       document.getElementById("sohdCT").textContent = sohd;
 
-      const { data, error } = await window.supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
+      // Bấm số hóa đơn thì copy luôn số HĐ
+      await copyText111(sohd);
+
+      const { data, error } = await window.supabase
+        .from("ct_hoadon_banle")
+        .select("*")
+        .eq("sohd", sohd);
+
       const tbody = document.getElementById("ctHoaDon");
       tbody.innerHTML = "";
-      if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
-      data.forEach(row => {
-        const tt = (row.gia - row.km) * row.soluong;
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="8">Lỗi: ${error.message}</td></tr>`;
+        return;
+      }
+
+      (data || []).forEach(row => {
+        const tt = (Number(row.gia || 0) - Number(row.km || 0)) * Number(row.soluong || 0);
+        const masp = String(row.masp || "").trim().toUpperCase();
+
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.dvt}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
+        tr.dataset.masp = masp;
+        tr.title = "Bấm để copy mã SP và xem nhanh tồn kho";
+        tr.style.cursor = "pointer";
+
+        tr.innerHTML = `
+      <td>${row.masp || ""}</td>
+      <td>${row.tensp || ""}</td>
+      <td>${row.size || ""}</td>
+      <td>${row.soluong || ""}</td>
+      <td>${row.dvt || ""}</td>
+      <td>${row.gia || ""}</td>
+      <td>${row.km || ""}</td>
+      <td>${tt.toLocaleString("vi-VN")}</td>
+    `;
+
+        tr.addEventListener("click", async function (e) {
+          e.stopPropagation();
+
+          const m = this.dataset.masp;
+          if (!m) return;
+
+          await copyText111(m);
+
+          if (typeof window.stockQuickPopup === "function") {
+            window.stockQuickPopup(m);
+          } else {
+            alert("Chưa load stockQuickPopup.js nên không mở được popup tồn kho.");
+          }
+        });
+
         tbody.appendChild(tr);
       });
     }
@@ -1748,7 +1815,7 @@
 
   </script>
 
-
+  <script src="./scripts/stockQuickPopup.js"></script>
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
 
 </body>
