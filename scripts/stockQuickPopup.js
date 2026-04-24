@@ -20,7 +20,7 @@
     return client;
   }
 
-  async function waitForSupabaseReady(maxWaitMs = 12000) {
+  async function waitForSupabaseReady(maxWaitMs = 1000) {
     const start = Date.now();
 
     while (Date.now() - start < maxWaitMs) {
