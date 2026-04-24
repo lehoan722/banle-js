@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient.js';
 import { getBangKetQua, resetBangKetQua } from '../hoadon.js';
 import { capNhatThongTinTong } from '../utils.js';
 import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
+import { xuLyDiemKhachHangSauLuu } from "./khachhangDiemService.js";
 
 import {
   refreshSessionIfNeeded,
@@ -112,6 +113,7 @@ async function buildHeader(loai, diadiemTrang, bangKetQua) {
     tennv: getText("tennv"),
     diadiem: diadiemTrang,
     khachhang: getText("khachhang"),
+    makh: getText("makh") || null,
     tongsl: getIntValue("tongsl"),
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
@@ -282,6 +284,9 @@ async function saveNewBanLe() {
   }
 
   await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
+
+  // ✅ Xử lý điểm khách hàng sau khi hóa đơn đã lưu thành công
+  await xuLyDiemKhachHangSauLuu(sohdThucTe, header.thanhtoan);
 
   const hoadonIn = { ...header, sohd: sohdThucTe };
   printInvoice(hoadonIn, chitiet);
