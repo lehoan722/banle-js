@@ -149,7 +149,7 @@ async function fetchBayMauTasksForChamCong({ diadiem, manv }) {
 }
 
 // Lưu thay đổi bày mẫu / ghi chú cho các dòng được sửa
-async function saveBayMauRowsFromChamCong(changes, { manv }) {
+async function saveBayMauRowsFromChamCong(changes, { manv, diadiem }) {
     if (!changes.length) return true;
 
     const sp = await ensureSupabase();
@@ -157,12 +157,37 @@ async function saveBayMauRowsFromChamCong(changes, { manv }) {
 
     for (const row of changes) {
         const updates = {};
+
         if (row.newBayMauBy !== row.oldBayMauBy) {
             updates.baymau_by = row.newBayMauBy;
+            updates.baymau_at = row.newBayMauBy ? new Date().toISOString() : null;
         }
+
         if (row.newNote !== row.oldNote) {
             updates.baymau_note = row.newNote;
         }
+
+        if (row.imageFile) {
+            const ext = (row.imageFile.name || "").split(".").pop() || "jpg";
+            const filePath = `${diadiem}/${manv}/${new Date().toISOString().slice(0, 10)}/${row.id_ct}_${Date.now()}.${ext}`;
+
+            const { error: uploadError } = await sp.storage
+                .from("ANHBAYMAU")
+                .upload(filePath, row.imageFile, {
+                    cacheControl: "3600",
+                    upsert: true
+                });
+
+            if (uploadError) {
+                console.error("Lỗi upload ảnh bày mẫu:", uploadError);
+                alert("Lỗi lưu ảnh bày mẫu, vui lòng thử lại.");
+                return false;
+            }
+
+            updates.baymau_image_path = filePath;
+            updates.baymau_image_at = new Date().toISOString();
+        }
+
         if (Object.keys(updates).length === 0) continue;
 
         const { error } = await sp
@@ -176,6 +201,7 @@ async function saveBayMauRowsFromChamCong(changes, { manv }) {
             return false;
         }
     }
+
     return true;
 }
 
@@ -251,7 +277,7 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
 
         const thead = document.createElement("thead");
         const headRow = document.createElement("tr");
-        const headers = ["bày mẫu", "mã sp", "nv bán", "GHI CHÚ"];
+        const headers = ["bày mẫu", "ảnh mẫu", "mã sp", "nv bán", "GHI CHÚ"];
         headers.forEach((h) => {
             const th = document.createElement("th");
             th.textContent = h;
@@ -280,7 +306,54 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
             cb.type = "checkbox";
             cb.checked = !!t.baymau_by;
             tdCheck.appendChild(cb);
+
+            const tdImage = document.createElement("td");
+            tdImage.style.textAlign = "center";
+            tdImage.style.padding = "4px";
+
+            const fileInput = document.createElement("input");
+            fileInput.type = "file";
+            fileInput.accept = "image/*";
+            fileInput.capture = "environment";
+            fileInput.style.display = "none";
+
+            const btnPhoto = document.createElement("button");
+            btnPhoto.type = "button";
+            btnPhoto.textContent = "Chụp ảnh";
+            btnPhoto.style.padding = "4px 8px";
+            btnPhoto.style.fontSize = "13px";
+            btnPhoto.style.display = cb.checked ? "" : "none";
+
+            const photoStatus = document.createElement("div");
+            photoStatus.textContent = "";
+            photoStatus.style.fontSize = "12px";
+            photoStatus.style.color = "green";
+
+            btnPhoto.addEventListener("click", () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener("change", () => {
+                if (fileInput.files && fileInput.files[0]) {
+                    photoStatus.textContent = "Đã chọn ảnh";
+                } else {
+                    photoStatus.textContent = "";
+                }
+            });
+
+            cb.addEventListener("change", () => {
+                btnPhoto.style.display = cb.checked ? "" : "none";
+                if (!cb.checked) {
+                    fileInput.value = "";
+                    photoStatus.textContent = "";
+                }
+            });
+
+            tdImage.appendChild(btnPhoto);
+            tdImage.appendChild(fileInput);
+            tdImage.appendChild(photoStatus);
             tr.appendChild(tdCheck);
+            tr.appendChild(tdImage);
 
             const tdMasp = document.createElement("td");
             tdMasp.textContent = t.masp || "";
@@ -308,8 +381,10 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
                 id_ct: t.id_ct,
                 checkbox: cb,
                 inputNote,
+                fileInput,
                 oldBayMauBy: t.baymau_by || null,
-                oldNote: t.baymau_note || ""
+                oldNote: t.baymau_note || "",
+                oldImagePath: t.baymau_image_path || ""
             });
         });
 
@@ -376,13 +451,16 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
             for (const row of rowStates) {
                 const newBayMauBy = row.checkbox.checked ? manv : null;
                 const newNote = row.inputNote.value.trim();
-                if (newBayMauBy !== row.oldBayMauBy || newNote !== row.oldNote) {
+                const imageFile = row.fileInput?.files?.[0] || null;
+
+                if (newBayMauBy !== row.oldBayMauBy || newNote !== row.oldNote || imageFile) {
                     changes.push({
                         id_ct: row.id_ct,
                         newBayMauBy,
                         newNote,
                         oldBayMauBy: row.oldBayMauBy,
-                        oldNote: row.oldNote
+                        oldNote: row.oldNote,
+                        imageFile
                     });
                 }
             }
@@ -400,7 +478,19 @@ function showBayMauPopupChamCong(tasks, { diadiem, manv }) {
                 return;
             }
 
-            const ok = await saveBayMauRowsFromChamCong(changes, { manv });
+            const missingPhoto = rowStates.filter((row) => {
+                const isChecked = row.checkbox.checked;
+                const hasNewPhoto = row.fileInput?.files && row.fileInput.files[0];
+                const hasOldPhoto = !!row.oldImagePath;
+                return isChecked && !hasNewPhoto && !hasOldPhoto;
+            });
+
+            if (missingPhoto.length > 0) {
+                alert("Bạn đã tick bày mẫu nhưng chưa chụp ảnh. Vui lòng chụp ảnh mẫu trước khi lưu.");
+                return;
+            }
+
+            const ok = await saveBayMauRowsFromChamCong(changes, { manv, diadiem });
             if (!ok) {
                 // lỗi lưu thì không đóng, caller sẽ xử lý tiếp
                 return;
