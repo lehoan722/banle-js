@@ -185,16 +185,16 @@
         }
 
         .product-image {
-            width: 360px !important;
-            height: 360px !important;
+            width: 100% !important;
+            height: auto !important;
+            max-height: calc(100vh - 560px);
+            min-height: 120px;
             display: block;
             object-fit: contain;
-            /* Giữ nguyên tỉ lệ, không cắt ảnh */
             object-position: center;
             background: #f5f5f5;
-            /* Màu nền trung tính, có thể chỉnh nếu muốn */
             border: 1px solid #ccc;
-            margin: 0 auto;
+            margin: 4px auto 0 auto;
         }
 
 
@@ -259,11 +259,12 @@
         }
 
         .sidebar {
-            width: 360px;
+            width: 390px;
             border-left: 1px solid #ccc;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
+            overflow: hidden;
             /* ⚠️ CHUYỂN TỪ space-between */
         }
 
@@ -391,6 +392,18 @@
             width: 100%;
             height: 100%;
             border: 0;
+        }
+
+        .tab-content {
+            flex-shrink: 0;
+        }
+
+        .btn-big {
+            flex-shrink: 0;
+        }
+
+        .sidebar .product-image {
+            flex: 1 1 auto;
         }
     </style>
     <style>
@@ -737,7 +750,7 @@
 
     </div>
 
-    
+
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -791,22 +804,22 @@
     <script src="scripts/stockQuickPopup.js"></script>
 
     <script type="module">
-    import { mountKhachHangSuggest } from "./scripts/dmkhachhang.js";
+        import { mountKhachHangSuggest } from "./scripts/dmkhachhang.js";
 
-    document.addEventListener("DOMContentLoaded", () => {
-        mountKhachHangSuggest({
-            inputId: "makh",
-            tenInputId: "khachhang",
-            suggestBoxId: "khSuggestList",
-            btnSearchId: "btnPopupKH",
-            diemInputId: "diem_hientai",
-            hangInputId: "hang_khach",
-            diemTruInputId: "diem_tru",
-            tienDoiDiemInputId: "tien_doi_diem",
-            nhapKhachUrl: "/nhapdmkhachhang.html"
+        document.addEventListener("DOMContentLoaded", () => {
+            mountKhachHangSuggest({
+                inputId: "makh",
+                tenInputId: "khachhang",
+                suggestBoxId: "khSuggestList",
+                btnSearchId: "btnPopupKH",
+                diemInputId: "diem_hientai",
+                hangInputId: "hang_khach",
+                diemTruInputId: "diem_tru",
+                tienDoiDiemInputId: "tien_doi_diem",
+                nhapKhachUrl: "/nhapdmkhachhang.html"
+            });
         });
-    });
-</script>
+    </script>
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
@@ -814,7 +827,7 @@
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
     <script type="module">
-        
+
         // Copy bảng sang clipboard,
         document.getElementById('btnCopy').onclick = function () {
             const table = document.getElementById('bangketqua');
