@@ -619,6 +619,10 @@
                             </button>
                         </div>
                         <label>Khách hàng <input id="khachhang" readonly="" /></label>
+                        <label>Điểm KH <input id="diem_hientai" readonly /></label>
+                        <label>Hạng KH <input id="hang_khach" readonly /></label>
+                        <label>Điểm dùng <input id="diem_tru" value="0" /></label>
+                        <label>Giảm điểm <input id="tien_doi_diem" readonly /></label>
 
                         <!-- Popup tìm khách hàng -->
                         <div id="popupTimKH"
@@ -728,6 +732,52 @@
 
     </div>
 
+    <script type="module">
+        window.napThongTinDiemKhach = async function (makh) {
+            if (!makh) return;
+
+            const { data, error } = await window.supabase
+                .from("dmkhachhang")
+                .select("makh, tenkh, diem_hientai, hang_khach, tong_chi_tieu, so_lan_mua")
+                .eq("makh", makh)
+                .maybeSingle();
+
+            if (error || !data) {
+                alert("Không đọc được thông tin điểm khách hàng.");
+                return;
+            }
+
+            document.getElementById("diem_hientai").value = data.diem_hientai || 0;
+            document.getElementById("hang_khach").value = data.hang_khach || "THUONG";
+            document.getElementById("diem_tru").value = 0;
+            document.getElementById("tien_doi_diem").value = "0";
+        };
+
+        function parseMoney(v) {
+            return Number(String(v || "0").replace(/\D/g, "")) || 0;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const diemTruEl = document.getElementById("diem_tru");
+
+            diemTruEl?.addEventListener("input", () => {
+                const diemHienTai = Number(document.getElementById("diem_hientai")?.value || 0);
+                let diemTru = Number(diemTruEl.value || 0);
+
+                if (diemTru < 0) diemTru = 0;
+
+                if (diemTru > diemHienTai) {
+                    alert("Khách không đủ điểm để đổi.");
+                    diemTru = diemHienTai;
+                    diemTruEl.value = diemTru;
+                }
+
+                const tienGiam = diemTru * 500;
+                document.getElementById("tien_doi_diem").value = tienGiam.toLocaleString("vi-VN");
+            });
+        });
+    </script>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const popup = document.getElementById('popupThemMoi');
@@ -803,6 +853,7 @@
             loadListKH(this.value.trim());
         };
 
+
         // Hàm load danh sách KH (gọi Supabase)
         async function loadListKH(keyword) {
             const table = document.getElementById('tableKH');
@@ -822,10 +873,17 @@
       </tr>`
             ).join('');
             Array.from(table.querySelectorAll('.chonkh')).forEach(row => {
-                row.onclick = function () {
-                    document.getElementById('makh').value = this.dataset.makh;
-                    document.getElementById('khachhang').value = this.dataset.tenkh;
+                row.onclick = async function () {
+                    const makh = this.dataset.makh;
+                    const tenkh = this.dataset.tenkh;
+
+                    document.getElementById('makh').value = makh;
+                    document.getElementById('khachhang').value = tenkh;
                     document.getElementById('popupTimKH').style.display = 'none';
+
+                    if (typeof window.napThongTinDiemKhach === "function") {
+                        await window.napThongTinDiemKhach(makh);
+                    }
                 }
             });
         }
@@ -1063,7 +1121,7 @@
         }
 
     </script>
-    
+
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
 
 
