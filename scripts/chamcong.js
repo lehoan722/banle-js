@@ -149,6 +149,59 @@ async function fetchBayMauTasksForChamCong({ diadiem, manv }) {
 }
 
 // Lưu thay đổi bày mẫu / ghi chú cho các dòng được sửa
+
+async function compressImageForBayMau(file, maxWidth = 900, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+                (blob) => {
+                    if (!blob) {
+                        reject(new Error("Không nén được ảnh"));
+                        return;
+                    }
+
+                    const newFile = new File(
+                        [blob],
+                        "baymau.jpg",
+                        { type: "image/jpeg" }
+                    );
+
+                    resolve(newFile);
+                },
+                "image/jpeg",
+                quality
+            );
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("Không đọc được ảnh"));
+        };
+
+        img.src = url;
+    });
+}
+
 async function saveBayMauRowsFromChamCong(changes, { manv, diadiem }) {
     if (!changes.length) return true;
 
@@ -168,19 +221,29 @@ async function saveBayMauRowsFromChamCong(changes, { manv, diadiem }) {
         }
 
         if (row.imageFile) {
-            const ext = (row.imageFile.name || "").split(".").pop() || "jpg";
-            const filePath = `${diadiem}/${manv}/${new Date().toISOString().slice(0, 10)}/${row.id_ct}_${Date.now()}.${ext}`;
+            let uploadFile;
+
+            try {
+                uploadFile = await compressImageForBayMau(row.imageFile);
+            } catch (e) {
+                console.error("Lỗi nén ảnh bày mẫu:", e);
+                alert("Không xử lý được ảnh vừa chụp, vui lòng chụp lại.");
+                return false;
+            }
+
+            const filePath = `${diadiem}/${manv}/${new Date().toISOString().slice(0, 10)}/${row.id_ct}_${Date.now()}.jpg`;
 
             const { error: uploadError } = await sp.storage
                 .from("ANHBAYMAU")
-                .upload(filePath, row.imageFile, {
+                .upload(filePath, uploadFile, {
                     cacheControl: "3600",
-                    upsert: true
+                    upsert: true,
+                    contentType: "image/jpeg"
                 });
 
             if (uploadError) {
                 console.error("Lỗi upload ảnh bày mẫu:", uploadError);
-                alert("Lỗi lưu ảnh bày mẫu, vui lòng thử lại.");
+                alert("Lỗi lưu ảnh bày mẫu: " + (uploadError.message || "Không rõ lỗi"));
                 return false;
             }
 
