@@ -20,6 +20,30 @@
     return client;
   }
 
+  async function waitForSupabaseReady(maxWaitMs = 12000) {
+    const start = Date.now();
+
+    while (Date.now() - start < maxWaitMs) {
+      const client = getSupabaseClient();
+
+      if (
+        client &&
+        client.auth &&
+        typeof client.auth.getSession === "function" &&
+        typeof client.rpc === "function"
+      ) {
+        try {
+          await client.auth.getSession();
+          return client;
+        } catch (e) { }
+      }
+
+      await new Promise(r => setTimeout(r, 150));
+    }
+
+    return getSupabaseClient();
+  }
+
   function getIsAdminLocal() {
     try {
       return (sessionStorage.getItem("is_admin") || localStorage.getItem("is_admin")) === "true";
@@ -651,14 +675,14 @@
     let giale = "";
     let nhomhang = "";
 
-    const client = getSupabaseClient();
+    const client = await waitForSupabaseReady(12000);
     if (!client) {
       return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
     }
 
     try {
       // 1) Gọi RPC xntnhanh (giữ nguyên) + 2) Đọc dmhanghoa (thêm nhapdau)
-      const [snapRes, hhRes] = await Promise.all([
+      let [snapRes, hhRes] = await Promise.all([
         client.rpc("xntnhanh", {
           p_masps: [masp],
           p_den_ngay: denNgay,
@@ -670,6 +694,24 @@
           .eq("masp", masp)
           .maybeSingle(),
       ]);
+
+      const firstRows = Array.isArray(snapRes?.data) ? snapRes.data : [];
+
+      if (!firstRows.length && !snapRes?.error) {
+        await new Promise(r => setTimeout(r, 400));
+
+        snapRes = await client.rpc("xntnhanh", {
+          p_masps: [masp],
+          p_den_ngay: denNgay,
+          p_tonghop_size: false,
+        });
+
+        console.log("[StockQuickPopup] Gọi lại xntnhanh sau 400ms", {
+          masp,
+          denNgay,
+          rows: Array.isArray(snapRes?.data) ? snapRes.data.length : 0
+        });
+      }
 
       // --- A) dữ liệu từ RPC ---
       const { data, error } = snapRes || {};
