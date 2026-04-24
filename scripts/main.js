@@ -1423,15 +1423,7 @@ function showBayMauPopup(tasks, context) {
       }
     };
 
-    const tdCheck = document.createElement("td");
-    tdCheck.style.border = "1px solid #ccc";
-    tdCheck.style.padding = "4px 6px";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.dataset.idCt = row.id_ct;
-    tdCheck.appendChild(cb);
-    tr.appendChild(tdCheck);
-    bayMauCheckboxes.push(cb);
+    const tdCheck = document.createElement("td");    
 
     tdImage.appendChild(btnCam);
     tdImage.appendChild(fileInput);
