@@ -675,7 +675,7 @@
     let giale = "";
     let nhomhang = "";
 
-    const client = await waitForSupabaseReady(12000);
+    const client = await waitForSupabaseReady(1000);
     if (!client) {
       return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
     }
