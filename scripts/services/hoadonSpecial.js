@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient.js';
 import { getBangKetQua, resetBangKetQua } from '../hoadon.js';
 import { capNhatThongTinTong } from '../utils.js';
 import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
+import { xuLyDiemKhachHangSauLuu } from "./khachhangDiemService.js";
 
 import {
   refreshSessionIfNeeded,
@@ -92,6 +93,7 @@ function buildHeaderMain(loai, diadiemTrang, bangKetQua, sohd) {
     tennv: getText("tennv"),
     diadiem: diadiemTrang,
     khachhang: getText("khachhang"),
+    makh: getText("makh") || null,
     tongsl: getIntValue("tongsl"),
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
@@ -114,6 +116,7 @@ function buildHeaderT(loaiT, diadiemTrang, bangKetQua, sohdT) {
     tennv: getText("tennv"),
     diadiem: diadiemTrang,
     khachhang: getText("khachhang"),
+    makh: getText("makh") || null,
     tongsl: getIntValue("tongsl"),
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
@@ -280,6 +283,7 @@ export async function saveHoaDonSpecial(ctx) {
     tennv: getText("tennv"),
     diadiem: diadiemTrang,
     khachhang: getText("khachhang"),
+    makh: getText("makh") || null,
     tongsl: getIntValue("tongsl"),
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
@@ -373,10 +377,13 @@ export async function saveHoaDonSpecial(ctx) {
   // 5) Update used_for_mt cho bản chính
   await capNhatUsedTuVanSauKhiLuuCT(chitietChinh, loai, diadiemTrang);
 
+  // ✅ Xử lý điểm khách hàng chỉ theo hóa đơn chính
+  await xuLyDiemKhachHangSauLuu(sohdChinh, hoadonChinh.thanhtoan);
+
   // 6) In bản chính
   printInvoice(hoadonChinh, chitietChinh, true);
 
-    // 7) Gửi Viettel cho bản T
+  // 7) Gửi Viettel cho bản T
   // ✅ Tạm ngừng gửi Viettel cho CS1, nhưng vẫn lưu đầy đủ 2 bản như cũ
   if (loai === "bancs1") {
     console.warn("⛔ Tạm ngừng gửi Viettel cho hóa đơn đặc biệt CS1:", sohdT);
