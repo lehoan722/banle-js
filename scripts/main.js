@@ -1434,7 +1434,7 @@ function showBayMauPopup(tasks, context) {
     cb.type = "checkbox";
     cb.dataset.idCt = row.id_ct;
     cb.addEventListener("change", () => {
-      if (cb.checked) {
+      if (cb.checked && row.can_chup_anh_baymau) {
         btnCam.style.display = "";
         setTimeout(() => fileInput.click(), 50);
       } else {
@@ -1539,7 +1539,12 @@ function showBayMauPopup(tasks, context) {
         const checkbox = bayMauCheckboxes.find(c => Number(c.dataset.idCt) === idCt);
         const file = row._selectedFileRef?.() || null;
 
-        if (checkbox?.checked && !file && !row.baymau_image_path) {
+        if (
+          row.can_chup_anh_baymau &&
+          checkbox?.checked &&
+          !file &&
+          !row.baymau_image_path
+        ) {
           alert("Bạn đã tick bày mẫu nhưng chưa chụp ảnh. Vui lòng chụp ảnh trước khi đóng.");
           return;
         }
