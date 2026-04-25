@@ -160,6 +160,10 @@ async function buildDetails(sohd, diadiemTrang, bangKetQua) {
       const sl = Number(item.soluongs?.[i] || 0);
       if (!sl) return;
 
+      const tienDoiDiem = getIntValue("tien_doi_diem");
+      const kmMoi = Number(item.km || 0) + Math.round(tienDoiDiem / sl);
+      const thanhTienMoi = Math.max(0, (Number(item.gia || 0) * sl) - (Number(item.km || 0) * sl) - tienDoiDiem);
+
       rows.push({
         sohd,
         masp: item.masp,
@@ -167,8 +171,8 @@ async function buildDetails(sohd, diadiemTrang, bangKetQua) {
         size: sz,
         soluong: sl,
         gia: item.gia,
-        km: item.km,
-        thanhtien: (item.gia - item.km) * sl,
+        km: kmMoi,
+        thanhtien: thanhTienMoi,
         dvt: item.dvt || '',
         diadiem: diadiemTrang,
         created_at: createdAt,
