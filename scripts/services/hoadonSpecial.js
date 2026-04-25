@@ -41,26 +41,6 @@ function getIntValue(id) {
   ) || 0;
 }
 
-function apDungGiamDiemSauKhiTinhTong() {
-  const phaiTraEl = getInput("phaithanhtoan");
-  const khachTraEl = getInput("khachtra");
-  const tienDoiDiem = getIntValue("tien_doi_diem");
-
-  if (!phaiTraEl || tienDoiDiem <= 0) return;
-
-  const tongSauTinhLai = getIntValue("phaithanhtoan");
-  const soTienSauGiam = Math.max(0, tongSauTinhLai - tienDoiDiem);
-
-  phaiTraEl.value = soTienSauGiam.toLocaleString("vi-VN");
-
-  if (khachTraEl) {
-    khachTraEl.value = soTienSauGiam.toLocaleString("vi-VN");
-  }
-
-  const conlaiEl = getInput("conlai");
-  if (conlaiEl) conlaiEl.value = "0";
-}
-
 function askConfirmSpecialSave() {
   return confirm(
     "Bạn có chắc chắn muốn lưu hóa đơn nàyy ?\nNhấn OK để lưu, Hủy để quay về giao diện hóa đơn."
@@ -69,7 +49,6 @@ function askConfirmSpecialSave() {
 
 function validateBeforeSave2Ban() {
   capNhatThongTinTong(getBangKetQua());
-  apDungGiamDiemSauKhiTinhTong();
 
   const maspChuaNhap = getText("masp");
   if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
@@ -116,8 +95,8 @@ function buildHeaderMain(loai, diadiemTrang, bangKetQua, sohd) {
     khachhang: getText("khachhang"),
     makh: getText("makh") || null,
     tongsl: getIntValue("tongsl"),
-    tongthanhtien: getIntValue("phaithanhtoan"),
-    tongkm: getIntValue("tongkm") + getIntValue("tien_doi_diem"),
+    tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
+    tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
     thanhtoan: getIntValue("phaithanhtoan"),
     hinhthuctt: getInput("hinhthuctt")?.value || "",
@@ -139,8 +118,8 @@ function buildHeaderT(loaiT, diadiemTrang, bangKetQua, sohdT) {
     khachhang: getText("khachhang"),
     makh: getText("makh") || null,
     tongsl: getIntValue("tongsl"),
-    tongthanhtien: getIntValue("phaithanhtoan"),
-    tongkm: getIntValue("tongkm") + getIntValue("tien_doi_diem"),
+    tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
+    tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
     thanhtoan: getIntValue("phaithanhtoan"),
     hinhthuctt: getInput("hinhthuctt")?.value || "",
@@ -156,61 +135,25 @@ async function buildDetails(sohd, diadiemTrang, bangKetQua) {
   const ngay = getText("ngay");
   const rows = [];
 
-  const tienDoiDiemTong = getIntValue("tien_doi_diem");
-  let tongTruConLai = tienDoiDiemTong;
-
-  const dongTam = [];
-
   Object.values(bangKetQua || {}).forEach(item => {
     (item.sizes || []).forEach((sz, i) => {
       const sl = Number(item.soluongs?.[i] || 0);
       if (!sl) return;
 
-      const gia = Number(item.gia || 0);
-      const kmGoc = Number(item.km || 0);
-      const thanhTienGoc = Math.max(0, (gia - kmGoc) * sl);
-
-      dongTam.push({
-        item,
-        sz,
-        sl,
-        gia,
-        kmGoc,
-        thanhTienGoc
+      rows.push({
+        sohd,
+        masp: item.masp,
+        tensp: item.tensp,
+        size: sz,
+        soluong: sl,
+        gia: item.gia,
+        km: item.km,
+        thanhtien: (item.gia - item.km) * sl,
+        dvt: item.dvt || '',
+        diadiem: diadiemTrang,
+        created_at: createdAt,
+        ngay
       });
-    });
-  });
-
-  const tongThanhTienGoc = dongTam.reduce((sum, r) => sum + r.thanhTienGoc, 0);
-
-  dongTam.forEach((r, index) => {
-    let tienTruDong = 0;
-
-    if (tienDoiDiemTong > 0 && tongThanhTienGoc > 0) {
-      if (index === dongTam.length - 1) {
-        tienTruDong = tongTruConLai;
-      } else {
-        tienTruDong = Math.round(tienDoiDiemTong * r.thanhTienGoc / tongThanhTienGoc);
-        tongTruConLai -= tienTruDong;
-      }
-    }
-
-    const kmMoi = r.kmGoc + (tienTruDong / r.sl);
-    const thanhTienMoi = Math.max(0, r.thanhTienGoc - tienTruDong);
-
-    rows.push({
-      sohd,
-      masp: r.item.masp,
-      tensp: r.item.tensp,
-      size: r.sz,
-      soluong: r.sl,
-      gia: r.gia,
-      km: kmMoi,
-      thanhtien: thanhTienMoi,
-      dvt: r.item.dvt || '',
-      diadiem: diadiemTrang,
-      created_at: createdAt,
-      ngay
     });
   });
 
