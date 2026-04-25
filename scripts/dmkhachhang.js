@@ -177,20 +177,6 @@ export function mountKhachHangSuggest(options = {}) {
 
       const tienGiam = diemTru * 500;
       setVal(tienDoiDiemInputId, tienGiam.toLocaleString("vi-VN"));
-      setVal("km_diem_hienthi", tienGiam.toLocaleString("vi-VN"));      
-
-      const tongGoc = Number(
-        String(document.getElementById("phaithanhtoan")?.value || "0").replace(/\D/g, "")
-      ) || 0;
-
-      const khachThanhToan = Math.max(0, tongGoc - tienGiam);
-
-      // ❌ Không sửa Tổng phải trả nữa
-      // setVal("phaithanhtoan", ...)
-
-      // ✅ Chỉ sửa Khách thanh toán
-      setVal("khachtra", khachThanhToan.toLocaleString("vi-VN"));
-      setVal("conlai", "0");
     });
   }
 
