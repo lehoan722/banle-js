@@ -156,29 +156,61 @@ async function buildDetails(sohd, diadiemTrang, bangKetQua) {
   const ngay = getText("ngay");
   const rows = [];
 
+  const tienDoiDiemTong = getIntValue("tien_doi_diem");
+  let tongTruConLai = tienDoiDiemTong;
+
+  const dongTam = [];
+
   Object.values(bangKetQua || {}).forEach(item => {
     (item.sizes || []).forEach((sz, i) => {
       const sl = Number(item.soluongs?.[i] || 0);
       if (!sl) return;
 
-      const tienDoiDiem = getIntValue("tien_doi_diem");
-      const kmMoi = Number(item.km || 0) + Math.round(tienDoiDiem / sl);
-      const thanhTienMoi = Math.max(0, (Number(item.gia || 0) * sl) - (Number(item.km || 0) * sl) - tienDoiDiem);
+      const gia = Number(item.gia || 0);
+      const kmGoc = Number(item.km || 0);
+      const thanhTienGoc = Math.max(0, (gia - kmGoc) * sl);
 
-      rows.push({
-        sohd,
-        masp: item.masp,
-        tensp: item.tensp,
-        size: sz,
-        soluong: sl,
-        gia: item.gia,
-        km: kmMoi,
-        thanhtien: thanhTienMoi,
-        dvt: item.dvt || '',
-        diadiem: diadiemTrang,
-        created_at: createdAt,
-        ngay
+      dongTam.push({
+        item,
+        sz,
+        sl,
+        gia,
+        kmGoc,
+        thanhTienGoc
       });
+    });
+  });
+
+  const tongThanhTienGoc = dongTam.reduce((sum, r) => sum + r.thanhTienGoc, 0);
+
+  dongTam.forEach((r, index) => {
+    let tienTruDong = 0;
+
+    if (tienDoiDiemTong > 0 && tongThanhTienGoc > 0) {
+      if (index === dongTam.length - 1) {
+        tienTruDong = tongTruConLai;
+      } else {
+        tienTruDong = Math.round(tienDoiDiemTong * r.thanhTienGoc / tongThanhTienGoc);
+        tongTruConLai -= tienTruDong;
+      }
+    }
+
+    const kmMoi = r.kmGoc + (tienTruDong / r.sl);
+    const thanhTienMoi = Math.max(0, r.thanhTienGoc - tienTruDong);
+
+    rows.push({
+      sohd,
+      masp: r.item.masp,
+      tensp: r.item.tensp,
+      size: r.sz,
+      soluong: r.sl,
+      gia: r.gia,
+      km: kmMoi,
+      thanhtien: thanhTienMoi,
+      dvt: r.item.dvt || '',
+      diadiem: diadiemTrang,
+      created_at: createdAt,
+      ngay
     });
   });
 
