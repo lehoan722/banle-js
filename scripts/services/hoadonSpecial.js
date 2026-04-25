@@ -41,6 +41,26 @@ function getIntValue(id) {
   ) || 0;
 }
 
+function apDungGiamDiemSauKhiTinhTong() {
+  const phaiTraEl = getInput("phaithanhtoan");
+  const khachTraEl = getInput("khachtra");
+  const tienDoiDiem = getIntValue("tien_doi_diem");
+
+  if (!phaiTraEl || tienDoiDiem <= 0) return;
+
+  const tongSauTinhLai = getIntValue("phaithanhtoan");
+  const soTienSauGiam = Math.max(0, tongSauTinhLai - tienDoiDiem);
+
+  phaiTraEl.value = soTienSauGiam.toLocaleString("vi-VN");
+
+  if (khachTraEl) {
+    khachTraEl.value = soTienSauGiam.toLocaleString("vi-VN");
+  }
+
+  const conlaiEl = getInput("conlai");
+  if (conlaiEl) conlaiEl.value = "0";
+}
+
 function askConfirmSpecialSave() {
   return confirm(
     "Bạn có chắc chắn muốn lưu hóa đơn nàyy ?\nNhấn OK để lưu, Hủy để quay về giao diện hóa đơn."
@@ -49,6 +69,7 @@ function askConfirmSpecialSave() {
 
 function validateBeforeSave2Ban() {
   capNhatThongTinTong(getBangKetQua());
+  apDungGiamDiemSauKhiTinhTong();
 
   const maspChuaNhap = getText("masp");
   if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
