@@ -39,24 +39,6 @@ function getIntValue(id) {
   ) || 0;
 }
 
-function apDungKhuyenMaiDiemTruocKhiLuu() {
-  const tongPhaiTra = getIntValue("phaithanhtoan");
-  const tienDiem = getIntValue("tien_doi_diem") || getIntValue("km_diem_hienthi");
-
-  const khachThanhToan = Math.max(0, tongPhaiTra - tienDiem);
-
-  const khachtraEl = getInput("khachtra");
-  const conlaiEl = getInput("conlai");
-
-  if (khachtraEl) {
-    khachtraEl.value = khachThanhToan.toLocaleString("vi-VN");
-  }
-
-  if (conlaiEl) {
-    conlaiEl.value = "0";
-  }
-}
-
 async function snapshotInvoiceBeforeEditLocal(sohd) {
   const { data, error } = await supabase.rpc("rpc_snapshot_invoice_version", {
     p_sohd: sohd
@@ -72,7 +54,6 @@ function isEditMode(ctx) {
 
 function validateBeforeSave() {
   capNhatThongTinTong(getBangKetQua());
-  apDungKhuyenMaiDiemTruocKhiLuu();
 
   const maspChuaNhap = getText("masp");
   if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
@@ -137,9 +118,7 @@ async function buildHeader(loai, diadiemTrang, bangKetQua) {
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
-    thanhtoan: getIntValue("khachtra"), // ✅ lấy số tiền khách thực trả
-    diem_tru: getIntValue("diem_tru"),
-    tien_doi_diem: getIntValue("tien_doi_diem"),
+    thanhtoan: getIntValue("phaithanhtoan"),
     hinhthuctt: getInput("hinhthuctt")?.value || "",
     ghichu: getText("ghichu"),
     dvt: "",
