@@ -26,7 +26,7 @@ export function buildKhachHangPointPayload(sohd, thanhtoanOverride = null) {
   return {
     p_sohd: sohd,
     p_makh: makh,
-    p_thanhtoan: thanhtoanOverride ?? getMoney("phaithanhtoan"),
+    p_thanhtoan: thanhtoanOverride ?? getMoney("khachtra"),
     p_diem_tru: getNumber("diem_tru"),
     p_manv: getText("manv"),
     p_tennv: getText("tennv"),
