@@ -297,28 +297,10 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
     if (phaithanhtoanInput) phaithanhtoanInput.value = hd.phaithanhtoan ?? "";
 
     const khachtraInput = document.getElementById("khachtra");
+    if (khachtraInput) khachtraInput.value = hd.khachtra ?? "";
+
     const conlaiInput = document.getElementById("conlai");
-
-    const phaiTra = Number(
-      hd.phaithanhtoan ??
-      hd.thanhtoan ??
-      hd.tongthanhtien ??
-      0
-    );
-
-    let khachTra = Number(
-      hd.khachtra ??
-      hd.khach_thanh_toan ??
-      hd.thanhtoan ??
-      phaiTra
-    );
-
-    if (!khachTra && phaiTra > 0) {
-      khachTra = phaiTra;
-    }
-
-    if (khachtraInput) khachtraInput.value = khachTra.toLocaleString("vi-VN");
-    if (conlaiInput) conlaiInput.value = (khachTra - phaiTra).toLocaleString("vi-VN");
+    if (conlaiInput) conlaiInput.value = hd.conlai ?? "";
 
     // 4) Nạp lại chi tiết hóa đơn ngay trên trang
     await napLaiChiTietHoaDon(sohd);
