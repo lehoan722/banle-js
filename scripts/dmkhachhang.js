@@ -175,10 +175,7 @@ export function mountKhachHangSuggest(options = {}) {
         diemTruEl.value = diemTru;
       }
 
-      const tienGiam = diemTru * 500;
-      setVal(tienDoiDiemInputId, tienGiam.toLocaleString("vi-VN"));
-      setVal("km_diem_hienthi", tienGiam.toLocaleString("vi-VN"));
-
+      // Lấy tiền đổi điểm CŨ trước khi ghi tiền mới
       const tienDoiDiemCu = Number(
         String(getEl(tienDoiDiemInputId)?.value || "0").replace(/\D/g, "")
       ) || 0;
@@ -187,9 +184,22 @@ export function mountKhachHangSuggest(options = {}) {
         String(document.getElementById("phaithanhtoan")?.value || "0").replace(/\D/g, "")
       ) || 0;
 
-      // Khôi phục lại tổng gốc trước khi tính điểm mới
+      // Khôi phục tổng gốc trước khi tính lại điểm
       const tongGoc = tongDangHienThi + tienDoiDiemCu;
+
+      const tienGiam = diemTru * 500;
+
+      setVal(tienDoiDiemInputId, tienGiam.toLocaleString("vi-VN"));
+      setVal("km_diem_hienthi", tienGiam.toLocaleString("vi-VN"));
+
+      const tongSauDiem = Math.max(0, tongGoc - tienGiam);
+
+      setVal("phaithanhtoan", tongSauDiem.toLocaleString("vi-VN"));
+      setVal("khachtra", tongSauDiem.toLocaleString("vi-VN"));
+      setVal("conlai", "0");
+
       window.__tongPhaiTraGoc = tongGoc;
+
       const tongSauDiem = Math.max(0, tongGoc - tienGiam);
 
       setVal("phaithanhtoan", tongSauDiem.toLocaleString("vi-VN"));
