@@ -313,13 +313,35 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
     // ===== 6) LOAD CHI TIẾT =====
     await napLaiChiTietHoaDon(sohd);
 
-    // ===== 7) CẬP NHẬT LẠI UI =====
-    try {
-      capNhatThongTinTong(getBangKetQua());
-    } catch (e) {
-      console.warn("Không cập nhật lại tổng được:", e);
-    }
+    // ===== 7) KHÔNG TÍNH LẠI – DÙNG DỮ LIỆU DB =====
+    window.dangXemHoaDon = true;
 
+    // đảm bảo UI luôn lấy đúng từ DB
+    const tongSP = Number(hd.tongthanhtien || 0);
+    const tongKM = Number(hd.tongkm || 0);
+    const tienDiem = Number(hd.tien_doi_diem || 0);
+    const thanhToan = Number(hd.thanhtoan || 0);
+
+    // tổng KM
+    document.getElementById("tongkm") &&
+      (document.getElementById("tongkm").value = tongKM.toLocaleString("vi-VN"));
+
+    // tiền phải trả
+    document.getElementById("phaithanhtoan") &&
+      (document.getElementById("phaithanhtoan").value = thanhToan.toLocaleString("vi-VN"));
+
+    document.getElementById("khachtra") &&
+      (document.getElementById("khachtra").value = thanhToan.toLocaleString("vi-VN"));
+
+    document.getElementById("conlai") &&
+      (document.getElementById("conlai").value = "0");
+
+    // điểm
+    document.getElementById("diem_tru") &&
+      (document.getElementById("diem_tru").value = Number(hd.diem_tru || 0));
+
+    document.getElementById("tien_doi_diem") &&
+      (document.getElementById("tien_doi_diem").value = tienDiem.toLocaleString("vi-VN"));
     // ===== 8) TRẠNG THÁI =====
     const st = document.getElementById("hd_state");
     if (st) st.value = "xem";
