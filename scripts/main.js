@@ -236,8 +236,57 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
     return false;
   }
 
+  function setMoney(ids, value) {
+    const text = Number(value || 0).toLocaleString("vi-VN");
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if ("value" in el) el.value = text;
+      el.textContent = text;
+    });
+  }
+
+  function setRaw(ids, value) {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if ("value" in el) el.value = value ?? "";
+      el.textContent = value ?? "";
+    });
+  }
+
+  function applyHeaderTienDiem(hd) {
+    const tongThanhTien = Number(hd.tongthanhtien || 0);
+    const tienDoiDiem = Number(hd.tien_doi_diem || 0);
+
+    // Ưu tiên lấy thanhtoan từ DB. Nếu hóa đơn cũ chưa có thanhtoan thì tự tính dự phòng.
+    const thanhToan = Number(
+      hd.thanhtoan ?? Math.max(0, tongThanhTien - tienDoiDiem)
+    );
+
+    setMoney(["phaithanhtoan", "tongphaitra", "tong_phai_tra"], thanhToan);
+    setMoney(["khachtra", "khach_thanhtoan"], thanhToan);
+    setMoney(["conlai"], 0);
+
+    setRaw(["diem_tru", "diemdung"], Number(hd.diem_tru || 0));
+    setMoney(["tien_doi_diem", "giamdiem", "km_diem_hienthi"], tienDoiDiem);
+
+    setMoney(["tongkm"], Number(hd.tongkm || 0));
+    setRaw(["mathang"], hd.mathang ?? "");
+    setRaw(["tongsl"], hd.tongsl ?? "");
+
+    console.log("✅ APPLY VIEW TIỀN ĐIỂM:", {
+      sohd: hd.sohd,
+      tongthanhtien: hd.tongthanhtien,
+      tongkm: hd.tongkm,
+      diem_tru: hd.diem_tru,
+      tien_doi_diem: hd.tien_doi_diem,
+      thanhtoan: hd.thanhtoan,
+      thanhToanDaHienThi: thanhToan
+    });
+  }
+
   try {
-    // 1) Lấy header hóa đơn
     const { data: hd, error: errHd } = await supabase
       .from("hoadon_banle")
       .select("*")
@@ -250,126 +299,27 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
       return false;
     }
 
-    // 2) Đẩy số HĐ lên form
-    const sohdInput = document.getElementById("sohd");
-    if (sohdInput) {
-      sohdInput.value = hd.sohd || sohd;
-      sohdInput.dispatchEvent(new Event("input", { bubbles: true }));
-      sohdInput.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-
-    // ===== 3) HEADER =====
-    const ngayInput = document.getElementById("ngay");
-    if (ngayInput) {
-      ngayInput.value = hd.ngay
-        ? String(hd.ngay).slice(0, 10)
-        : new Date().toISOString().slice(0, 10);
-    }
-
-    document.getElementById("ghichu") && (document.getElementById("ghichu").value = hd.ghichu || "");
-    document.getElementById("hinhthuctt") && (document.getElementById("hinhthuctt").value = hd.hinhthuctt || "");
-    document.getElementById("chietkhau") && (document.getElementById("chietkhau").value = hd.chietkhau ?? 0);
-    document.getElementById("tongkm") && (document.getElementById("tongkm").value = hd.tongkm ?? 0);
-    document.getElementById("mathang") && (document.getElementById("mathang").value = hd.mathang ?? 0);
-    document.getElementById("tongsl") && (document.getElementById("tongsl").value = hd.tongsl ?? 0);
-    document.getElementById("vitri") && (document.getElementById("vitri").value = hd.vitri ?? "");
-    document.getElementById("makh") && (document.getElementById("makh").value = hd.makh || "");
-    document.getElementById("khachhang") && (document.getElementById("khachhang").value = hd.khachhang || "");
-
-    // ===== 4) TIỀN - QUAN TRỌNG NHẤT =====
-    const thanhToan = Number(hd.thanhtoan || 0);
-
-    const phaithanhtoanInput = document.getElementById("phaithanhtoan");
-    if (phaithanhtoanInput) {
-      phaithanhtoanInput.value = thanhToan.toLocaleString("vi-VN");
-    }
-
-    const khachtraInput = document.getElementById("khachtra");
-    if (khachtraInput) {
-      khachtraInput.value = thanhToan.toLocaleString("vi-VN");
-    }
-
-    const conlaiInput = document.getElementById("conlai");
-    if (conlaiInput) {
-      conlaiInput.value = "0";
-    }
-
-    // ===== 5) LOAD ĐIỂM =====
-    const diemTruValue = Number(hd.diem_tru || 0);
-    const tienDiemValue = Number(hd.tien_doi_diem || 0);
-
-    ["diem_tru", "diemdung"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = diemTruValue;
-    });
-
-    ["tien_doi_diem", "giamdiem"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = tienDiemValue.toLocaleString("vi-VN");
-    });
-
-    const diemSauInput = document.getElementById("diem_sau_hoa_don");
-    if (diemSauInput) {
-      diemSauInput.value = hd.diem_sau_hoa_don ?? "";
-    }
-
-    // ✅ Đánh dấu VIEW TRƯỚC khi nạp chi tiết
     window.dangXemHoaDon = true;
 
-    // ===== 6) LOAD CHI TIẾT =====
+    setRaw(["sohd"], hd.sohd || sohd);
+    setRaw(["ngay"], hd.ngay ? String(hd.ngay).slice(0, 10) : new Date().toISOString().slice(0, 10));
+    setRaw(["ghichu"], hd.ghichu || "");
+    setRaw(["hinhthuctt"], hd.hinhthuctt || "");
+    setRaw(["chietkhau"], hd.chietkhau ?? 0);
+    setRaw(["vitri"], hd.vitri ?? "");
+    setRaw(["makh"], hd.makh || "");
+    setRaw(["khachhang"], hd.khachhang || "");
+
+    // Lần 1: set trước khi nạp chi tiết
+    applyHeaderTienDiem(hd);
+
     await napLaiChiTietHoaDon(sohd);
 
-    setTimeout(() => {
-      const thanhToan = Number(hd.thanhtoan || 0);
-      const diemTruValue = Number(hd.diem_tru || 0);
-      const tienDiemValue = Number(hd.tien_doi_diem || 0);
+    // Lần 2,3,4: ép lại sau khi bảng chi tiết có thể tự tính lại
+    applyHeaderTienDiem(hd);
+    setTimeout(() => applyHeaderTienDiem(hd), 200);
+    setTimeout(() => applyHeaderTienDiem(hd), 800);
 
-      ["phaithanhtoan", "khachtra"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = thanhToan.toLocaleString("vi-VN");
-      });
-
-      const conlai = document.getElementById("conlai");
-      if (conlai) conlai.value = "0";
-
-      ["diem_tru", "diemdung"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = diemTruValue;
-      });
-
-      ["tien_doi_diem", "giamdiem"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = tienDiemValue.toLocaleString("vi-VN");
-      });
-    }, 100);
-
-
-    // đảm bảo UI luôn lấy đúng từ DB
-    const tongSP = Number(hd.tongthanhtien || 0);
-    const tongKM = Number(hd.tongkm || 0);
-    const tienDiem = Number(hd.tien_doi_diem || 0);
-
-    // tổng KM
-    document.getElementById("tongkm") &&
-      (document.getElementById("tongkm").value = tongKM.toLocaleString("vi-VN"));
-
-    // tiền phải trả
-    document.getElementById("phaithanhtoan") &&
-      (document.getElementById("phaithanhtoan").value = thanhToan.toLocaleString("vi-VN"));
-
-    document.getElementById("khachtra") &&
-      (document.getElementById("khachtra").value = thanhToan.toLocaleString("vi-VN"));
-
-    document.getElementById("conlai") &&
-      (document.getElementById("conlai").value = "0");
-
-    // điểm
-    document.getElementById("diem_tru") &&
-      (document.getElementById("diem_tru").value = Number(hd.diem_tru || 0));
-
-    document.getElementById("tien_doi_diem") &&
-      (document.getElementById("tien_doi_diem").value = tienDiem.toLocaleString("vi-VN"));
-    // ===== 8) TRẠNG THÁI =====
     const st = document.getElementById("hd_state");
     if (st) st.value = "xem";
 
@@ -377,9 +327,7 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
     window.choPhepSua = false;
     window.dangSuaHoaDon = false;
 
-    // ===== 9) ĐÓNG POPUP =====
     window.dongPopupMoHoaDonCu?.();
-
     return true;
 
   } catch (e) {
