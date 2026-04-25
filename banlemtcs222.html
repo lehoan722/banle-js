@@ -410,38 +410,6 @@
             border: 2px solid #8b0000 !important;
             font-weight: bold;
         }
-
-        .khach-footer-info {
-            width: 75%;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 4px 8px;
-            background: #f7f7f7;
-            border-top: 1px solid #d0d0d0;
-            box-sizing: border-box;
-            flex-shrink: 0;
-        }
-
-        .khach-footer-info label {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 14px;
-            white-space: nowrap;
-        }
-
-        .khach-footer-info input {
-            width: 110px;
-            height: 24px;
-            font-size: 14px;
-            padding: 2px 5px;
-            box-sizing: border-box;
-        }
-
-        #diem_tru {
-            background: #fffbe6;
-        }
     </style>
 
     <script>
@@ -642,7 +610,15 @@
                         <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
 
                         <!-- khu vuc tìm khách hàng -->
-
+                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
+                            <input id="makh" placeholder="mã khách"
+                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
+                            <button id="btnPopupKH" type="button"
+                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                                🔍
+                            </button>
+                        </div>
+                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
 
                         <!-- Popup tìm khách hàng -->
                         <div id="popupTimKH"
@@ -690,27 +666,6 @@
             </div>
         </div>
 
-        <div class="khach-footer-info">
-            <div id="khBox" style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                <input id="makh" placeholder="mã khách" style="width:100%;padding-right:32px;box-sizing:border-box;"
-                    autocomplete="off">
-                <button id="btnPopupKH" type="button"
-                    style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                    🔍
-                </button>
-
-                <div id="khSuggestList"
-                    style="display:none; position:absolute; bottom:100%; left:0; width:360px; max-height:240px; overflow:auto; background:#fff; border:1px solid #888; z-index:99999; box-shadow:0 -3px 12px #999;">
-                </div>
-            </div>
-            <label>Khách hàng <input id="khachhang" readonly="" /></label>
-
-            <label>Điểm KH <input id="diem_hientai" readonly /></label>
-            <label>Hạng KH <input id="hang_khach" readonly /></label>
-            <label>Điểm dùng <input id="diem_tru" value="0" /></label>
-            <label>Giảm điểm <input id="tien_doi_diem" readonly /></label>
-            
-        </div>
 
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
@@ -773,8 +728,6 @@
 
     </div>
 
-
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const popup = document.getElementById('popupThemMoi');
@@ -826,23 +779,6 @@
 
     <script src="scripts/stockQuickPopup.js"></script>
 
-    <script type="module">
-        import { mountKhachHangSuggest } from "./scripts/dmkhachhang.js";
-
-        document.addEventListener("DOMContentLoaded", () => {
-            mountKhachHangSuggest({
-                inputId: "makh",
-                tenInputId: "khachhang",
-                suggestBoxId: "khSuggestList",
-                btnSearchId: "btnPopupKH",
-                diemInputId: "diem_hientai",
-                hangInputId: "hang_khach",
-                diemTruInputId: "diem_tru",
-                tienDoiDiemInputId: "tien_doi_diem",
-                nhapKhachUrl: "/nhapdmkhachhang.html"
-            });
-        });
-    </script>
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
@@ -850,6 +786,49 @@
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
     <script type="module">
+        // Nút kính lúp cạnh ô nhập mã KH
+        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
+
+        // Hàm show popup
+        function showPopupTimKH() {
+            const popup = document.getElementById('popupTimKH');
+            popup.style.display = '';
+            document.getElementById('txtSearchKH').value = '';
+            document.getElementById('txtSearchKH').focus();
+            loadListKH('');
+        }
+
+        // Tìm kiếm realtime theo ký tự gõ
+        document.getElementById('txtSearchKH').oninput = function () {
+            loadListKH(this.value.trim());
+        };
+
+        // Hàm load danh sách KH (gọi Supabase)
+        async function loadListKH(keyword) {
+            const table = document.getElementById('tableKH');
+            table.innerHTML = `<tr><td>Đang tìm...</td></tr>`;
+            let query = window.supabase.from('dmkhachhang').select('makh,tenkh').limit(30);
+            if (keyword) {
+                query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
+            }
+            const { data, error } = await query;
+            if (error || !data || !data.length) {
+                table.innerHTML = '<tr><td>Không tìm thấy khách hàng phù hợp.</td></tr>';
+                return;
+            }
+            table.innerHTML = data.map(kh =>
+                `<tr class="chonkh" style="cursor:pointer" data-makh="${kh.makh}" data-tenkh="${kh.tenkh}">
+        <td>${kh.makh}</td><td>${kh.tenkh}</td>
+      </tr>`
+            ).join('');
+            Array.from(table.querySelectorAll('.chonkh')).forEach(row => {
+                row.onclick = function () {
+                    document.getElementById('makh').value = this.dataset.makh;
+                    document.getElementById('khachhang').value = this.dataset.tenkh;
+                    document.getElementById('popupTimKH').style.display = 'none';
+                }
+            });
+        }
 
         // Copy bảng sang clipboard,
         document.getElementById('btnCopy').onclick = function () {
@@ -935,7 +914,7 @@
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
+        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
         khoiTaoDangNhapDungChung({
             macDinhDiaDiem: "cs2",          // cố định cơ sở 1
             tuDongKhoaCoSo: false,
@@ -1794,7 +1773,7 @@
                 });
             });
 
-            // Lấy cơ sở động theo input #diadiem (cs2/cs2). File bạn đang là cs2 nên sẽ ra cs2.
+            // Lấy cơ sở động theo input #diadiem (cs1/cs2). File bạn đang là cs1 nên sẽ ra cs1.
             const csRaw = (document.getElementById("diadiem")?.value || "cs1").toLowerCase();
             const cs = (csRaw.includes("2")) ? "cs2" : "cs1";
             const page = (cs === "cs2") ? "inmavachcs2.html" : "inmavachcs1.html";
@@ -1802,7 +1781,7 @@
             const payload = { source: "banle", cs, items };
             const json = JSON.stringify(payload);
 
-            // base64url (giống nhapmoimtcs1)
+            // base64url (giống nhapmoimtcs2)
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
