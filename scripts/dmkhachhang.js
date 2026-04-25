@@ -177,19 +177,19 @@ export function mountKhachHangSuggest(options = {}) {
 
       const tienGiam = diemTru * 500;
       setVal(tienDoiDiemInputId, tienGiam.toLocaleString("vi-VN"));
-      setVal("km_diem_hienthi", tienGiam.toLocaleString("vi-VN"));
+      setVal("km_diem_hienthi", tienGiam.toLocaleString("vi-VN"));      
 
-      if (!window.__tongPhaiTraGoc) {
-        window.__tongPhaiTraGoc = Number(
-          String(document.getElementById("phaithanhtoan")?.value || "0").replace(/\D/g, "")
-        ) || 0;
-      }
+      const tongGoc = Number(
+        String(document.getElementById("phaithanhtoan")?.value || "0").replace(/\D/g, "")
+      ) || 0;
 
-      const tongGoc = window.__tongPhaiTraGoc;
-      const tongSauDiem = Math.max(0, tongGoc - tienGiam);
+      const khachThanhToan = Math.max(0, tongGoc - tienGiam);
 
-      setVal("phaithanhtoan", tongSauDiem.toLocaleString("vi-VN"));
-      setVal("khachtra", tongSauDiem.toLocaleString("vi-VN"));
+      // ❌ Không sửa Tổng phải trả nữa
+      // setVal("phaithanhtoan", ...)
+
+      // ✅ Chỉ sửa Khách thanh toán
+      setVal("khachtra", khachThanhToan.toLocaleString("vi-VN"));
       setVal("conlai", "0");
     });
   }
