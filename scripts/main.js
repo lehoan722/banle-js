@@ -310,16 +310,29 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
       diemSauInput.value = hd.diem_sau_hoa_don ?? "";
     }
 
+    // ✅ Đánh dấu VIEW TRƯỚC khi nạp chi tiết
+    window.dangXemHoaDon = true;
+
     // ===== 6) LOAD CHI TIẾT =====
     await napLaiChiTietHoaDon(sohd);
 
-    // ===== 7) KHÔNG TÍNH LẠI – DÙNG DỮ LIỆU DB =====
-    window.dangXemHoaDon = true;
+    setTimeout(() => {
+      const tienDiem = Number(hd.tien_doi_diem || 0);
+      const thanhToan = Number(hd.thanhtoan || 0);
+
+      document.getElementById("phaithanhtoan").value = thanhToan.toLocaleString("vi-VN");
+      document.getElementById("khachtra").value = thanhToan.toLocaleString("vi-VN");
+      document.getElementById("conlai").value = "0";
+
+      document.getElementById("diemdung").value = Number(hd.diem_tru || 0);
+      document.getElementById("giamdiem").value = tienDiem.toLocaleString("vi-VN");
+    }, 100);
+
 
     // đảm bảo UI luôn lấy đúng từ DB
     const tongSP = Number(hd.tongthanhtien || 0);
     const tongKM = Number(hd.tongkm || 0);
-    const tienDiem = Number(hd.tien_doi_diem || 0);    
+    const tienDiem = Number(hd.tien_doi_diem || 0);
 
     // tổng KM
     document.getElementById("tongkm") &&
