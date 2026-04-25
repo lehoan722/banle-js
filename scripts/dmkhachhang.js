@@ -179,13 +179,17 @@ export function mountKhachHangSuggest(options = {}) {
       setVal(tienDoiDiemInputId, tienGiam.toLocaleString("vi-VN"));
       setVal("km_diem_hienthi", tienGiam.toLocaleString("vi-VN"));
 
-      if (!window.__tongPhaiTraGoc) {
-        window.__tongPhaiTraGoc = Number(
-          String(document.getElementById("phaithanhtoan")?.value || "0").replace(/\D/g, "")
-        ) || 0;
-      }
+      const tienDoiDiemCu = Number(
+        String(getEl(tienDoiDiemInputId)?.value || "0").replace(/\D/g, "")
+      ) || 0;
 
-      const tongGoc = window.__tongPhaiTraGoc;
+      const tongDangHienThi = Number(
+        String(document.getElementById("phaithanhtoan")?.value || "0").replace(/\D/g, "")
+      ) || 0;
+
+      // Khôi phục lại tổng gốc trước khi tính điểm mới
+      const tongGoc = tongDangHienThi + tienDoiDiemCu;
+      window.__tongPhaiTraGoc = tongGoc;
       const tongSauDiem = Math.max(0, tongGoc - tienGiam);
 
       setVal("phaithanhtoan", tongSauDiem.toLocaleString("vi-VN"));
