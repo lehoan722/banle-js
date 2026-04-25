@@ -118,7 +118,7 @@ async function buildHeader(loai, diadiemTrang, bangKetQua) {
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
-    thanhtoan: getIntValue("phaithanhtoan"),
+    thanhtoan: getIntValue("khachtra"), // ✅ lấy số tiền khách thực trả
     hinhthuctt: getInput("hinhthuctt")?.value || "",
     ghichu: getText("ghichu"),
     dvt: "",
