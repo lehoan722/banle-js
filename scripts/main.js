@@ -319,8 +319,7 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
     // đảm bảo UI luôn lấy đúng từ DB
     const tongSP = Number(hd.tongthanhtien || 0);
     const tongKM = Number(hd.tongkm || 0);
-    const tienDiem = Number(hd.tien_doi_diem || 0);
-    const thanhToan = Number(hd.thanhtoan || 0);
+    const tienDiem = Number(hd.tien_doi_diem || 0);    
 
     // tổng KM
     document.getElementById("tongkm") &&
