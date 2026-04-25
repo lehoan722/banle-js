@@ -49,6 +49,8 @@ function askConfirmSpecialSave() {
 
 function validateBeforeSave2Ban() {
   capNhatThongTinTong(getBangKetQua());
+  // ✅ Áp lại khuyến mại điểm sau khi tổng bị tính lại
+  apDungKhuyenMaiDiemTruocKhiLuu();
 
   const maspChuaNhap = getText("masp");
   if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
@@ -98,7 +100,9 @@ function buildHeaderMain(loai, diadiemTrang, bangKetQua, sohd) {
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
-    thanhtoan: getIntValue("phaithanhtoan"),
+    thanhtoan: getIntValue("khachtra"),
+    diem_tru: getIntValue("diem_tru"),
+    tien_doi_diem: getIntValue("tien_doi_diem"),
     hinhthuctt: getInput("hinhthuctt")?.value || "",
     ghichu: getText("ghichu"),
     dvt: "",
