@@ -781,7 +781,7 @@
               tongsl: Number(r.sl_detail || 0),
               tongthanhtien: Number(r.tong_detail || 0),
               chietkhau: Number(r.chietkhau || 0),
-              thanhtoan: Number(r.thanhtoan_v2 || 0)
+              thanhtoan: Number(r.thanhtoan_v2 ?? r.thanhtoan ?? 0)
             });
           } else {
             const obj = groupMap.get(key);
@@ -1142,7 +1142,7 @@
             tongsl: r.sl_detail,
             tongthanhtien: r.tong_detail,
             chietkhau: r.chietkhau,
-            thanhtoan: r.thanhtoan_v2,
+            thanhtoan: r.thanhtoan_v2 ?? r.thanhtoan ?? 0,
 
             tongsl_header: r.sl_header,
             lech_sl: r.lech_sl
