@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <title>Xem hoa don</title>
 
-  <style> 
+  <style>
     body {
       font-family: Arial;
       padding: 20px;
@@ -681,7 +681,7 @@
         const row = data?.[0] || {};
         // tổng trên UI: dùng số "chuẩn theo detail"
         document.getElementById('tongSoLuong2').textContent = Number(row.total_sl_detail || 0).toLocaleString();
-        document.getElementById('tongTien2').textContent = Number(row.total_thanhtoan_v2 || 0).toLocaleString();
+        document.getElementById('tongTien2').textContent = Number(row.total_thanhtoan || row.total_thanhtoan_v2 || 0).toLocaleString();
 
 
         const totalRows = Number(row.total_rows || 0);
@@ -781,7 +781,7 @@
               tongsl: Number(r.sl_detail || 0),
               tongthanhtien: Number(r.tong_detail || 0),
               chietkhau: Number(r.chietkhau || 0),
-              thanhtoan: Number(r.thanhtoan_v2 ?? r.thanhtoan ?? 0)
+              thanhtoan: Number(r.thanhtoan ?? r.thanhtoan_v2 ?? 0)
             });
           } else {
             const obj = groupMap.get(key);
@@ -789,7 +789,7 @@
             obj.tongsl += Number(r.sl_detail || 0);
             obj.tongthanhtien += Number(r.tong_detail || 0);
             obj.chietkhau += Number(r.chietkhau || 0);
-            obj.thanhtoan += Number(r.thanhtoan_v2 || 0);
+            obj.thanhtoan += Number(r.thanhtoan ?? r.thanhtoan_v2 ?? 0);
           }
         });
 
@@ -1142,7 +1142,7 @@
             tongsl: r.sl_detail,
             tongthanhtien: r.tong_detail,
             chietkhau: r.chietkhau,
-            thanhtoan: r.thanhtoan_v2 ?? r.thanhtoan ?? 0,
+            thanhtoan: r.thanhtoan ?? r.thanhtoan_v2 ?? 0,
 
             tongsl_header: r.sl_header,
             lech_sl: r.lech_sl
