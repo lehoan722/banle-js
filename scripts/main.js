@@ -250,7 +250,7 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
       return false;
     }
 
-    // 2) Đẩy số HĐ lên form trước
+    // 2) Đẩy số HĐ lên form
     const sohdInput = document.getElementById("sohd");
     if (sohdInput) {
       sohdInput.value = hd.sohd || sohd;
@@ -258,7 +258,7 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
       sohdInput.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
-    // 3) Đổ header lên form
+    // ===== 3) HEADER =====
     const ngayInput = document.getElementById("ngay");
     if (ngayInput) {
       ngayInput.value = hd.ngay
@@ -266,46 +266,61 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
         : new Date().toISOString().slice(0, 10);
     }
 
-    const ghichuInput = document.getElementById("ghichu");
-    if (ghichuInput) ghichuInput.value = hd.ghichu || "";
+    document.getElementById("ghichu") && (document.getElementById("ghichu").value = hd.ghichu || "");
+    document.getElementById("hinhthuctt") && (document.getElementById("hinhthuctt").value = hd.hinhthuctt || "");
+    document.getElementById("chietkhau") && (document.getElementById("chietkhau").value = hd.chietkhau ?? 0);
+    document.getElementById("tongkm") && (document.getElementById("tongkm").value = hd.tongkm ?? 0);
+    document.getElementById("mathang") && (document.getElementById("mathang").value = hd.mathang ?? 0);
+    document.getElementById("tongsl") && (document.getElementById("tongsl").value = hd.tongsl ?? 0);
+    document.getElementById("vitri") && (document.getElementById("vitri").value = hd.vitri ?? "");
+    document.getElementById("makh") && (document.getElementById("makh").value = hd.makh || "");
+    document.getElementById("khachhang") && (document.getElementById("khachhang").value = hd.khachhang || "");
 
-    const hinhthucttSelect = document.getElementById("hinhthuctt");
-    if (hinhthucttSelect && hd.hinhthuctt) hinhthucttSelect.value = hd.hinhthuctt;
-
-    const chietkhauInput = document.getElementById("chietkhau");
-    if (chietkhauInput) chietkhauInput.value = hd.chietkhau ?? "";
-
-    const tongkmInput = document.getElementById("tongkm");
-    if (tongkmInput) tongkmInput.value = hd.tongkm ?? "";
-
-    const mathangInput = document.getElementById("mathang");
-    if (mathangInput) mathangInput.value = hd.mathang ?? "";
-
-    const tongslInput = document.getElementById("tongsl");
-    if (tongslInput) tongslInput.value = hd.tongsl ?? "";
-
-    const vitriInput = document.getElementById("vitri");
-    if (vitriInput) vitriInput.value = hd.vitri ?? "";
-
-    const makhInput = document.getElementById("makh");
-    if (makhInput) makhInput.value = hd.makh || "";
-
-    const khachhangInput = document.getElementById("khachhang");
-    if (khachhangInput) khachhangInput.value = hd.khachhang || "";
+    // ===== 4) TIỀN - QUAN TRỌNG NHẤT =====
+    const thanhToan = Number(hd.thanhtoan || 0);
 
     const phaithanhtoanInput = document.getElementById("phaithanhtoan");
-    if (phaithanhtoanInput) phaithanhtoanInput.value = hd.phaithanhtoan ?? "";
+    if (phaithanhtoanInput) {
+      phaithanhtoanInput.value = thanhToan.toLocaleString("vi-VN");
+    }
 
     const khachtraInput = document.getElementById("khachtra");
-    if (khachtraInput) khachtraInput.value = hd.khachtra ?? "";
+    if (khachtraInput) {
+      khachtraInput.value = thanhToan.toLocaleString("vi-VN");
+    }
 
     const conlaiInput = document.getElementById("conlai");
-    if (conlaiInput) conlaiInput.value = hd.conlai ?? "";
+    if (conlaiInput) {
+      conlaiInput.value = "0";
+    }
 
-    // 4) Nạp lại chi tiết hóa đơn ngay trên trang
+    // ===== 5) LOAD ĐIỂM =====
+    const diemTruInput = document.getElementById("diem_tru") || document.getElementById("diemdung");
+    if (diemTruInput) {
+      diemTruInput.value = hd.diem_tru ?? 0;
+    }
+
+    const tienDoiDiemInput = document.getElementById("tien_doi_diem") || document.getElementById("giamdiem");
+    if (tienDoiDiemInput) {
+      tienDoiDiemInput.value = Number(hd.tien_doi_diem || 0).toLocaleString("vi-VN");
+    }
+
+    const diemSauInput = document.getElementById("diem_sau_hoa_don");
+    if (diemSauInput) {
+      diemSauInput.value = hd.diem_sau_hoa_don ?? "";
+    }
+
+    // ===== 6) LOAD CHI TIẾT =====
     await napLaiChiTietHoaDon(sohd);
 
-    // 5) Cập nhật trạng thái
+    // ===== 7) CẬP NHẬT LẠI UI =====
+    try {
+      capNhatThongTinTong(getBangKetQua());
+    } catch (e) {
+      console.warn("Không cập nhật lại tổng được:", e);
+    }
+
+    // ===== 8) TRẠNG THÁI =====
     const st = document.getElementById("hd_state");
     if (st) st.value = "xem";
 
@@ -313,10 +328,11 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
     window.choPhepSua = false;
     window.dangSuaHoaDon = false;
 
-    // 6) Đóng popup
+    // ===== 9) ĐÓNG POPUP =====
     window.dongPopupMoHoaDonCu?.();
 
     return true;
+
   } catch (e) {
     console.error("Lỗi mở hóa đơn trực tiếp:", e);
     alert("Có lỗi khi mở hóa đơn " + sohd);
