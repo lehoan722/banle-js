@@ -137,12 +137,28 @@ async function napHoaDonVaoTrang(hoadon) {
   const ghichuEl = document.getElementById("ghichu");
   if (ghichuEl) ghichuEl.value = hoadon.ghichu || "";
 
+  const thanhToan = Number(hoadon.thanhtoan || 0);
+  const tienDoiDiem = Number(hoadon.tien_doi_diem || 0);
+  const diemTru = Number(hoadon.diem_tru || 0);
+
   document.getElementById("chietkhau").value = hoadon.chietkhau || "0";
-  document.getElementById("tongkm").value = hoadon.tongkm || "0";
-  document.getElementById("phaithanhtoan").value = hoadon.phaithanhtoan || "0";
-  document.getElementById("khachtra").value = hoadon.khachtra || hoadon.phaithanhtoan || "0";
-  document.getElementById("conlai").value = hoadon.conlai || "0";
+  document.getElementById("tongkm").value = Number(hoadon.tongkm || 0).toLocaleString("vi-VN");
+
+  document.getElementById("phaithanhtoan").value = thanhToan.toLocaleString("vi-VN");
+  document.getElementById("khachtra").value = thanhToan.toLocaleString("vi-VN");
+  document.getElementById("conlai").value = "0";
+
   document.getElementById("tongsl").value = hoadon.tongsl || "0";
+
+  ["diem_tru", "diemdung"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = diemTru;
+  });
+
+  ["tien_doi_diem", "giamdiem"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = tienDoiDiem.toLocaleString("vi-VN");
+  });
 
   resetBangKetQua();
 
@@ -199,5 +215,19 @@ async function napHoaDonVaoTrang(hoadon) {
 
 
   capNhatBangHTML(bangKetQua);
-  capNhatThongTinTong(bangKetQua);
+
+  // Không cho tính lại từ chi tiết khi đang xem hóa đơn cũ
+  document.getElementById("phaithanhtoan").value = thanhToan.toLocaleString("vi-VN");
+  document.getElementById("khachtra").value = thanhToan.toLocaleString("vi-VN");
+  document.getElementById("conlai").value = "0";
+
+  ["diem_tru", "diemdung"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = diemTru;
+  });
+
+  ["tien_doi_diem", "giamdiem"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = tienDoiDiem.toLocaleString("vi-VN");
+  });
 }
