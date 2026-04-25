@@ -199,10 +199,6 @@ export function mountKhachHangSuggest(options = {}) {
       setVal("conlai", "0");
 
       window.__tongPhaiTraGoc = tongGoc;
-
-      const tongSauDiem = Math.max(0, tongGoc - tienGiam);
-
-      setVal("phaithanhtoan", tongSauDiem.toLocaleString("vi-VN"));
       setVal("khachtra", tongSauDiem.toLocaleString("vi-VN"));
       setVal("conlai", "0");
     });
