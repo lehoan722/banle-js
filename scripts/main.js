@@ -4,7 +4,7 @@ import { chuyenFocus, ganTenNV, xoaDongDangChon, getBangKetQua, napLaiChiTietHoa
 import { capNhatBangHTML, resetFormBang } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
-import { ganSuKienDuyetHoaDon } from './duyetHoaDon.js';
+import { ganSuKienDuyetHoaDon, napHoaDonVaoTrang } from './duyetHoaDon.js';
 import { ganSuKienNutLenh } from './nutLenh.js';
 import { khoiTaoShortcut } from './shortcut.js';
 import { xacNhanSuaHoaDon, luuHoaDonQuaAPI, luuHoaDonCaHaiBan } from './luuhoadon.js';
@@ -236,102 +236,26 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
     return false;
   }
 
-  function setMoney(ids, value) {
-    const text = Number(value || 0).toLocaleString("vi-VN");
-    ids.forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      if ("value" in el) el.value = text;
-      el.textContent = text;
-    });
-  }
-
-  function setRaw(ids, value) {
-    ids.forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      if ("value" in el) el.value = value ?? "";
-      el.textContent = value ?? "";
-    });
-  }
-
-  function applyHeaderTienDiem(hd) {
-    const tongThanhTien = Number(hd.tongthanhtien || 0);
-    const tienDoiDiem = Number(hd.tien_doi_diem || 0);
-
-    // Ưu tiên lấy thanhtoan từ DB. Nếu hóa đơn cũ chưa có thanhtoan thì tự tính dự phòng.
-    const thanhToan = Number(
-      hd.thanhtoan ?? Math.max(0, tongThanhTien - tienDoiDiem)
-    );
-
-    setMoney(["phaithanhtoan", "tongphaitra", "tong_phai_tra"], thanhToan);
-    setMoney(["khachtra", "khach_thanhtoan"], thanhToan);
-    setMoney(["conlai"], 0);
-
-    setRaw(["diem_tru", "diemdung"], Number(hd.diem_tru || 0));
-    setMoney(["tien_doi_diem", "giamdiem", "km_diem_hienthi"], tienDoiDiem);
-
-    setMoney(["tongkm"], Number(hd.tongkm || 0));
-    setRaw(["mathang"], hd.mathang ?? "");
-    setRaw(["tongsl"], hd.tongsl ?? "");
-
-    console.log("✅ APPLY VIEW TIỀN ĐIỂM:", {
-      sohd: hd.sohd,
-      tongthanhtien: hd.tongthanhtien,
-      tongkm: hd.tongkm,
-      diem_tru: hd.diem_tru,
-      tien_doi_diem: hd.tien_doi_diem,
-      thanhtoan: hd.thanhtoan,
-      thanhToanDaHienThi: thanhToan
-    });
-  }
-
   try {
-    const { data: hd, error: errHd } = await supabase
+    const { data, error } = await supabase
       .from("hoadon_banle")
       .select("*")
       .eq("sohd", sohd)
-      .single();
+      .maybeSingle();
 
-    if (errHd || !hd) {
-      alert("Không tìm thấy hóa đơn " + sohd);
-      console.error("Không tìm thấy hóa đơn:", errHd);
+    if (error || !data) {
+      alert("❌ Không tìm thấy hóa đơn " + sohd);
       return false;
     }
 
-    window.dangXemHoaDon = true;
-
-    setRaw(["sohd"], hd.sohd || sohd);
-    setRaw(["ngay"], hd.ngay ? String(hd.ngay).slice(0, 10) : new Date().toISOString().slice(0, 10));
-    setRaw(["ghichu"], hd.ghichu || "");
-    setRaw(["hinhthuctt"], hd.hinhthuctt || "");
-    setRaw(["chietkhau"], hd.chietkhau ?? 0);
-    setRaw(["vitri"], hd.vitri ?? "");
-    setRaw(["makh"], hd.makh || "");
-    setRaw(["khachhang"], hd.khachhang || "");
-
-    // Lần 1: set trước khi nạp chi tiết
-    applyHeaderTienDiem(hd);
-
-    await napLaiChiTietHoaDon(sohd);
-
-    // Lần 2,3,4: ép lại sau khi bảng chi tiết có thể tự tính lại
-    applyHeaderTienDiem(hd);
-    setTimeout(() => applyHeaderTienDiem(hd), 200);
-    setTimeout(() => applyHeaderTienDiem(hd), 800);
-
-    const st = document.getElementById("hd_state");
-    if (st) st.value = "xem";
-
-    window.HD_CTX = { mode: "VIEW", version: hd?.updated_at || null };
-    window.choPhepSua = false;
-    window.dangSuaHoaDon = false;
+    // 👉 GỌI LUỒNG CHUẨN DUY NHẤT
+    await napHoaDonVaoTrang(data);
 
     window.dongPopupMoHoaDonCu?.();
     return true;
 
   } catch (e) {
-    console.error("Lỗi mở hóa đơn trực tiếp:", e);
+    console.error("Lỗi mở hóa đơn:", e);
     alert("Có lỗi khi mở hóa đơn " + sohd);
     return false;
   }
