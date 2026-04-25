@@ -1,4 +1,11 @@
 export function capNhatThongTinTong(bangKetQua) {
+
+  // 🚫 CHẶN TÍNH LẠI KHI XEM HÓA ĐƠN
+  if (window.dangXemHoaDon) {
+    console.log("⛔ Bỏ qua capNhatThongTinTong vì đang VIEW hóa đơn");
+    return;
+  }
+
   const mathangInput = document.getElementById("mathang");
   const tongslInput = document.getElementById("tongsl");
   const tongkmInput = document.getElementById("tongkm");
