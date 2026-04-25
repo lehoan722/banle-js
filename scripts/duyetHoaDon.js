@@ -113,7 +113,7 @@ async function taiHoaDonTiep() {
 }
 
 
-async function napHoaDonVaoTrang(hoadon) {
+export async function napHoaDonVaoTrang(hoadon) {
   if (!hoadon) return;
 
   document.getElementById("sohd").value = hoadon.sohd || "";
