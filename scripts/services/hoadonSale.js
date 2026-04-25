@@ -297,6 +297,27 @@ async function saveNewBanLe() {
   const sohdThucTe = rpcRes[0].sohd;
   if (getInput("sohd")) getInput("sohd").value = sohdThucTe;
 
+  // ✅ ÉP CẬP NHẬT LẠI HEADER SAU RPC
+  // Phòng trường hợp RPC chưa ghi đủ cột điểm/thanhtoan
+  const { error: errUpdateHeader } = await supabase
+    .from("hoadon_banle")
+    .update({
+      makh: header.makh,
+      diem_tru: header.diem_tru,
+      tien_doi_diem: header.tien_doi_diem,
+      thanhtoan: header.thanhtoan,
+      tongthanhtien: header.tongthanhtien,
+      tongkm: header.tongkm,
+      chietkhau: header.chietkhau
+    })
+    .eq("sohd", sohdThucTe);
+
+  if (errUpdateHeader) {
+    console.error("❌ Lỗi cập nhật lại header sau RPC:", errUpdateHeader);
+    alert("❌ Đã cấp số hóa đơn nhưng chưa cập nhật được tiền giảm điểm.");
+    return;
+  }
+
   normalizeBangKetQua(getBangKetQua());
   bangKetQua = getBangKetQua();
 
