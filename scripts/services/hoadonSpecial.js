@@ -41,6 +41,24 @@ function getIntValue(id) {
   ) || 0;
 }
 
+function apDungKhuyenMaiDiemTruocKhiLuu() {
+  const tongPhaiTra = getIntValue("phaithanhtoan");
+  const tienDiem = getIntValue("tien_doi_diem") || getIntValue("km_diem_hienthi");
+
+  const khachThanhToan = Math.max(0, tongPhaiTra - tienDiem);
+
+  const khachtraEl = getInput("khachtra");
+  const conlaiEl = getInput("conlai");
+
+  if (khachtraEl) {
+    khachtraEl.value = khachThanhToan.toLocaleString("vi-VN");
+  }
+
+  if (conlaiEl) {
+    conlaiEl.value = "0";
+  }
+}
+
 function askConfirmSpecialSave() {
   return confirm(
     "Bạn có chắc chắn muốn lưu hóa đơn nàyy ?\nNhấn OK để lưu, Hủy để quay về giao diện hóa đơn."
@@ -125,7 +143,9 @@ function buildHeaderT(loaiT, diadiemTrang, bangKetQua, sohdT) {
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
-    thanhtoan: getIntValue("phaithanhtoan"),
+    thanhtoan: getIntValue("khachtra"),
+    diem_tru: getIntValue("diem_tru"),
+    tien_doi_diem: getIntValue("tien_doi_diem"),
     hinhthuctt: getInput("hinhthuctt")?.value || "",
     ghichu: getText("ghichu"),
     dvt: "",
