@@ -41,6 +41,28 @@ function getIntValue(id) {
   ) || 0;
 }
 
+function apDungGiamDiemVaoThanhToan() {
+  const tongHang = calcTongThanhTienFromBangKetQua(getBangKetQua());
+  const chietKhau = getIntValue("chietkhau");
+  const tienDoiDiem = getIntValue("tien_doi_diem");
+
+  const phaiTra = Math.max(0, tongHang - chietKhau - tienDoiDiem);
+
+  if (getInput("phaithanhtoan")) {
+    getInput("phaithanhtoan").value = phaiTra.toLocaleString("vi-VN");
+  }
+
+  if (getInput("khachtra")) {
+    getInput("khachtra").value = phaiTra.toLocaleString("vi-VN");
+  }
+
+  if (getInput("conlai")) {
+    getInput("conlai").value = "0";
+  }
+
+  return phaiTra;
+}
+
 function askConfirmSpecialSave() {
   return confirm(
     "Bạn có chắc chắn muốn lưu hóa đơn nàyy ?\nNhấn OK để lưu, Hủy để quay về giao diện hóa đơn."
@@ -49,6 +71,7 @@ function askConfirmSpecialSave() {
 
 function validateBeforeSave2Ban() {
   capNhatThongTinTong(getBangKetQua());
+  apDungGiamDiemVaoThanhToan();
 
   const maspChuaNhap = getText("masp");
   if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
@@ -98,7 +121,9 @@ function buildHeaderMain(loai, diadiemTrang, bangKetQua, sohd) {
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
-    thanhtoan: getIntValue("phaithanhtoan"),
+    diem_tru: Number(getInput("diem_tru")?.value || 0) || 0,
+    tien_doi_diem: getIntValue("tien_doi_diem"),
+    thanhtoan: apDungGiamDiemVaoThanhToan(),
     hinhthuctt: getInput("hinhthuctt")?.value || "",
     ghichu: getText("ghichu"),
     dvt: "",
@@ -121,7 +146,10 @@ function buildHeaderT(loaiT, diadiemTrang, bangKetQua, sohdT) {
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
-    thanhtoan: getIntValue("phaithanhtoan"),
+    diem_tru: Number(getInput("diem_tru")?.value || 0) || 0,
+    tien_doi_diem: getIntValue("tien_doi_diem"),
+
+    thanhtoan: apDungGiamDiemVaoThanhToan(),
     hinhthuctt: getInput("hinhthuctt")?.value || "",
     ghichu: getText("ghichu"),
     dvt: "",
@@ -288,7 +316,10 @@ export async function saveHoaDonSpecial(ctx) {
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
-    thanhtoan: getIntValue("phaithanhtoan"),
+    diem_tru: Number(getInput("diem_tru")?.value || 0) || 0,
+    tien_doi_diem: getIntValue("tien_doi_diem"),
+
+    thanhtoan: apDungGiamDiemVaoThanhToan(),
     hinhthuctt: getInput("hinhthuctt")?.value || "",
     ghichu: getText("ghichu"),
     dvt: "",
