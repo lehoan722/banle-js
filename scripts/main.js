@@ -236,8 +236,57 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
     return false;
   }
 
+  function setMoney(ids, value) {
+    const text = Number(value || 0).toLocaleString("vi-VN");
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if ("value" in el) el.value = text;
+      el.textContent = text;
+    });
+  }
+
+  function setRaw(ids, value) {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if ("value" in el) el.value = value ?? "";
+      el.textContent = value ?? "";
+    });
+  }
+
+  function applyHeaderTienDiem(hd) {
+    const tongThanhTien = Number(hd.tongthanhtien || 0);
+    const tienDoiDiem = Number(hd.tien_doi_diem || 0);
+
+    // Ưu tiên lấy thanhtoan từ DB. Nếu hóa đơn cũ chưa có thanhtoan thì tự tính dự phòng.
+    const thanhToan = Number(
+      hd.thanhtoan ?? Math.max(0, tongThanhTien - tienDoiDiem)
+    );
+
+    setMoney(["phaithanhtoan", "tongphaitra", "tong_phai_tra"], thanhToan);
+    setMoney(["khachtra", "khach_thanhtoan"], thanhToan);
+    setMoney(["conlai"], 0);
+
+    setRaw(["diem_tru", "diemdung"], Number(hd.diem_tru || 0));
+    setMoney(["tien_doi_diem", "giamdiem", "km_diem_hienthi"], tienDoiDiem);
+
+    setMoney(["tongkm"], Number(hd.tongkm || 0));
+    setRaw(["mathang"], hd.mathang ?? "");
+    setRaw(["tongsl"], hd.tongsl ?? "");
+
+    console.log("✅ APPLY VIEW TIỀN ĐIỂM:", {
+      sohd: hd.sohd,
+      tongthanhtien: hd.tongthanhtien,
+      tongkm: hd.tongkm,
+      diem_tru: hd.diem_tru,
+      tien_doi_diem: hd.tien_doi_diem,
+      thanhtoan: hd.thanhtoan,
+      thanhToanDaHienThi: thanhToan
+    });
+  }
+
   try {
-    // 1) Lấy header hóa đơn
     const { data: hd, error: errHd } = await supabase
       .from("hoadon_banle")
       .select("*")
@@ -250,62 +299,27 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
       return false;
     }
 
-    // 2) Đẩy số HĐ lên form trước
-    const sohdInput = document.getElementById("sohd");
-    if (sohdInput) {
-      sohdInput.value = hd.sohd || sohd;
-      sohdInput.dispatchEvent(new Event("input", { bubbles: true }));
-      sohdInput.dispatchEvent(new Event("change", { bubbles: true }));
-    }
+    window.dangXemHoaDon = true;
 
-    // 3) Đổ header lên form
-    const ngayInput = document.getElementById("ngay");
-    if (ngayInput) {
-      ngayInput.value = hd.ngay
-        ? String(hd.ngay).slice(0, 10)
-        : new Date().toISOString().slice(0, 10);
-    }
+    setRaw(["sohd"], hd.sohd || sohd);
+    setRaw(["ngay"], hd.ngay ? String(hd.ngay).slice(0, 10) : new Date().toISOString().slice(0, 10));
+    setRaw(["ghichu"], hd.ghichu || "");
+    setRaw(["hinhthuctt"], hd.hinhthuctt || "");
+    setRaw(["chietkhau"], hd.chietkhau ?? 0);
+    setRaw(["vitri"], hd.vitri ?? "");
+    setRaw(["makh"], hd.makh || "");
+    setRaw(["khachhang"], hd.khachhang || "");
 
-    const ghichuInput = document.getElementById("ghichu");
-    if (ghichuInput) ghichuInput.value = hd.ghichu || "";
+    // Lần 1: set trước khi nạp chi tiết
+    applyHeaderTienDiem(hd);
 
-    const hinhthucttSelect = document.getElementById("hinhthuctt");
-    if (hinhthucttSelect && hd.hinhthuctt) hinhthucttSelect.value = hd.hinhthuctt;
-
-    const chietkhauInput = document.getElementById("chietkhau");
-    if (chietkhauInput) chietkhauInput.value = hd.chietkhau ?? "";
-
-    const tongkmInput = document.getElementById("tongkm");
-    if (tongkmInput) tongkmInput.value = hd.tongkm ?? "";
-
-    const mathangInput = document.getElementById("mathang");
-    if (mathangInput) mathangInput.value = hd.mathang ?? "";
-
-    const tongslInput = document.getElementById("tongsl");
-    if (tongslInput) tongslInput.value = hd.tongsl ?? "";
-
-    const vitriInput = document.getElementById("vitri");
-    if (vitriInput) vitriInput.value = hd.vitri ?? "";
-
-    const makhInput = document.getElementById("makh");
-    if (makhInput) makhInput.value = hd.makh || "";
-
-    const khachhangInput = document.getElementById("khachhang");
-    if (khachhangInput) khachhangInput.value = hd.khachhang || "";
-
-    const phaithanhtoanInput = document.getElementById("phaithanhtoan");
-    if (phaithanhtoanInput) phaithanhtoanInput.value = hd.phaithanhtoan ?? "";
-
-    const khachtraInput = document.getElementById("khachtra");
-    if (khachtraInput) khachtraInput.value = hd.khachtra ?? "";
-
-    const conlaiInput = document.getElementById("conlai");
-    if (conlaiInput) conlaiInput.value = hd.conlai ?? "";
-
-    // 4) Nạp lại chi tiết hóa đơn ngay trên trang
     await napLaiChiTietHoaDon(sohd);
 
-    // 5) Cập nhật trạng thái
+    // Lần 2,3,4: ép lại sau khi bảng chi tiết có thể tự tính lại
+    applyHeaderTienDiem(hd);
+    setTimeout(() => applyHeaderTienDiem(hd), 200);
+    setTimeout(() => applyHeaderTienDiem(hd), 800);
+
     const st = document.getElementById("hd_state");
     if (st) st.value = "xem";
 
@@ -313,10 +327,9 @@ async function moHoaDonTrucTiepTrenTrang(sohdCanMo) {
     window.choPhepSua = false;
     window.dangSuaHoaDon = false;
 
-    // 6) Đóng popup
     window.dongPopupMoHoaDonCu?.();
-
     return true;
+
   } catch (e) {
     console.error("Lỗi mở hóa đơn trực tiếp:", e);
     alert("Có lỗi khi mở hóa đơn " + sohd);
@@ -569,93 +582,15 @@ export async function khoiTaoUngDung() {
     }
 
     if (sohdUrl) {
-      // ===== TRƯỜNG HỢP MỞ HÓA ĐƠN CŨ TỪ BÁO CÁO =====
-      try {
-        // 1. Lấy thông tin header hóa đơn
-        const { data: hd, error: errHd } = await supabase
-          .from("hoadon_banle")
-          .select("*")
-          .eq("sohd", sohdUrl)
-          .single();
+      const okMoHd = await moHoaDonTrucTiepTrenTrang(sohdUrl);
 
-        if (errHd) {
-          console.error("Không tìm thấy hóa đơn:", errHd);
-          alert("Không tìm thấy hóa đơn " + sohdUrl + ". Hệ thống sẽ tạo hóa đơn mới.");
-          // fallback về luồng cũ
-          document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
-          await capNhatSoHoaDonTuDong();
-        } else if (hd) {
-          // 2. Đổ dữ liệu header lên form (chỉ set những ô nào có trên trang)
-          const ngayInput = document.getElementById("ngay");
-          if (ngayInput) {
-            if (hd.ngay) ngayInput.value = String(hd.ngay).slice(0, 10);
-            else ngayInput.value = new Date().toISOString().slice(0, 10);
-          }
-
-          const sohdInput = document.getElementById("sohd");
-          if (sohdInput) sohdInput.value = hd.sohd || sohdUrl;
-
-          const ghichuInput = document.getElementById("ghichu");
-          if (ghichuInput) ghichuInput.value = hd.ghichu || "";
-
-          const hinhthucttSelect = document.getElementById("hinhthuctt");
-          if (hinhthucttSelect && hd.hinhthuctt) hinhthucttSelect.value = hd.hinhthuctt;
-
-          const chietkhauInput = document.getElementById("chietkhau");
-          if (chietkhauInput && hd.chietkhau != null) chietkhauInput.value = hd.chietkhau;
-
-          const tongkmInput = document.getElementById("tongkm");
-          if (tongkmInput && hd.tongkm != null) tongkmInput.value = hd.tongkm;
-
-          const mathangInput = document.getElementById("mathang");
-          if (mathangInput && hd.mathang != null) mathangInput.value = hd.mathang;
-
-          const tongslInput = document.getElementById("tongsl");
-          if (tongslInput && hd.tongsl != null) tongslInput.value = hd.tongsl;
-
-          const vitriInput = document.getElementById("vitri");
-          if (vitriInput && hd.vitri != null) vitriInput.value = hd.vitri;
-
-          const makhInput = document.getElementById("makh");
-          if (makhInput && hd.makh) makhInput.value = hd.makh;
-
-          const khachhangInput = document.getElementById("khachhang");
-          if (khachhangInput && hd.khachhang) khachhangInput.value = hd.khachhang;
-
-          const phaithanhtoanInput = document.getElementById("phaithanhtoan");
-          if (phaithanhtoanInput && hd.phaithanhtoan != null)
-            phaithanhtoanInput.value = hd.phaithanhtoan;
-
-          const khachtraInput = document.getElementById("khachtra");
-          if (khachtraInput && hd.khachtra != null)
-            khachtraInput.value = hd.khachtra;
-
-          const conlaiInput = document.getElementById("conlai");
-          if (conlaiInput && hd.conlai != null)
-            conlaiInput.value = hd.conlai;
-        }
-
-        // 3. Nạp chi tiết hóa đơn vào bảng
-        await napLaiChiTietHoaDon(sohdUrl);
-
-        // ✅ Nếu mở hóa đơn từ URL => luôn là trạng thái XEM
-        const st = document.getElementById("hd_state");
-        if (st) st.value = "xem";
-
-        // ✅ Đồng bộ cờ chặn sửa (giống duyetHoaDon.js) để tránh vô tình sửa
-        window.HD_CTX = { mode: "VIEW", version: hd?.updated_at || null };
-        window.choPhepSua = false;
-        window.dangSuaHoaDon = false;
-
-
-      } catch (e) {
-        console.error("Lỗi nạp hóa đơn từ URL:", e);
-        alert("Có lỗi khi nạp hóa đơn. Hệ thống sẽ tạo hóa đơn mới.");
+      if (!okMoHd) {
         document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
         await capNhatSoHoaDonTuDong();
       }
     } else {
       // ===== TRƯỜNG HỢP HÓA ĐƠN MỚI (luồng cũ) =====
+      window.dangXemHoaDon = false;
       document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
       await capNhatSoHoaDonTuDong();
 
