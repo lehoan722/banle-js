@@ -39,6 +39,28 @@ function getIntValue(id) {
   ) || 0;
 }
 
+function apDungGiamDiemVaoThanhToan() {
+  const tongHang = calcTongThanhTienFromBangKetQua(getBangKetQua());
+  const chietKhau = getIntValue("chietkhau");
+  const tienDoiDiem = getIntValue("tien_doi_diem");
+
+  const phaiTra = Math.max(0, tongHang - chietKhau - tienDoiDiem);
+
+  if (getInput("phaithanhtoan")) {
+    getInput("phaithanhtoan").value = phaiTra.toLocaleString("vi-VN");
+  }
+
+  if (getInput("khachtra")) {
+    getInput("khachtra").value = phaiTra.toLocaleString("vi-VN");
+  }
+
+  if (getInput("conlai")) {
+    getInput("conlai").value = "0";
+  }
+
+  return phaiTra;
+}
+
 async function snapshotInvoiceBeforeEditLocal(sohd) {
   const { data, error } = await supabase.rpc("rpc_snapshot_invoice_version", {
     p_sohd: sohd
@@ -54,6 +76,7 @@ function isEditMode(ctx) {
 
 function validateBeforeSave() {
   capNhatThongTinTong(getBangKetQua());
+  apDungGiamDiemVaoThanhToan();
 
   const maspChuaNhap = getText("masp");
   if (maspChuaNhap && !/\(\d+\)\s*$/.test(maspChuaNhap)) {
@@ -122,12 +145,7 @@ async function buildHeader(loai, diadiemTrang, bangKetQua) {
     diem_tru: Number(getInput("diem_tru")?.value || 0) || 0,
     tien_doi_diem: getIntValue("tien_doi_diem"),
 
-    thanhtoan: Math.max(
-      0,
-      calcTongThanhTienFromBangKetQua(bangKetQua)
-      - getIntValue("chietkhau")
-      - getIntValue("tien_doi_diem")
-    ),
+    thanhtoan: apDungGiamDiemVaoThanhToan(),
     hinhthuctt: getInput("hinhthuctt")?.value || "",
     ghichu: getText("ghichu"),
     dvt: "",
