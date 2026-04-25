@@ -118,7 +118,16 @@ async function buildHeader(loai, diadiemTrang, bangKetQua) {
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
-    thanhtoan: getIntValue("phaithanhtoan"),
+
+    diem_tru: Number(getInput("diem_tru")?.value || 0) || 0,
+    tien_doi_diem: getIntValue("tien_doi_diem"),
+
+    thanhtoan: Math.max(
+      0,
+      calcTongThanhTienFromBangKetQua(bangKetQua)
+      - getIntValue("chietkhau")
+      - getIntValue("tien_doi_diem")
+    ),
     hinhthuctt: getInput("hinhthuctt")?.value || "",
     ghichu: getText("ghichu"),
     dvt: "",
