@@ -291,7 +291,7 @@ function renderTable(hotData) {
     // columns: **giữ nguyên** danh sách cột bạn đang dùng
     const columns = [
         { data: "stt", title: "STT", readOnly: true, width: 45 },
-        { data: "ngay_gio", title: "Ngày Gio", readOnly: true, width: 150, renderer: formatDateCellVN },
+        { data: "ngay", title: "Ngày Gio", readOnly: true, width: 150, renderer: formatDateCellVN },
         { data: "sohd", title: "Số HĐ", readOnly: true, width: 120 },
         { data: "loaihd", title: "Loại HĐ", readOnly: true, width: 100 },
         { data: "diadiem", title: "Địa điểm", readOnly: true, width: 90 },
@@ -378,7 +378,7 @@ window.xuatExcelToanBo = async function () {
     const aoa = [headers];
     allRows.forEach(r => {
         aoa.push([
-            r.stt, r.ngay_gio, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
+            r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
             r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien, r.ket_qua
         ]);
     });
