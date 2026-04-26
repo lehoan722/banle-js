@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quản lý điểm khách hàng</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 10px; background:#f5f5f5; font-size:13px; }
+    h2 { margin: 6px 0 10px; }
+    .box { background:white; border:1px solid #ddd; border-radius:6px; padding:10px; margin-bottom:10px; }
+    .filter { display:grid; grid-template-columns: repeat(8, 1fr); gap:6px; }
+    input, select, button { padding:6px; font-size:13px; }
+    button { cursor:pointer; font-weight:bold; }
+    table { width:100%; border-collapse:collapse; background:white; }
+    th, td { border:1px solid #ddd; padding:5px; text-align:left; white-space:nowrap; }
+    th { background:#eee; position:sticky; top:0; z-index:1; }
+    .wrap { overflow:auto; max-height:420px; }
+    .green { color:green; font-weight:bold; }
+    .red { color:red; font-weight:bold; }
+    .orange { color:#d97706; font-weight:bold; }
+    .warn { background:#fff3cd; }
+    .bad { background:#ffd6d6; }
+    .summary { display:flex; gap:10px; flex-wrap:wrap; }
+    .card { background:#fafafa; border:1px solid #ddd; border-radius:6px; padding:8px 12px; min-width:150px; }
+  </style>
+</head>
+
+<body>
+  <h2>Quản lý điểm khách hàng</h2>
+
+  <div class="box">
+    <div class="filter">
+      <input type="date" id="fromDate">
+      <input type="date" id="toDate">
+      <input id="makh" placeholder="Mã KH">
+      <input id="khachhang" placeholder="Tên/SĐT khách">
+      <input id="sohd" placeholder="Số hóa đơn">
+      <input id="manv" placeholder="Mã/NV">
+      <select id="diadiem">
+        <option value="">Tất cả cơ sở</option>
+        <option value="cs1">CS1</option>
+        <option value="cs2">CS2</option>
+      </select>
+      <select id="loai">
+        <option value="">Tất cả loại</option>
+        <option value="CONG">Cộng điểm</option>
+        <option value="TRU">Trừ điểm</option>
+        <option value="DIEU_CHINH_CONG">Điều chỉnh cộng</option>
+        <option value="DIEU_CHINH_TRU">Điều chỉnh trừ</option>
+      </select>
+    </div>
+
+    <div style="margin-top:8px;">
+      <button onclick="taiDuLieu()">Tải dữ liệu</button>
+      <button onclick="kiemTraBatThuong()">Kiểm tra bất thường</button>
+      <button onclick="xuatCSV()">Xuất CSV</button>
+      <span id="status" style="margin-left:10px;color:#666;"></span>
+    </div>
+  </div>
+
+  <div class="box summary">
+    <div class="card">Tổng dòng: <b id="tongDong">0</b></div>
+    <div class="card">Tổng điểm cộng: <b id="tongCong">0</b></div>
+    <div class="card">Tổng điểm trừ: <b id="tongTru">0</b></div>
+    <div class="card">Tổng tiền đổi điểm: <b id="tongTienDoi">0</b></div>
+    <div class="card">Cảnh báo: <b id="tongCanhBao">0</b></div>
+  </div>
+
+  <div class="box">
+    <h3>Chi tiết lịch sử điểm</h3>
+    <div class="wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ngày</th>
+            <th>Mã KH</th>
+            <th>Khách hàng</th>
+            <th>Số HĐ</th>
+            <th>Loại</th>
+            <th>Điểm</th>
+            <th>Giá trị quy đổi</th>
+            <th>Điểm trước</th>
+            <th>Điểm sau</th>
+            <th>Điểm còn lại</th>
+            <th>NV</th>
+            <th>Cơ sở</th>
+            <th>Nguồn</th>
+            <th>Lý do</th>
+            <th>Cảnh báo</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+const SUPABASE_URL = "DÁN_SUPABASE_URL_CỦA_BẠN";
+const SUPABASE_ANON_KEY = "DÁN_SUPABASE_ANON_KEY_CỦA_BẠN";
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allRows = [];
+
+function num(v) {
+  return Number(v || 0);
+}
+
+function fmtMoney(v) {
+  return num(v).toLocaleString("vi-VN");
+}
+
+function fmtDate(v) {
+  if (!v) return "";
+  return new Date(v).toLocaleString("vi-VN");
+}
+
+function setStatus(msg) {
+  document.getElementById("status").textContent = msg;
+}
+
+async function taiDuLieu() {
+  setStatus("Đang tải dữ liệu...");
+
+  const fromDate = document.getElementById("fromDate").value;
+  const toDate = document.getElementById("toDate").value;
+  const makh = document.getElementById("makh").value.trim();
+  const khachhang = document.getElementById("khachhang").value.trim();
+  const sohd = document.getElementById("sohd").value.trim();
+  const manv = document.getElementById("manv").value.trim();
+  const diadiem = document.getElementById("diadiem").value;
+  const loai = document.getElementById("loai").value;
+
+  let query = supabaseClient
+    .from("kh_lichsu_diem")
+    .select(`
+      id, makh, sohd, ngay, loai, diem, giatri_quydoi, lydo,
+      manv, diadiem, diem_truoc, diem_sau, expires_at, diem_con_lai,
+      created_by, created_by_name, nguon, ghi_chu_kiemtra,
+      hoadon_banle:sohd (
+        khachhang, thanhtoan, tien_doi_diem, diem_cong, diem_tru
+      )
+    `)
+    .order("ngay", { ascending: false })
+    .limit(3000);
+
+  if (fromDate) query = query.gte("ngay", fromDate + " 00:00:00");
+  if (toDate) query = query.lte("ngay", toDate + " 23:59:59");
+  if (makh) query = query.ilike("makh", `%${makh}%`);
+  if (sohd) query = query.ilike("sohd", `%${sohd}%`);
+  if (manv) query = query.or(`manv.ilike.%${manv}%,created_by_name.ilike.%${manv}%`);
+  if (diadiem) query = query.eq("diadiem", diadiem);
+  if (loai) query = query.eq("loai", loai);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error(error);
+    setStatus("Lỗi tải dữ liệu: " + error.message);
+    return;
+  }
+
+  allRows = data || [];
+
+  if (khachhang) {
+    allRows = allRows.filter(r => {
+      const ten = r.hoadon_banle?.khachhang || "";
+      return ten.toLowerCase().includes(khachhang.toLowerCase());
+    });
+  }
+
+  renderTable(allRows);
+  renderSummary(allRows);
+  setStatus("Đã tải xong.");
+}
+
+function renderSummary(rows) {
+  const tongCong = rows.filter(r => r.loai === "CONG" || r.loai === "DIEU_CHINH_CONG")
+    .reduce((s,r) => s + num(r.diem), 0);
+
+  const tongTru = rows.filter(r => r.loai === "TRU" || r.loai === "DIEU_CHINH_TRU")
+    .reduce((s,r) => s + Math.abs(num(r.diem)), 0);
+
+  const tongTienDoi = rows.reduce((s,r) => s + num(r.giatri_quydoi), 0);
+
+  document.getElementById("tongDong").textContent = rows.length;
+  document.getElementById("tongCong").textContent = fmtMoney(tongCong);
+  document.getElementById("tongTru").textContent = fmtMoney(tongTru);
+  document.getElementById("tongTienDoi").textContent = fmtMoney(tongTienDoi);
+}
+
+function getWarning(r) {
+  const warns = [];
+
+  const hd = r.hoadon_banle || {};
+
+  if (r.loai === "TRU" && num(r.giatri_quydoi) <= 0) {
+    warns.push("Trừ điểm nhưng giá trị quy đổi = 0");
+  }
+
+  if (r.loai === "TRU" && num(hd.tien_doi_diem) > 0 && num(hd.tien_doi_diem) !== num(r.giatri_quydoi)) {
+    warns.push("Tiền đổi điểm lệch hóa đơn");
+  }
+
+  if (r.loai === "CONG" && num(r.diem) <= 0) {
+    warns.push("Cộng điểm <= 0");
+  }
+
+  if (r.sohd && !r.hoadon_banle) {
+    warns.push("Có số HĐ nhưng không tìm thấy hóa đơn");
+  }
+
+  if (num(r.diem_sau) < 0 || num(r.diem_con_lai) < 0) {
+    warns.push("Điểm âm");
+  }
+
+  return warns.join("; ");
+}
+
+function renderTable(rows) {
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+
+  let countWarn = 0;
+
+  rows.forEach(r => {
+    const warning = getWarning(r);
+    if (warning) countWarn++;
+
+    const clsLoai =
+      r.loai === "CONG" || r.loai === "DIEU_CHINH_CONG" ? "green" :
+      r.loai === "TRU" || r.loai === "DIEU_CHINH_TRU" ? "red" : "orange";
+
+    const tr = document.createElement("tr");
+    if (warning) tr.className = "warn";
+
+    tr.innerHTML = `
+      <td>${fmtDate(r.ngay)}</td>
+      <td>${r.makh || ""}</td>
+      <td>${r.hoadon_banle?.khachhang || ""}</td>
+      <td>${r.sohd || ""}</td>
+      <td class="${clsLoai}">${r.loai || ""}</td>
+      <td>${fmtMoney(r.diem)}</td>
+      <td>${fmtMoney(r.giatri_quydoi)}</td>
+      <td>${fmtMoney(r.diem_truoc)}</td>
+      <td>${fmtMoney(r.diem_sau)}</td>
+      <td>${fmtMoney(r.diem_con_lai)}</td>
+      <td>${r.created_by_name || r.manv || ""}</td>
+      <td>${r.diadiem || ""}</td>
+      <td>${r.nguon || ""}</td>
+      <td>${r.lydo || ""}</td>
+      <td class="red">${warning}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("tongCanhBao").textContent = countWarn;
+}
+
+function kiemTraBatThuong() {
+  renderTable(allRows);
+  setStatus("Đã kiểm tra bất thường.");
+}
+
+function xuatCSV() {
+  if (!allRows.length) {
+    alert("Chưa có dữ liệu để xuất.");
+    return;
+  }
+
+  const header = [
+    "ngay","makh","khachhang","sohd","loai","diem","giatri_quydoi",
+    "diem_truoc","diem_sau","diem_con_lai","nhanvien","diadiem","nguon","lydo"
+  ];
+
+  const lines = [header.join(",")];
+
+  allRows.forEach(r => {
+    const row = [
+      fmtDate(r.ngay),
+      r.makh || "",
+      r.hoadon_banle?.khachhang || "",
+      r.sohd || "",
+      r.loai || "",
+      r.diem || 0,
+      r.giatri_quydoi || 0,
+      r.diem_truoc || 0,
+      r.diem_sau || 0,
+      r.diem_con_lai || 0,
+      r.created_by_name || r.manv || "",
+      r.diadiem || "",
+      r.nguon || "",
+      r.lydo || ""
+    ].map(v => `"${String(v).replaceAll('"','""')}"`);
+
+    lines.push(row.join(","));
+  });
+
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "lich_su_diem_khach_hang.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+window.addEventListener("load", () => {
+  const today = new Date();
+  const first = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  document.getElementById("fromDate").value = first.toISOString().slice(0,10);
+  document.getElementById("toDate").value = today.toISOString().slice(0,10);
+});
+</script>
+</body>
+</html>
