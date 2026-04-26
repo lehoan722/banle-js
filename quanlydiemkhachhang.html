@@ -289,13 +289,10 @@
                 let query = supabaseClient
                     .from("kh_lichsu_diem")
                     .select(`
-      id, makh, sohd, ngay, loai, diem, giatri_quydoi, lydo,
-      manv, diadiem, diem_truoc, diem_sau, expires_at, diem_con_lai,
-      created_by, created_by_name, nguon, ghi_chu_kiemtra,
-      hoadon_banle:sohd (
-        khachhang, thanhtoan, tien_doi_diem, diem_cong, diem_tru
-      )
-    `)
+  id, makh, sohd, ngay, loai, diem, giatri_quydoi, lydo,
+  manv, diadiem, diem_truoc, diem_sau, expires_at, diem_con_lai,
+  created_by, created_by_name, nguon, ghi_chu_kiemtra
+`)
                     .order("ngay", { ascending: false })
                     .limit(3000);
 
@@ -319,7 +316,7 @@
 
                 if (khachhang) {
                     allRows = allRows.filter(r => {
-                        const ten = r.hoadon_banle?.khachhang || "";
+                        const khachhang = "";
                         return ten.toLowerCase().includes(khachhang.toLowerCase());
                     });
                 }
@@ -473,7 +470,7 @@
             function getWarning(r) {
                 const warns = [];
 
-                const hd = r.hoadon_banle || {};
+                const hd = {};
 
                 if (r.loai === "TRU" && num(r.giatri_quydoi) <= 0) {
                     warns.push("Trừ điểm nhưng giá trị quy đổi = 0");
@@ -518,7 +515,7 @@
                     tr.innerHTML = `
       <td>${fmtDate(r.ngay)}</td>
       <td>${r.makh || ""}</td>
-      <td>${r.hoadon_banle?.khachhang || ""}</td>
+      <td></td>
       <td>${r.sohd || ""}</td>
       <td class="${clsLoai}">${r.loai || ""}</td>
       <td>${fmtMoney(r.diem)}</td>
