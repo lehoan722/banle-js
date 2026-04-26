@@ -35,6 +35,16 @@ function getText(id) {
   return getInput(id)?.value?.trim?.() || "";
 }
 
+function getMakhSafe() {
+  return (
+    getText("makh") ||
+    getText("maKhach") ||
+    getText("ma_khach") ||
+    document.querySelector('input[placeholder="mã khách"]')?.value?.trim?.() ||
+    ""
+  );
+}
+
 function getIntValue(id) {
   return parseInt(
     (getInput(id)?.value || "").replace(/[^\d-]/g, "") || "0",
@@ -139,7 +149,7 @@ async function buildHeader(loai, diadiemTrang, bangKetQua) {
     tennv: getText("tennv"),
     diadiem: diadiemTrang,
     khachhang: getText("khachhang"),
-    makh: getText("makh") || null,
+    makh: getMakhSafe() || null,
     tongsl: getIntValue("tongsl"),
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
@@ -309,7 +319,8 @@ async function saveNewBanLe() {
   const { error: errUpdateHeader } = await supabase
     .from("hoadon_banle")
     .update({
-      makh: header.makh,
+      makh: getMakhSafe() || header.makh || null,
+      khachhang: header.khachhang,
       diem_tru: header.diem_tru,
       tien_doi_diem: header.tien_doi_diem,
       thanhtoan: header.thanhtoan,
