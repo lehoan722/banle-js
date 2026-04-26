@@ -1,787 +1,373 @@
-<!DOCTYPE html>
-<html lang="vi">
+// scripts/services/dmkhachhang.js
 
-<head>
-    <meta charset="UTF-8" />
-    <title>Quản lý điểm khách hàng</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 10px;
-            background: #f5f5f5;
-            font-size: 13px;
-        }
+const TY_LE_TOI_DA_DUNG_DIEM = 0.10;
+export function mountKhachHangSuggest(options = {}) {
+  const {
+    inputId = "makh",
+    tenInputId = "khachhang",
+    suggestBoxId = "khSuggestList",
+    btnSearchId = "btnPopupKH",
+    diemInputId = "diem_hientai",
+    hangInputId = "hang_khach",
+    diemTruInputId = "diem_tru",
+    tienDoiDiemInputId = "tien_doi_diem",
+    nhapKhachUrl = "/nhapdmkhachhang.html",
+  } = options;
 
-        h2 {
-            margin: 6px 0 10px;
-        }
+  const makhInput = document.getElementById(inputId);
+  const suggestBox = document.getElementById(suggestBoxId);
+  const btnPopup = document.getElementById(btnSearchId);
 
-        .box {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
+  if (!makhInput || !suggestBox) {
+    console.warn("⚠️ Không tìm thấy input hoặc suggestBox khách hàng.");
+    return;
+  }
 
-        .filter {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 6px;
-        }
+  let dsSuggest = [];
+  let suggestIndex = -1;
+  let searchTimer = null;
 
-        input,
-        select,
-        button {
-            padding: 6px;
-            font-size: 13px;
-        }
+  function getEl(id) {
+    return document.getElementById(id);
+  }
 
-        button {
-            cursor: pointer;
-            font-weight: bold;
-        }
+  function setVal(id, val) {
+    const el = getEl(id);
+    if (el) el.value = val ?? "";
+  }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
+  function parseMoneyValue(val) {
+    return Number(String(val || "0").replace(/\D/g, "")) || 0;
+  }
 
-        th,
-        td {
-            border: 1px solid #ddd;
-            padding: 5px;
-            text-align: left;
-            white-space: nowrap;
-        }
+  function parseMoneyInput(id) {
+    return parseMoneyValue(getEl(id)?.value);
+  }
 
-        th {
-            background: #eee;
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
+  function khoiPhucTongGocTruocKhiDoiKhach() {
+    const tongDangHienThi = parseMoneyInput("phaithanhtoan");
+    const tienDoiDiemDangCo = parseMoneyInput(tienDoiDiemInputId);
 
-        .wrap {
-            overflow: auto;
-            max-height: 420px;
-        }
+    const tongGoc = Number(window.__tongPhaiTraGoc || 0) || (tongDangHienThi + tienDoiDiemDangCo);
 
-        .green {
-            color: green;
-            font-weight: bold;
-        }
+    window.__tongPhaiTraGoc = tongGoc;
 
-        .red {
-            color: red;
-            font-weight: bold;
-        }
+    setVal(diemTruInputId, "0");
+    setVal(tienDoiDiemInputId, "0");
+    setVal("km_diem_hienthi", "0");
+    setVal("phaithanhtoan", tongGoc.toLocaleString("vi-VN"));
+    setVal("khachtra", tongGoc.toLocaleString("vi-VN"));
+    setVal("conlai", "0");
 
-        .orange {
-            color: #d97706;
-            font-weight: bold;
-        }
+    return tongGoc;
+  }
 
-        .warn {
-            background: #fff3cd;
-        }
+  function clearThongTinKhachHang() {
+    setVal(tenInputId, "");
+    setVal(diemInputId, "");
+    setVal(hangInputId, "");
+    setVal(diemTruInputId, "0");
+    setVal(tienDoiDiemInputId, "0");
+  }
 
-        .bad {
-            background: #ffd6d6;
-        }
+  async function napThongTinDiemKhach(makh) {
+    if (!makh) return null;
 
-        .summary {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
+    const { data, error } = await window.supabase
+      .from("dmkhachhang")
+      .select("makh, tenkh, diem_hientai, hang_khach, tong_chi_tieu, so_lan_mua")
+      .eq("makh", makh)
+      .maybeSingle();
 
-        .card {
-            background: #fafafa;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 8px 12px;
-            min-width: 150px;
-        }
+    if (error || !data) {
+      alert("Không đọc được thông tin điểm khách hàng.");
+      return null;
+    }
 
-        .kh-filter-box {
-            position: relative;
-        }
+    setVal(diemInputId, data.diem_hientai || 0);
+    setVal(hangInputId, data.hang_khach || "THUONG");
+    setVal(diemTruInputId, "0");
+    setVal(tienDoiDiemInputId, "0");
 
-        #khSuggestList {
-            position: absolute;
-            top: 36px;
-            left: 0;
-            right: 0;
-            background: #fff;
-            border: 1px solid #999;
-            z-index: 9999;
-            max-height: 260px;
-            overflow-y: auto;
-            display: none;
-            box-shadow: 0 2px 8px #999;
-        }
+    return data;
+  }
 
-        .kh-suggest-item {
-            padding: 7px 8px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
+  function renderSuggest(data) {
+    dsSuggest = data || [];
+    suggestIndex = dsSuggest.length ? 0 : -1;
 
-        .kh-suggest-item:hover {
-            background: #eaf4ff;
-        }
-    </style>
-</head>
-
-<body>
-
-    <div id="login-container"></div>
-
-    <div id="app-container" style="display:none;">
-        <h2>Quản lý điểm khách hàng</h2>
-
-        <div class="box" style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-                Admin đang đăng nhập: <b id="tenAdminDangNhap"></b>
-            </div>
-            <button onclick="window.dangXuatQuanLyDiem()">Đăng xuất</button>
+    if (!dsSuggest.length) {
+      suggestBox.innerHTML = `
+        <div style="padding:8px;color:#777;">
+          Không có khách phù hợp. Nhấn Enter để thêm mới.
         </div>
+      `;
+      suggestBox.style.display = "block";
+      return;
+    }
 
-        <div class="box">
-            <div class="filter">
-                <input type="date" id="fromDate">
-                <input type="date" id="toDate">
-                <div class="kh-filter-box">
-                    <input id="makh" placeholder="Mã KH" style="width:100%; box-sizing:border-box;">
-                    <div id="khSuggestList"></div>
-                </div>
-
-                <input id="khachhang" placeholder="Tên/SĐT khách">
-                <input id="sohd" placeholder="Số hóa đơn">
-                <input id="manv" placeholder="Mã/NV">
-                <select id="diadiem">
-                    <option value="">Tất cả cơ sở</option>
-                    <option value="cs1">CS1</option>
-                    <option value="cs2">CS2</option>
-                </select>
-                <select id="loai">
-                    <option value="">Tất cả loại</option>
-                    <option value="CONG">Cộng điểm</option>
-                    <option value="TRU">Trừ điểm</option>
-                    <option value="DIEU_CHINH_CONG">Điều chỉnh cộng</option>
-                    <option value="DIEU_CHINH_TRU">Điều chỉnh trừ</option>
-                </select>
-            </div>
-
-            <div style="margin-top:8px;">
-                <button onclick="taiDuLieu()">Tải dữ liệu</button>
-                <button onclick="kiemTraBatThuong()">Kiểm tra bất thường</button>
-                <button onclick="xuatCSV()">Xuất CSV</button>
-                <span id="status" style="margin-left:10px;color:#666;"></span>
-            </div>
+    suggestBox.innerHTML = dsSuggest.map((kh, i) => `
+      <div class="kh-suggest-item"
+        data-idx="${i}"
+        style="padding:7px 8px; cursor:pointer; border-bottom:1px solid #eee; ${i === 0 ? "background:#eaf4ff;" : ""}">
+        <b>${kh.makh || ""}</b> - ${kh.tenkh || ""}
+        <div style="font-size:12px;color:#666;">
+          Điểm: ${kh.diem_hientai || 0} | Hạng: ${kh.hang_khach || "THUONG"}
         </div>
-
-        <div class="box summary">
-            <div class="card">Tổng dòng: <b id="tongDong">0</b></div>
-            <div class="card">Tổng điểm cộng: <b id="tongCong">0</b></div>
-            <div class="card">Tổng điểm trừ: <b id="tongTru">0</b></div>
-            <div class="card">Tổng tiền đổi điểm: <b id="tongTienDoi">0</b></div>
-            <div class="card">Cảnh báo: <b id="tongCanhBao">0</b></div>
-        </div>
-
-        <div class="box">
-            <h3>Tổng hợp điểm theo khách hàng</h3>
-            <div class="wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Mã KH</th>
-                            <th>Khách hàng</th>
-                            <th>Số lần cộng</th>
-                            <th>Tổng điểm cộng</th>
-                            <th>Số lần trừ</th>
-                            <th>Tổng điểm trừ</th>
-                            <th>Tiền đã đổi</th>
-                            <th>Điểm còn lại</th>
-                            <th>NV tạo điểm nhiều nhất</th>
-                            <th>Cảnh báo</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbodyTongHopKhach"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="box">
-            <h3>Chi tiết lịch sử điểm</h3>
-            <div class="wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Ngày</th>
-                            <th>Mã KH</th>
-                            <th>Khách hàng</th>
-                            <th>Số HĐ</th>
-                            <th>Loại</th>
-                            <th>Điểm</th>
-                            <th>Giá trị quy đổi</th>
-                            <th>Điểm trước</th>
-                            <th>Điểm sau</th>
-                            <th>Điểm còn lại</th>
-                            <th>NV</th>
-                            <th>Cơ sở</th>
-                            <th>Nguồn</th>
-                            <th>Lý do</th>
-                            <th>Cảnh báo</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <script type="module">
-            import {
-                khoiTaoDangNhapDungChung,
-                getSupabaseClient,
-                getCurrentUserInfo,
-                dangXuatDungChung
-            } from "./scripts/authModule.js";
-
-            const supabaseClient = getSupabaseClient();
-
-            khoiTaoDangNhapDungChung({
-                loginContainerId: "login-container",
-                appContainerId: "app-container",
-                macDinhDiaDiem: "cs1",
-                tuDongKhoaCoSo: false,
-
-                onLoginSuccess: async () => {
-                    const user = getCurrentUserInfo();
-
-                    if (!user.is_admin) {
-                        alert("❌ Trang này chỉ dành cho ADMIN.");
-                        await dangXuatDungChung({
-                            loginContainerId: "login-container",
-                            appContainerId: "app-container",
-                            reloadPage: true
-                        });
-                        return false;
-                    }
-
-                    document.getElementById("tenAdminDangNhap").textContent =
-                        `${user.tennv || user.manv || "ADMIN"}`;
-
-                    await taiDuLieu();
-                    return true;
-                }
-            });
-
-            window.dangXuatQuanLyDiem = async function () {
-                await dangXuatDungChung({
-                    loginContainerId: "login-container",
-                    appContainerId: "app-container",
-                    reloadPage: true
-                });
-            };
-
-            let allRows = [];
-
-            function num(v) {
-                return Number(v || 0);
-            }
-
-            function fmtMoney(v) {
-                return num(v).toLocaleString("vi-VN");
-            }
-
-            function fmtDate(v) {
-                if (!v) return "";
-                return new Date(v).toLocaleString("vi-VN");
-            }
-
-            function setStatus(msg) {
-                document.getElementById("status").textContent = msg;
-            }
-
-            let dsKhachSuggest = [];
-            let khSuggestIndex = -1;
-            let khSuggestTimer = null;
-
-            function renderKhachSuggest(data) {
-                const box = document.getElementById("khSuggestList");
-                dsKhachSuggest = data || [];
-                khSuggestIndex = dsKhachSuggest.length ? 0 : -1;
-
-                if (!dsKhachSuggest.length) {
-                    box.innerHTML = `<div style="padding:8px;color:#777;">Không tìm thấy khách hàng</div>`;
-                    box.style.display = "block";
-                    return;
-                }
-
-                box.innerHTML = dsKhachSuggest.map((kh, i) => `
-        <div class="kh-suggest-item"
-             data-idx="${i}"
-             style="${i === 0 ? "background:#eaf4ff;" : ""}">
-            <b>${kh.makh || ""}</b> - ${kh.tenkh || ""}
-            <div style="font-size:12px;color:#666;">
-                SĐT: ${kh.dienthoai || ""} | Điểm: ${kh.diem_hientai || 0} | Hạng: ${kh.hang_khach || "THUONG"}
-            </div>
-        </div>
+      </div>
     `).join("");
 
-                box.style.display = "block";
-
-                box.querySelectorAll(".kh-suggest-item").forEach(item => {
-                    item.addEventListener("mousedown", (e) => {
-                        e.preventDefault();
-                        const idx = Number(item.dataset.idx);
-                        chonKhachSuggest(idx);
-                    });
-                });
-            }
-
-            function updateActiveKhachSuggest() {
-                const box = document.getElementById("khSuggestList");
-                box.querySelectorAll(".kh-suggest-item").forEach((item, i) => {
-                    item.style.background = i === khSuggestIndex ? "#eaf4ff" : "#fff";
-                    if (i === khSuggestIndex) item.scrollIntoView({ block: "nearest" });
-                });
-            }
-
-            async function timKhachSuggest(keyword) {
-                const kw = String(keyword || "").trim();
-                const box = document.getElementById("khSuggestList");
-
-                if (!kw) {
-                    box.style.display = "none";
-                    return;
-                }
-
-                const { data, error } = await supabaseClient
-                    .from("dmkhachhang")
-                    .select("makh, tenkh, dienthoai, diem_hientai, hang_khach")
-                    .or(`makh.ilike.%${kw}%,tenkh.ilike.%${kw}%,dienthoai.ilike.%${kw}%`)
-                    .order("makh", { ascending: true })
-                    .limit(20);
-
-                if (error) {
-                    console.error("Lỗi tìm khách hàng:", error);
-                    box.innerHTML = `<div style="padding:8px;color:red;">Lỗi tìm khách hàng</div>`;
-                    box.style.display = "block";
-                    return;
-                }
-
-                renderKhachSuggest(data || []);
-            }
-
-            function chonKhachSuggest(idx) {
-                const kh = dsKhachSuggest[idx];
-                if (!kh) return;
-
-                document.getElementById("makh").value = kh.makh || "";
-                document.getElementById("khachhang").value = kh.tenkh || "";
-
-                document.getElementById("khSuggestList").style.display = "none";
-
-                taiDuLieu();
-            }
-
-            function khoiTaoSuggestKhachHangQuanLyDiem() {
-                const makhInput = document.getElementById("makh");
-                const box = document.getElementById("khSuggestList");
-
-                makhInput.addEventListener("input", () => {
-                    clearTimeout(khSuggestTimer);
-                    khSuggestTimer = setTimeout(() => {
-                        timKhachSuggest(makhInput.value);
-                    }, 180);
-                });
-
-                makhInput.addEventListener("focus", () => {
-                    if (makhInput.value.trim()) {
-                        timKhachSuggest(makhInput.value);
-                    }
-                });
-
-                makhInput.addEventListener("keydown", (e) => {
-                    const popupOpen = box.style.display !== "none";
-
-                    if (e.key === "ArrowDown" && popupOpen && dsKhachSuggest.length) {
-                        e.preventDefault();
-                        khSuggestIndex = (khSuggestIndex + 1) % dsKhachSuggest.length;
-                        updateActiveKhachSuggest();
-                        return;
-                    }
-
-                    if (e.key === "ArrowUp" && popupOpen && dsKhachSuggest.length) {
-                        e.preventDefault();
-                        khSuggestIndex = (khSuggestIndex - 1 + dsKhachSuggest.length) % dsKhachSuggest.length;
-                        updateActiveKhachSuggest();
-                        return;
-                    }
-
-                    if (e.key === "Enter") {
-                        e.preventDefault();
-
-                        if (popupOpen && dsKhachSuggest.length && khSuggestIndex >= 0) {
-                            chonKhachSuggest(khSuggestIndex);
-                        } else {
-                            taiDuLieu();
-                        }
-                        return;
-                    }
-
-                    if (e.key === "Escape") {
-                        box.style.display = "none";
-                    }
-                });
-
-                document.addEventListener("mousedown", (e) => {
-                    const wrap = makhInput.closest(".kh-filter-box");
-                    if (wrap && !wrap.contains(e.target)) {
-                        box.style.display = "none";
-                    }
-                });
-            }
-
-            async function taiDuLieu() {
-                setStatus("Đang tải dữ liệu...");
-
-                const fromDate = document.getElementById("fromDate").value;
-                const toDate = document.getElementById("toDate").value;
-                const makh = document.getElementById("makh").value.trim();
-                const khachhang = document.getElementById("khachhang").value.trim();
-                const sohd = document.getElementById("sohd").value.trim();
-                const manv = document.getElementById("manv").value.trim();
-                const diadiem = document.getElementById("diadiem").value;
-                const loai = document.getElementById("loai").value;
-
-                let query = supabaseClient
-                    .from("kh_lichsu_diem")
-                    .select(`
-  id, makh, sohd, ngay, loai, diem, giatri_quydoi, lydo,
-  manv, diadiem, diem_truoc, diem_sau, expires_at, diem_con_lai,
-  created_by, created_by_name, nguon, ghi_chu_kiemtra
-`)
-                    .order("ngay", { ascending: false })
-                    .limit(3000);
-
-                if (fromDate) query = query.gte("ngay", fromDate + " 00:00:00");
-                if (toDate) query = query.lte("ngay", toDate + " 23:59:59");
-                if (makh) query = query.ilike("makh", `%${makh}%`);
-                if (sohd) query = query.ilike("sohd", `%${sohd}%`);
-                if (manv) query = query.or(`manv.ilike.%${manv}%,created_by_name.ilike.%${manv}%`);
-                if (diadiem) query = query.eq("diadiem", diadiem);
-                if (loai) query = query.eq("loai", loai);
-
-                const { data, error } = await query;
-
-                if (error) {
-                    console.error(error);
-                    setStatus("Lỗi tải dữ liệu: " + error.message);
-                    return;
-                }
-
-                allRows = data || [];
-
-                if (khachhang) {
-                    allRows = allRows.filter(r => {
-                        const text = [
-                            r.makh || "",
-                            r.sohd || "",
-                            r.manv || "",
-                            r.created_by_name || ""
-                        ].join(" ").toLowerCase();
-
-                        return text.includes(khachhang.toLowerCase());
-                    });
-                }
-
-                renderSummary(allRows);
-                renderTongHopKhach(allRows);
-                renderTable(allRows);
-                setStatus("Đã tải xong.");
-            }
-
-            function renderSummary(rows) {
-                const tongCong = rows.filter(r => r.loai === "CONG" || r.loai === "DIEU_CHINH_CONG")
-                    .reduce((s, r) => s + num(r.diem), 0);
-
-                const tongTru = rows.filter(r => r.loai === "TRU" || r.loai === "DIEU_CHINH_TRU")
-                    .reduce((s, r) => s + Math.abs(num(r.diem)), 0);
-
-                const tongTienDoi = rows.reduce((s, r) => s + num(r.giatri_quydoi), 0);
-
-                document.getElementById("tongDong").textContent = rows.length;
-                document.getElementById("tongCong").textContent = fmtMoney(tongCong);
-                document.getElementById("tongTru").textContent = fmtMoney(tongTru);
-                document.getElementById("tongTienDoi").textContent = fmtMoney(tongTienDoi);
-            }
-
-            function renderTongHopKhach(rows) {
-                const map = new Map();
-
-                rows.forEach(r => {
-                    const makh = r.makh || "KHONG_MA";
-                    const khachhang = r.hoadon_banle?.khachhang || "";
-
-                    if (!map.has(makh)) {
-                        map.set(makh, {
-                            makh,
-                            khachhang,
-                            soLanCong: 0,
-                            tongCong: 0,
-                            soLanTru: 0,
-                            tongTru: 0,
-                            tienDoi: 0,
-                            diemConLai: 0,
-                            nvMap: new Map(),
-                            warnings: []
-                        });
-                    }
-
-                    const item = map.get(makh);
-
-                    if (!item.khachhang && khachhang) item.khachhang = khachhang;
-
-                    const loai = String(r.loai || "").toUpperCase();
-                    const diem = Math.abs(num(r.diem));
-                    const nv = r.created_by_name || r.manv || "Không rõ";
-
-                    if (loai === "CONG" || loai === "DIEU_CHINH_CONG") {
-                        item.soLanCong++;
-                        item.tongCong += diem;
-                    }
-
-                    if (loai === "TRU" || loai === "DIEU_CHINH_TRU") {
-                        item.soLanTru++;
-                        item.tongTru += diem;
-                        item.tienDoi += num(r.giatri_quydoi);
-                    }
-
-                    item.diemConLai = num(r.diem_con_lai || r.diem_sau);
-
-                    item.nvMap.set(nv, (item.nvMap.get(nv) || 0) + 1);
-                });
-
-                const list = Array.from(map.values()).map(item => {
-                    let topNv = "";
-                    let topCount = 0;
-
-                    item.nvMap.forEach((count, nv) => {
-                        if (count > topCount) {
-                            topCount = count;
-                            topNv = nv;
-                        }
-                    });
-
-                    const warnings = [];
-
-                    if (item.soLanCong >= 5 && topCount >= 5) {
-                        warnings.push("Một NV cộng điểm nhiều lần");
-                    }
-
-                    if (item.tongTru > 0 && item.tongCong === 0) {
-                        warnings.push("Có trừ điểm nhưng không thấy cộng điểm");
-                    }
-
-                    if (item.tienDoi >= 500000) {
-                        warnings.push("Tiền đổi điểm lớn");
-                    }
-
-                    if (item.diemConLai < 0) {
-                        warnings.push("Điểm còn lại âm");
-                    }
-
-                    return {
-                        ...item,
-                        topNv,
-                        topCount,
-                        warningText: warnings.join("; ")
-                    };
-                });
-
-                list.sort((a, b) => {
-                    if (b.warningText.length !== a.warningText.length) {
-                        return b.warningText.length - a.warningText.length;
-                    }
-                    return b.tienDoi - a.tienDoi;
-                });
-
-                const tbody = document.getElementById("tbodyTongHopKhach");
-                tbody.innerHTML = "";
-
-                list.forEach(item => {
-                    const tr = document.createElement("tr");
-                    if (item.warningText) tr.className = "warn";
-
-                    tr.innerHTML = `
-      <td>${item.makh}</td>
-      <td>${item.khachhang || ""}</td>
-      <td>${item.soLanCong}</td>
-      <td class="green">${fmtMoney(item.tongCong)}</td>
-      <td>${item.soLanTru}</td>
-      <td class="red">${fmtMoney(item.tongTru)}</td>
-      <td>${fmtMoney(item.tienDoi)}</td>
-      <td>${fmtMoney(item.diemConLai)}</td>
-      <td>${item.topNv || ""} ${item.topCount ? "(" + item.topCount + ")" : ""}</td>
-      <td class="red">${item.warningText}</td>
-    `;
-
-                    tr.addEventListener("click", () => {
-                        document.getElementById("makh").value = item.makh === "KHONG_MA" ? "" : item.makh;
-                        const filtered = item.makh === "KHONG_MA"
-                            ? rows.filter(r => !r.makh)
-                            : rows.filter(r => r.makh === item.makh);
-
-                        renderTable(filtered);
-                        renderSummary(filtered);
-                        setStatus("Đang xem chi tiết khách: " + item.makh);
-                    });
-
-                    tbody.appendChild(tr);
-                });
-            }
-
-            function getWarning(r) {
-                const warns = [];
-
-                const hd = {};
-
-                if (r.loai === "TRU" && num(r.giatri_quydoi) <= 0) {
-                    warns.push("Trừ điểm nhưng giá trị quy đổi = 0");
-                }
-
-                if (r.loai === "TRU" && num(hd.tien_doi_diem) > 0 && num(hd.tien_doi_diem) !== num(r.giatri_quydoi)) {
-                    warns.push("Tiền đổi điểm lệch hóa đơn");
-                }
-
-                if (r.loai === "CONG" && num(r.diem) <= 0) {
-                    warns.push("Cộng điểm <= 0");
-                }
-
-                if (r.sohd && !r.hoadon_banle) {
-                    warns.push("Có số HĐ nhưng không tìm thấy hóa đơn");
-                }
-
-                if (num(r.diem_sau) < 0 || num(r.diem_con_lai) < 0) {
-                    warns.push("Điểm âm");
-                }
-
-                return warns.join("; ");
-            }
-
-            function renderTable(rows) {
-                const tbody = document.getElementById("tbody");
-                tbody.innerHTML = "";
-
-                let countWarn = 0;
-
-                rows.forEach(r => {
-                    const warning = getWarning(r);
-                    if (warning) countWarn++;
-
-                    const clsLoai =
-                        r.loai === "CONG" || r.loai === "DIEU_CHINH_CONG" ? "green" :
-                            r.loai === "TRU" || r.loai === "DIEU_CHINH_TRU" ? "red" : "orange";
-
-                    const tr = document.createElement("tr");
-                    if (warning) tr.className = "warn";
-
-                    tr.innerHTML = `
-      <td>${fmtDate(r.ngay)}</td>
-      <td>${r.makh || ""}</td>
-      <td></td>
-      <td>${r.sohd || ""}</td>
-      <td class="${clsLoai}">${r.loai || ""}</td>
-      <td>${fmtMoney(r.diem)}</td>
-      <td>${fmtMoney(r.giatri_quydoi)}</td>
-      <td>${fmtMoney(r.diem_truoc)}</td>
-      <td>${fmtMoney(r.diem_sau)}</td>
-      <td>${fmtMoney(r.diem_con_lai)}</td>
-      <td>${r.created_by_name || r.manv || ""}</td>
-      <td>${r.diadiem || ""}</td>
-      <td>${r.nguon || ""}</td>
-      <td>${r.lydo || ""}</td>
-      <td class="red">${warning}</td>
-    `;
-
-                    tbody.appendChild(tr);
-                });
-
-                document.getElementById("tongCanhBao").textContent = countWarn;
-            }
-
-            function kiemTraBatThuong() {
-                renderSummary(allRows);
-                renderTongHopKhach(allRows);
-                renderTable(allRows);
-                setStatus("Đã kiểm tra bất thường.");
-            }
-
-            function xuatCSV() {
-                if (!allRows.length) {
-                    alert("Chưa có dữ liệu để xuất.");
-                    return;
-                }
-
-                const header = [
-                    "ngay", "makh", "khachhang", "sohd", "loai", "diem", "giatri_quydoi",
-                    "diem_truoc", "diem_sau", "diem_con_lai", "nhanvien", "diadiem", "nguon", "lydo"
-                ];
-
-                const lines = [header.join(",")];
-
-                allRows.forEach(r => {
-                    const row = [
-                        fmtDate(r.ngay),
-                        r.makh || "",
-                        r.hoadon_banle?.khachhang || "",
-                        r.sohd || "",
-                        r.loai || "",
-                        r.diem || 0,
-                        r.giatri_quydoi || 0,
-                        r.diem_truoc || 0,
-                        r.diem_sau || 0,
-                        r.diem_con_lai || 0,
-                        r.created_by_name || r.manv || "",
-                        r.diadiem || "",
-                        r.nguon || "",
-                        r.lydo || ""
-                    ].map(v => `"${String(v).replaceAll('"', '""')}"`);
-
-                    lines.push(row.join(","));
-                });
-
-                const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "lich_su_diem_khach_hang.csv";
-                a.click();
-                URL.revokeObjectURL(url);
-            }
-
-            window.addEventListener("load", () => {
-                const today = new Date();
-                const first = new Date(today.getFullYear(), today.getMonth(), 1);
-
-                document.getElementById("fromDate").value = first.toISOString().slice(0, 10);
-                document.getElementById("toDate").value = today.toISOString().slice(0, 10);
-            });
-
-            khoiTaoSuggestKhachHangQuanLyDiem();
-            window.taiDuLieu = taiDuLieu;
-            window.kiemTraBatThuong = kiemTraBatThuong;
-            window.xuatCSV = xuatCSV;
-
-        </script>
-
-    </div>
-
-</body>
-
-</html>
+    suggestBox.style.display = "block";
+
+    suggestBox.querySelectorAll(".kh-suggest-item").forEach(item => {
+      item.addEventListener("mousedown", async (e) => {
+        e.preventDefault();
+        const idx = Number(item.dataset.idx);
+        await chonKhachHang(idx);
+      });
+    });
+  }
+
+  function updateActiveSuggest() {
+    suggestBox.querySelectorAll(".kh-suggest-item").forEach((item, i) => {
+      item.style.background = i === suggestIndex ? "#eaf4ff" : "#fff";
+      if (i === suggestIndex) item.scrollIntoView({ block: "nearest" });
+    });
+  }
+
+  async function timKhachHang(keyword) {
+    const kw = String(keyword || "").trim();
+
+    if (!kw) {
+      suggestBox.style.display = "none";
+      clearThongTinKhachHang();
+      return;
+    }
+
+    const { data, error } = await window.supabase
+      .from("dmkhachhang")
+      .select("makh, tenkh, dienthoai, diem_hientai, hang_khach")
+      .or(`makh.ilike.%${kw}%,tenkh.ilike.%${kw}%,dienthoai.ilike.%${kw}%`)
+      .order("makh", { ascending: true })
+      .limit(20);
+
+    if (error) {
+      console.error("Lỗi tìm khách hàng:", error);
+      suggestBox.innerHTML = `<div style="padding:8px;color:red;">Lỗi tìm khách hàng</div>`;
+      suggestBox.style.display = "block";
+      return;
+    }
+
+    renderSuggest(data || []);
+  }
+
+  async function chonKhachHang(idx) {
+    const kh = dsSuggest[idx];
+    if (!kh) return;
+
+    // ✅ Trước khi đổi khách, khôi phục hóa đơn về tổng gốc
+    khoiPhucTongGocTruocKhiDoiKhach();
+
+    makhInput.value = kh.makh || "";
+    setVal(tenInputId, kh.tenkh || "");
+    suggestBox.style.display = "none";
+
+    localStorage.setItem("pending_makh_banle", kh.makh || "");
+    localStorage.setItem("pending_tenkh_banle", kh.tenkh || "");
+
+    await napThongTinDiemKhach(kh.makh);
+
+    setTimeout(() => {
+      const diemTruEl = getEl(diemTruInputId);
+      if (diemTruEl) {
+        diemTruEl.focus();
+        diemTruEl.select?.();
+      }
+    }, 50);
+  }
+
+  function moTrangNhapKhachMoi() {
+    const makh = String(makhInput.value || "").trim();
+    if (!makh) return;
+
+    localStorage.setItem("pending_makh_banle", makh);
+    localStorage.setItem("return_to_banle_after_kh", "1");
+
+    const url = `${nhapKhachUrl}?makh=${encodeURIComponent(makh)}&from=banle`;
+    window.open(url, "_blank");
+  }
+
+  function bindDiemTru() {
+    const diemTruEl = getEl(diemTruInputId);
+    if (!diemTruEl) return;
+
+    const parseMoney = (id) => {
+      const el = getEl(id);
+      return Number(String(el?.value || "0").replace(/\D/g, "")) || 0;
+    };
+
+    function layTienMoiDiem() {
+      return Number(window.TIEN_MOI_DIEM_KHACHHANG || 1000);
+    }
+
+    function layTongGocHoaDon() {
+      return (
+        Number(window.__tongPhaiTraGoc || 0) ||
+        (parseMoney("phaithanhtoan") + parseMoney(tienDoiDiemInputId))
+      );
+    }
+
+    function tinhDiemToiDaDuocDung() {
+      const diemHienTai = Number(getEl(diemInputId)?.value || 0) || 0;
+      const tongGoc = layTongGocHoaDon();
+      const tienMoiDiem = layTienMoiDiem();
+
+      if (!tienMoiDiem || tienMoiDiem <= 0) return 0;
+
+      const tienToiDaDuocGiam = Math.floor(tongGoc * TY_LE_TOI_DA_DUNG_DIEM);
+      const diemToiDaTheoHoaDon = Math.floor(tienToiDaDuocGiam / tienMoiDiem);
+
+      return Math.max(0, Math.min(diemHienTai, diemToiDaTheoHoaDon));
+    }
+
+    function capNhatTongTheoDiem(diemTru) {
+      const tongGoc =
+        Number(window.__tongPhaiTraGoc || 0) ||
+        layTongGocHoaDon();
+      const tienMoiDiem = layTienMoiDiem();
+
+      const tienGiam = diemTru * tienMoiDiem;
+      const tongSauDiem = Math.max(0, tongGoc - tienGiam);
+
+      setVal(tienDoiDiemInputId, tienGiam.toLocaleString("vi-VN"));
+      setVal("km_diem_hienthi", tienGiam.toLocaleString("vi-VN"));
+      setVal("phaithanhtoan", tongSauDiem.toLocaleString("vi-VN"));
+      setVal("khachtra", tongSauDiem.toLocaleString("vi-VN"));
+      setVal("conlai", "0");
+
+      window.__tongPhaiTraGoc = tongGoc;
+    }
+
+    diemTruEl.addEventListener("input", () => {
+      let raw = String(diemTruEl.value || "").trim();
+
+      if (raw === "") {
+        setVal(tienDoiDiemInputId, "0");
+        setVal("km_diem_hienthi", "0");
+        capNhatTongTheoDiem(0);
+        return;
+      }
+
+      const diemToiDa = tinhDiemToiDaDuocDung();
+
+      if (raw.toLowerCase() === "m") {
+        diemTruEl.value = diemToiDa;
+        capNhatTongTheoDiem(diemToiDa);
+        return;
+      }
+
+      if (!/^\d+$/.test(raw)) {
+        setVal(tienDoiDiemInputId, "0");
+        setVal("km_diem_hienthi", "0");
+        capNhatTongTheoDiem(0);
+        return;
+      }
+
+      let diemTru = Number(raw) || 0;
+
+      if (diemTru < 0) diemTru = 0;
+
+      if (diemTru > diemToiDa) {
+        alert(`Điểm dùng tối đa cho hóa đơn này là ${diemToiDa} điểm.`);
+        diemTru = diemToiDa;
+        diemTruEl.value = diemTru;
+      }
+
+      capNhatTongTheoDiem(diemTru);
+    });
+  }
+
+  function bindEvents() {
+    makhInput.addEventListener("input", () => {
+      const kw = makhInput.value.trim();
+
+      khoiPhucTongGocTruocKhiDoiKhach();
+      clearThongTinKhachHang();
+
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        timKhachHang(kw);
+      }, 180);
+    });
+
+    makhInput.addEventListener("focus", () => {
+      const kw = makhInput.value.trim();
+      if (kw) timKhachHang(kw);
+    });
+
+    makhInput.addEventListener("keydown", async (e) => {
+      const popupOpen = suggestBox.style.display !== "none";
+
+      if (e.key === "ArrowDown" && popupOpen && dsSuggest.length) {
+        e.preventDefault();
+        suggestIndex = (suggestIndex + 1) % dsSuggest.length;
+        updateActiveSuggest();
+        return;
+      }
+
+      if (e.key === "ArrowUp" && popupOpen && dsSuggest.length) {
+        e.preventDefault();
+        suggestIndex = (suggestIndex - 1 + dsSuggest.length) % dsSuggest.length;
+        updateActiveSuggest();
+        return;
+      }
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+
+        if (dsSuggest.length && suggestIndex >= 0) {
+          await chonKhachHang(suggestIndex);
+        } else {
+          moTrangNhapKhachMoi();
+        }
+        return;
+      }
+
+      if (e.key === "Escape") {
+        suggestBox.style.display = "none";
+      }
+    });
+
+    btnPopup?.addEventListener("click", () => {
+      const kw = makhInput.value.trim();
+      timKhachHang(kw);
+      makhInput.focus();
+    });
+
+    document.addEventListener("mousedown", (e) => {
+      const box = makhInput.closest("#khBox") || makhInput.parentElement;
+      if (!box) return;
+      if (!box.contains(e.target)) {
+        suggestBox.style.display = "none";
+      }
+    });
+
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState !== "visible") return;
+
+      const pending = localStorage.getItem("pending_makh_banle");
+      if (!pending) return;
+
+      makhInput.value = pending;
+      await timKhachHang(pending);
+    });
+
+    bindDiemTru();
+  }
+
+  bindEvents();
+
+  // Cho các file khác gọi lại nếu cần
+  window.napThongTinDiemKhach = napThongTinDiemKhach;
+  window.timKhachHangBanLe = timKhachHang;
+}
