@@ -160,6 +160,29 @@
         </div>
 
         <div class="box">
+            <h3>Tổng hợp điểm theo khách hàng</h3>
+            <div class="wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã KH</th>
+                            <th>Khách hàng</th>
+                            <th>Số lần cộng</th>
+                            <th>Tổng điểm cộng</th>
+                            <th>Số lần trừ</th>
+                            <th>Tổng điểm trừ</th>
+                            <th>Tiền đã đổi</th>
+                            <th>Điểm còn lại</th>
+                            <th>NV tạo điểm nhiều nhất</th>
+                            <th>Cảnh báo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyTongHopKhach"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="box">
             <h3>Chi tiết lịch sử điểm</h3>
             <div class="wrap">
                 <table>
@@ -301,8 +324,9 @@
                     });
                 }
 
-                renderTable(allRows);
                 renderSummary(allRows);
+                renderTongHopKhach(allRows);
+                renderTable(allRows);
                 setStatus("Đã tải xong.");
             }
 
@@ -319,6 +343,131 @@
                 document.getElementById("tongCong").textContent = fmtMoney(tongCong);
                 document.getElementById("tongTru").textContent = fmtMoney(tongTru);
                 document.getElementById("tongTienDoi").textContent = fmtMoney(tongTienDoi);
+            }
+
+            function renderTongHopKhach(rows) {
+                const map = new Map();
+
+                rows.forEach(r => {
+                    const makh = r.makh || "KHONG_MA";
+                    const khachhang = r.hoadon_banle?.khachhang || "";
+
+                    if (!map.has(makh)) {
+                        map.set(makh, {
+                            makh,
+                            khachhang,
+                            soLanCong: 0,
+                            tongCong: 0,
+                            soLanTru: 0,
+                            tongTru: 0,
+                            tienDoi: 0,
+                            diemConLai: 0,
+                            nvMap: new Map(),
+                            warnings: []
+                        });
+                    }
+
+                    const item = map.get(makh);
+
+                    if (!item.khachhang && khachhang) item.khachhang = khachhang;
+
+                    const loai = String(r.loai || "").toUpperCase();
+                    const diem = Math.abs(num(r.diem));
+                    const nv = r.created_by_name || r.manv || "Không rõ";
+
+                    if (loai === "CONG" || loai === "DIEU_CHINH_CONG") {
+                        item.soLanCong++;
+                        item.tongCong += diem;
+                    }
+
+                    if (loai === "TRU" || loai === "DIEU_CHINH_TRU") {
+                        item.soLanTru++;
+                        item.tongTru += diem;
+                        item.tienDoi += num(r.giatri_quydoi);
+                    }
+
+                    item.diemConLai = num(r.diem_con_lai || r.diem_sau);
+
+                    item.nvMap.set(nv, (item.nvMap.get(nv) || 0) + 1);
+                });
+
+                const list = Array.from(map.values()).map(item => {
+                    let topNv = "";
+                    let topCount = 0;
+
+                    item.nvMap.forEach((count, nv) => {
+                        if (count > topCount) {
+                            topCount = count;
+                            topNv = nv;
+                        }
+                    });
+
+                    const warnings = [];
+
+                    if (item.soLanCong >= 5 && topCount >= 5) {
+                        warnings.push("Một NV cộng điểm nhiều lần");
+                    }
+
+                    if (item.tongTru > 0 && item.tongCong === 0) {
+                        warnings.push("Có trừ điểm nhưng không thấy cộng điểm");
+                    }
+
+                    if (item.tienDoi >= 500000) {
+                        warnings.push("Tiền đổi điểm lớn");
+                    }
+
+                    if (item.diemConLai < 0) {
+                        warnings.push("Điểm còn lại âm");
+                    }
+
+                    return {
+                        ...item,
+                        topNv,
+                        topCount,
+                        warningText: warnings.join("; ")
+                    };
+                });
+
+                list.sort((a, b) => {
+                    if (b.warningText.length !== a.warningText.length) {
+                        return b.warningText.length - a.warningText.length;
+                    }
+                    return b.tienDoi - a.tienDoi;
+                });
+
+                const tbody = document.getElementById("tbodyTongHopKhach");
+                tbody.innerHTML = "";
+
+                list.forEach(item => {
+                    const tr = document.createElement("tr");
+                    if (item.warningText) tr.className = "warn";
+
+                    tr.innerHTML = `
+      <td>${item.makh}</td>
+      <td>${item.khachhang || ""}</td>
+      <td>${item.soLanCong}</td>
+      <td class="green">${fmtMoney(item.tongCong)}</td>
+      <td>${item.soLanTru}</td>
+      <td class="red">${fmtMoney(item.tongTru)}</td>
+      <td>${fmtMoney(item.tienDoi)}</td>
+      <td>${fmtMoney(item.diemConLai)}</td>
+      <td>${item.topNv || ""} ${item.topCount ? "(" + item.topCount + ")" : ""}</td>
+      <td class="red">${item.warningText}</td>
+    `;
+
+                    tr.addEventListener("click", () => {
+                        document.getElementById("makh").value = item.makh === "KHONG_MA" ? "" : item.makh;
+                        const filtered = item.makh === "KHONG_MA"
+                            ? rows.filter(r => !r.makh)
+                            : rows.filter(r => r.makh === item.makh);
+
+                        renderTable(filtered);
+                        renderSummary(filtered);
+                        setStatus("Đang xem chi tiết khách: " + item.makh);
+                    });
+
+                    tbody.appendChild(tr);
+                });
             }
 
             function getWarning(r) {
@@ -391,6 +540,8 @@
             }
 
             function kiemTraBatThuong() {
+                renderSummary(allRows);
+                renderTongHopKhach(allRows);
                 renderTable(allRows);
                 setStatus("Đã kiểm tra bất thường.");
             }
