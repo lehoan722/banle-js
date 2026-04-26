@@ -158,7 +158,7 @@
                     <div id="khSuggestList"></div>
                 </div>
 
-                <input id="khachhang" placeholder="Tên/SĐT khách">
+                <input id="khachhang" placeholder="Tạm chưa dùng lọc tên khách">
                 <input id="sohd" placeholder="Số hóa đơn">
                 <input id="manv" placeholder="Mã/NV">
                 <select id="diadiem">
@@ -382,7 +382,9 @@
                 if (!kh) return;
 
                 document.getElementById("makh").value = kh.makh || "";
-                document.getElementById("khachhang").value = kh.tenkh || "";
+
+                // Chỉ hiển thị tên để xem, không dùng làm điều kiện lọc
+                document.getElementById("khachhang").value = "";
 
                 document.getElementById("khSuggestList").style.display = "none";
 
