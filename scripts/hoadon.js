@@ -1303,3 +1303,5 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
+
+window.goiYSizeTuHoaDonNhanVien = goiYSizeTuHoaDonNhanVien;
