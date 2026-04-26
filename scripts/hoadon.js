@@ -103,7 +103,17 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
 
         const { data, error } = await supabase
             .from("ct_hoadon_banle")
-            .select("id, size, sohd, created_at, used_for_mt")
+            .select(`
+    id,
+    size,
+    sohd,
+    created_at,
+    used_for_mt,
+    hoadon_banle (
+        makh,
+        khachhang
+    )
+`)
             .eq("masp", masp)
             .like("sohd", `${prefix}%`)
             .gte("created_at", oneHourAgoIso)
@@ -136,7 +146,12 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
         const sizeStr = String(row.size || "").trim();
         if (!sizeStr) return null;
 
-        return sizeStr;
+        return {
+            size: sizeStr,
+            makh: row.hoadon_banle?.makh || "",
+            tenkh: row.hoadon_banle?.khachhang || ""
+        };
+
     } catch (err) {
         console.error("Lỗi goiYSizeTuHoaDonNhanVien:", err);
         return null;
@@ -338,16 +353,26 @@ function autoGoiYSizeNeuOTrong(maspBaseNow) {
             const maspInput = document.getElementById("masp");
             if (!sizeInput || !maspInput) return;
 
-            // Nếu trong lúc chờ, người dùng đã tự gõ size → KHÔNG làm gì
             if (sizeInput.value.trim()) return;
 
-            // Nếu người dùng đã chuyển sang mã khác → KHÔNG làm gì
             const maspCurrent = maspInput.value.trim().toUpperCase();
             if (maspCurrent !== maspAtTime) return;
 
-            // 1) Gán size gợi ý lên form
-            const sizeValue = String(sizeGoiY).trim();
+            // 🔥 CHỖ QUAN TRỌNG: sizeGoiY giờ là object
+            const sizeValue = String(sizeGoiY.size).trim();
             sizeInput.value = sizeValue;
+
+            // 🔥 GÁN KHÁCH HÀNG
+            if (sizeGoiY.makh) {
+                const makhEl = document.getElementById("makh");
+                const tenEl = document.getElementById("khachhang");
+
+                if (makhEl) makhEl.value = sizeGoiY.makh;
+                if (tenEl) tenEl.value = sizeGoiY.tenkh || "";
+
+                // trigger load điểm
+                makhEl?.dispatchEvent(new Event("change"));
+            }
 
             // 2) Tự động thêm vào bảng kết quả
             const nhapSizeMode =
@@ -608,7 +633,13 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
                             if (maspCurrent !== maspAtTime) return;
 
                             // Gán size gợi ý + bôi đen để nhấn Enter là xong
-                            sizeInput.value = sizeGoiY;
+                            sizeInput.value = sizeGoiY.size;
+
+                            // gán khách
+                            if (sizeGoiY.makh) {
+                                document.getElementById("makh").value = sizeGoiY.makh;
+                                document.getElementById("khachhang").value = sizeGoiY.tenkh || "";
+                            }
                             sizeInput.focus();
                             sizeInput.select?.();
                         })
