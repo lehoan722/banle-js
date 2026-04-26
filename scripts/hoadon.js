@@ -109,7 +109,7 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
     sohd,
     created_at,
     used_for_mt,
-    hoadon_banle (
+    hoadon_banle!fk_cthd_sohd (
         makh,
         khachhang
     )
