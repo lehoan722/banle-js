@@ -392,6 +392,15 @@ async function saveEditBanLe() {
   const header = await buildHeader(loai, diadiemTrang, bangKetQua);
   const chitiet = await buildDetails(sohd, diadiemTrang, bangKetQua);
 
+  const editNow = await getServerNowISO();
+  header.updated_at = editNow;
+  delete header.created_at;
+
+  chitiet.forEach(r => {
+    delete r.created_at;
+    r.updated_at = editNow;
+  });
+
   // ===== LOG SỬA HÓA ĐƠN =====
   const newSnap = {
     header: { ...header, sohd },
@@ -421,24 +430,19 @@ async function saveEditBanLe() {
     return;
   }
 
-  const { error: errDelHD } = await supabase
+  delete header.created_at;
+
+  const { error: errUpdateHD } = await supabase
     .from("hoadon_banle")
-    .delete()
+    .update({
+      ...header,
+      updated_at: await getServerNowISO()
+    })
     .eq("sohd", sohd);
 
-  if (errDelHD) {
-    console.error(errDelHD);
-    alert("❌ Lỗi xóa header cũ.");
-    return;
-  }
-
-  const { error: errInsertHD } = await supabase
-    .from("hoadon_banle")
-    .insert([{ ...header, sohd }]);
-
-  if (errInsertHD) {
-    console.error(errInsertHD);
-    alert("❌ Lỗi ghi lại header hóa đơn.");
+  if (errUpdateHD) {
+    console.error(errUpdateHD);
+    alert("❌ Lỗi cập nhật header hóa đơn.");
     return;
   }
 
@@ -451,16 +455,6 @@ async function saveEditBanLe() {
     alert("❌ Lỗi ghi lại chi tiết hóa đơn.");
     return;
   }
-
-  const createdAt = tonTai?.created_at || await getServerNowISO();
-  header.created_at = createdAt;
-  chitiet.forEach(r => {
-    r.created_at = createdAt;
-  });
-  header.updated_at = window.HD_CTX?.edit_at || await getServerNowISO();
-  chitiet.forEach(r => {
-    r.updated_at = header.updated_at;
-  });
 
   await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
 
