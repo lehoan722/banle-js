@@ -164,8 +164,44 @@ export function mountKhachHangSuggest(options = {}) {
     if (!diemTruEl) return;
 
     diemTruEl.addEventListener("input", () => {
-      const diemHienTai = Number(getEl(diemInputId)?.value || 0);
-      let diemTru = Number(diemTruEl.value || 0);
+      const raw = String(diemTruEl.value || "").trim();
+
+      const parseMoney = (id) => {
+        const el = getEl(id);
+        return Number(String(el?.value || "0").replace(/\D/g, "")) || 0;
+      };
+
+      const diemHienTai = Number(getEl(diemInputId)?.value || 0) || 0;
+
+      // ✅ Nếu người dùng xóa trắng: coi như không dùng điểm
+      if (raw === "") {
+        const tongGoc =
+          Number(window.__tongPhaiTraGoc || 0) ||
+          (parseMoney("phaithanhtoan") + parseMoney(tienDoiDiemInputId));
+
+        setVal(tienDoiDiemInputId, "0");
+        setVal("km_diem_hienthi", "0");
+        setVal("phaithanhtoan", tongGoc.toLocaleString("vi-VN"));
+        setVal("khachtra", tongGoc.toLocaleString("vi-VN"));
+        setVal("conlai", "0");
+        return;
+      }
+
+      // ✅ Nếu nhập ký tự lạ: không cho ghi NaN vào tổng tiền
+      if (!/^\d+$/.test(raw)) {
+        setVal(tienDoiDiemInputId, "0");
+
+        const tongGoc =
+          Number(window.__tongPhaiTraGoc || 0) ||
+          (parseMoney("phaithanhtoan") + parseMoney(tienDoiDiemInputId));
+
+        setVal("phaithanhtoan", tongGoc.toLocaleString("vi-VN"));
+        setVal("khachtra", tongGoc.toLocaleString("vi-VN"));
+        setVal("conlai", "0");
+        return;
+      }
+
+      let diemTru = Number(raw) || 0;
 
       if (diemTru < 0) diemTru = 0;
 
@@ -175,30 +211,18 @@ export function mountKhachHangSuggest(options = {}) {
         diemTruEl.value = diemTru;
       }
 
-      // Lấy tiền đổi điểm CŨ trước khi ghi tiền mới
-      const tienDoiDiemCu = Number(
-        String(getEl(tienDoiDiemInputId)?.value || "0").replace(/\D/g, "")
-      ) || 0;
+      // ✅ Lưu tổng gốc lần đầu trước khi trừ điểm
+      if (!window.__tongPhaiTraGoc || window.__tongPhaiTraGoc <= 0) {
+        window.__tongPhaiTraGoc = parseMoney("phaithanhtoan") + parseMoney(tienDoiDiemInputId);
+      }
 
-      const tongDangHienThi = Number(
-        String(document.getElementById("phaithanhtoan")?.value || "0").replace(/\D/g, "")
-      ) || 0;
-
-      // Khôi phục tổng gốc trước khi tính lại điểm
-      const tongGoc = tongDangHienThi + tienDoiDiemCu;
-
+      const tongGoc = Number(window.__tongPhaiTraGoc || 0);
       const tienGiam = diemTru * 500;
+      const tongSauDiem = Math.max(0, tongGoc - tienGiam);
 
       setVal(tienDoiDiemInputId, tienGiam.toLocaleString("vi-VN"));
       setVal("km_diem_hienthi", tienGiam.toLocaleString("vi-VN"));
-
-      const tongSauDiem = Math.max(0, tongGoc - tienGiam);
-
       setVal("phaithanhtoan", tongSauDiem.toLocaleString("vi-VN"));
-      setVal("khachtra", tongSauDiem.toLocaleString("vi-VN"));
-      setVal("conlai", "0");
-
-      window.__tongPhaiTraGoc = tongGoc;
       setVal("khachtra", tongSauDiem.toLocaleString("vi-VN"));
       setVal("conlai", "0");
     });
