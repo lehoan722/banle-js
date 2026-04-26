@@ -104,6 +104,34 @@
             padding: 8px 12px;
             min-width: 150px;
         }
+
+        .kh-filter-box {
+            position: relative;
+        }
+
+        #khSuggestList {
+            position: absolute;
+            top: 36px;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #999;
+            z-index: 9999;
+            max-height: 260px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 2px 8px #999;
+        }
+
+        .kh-suggest-item {
+            padding: 7px 8px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .kh-suggest-item:hover {
+            background: #eaf4ff;
+        }
     </style>
 </head>
 
@@ -125,7 +153,11 @@
             <div class="filter">
                 <input type="date" id="fromDate">
                 <input type="date" id="toDate">
-                <input id="makh" placeholder="Mã KH">
+                <div class="kh-filter-box">
+                    <input id="makh" placeholder="Mã KH" style="width:100%; box-sizing:border-box;">
+                    <div id="khSuggestList"></div>
+                </div>
+
                 <input id="khachhang" placeholder="Tên/SĐT khách">
                 <input id="sohd" placeholder="Số hóa đơn">
                 <input id="manv" placeholder="Mã/NV">
@@ -274,6 +306,147 @@
                 document.getElementById("status").textContent = msg;
             }
 
+            let dsKhachSuggest = [];
+            let khSuggestIndex = -1;
+            let khSuggestTimer = null;
+
+            function renderKhachSuggest(data) {
+                const box = document.getElementById("khSuggestList");
+                dsKhachSuggest = data || [];
+                khSuggestIndex = dsKhachSuggest.length ? 0 : -1;
+
+                if (!dsKhachSuggest.length) {
+                    box.innerHTML = `<div style="padding:8px;color:#777;">Không tìm thấy khách hàng</div>`;
+                    box.style.display = "block";
+                    return;
+                }
+
+                box.innerHTML = dsKhachSuggest.map((kh, i) => `
+        <div class="kh-suggest-item"
+             data-idx="${i}"
+             style="${i === 0 ? "background:#eaf4ff;" : ""}">
+            <b>${kh.makh || ""}</b> - ${kh.tenkh || ""}
+            <div style="font-size:12px;color:#666;">
+                SĐT: ${kh.dienthoai || ""} | Điểm: ${kh.diem_hientai || 0} | Hạng: ${kh.hang_khach || "THUONG"}
+            </div>
+        </div>
+    `).join("");
+
+                box.style.display = "block";
+
+                box.querySelectorAll(".kh-suggest-item").forEach(item => {
+                    item.addEventListener("mousedown", (e) => {
+                        e.preventDefault();
+                        const idx = Number(item.dataset.idx);
+                        chonKhachSuggest(idx);
+                    });
+                });
+            }
+
+            function updateActiveKhachSuggest() {
+                const box = document.getElementById("khSuggestList");
+                box.querySelectorAll(".kh-suggest-item").forEach((item, i) => {
+                    item.style.background = i === khSuggestIndex ? "#eaf4ff" : "#fff";
+                    if (i === khSuggestIndex) item.scrollIntoView({ block: "nearest" });
+                });
+            }
+
+            async function timKhachSuggest(keyword) {
+                const kw = String(keyword || "").trim();
+                const box = document.getElementById("khSuggestList");
+
+                if (!kw) {
+                    box.style.display = "none";
+                    return;
+                }
+
+                const { data, error } = await supabaseClient
+                    .from("dmkhachhang")
+                    .select("makh, tenkh, dienthoai, diem_hientai, hang_khach")
+                    .or(`makh.ilike.%${kw}%,tenkh.ilike.%${kw}%,dienthoai.ilike.%${kw}%`)
+                    .order("makh", { ascending: true })
+                    .limit(20);
+
+                if (error) {
+                    console.error("Lỗi tìm khách hàng:", error);
+                    box.innerHTML = `<div style="padding:8px;color:red;">Lỗi tìm khách hàng</div>`;
+                    box.style.display = "block";
+                    return;
+                }
+
+                renderKhachSuggest(data || []);
+            }
+
+            function chonKhachSuggest(idx) {
+                const kh = dsKhachSuggest[idx];
+                if (!kh) return;
+
+                document.getElementById("makh").value = kh.makh || "";
+                document.getElementById("khachhang").value = kh.tenkh || "";
+
+                document.getElementById("khSuggestList").style.display = "none";
+
+                taiDuLieu();
+            }
+
+            function khoiTaoSuggestKhachHangQuanLyDiem() {
+                const makhInput = document.getElementById("makh");
+                const box = document.getElementById("khSuggestList");
+
+                makhInput.addEventListener("input", () => {
+                    clearTimeout(khSuggestTimer);
+                    khSuggestTimer = setTimeout(() => {
+                        timKhachSuggest(makhInput.value);
+                    }, 180);
+                });
+
+                makhInput.addEventListener("focus", () => {
+                    if (makhInput.value.trim()) {
+                        timKhachSuggest(makhInput.value);
+                    }
+                });
+
+                makhInput.addEventListener("keydown", (e) => {
+                    const popupOpen = box.style.display !== "none";
+
+                    if (e.key === "ArrowDown" && popupOpen && dsKhachSuggest.length) {
+                        e.preventDefault();
+                        khSuggestIndex = (khSuggestIndex + 1) % dsKhachSuggest.length;
+                        updateActiveKhachSuggest();
+                        return;
+                    }
+
+                    if (e.key === "ArrowUp" && popupOpen && dsKhachSuggest.length) {
+                        e.preventDefault();
+                        khSuggestIndex = (khSuggestIndex - 1 + dsKhachSuggest.length) % dsKhachSuggest.length;
+                        updateActiveKhachSuggest();
+                        return;
+                    }
+
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+
+                        if (popupOpen && dsKhachSuggest.length && khSuggestIndex >= 0) {
+                            chonKhachSuggest(khSuggestIndex);
+                        } else {
+                            taiDuLieu();
+                        }
+                        return;
+                    }
+
+                    if (e.key === "Escape") {
+                        box.style.display = "none";
+                    }
+                });
+
+                document.addEventListener("mousedown", (e) => {
+                    const wrap = makhInput.closest(".kh-filter-box");
+                    if (wrap && !wrap.contains(e.target)) {
+                        box.style.display = "none";
+                    }
+                });
+            }
+
             async function taiDuLieu() {
                 setStatus("Đang tải dữ liệu...");
 
@@ -316,8 +489,14 @@
 
                 if (khachhang) {
                     allRows = allRows.filter(r => {
-                        const khachhang = "";
-                        return ten.toLowerCase().includes(khachhang.toLowerCase());
+                        const text = [
+                            r.makh || "",
+                            r.sohd || "",
+                            r.manv || "",
+                            r.created_by_name || ""
+                        ].join(" ").toLowerCase();
+
+                        return text.includes(khachhang.toLowerCase());
                     });
                 }
 
@@ -594,6 +773,7 @@
                 document.getElementById("toDate").value = today.toISOString().slice(0, 10);
             });
 
+            khoiTaoSuggestKhachHangQuanLyDiem();
             window.taiDuLieu = taiDuLieu;
             window.kiemTraBatThuong = kiemTraBatThuong;
             window.xuatCSV = xuatCSV;
