@@ -4,7 +4,10 @@ import { supabase } from '../supabaseClient.js';
 import { getBangKetQua, resetBangKetQua } from '../hoadon.js';
 import { capNhatThongTinTong } from '../utils.js';
 import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
-import { xuLyDiemKhachHangSauLuu } from "./khachhangDiemService.js";
+import {
+  xuLyDiemKhachHangSauLuu,
+  kiemTraDiemKhachHangTruocKhiLuu
+} from "./khachhangDiemService.js";
 
 import {
   refreshSessionIfNeeded,
@@ -279,6 +282,10 @@ async function saveNewBanLe() {
 
   let bangKetQua = getBangKetQua();
   const header = await buildHeader(loai, diadiemTrang, bangKetQua);
+  const checkDiem = await kiemTraDiemKhachHangTruocKhiLuu(header.thanhtoan);
+  if (!checkDiem?.ok) {
+    return { ok: false, reason: "INVALID_CUSTOMER_POINTS" };
+  }
 
   await refreshSessionIfNeeded();
 
