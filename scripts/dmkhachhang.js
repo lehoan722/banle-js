@@ -1,5 +1,6 @@
 // scripts/services/dmkhachhang.js
 
+const TY_LE_TOI_DA_DUNG_DIEM = 0.10;
 export function mountKhachHangSuggest(options = {}) {
   const {
     inputId = "makh",
@@ -146,6 +147,14 @@ export function mountKhachHangSuggest(options = {}) {
     localStorage.setItem("pending_tenkh_banle", kh.tenkh || "");
 
     await napThongTinDiemKhach(kh.makh);
+
+    setTimeout(() => {
+      const diemTruEl = getEl(diemTruInputId);
+      if (diemTruEl) {
+        diemTruEl.focus();
+        diemTruEl.select?.();
+      }
+    }, 50);
   }
 
   function moTrangNhapKhachMoi() {
@@ -163,61 +172,40 @@ export function mountKhachHangSuggest(options = {}) {
     const diemTruEl = getEl(diemTruInputId);
     if (!diemTruEl) return;
 
-    diemTruEl.addEventListener("input", () => {
-      const raw = String(diemTruEl.value || "").trim();
+    const parseMoney = (id) => {
+      const el = getEl(id);
+      return Number(String(el?.value || "0").replace(/\D/g, "")) || 0;
+    };
 
-      const parseMoney = (id) => {
-        const el = getEl(id);
-        return Number(String(el?.value || "0").replace(/\D/g, "")) || 0;
-      };
+    function layTienMoiDiem() {
+      return Number(window.TIEN_MOI_DIEM_KHACHHANG || 500);
+    }
 
+    function layTongGocHoaDon() {
+      return (
+        Number(window.__tongPhaiTraGoc || 0) ||
+        (parseMoney("phaithanhtoan") + parseMoney(tienDoiDiemInputId))
+      );
+    }
+
+    function tinhDiemToiDaDuocDung() {
       const diemHienTai = Number(getEl(diemInputId)?.value || 0) || 0;
+      const tongGoc = layTongGocHoaDon();
+      const tienMoiDiem = layTienMoiDiem();
 
-      // ✅ Nếu người dùng xóa trắng: coi như không dùng điểm
-      if (raw === "") {
-        const tongGoc =
-          Number(window.__tongPhaiTraGoc || 0) ||
-          (parseMoney("phaithanhtoan") + parseMoney(tienDoiDiemInputId));
+      if (!tienMoiDiem || tienMoiDiem <= 0) return 0;
 
-        setVal(tienDoiDiemInputId, "0");
-        setVal("km_diem_hienthi", "0");
-        setVal("phaithanhtoan", tongGoc.toLocaleString("vi-VN"));
-        setVal("khachtra", tongGoc.toLocaleString("vi-VN"));
-        setVal("conlai", "0");
-        return;
-      }
+      const tienToiDaDuocGiam = Math.floor(tongGoc * TY_LE_TOI_DA_DUNG_DIEM);
+      const diemToiDaTheoHoaDon = Math.floor(tienToiDaDuocGiam / tienMoiDiem);
 
-      // ✅ Nếu nhập ký tự lạ: không cho ghi NaN vào tổng tiền
-      if (!/^\d+$/.test(raw)) {
-        setVal(tienDoiDiemInputId, "0");
+      return Math.max(0, Math.min(diemHienTai, diemToiDaTheoHoaDon));
+    }
 
-        const tongGoc =
-          Number(window.__tongPhaiTraGoc || 0) ||
-          (parseMoney("phaithanhtoan") + parseMoney(tienDoiDiemInputId));
+    function capNhatTongTheoDiem(diemTru) {
+      const tongGoc = layTongGocHoaDon();
+      const tienMoiDiem = layTienMoiDiem();
 
-        setVal("phaithanhtoan", tongGoc.toLocaleString("vi-VN"));
-        setVal("khachtra", tongGoc.toLocaleString("vi-VN"));
-        setVal("conlai", "0");
-        return;
-      }
-
-      let diemTru = Number(raw) || 0;
-
-      if (diemTru < 0) diemTru = 0;
-
-      if (diemTru > diemHienTai) {
-        alert("Khách không đủ điểm để đổi.");
-        diemTru = diemHienTai;
-        diemTruEl.value = diemTru;
-      }
-
-      // ✅ Lưu tổng gốc lần đầu trước khi trừ điểm
-      if (!window.__tongPhaiTraGoc || window.__tongPhaiTraGoc <= 0) {
-        window.__tongPhaiTraGoc = parseMoney("phaithanhtoan") + parseMoney(tienDoiDiemInputId);
-      }
-
-      const tongGoc = Number(window.__tongPhaiTraGoc || 0);
-      const tienGiam = diemTru * 500;
+      const tienGiam = diemTru * tienMoiDiem;
       const tongSauDiem = Math.max(0, tongGoc - tienGiam);
 
       setVal(tienDoiDiemInputId, tienGiam.toLocaleString("vi-VN"));
@@ -225,6 +213,46 @@ export function mountKhachHangSuggest(options = {}) {
       setVal("phaithanhtoan", tongSauDiem.toLocaleString("vi-VN"));
       setVal("khachtra", tongSauDiem.toLocaleString("vi-VN"));
       setVal("conlai", "0");
+
+      window.__tongPhaiTraGoc = tongGoc;
+    }
+
+    diemTruEl.addEventListener("input", () => {
+      let raw = String(diemTruEl.value || "").trim();
+
+      if (raw === "") {
+        setVal(tienDoiDiemInputId, "0");
+        setVal("km_diem_hienthi", "0");
+        capNhatTongTheoDiem(0);
+        return;
+      }
+
+      const diemToiDa = tinhDiemToiDaDuocDung();
+
+      if (raw.toLowerCase() === "m") {
+        diemTruEl.value = diemToiDa;
+        capNhatTongTheoDiem(diemToiDa);
+        return;
+      }
+
+      if (!/^\d+$/.test(raw)) {
+        setVal(tienDoiDiemInputId, "0");
+        setVal("km_diem_hienthi", "0");
+        capNhatTongTheoDiem(0);
+        return;
+      }
+
+      let diemTru = Number(raw) || 0;
+
+      if (diemTru < 0) diemTru = 0;
+
+      if (diemTru > diemToiDa) {
+        alert(`Điểm dùng tối đa cho hóa đơn này là ${diemToiDa} điểm.`);
+        diemTru = diemToiDa;
+        diemTruEl.value = diemTru;
+      }
+
+      capNhatTongTheoDiem(diemTru);
     });
   }
 
