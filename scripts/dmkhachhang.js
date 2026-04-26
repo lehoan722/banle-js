@@ -148,6 +148,24 @@ export function mountKhachHangSuggest(options = {}) {
 
     await napThongTinDiemKhach(kh.makh);
 
+    // ✅ Reset tổng gốc điểm theo hóa đơn hiện tại khi chọn khách
+    const phaithanhtoanEl = getEl("phaithanhtoan");
+    const tienDoiDiemEl = getEl(tienDoiDiemInputId);
+
+    const tongHienTai =
+      (Number(String(phaithanhtoanEl?.value || "0").replace(/\D/g, "")) || 0) +
+      (Number(String(tienDoiDiemEl?.value || "0").replace(/\D/g, "")) || 0);
+
+    window.__tongPhaiTraGoc = tongHienTai;
+
+    setTimeout(() => {
+      const diemTruEl = getEl(diemTruInputId);
+      if (diemTruEl) {
+        diemTruEl.focus();
+        diemTruEl.select?.();
+      }
+    }, 50);
+
     setTimeout(() => {
       const diemTruEl = getEl(diemTruInputId);
       if (diemTruEl) {
@@ -202,7 +220,9 @@ export function mountKhachHangSuggest(options = {}) {
     }
 
     function capNhatTongTheoDiem(diemTru) {
-      const tongGoc = layTongGocHoaDon();
+      const tongGoc =
+        Number(window.__tongPhaiTraGoc || 0) ||
+        layTongGocHoaDon();
       const tienMoiDiem = layTienMoiDiem();
 
       const tienGiam = diemTru * tienMoiDiem;
