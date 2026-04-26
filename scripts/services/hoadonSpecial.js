@@ -4,7 +4,6 @@ import { supabase } from '../supabaseClient.js';
 import { getBangKetQua, resetBangKetQua } from '../hoadon.js';
 import { capNhatThongTinTong } from '../utils.js';
 import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
-import { xuLyDiemKhachHangSauLuu } from "./khachhangDiemService.js";
 import {
   xuLyDiemKhachHangSauLuu,
   kiemTraDiemKhachHangTruocKhiLuu
@@ -333,9 +332,9 @@ export async function saveHoaDonSpecial(ctx) {
   };
 
   const checkDiem = await kiemTraDiemKhachHangTruocKhiLuu(headerChinhKhongSo.thanhtoan);
-  if (!checkDiem?.ok) {
-    return { ok: false, reason: "INVALID_CUSTOMER_POINTS_SPECIAL" };
-  }
+if (!checkDiem?.ok) {
+  return { ok: false, reason: "INVALID_CUSTOMER_POINTS_SPECIAL" };
+}
 
   // 1) Cấp số + lưu HEADER CHÍNH bằng RPC chuẩn
   const { data: rpcRes, error: rpcErr } = await supabase.rpc("save_new_header_v2", {
