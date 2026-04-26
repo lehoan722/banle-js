@@ -59,3 +59,67 @@ export async function xuLyDiemKhachHangSauLuu(sohd, thanhtoanOverride = null) {
   console.log("✅ Đã xử lý điểm khách hàng:", data);
   return data;
 }
+
+function setVal(id, val) {
+  const el = getInput(id);
+  if (el) el.value = val ?? "";
+}
+
+function khoiPhucTienSauLoiDiem() {
+  const tongHang = Number(
+    String(getInput("thanhtien")?.value || "0").replace(/\D/g, "")
+  ) || 0;
+
+  const chietKhau = getMoney("chietkhau");
+  const tongBang = Number(window.__tongPhaiTraGoc || 0);
+
+  const tongDung =
+    tongBang > 0
+      ? tongBang
+      : Math.max(0, tongHang - chietKhau);
+
+  setVal("diem_tru", "");
+  setVal("tien_doi_diem", "0");
+  setVal("km_diem_hienthi", "0");
+  setVal("phaithanhtoan", tongDung.toLocaleString("vi-VN"));
+  setVal("khachtra", tongDung.toLocaleString("vi-VN"));
+  setVal("conlai", "0");
+
+  setTimeout(() => {
+    const el = getInput("diem_tru");
+    if (el) {
+      el.focus();
+      el.select?.();
+    }
+  }, 50);
+}
+
+export async function kiemTraDiemKhachHangTruocKhiLuu(thanhtoanOverride = null) {
+  const sohd = getText("sohd") || "CHECK_ONLY";
+  const payload = buildKhachHangPointPayload(sohd, thanhtoanOverride);
+
+  if (!payload) {
+    return { ok: true, skipped: true };
+  }
+
+  if (!payload.p_diem_tru || payload.p_diem_tru <= 0) {
+    return { ok: true, skipped: true };
+  }
+
+  const { data, error } = await supabase.rpc("rpc_xuly_diem_khachhang", payload);
+
+  if (error || !data?.ok) {
+    console.error("❌ Điểm khách hàng không hợp lệ trước khi lưu:", { error, data, payload });
+
+    alert(
+      "❌ Không thể lưu hóa đơn vì điểm khách hàng không hợp lệ:\n" +
+      (error?.message || data?.message || "")
+    );
+
+    khoiPhucTienSauLoiDiem();
+
+    return { ok: false, error, data };
+  }
+
+  return { ok: true, data };
+}
