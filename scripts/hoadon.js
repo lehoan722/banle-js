@@ -363,7 +363,7 @@ function autoGoiYSizeNeuOTrong(maspBaseNow) {
             sizeInput.value = sizeValue;
 
             // 🔥 GÁN KHÁCH HÀNG
-            if (sizeGoiY.makh) {
+            if (sizeGoiY.makh || sizeGoiY.tenkh) {
                 const makhEl = document.getElementById("makh");
                 const tenEl = document.getElementById("khachhang");
 
