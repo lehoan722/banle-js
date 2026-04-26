@@ -36,6 +36,32 @@ export function mountKhachHangSuggest(options = {}) {
     if (el) el.value = val ?? "";
   }
 
+  function parseMoneyValue(val) {
+    return Number(String(val || "0").replace(/\D/g, "")) || 0;
+  }
+
+  function parseMoneyInput(id) {
+    return parseMoneyValue(getEl(id)?.value);
+  }
+
+  function khoiPhucTongGocTruocKhiDoiKhach() {
+    const tongDangHienThi = parseMoneyInput("phaithanhtoan");
+    const tienDoiDiemDangCo = parseMoneyInput(tienDoiDiemInputId);
+
+    const tongGoc = Number(window.__tongPhaiTraGoc || 0) || (tongDangHienThi + tienDoiDiemDangCo);
+
+    window.__tongPhaiTraGoc = tongGoc;
+
+    setVal(diemTruInputId, "0");
+    setVal(tienDoiDiemInputId, "0");
+    setVal("km_diem_hienthi", "0");
+    setVal("phaithanhtoan", tongGoc.toLocaleString("vi-VN"));
+    setVal("khachtra", tongGoc.toLocaleString("vi-VN"));
+    setVal("conlai", "0");
+
+    return tongGoc;
+  }
+
   function clearThongTinKhachHang() {
     setVal(tenInputId, "");
     setVal(diemInputId, "");
@@ -139,6 +165,9 @@ export function mountKhachHangSuggest(options = {}) {
     const kh = dsSuggest[idx];
     if (!kh) return;
 
+    // ✅ Trước khi đổi khách, khôi phục hóa đơn về tổng gốc
+    khoiPhucTongGocTruocKhiDoiKhach();
+
     makhInput.value = kh.makh || "";
     setVal(tenInputId, kh.tenkh || "");
     suggestBox.style.display = "none";
@@ -147,24 +176,6 @@ export function mountKhachHangSuggest(options = {}) {
     localStorage.setItem("pending_tenkh_banle", kh.tenkh || "");
 
     await napThongTinDiemKhach(kh.makh);
-
-    // ✅ Reset tổng gốc điểm theo hóa đơn hiện tại khi chọn khách
-    const phaithanhtoanEl = getEl("phaithanhtoan");
-    const tienDoiDiemEl = getEl(tienDoiDiemInputId);
-
-    const tongHienTai =
-      (Number(String(phaithanhtoanEl?.value || "0").replace(/\D/g, "")) || 0) +
-      (Number(String(tienDoiDiemEl?.value || "0").replace(/\D/g, "")) || 0);
-
-    window.__tongPhaiTraGoc = tongHienTai;
-
-    setTimeout(() => {
-      const diemTruEl = getEl(diemTruInputId);
-      if (diemTruEl) {
-        diemTruEl.focus();
-        diemTruEl.select?.();
-      }
-    }, 50);
 
     setTimeout(() => {
       const diemTruEl = getEl(diemTruInputId);
@@ -280,6 +291,7 @@ export function mountKhachHangSuggest(options = {}) {
     makhInput.addEventListener("input", () => {
       const kw = makhInput.value.trim();
 
+      khoiPhucTongGocTruocKhiDoiKhach();
       clearThongTinKhachHang();
 
       clearTimeout(searchTimer);
