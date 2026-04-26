@@ -763,7 +763,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
     if (banSieuNhanh) {
         document.getElementById("soluong").value = "1";
         document.getElementById("size").value = "0";
-        themVaoBang("");
+        themVaoBang("0");
         document.getElementById("masp").focus();
         document.getElementById("masp").select();
         return true;
