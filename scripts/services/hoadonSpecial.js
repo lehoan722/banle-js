@@ -143,16 +143,26 @@ function buildHeaderT(loaiT, diadiemTrang, bangKetQua, sohdT) {
     manv: getText("manv"),
     tennv: getText("tennv"),
     diadiem: diadiemTrang,
+
+    // ✅ Hóa đơn T không ghi nghiệp vụ điểm khách hàng
     khachhang: getText("khachhang"),
-    makh: getText("makh") || null,
+    makh: null,
+
     tongsl: getIntValue("tongsl"),
     tongthanhtien: calcTongThanhTienFromBangKetQua(bangKetQua),
     tongkm: getIntValue("tongkm"),
     chietkhau: getIntValue("chietkhau"),
-    diem_tru: Number(getInput("diem_tru")?.value || 0) || 0,
-    tien_doi_diem: getIntValue("tien_doi_diem"),
 
-    thanhtoan: apDungGiamDiemVaoThanhToan(),
+    // ✅ Không lưu điểm vào bảng T
+    diem_tru: 0,
+    tien_doi_diem: 0,
+
+    // ✅ Bảng T giữ tổng thanh toán gốc, không trừ điểm khách hàng
+    thanhtoan: Math.max(
+      0,
+      calcTongThanhTienFromBangKetQua(bangKetQua) - getIntValue("chietkhau")
+    ),
+
     hinhthuctt: getInput("hinhthuctt")?.value || "",
     ghichu: getText("ghichu"),
     dvt: "",
@@ -332,9 +342,9 @@ export async function saveHoaDonSpecial(ctx) {
   };
 
   const checkDiem = await kiemTraDiemKhachHangTruocKhiLuu(headerChinhKhongSo.thanhtoan);
-if (!checkDiem?.ok) {
-  return { ok: false, reason: "INVALID_CUSTOMER_POINTS_SPECIAL" };
-}
+  if (!checkDiem?.ok) {
+    return { ok: false, reason: "INVALID_CUSTOMER_POINTS_SPECIAL" };
+  }
 
   // 1) Cấp số + lưu HEADER CHÍNH bằng RPC chuẩn
   const { data: rpcRes, error: rpcErr } = await supabase.rpc("save_new_header_v2", {
