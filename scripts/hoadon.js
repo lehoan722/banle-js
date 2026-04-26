@@ -141,15 +141,23 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
             return null;
         }
 
-        // Đến đây chắc chắn chỉ có 1 dòng hợp lệ
-        const row = validRows[0];
+        // Ưu tiên dòng có khách hàng. Nếu không có thì vẫn lấy dòng size như cũ.
+        const rowsCoKhach = validRows.filter(r => {
+            const hd = r.hoadon_banle || {};
+            return String(hd.makh || "").trim() || String(hd.khachhang || "").trim();
+        });
+
+        const row = rowsCoKhach.length === 1 ? rowsCoKhach[0] : validRows[0];
+
         const sizeStr = String(row.size || "").trim();
         if (!sizeStr) return null;
 
+        const hd = row.hoadon_banle || {};
+
         return {
             size: sizeStr,
-            makh: row.hoadon_banle?.makh || "",
-            tenkh: row.hoadon_banle?.khachhang || ""
+            makh: String(hd.makh || "").trim(),
+            tenkh: String(hd.khachhang || "").trim()
         };
 
     } catch (err) {
@@ -367,11 +375,14 @@ function autoGoiYSizeNeuOTrong(maspBaseNow) {
                 const makhEl = document.getElementById("makh");
                 const tenEl = document.getElementById("khachhang");
 
-                if (makhEl) makhEl.value = sizeGoiY.makh;
+                if (makhEl) makhEl.value = sizeGoiY.makh || "";
                 if (tenEl) tenEl.value = sizeGoiY.tenkh || "";
 
-                // trigger load điểm
-                makhEl?.dispatchEvent(new Event("change"));
+                // Chỉ trigger load điểm khi có mã khách.
+                // Nếu makh rỗng mà vẫn trigger thì module khách có thể xóa trắng tên khách.
+                if (sizeGoiY.makh) {
+                    makhEl?.dispatchEvent(new Event("change", { bubbles: true }));
+                }
             }
 
             // 2) Tự động thêm vào bảng kết quả
