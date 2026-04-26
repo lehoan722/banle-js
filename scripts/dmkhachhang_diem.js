@@ -207,7 +207,7 @@ export function mountKhachHangSuggest(options = {}) {
     };
 
     function layTienMoiDiem() {
-      return Number(window.TIEN_MOI_DIEM_KHACHHANG || 500);
+      return Number(window.TIEN_MOI_DIEM_KHACHHANG || 1000);
     }
 
     function layTongGocHoaDon() {
