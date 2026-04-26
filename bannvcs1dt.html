@@ -887,24 +887,47 @@
         });
     </script>
 
-    <script>  //<!-- banlemobile -->
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
-        // goi phím F2
         setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
+            window.LUU_HOADON_F2 = async () => {
+                return await saveBanLe111("F2-NV");
+            };
         }, 1000);
 
-        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
         document.getElementById('sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
+
+        document.getElementById('btn-luu')?.addEventListener('click', async () => {
+            if (window.dangLuu) return;
+
+            window.dangLuu = true;
+            const btn = document.getElementById('btn-luu');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "Đang lưu...";
+            }
+
+            try {
+                const result = await saveBanLe111("BTN-LUU-NV");
+                if (!result?.ok) {
+                    console.warn("saveBanLe111 NV không trả ok=true:", result);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("❌ Lỗi lưu NV: " + (e?.message || e));
+            } finally {
+                window.dangLuu = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = "💾 Lưu";
+                }
+            }
         });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
