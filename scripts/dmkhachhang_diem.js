@@ -226,32 +226,22 @@ export function mountKhachHangSuggest(options = {}) {
     return /^\d{10}$/.test(digits);
   }
 
-  function chuanHoaNgaySinh(raw) {
+  function chuanHoaThangSinh(raw) {
     const s = String(raw || "").trim();
     if (!s) return null;
 
-    // Cho phép nhập: dd/mm
-    let m = s.match(/^(\d{1,2})\/(\d{1,2})$/);
-    if (m) {
-      const d = String(m[1]).padStart(2, "0");
-      const mo = String(m[2]).padStart(2, "0");
-      return `2000-${mo}-${d}`; // năm giả để Supabase lưu được kiểu date
+    if (!/^\d{1,2}$/.test(s)) {
+      alert("❌ Tháng sinh chỉ nhập số từ 1 đến 12.");
+      return false;
     }
 
-    // Cho phép nhập: dd/mm/yyyy
-    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (m) {
-      const d = String(m[1]).padStart(2, "0");
-      const mo = String(m[2]).padStart(2, "0");
-      const y = m[3];
-      return `${y}-${mo}-${d}`;
+    const thang = Number(s);
+    if (thang < 1 || thang > 12) {
+      alert("❌ Tháng sinh không hợp lệ. Chỉ nhập từ 1 đến 12.");
+      return false;
     }
 
-    // Cho phép input type=date trả về yyyy-mm-dd
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-
-    alert("❌ Ngày sinh không hợp lệ. Nhập dạng dd/mm hoặc dd/mm/yyyy.");
-    return false;
+    return thang;
   }
 
   function damBaoPopupKhachMoi() {
@@ -286,8 +276,8 @@ export function mountKhachHangSuggest(options = {}) {
       </div>
 
       <div style="margin-bottom:16px;">
-        <label>Ngày sinh</label>
-        <input id="popup_ngaysinh" style="width:100%;padding:9px;font-size:16px;" placeholder="dd/mm hoặc dd/mm/yyyy">
+        <label>Tháng sinh</label>
+<input id="popup_thangsinh" style="width:100%;padding:9px;font-size:16px;" placeholder="Nhập tháng sinh, ví dụ: 4 hoặc 11">
       </div>
 
       <div style="display:flex;gap:12px;justify-content:center;">
@@ -312,12 +302,12 @@ export function mountKhachHangSuggest(options = {}) {
       await luuNhanhKhachMoiTaiBanLe();
     };
 
-    ["popup_tenkh", "popup_ngaysinh"].forEach(id => {
+    ["popup_tenkh", "popup_thangsinh"].forEach(id => {
       document.getElementById(id)?.addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           if (id === "popup_tenkh") {
-            document.getElementById("popup_ngaysinh")?.focus();
+            document.getElementById("popup_thangsinh")?.focus();
           } else {
             await luuNhanhKhachMoiTaiBanLe();
           }
@@ -353,7 +343,7 @@ export function mountKhachHangSuggest(options = {}) {
     document.getElementById("popup_makh").value = makh;
     document.getElementById("popup_dienthoai").value = makh;
     document.getElementById("popup_tenkh").value = "";
-    document.getElementById("popup_ngaysinh").value = "";
+    document.getElementById("popup_thangsinh").value = "";
 
     const popup = document.getElementById("popupKhachMoiBanLe");
     popup.style.display = "flex";
@@ -366,7 +356,7 @@ export function mountKhachHangSuggest(options = {}) {
   async function luuNhanhKhachMoiTaiBanLe() {
     const makh = String(makhMoiTam || makhInput.value || "").trim();
     const tenkh = String(document.getElementById("popup_tenkh")?.value || "").trim();
-    const ngaysinhRaw = String(document.getElementById("popup_ngaysinh")?.value || "").trim();
+    const thangsinhRaw = String(document.getElementById("popup_thangsinh")?.value || "").trim();
 
     if (!laSoDienThoaiHopLe(makh)) {
       alert("❌ Mã khách/SĐT không hợp lệ. Phải đủ 10 số.");
@@ -381,9 +371,9 @@ export function mountKhachHangSuggest(options = {}) {
       return;
     }
 
-    const ngaysinh = chuanHoaNgaySinh(ngaysinhRaw);
-    if (ngaysinh === false) {
-      document.getElementById("popup_ngaysinh")?.focus();
+    const thangsinh = chuanHoaThangSinh(thangsinhRaw);
+    if (thangsinh === false) {
+      document.getElementById("popup_thangsinh")?.focus();
       return;
     }
 
@@ -391,7 +381,7 @@ export function mountKhachHangSuggest(options = {}) {
       makh,
       tenkh,
       dienthoai: makh,
-      ngaysinh,
+      thangsinh,
       diem_hientai: 0,
       hang_khach: "THUONG",
       so_lan_mua: 0,
