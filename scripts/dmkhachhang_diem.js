@@ -226,6 +226,106 @@ export function mountKhachHangSuggest(options = {}) {
     return /^\d{10}$/.test(digits);
   }
 
+  function chuanHoaNgaySinh(raw) {
+    const s = String(raw || "").trim();
+    if (!s) return null;
+
+    // Cho phép nhập: dd/mm
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if (m) {
+      const d = String(m[1]).padStart(2, "0");
+      const mo = String(m[2]).padStart(2, "0");
+      return `2000-${mo}-${d}`; // năm giả để Supabase lưu được kiểu date
+    }
+
+    // Cho phép nhập: dd/mm/yyyy
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) {
+      const d = String(m[1]).padStart(2, "0");
+      const mo = String(m[2]).padStart(2, "0");
+      const y = m[3];
+      return `${y}-${mo}-${d}`;
+    }
+
+    // Cho phép input type=date trả về yyyy-mm-dd
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+    alert("❌ Ngày sinh không hợp lệ. Nhập dạng dd/mm hoặc dd/mm/yyyy.");
+    return false;
+  }
+
+  function damBaoPopupKhachMoi() {
+    if (document.getElementById("popupKhachMoiBanLe")) return;
+
+    const div = document.createElement("div");
+    div.id = "popupKhachMoiBanLe";
+    div.style.cssText = `
+    display:none; position:fixed; inset:0; z-index:99999;
+    background:rgba(0,0,0,.45); align-items:center; justify-content:center;
+  `;
+
+    div.innerHTML = `
+    <div style="width:420px;background:#fff;border-radius:14px;padding:22px;box-shadow:0 8px 30px #0005;">
+      <div style="font-size:20px;font-weight:bold;color:#14346b;text-align:center;margin-bottom:18px;">
+        THÊM NHANH KHÁCH HÀNG
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label>Mã KH *</label>
+        <input id="popup_makh" readonly style="width:100%;padding:9px;font-size:16px;">
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label>Tên KH *</label>
+        <input id="popup_tenkh" style="width:100%;padding:9px;font-size:16px;" placeholder="Nhập tên khách hàng">
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label>Số điện thoại *</label>
+        <input id="popup_dienthoai" readonly style="width:100%;padding:9px;font-size:16px;">
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label>Ngày sinh</label>
+        <input id="popup_ngaysinh" style="width:100%;padding:9px;font-size:16px;" placeholder="dd/mm hoặc dd/mm/yyyy">
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button id="btnLuuPopupKH" style="padding:9px 22px;border:none;border-radius:8px;background:#18804f;color:white;font-weight:bold;">
+          Lưu dữ liệu
+        </button>
+        <button id="btnHuyPopupKH" style="padding:9px 22px;border:none;border-radius:8px;background:#ddd;">
+          Hủy
+        </button>
+      </div>
+    </div>
+  `;
+
+    document.body.appendChild(div);
+
+    document.getElementById("btnHuyPopupKH").onclick = () => {
+      div.style.display = "none";
+      makhInput.focus();
+    };
+
+    document.getElementById("btnLuuPopupKH").onclick = async () => {
+      await luuNhanhKhachMoiTaiBanLe();
+    };
+
+    ["popup_tenkh", "popup_ngaysinh"].forEach(id => {
+      document.getElementById(id)?.addEventListener("keydown", async (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (id === "popup_tenkh") {
+            document.getElementById("popup_ngaysinh")?.focus();
+          } else {
+            await luuNhanhKhachMoiTaiBanLe();
+          }
+        }
+      });
+    });
+  }
+
   function batDauTaoKhachMoiTaiBanLe() {
     const makh = String(makhInput.value || "").trim();
 
@@ -243,26 +343,30 @@ export function mountKhachHangSuggest(options = {}) {
 
     suggestBox.style.display = "none";
 
-    setVal(tenInputId, "");
+    damBaoPopupKhachMoi();
+
     setVal(diemInputId, "0");
     setVal(hangInputId, "THUONG");
     setVal(diemTruInputId, "0");
     setVal(tienDoiDiemInputId, "0");
 
-    const tenEl = getEl(tenInputId);
-    if (tenEl) {
-      tenEl.readOnly = false;
-      tenEl.placeholder = "Nhập tên khách mới...";
-      setTimeout(() => {
-        tenEl.focus();
-        tenEl.select?.();
-      }, 50);
-    }
+    document.getElementById("popup_makh").value = makh;
+    document.getElementById("popup_dienthoai").value = makh;
+    document.getElementById("popup_tenkh").value = "";
+    document.getElementById("popup_ngaysinh").value = "";
+
+    const popup = document.getElementById("popupKhachMoiBanLe");
+    popup.style.display = "flex";
+
+    setTimeout(() => {
+      document.getElementById("popup_tenkh")?.focus();
+    }, 80);
   }
 
   async function luuNhanhKhachMoiTaiBanLe() {
     const makh = String(makhMoiTam || makhInput.value || "").trim();
-    const tenkh = String(getEl(tenInputId)?.value || "").trim();
+    const tenkh = String(document.getElementById("popup_tenkh")?.value || "").trim();
+    const ngaysinhRaw = String(document.getElementById("popup_ngaysinh")?.value || "").trim();
 
     if (!laSoDienThoaiHopLe(makh)) {
       alert("❌ Mã khách/SĐT không hợp lệ. Phải đủ 10 số.");
@@ -273,20 +377,13 @@ export function mountKhachHangSuggest(options = {}) {
 
     if (!tenkh) {
       alert("❌ Chưa nhập tên khách hàng.");
-      getEl(tenInputId)?.focus();
+      document.getElementById("popup_tenkh")?.focus();
       return;
     }
 
-    const ok = confirm(
-      `Xác nhận thêm khách hàng mới?\n\n` +
-      `Mã KH: ${makh}\n` +
-      `Tên KH: ${tenkh}\n` +
-      `SĐT: ${makh}`
-    );
-
-    if (!ok) {
-      getEl(tenInputId)?.focus();
-      getEl(tenInputId)?.select?.();
+    const ngaysinh = chuanHoaNgaySinh(ngaysinhRaw);
+    if (ngaysinh === false) {
+      document.getElementById("popup_ngaysinh")?.focus();
       return;
     }
 
@@ -294,6 +391,7 @@ export function mountKhachHangSuggest(options = {}) {
       makh,
       tenkh,
       dienthoai: makh,
+      ngaysinh,
       diem_hientai: 0,
       hang_khach: "THUONG",
       so_lan_mua: 0,
@@ -309,6 +407,8 @@ export function mountKhachHangSuggest(options = {}) {
       alert("❌ Không lưu được khách hàng mới: " + error.message);
       return;
     }
+
+    document.getElementById("popupKhachMoiBanLe").style.display = "none";
 
     makhInput.value = makh;
     setVal(tenInputId, tenkh);
