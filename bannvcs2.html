@@ -339,38 +339,6 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
-
-        .khach-footer-info {
-            width: 75%;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 4px 8px;
-            background: #f7f7f7;
-            border-top: 1px solid #d0d0d0;
-            box-sizing: border-box;
-            flex-shrink: 0;
-        }
-
-        .khach-footer-info label {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 14px;
-            white-space: nowrap;
-        }
-
-        .khach-footer-info input {
-            width: 110px;
-            height: 24px;
-            font-size: 14px;
-            padding: 2px 5px;
-            box-sizing: border-box;
-        }
-
-        #diem_tru {
-            background: #fffbe6;
-        }
     </style>
 
 
@@ -569,7 +537,23 @@
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
                         <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
 
+                        <!-- khu vuc tìm khách hàng -->
+                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
+                            <input id="makh" placeholder="mã khách"
+                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
+                            <button id="btnPopupKH" type="button"
+                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                                🔍
+                            </button>
+                        </div>
+                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
 
+                        <!-- Popup tìm khách hàng -->
+                        <div id="popupTimKH"
+                            style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
+                            <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
+                            <table id="tableKH" style="width:100%;font-size:15px"></table>
+                        </div>
                         <!-- het khu vuc tìm khách hàng -->
                     </div>
                     <div class="tab-pane" id="tacvu">
@@ -612,26 +596,6 @@
             </div>
         </div>
 
-        <div class="khach-footer-info">
-            <div id="khBox" style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                <input id="makh" placeholder="mã khách" style="width:100%;padding-right:32px;box-sizing:border-box;"
-                    autocomplete="off">
-                <button id="btnPopupKH" type="button"
-                    style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                    🔍
-                </button>
-
-                <div id="khSuggestList"
-                    style="display:none; position:absolute; bottom:100%; left:0; width:360px; max-height:240px; overflow:auto; background:#fff; border:1px solid #888; z-index:99999; box-shadow:0 -3px 12px #999;">
-                </div>
-            </div>
-
-            <label><input id="khachhang" placeholder="ten khách" readonly /></label>
-            <label><input id="diem_hientai" placeholder="Điểm KH" readonly /></label>
-            <label>Hạng KH <input id="hang_khach" readonly /></label>
-            <label>Điểm dùng <input id="diem_tru" value="0" /></label>
-            <label>Giảm điểm <input id="tien_doi_diem" readonly /></label>
-        </div>
 
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
@@ -782,7 +746,128 @@
     </script>
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
-    <script>
+    <script type="module">
+        // Nút kính lúp cạnh ô nhập mã KH
+        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
+
+        // Nhấn F2 trong ô mã khách cũng bật popup
+        document.getElementById('makh').addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                showPopupTimKH();
+            }
+        });
+
+        // Hàm show popup
+        function showPopupTimKH() {
+            const popup = document.getElementById('popupTimKH');
+            popup.style.display = '';
+            document.getElementById('txtSearchKH').value = '';
+            document.getElementById('txtSearchKH').focus();
+            loadListKH('');
+        }
+
+        // Tìm kiếm realtime theo ký tự gõ
+        document.getElementById('txtSearchKH').oninput = function () {
+            loadListKH(this.value.trim());
+        };
+
+        // Hàm load danh sách KH (gọi Supabase)
+        async function loadListKH(keyword) {
+            const table = document.getElementById('tableKH');
+            table.innerHTML = `<tr><td>Đang tìm...</td></tr>`;
+            let query = window.supabase.from('dmkhachhang').select('makh,tenkh').limit(30);
+            if (keyword) {
+                query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
+            }
+            const { data, error } = await query;
+            if (error || !data || !data.length) {
+                table.innerHTML = '<tr><td>Không tìm thấy khách hàng phù hợp.</td></tr>';
+                return;
+            }
+            table.innerHTML = data.map(kh =>
+                `<tr class="chonkh" style="cursor:pointer" data-makh="${kh.makh}" data-tenkh="${kh.tenkh}">
+        <td>${kh.makh}</td><td>${kh.tenkh}</td>
+      </tr>`
+            ).join('');
+            Array.from(table.querySelectorAll('.chonkh')).forEach(row => {
+                row.onclick = function () {
+                    document.getElementById('makh').value = this.dataset.makh;
+                    document.getElementById('khachhang').value = this.dataset.tenkh;
+                    document.getElementById('popupTimKH').style.display = 'none';
+                }
+            });
+        }
+
+        // Copy bảng sang clipboard,
+        document.getElementById('btnCopy').onclick = function () {
+            const table = document.getElementById('bangketqua');
+            let str = '';
+
+            // Chỉ copy từng dòng dữ liệu (tbody) – KHÔNG copy thead nữa
+            for (let row of table.querySelectorAll('tbody tr')) {
+                let line = [];
+                for (let cell of row.cells) {
+                    line.push(cell.innerText);
+                }
+                str += line.join('\t') + '\n';
+            }
+
+            navigator.clipboard.writeText(str)
+                .then(() => alert('Đã copy dữ liệu ra clipboard! Dán lại vào bảng sẽ giữ nguyên.'));
+        };
+
+
+
+        // Dán từ clipboard (Excel) vào bảng web
+        document.getElementById('bangketqua').addEventListener('paste', function (e) {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            const rows = text.trim().split('\n').map(r => r.split('\t'));
+            const tbody = document.querySelector('#bangketqua tbody');
+
+            // ❌ KHÔNG xoá dữ liệu cũ nữa
+            // tbody.innerHTML = '';
+
+            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
+            rows.forEach(rowArr => {
+                if (rowArr.length < 2) return;
+                const tr = document.createElement('tr');
+                rowArr.forEach((cell) => {
+                    const td = document.createElement('td');
+                    td.innerText = cell;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            // ✅ Cập nhật tổng
+            if (typeof capNhatThongTinTong === 'function') {
+                capNhatThongTinTong(window.bangKetQua || {});
+            }
+
+            // Log kiểm tra
+            console.log('window.bangKetQua:', window.bangKetQua);
+        });
+
+
+
+        // Đóng popup khi bấm ESC hoặc click ra ngoài
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') document.getElementById('popupTimKH').style.display = 'none';
+        });
+        document.addEventListener('click', function (e) {
+            const p = document.getElementById('popupTimKH');
+            if (p.style.display === '' && !p.contains(e.target) && e.target.id !== 'btnPopupKH') {
+                p.style.display = 'none';
+            }
+        });
+
         document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
     </script>
 
@@ -854,8 +939,50 @@
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
     <script src="scripts/stockQuickPopup.js"></script>
     <script src="scripts/menu-component.js"></script>
+
     <script type="module">
         import { mountKhachHangSuggest } from "./scripts/dmkhachhang_diem.js";
+
+        function setVal(id, val) {
+            const el = document.getElementById(id);
+            if (el) el.value = val ?? "";
+        }
+
+        async function napKhachHangTheoSoHoaDon(sohd) {
+            sohd = String(sohd || "").trim();
+            if (!sohd || !window.supabase) return;
+
+            const { data: hd, error } = await window.supabase
+                .from("hoadon_banle")
+                .select("sohd, makh, khachhang, diem_tru, tien_doi_diem")
+                .eq("sohd", sohd)
+                .maybeSingle();
+
+            if (error) {
+                console.error("❌ Lỗi nạp khách theo hóa đơn:", error);
+                return;
+            }
+
+            if (!hd) return;
+
+            setVal("makh", hd.makh || "");
+            setVal("khachhang", hd.khachhang || "");
+            setVal("diem_tru", hd.diem_tru || 0);
+            setVal("tien_doi_diem", Number(hd.tien_doi_diem || 0).toLocaleString("vi-VN"));
+
+            if (hd.makh) {
+                const { data: kh } = await window.supabase
+                    .from("dmkhachhang")
+                    .select("diem_hientai, hang_khach")
+                    .eq("makh", hd.makh)
+                    .maybeSingle();
+
+                if (kh) {
+                    setVal("diem_hientai", kh.diem_hientai ?? "");
+                    setVal("hang_khach", kh.hang_khach ?? "");
+                }
+            }
+        }
 
         document.addEventListener("DOMContentLoaded", () => {
             mountKhachHangSuggest({
@@ -869,12 +996,30 @@
                 tienDoiDiemInputId: "tien_doi_diem",
                 nhapKhachUrl: "/nhapdmkhachhang.html"
             });
+
+            const sohdEl = document.getElementById("sohd");
+            if (!sohdEl) return;
+
+            let lastSohd = "";
+
+            async function checkSohdVaNapKhach() {
+                const sohd = String(sohdEl.value || "").trim();
+                if (!sohd || sohd === lastSohd) return;
+
+                lastSohd = sohd;
+                await napKhachHangTheoSoHoaDon(sohd);
+            }
+
+            sohdEl.addEventListener("change", checkSohdVaNapKhach);
+            sohdEl.addEventListener("input", checkSohdVaNapKhach);
+
+            setInterval(checkSohdVaNapKhach, 500);
         });
     </script>
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs2");       // vd: "cs1" / "cs2"
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs2"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -891,59 +1036,38 @@
         });
     </script>
 
+    <script>  //<!-- banlemobile -->
 
-    <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
-
+        // goi phím F2
         setTimeout(function () {
-            window.LUU_HOADON_F2 = async () => {
-                return await saveBanLe111("F2-NV-CS2");
-            };
+            window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
         }, 1000);
 
+        // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
         document.getElementById('sua')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-
-        document.getElementById('btn-luu')?.addEventListener('click', async () => {
-            if (window.dangLuu) return;
-
-            window.dangLuu = true;
-            const btn = document.getElementById('btn-luu');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerText = "Đang lưu...";
-            }
-
-            try {
-                const result = await saveBanLe111("BTN-LUU-NV-CS2");
-                if (!result?.ok) {
-                    console.warn("saveBanLe111 NV CS2 không trả ok=true:", result);
-                }
-            } catch (e) {
-                console.error(e);
-                alert("❌ Lỗi lưu NV CS2: " + (e?.message || e));
-            } finally {
-                window.dangLuu = false;
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerText = "💾 Lưu";
-                }
-            }
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        document.getElementById('btn-luu')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
         });
 
+        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
 
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
         document.getElementById('ghivitri')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
+
     </script>
 
     <script>
