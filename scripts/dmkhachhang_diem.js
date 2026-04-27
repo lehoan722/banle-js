@@ -27,6 +27,10 @@ export function mountKhachHangSuggest(options = {}) {
   let suggestIndex = -1;
   let searchTimer = null;
 
+  // Trạng thái tạo nhanh khách mới ngay trên trang bán nhân viên
+  let dangTaoKhachMoi = false;
+  let makhMoiTam = "";
+
   function getEl(id) {
     return document.getElementById(id);
   }
@@ -68,6 +72,12 @@ export function mountKhachHangSuggest(options = {}) {
     setVal(hangInputId, "");
     setVal(diemTruInputId, "0");
     setVal(tienDoiDiemInputId, "0");
+
+    const tenEl = getEl(tenInputId);
+    if (tenEl) tenEl.readOnly = true;
+
+    dangTaoKhachMoi = false;
+    makhMoiTam = "";
   }
 
   async function napThongTinDiemKhach(makh) {
@@ -172,6 +182,12 @@ export function mountKhachHangSuggest(options = {}) {
     setVal(tenInputId, kh.tenkh || "");
     suggestBox.style.display = "none";
 
+    dangTaoKhachMoi = false;
+    makhMoiTam = "";
+
+    const tenEl = getEl(tenInputId);
+    if (tenEl) tenEl.readOnly = true;
+
     localStorage.setItem("pending_makh_banle", kh.makh || "");
     localStorage.setItem("pending_tenkh_banle", kh.tenkh || "");
 
@@ -186,15 +202,125 @@ export function mountKhachHangSuggest(options = {}) {
     }, 50);
   }
 
-  function moTrangNhapKhachMoi() {
+  function laSoDienThoaiHopLe(makh) {
+    const digits = String(makh || "").replace(/[^\d]/g, "");
+    return /^\d{10}$/.test(digits);
+  }
+
+  function batDauTaoKhachMoiTaiBanLe() {
     const makh = String(makhInput.value || "").trim();
+
     if (!makh) return;
 
-    localStorage.setItem("pending_makh_banle", makh);
-    localStorage.setItem("return_to_banle_after_kh", "1");
+    if (!laSoDienThoaiHopLe(makh)) {
+      alert("❌ Mã khách mới phải là số điện thoại 10 số.");
+      makhInput.focus();
+      makhInput.select?.();
+      return;
+    }
 
-    const url = `${nhapKhachUrl}?makh=${encodeURIComponent(makh)}&from=banle`;
-    window.open(url, "_blank");
+    dangTaoKhachMoi = true;
+    makhMoiTam = makh;
+
+    suggestBox.style.display = "none";
+
+    setVal(tenInputId, "");
+    setVal(diemInputId, "0");
+    setVal(hangInputId, "THUONG");
+    setVal(diemTruInputId, "0");
+    setVal(tienDoiDiemInputId, "0");
+
+    const tenEl = getEl(tenInputId);
+    if (tenEl) {
+      tenEl.readOnly = false;
+      tenEl.placeholder = "Nhập tên khách mới...";
+      setTimeout(() => {
+        tenEl.focus();
+        tenEl.select?.();
+      }, 50);
+    }
+  }
+
+  async function luuNhanhKhachMoiTaiBanLe() {
+    const makh = String(makhMoiTam || makhInput.value || "").trim();
+    const tenkh = String(getEl(tenInputId)?.value || "").trim();
+
+    if (!laSoDienThoaiHopLe(makh)) {
+      alert("❌ Mã khách/SĐT không hợp lệ. Phải đủ 10 số.");
+      makhInput.focus();
+      makhInput.select?.();
+      return;
+    }
+
+    if (!tenkh) {
+      alert("❌ Chưa nhập tên khách hàng.");
+      getEl(tenInputId)?.focus();
+      return;
+    }
+
+    const ok = confirm(
+      `Xác nhận thêm khách hàng mới?\n\n` +
+      `Mã KH: ${makh}\n` +
+      `Tên KH: ${tenkh}\n` +
+      `SĐT: ${makh}`
+    );
+
+    if (!ok) {
+      getEl(tenInputId)?.focus();
+      getEl(tenInputId)?.select?.();
+      return;
+    }
+
+    const obj = {
+      makh,
+      tenkh,
+      dienthoai: makh,
+      diem_hientai: 0,
+      hang_khach: "THUONG",
+      so_lan_mua: 0,
+      tong_chi_tieu: 0
+    };
+
+    const { error } = await window.supabase
+      .from("dmkhachhang")
+      .insert(obj);
+
+    if (error) {
+      console.error("❌ Lỗi thêm nhanh khách hàng:", error);
+      alert("❌ Không lưu được khách hàng mới: " + error.message);
+      return;
+    }
+
+    makhInput.value = makh;
+    setVal(tenInputId, tenkh);
+    setVal(diemInputId, "0");
+    setVal(hangInputId, "THUONG");
+    setVal(diemTruInputId, "0");
+    setVal(tienDoiDiemInputId, "0");
+
+    const tenEl = getEl(tenInputId);
+    if (tenEl) tenEl.readOnly = true;
+
+    dangTaoKhachMoi = false;
+    makhMoiTam = "";
+
+    localStorage.setItem("pending_makh_banle", makh);
+    localStorage.setItem("pending_tenkh_banle", tenkh);
+
+    alert("✅ Đã thêm khách hàng mới và sử dụng cho hóa đơn hiện tại.");
+
+    setTimeout(() => {
+      const maspEl = getEl("masp");
+      if (maspEl) {
+        maspEl.focus();
+        maspEl.select?.();
+      }
+    }, 50);
+  }
+
+  // Giữ tên hàm cũ để không ảnh hưởng chỗ gọi cũ
+  function moTrangNhapKhachMoi() {
+    batDauTaoKhachMoiTaiBanLe();
   }
 
   function bindDiemTru() {
@@ -342,6 +468,15 @@ export function mountKhachHangSuggest(options = {}) {
       const kw = makhInput.value.trim();
       timKhachHang(kw);
       makhInput.focus();
+    });
+
+    const tenKhachEl = getEl(tenInputId);
+    tenKhachEl?.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter") return;
+      if (!dangTaoKhachMoi) return;
+
+      e.preventDefault();
+      await luuNhanhKhachMoiTaiBanLe();
     });
 
     document.addEventListener("mousedown", (e) => {
