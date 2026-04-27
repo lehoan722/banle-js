@@ -102,10 +102,8 @@ export async function kiemTraDiemKhachHangTruocKhiLuu(thanhtoanOverride = null) 
     return { ok: true, skipped: true };
   }
 
-  if (!payload.p_diem_tru || payload.p_diem_tru <= 0) {
-    return { ok: true, skipped: true };
-  }
-
+  // Có mã khách hàng thì bắt buộc kiểm tra trước khi lưu,
+  // kể cả không dùng điểm, để tránh lưu hóa đơn với khách chưa tồn tại.
   const { data, error } = await supabase.rpc("rpc_check_diem_khachhang", payload);
 
   if (error || !data?.ok) {
