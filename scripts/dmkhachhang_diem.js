@@ -504,17 +504,7 @@ export function mountKhachHangSuggest(options = {}) {
       if (!box.contains(e.target)) {
         suggestBox.style.display = "none";
       }
-    });
-
-    document.addEventListener("visibilitychange", async () => {
-      if (document.visibilityState !== "visible") return;
-
-      const pending = localStorage.getItem("pending_makh_banle");
-      if (!pending) return;
-
-      makhInput.value = pending;
-      await timKhachHang(pending);
-    });
+    });    
 
     bindDiemTru();
   }
