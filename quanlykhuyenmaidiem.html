@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quản lý khuyến mại điểm</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f6f8;
+      color: #222;
+    }
+
+    #app-container {
+      max-width: 720px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 18px;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+      color: #0f5132;
+    }
+
+    .row {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    textarea {
+      min-height: 70px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .checkbox-row input {
+      width: auto;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    button {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #btnLuu {
+      background: #198754;
+      color: white;
+    }
+
+    #btnTaiLai {
+      background: #0d6efd;
+      color: white;
+    }
+
+    #btnDangXuat {
+      background: #dc3545;
+      color: white;
+      margin-left: auto;
+    }
+
+    #msg {
+      margin-top: 12px;
+      font-weight: bold;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: #666;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="login-container"></div>
+
+  <div id="app-container" style="display:none;">
+    <h2>Quản lý khuyến mại điểm</h2>
+
+    <div class="row">
+      <label>Tiền để cộng 1 điểm</label>
+      <input id="tien_de_cong_1_diem" type="number" />
+      <div class="hint">Ví dụ: 50000 nghĩa là khách mua 50.000đ được cộng 1 điểm.</div>
+    </div>
+
+    <div class="row">
+      <label>Tiền quy đổi mỗi điểm</label>
+      <input id="tien_moi_diem" type="number" />
+      <div class="hint">Ví dụ: 1000 nghĩa là 1 điểm đổi được 1.000đ.</div>
+    </div>
+
+    <div class="row">
+      <label>Tỷ lệ tối đa được dùng điểm</label>
+      <input id="ty_le_toi_da_dung_diem" type="number" step="0.01" />
+      <div class="hint">Ví dụ: 0.10 nghĩa là chỉ được dùng điểm tối đa 10% giá trị hóa đơn.</div>
+    </div>
+
+    <div class="row">
+      <label>Số ngày hết hạn điểm</label>
+      <input id="so_ngay_het_han" type="number" />
+    </div>
+
+    <div class="checkbox-row">
+      <input id="cho_phep_dung_diem_trong_ngay" type="checkbox" />
+      <label for="cho_phep_dung_diem_trong_ngay">Cho phép dùng điểm trong ngày</label>
+    </div>
+
+    <div class="row">
+      <label>Prefix hóa đơn được xử lý</label>
+      <input id="prefix_hoa_don_duoc_xu_ly" type="text" />
+      <div class="hint">Nhập cách nhau bằng dấu phẩy. Ví dụ: bancs1_, bancs2_</div>
+    </div>
+
+    <div class="checkbox-row">
+      <input id="active" type="checkbox" />
+      <label for="active">Đang bật khuyến mại điểm</label>
+    </div>
+
+    <div class="row">
+      <label>Ghi chú</label>
+      <textarea id="ghichu"></textarea>
+    </div>
+
+    <div class="actions">
+      <button id="btnTaiLai">Tải lại</button>
+      <button id="btnLuu">Lưu cấu hình</button>
+      <button id="btnDangXuat">Đăng xuất</button>
+    </div>
+
+    <div id="msg"></div>
+  </div>
+
+  <script type="module" src="./scripts/quanlykhuyenmaidiem.js"></script>
+</body>
+</html>
