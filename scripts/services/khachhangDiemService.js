@@ -106,7 +106,7 @@ export async function kiemTraDiemKhachHangTruocKhiLuu(thanhtoanOverride = null) 
     return { ok: true, skipped: true };
   }
 
-  const { data, error } = await supabase.rpc("rpc_xuly_diem_khachhang", payload);
+  const { data, error } = await supabase.rpc("rpc_check_diem_khachhang", payload);
 
   if (error || !data?.ok) {
     console.error("❌ Điểm khách hàng không hợp lệ trước khi lưu:", { error, data, payload });
