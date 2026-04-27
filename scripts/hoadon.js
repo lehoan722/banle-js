@@ -1249,9 +1249,53 @@ export function runSuaDongDangChon() {
     return runner();
 }
 
+async function napThongTinKhachTuHoaDon(sohd) {
+    if (!sohd) return;
 
+    const { data: hd, error } = await supabase
+        .from("hoadon_banle")
+        .select("makh, khachhang, diem_tru, tien_doi_diem")
+        .eq("sohd", sohd)
+        .maybeSingle();
+
+    if (error) {
+        console.error("❌ Lỗi đọc thông tin khách từ hóa đơn:", error);
+        return;
+    }
+
+    if (!hd) return;
+
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val ?? "";
+    };
+
+    setVal("makh", hd.makh || "");
+    setVal("khachhang", hd.khachhang || "");
+    setVal("diem_tru", hd.diem_tru || 0);
+    setVal(
+        "tien_doi_diem",
+        Number(hd.tien_doi_diem || 0).toLocaleString("vi-VN")
+    );
+
+    if (hd.makh) {
+        const { data: kh, error: errKH } = await supabase
+            .from("dmkhachhang")
+            .select("diem_hientai, hang_khach")
+            .eq("makh", hd.makh)
+            .maybeSingle();
+
+        if (!errKH && kh) {
+            setVal("diem_hientai", kh.diem_hientai ?? "");
+            setVal("hang_khach", kh.hang_khach ?? "");
+        }
+    }
+}
 
 export async function napLaiChiTietHoaDon(sohd) {
+    // ✅ Nạp ngay thông tin khách hàng từ header hóa đơn
+    await napThongTinKhachTuHoaDon(sohd);
+
     // Lấy chi tiết từ bảng ct_hoadon_banle
     const { data: chitiet, error } = await supabase
         .from("ct_hoadon_banle")
