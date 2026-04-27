@@ -829,47 +829,6 @@
     <script type="module">
         import { mountKhachHangSuggest } from "./scripts/dmkhachhang_diem.js";
 
-        function setVal(id, val) {
-            const el = document.getElementById(id);
-            if (el) el.value = val ?? "";
-        }
-
-        async function napKhachHangTheoSoHoaDon(sohd) {
-            sohd = String(sohd || "").trim();
-            if (!sohd || !window.supabase) return;
-
-            const { data: hd, error } = await window.supabase
-                .from("hoadon_banle")
-                .select("sohd, makh, khachhang, diem_tru, tien_doi_diem")
-                .eq("sohd", sohd)
-                .maybeSingle();
-
-            if (error) {
-                console.error("❌ Lỗi nạp khách theo hóa đơn:", error);
-                return;
-            }
-
-            if (!hd) return;
-
-            setVal("makh", hd.makh || "");
-            setVal("khachhang", hd.khachhang || "");
-            setVal("diem_tru", hd.diem_tru || 0);
-            setVal("tien_doi_diem", Number(hd.tien_doi_diem || 0).toLocaleString("vi-VN"));
-
-            if (hd.makh) {
-                const { data: kh } = await window.supabase
-                    .from("dmkhachhang")
-                    .select("diem_hientai, hang_khach")
-                    .eq("makh", hd.makh)
-                    .maybeSingle();
-
-                if (kh) {
-                    setVal("diem_hientai", kh.diem_hientai ?? "");
-                    setVal("hang_khach", kh.hang_khach ?? "");
-                }
-            }
-        }
-
         document.addEventListener("DOMContentLoaded", () => {
             mountKhachHangSuggest({
                 inputId: "makh",
@@ -882,24 +841,6 @@
                 tienDoiDiemInputId: "tien_doi_diem",
                 nhapKhachUrl: "/nhapdmkhachhang.html"
             });
-
-            const sohdEl = document.getElementById("sohd");
-            if (!sohdEl) return;
-
-            let lastSohd = "";
-
-            async function checkSohdVaNapKhach() {
-                const sohd = String(sohdEl.value || "").trim();
-                if (!sohd || sohd === lastSohd) return;
-
-                lastSohd = sohd;
-                await napKhachHangTheoSoHoaDon(sohd);
-            }
-
-            sohdEl.addEventListener("change", checkSohdVaNapKhach);
-            sohdEl.addEventListener("input", checkSohdVaNapKhach);
-
-            setInterval(checkSohdVaNapKhach, 500);
         });
     </script>
 
