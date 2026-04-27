@@ -504,7 +504,26 @@ export function mountKhachHangSuggest(options = {}) {
       if (!box.contains(e.target)) {
         suggestBox.style.display = "none";
       }
-    });    
+    });
+
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState !== "visible") return;
+
+      // Khi đang là hóa đơn mới / chưa có hàng thì tuyệt đối không tự kéo khách cũ về
+      const coHang = coHangTrongBangKetQua();
+      const sohd = String(getEl("sohd")?.value || "");
+
+      if (!coHang && /^bancs[12]_\d+/i.test(sohd)) {
+        localStorage.removeItem("pending_makh_banle");
+        localStorage.removeItem("pending_tenkh_banle");
+        clearThongTinKhachHang();
+        makhInput.value = "";
+        suggestBox.style.display = "none";
+        return;
+      }
+
+      // Không tự nạp khách khi người dùng không đang chủ động chọn khách
+    });
 
     bindDiemTru();
   }
