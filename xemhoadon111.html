@@ -1484,7 +1484,7 @@
       const selectLoai = document.getElementById("loaiChungTu");
       if (selectLoai) {
         Array.from(selectLoai.options).forEach(o => {
-          o.selected = (o.value === 'bancs1' || o.value === 'bancs2');
+          o.selected = ( o.value === 'bancs2');
         });
         updateLoaiChungTuDisplay();
       }
