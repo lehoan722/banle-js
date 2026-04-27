@@ -41,8 +41,8 @@ export async function xuLyDiemKhachHangSauLuu(sohd, thanhtoanOverride = null) {
     console.log("ℹ️ Hóa đơn không có khách hàng, bỏ qua tích điểm.");
     return { ok: true, skipped: true };
   }
-  
-  const { data, error } = await supabase.rpc("rpc_check_diem_khachhang", payload);
+
+  const { data, error } = await supabase.rpc("rpc_xuly_diem_khachhang", payload);
 
   if (error || !data?.ok) {
     console.error("❌ Lỗi xử lý điểm khách hàng:", { error, data, payload });
