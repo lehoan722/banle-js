@@ -48,11 +48,30 @@ export function mountKhachHangSuggest(options = {}) {
     return parseMoneyValue(getEl(id)?.value);
   }
 
+  function coHangTrongBangKetQua() {
+    const tbody = document.querySelector("#bangketqua tbody");
+    return !!tbody && tbody.querySelectorAll("tr").length > 0;
+  }
+
   function khoiPhucTongGocTruocKhiDoiKhach() {
-    const tongDangHienThi = parseMoneyInput("phaithanhtoan");
     const tienDoiDiemDangCo = parseMoneyInput(tienDoiDiemInputId);
 
-    const tongGoc = Number(window.__tongPhaiTraGoc || 0) || (tongDangHienThi + tienDoiDiemDangCo);
+    // Nếu chưa có hàng trong hóa đơn thì tuyệt đối không lấy tổng cũ
+    if (!coHangTrongBangKetQua()) {
+      window.__tongPhaiTraGoc = 0;
+
+      setVal(diemTruInputId, "0");
+      setVal(tienDoiDiemInputId, "0");
+      setVal("km_diem_hienthi", "0");
+      setVal("phaithanhtoan", "0");
+      setVal("khachtra", "0");
+      setVal("conlai", "0");
+
+      return 0;
+    }
+
+    const tongDangHienThi = parseMoneyInput("phaithanhtoan");
+    const tongGoc = tongDangHienThi + tienDoiDiemDangCo;
 
     window.__tongPhaiTraGoc = tongGoc;
 
