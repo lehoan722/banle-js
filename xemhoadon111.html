@@ -477,7 +477,7 @@
       const select = document.getElementById('loaiChungTu');
       if (!select) return;
 
-      const macDinh = new Set(['bancs1', 'bancs2']);
+      const macDinh = new Set([ 'bancs2']);
 
       Array.from(select.options).forEach(opt => {
         opt.selected = macDinh.has(opt.value);
