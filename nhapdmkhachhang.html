@@ -2,548 +2,562 @@
 <html lang="vi">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Nhập Danh Mục Khách Hàng</title>
-    <meta name="viewport" content="width=450">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f9f9fb;
-            padding: 32px;
-        }
+  <meta charset="UTF-8">
+  <title>Nhập Danh Mục Khách Hàng</title>
+  <meta name="viewport" content="width=450">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9fb;
+      padding: 32px;
+    }
 
-        .center-box {
-            width: 420px;
-            margin: 40px auto 0 auto;
-            background: #fff;
-            border-radius: 18px;
-            box-shadow: 0 3px 18px #d6e3ef44;
-            border: 1.5px solid #e3e9f1;
-            padding: 28px 24px 18px 24px;
-        }
+    .center-box {
+      width: 420px;
+      margin: 40px auto 0 auto;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 3px 18px #d6e3ef44;
+      border: 1.5px solid #e3e9f1;
+      padding: 28px 24px 18px 24px;
+    }
 
-        .form-title {
-            font-size: 1.18em;
-            font-weight: bold;
-            letter-spacing: .4px;
-            margin-bottom: 22px;
-            color: #163163;
-            text-align: center;
-        }
+    .form-title {
+      font-size: 1.18em;
+      font-weight: bold;
+      letter-spacing: .4px;
+      margin-bottom: 22px;
+      color: #163163;
+      text-align: center;
+    }
 
-        .row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
+    .row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
 
-        .row label {
-            width: 120px;
-            font-size: 1em;
-        }
+    .row label {
+      width: 120px;
+      font-size: 1em;
+    }
 
-        .row input,
-        .row select {
-            flex: 1;
-            padding: 7px 10px;
-            font-size: 1em;
-            border-radius: 7px;
-            border: 1.2px solid #b5bed5;
-            background: #fcfcfe;
-            outline: none;
-            transition: border-color .18s;
-        }
+    .row input,
+    .row select {
+      flex: 1;
+      padding: 7px 10px;
+      font-size: 1em;
+      border-radius: 7px;
+      border: 1.2px solid #b5bed5;
+      background: #fcfcfe;
+      outline: none;
+      transition: border-color .18s;
+    }
 
-        .row input:focus {
-            border-color: #1164be;
-        }
+    .row input:focus {
+      border-color: #1164be;
+    }
 
-        .required {
-            color: #e23a1b;
-            font-weight: bold;
-        }
+    .required {
+      color: #e23a1b;
+      font-weight: bold;
+    }
 
-        .actions {
-            display: flex;
-            gap: 13px;
-            justify-content: center;
-            margin-top: 20px;
-            margin-bottom: 8px;
-        }
+    .actions {
+      display: flex;
+      gap: 13px;
+      justify-content: center;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
 
-        .actions button {
-            font-size: 1em;
-            padding: 8px 22px;
-            border-radius: 7px;
-            border: none;
-            box-shadow: 0 2px 6px #dee6ff33;
-            cursor: pointer;
-            transition: .13s;
-            font-weight: 500;
-        }
+    .actions button {
+      font-size: 1em;
+      padding: 8px 22px;
+      border-radius: 7px;
+      border: none;
+      box-shadow: 0 2px 6px #dee6ff33;
+      cursor: pointer;
+      transition: .13s;
+      font-weight: 500;
+    }
 
-        .actions button.save {
-            background: #18804f;
-            color: #fff;
-        }
+    .actions button.save {
+      background: #18804f;
+      color: #fff;
+    }
 
-        .actions button.new {
-            background: #eaeaec;
-        }
+    .actions button.new {
+      background: #eaeaec;
+    }
 
-        .actions button.logout {
-            background: #efebfa;
-            color: #45427b;
-        }
+    .actions button.logout {
+      background: #efebfa;
+      color: #45427b;
+    }
 
-        .actions button:hover {
-            opacity: .87;
-        }
+    .actions button:hover {
+      opacity: .87;
+    }
 
-        .msg {
-            text-align: center;
-            padding: 10px 0 5px 0;
-            min-height: 26px;
-        }
+    .msg {
+      text-align: center;
+      padding: 10px 0 5px 0;
+      min-height: 26px;
+    }
 
-        .msg.error {
-            color: #fff;
-            background: #c44736;
-            border-radius: 6px;
-        }
+    .msg.error {
+      color: #fff;
+      background: #c44736;
+      border-radius: 6px;
+    }
 
-        .msg.success {
-            color: #18804f;
-            background: #e6f4e7;
-            border-radius: 6px;
-        }
+    .msg.success {
+      color: #18804f;
+      background: #e6f4e7;
+      border-radius: 6px;
+    }
 
-        .loginbox {
-            width: 320px;
-            margin: 90px auto 0 auto;
-            padding: 26px 30px 18px 30px;
-            border-radius: 14px;
-            background: #fff;
-            box-shadow: 0 3px 14px #d7e2f633;
-            border: 1.5px solid #e6eaf1;
-        }
+    .loginbox {
+      width: 320px;
+      margin: 90px auto 0 auto;
+      padding: 26px 30px 18px 30px;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 3px 14px #d7e2f633;
+      border: 1.5px solid #e6eaf1;
+    }
 
-        .loginbox h2 {
-            text-align: center;
-            margin-bottom: 16px;
-            font-weight: 700;
-            color: #17305c;
-        }
+    .loginbox h2 {
+      text-align: center;
+      margin-bottom: 16px;
+      font-weight: 700;
+      color: #17305c;
+    }
 
-        .loginrow {
-            margin-bottom: 15px;
-        }
+    .loginrow {
+      margin-bottom: 15px;
+    }
 
-        .loginrow label {
-            display: block;
-            margin-bottom: 6px;
-            color: #234;
-        }
+    .loginrow label {
+      display: block;
+      margin-bottom: 6px;
+      color: #234;
+    }
 
-        .loginrow input {
-            width: 100%;
-            font-size: 1em;
-            padding: 7px 10px;
-            border-radius: 6px;
-            border: 1.2px solid #b5bed5;
-            background: #fcfcfe;
-            outline: none;
-        }
+    .loginrow input {
+      width: 100%;
+      font-size: 1em;
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 1.2px solid #b5bed5;
+      background: #fcfcfe;
+      outline: none;
+    }
 
-        .loginrow input:focus {
-            border-color: #1164be;
-        }
+    .loginrow input:focus {
+      border-color: #1164be;
+    }
 
-        .loginbox .msg {
-            min-height: 22px;
-        }
+    .loginbox .msg {
+      min-height: 22px;
+    }
 
-        #makhSuggestList {
-            background: #fff;
-            box-shadow: 0 3px 18px #c3d3f655;
-            border: 1.2px solid #b5bed5;
-            border-radius: 8px;
-            max-height: 220px;
-            overflow: auto;
-            font-size: .99em;
-        }
+    #makhSuggestList {
+      background: #fff;
+      box-shadow: 0 3px 18px #c3d3f655;
+      border: 1.2px solid #b5bed5;
+      border-radius: 8px;
+      max-height: 220px;
+      overflow: auto;
+      font-size: .99em;
+    }
 
-        .suggest-item {
-            padding: 7px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
+    .suggest-item {
+      padding: 7px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
 
-        .suggest-item:last-child {
-            border-bottom: none;
-        }
+    .suggest-item:last-child {
+      border-bottom: none;
+    }
 
-        .suggest-item.active,
-        .suggest-item:hover {
-            background: #f3f8ff;
-            color: #1164be;
-        }
+    .suggest-item.active,
+    .suggest-item:hover {
+      background: #f3f8ff;
+      color: #1164be;
+    }
 
-        .suggest-makh {
-            font-weight: 600;
-            width: 80px;
-            color: #18408d;
-        }
+    .suggest-makh {
+      font-weight: 600;
+      width: 80px;
+      color: #18408d;
+    }
 
-        .suggest-tenkh {
-            color: #333;
-            flex: 1;
-        }
+    .suggest-tenkh {
+      color: #333;
+      flex: 1;
+    }
 
-        .suggest-note {
-            font-size: 12px;
-            color: #b0b;
-        }
-    </style>
-    </head>
+    .suggest-note {
+      font-size: 12px;
+      color: #b0b;
+    }
+  </style>
+</head>
 
 <body>
-    <!-- Main Form -->
-    <div id="app-container" style="display:none;">
-<div id="mainform" class="center-box" >
-        <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
+  <!-- Main Form -->
+  <div id="app-container" style="display:none;">
+    <div id="mainform" class="center-box">
+      <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
 
-        <div class="row" style="position:relative;">
-            <label class="required">Mã KH *</label>
-            <input id="makh" maxlength="20" autocomplete="off"
-                placeholder="Nhập mã khách hàng...">
-            <div id="makhSuggestList"
-                style="position:absolute;left:124px;top:37px;width:calc(100% - 124px);z-index:11;display:none;"></div>
-        </div>
+      <div class="row" style="position:relative;">
+        <label class="required">Mã KH *</label>
+        <input id="makh" maxlength="20" autocomplete="off" placeholder="Nhập mã khách hàng...">
+        <div id="makhSuggestList"
+          style="position:absolute;left:124px;top:37px;width:calc(100% - 124px);z-index:11;display:none;"></div>
+      </div>
 
 
-        <div class="row">
-            <label class="required">Tên KH *</label>
-            <input id="tenkh" maxlength="60" autocomplete="off" placeholder="Nhập tên khách hàng...">
-        </div>
-        <div class="row">
-            <label class="required">Điện thoại *</label>
-            <input id="dienthoai" maxlength="20" autocomplete="off" placeholder="Nhập SĐT...">
-        </div>
-        <div class="row">
-            <label>Là nhà cung cấp</label>
-            <select id="la_ncc">
-                <option value=""></option>
-                <option value="">Không</option>
-                <option value="true">Có</option>
-            </select>
-        </div>
-        <div class="row">
-            <label>Ngày sinh</label>
-            <input id="ngaysinh" type="date" maxlength="12">
-        </div>
-        <div class="row">
-            <label>Địa chỉ</label>
-            <input id="diachi" maxlength="100">
-        </div>
-        <div class="row">
-            <label>Email</label>
-            <input id="email" maxlength="60">
-        </div>
-        <div class="row">
-            <label>Tài khoản NH</label>
-            <input id="taikhoan" maxlength="40">
-        </div>
-        <div class="row">
-            <label>Mã số thuế</label>
-            <input id="mst" maxlength="20">
-        </div>
-        <div class="row">
-            <label>CCCD/CMND</label>
-            <input id="cccd" maxlength="20">
-        </div>
-        <div id="msgBox" class="msg"></div>
+      <div class="row">
+        <label class="required">Tên KH *</label>
+        <input id="tenkh" maxlength="60" autocomplete="off" placeholder="Nhập tên khách hàng...">
+      </div>
+      <div class="row">
+        <label class="required">Điện thoại *</label>
+        <input id="dienthoai" maxlength="20" autocomplete="off" placeholder="Nhập SĐT...">
+      </div>
+      <div class="row">
+        <label>Là nhà cung cấp</label>
+        <select id="la_ncc">
+          <option value=""></option>
+          <option value="">Không</option>
+          <option value="true">Có</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Ngày sinh</label>
+        <input id="ngaysinh" type="date" maxlength="12">
+      </div>
+      <div class="row">
+        <label>Địa chỉ</label>
+        <input id="diachi" maxlength="100">
+      </div>
+      <div class="row">
+        <label>Email</label>
+        <input id="email" maxlength="60">
+      </div>
+      <div class="row">
+        <label>Tài khoản NH</label>
+        <input id="taikhoan" maxlength="40">
+      </div>
+      <div class="row">
+        <label>Mã số thuế</label>
+        <input id="mst" maxlength="20">
+      </div>
+      <div class="row">
+        <label>CCCD/CMND</label>
+        <input id="cccd" maxlength="20">
+      </div>
+      <div id="msgBox" class="msg"></div>
 
-        <div class="actions">
-            <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
-            <button class="new" onclick="resetForm()">Thêm mới</button>
-            <button class="logout" onclick="doLogout()">Đăng xuất</button>
-            <button class="save" style="background:#a7362d" onclick="deleteKH()">Xóa</button>
-        </div>
+      <div class="actions">
+        <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
+        <button class="new" onclick="resetForm()">Thêm mới</button>
+        <button class="logout" onclick="doLogout()">Đăng xuất</button>
+        <button class="save" style="background:#a7362d" onclick="deleteKH()">Xóa</button>
+      </div>
 
-        
+
     </div>
-</div>
-<script type="module">
-  import {
-    khoiTaoDangNhapDungChung,
-    dangXuatDungChung,
-    getSupabaseClient,
-  } from "./scripts/authModule.js";
+  </div>
+  <script type="module">
+    import {
+      khoiTaoDangNhapDungChung,
+      dangXuatDungChung,
+      getSupabaseClient,
+    } from "./scripts/authModule.js";
 
-  const TABLE = "dmkhachhang";
-  let supabase = null;
-  let editingOld = false;
-  let khSuggestList = [];
-  let suggestIndex = -1;
+    const TABLE = "dmkhachhang";
+    let supabase = null;
+    let editingOld = false;
+    let khSuggestList = [];
+    let suggestIndex = -1;
 
-  function showMsg(msg, type) {
-    const box = document.getElementById("msgBox");
-    if (!box) return;
-    box.textContent = msg || "";
-    box.className = "msg" + (type ? " " + type : "");
-    if (msg && type !== "error") setTimeout(() => { box.textContent = ""; }, 2500);
-  }
-  function getVal(id) { return document.getElementById(id)?.value || ""; }
-  function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ""; }
+    function showMsg(msg, type) {
+      const box = document.getElementById("msgBox");
+      if (!box) return;
+      box.textContent = msg || "";
+      box.className = "msg" + (type ? " " + type : "");
+      if (msg && type !== "error") setTimeout(() => { box.textContent = ""; }, 2500);
+    }
+    function getVal(id) { return document.getElementById(id)?.value || ""; }
+    function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ""; }
 
-  function validateForm() {
-    const makh = getVal("makh").trim().toUpperCase();
-    const tenkh = getVal("tenkh").trim();
-    const dienthoai = getVal("dienthoai").trim();
-    if (!makh) return "Mã khách hàng không được bỏ trống!";
-    if (!tenkh) return "Tên khách hàng không được bỏ trống!";
-    if (!dienthoai) return "Số điện thoại không được bỏ trống!";
-    const digits = dienthoai.replace(/[^\d]/g, "");
-    if (!/^\d{10}$/.test(digits)) return "SĐT phải là số, 10 ký tự!";
-    return null;
-  }
+    function layThangSinhTuNgaySinh() {
+      const raw = getVal("ngaysinh");
+      if (!raw) return null;
 
-  function resetForm() {
-    ["makh","tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd"].forEach(id => setVal(id, ""));
-    setVal("la_ncc", "");
-    editingOld = false;
-    const mk = document.getElementById("makh");
-    if (mk) mk.readOnly = false;
-    showMsg("");
-    mk?.focus();
-  }
+      // input type="date" trả về dạng yyyy-mm-dd
+      const m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return null;
 
-  async function fetchKH() {
-    const makh = getVal("makh").trim().toUpperCase();
-    if (!makh) return;
+      const thang = Number(m[2]);
+      if (thang < 1 || thang > 12) return null;
 
-    showMsg("Đang kiểm tra...", "");
-    const { data, error } = await supabase.from(TABLE).select("*").eq("makh", makh).maybeSingle();
-    if (error) return showMsg("Lỗi đọc dữ liệu: " + error.message, "error");
+      return thang;
+    }
 
-    if (data && data.makh) {
-      setVal("tenkh", data.tenkh);
-      setVal("dienthoai", data.dienthoai);
-      setVal("ngaysinh", data.ngaysinh ? String(data.ngaysinh).slice(0,10) : "");
-      setVal("diachi", data.diachi);
-      setVal("email", data.email);
-      setVal("taikhoan", data.taikhoan);
-      setVal("mst", data.mst);
-      setVal("cccd", data.cccd);
-      setVal("la_ncc", data.la_ncc ? "true" : "");
-      const mk = document.getElementById("makh");
-      if (mk) mk.readOnly = true;
-      editingOld = true;
-      showMsg("Đã nạp dữ liệu, sửa & Lưu để cập nhật.", "success");
-    } else {
+    function validateForm() {
+      const makh = getVal("makh").trim().toUpperCase();
+      const tenkh = getVal("tenkh").trim();
+      const dienthoai = getVal("dienthoai").trim();
+      if (!makh) return "Mã khách hàng không được bỏ trống!";
+      if (!tenkh) return "Tên khách hàng không được bỏ trống!";
+      if (!dienthoai) return "Số điện thoại không được bỏ trống!";
+      const digits = dienthoai.replace(/[^\d]/g, "");
+      if (!/^\d{10}$/.test(digits)) return "SĐT phải là số, 10 ký tự!";
+      return null;
+    }
+
+    function resetForm() {
+      ["makh", "tenkh", "dienthoai", "ngaysinh", "diachi", "email", "taikhoan", "mst", "cccd"].forEach(id => setVal(id, ""));
+      setVal("la_ncc", "");
       editingOld = false;
       const mk = document.getElementById("makh");
       if (mk) mk.readOnly = false;
-      ["tenkh","dienthoai","ngaysinh","diachi","email","taikhoan","mst","cccd","la_ncc"].forEach(id => setVal(id, ""));
-      showMsg("Mã mới, nhập đủ thông tin để lưu!", "");
-    }
-  }
-
-  async function saveKH() {
-    const err = validateForm();
-    if (err) return showMsg(err, "error");
-
-    const obj = {
-      makh: getVal("makh").trim().toUpperCase(),
-      tenkh: getVal("tenkh").trim(),
-      dienthoai: getVal("dienthoai").trim(),
-      ngaysinh: getVal("ngaysinh") || null,
-      diachi: getVal("diachi") || null,
-      email: getVal("email") || null,
-      taikhoan: getVal("taikhoan") || null,
-      mst: getVal("mst") || null,
-      cccd: getVal("cccd") || null,
-      la_ncc: getVal("la_ncc") === "true",
-    };
-
-    let error;
-    if (editingOld) {
-      ({ error } = await supabase.from(TABLE).update(obj).eq("makh", obj.makh));
-    } else {
-      ({ error } = await supabase.from(TABLE).insert(obj));
+      showMsg("");
+      mk?.focus();
     }
 
-    if (!error) {
-      showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!", "success");
-      setTimeout(resetForm, 900);
-    } else {
-      showMsg("Lỗi: " + error.message, "error");
+    async function fetchKH() {
+      const makh = getVal("makh").trim().toUpperCase();
+      if (!makh) return;
+
+      showMsg("Đang kiểm tra...", "");
+      const { data, error } = await supabase.from(TABLE).select("*").eq("makh", makh).maybeSingle();
+      if (error) return showMsg("Lỗi đọc dữ liệu: " + error.message, "error");
+
+      if (data && data.makh) {
+        setVal("tenkh", data.tenkh);
+        setVal("dienthoai", data.dienthoai);
+        setVal("ngaysinh", data.ngaysinh ? String(data.ngaysinh).slice(0, 10) : "");
+        setVal("diachi", data.diachi);
+        setVal("email", data.email);
+        setVal("taikhoan", data.taikhoan);
+        setVal("mst", data.mst);
+        setVal("cccd", data.cccd);
+        setVal("la_ncc", data.la_ncc ? "true" : "");
+        const mk = document.getElementById("makh");
+        if (mk) mk.readOnly = true;
+        editingOld = true;
+        showMsg("Đã nạp dữ liệu, sửa & Lưu để cập nhật.", "success");
+      } else {
+        editingOld = false;
+        const mk = document.getElementById("makh");
+        if (mk) mk.readOnly = false;
+        ["tenkh", "dienthoai", "ngaysinh", "diachi", "email", "taikhoan", "mst", "cccd", "la_ncc"].forEach(id => setVal(id, ""));
+        showMsg("Mã mới, nhập đủ thông tin để lưu!", "");
+      }
     }
-  }
 
-  async function deleteKH() {
-    const makh = getVal("makh").trim().toUpperCase();
-    if (!makh) return showMsg("Không có mã khách hàng để xóa!", "error");
-    if (!editingOld) return showMsg("Chưa có khách hàng để xóa!", "error");
-    if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng ${makh}?`)) return;
+    async function saveKH() {
+      const err = validateForm();
+      if (err) return showMsg(err, "error");
 
-    const { error } = await supabase.from(TABLE).delete().eq("makh", makh);
-    if (!error) {
-      showMsg(`✅ Đã xóa khách hàng ${makh}!`, "success");
-      resetForm();
-    } else {
-      showMsg("❌ Lỗi khi xóa: " + error.message, "error");
+      const obj = {
+        makh: getVal("makh").trim().toUpperCase(),
+        tenkh: getVal("tenkh").trim(),
+        dienthoai: getVal("dienthoai").trim(),
+        ngaysinh: getVal("ngaysinh") || null,
+        thangsinh: layThangSinhTuNgaySinh(),
+        diachi: getVal("diachi") || null,
+        email: getVal("email") || null,
+        taikhoan: getVal("taikhoan") || null,
+        mst: getVal("mst") || null,
+        cccd: getVal("cccd") || null,
+        la_ncc: getVal("la_ncc") === "true",
+      };
+
+      let error;
+      if (editingOld) {
+        ({ error } = await supabase.from(TABLE).update(obj).eq("makh", obj.makh));
+      } else {
+        ({ error } = await supabase.from(TABLE).insert(obj));
+      }
+
+      if (!error) {
+        showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!", "success");
+        setTimeout(resetForm, 900);
+      } else {
+        showMsg("Lỗi: " + error.message, "error");
+      }
     }
-  }
 
-  async function suggestKH() {
-    const inp = document.getElementById("makh");
-    const txt = (inp?.value || "").trim().toUpperCase();
-    const popup = document.getElementById("makhSuggestList");
-    if (!popup) return;
+    async function deleteKH() {
+      const makh = getVal("makh").trim().toUpperCase();
+      if (!makh) return showMsg("Không có mã khách hàng để xóa!", "error");
+      if (!editingOld) return showMsg("Chưa có khách hàng để xóa!", "error");
+      if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng ${makh}?`)) return;
 
-    let q = supabase.from(TABLE).select("makh, tenkh").order("makh", { ascending: true }).limit(200);
-    if (txt) q = supabase.from(TABLE).select("makh, tenkh").or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`).order("makh", { ascending: true }).limit(50);
+      const { error } = await supabase.from(TABLE).delete().eq("makh", makh);
+      if (!error) {
+        showMsg(`✅ Đã xóa khách hàng ${makh}!`, "success");
+        resetForm();
+      } else {
+        showMsg("❌ Lỗi khi xóa: " + error.message, "error");
+      }
+    }
 
-    const { data, error } = await q;
-    if (error || !data || !data.length) { popup.style.display = "none"; return; }
+    async function suggestKH() {
+      const inp = document.getElementById("makh");
+      const txt = (inp?.value || "").trim().toUpperCase();
+      const popup = document.getElementById("makhSuggestList");
+      if (!popup) return;
 
-    khSuggestList = data;
-    suggestIndex = 0;
-    popup.innerHTML = data.map((r,i)=>`
-      <div class="suggest-item${i===0?" active":""}" data-idx="${i}">
+      let q = supabase.from(TABLE).select("makh, tenkh").order("makh", { ascending: true }).limit(200);
+      if (txt) q = supabase.from(TABLE).select("makh, tenkh").or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`).order("makh", { ascending: true }).limit(50);
+
+      const { data, error } = await q;
+      if (error || !data || !data.length) { popup.style.display = "none"; return; }
+
+      khSuggestList = data;
+      suggestIndex = 0;
+      popup.innerHTML = data.map((r, i) => `
+      <div class="suggest-item${i === 0 ? " active" : ""}" data-idx="${i}">
         <span class="suggest-makh">${r.makh}</span>
         <span class="suggest-tenkh">${r.tenkh || ""}</span>
       </div>`).join("");
-    popup.style.display = "block";
-  }
+      popup.style.display = "block";
+    }
 
-  function chooseKHFromSuggest(idx) {
-    const r = khSuggestList[idx];
-    if (!r) return;
-    document.getElementById("makh").value = r.makh;
-    document.getElementById("makhSuggestList").style.display = "none";
-    fetchKH();
-    setTimeout(() => document.getElementById("tenkh")?.focus(), 60);
-  }
+    function chooseKHFromSuggest(idx) {
+      const r = khSuggestList[idx];
+      if (!r) return;
+      document.getElementById("makh").value = r.makh;
+      document.getElementById("makhSuggestList").style.display = "none";
+      fetchKH();
+      setTimeout(() => document.getElementById("tenkh")?.focus(), 60);
+    }
 
-  function updateSuggestActive() {
-    const popup = document.getElementById("makhSuggestList");
-    if (!popup) return;
-    popup.querySelectorAll(".suggest-item").forEach((it,i)=>{
-      it.classList.toggle("active", i===suggestIndex);
-      if (i===suggestIndex) it.scrollIntoView({ block:"nearest" });
-    });
-  }
-
-  // --- Auto-fill SĐT từ Mã KH nếu Mã KH là số hoàn toàn ---
-  function isAllDigits(str) {
-    return /^\d+$/.test(String(str || "").trim());
-  }
-
-  function autoFillPhoneFromMaKH(force = false) {
-    const mkEl = document.getElementById("makh");
-    const dtEl = document.getElementById("dienthoai");
-    if (!mkEl || !dtEl) return;
-
-    // Nếu đang ở chế độ sửa khách cũ (makh bị khóa) thì không tự động chèn lại
-    if (mkEl.readOnly) return;
-
-    const mk = String(mkEl.value || "").trim();
-    if (!mk) return;
-
-    // Chỉ auto-fill nếu Mã KH là số hoàn toàn (không có chữ)
-    if (!isAllDigits(mk)) return;
-
-    // An toàn khi người dùng sửa lại Mã KH: luôn cập nhật lại SĐT theo Mã KH (theo quy ước Mã KH = SĐT)
-    // - áp dụng cho cả blur lẫn Enter
-    // - không phụ thuộc SĐT đang có gì (tránh trường hợp nhập nhầm rồi sửa Mã KH mà SĐT không cập nhật)
-    dtEl.value = mk;
-  }
-
-
-  // Thứ tự chuyển focus khi nhấn Enter
-  const ENTER_FLOW = ["makh","tenkh","dienthoai","la_ncc","ngaysinh","diachi","email","taikhoan","mst","cccd"];
-  function focusNextFrom(id) {
-    const idx = ENTER_FLOW.indexOf(id);
-    if (idx < 0) return;
-    const nextId = ENTER_FLOW[idx + 1];
-    if (!nextId) return;
-    const el = document.getElementById(nextId);
-    el?.focus();
-  }
-
-  function bindEvents() {
-    const makhInp = document.getElementById("makh");
-    makhInp?.addEventListener("input", suggestKH);
-    makhInp?.addEventListener("focus", suggestKH);
-    makhInp?.addEventListener("blur", autoFillPhoneFromMaKH);
-    document.getElementById("makhSuggestList")?.addEventListener("mousedown",(ev)=>{
-      const item = ev.target.closest(".suggest-item");
-      if (!item) return;
-      ev.preventDefault();
-      chooseKHFromSuggest(Number(item.getAttribute("data-idx")));
-    });
-    document.addEventListener("mousedown",(ev)=>{
+    function updateSuggestActive() {
       const popup = document.getElementById("makhSuggestList");
       if (!popup) return;
-      if (!popup.contains(ev.target) && ev.target.id !== "makh") popup.style.display = "none";
-    });
-    document.addEventListener("keydown",(ev)=>{
-      const active = document.activeElement;
+      popup.querySelectorAll(".suggest-item").forEach((it, i) => {
+        it.classList.toggle("active", i === suggestIndex);
+        if (i === suggestIndex) it.scrollIntoView({ block: "nearest" });
+      });
+    }
 
-      // 1) Trường Mã KH: giữ nguyên logic popup gợi ý (Arrow/Enter chọn)
-      if (active && active.id==="makh") {
-        const popup = document.getElementById("makhSuggestList");
-        const popupOpen = popup && popup.style.display!=="none" && khSuggestList.length>0;
+    // --- Auto-fill SĐT từ Mã KH nếu Mã KH là số hoàn toàn ---
+    function isAllDigits(str) {
+      return /^\d+$/.test(String(str || "").trim());
+    }
 
-        if (popupOpen) {
-          if (ev.key==="ArrowDown" || ev.key==="Tab") { ev.preventDefault(); suggestIndex=(suggestIndex+1)%khSuggestList.length; updateSuggestActive(); }
-          else if (ev.key==="ArrowUp") { ev.preventDefault(); suggestIndex=(suggestIndex-1+khSuggestList.length)%khSuggestList.length; updateSuggestActive(); }
-          else if (ev.key==="Enter") { if (khSuggestList[suggestIndex]) { ev.preventDefault(); chooseKHFromSuggest(suggestIndex); } }
-          else if (ev.key==="Escape") { popup.style.display="none"; }
-          return;
-        }
-      }
+    function autoFillPhoneFromMaKH(force = false) {
+      const mkEl = document.getElementById("makh");
+      const dtEl = document.getElementById("dienthoai");
+      if (!mkEl || !dtEl) return;
 
-      // 2) Flow Enter: chuyển lần lượt từ trên xuống dưới
-      if (ev.key==="Enter" && active && ENTER_FLOW.includes(active.id)) {
+      // Nếu đang ở chế độ sửa khách cũ (makh bị khóa) thì không tự động chèn lại
+      if (mkEl.readOnly) return;
+
+      const mk = String(mkEl.value || "").trim();
+      if (!mk) return;
+
+      // Chỉ auto-fill nếu Mã KH là số hoàn toàn (không có chữ)
+      if (!isAllDigits(mk)) return;
+
+      // An toàn khi người dùng sửa lại Mã KH: luôn cập nhật lại SĐT theo Mã KH (theo quy ước Mã KH = SĐT)
+      // - áp dụng cho cả blur lẫn Enter
+      // - không phụ thuộc SĐT đang có gì (tránh trường hợp nhập nhầm rồi sửa Mã KH mà SĐT không cập nhật)
+      dtEl.value = mk;
+    }
+
+
+    // Thứ tự chuyển focus khi nhấn Enter
+    const ENTER_FLOW = ["makh", "tenkh", "dienthoai", "la_ncc", "ngaysinh", "diachi", "email", "taikhoan", "mst", "cccd"];
+    function focusNextFrom(id) {
+      const idx = ENTER_FLOW.indexOf(id);
+      if (idx < 0) return;
+      const nextId = ENTER_FLOW[idx + 1];
+      if (!nextId) return;
+      const el = document.getElementById(nextId);
+      el?.focus();
+    }
+
+    function bindEvents() {
+      const makhInp = document.getElementById("makh");
+      makhInp?.addEventListener("input", suggestKH);
+      makhInp?.addEventListener("focus", suggestKH);
+      makhInp?.addEventListener("blur", autoFillPhoneFromMaKH);
+      document.getElementById("makhSuggestList")?.addEventListener("mousedown", (ev) => {
+        const item = ev.target.closest(".suggest-item");
+        if (!item) return;
         ev.preventDefault();
+        chooseKHFromSuggest(Number(item.getAttribute("data-idx")));
+      });
+      document.addEventListener("mousedown", (ev) => {
+        const popup = document.getElementById("makhSuggestList");
+        if (!popup) return;
+        if (!popup.contains(ev.target) && ev.target.id !== "makh") popup.style.display = "none";
+      });
+      document.addEventListener("keydown", (ev) => {
+        const active = document.activeElement;
 
-        if (active.id === "makh") {
-          // Khi thoát khỏi Mã KH (Enter), nếu Mã KH là số hoàn toàn thì tự điền SĐT
-          autoFillPhoneFromMaKH();
+        // 1) Trường Mã KH: giữ nguyên logic popup gợi ý (Arrow/Enter chọn)
+        if (active && active.id === "makh") {
+          const popup = document.getElementById("makhSuggestList");
+          const popupOpen = popup && popup.style.display !== "none" && khSuggestList.length > 0;
+
+          if (popupOpen) {
+            if (ev.key === "ArrowDown" || ev.key === "Tab") { ev.preventDefault(); suggestIndex = (suggestIndex + 1) % khSuggestList.length; updateSuggestActive(); }
+            else if (ev.key === "ArrowUp") { ev.preventDefault(); suggestIndex = (suggestIndex - 1 + khSuggestList.length) % khSuggestList.length; updateSuggestActive(); }
+            else if (ev.key === "Enter") { if (khSuggestList[suggestIndex]) { ev.preventDefault(); chooseKHFromSuggest(suggestIndex); } }
+            else if (ev.key === "Escape") { popup.style.display = "none"; }
+            return;
+          }
         }
 
-        focusNextFrom(active.id);
-      }
+        // 2) Flow Enter: chuyển lần lượt từ trên xuống dưới
+        if (ev.key === "Enter" && active && ENTER_FLOW.includes(active.id)) {
+          ev.preventDefault();
+
+          if (active.id === "makh") {
+            // Khi thoát khỏi Mã KH (Enter), nếu Mã KH là số hoàn toàn thì tự điền SĐT
+            autoFillPhoneFromMaKH();
+          }
+
+          focusNextFrom(active.id);
+        }
+      });
+
+
+      window.fetchKH = fetchKH;
+      window.saveKH = saveKH;
+      window.resetForm = resetForm;
+      window.deleteKH = deleteKH;
+      window.doLogout = () => dangXuatDungChung({ reloadPage: true });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      khoiTaoDangNhapDungChung({
+        appContainerId: "app-container",
+        tuDongKhoaCoSo: false,
+        macDinhDiaDiem: localStorage.getItem("diadiem") || "cs1",
+        onLoginSuccess: async () => {
+          supabase = getSupabaseClient();
+          bindEvents();
+          resetForm();
+        },
+      });
     });
-
-
-    window.fetchKH = fetchKH;
-    window.saveKH = saveKH;
-    window.resetForm = resetForm;
-    window.deleteKH = deleteKH;
-    window.doLogout = () => dangXuatDungChung({ reloadPage: true });
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    khoiTaoDangNhapDungChung({
-      appContainerId: "app-container",
-      tuDongKhoaCoSo: false,
-      macDinhDiaDiem: localStorage.getItem("diadiem") || "cs1",
-      onLoginSuccess: async () => {
-        supabase = getSupabaseClient();
-        bindEvents();
-        resetForm();
-      },
-    });
-  });
-</script>
+  </script>
 </body>
 
 </html>
