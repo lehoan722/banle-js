@@ -352,7 +352,12 @@ async function saveNewBanLe() {
   await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
 
   // ✅ Xử lý điểm khách hàng sau khi hóa đơn đã lưu thành công
-  await xuLyDiemKhachHangSauLuu(sohdThucTe, header.thanhtoan);
+  // 🔥 CHỈ tích điểm cho hóa đơn bán tại quầy (bancs)
+  if (loai === "bancs1" || loai === "bancs2") {
+    await xuLyDiemKhachHangSauLuu(sohdThucTe, header.thanhtoan);
+  } else {
+    console.log("🚫 Không tích điểm cho loại hóa đơn:", loai);
+  }
 
   const hoadonIn = { ...header, sohd: sohdThucTe };
   printInvoice(hoadonIn, chitiet);
