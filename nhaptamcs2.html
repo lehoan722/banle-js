@@ -1144,18 +1144,32 @@
             return true;
         };
 
-        document.addEventListener("DOMContentLoaded", () => {
-            // Thử nạp payload sau khi load
+        document.addEventListener("DOMContentLoaded", async () => {
             const bangObj = window.parseImportPayload && window.parseImportPayload();
             console.log("[NHAP] parseImportPayload:", bangObj);
 
-            if (bangObj) {
-                window.bangKetQua = bangObj; // lưu vào global
+            if (bangObj && Object.keys(bangObj).length > 0) {
+                window.bangKetQua = bangObj;
                 renderBangKetQua(bangObj);
                 capNhatTongTien(bangObj);
-                // xoá hash để F5 không nạp lại
                 history.replaceState(null, '', location.pathname);
+                return;
             }
+
+            console.warn("[NHAP] Không có payload, thử nạp lại theo số hóa đơn...");
+
+            const params = new URLSearchParams(location.search);
+            const sohd =
+                params.get("sohd") ||
+                sessionStorage.getItem("sohd_dang_xem") ||
+                localStorage.getItem("sohd_dang_xem");
+
+            if (sohd && typeof window.napLaiChiTietHoaDon === "function") {
+                await window.napLaiChiTietHoaDon(sohd);
+                return;
+            }
+
+            console.warn("[NHAP] Không tìm thấy sohd để nạp lại hóa đơn cũ.");
         });
 
         function renderBangKetQua(bangObj) {
@@ -1670,12 +1684,12 @@
     </script>
 
     <script>
-document.addEventListener("DOMContentLoaded", () => {
-    const diadiem = document.getElementById("diadiem");
-    if (diadiem) diadiem.value = "cs2";
-    localStorage.setItem("diadiem", "cs2");
-});
-</script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const diadiem = document.getElementById("diadiem");
+            if (diadiem) diadiem.value = "cs2";
+            localStorage.setItem("diadiem", "cs2");
+        });
+    </script>
 
 </body>
 
