@@ -202,7 +202,7 @@
                             return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
                         }
 
-                        gpsOK = stores.some(s => calcDistance({ lat: userLat, lng: userLng }, s) < 150);
+                        gpsOK = stores.some(s => calcDistance({ lat: userLat, lng: userLng }, s) < 5000);
 
                         resolve();
                     },
