@@ -163,89 +163,42 @@
     </div>
 
     <script type="module">
-
         import { supabase } from "./scripts/supabaseClient.js";
 
         let userLat = null;
         let userLng = null;
-        let gpsOK = false;
-        let wifiOK = false;
 
-        // ===== 1. CHECK GPS =====
         function getLocation() {
             return new Promise((resolve) => {
-                if (!navigator.geolocation) return resolve();
+                if (!navigator.geolocation) return resolve(false);
 
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
                         userLat = pos.coords.latitude;
                         userLng = pos.coords.longitude;
-
-                        // 👉 khoảng cách 2 cửa hàng (giống main.js)
-                        const stores = [
-                            { lat: 21.5525047, lng: 105.8423559 },
-                            { lat: 21.5843348, lng: 105.8343116 }
-                        ];
-
-                        function calcDistance(a, b) {
-                            const R = 6371000;
-                            const dLat = (b.lat - a.lat) * Math.PI / 180;
-                            const dLng = (b.lng - a.lng) * Math.PI / 180;
-
-                            const lat1 = a.lat * Math.PI / 180;
-                            const lat2 = b.lat * Math.PI / 180;
-
-                            const x = Math.sin(dLat / 2) ** 2 +
-                                Math.cos(lat1) * Math.cos(lat2) *
-                                Math.sin(dLng / 2) ** 2;
-
-                            return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-                        }
-
-                        gpsOK = stores.some(s => calcDistance({ lat: userLat, lng: userLng }, s) < 5000);
-
-                        resolve();
+                        resolve(true);
                     },
-                    () => resolve(),
-                    { timeout: 5000 }
+                    () => resolve(false),
+                    { enableHighAccuracy: true, timeout: 10000 }
                 );
             });
         }
 
-        // ===== 2. CHECK WIFI =====
-        async function checkWifi() {
-            try {
-                // 👉 đổi IP nếu router bạn khác
-                const res = await fetch("http://192.168.1.1", {
-                    mode: "no-cors",
-                    cache: "no-store"
-                });
-
-                wifiOK = true;
-            } catch {
-                wifiOK = false;
-            }
-        }
-
-        // ===== 3. CHECK QUYỀN =====
-        async function checkAccess() {
-            await getLocation();
-            await checkWifi();
-
-            if (gpsOK || wifiOK) {
-                console.log("✅ Được phép đăng ký");
-                return true;
-            }
-
-            alert("Bạn cần ở trong cửa hàng để đăng ký");
-            document.body.innerHTML = "<h2 style='text-align:center;margin-top:40px'>Bạn cần ở trong cửa hàng để đăng ký</h2>";
-            return false;
-        }
-
-        // ===== 4. SAVE =====
         async function saveDangKy() {
-            const ok = await checkAccess();
-            if (!ok) return;
+            const btn = document.getElementById("btnSave");
+            btn.disabled = true;
+            btn.textContent = "Đang kiểm tra vị trí...";
+
+            const hasLocation = await getLocation();
+
+            if (!hasLocation) {
+                alert("Không lấy được định vị. Vui lòng bật GPS và cho phép truy cập vị trí.");
+                btn.disabled = false;
+                btn.textContent = "Lưu đăng ký";
+                return;
+            }
+
+            btn.textContent = "Đang lưu...";
 
             const phone = document.getElementById("dienthoai").value;
             const ten = document.getElementById("tenkh").value;
@@ -257,7 +210,7 @@
                     p_dienthoai: phone,
                     p_tenkh: ten,
                     p_thangsinh: thang || null,
-                    p_marketing_opt_in: true,
+                    p_marketing_opt_in: document.getElementById("marketing_opt_in").checked,
                     p_zalo_sms_opt_in: document.getElementById("zalo_sms_opt_in").checked,
                     p_lat: userLat,
                     p_lng: userLng
@@ -265,19 +218,23 @@
             );
 
             if (error || !data?.ok) {
-                alert(data?.message || "Lỗi đăng ký");
+                alert(data?.message || error?.message || "Lỗi đăng ký.");
+                btn.disabled = false;
+                btn.textContent = "Lưu đăng ký";
                 return;
             }
 
             alert("Đăng ký thành công 🎉");
 
             document.querySelectorAll("input").forEach(i => i.disabled = true);
+            btn.disabled = true;
+            btn.textContent = "Đã đăng ký";
         }
 
-        // ===== INIT =====
         document.getElementById("btnSave").onclick = saveDangKy;
-
     </script>
+
+
 </body>
 
 </html>
