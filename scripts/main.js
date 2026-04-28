@@ -21,8 +21,8 @@ import { startSessionKeeper } from "./supabaseClient.js";
 import { initPopupChuyenKhoContext, triggerChuyenKhoCheckNgay } from './popupchuyenkho.js';
 import { showPageLoading, hidePageLoading, setPageLoadingText } from './pageLoading.js';
 // ===== tam ngung kiem tra vi tri =====
-//const ENABLE_LOCATION_GUARD = false;
-const ENABLE_LOCATION_GUARD = true;
+const ENABLE_LOCATION_GUARD = false;
+//const ENABLE_LOCATION_GUARD = true;
 
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
@@ -164,7 +164,7 @@ async function checkInStoreLocation(pointsOverride) {
   const STORE_POINTS = pointsOverride || [
     { lat: 21.5525047, lng: 105.8423559 }  // CS1 – Tích Lương
   ];
-  const MAX_DISTANCE_M = 3000; // bán kính cho phép (m) – muốn chặt hơn thì giảm xuống
+  const MAX_DISTANCE_M = 4000; // bán kính cho phép (m) – muốn chặt hơn thì giảm xuống
 
   // Nếu thiết bị không hỗ trợ định vị
   if (!navigator.geolocation) {
