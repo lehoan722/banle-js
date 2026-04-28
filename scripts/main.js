@@ -278,7 +278,7 @@ export async function khoiTaoUngDung() {
     const isBannvcs2Page = path.includes("bannvcs2");
 
     // === 1. NẾU LÀ TRANG BÁN NHÂN VIÊN CS1 HOẶC CS2 THÌ MỚI CHẠY GUARD MOBILE + VỊ TRÍ ===
-    if (isBannvcs2Page) {
+    if (false && isBannvcs2Page) {
       // Chỉ cho phép trên điện thoại / tablet
       if (!isMobileDevice()) {
         alert("Ứng dụng bán hàng nhân viên chỉ được dùng trên điện thoại tại cửa hàng.");
@@ -322,7 +322,7 @@ export async function khoiTaoUngDung() {
     }
 
     // === TỰ ĐỘNG KIỂM TRA LẠI VỊ TRÍ ĐỊNH KỲ ===  tam ngung
-    if (isBannvcs1Page || isBannvcs2Page) {
+    if (false && (isBannvcs1Page || isBannvcs2Page)) {
       setInterval(async () => {
         let stillInStore = false;
 
