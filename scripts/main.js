@@ -989,6 +989,11 @@ function loadQuickActionState() {
 
 let bayMauTimer = null;
 let bayMauPopupDangMo = false;
+
+// true  = bắt buộc chụp ảnh khi tick bày mẫu
+// false = cho phép lưu bày mẫu dù không có ảnh
+const BAT_BUOC_CHUP_ANH_BAY_MAU = false;
+
 // Lưu context hiện tại để dùng lại trong các lần kiểm tra sau
 window.__bayMauContext = window.__bayMauContext || null;
 
@@ -1402,9 +1407,8 @@ function showBayMauPopup(tasks, context) {
         const checkbox = bayMauCheckboxes.find(c => Number(c.dataset.idCt) === idCt);
         const file = row._selectedFileRef?.() || null;
 
-        // TẠM NGƯNG CHECK CHỤP ẢNH BÀY MẪU
-        /*
         if (
+          BAT_BUOC_CHUP_ANH_BAY_MAU &&
           row.can_chup_anh_baymau &&
           checkbox?.checked &&
           !file &&
@@ -1413,7 +1417,6 @@ function showBayMauPopup(tasks, context) {
           alert("Bạn đã tick bày mẫu nhưng chưa chụp ảnh. Vui lòng chụp ảnh trước khi đóng.");
           return;
         }
-        */
 
         if (checkbox?.checked) {
           rowsNeedSave.push({ row, idCt, file });
