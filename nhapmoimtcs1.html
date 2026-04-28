@@ -969,8 +969,11 @@
         const dispatchTarget = document.body || document.documentElement;
 
         document.getElementById('sua')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
+            if (typeof window.moPopupXacThucSua === "function") {
+                window.moPopupXacThucSua();
+            } else {
+                alert("❌ Chưa nạp được popup sửa mới.");
+            }
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
         // ===== Pre-check nhà cung cấp trước khi lưu (F2) =====
@@ -1001,13 +1004,6 @@
                 }
             }
         }, true);
-
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ (có pre-check)
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            if (!precheckNhaCungCapBeforeSave()) return;
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1066,21 +1062,6 @@
                     }
                 });
             }
-        });
-    </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnLuu = document.getElementById('btn-luu');
-            if (btnLuu) {
-                btnLuu.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
-                    //moPopupXacThucSua();
-                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
-                });
-            }
-
         });
     </script>
 
@@ -1519,6 +1500,65 @@
             }
         }
         document.getElementById("btnImportFromGS")?.addEventListener("click", importFromGoogleSheet);
+    </script>
+
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        function precheckNhapMoiCs1BeforeSave() {
+            const makhEl = document.getElementById("makh");
+            const tenEl = document.getElementById("khachhang");
+            const ten = (tenEl?.value || "").trim();
+
+            if (!ten) {
+                alert("⚠️ Bạn chưa chọn/nhập nhà cung cấp. Vui lòng chọn trước khi lưu!");
+                if (makhEl) {
+                    makhEl.focus();
+                    makhEl.select?.();
+                }
+                return false;
+            }
+
+            return true;
+        }
+
+        async function luuNhapMoiCs1(source = "BTN-LUU-NHAPMOI-CS1") {
+            if (!precheckNhapMoiCs1BeforeSave()) {
+                return { ok: false, reason: "MISSING_NCC" };
+            }
+
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            return await saveBanLe111(source);
+        }
+
+        window.LUU_HOADON_F2 = async () => {
+            return await luuNhapMoiCs1("F2-NHAPMOI-CS1");
+        };
+
+        document.getElementById("btn-luu")?.addEventListener("click", async function (e) {
+            e.preventDefault();
+
+            if (window.dangLuu) return;
+
+            window.dangLuu = true;
+            this.disabled = true;
+            this.innerText = "Đang lưu...";
+
+            try {
+                const result = await luuNhapMoiCs1("BTN-LUU-NHAPMOI-CS1");
+                console.log("✅ Kết quả lưu nhập mới CS1:", result);
+            } catch (err) {
+                console.error(err);
+                alert("❌ Lỗi lưu nhập mới CS1: " + (err?.message || err));
+            } finally {
+                window.dangLuu = false;
+                this.disabled = false;
+                this.innerText = "💾 Lưu";
+            }
+        });
     </script>
 
     <!-- Overlay quét -->
