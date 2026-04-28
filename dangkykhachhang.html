@@ -229,6 +229,44 @@
             document.querySelectorAll("input").forEach(i => i.disabled = true);
             btn.disabled = true;
             btn.textContent = "Đã đăng ký";
+
+            // Link nhóm Zalo của shop
+            const zaloGroupUrl = "https://zalo.me/g/rz31sxl6fvcidvehzvty";
+
+            const box = document.querySelector(".box");
+
+            const zaloBox = document.createElement("div");
+            zaloBox.style.cssText = `
+  margin-top:18px;
+  padding:16px;
+  border-radius:12px;
+  background:#eef7ff;
+  text-align:center;
+  border:1px solid #b7dcff;
+`;
+
+            zaloBox.innerHTML = `
+  <div style="font-weight:bold;color:#0b4b86;margin-bottom:8px;">
+    Tham gia nhóm Zalo khách hàng thân thiết
+  </div>
+  <div style="font-size:14px;color:#444;margin-bottom:12px;">
+    Nhận thông tin khuyến mãi, tích điểm và ưu đãi sinh nhật từ Shop.
+  </div>
+  <a href="${zaloGroupUrl}" target="_blank"
+     style="
+       display:inline-block;
+       padding:12px 18px;
+       background:#0068ff;
+       color:white;
+       text-decoration:none;
+       border-radius:10px;
+       font-weight:bold;
+     ">
+    Mở Zalo để tham gia nhóm
+  </a>
+`;
+
+            box.appendChild(zaloBox);
         }
 
         document.getElementById("btnSave").onclick = saveDangKy;
