@@ -20,6 +20,8 @@ import { ensureAccess } from './auth_guard.js';
 import { startSessionKeeper } from "./supabaseClient.js";
 import { initPopupChuyenKhoContext, triggerChuyenKhoCheckNgay } from './popupchuyenkho.js';
 import { showPageLoading, hidePageLoading, setPageLoadingText } from './pageLoading.js';
+// ===== tam ngung kiem tra vi tri =====
+const ENABLE_LOCATION_GUARD = false;
 
 // ===== GUARD THEO THIẾT BỊ & VỊ TRÍ CỬA HÀNG =====
 function isMobileDevice() {
@@ -278,7 +280,8 @@ export async function khoiTaoUngDung() {
     const isBannvcs2Page = path.includes("bannvcs2");
 
     // === 1. NẾU LÀ TRANG BÁN NHÂN VIÊN CS1 HOẶC CS2 THÌ MỚI CHẠY GUARD MOBILE + VỊ TRÍ ===
-    if (false && isBannvcs2Page) {
+
+    if (ENABLE_LOCATION_GUARD && (isBannvcs1Page || isBannvcs2Page)) {
       // Chỉ cho phép trên điện thoại / tablet
       if (!isMobileDevice()) {
         alert("Ứng dụng bán hàng nhân viên chỉ được dùng trên điện thoại tại cửa hàng.");
@@ -322,7 +325,7 @@ export async function khoiTaoUngDung() {
     }
 
     // === TỰ ĐỘNG KIỂM TRA LẠI VỊ TRÍ ĐỊNH KỲ ===  tam ngung
-    if (false && (isBannvcs1Page || isBannvcs2Page)) {
+    if (ENABLE_LOCATION_GUARD && (isBannvcs1Page || isBannvcs2Page)) {
       setInterval(async () => {
         let stillInStore = false;
 
