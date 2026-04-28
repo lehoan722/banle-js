@@ -989,11 +989,6 @@ function loadQuickActionState() {
 
 let bayMauTimer = null;
 let bayMauPopupDangMo = false;
-
-// true  = bắt buộc chụp ảnh khi tick bày mẫu
-// false = cho phép lưu bày mẫu dù không có ảnh
-const BAT_BUOC_CHUP_ANH_BAY_MAU = false;
-
 // Lưu context hiện tại để dùng lại trong các lần kiểm tra sau
 window.__bayMauContext = window.__bayMauContext || null;
 
@@ -1408,7 +1403,6 @@ function showBayMauPopup(tasks, context) {
         const file = row._selectedFileRef?.() || null;
 
         if (
-          BAT_BUOC_CHUP_ANH_BAY_MAU &&
           row.can_chup_anh_baymau &&
           checkbox?.checked &&
           !file &&
