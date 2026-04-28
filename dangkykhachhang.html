@@ -163,12 +163,15 @@
     </div>
 
     <script type="module">
+
         import { supabase } from "./scripts/supabaseClient.js";
 
         let userLat = null;
         let userLng = null;
+        let gpsOK = false;
+        let wifiOK = false;
 
-        // 📍 lấy GPS
+        // ===== 1. CHECK GPS =====
         function getLocation() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) return resolve();
@@ -177,6 +180,30 @@
                     (pos) => {
                         userLat = pos.coords.latitude;
                         userLng = pos.coords.longitude;
+
+                        // 👉 khoảng cách 2 cửa hàng (giống main.js)
+                        const stores = [
+                            { lat: 21.5525047, lng: 105.8423559 },
+                            { lat: 21.5843348, lng: 105.8343116 }
+                        ];
+
+                        function calcDistance(a, b) {
+                            const R = 6371000;
+                            const dLat = (b.lat - a.lat) * Math.PI / 180;
+                            const dLng = (b.lng - a.lng) * Math.PI / 180;
+
+                            const lat1 = a.lat * Math.PI / 180;
+                            const lat2 = b.lat * Math.PI / 180;
+
+                            const x = Math.sin(dLat / 2) ** 2 +
+                                Math.cos(lat1) * Math.cos(lat2) *
+                                Math.sin(dLng / 2) ** 2;
+
+                            return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+                        }
+
+                        gpsOK = stores.some(s => calcDistance({ lat: userLat, lng: userLng }, s) < 150);
+
                         resolve();
                     },
                     () => resolve(),
@@ -185,7 +212,41 @@
             });
         }
 
+        // ===== 2. CHECK WIFI =====
+        async function checkWifi() {
+            try {
+                // 👉 đổi IP nếu router bạn khác
+                const res = await fetch("http://192.168.1.1", {
+                    mode: "no-cors",
+                    cache: "no-store"
+                });
+
+                wifiOK = true;
+            } catch {
+                wifiOK = false;
+            }
+        }
+
+        // ===== 3. CHECK QUYỀN =====
+        async function checkAccess() {
+            await getLocation();
+            await checkWifi();
+
+            if (gpsOK || wifiOK) {
+                console.log("✅ Được phép đăng ký");
+                return true;
+            }
+
+            alert("Bạn cần ở trong cửa hàng để đăng ký");
+            document.body.innerHTML = "<h2 style='text-align:center;margin-top:40px'>Bạn cần ở trong cửa hàng để đăng ký</h2>";
+            return false;
+        }
+
+        // ===== 4. SAVE =====
         async function saveDangKy() {
+            const ok = await checkAccess();
+            if (!ok) return;
+
             const phone = document.getElementById("dienthoai").value;
             const ten = document.getElementById("tenkh").value;
             const thang = Number(document.getElementById("thangsinh").value || 0);
@@ -210,14 +271,12 @@
 
             alert("Đăng ký thành công 🎉");
 
-            // 🔒 khóa form
             document.querySelectorAll("input").forEach(i => i.disabled = true);
         }
 
+        // ===== INIT =====
         document.getElementById("btnSave").onclick = saveDangKy;
 
-        // khi load trang → lấy GPS trước
-        getLocation();
     </script>
 </body>
 
