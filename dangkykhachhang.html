@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Đăng ký khách hàng thân thiết</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #f4f7fb, #e9f2ff);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .box {
+            width: 92%;
+            max-width: 420px;
+            background: white;
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .12);
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            text-align: center;
+            color: #14346b;
+            font-size: 22px;
+        }
+
+        .sub {
+            text-align: center;
+            color: #666;
+            margin-bottom: 22px;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        label {
+            display: block;
+            margin: 12px 0 6px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: 1px solid #c8d1e0;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #1164be;
+            box-shadow: 0 0 0 3px rgba(17, 100, 190, .12);
+        }
+
+        .checkrow {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin-top: 14px;
+            font-size: 15px;
+            line-height: 1.35;
+        }
+
+        .checkrow input {
+            width: auto;
+            margin-top: 2px;
+            transform: scale(1.15);
+        }
+
+        button {
+            width: 100%;
+            margin-top: 20px;
+            padding: 13px;
+            border: none;
+            border-radius: 11px;
+            background: #18804f;
+            color: white;
+            font-size: 17px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+
+        .msg {
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            line-height: 1.45;
+        }
+
+        .msg.success {
+            display: block;
+            background: #e7f7ec;
+            color: #126b38;
+        }
+
+        .msg.error {
+            display: block;
+            background: #fde8e4;
+            color: #b22b1c;
+        }
+
+        .small {
+            margin-top: 14px;
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="box">
+        <h1>Đăng ký khách hàng thân thiết</h1>
+        <div class="sub">
+            Nhận tích điểm, ưu đãi sinh nhật và thông tin khuyến mãi từ Shop.
+        </div>
+
+        <label>Số điện thoại của bạn *</label>
+        <input id="dienthoai" inputmode="numeric" maxlength="10" placeholder="Ví dụ: 0987654321" />
+
+        <label>Tên của bạn *</label>
+        <input id="tenkh" maxlength="80" placeholder="Nhập tên của bạn" />
+
+        <label>Tháng sinh của bạn</label>
+        <input id="thangsinh" inputmode="numeric" maxlength="2" placeholder="Ví dụ: 4 hoặc 11" />
+
+        <label class="checkrow">
+            <input id="marketing_opt_in" type="checkbox" checked />
+            <span>Đồng ý tham gia nhóm khách hàng tích điểm</span>
+        </label>
+
+        <label class="checkrow">
+            <input id="zalo_sms_opt_in" type="checkbox" checked />
+            <span>Đồng ý nhận khuyến mãi qua Zalo/SMS</span>
+        </label>
+
+        <button id="btnSave">Lưu đăng ký</button>
+
+        <div id="msg" class="msg"></div>
+
+        <div class="small">
+            Thông tin chỉ dùng để tích điểm và gửi ưu đãi của Shop.
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase } from "./scripts/supabaseClient.js";
+
+        let userLat = null;
+        let userLng = null;
+
+        // 📍 lấy GPS
+        function getLocation() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) return resolve();
+
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        userLat = pos.coords.latitude;
+                        userLng = pos.coords.longitude;
+                        resolve();
+                    },
+                    () => resolve(),
+                    { timeout: 5000 }
+                );
+            });
+        }
+
+        async function saveDangKy() {
+            const phone = document.getElementById("dienthoai").value;
+            const ten = document.getElementById("tenkh").value;
+            const thang = Number(document.getElementById("thangsinh").value || 0);
+
+            const { data, error } = await supabase.rpc(
+                "rpc_dangky_khachhang_gps_wifi",
+                {
+                    p_dienthoai: phone,
+                    p_tenkh: ten,
+                    p_thangsinh: thang || null,
+                    p_marketing_opt_in: true,
+                    p_zalo_sms_opt_in: document.getElementById("zalo_sms_opt_in").checked,
+                    p_lat: userLat,
+                    p_lng: userLng
+                }
+            );
+
+            if (error || !data?.ok) {
+                alert(data?.message || "Lỗi đăng ký");
+                return;
+            }
+
+            alert("Đăng ký thành công 🎉");
+
+            // 🔒 khóa form
+            document.querySelectorAll("input").forEach(i => i.disabled = true);
+        }
+
+        document.getElementById("btnSave").onclick = saveDangKy;
+
+        // khi load trang → lấy GPS trước
+        getLocation();
+    </script>
+</body>
+
+</html>
