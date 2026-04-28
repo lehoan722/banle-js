@@ -1402,8 +1402,6 @@ function showBayMauPopup(tasks, context) {
         const checkbox = bayMauCheckboxes.find(c => Number(c.dataset.idCt) === idCt);
         const file = row._selectedFileRef?.() || null;
 
-        // TẠM NGƯNG CHECK CHỤP ẢNH BÀY MẪU
-        /*
         if (
           row.can_chup_anh_baymau &&
           checkbox?.checked &&
@@ -1413,7 +1411,6 @@ function showBayMauPopup(tasks, context) {
           alert("Bạn đã tick bày mẫu nhưng chưa chụp ảnh. Vui lòng chụp ảnh trước khi đóng.");
           return;
         }
-        */
 
         if (checkbox?.checked) {
           rowsNeedSave.push({ row, idCt, file });
