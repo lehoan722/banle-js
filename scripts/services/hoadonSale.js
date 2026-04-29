@@ -421,24 +421,6 @@ async function saveEditBanLe() {
   if (loai === "bancs1" || loai === "bancs2") {
     oldPointSnapshot = await layThongTinDiemHoaDonCu(sohd);
 
-    const diemTruMoi = Number(header.diem_tru || 0);
-    const diemTruCu = Number(oldPointSnapshot?.oldDiemTru || 0);
-    const oldMakh = String(oldPointSnapshot?.oldMakh || "");
-    const newMakh = String(header.makh || "");
-
-    if (diemTruMoi > 0) {
-      const khachDaDoi = oldMakh && newMakh && oldMakh !== newMakh;
-
-      if (khachDaDoi || diemTruMoi > diemTruCu) {
-        alert(
-          "❌ Không thể sửa hóa đơn.\n\n" +
-          "Khách hàng không đủ điểm khả dụng để đổi điểm.\n" +
-          "Lưu ý: điểm phát sinh trong ngày hôm nay chưa được phép sử dụng."
-        );
-        return { ok: false, reason: "INVALID_CUSTOMER_POINTS_EDIT" };
-      }
-    }
-
     const checkDiem = await kiemTraDiemKhachHangTruocKhiLuu(header.thanhtoan);
     if (!checkDiem?.ok) {
       return { ok: false, reason: "INVALID_CUSTOMER_POINTS_EDIT" };
