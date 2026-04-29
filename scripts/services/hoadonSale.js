@@ -6,7 +6,8 @@ import { capNhatThongTinTong } from '../utils.js';
 import { capNhatSoHoaDonTuDong } from '../sohoadon.js';
 import {
   xuLyDiemKhachHangSauLuu,
-  kiemTraDiemKhachHangTruocKhiLuu
+  kiemTraDiemKhachHangTruocKhiLuu,
+  layThongTinDiemHoaDonCu
 } from "./khachhangDiemService.js";
 
 import {
@@ -415,6 +416,17 @@ async function saveEditBanLe() {
   const header = await buildHeader(loai, diadiemTrang, bangKetQua);
   const chitiet = await buildDetails(sohd, diadiemTrang, bangKetQua);
 
+  let oldPointSnapshot = null;
+
+  if (loai === "bancs1" || loai === "bancs2") {
+    oldPointSnapshot = await layThongTinDiemHoaDonCu(sohd);
+
+    const checkDiem = await kiemTraDiemKhachHangTruocKhiLuu(header.thanhtoan);
+    if (!checkDiem?.ok) {
+      return { ok: false, reason: "INVALID_CUSTOMER_POINTS_EDIT" };
+    }
+  }
+
   const editNow = await getServerNowISO();
   header.updated_at = editNow;
   delete header.created_at;
@@ -480,6 +492,17 @@ async function saveEditBanLe() {
   }
 
   await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
+
+  if (loai === "bancs1" || loai === "bancs2") {
+    const diemRes = await xuLyDiemKhachHangSauLuu(sohd, header.thanhtoan, {
+      isEdit: true,
+      oldPointSnapshot
+    });
+
+    if (!diemRes?.ok) {
+      alert("⚠️ Hóa đơn đã sửa nhưng xử lý lại điểm khách hàng chưa thành công. Vui lòng kiểm tra lịch sử điểm.");
+    }
+  }
 
   const hoadonIn = { ...header, sohd };
   printInvoice(hoadonIn, chitiet);
