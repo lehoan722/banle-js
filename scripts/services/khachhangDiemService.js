@@ -37,7 +37,8 @@ async function laySnapshotDiemHoaDonCu(sohd) {
     return {
       isEditPointInvoice: false,
       oldThanhtoan: 0,
-      oldMakh: ""
+      oldMakh: "",
+      oldDiemTru: 0
     };
   }
 
@@ -65,7 +66,8 @@ async function laySnapshotDiemHoaDonCu(sohd) {
   return {
     isEditPointInvoice: !!(logs && logs.length > 0),
     oldThanhtoan: Number(hd?.thanhtoan || 0),
-    oldMakh: hd?.makh || ""
+    oldMakh: hd?.makh || "",
+    oldDiemTru: Number(hd?.diem_tru || 0)
   };
 }
 
@@ -97,9 +99,9 @@ export async function xuLyDiemKhachHangSauLuu(
 
   const rpcPayload = isEditPointInvoice
     ? {
-        ...payload,
-        p_thanhtoan_cu: Number(snapshot.oldThanhtoan || 0)
-      }
+      ...payload,
+      p_thanhtoan_cu: Number(snapshot.oldThanhtoan || 0)
+    }
     : payload;
 
   console.log("🧾 Xử lý điểm khách hàng:", {
@@ -118,7 +120,7 @@ export async function xuLyDiemKhachHangSauLuu(
     console.warn("⚠️ RPC bỏ qua xử lý điểm:", data);
     alert(
       "⚠️ Hóa đơn đã lưu nhưng KHÔNG được xử lý điểm:\n" +
-        (data?.message || result?.message || "Không rõ lý do.")
+      (data?.message || result?.message || "Không rõ lý do.")
     );
     return data;
   }
@@ -133,7 +135,7 @@ export async function xuLyDiemKhachHangSauLuu(
 
     alert(
       "⚠️ Hóa đơn đã lưu nhưng xử lý điểm khách hàng bị lỗi: " +
-        (error?.message || data?.message || result?.message || "")
+      (error?.message || data?.message || result?.message || "")
     );
 
     return { ok: false, error, data };
@@ -209,7 +211,7 @@ export async function kiemTraDiemKhachHangTruocKhiLuu(
 
     alert(
       "❌ Không thể lưu hóa đơn vì điểm khách hàng không hợp lệ:\n" +
-        (error?.message || data?.message || "")
+      (error?.message || data?.message || "")
     );
 
     khoiPhucTienSauLoiDiem();
