@@ -435,11 +435,42 @@ async function saveEditBanLe() {
     );
 
     if (checkDiemErr || !checkDiem?.ok) {
-      alert(
-        "❌ Không thể sửa hóa đơn vì điểm khách hàng không hợp lệ:\n" +
-        (checkDiemErr?.message || checkDiem?.message || "")
-      );
-      return { ok: false, reason: "INVALID_CUSTOMER_POINTS_EDIT" };
+      const diemToiDa = Number(checkDiem?.diem_kha_dung_sau_hoan_tac || 0);
+      const diemDangNhap = Number(header.diem_tru || 0);
+
+      if (!checkDiemErr && diemDangNhap > 0 && diemToiDa >= 0) {
+        const ok = confirm(
+          "⚠️ Khách không đủ điểm để dùng như đã nhập.\n\n" +
+          `Điểm đang nhập: ${diemDangNhap}\n` +
+          `Điểm có thể dùng tối đa: ${diemToiDa}\n\n` +
+          "Bạn có muốn tự động điều chỉnh điểm dùng về mức tối đa này và tiếp tục lưu không?"
+        );
+
+        if (!ok) {
+          return { ok: false, reason: "INVALID_CUSTOMER_POINTS_EDIT" };
+        }
+
+        const tienMoiDiem = 1000;
+        const tienDoiDiemMoi = diemToiDa * tienMoiDiem;
+
+        if (getInput("diem_tru")) getInput("diem_tru").value = diemToiDa;
+        if (getInput("tien_doi_diem")) {
+          getInput("tien_doi_diem").value = tienDoiDiemMoi.toLocaleString("vi-VN");
+        }
+        if (getInput("km_diem_hienthi")) {
+          getInput("km_diem_hienthi").value = tienDoiDiemMoi.toLocaleString("vi-VN");
+        }
+
+        header.diem_tru = diemToiDa;
+        header.tien_doi_diem = tienDoiDiemMoi;
+        header.thanhtoan = apDungGiamDiemVaoThanhToan();
+      } else {
+        alert(
+          "❌ Không thể sửa hóa đơn vì điểm khách hàng không hợp lệ:\n" +
+          (checkDiemErr?.message || checkDiem?.message || "")
+        );
+        return { ok: false, reason: "INVALID_CUSTOMER_POINTS_EDIT" };
+      }
     }
   }
 
