@@ -44,6 +44,12 @@ export async function xuLyDiemKhachHangSauLuu(sohd, thanhtoanOverride = null) {
 
   const { data, error } = await supabase.rpc("rpc_xuly_diem_khachhang", payload);
 
+  if (data?.skipped) {
+    console.warn("⚠️ RPC bỏ qua xử lý điểm:", data);
+    alert("⚠️ Hóa đơn đã lưu nhưng KHÔNG được xử lý điểm:\n" + (data.message || "Không rõ lý do."));
+    return data;
+  }
+
   if (error || !data?.ok) {
     console.error("❌ Lỗi xử lý điểm khách hàng:", { error, data, payload });
     alert("⚠️ Hóa đơn đã lưu nhưng xử lý điểm khách hàng bị lỗi: " + (error?.message || data?.message || ""));
