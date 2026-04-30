@@ -477,7 +477,7 @@
       const select = document.getElementById('loaiChungTu');
       if (!select) return;
 
-      const macDinh = new Set([ 'bancs2']);
+      const macDinh = new Set(['bancs2']);
 
       Array.from(select.options).forEach(opt => {
         opt.selected = macDinh.has(opt.value);
@@ -1304,7 +1304,16 @@
           const sohd = cb.getAttribute("data-sohd");
           if (!sohd) continue;
 
-          const prefix = sohd.split("_")[0] || "";
+          const prefix = (sohd.split("_")[0] || "").toLowerCase();
+
+          // ✅ CHẶN XÓA HÓA ĐƠN BÁN LẺ CÓ LIÊN QUAN TÍCH ĐIỂM
+          if (prefix === "bancs1" || prefix === "bancs2") {
+            alert(
+              "❌ Hóa đơn " + sohd + " liên quan đến tích điểm của khách hàng.\n\n" +
+              "Hóa đơn bán lẻ chỉ được SỬA, không được XÓA."
+            );
+            return;
+          }
 
           if (prefix.startsWith("xcn") || prefix.startsWith("ncn")) {
             coCCN = true;
@@ -1484,7 +1493,7 @@
       const selectLoai = document.getElementById("loaiChungTu");
       if (selectLoai) {
         Array.from(selectLoai.options).forEach(o => {
-          o.selected = ( o.value === 'bancs2');
+          o.selected = (o.value === 'bancs2');
         });
         updateLoaiChungTuDisplay();
       }
