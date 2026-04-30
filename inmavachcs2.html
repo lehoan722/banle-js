@@ -446,6 +446,7 @@
                             <option value="">– Chọn loại tem –</option>
                             <option value="giaydep">Tem giày dép</option>
                             <option value="quanao">Tem quần áo</option>
+                            <option value="tem_giamgia">Tem giảm giá</option>
                             <option value="insize_tomy114">In size </option>
                         </select>
                     </label>
@@ -481,6 +482,7 @@
             // 1) Import client chuẩn + module đăng nhập dùng chung
             import { supabase } from './scripts/supabaseClient.js';
             import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+            import { tinhKhuyenMai } from './scripts/khuyenmai.js';
 
             // (nhớ sửa lại đường dẫn ./scripts/... theo đúng folder của bạn:
             //  ví dụ '../scripts/authModule.js' nếu file nằm sâu thêm 1 cấp)
@@ -611,7 +613,7 @@
             window.fetchGiaLeByMasps = fetchGiaLeByMasps;
 
             // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
-            const PAGE_MARGIN_TOP_MM = 2.9;      // Lề trên của toàn bộ khối tem (mm)
+            const PAGE_MARGIN_TOP_MM = 2.8;      // Lề trên của toàn bộ khối tem (mm),  cs2  CS2
             const PAGE_MARGIN_LEFT_MM = 11;   // Lề trái của toàn bộ khối tem (mm)
             const TEM_H_GAP_MM = 0;          // Khoảng cách ngang giữa 2 tem (mm)
             const TEM_V_GAP_MM = 0;          // Khoảng cách dọc giữa 2 tem (mm)
@@ -633,7 +635,7 @@
                 'QB': 'QB',
                 'QT': 'QT',
                 'NG': 'NGO',
-                'BOC': 'BOC',                
+                'BOC': 'BOC',
                 'QV': 'QV',
                 'QNI': 'QNI',
                 'BOD': 'BOD'
@@ -850,7 +852,7 @@
             let temsAll = [];
 
 
-            window.renderPreview = function (page = 1) {
+            window.renderPreview = async function (page = 1) {
                 syncHandsontableToSelected();
                 // Kiểm tra chọn loại tem
                 const loaiTem = document.getElementById('loaiTem') ? document.getElementById('loaiTem').value : "";
@@ -888,6 +890,13 @@
                     }
                 });
 
+                let spKhuyenMaiMap = {};
+                if (loaiTem === "tem_giamgia") {
+                    spKhuyenMaiMap = await fetchKhuyenMaiByMasps(
+                        temsAll.map(x => x.masp)
+                    );
+                }
+
                 totalPages = Math.ceil(temsAll.length / 40) || 1;
                 currentPage = page > totalPages ? totalPages : page;
                 const fromRow = parseInt(fromRowInput.value) || 1;
@@ -909,7 +918,7 @@
         row-gap: 1.4mm;        
     ">`;
 
-                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs2  row-gap: 1.5mm; voi cs2
+                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs2  row-gap: 1.5mm; voi cs2 (khac nhau)
                 for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
                 for (let i = 0; i < maxTems; i++) {
                     const t = pageTems[i] || null;
@@ -964,19 +973,41 @@
         Shop HoànTuyết,TháiNguyên
       </div>
 
-      <!-- THÔNG TIN CHUNG ở đáy cột trái -->
+      ${loaiTem === "tem_giamgia" ? (() => {
+                            const giaInfo = tinhGiaTemGiamGia(t, spKhuyenMaiMap);
+
+                            return `
+        <div style="
+            font-size:10pt;
+            line-height:1;
+            white-space:nowrap;
+            text-decoration:line-through;
+            margin-top:1mm;
+        ">
+            Giá: ${formatGia(giaInfo.giaGoc)}
+        </div>
+
+        <div style="
+            font-size:13pt;
+            font-weight:bold;
+            line-height:1;
+            white-space:nowrap;
+            margin-top:1.2mm;
+        ">
+            Giá: ${formatGia(giaInfo.giaSauGiam)}
+        </div>
+    `;
+                        })() : `
     <div style="font-size:5.5pt; line-height:1; word-break:break-word;
                 width:100%; margin:0; padding:0;">
       ${infoChung}
     </div>    
 
-      
-
-      <!-- GIÁ (không xuống dòng, cắt bên phải) -->
-      <div style="font-size:12pt; font-weight:bold; line-height:1;
-                  white-space:nowrap; text-overflow:clip; margin:0;">
-        Giá: ${formatGia(t.giale)}
-      </div>
+    <div style="font-size:12pt; font-weight:bold; line-height:1;
+                white-space:nowrap; text-overflow:clip; margin:0;">
+      Giá: ${formatGia(t.giale)}
+    </div>
+`}
 
       
     </div>
@@ -1104,17 +1135,17 @@
             }
 
 
-            window.prevPage = function () {
+            window.prevPage = async function () {
                 const t = document.getElementById('loaiTem').value;
                 if (currentPage <= 1) return;
                 if (t === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage - 1);
-                else renderPreview(currentPage - 1);
+                else await renderPreview(currentPage - 1);
             };
-            window.nextPage = function () {
+            window.nextPage = async function () {
                 const t = document.getElementById('loaiTem').value;
                 if (currentPage >= totalPages) return;
                 if (t === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage + 1);
-                else renderPreview(currentPage + 1);
+                else await renderPreview(currentPage + 1);
             };
 
 
@@ -1122,6 +1153,46 @@
             function formatGia(val) {
                 if (!val || val == 0) return '';
                 return parseInt(val).toLocaleString('vi-VN');
+            }
+
+            async function fetchKhuyenMaiByMasps(masps = []) {
+                const uniq = Array.from(new Set(
+                    (masps || []).map(m => String(m || '').trim().toUpperCase()).filter(Boolean)
+                ));
+
+                if (!uniq.length) return {};
+
+                const { data, error } = await supabase
+                    .from('dmhanghoa')
+                    .select('*')
+                    .in('masp', uniq);
+
+                if (error) {
+                    console.warn('fetchKhuyenMaiByMasps error:', error);
+                    return {};
+                }
+
+                const map = {};
+                (data || []).forEach(sp => {
+                    map[String(sp.masp || '').trim().toUpperCase()] = sp;
+                });
+
+                return map;
+            }
+
+            function tinhGiaTemGiamGia(row, spMap) {
+                const masp = String(row.masp || '').trim().toUpperCase();
+                const sp = spMap[masp] || row;
+
+                const giaGoc = Number(sp.giale || row.giale || 0);
+                const tienGiam = tinhKhuyenMai(sp, giaGoc) || 0;
+                const giaSauGiam = Math.max(0, giaGoc - tienGiam);
+
+                return {
+                    giaGoc,
+                    tienGiam,
+                    giaSauGiam
+                };
             }
 
             function kiemTraGiaLeTruocKhiIn() {
@@ -1187,7 +1258,7 @@
 
             // chon loai tem in
 
-            window.checkLoaiTemAndRender = function () {
+            window.checkLoaiTemAndRender = async function () {
                 const loaiTem = document.getElementById('loaiTem').value;
                 if (!loaiTem) {
                     alert("Vui lòng chọn loại tem cần in!");
@@ -1201,15 +1272,15 @@
 
                 applyFromLimits(); // đảm bảo max fromRow/fromCol đúng
                 if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(1);
-                else renderPreview(1);
+                else await renderPreview(1);
             };
 
-            window.checkLoaiTemAndPrint = function () {
+            window.checkLoaiTemAndPrint = async function () {
                 const loaiTem = document.getElementById('loaiTem').value;
                 if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
                 // render lại đúng mode trước khi in
                 if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage || 1);
-                else renderPreview(currentPage || 1);
+                else await renderPreview(currentPage || 1);
                 window.print();
             };
 
@@ -2175,10 +2246,20 @@ Bạn chưa nhập màu sắc.
             });
 
             mausacInput?.addEventListener('blur', function () {
-                const colors = parseColorsFromInput(mausacInput.value);
-                selectedColorOrder = [...colors];
-                updateInputFromSelectedColorOrder();
-                syncPopupChecksFromInput();
+                setTimeout(() => {
+                    if (isClickingMauSacPopup) return;
+
+                    let colors = parseColorsFromInput(mausacInput.value);
+
+                    // Xóa các màu chỉ có 1 ký tự
+                    colors = colors.filter(c => (c || '').trim().length > 1);
+
+                    selectedColorOrder = [...colors];
+                    updateInputFromSelectedColorOrder();
+                    syncPopupChecksFromInput();
+                    updateMauSacPreview();
+                    closeMauSacPopup();
+                }, 120);
             });
 
             mausacInput?.addEventListener('focus', function () {
