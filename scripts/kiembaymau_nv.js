@@ -1981,7 +1981,8 @@ async function luuDuLieu() {
       method: "POST",
       body: JSON.stringify({
         mode,
-        rows
+        rows,
+        manv: currentLoginManv || localStorage.getItem("manv") || sessionStorage.getItem("manv") || ""
       })
     });
 
