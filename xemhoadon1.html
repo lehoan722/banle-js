@@ -39,8 +39,8 @@
       display: none;
       position: fixed;
       top: 10px;
-      right: 10px;
-      left: auto;
+      left: 10px;
+      right: auto;
       width: 600px;
 
       min-width: 350px;
@@ -104,6 +104,109 @@
     button.xoa-btn:hover {
       background: #ffe599;
     }
+
+    .loai-ct-wrap {
+      display: inline-block;
+      position: relative;
+      vertical-align: middle;
+      margin: 4px;
+    }
+
+    .loai-ct-box {
+      display: flex;
+      align-items: stretch;
+      min-width: 230px;
+    }
+
+    #loaiChungTuDisplay {
+      width: 220px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .loai-ct-btn {
+      width: 34px;
+      border: 1px solid #999;
+      border-left: none;
+      background: #f3f3f3;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .loai-ct-btn:hover {
+      background: #e6e6e6;
+    }
+
+    .loai-ct-popup {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 9999;
+      background: #f8f3df;
+      border: 1px solid #c8b98b;
+      border-radius: 4px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+      width: 360px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 2px;
+      padding: 4px 0;
+    }
+
+    .loai-ct-row {
+      display: grid;
+      grid-template-columns: 1fr 28px;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-bottom: 1px solid #eadfb9;
+    }
+
+    .loai-ct-row:last-child {
+      border-bottom: none;
+    }
+
+    .loai-ct-row:hover {
+      background: #efe5bf;
+    }
+
+    .loai-ct-label {
+      border: 1px solid #aaa;
+      background: #fff;
+      padding: 5px 8px;
+      line-height: 1.2;
+      font-size: 13px;
+    }
+
+    .loai-ct-check {
+      width: 16px;
+      height: 16px;
+      justify-self: center;
+    }
+
+    .loai-ct-actions {
+      display: flex;
+      gap: 6px;
+      padding: 6px 8px;
+      border-bottom: 1px solid #d8cfa5;
+      background: #f5ecd0;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .loai-ct-actions button {
+      flex: 1;
+      padding: 5px;
+      font-size: 12px;
+      border: 1px solid #aaa;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .loai-ct-actions button:hover {
+      background: #e6dba8;
+    }
   </style>
 </head>
 
@@ -128,43 +231,53 @@
     <label style="user-select:none"> <input type="checkbox" id="chkMatchAll"> HĐ phải chứa tất cả mã </label>
 
 
-    <label>Loại chứng từ:</label>
-    <select id="loaiChungTu" multiple style="min-width:140px;">
-      <option value="bancs1">ban cs1</option>
-      <option value="bancs2">ban cs2</option>
+    <label for="loaiChungTuDisplay">Loại chứng từ:</label>
 
-      <option value="bannvcs1">ban nv cs1</option>
-      <option value="bannvcs2">ban nv cs2</option>
+    <div class="loai-ct-wrap" id="loaiChungTuWrap">
+      <div class="loai-ct-box">
+        <input type="text" id="loaiChungTuDisplay" readonly placeholder="Chọn loại chứng từ" />
+        <button type="button" id="toggleLoaiChungTuPopup" class="loai-ct-btn">▼</button>
+      </div>
 
-      <option value="nmcs1">nhap moi cs1</option>
-      <option value="nmcs2">nhap moics2</option>
+      <div id="loaiChungTuPopup" class="loai-ct-popup" style="display:none;">
+        <div id="loaiChungTuPopupList"></div>
+      </div>
 
-      <option value="nhaptamcs1">nhap tam cs1</option>
-      <option value="nhaptamcs2">nhap tam cs2</option>
+      <select id="loaiChungTu" multiple style="display:none;">
+        <option value="bancs1">ban cs1</option>
+        <option value="bancs2">ban cs2</option>
 
-      <option value="xcncs1">xuat cn cs1</option>
-      <option value="ncncs1">nhap cn cs1</option>
+        <option value="bannvcs1">ban nv cs1</option>
+        <option value="bannvcs2">ban nv cs2</option>
 
-      <option value="xcncs2">xuat cn cs2</option>
-      <option value="ncncs2">nhap cn cs2 </option>
+        <option value="nmcs1">nhap moi cs1</option>
+        <option value="nmcs2">nhap moi cs2</option>
 
-      <option value="nhapkiemcs1">nhap kiem cs1</option>
-      <option value="nhapkiemcs2">nhap kiem cs2</option>
+        <option value="nhaptamcs1">nhap tam cs1</option>
+        <option value="nhaptamcs2">nhap tam cs2</option>
 
-      <option value="xuatkiemcs1">xuat kiem cs1</option>
-      <option value="xuatkiemcs2">xuat kiem cs2</option>
+        <option value="xcncs1">xuat cn cs1</option>
+        <option value="xcncs2">xuat cn cs2</option>
 
-      <option value="nhapdoics1">nhap doi tu khach cs1</option>
-      <option value="nhapdoics2">nhap doi tu khach cs2</option>
+        <option value="ncncs1">nhap cn cs1</option>
+        <option value="ncncs2">nhap cn cs2</option>
 
-      <option value="tralaincccs1">xuat tra lai ncc cs1</option>
-      <option value="tralaincccs2">xuat tra lai ncc cs2</option>
+        <option value="nhapkiemcs1">nhap kiem cs1</option>
+        <option value="nhapkiemcs2">nhap kiem cs2</option>
 
-      <option value="xuathuycs1">xuat huy cs1</option>
-      <option value="xuathuycs2">xuat huy cs2</option>
+        <option value="xuatkiemcs1">xuat kiem cs1</option>
+        <option value="xuatkiemcs2">xuat kiem cs2</option>
 
+        <option value="nhapdoics1">nhap doi tu khach cs1</option>
+        <option value="nhapdoics2">nhap doi tu khach cs2</option>
 
-    </select>
+        <option value="tralaincccs1">xuat tra lai ncc cs1</option>
+        <option value="tralaincccs2">xuat tra lai ncc cs2</option>
+
+        <option value="xuathuycs1">xuat huy cs1</option>
+        <option value="xuathuycs2">xuat huy cs2</option>
+      </select>
+    </div>
 
     <label>
 
@@ -180,6 +293,7 @@
     <button class="loc-btn" onclick="taiDanhSachHoaDon()">🔍 Lọc hóa đơn</button>
     <button class="xoa-btn" onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
     <button id="btnCopyTable" class="loc-btn">📋 Copy bảng</button>
+    <button class="xoa-btn" onclick="boDanhDauKiemNhapKhoDaChon()">🧹 Xóa kiểm nhập kho đã chọn</button>
 
     <br />
 
@@ -219,6 +333,7 @@
             <th>Tổng thành tiền</th>
             <th>Chiết khấu</th>
             <th>TT</th>
+            <th>Kiểm nhập kho</th>
             <th>Ghi chú</th>
           </tr>
         </thead>
@@ -358,6 +473,151 @@
       }
     }
 
+    function setDefaultLoaiChungTu() {
+      const select = document.getElementById('loaiChungTu');
+      if (!select) return;
+
+      const macDinh = new Set([ 'bancs2']);
+
+      Array.from(select.options).forEach(opt => {
+        opt.selected = macDinh.has(opt.value);
+      });
+
+      updateLoaiChungTuDisplay();
+    }
+
+    function renderLoaiChungTuPopup() {
+      const select = document.getElementById('loaiChungTu');
+      const popupList = document.getElementById('loaiChungTuPopupList');
+      if (!select || !popupList) return;
+
+      let html = `
+  <div class="loai-ct-actions">
+    <button type="button" id="btnSelectAllLoai">✔ Chọn tất cả</button>
+    <button type="button" id="btnUnselectAllLoai">✖ Bỏ chọn</button>
+  </div>
+`;
+
+      Array.from(select.options).forEach(opt => {
+        html += `
+    <div class="loai-ct-row" data-value="${opt.value}">
+      <div class="loai-ct-label">${opt.text}</div>
+      <input type="checkbox" class="loai-ct-check" value="${opt.value}" ${opt.selected ? 'checked' : ''}>
+    </div>
+  `;
+      });
+
+      popupList.innerHTML = html;
+      updateLoaiChungTuDisplay();
+    }
+
+    function updateLoaiChungTuDisplay() {
+      const select = document.getElementById('loaiChungTu');
+      const display = document.getElementById('loaiChungTuDisplay');
+      if (!select || !display) return;
+
+      const selectedTexts = Array.from(select.selectedOptions).map(o => o.text.trim());
+      display.value = selectedTexts.join(', ');
+    }
+
+    function syncLoaiChungTuSelectFromPopup() {
+      const select = document.getElementById('loaiChungTu');
+      if (!select) return;
+
+      const checkedValues = new Set(
+        Array.from(document.querySelectorAll('.loai-ct-check:checked')).map(chk => chk.value)
+      );
+
+      Array.from(select.options).forEach(opt => {
+        opt.selected = checkedValues.has(opt.value);
+      });
+
+      updateLoaiChungTuDisplay();
+    }
+
+    function openLoaiChungTuPopup() {
+      const popup = document.getElementById('loaiChungTuPopup');
+      if (!popup) return;
+      popup.style.display = 'block';
+    }
+
+    function closeLoaiChungTuPopup() {
+      const popup = document.getElementById('loaiChungTuPopup');
+      if (!popup) return;
+      popup.style.display = 'none';
+    }
+
+    function bindLoaiChungTuPopupEvents() {
+      const wrap = document.getElementById('loaiChungTuWrap');
+      const popupList = document.getElementById('loaiChungTuPopupList');
+      const toggleBtn = document.getElementById('toggleLoaiChungTuPopup');
+      const display = document.getElementById('loaiChungTuDisplay');
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const popup = document.getElementById('loaiChungTuPopup');
+          if (!popup) return;
+          popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
+        });
+      }
+
+      if (display) {
+        display.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const popup = document.getElementById('loaiChungTuPopup');
+          if (!popup) return;
+          popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
+        });
+      }
+
+      if (popupList) {
+        popupList.addEventListener('change', function (e) {
+          if (e.target.classList.contains('loai-ct-check')) {
+            syncLoaiChungTuSelectFromPopup();
+          }
+        });
+      }
+
+      if (popupList) {
+        popupList.addEventListener('click', function (e) {
+          const row = e.target.closest('.loai-ct-row');
+          if (!row) return;
+
+          // Nếu bấm trực tiếp vào checkbox thì để sự kiện change xử lý
+          if (e.target.classList.contains('loai-ct-check')) return;
+
+          const chk = row.querySelector('.loai-ct-check');
+          if (!chk) return;
+
+          chk.checked = !chk.checked;
+          syncLoaiChungTuSelectFromPopup();
+        });
+      }
+
+      document.addEventListener('mousedown', function (e) {
+        if (!wrap?.contains(e.target)) {
+          closeLoaiChungTuPopup();
+        }
+      });
+
+      // ===== Chọn tất cả =====
+      document.addEventListener('click', function (e) {
+        if (e.target.id === 'btnSelectAllLoai') {
+          document.querySelectorAll('.loai-ct-check').forEach(chk => chk.checked = true);
+          syncLoaiChungTuSelectFromPopup();
+        }
+
+        if (e.target.id === 'btnUnselectAllLoai') {
+          document.querySelectorAll('.loai-ct-check').forEach(chk => chk.checked = false);
+          syncLoaiChungTuSelectFromPopup();
+        }
+      });
+
+    }
+
 
     async function taiDanhSachHoaDon() {
       // 1. Lấy các giá trị lọc từ giao diện
@@ -374,6 +634,7 @@
 
       const selectLoai = document.getElementById("loaiChungTu");
       const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
+      updateLoaiChungTuDisplay();
 
       const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
 
@@ -420,7 +681,7 @@
         const row = data?.[0] || {};
         // tổng trên UI: dùng số "chuẩn theo detail"
         document.getElementById('tongSoLuong2').textContent = Number(row.total_sl_detail || 0).toLocaleString();
-        document.getElementById('tongTien2').textContent = Number(row.total_thanhtoan_v2 || 0).toLocaleString();
+        document.getElementById('tongTien2').textContent = Number(row.total_thanhtoan || row.total_thanhtoan_v2 || 0).toLocaleString();
 
 
         const totalRows = Number(row.total_rows || 0);
@@ -520,7 +781,7 @@
               tongsl: Number(r.sl_detail || 0),
               tongthanhtien: Number(r.tong_detail || 0),
               chietkhau: Number(r.chietkhau || 0),
-              thanhtoan: Number(r.thanhtoan_v2 || 0)
+              thanhtoan: Number(r.thanhtoan ?? r.thanhtoan_v2 ?? 0)
             });
           } else {
             const obj = groupMap.get(key);
@@ -528,7 +789,7 @@
             obj.tongsl += Number(r.sl_detail || 0);
             obj.tongthanhtien += Number(r.tong_detail || 0);
             obj.chietkhau += Number(r.chietkhau || 0);
-            obj.thanhtoan += Number(r.thanhtoan_v2 || 0);
+            obj.thanhtoan += Number(r.thanhtoan ?? r.thanhtoan_v2 ?? 0);
           }
         });
 
@@ -741,19 +1002,20 @@
       hienThiData.forEach((hd, idx) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-        <td>${idx + 1}</td>
-        <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
-        <td>${hd.sohd || ""}</td>
-        <td>${dinhDangNgayGio(hd.created_at)}</td>
-        <td>${dinhDangNgayGio(hd.updated_at)}</td>
-        <td>${hd.manv || ""}</td>
-        <td>${hd.khachhang || ""}</td>
-        <td>${hd.tongsl || 0}</td>
-        <td>${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
-        <td>${Number(hd.chietkhau || 0).toLocaleString()}</td>
-        <td>${Number(hd.thanhtoan || 0).toLocaleString()}</td>
-        <td>${hd.ghichu || ""}</td>
-      `;
+  <td>${idx + 1}</td>
+  <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
+  <td>${hd.sohd || ""}</td>
+  <td>${dinhDangNgayGio(hd.created_at)}</td>
+  <td>${dinhDangNgayGio(hd.updated_at)}</td>
+  <td>${hd.manv || ""}</td>
+  <td>${hd.khachhang || ""}</td>
+  <td>${hd.tongsl || 0}</td>
+  <td>${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
+  <td>${Number(hd.chietkhau || 0).toLocaleString()}</td>
+  <td>${Number(hd.thanhtoan || 0).toLocaleString()}</td>
+  <td>${hd.kiem_nhapkho || ""}</td>
+  <td>${hd.ghichu || ""}</td>
+`;
 
         // Click chọn dòng => tô vàng + hiện popup chi tiết
         tr.addEventListener('click', async (ev) => {
@@ -875,11 +1137,12 @@
             tennv: r.tennv,
             khachhang: r.khachhang,
             ghichu: r.ghichu,
+            kiem_nhapkho: r.kiem_nhapkho,
 
             tongsl: r.sl_detail,
             tongthanhtien: r.tong_detail,
             chietkhau: r.chietkhau,
-            thanhtoan: r.thanhtoan_v2,
+            thanhtoan: r.thanhtoan ?? r.thanhtoan_v2 ?? 0,
 
             tongsl_header: r.sl_header,
             lech_sl: r.lech_sl
@@ -925,29 +1188,96 @@
       });
     }
 
+    async function copyText111(text) {
+      const t = String(text || "").trim();
+      if (!t) return false;
 
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(t);
+          return true;
+        }
+      } catch (e) { }
 
-
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = t;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return !!ok;
+      } catch (e) {
+        return false;
+      }
+    }
 
     async function xemChiTiet(sohd) {
       const popupEl = document.getElementById("popup");
       popupEl.style.display = "block";
 
-      // Luôn neo popup ở góc trên bên phải (mở lần nào cũng reset về vị trí này)
+      // Neo popup chi tiết ở góc trên bên trái
       popupEl.style.top = "10px";
-      popupEl.style.right = "10px";
-      popupEl.style.left = "auto";
+      popupEl.style.left = "10px";
+      popupEl.style.right = "auto";
 
       document.getElementById("sohdCT").textContent = sohd;
 
-      const { data, error } = await window.supabase.from('ct_hoadon_banle').select('*').eq('sohd', sohd);
+      // Bấm số hóa đơn thì copy luôn số HĐ
+      await copyText111(sohd);
+
+      const { data, error } = await window.supabase
+        .from("ct_hoadon_banle")
+        .select("*")
+        .eq("sohd", sohd);
+
       const tbody = document.getElementById("ctHoaDon");
       tbody.innerHTML = "";
-      if (error) return tbody.innerHTML = `<tr><td colspan='7'>Lỗi: ${error.message}</td></tr>`;
-      data.forEach(row => {
-        const tt = (row.gia - row.km) * row.soluong;
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="8">Lỗi: ${error.message}</td></tr>`;
+        return;
+      }
+
+      (data || []).forEach(row => {
+        const tt = (Number(row.gia || 0) - Number(row.km || 0)) * Number(row.soluong || 0);
+        const masp = String(row.masp || "").trim().toUpperCase();
+
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${row.masp}</td><td>${row.tensp}</td><td>${row.size}</td><td>${row.soluong}</td><td>${row.dvt}</td><td>${row.gia}</td><td>${row.km}</td><td>${tt.toLocaleString()}</td>`;
+        tr.dataset.masp = masp;
+        tr.title = "Bấm để copy mã SP và xem nhanh tồn kho";
+        tr.style.cursor = "pointer";
+
+        tr.innerHTML = `
+      <td>${row.masp || ""}</td>
+      <td>${row.tensp || ""}</td>
+      <td>${row.size || ""}</td>
+      <td>${row.soluong || ""}</td>
+      <td>${row.dvt || ""}</td>
+      <td>${row.gia || ""}</td>
+      <td>${row.km || ""}</td>
+      <td>${tt.toLocaleString("vi-VN")}</td>
+    `;
+
+        tr.addEventListener("click", async function (e) {
+          e.stopPropagation();
+
+          const m = this.dataset.masp;
+          if (!m) return;
+
+          await copyText111(m);
+
+          if (typeof window.stockQuickPopup === "function") {
+            window.stockQuickPopup(m);
+          } else {
+            alert("Chưa load stockQuickPopup.js nên không mở được popup tồn kho.");
+          }
+        });
+
         tbody.appendChild(tr);
       });
     }
@@ -1045,10 +1375,62 @@
 
         await taiDanhSachHoaDon(); // refresh lại bảng
 
+      });
+    }
 
-        alert("✅ Đã xóa thành công " + dsXoa.length + " hóa đơn (bao gồm đối ứng nếu có).");
-        await taiDanhSachHoaDon(); // refresh lại bảng
+    async function boDanhDauKiemNhapKhoDaChon() {
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      if (checkboxes.length === 0) {
+        alert("❌ Bạn chưa chọn hóa đơn nào.");
+        return;
+      }
 
+      kiemTraNhanVienTruocKhiXoa(async function () {
+        let dsSua = [];
+        let fail = [];
+        let okCount = 0;
+
+        for (const cb of checkboxes) {
+          const sohd = cb.getAttribute("data-sohd");
+          if (!sohd) continue;
+          dsSua.push(sohd);
+        }
+
+        dsSua = [...new Set(dsSua)];
+
+        const xacNhan = confirm(
+          `Bạn có chắc muốn xóa trạng thái kiểm nhập kho của ${dsSua.length} hóa đơn đã chọn không?\n\n` +
+          `Sau thao tác này, các phiếu sẽ trở về trạng thái CHƯA kiểm kho để có thể kiểm tra lại.`
+        );
+        if (!xacNhan) return;
+
+        const reason = prompt("Nhập lý do bỏ đánh dấu kiểm nhập kho:", "Kiểm lại phiếu") || "";
+
+        for (const sohd of dsSua) {
+          const { data, error } = await window.supabase.rpc("admin_clear_kiem_nhapkho", {
+            p_sohd: sohd,
+            p_reason: reason.trim(),
+            p_source: location.pathname
+          });
+
+          if (error) {
+            fail.push(`${sohd}: ${error.message}`);
+            continue;
+          }
+
+          okCount++;
+        }
+
+        if (fail.length) {
+          alert(
+            `⚠️ Đã bỏ đánh dấu được ${okCount}/${dsSua.length} hóa đơn.\n` +
+            `Các hóa đơn lỗi:\n- ` + fail.join("\n- ")
+          );
+        } else {
+          alert(`✅ Đã xóa trạng thái kiểm nhập kho thành công ${okCount} hóa đơn.`);
+        }
+
+        await taiDanhSachHoaDon();
       });
     }
 
@@ -1071,6 +1453,7 @@
         // chọn đúng option nếu có
         const opt = Array.from(selectLoai.options).find(o => o.value === prefix);
         if (opt) opt.selected = true;
+        updateLoaiChungTuDisplay();
 
         // lấy ngày của hóa đơn -> đặt từ/đến đúng ngày đó
         try {
@@ -1093,10 +1476,18 @@
         return;
       }
 
-      // Không có ?sohd= -> mặc định ngày hôm nay
+      // Không có ?sohd= -> mặc định ngày hôm nay + mặc định loại chứng từ bán cs1, cs2
       const today = new Date().toISOString().slice(0, 10);
       document.getElementById('tuNgay').value = today;
       document.getElementById('denNgay').value = today;
+
+      const selectLoai = document.getElementById("loaiChungTu");
+      if (selectLoai) {
+        Array.from(selectLoai.options).forEach(o => {
+          o.selected = ( o.value === 'bancs2');
+        });
+        updateLoaiChungTuDisplay();
+      }
     }
 
     function bindEventsAfterAdmin() {
@@ -1358,6 +1749,8 @@
 
         // ✅ Admin OK -> lúc này mới init filter + bind events + load data
         await initFiltersFromUrl();
+        renderLoaiChungTuPopup();
+        bindLoaiChungTuPopupEvents();
         bindEventsAfterAdmin();
 
         // Gắn popup tìm mã sản phẩm (chỉ admin)
@@ -1422,7 +1815,7 @@
 
   </script>
 
-
+  <script src="./scripts/stockQuickPopup.js"></script>
   <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
 
 </body>
