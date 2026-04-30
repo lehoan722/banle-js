@@ -524,18 +524,14 @@ async function fetchRowsByFilterFromDmHangHoa(colname, filterValue, createdAtRan
 
 
 // ==== Render dropdown chọn cột cần ghi ====
-function renderColSelect() {
-  let html = `<option value="" selected disabled>-- Chọn mục cần ghi --</option>` +
-    COLS
-      .map(c => `<option value="${c.name}">${c.label}</option>`)
-      .join("");
 
+function renderColSelect() {
   const colSelect = document.getElementById('col-select');
   if (colSelect) {
-    colSelect.innerHTML = html;
+    colSelect.innerHTML = `<option value="vitri_thucte" selected>Vị trí thực tế</option>`;
+    colSelect.value = "vitri_thucte";
   }
 }
-
 
 // ==== Table Handsontable (chỉ gồm masp, cột cần sửa, trạng thái) ====
 let hot;
@@ -1076,7 +1072,7 @@ async function danCotAVaB() {
       return;
     }
 
-    const colname = colSelect.value;
+    const colname = "vitri_thucte";
 
     // Xóa màu trùng cũ trước khi dán
     duplicateMasps = new Set();
@@ -2122,7 +2118,7 @@ function normalizeDate(val) {
   // Khởi tạo dropdown & bảng (ẩn phía sau, chờ đăng nhập xong sẽ hiện app-container)
   ensureDuplicateMaspStyle();
   renderColSelect();
-  initTable();
+  initTable('vitri_thucte');
   attachUIEvents();
 
   // Khởi tạo module đăng nhập dùng chung (mã NV + mật khẩu NV)
