@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient.js';
 import { backupAllTablesToZip, backupAllTablesToExcel } from './backup.js';
 import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './authModule.js';
-const GOOGLE_SHEET_WEB_APP_URL = "AKfycbyOdI2_ETk3E3NMBIf3IXOwOQGsgLkjdwHQC6tPEq03ipJGT9arwNF3DPLgtuHWiQEQ";
+const GOOGLE_SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyOdI2_ETk3E3NMBIf3IXOwOQGsgLkjdwHQC6tPEq03ipJGT9arwNF3DPLgtuHWiQEQ/exec";
 
 // Cho stockQuickPopup dùng được supabase global
 if (typeof window !== 'undefined') {
@@ -1985,7 +1985,15 @@ async function luuDuLieu() {
       })
     });
 
-    const result = await res.json();
+    const text = await res.text();
+
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (e) {
+      console.error("Phản hồi không phải JSON:", text);
+      throw new Error("Apps Script chưa trả về JSON. Kiểm tra lại URL Web App hoặc quyền triển khai.");
+    }
 
     if (!result.ok) {
       alert("Lỗi lưu Google Sheet: " + result.message);
