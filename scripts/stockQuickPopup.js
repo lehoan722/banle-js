@@ -1751,15 +1751,42 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
   window.StockQuick = {
     attach,
     showFor(card, masp) {
-      return ensurePopup(card, masp);
+      return ensurePopup(card || document.body, masp);
     },
+
+    attachInput(inputOrSelector) {
+      const input =
+        typeof inputOrSelector === "string"
+          ? document.querySelector(inputOrSelector)
+          : inputOrSelector;
+
+      if (!input || input.dataset.stockQuickInputBound === "1") return;
+      input.dataset.stockQuickInputBound = "1";
+
+      async function openFromInput(e) {
+        const masp = String(input.value || "").trim().toUpperCase();
+        if (!masp) return;
+
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+
+        await ensurePopup(input, masp);
+      }
+
+      input.addEventListener("click", openFromInput);
+    }
   };
 
   if (typeof window !== "undefined") {
     window.stockQuickPopup = function (masp) {
       return window.StockQuick.showFor(document.body, masp);
     };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      window.StockQuick.attachInput("#masp");
+    });
   }
+
 })();
 
 
