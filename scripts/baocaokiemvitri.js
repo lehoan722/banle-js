@@ -1,4 +1,7 @@
 import { supabase } from './supabaseClient.js';
+if (typeof window !== 'undefined') {
+  window.supabase = supabase;
+}
 
 let hot;
 let currentTab = 'nhieu_vitri';
@@ -17,6 +20,45 @@ function setPreview(html) {
   if (el) el.innerHTML = html;
 }
 
+function getTodayYMD() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function layTonNhanhTheoMasps(masps) {
+  const unique = Array.from(
+    new Set((masps || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean))
+  );
+
+  if (unique.length === 0) return {};
+
+  const result = {};
+  const chunkSize = 200;
+  const denNgay = getTodayYMD();
+
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const arr = unique.slice(i, i + chunkSize);
+
+    const { data, error } = await supabase.rpc('xntnhanh', {
+      p_masps: arr,
+      p_den_ngay: denNgay,
+      p_tonghop_size: true
+    });
+
+    if (error) throw error;
+
+    (data || []).forEach(r => {
+      const masp = String(r.masp || '').trim().toUpperCase();
+      result[masp] = {
+        ton_cs1: Number(r.ton_cs1 || 0),
+        ton_cs2: Number(r.ton_cs2 || 0),
+        tong_ton: Number(r.tong_ton || 0)
+      };
+    });
+  }
+
+  return result;
+}
+
 function initTable() {
   const container = document.getElementById('hot');
 
@@ -28,6 +70,18 @@ function initTable() {
     height: 520,
     stretchH: 'all',
     manualColumnResize: true,
+    afterOnCellMouseDown: function (event, coords) {
+      if (!coords || coords.row < 0) return;
+
+      const row = currentRows[coords.row];
+      const masp = String(row?.masp || '').trim().toUpperCase();
+
+      if (!masp) return;
+
+      if (typeof window.stockQuickPopup === 'function') {
+        window.stockQuickPopup(masp);
+      }
+    },
     licenseKey: 'non-commercial-and-evaluation',
     columns: []
   });
@@ -150,7 +204,7 @@ async function loadCanCapNhat() {
 }
 
 async function loadChuaTreo() {
-  const { masp } = getFilters();
+  const { masp, coso } = getFilters();
 
   let q = supabase
     .from('v_kiem_vitri_chua_co_treo_mau')
@@ -162,9 +216,31 @@ async function loadChuaTreo() {
   const { data, error } = await q;
   if (error) throw error;
 
-  renderTable(data, [
+  const tonMap = await layTonNhanhTheoMasps((data || []).map(r => r.masp));
+
+  const dataCoTon = (data || [])
+    .map(r => {
+      const ma = String(r.masp || '').trim().toUpperCase();
+      const ton = tonMap[ma] || {};
+
+      return {
+        ...r,
+        ton_cs1: ton.ton_cs1 || 0,
+        ton_cs2: ton.ton_cs2 || 0,
+        tong_ton: ton.tong_ton || 0
+      };
+    })
+    .filter(r => {
+      return coso === 'cs2'
+        ? Number(r.ton_cs2 || 0) > 0
+        : Number(r.ton_cs1 || 0) > 0;
+    });
+
+  renderTable(dataCoTon, [
     { data: 'masp' },
     { data: 'tensp' },
+    { data: 'ton_cs1' },
+    { data: 'ton_cs2' },
     { data: 'treomaucs1' },
     { data: 'treomaucs2' },
     { data: 'vitrikho1' },
@@ -172,13 +248,15 @@ async function loadChuaTreo() {
   ], [
     'Mã sản phẩm',
     'Tên sản phẩm',
+    'Tồn CS1',
+    'Tồn CS2',
     'Treo mẫu CS1',
     'Treo mẫu CS2',
     'Vị trí kho CS1',
     'Vị trí kho CS2'
   ]);
 
-  setPreview(`⚪ Có <b>${data.length}</b> mã chưa có treo mẫu trong danh mục.`);
+  setPreview(`⚪ Có <b>${dataCoTon.length}</b> mã còn tồn nhưng chưa có treo mẫu.`);
 }
 
 async function loadReport() {
