@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo Cáo Kiểm Vị Trí</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+
+  <script type="module" src="scripts/baocaokiemvitri.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f7fb;
+      margin: 0;
+      padding: 10px;
+    }
+
+    h2 {
+      margin: 6px 0 10px;
+    }
+
+    .toolbar {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    select, input, button {
+      min-height: 40px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      padding: 6px 10px;
+      font-size: 15px;
+    }
+
+    button {
+      font-weight: 700;
+      background: #eef2f7;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .tab-btn.active {
+      background: #2563eb;
+      color: white;
+    }
+
+    #preview {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+
+    #hot {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    @media(max-width: 768px) {
+      .row, .tabs {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h2>📊 Báo Cáo Kiểm Vị Trí</h2>
+
+  <div class="toolbar">
+    <div class="row">
+      <select id="filter-coso">
+        <option value="cs1">Cơ sở 1</option>
+        <option value="cs2">Cơ sở 2</option>
+      </select>
+
+      <select id="filter-loai">
+        <option value="treomau">Treo mẫu</option>
+        <option value="vitrikho">Vị trí kho</option>
+      </select>
+
+      <input id="filter-masp" placeholder="Lọc mã sản phẩm">
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="nhieu_vitri">🔴 Nhiều vị trí</button>
+      <button class="tab-btn" data-tab="sai_chuan">🟠 Sai vị trí chuẩn</button>
+      <button class="tab-btn" data-tab="can_cap_nhat">🟡 Cần cập nhật DM</button>
+      <button class="tab-btn" data-tab="chua_treo">⚪ Chưa có treo mẫu</button>
+    </div>
+
+    <div class="row" style="margin-top:8px;">
+      <button id="btn-load">🔄 Tải báo cáo</button>
+      <button id="btn-cap-nhat">✅ Cập nhật vị trí chuẩn</button>
+      <button id="btn-bo-qua">🚫 Bỏ qua tạm</button>
+    </div>
+  </div>
+
+  <div id="preview">Chọn loại báo cáo rồi bấm tải dữ liệu.</div>
+  <div id="hot"></div>
+</body>
+</html>
