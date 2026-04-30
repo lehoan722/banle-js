@@ -248,12 +248,67 @@ async function capNhatViTriChuan() {
     return;
   }
 
-  alert('Đã cập nhật vị trí chuẩn.');
+  await supabase
+    .from('kiem_vitri_xuly')
+    .insert([{
+      coso: getFilters().coso,
+      loai_kiem: getFilters().loai,
+      masp,
+      vitri_thucte: vitri,
+      vitri_chuan: row.vitri_chuan || null,
+      hanh_dong: 'DA_CAP_NHAT',
+      ghichu: `Cập nhật ${field} = ${vitri}`,
+      manv: localStorage.getItem('manv') || sessionStorage.getItem('manv') || null,
+      tennv: localStorage.getItem('tennv') || sessionStorage.getItem('tennv') || null
+    }]);
+
+  alert('Đã cập nhật vị trí chuẩn và ghi lịch sử xử lý.');
   await loadReport();
 }
 
-function boQuaTam() {
-  alert('Bước sau sẽ tạo bảng trạng thái xử lý để lưu dòng bỏ qua / đã gom xong / cần kiểm lại.');
+async function boQuaTam() {
+  const row = getSelectedRow();
+
+  if (!row) {
+    alert('Bạn cần chọn 1 dòng trước.');
+    return;
+  }
+
+  const { coso, loai } = getFilters();
+
+  const masp = (row.masp || '').toString().trim().toUpperCase();
+  const vitriThucTe = (row.vitri_thucte || '').toString().trim().toUpperCase();
+  const vitriChuan = (row.vitri_chuan || '').toString().trim().toUpperCase();
+
+  if (!masp) {
+    alert('Dòng này không có mã sản phẩm.');
+    return;
+  }
+
+  if (!confirm(`Bỏ qua tạm mã ${masp}?`)) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from('kiem_vitri_xuly')
+    .insert([{
+      coso,
+      loai_kiem: loai,
+      masp,
+      vitri_thucte: vitriThucTe || null,
+      vitri_chuan: vitriChuan || null,
+      hanh_dong: 'BO_QUA',
+      ghichu: null,
+      manv: localStorage.getItem('manv') || sessionStorage.getItem('manv') || null,
+      tennv: localStorage.getItem('tennv') || sessionStorage.getItem('tennv') || null
+    }]);
+
+  if (error) {
+    alert('Lỗi lưu trạng thái bỏ qua: ' + error.message);
+    return;
+  }
+
+  alert('Đã đánh dấu bỏ qua tạm.');
 }
 
 function attachEvents() {
