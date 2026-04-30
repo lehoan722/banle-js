@@ -220,6 +220,9 @@ async function loadChuaTreo() {
   let q = supabase
     .from('v_thieu_treo_mau')
     .select('*')
+    .eq('coso', coso)
+    .eq('loai_kiem', 'treomau')
+    .order('lan_kiem_cuoi', { ascending: false })
     .limit(500);
 
   if (masp) q = q.ilike('masp', `%${masp}%`);
@@ -238,36 +241,28 @@ async function loadChuaTreo() {
         ...r,
         ton_cs1: ton.ton_cs1 || 0,
         ton_cs2: ton.ton_cs2 || 0,
-        tong_ton: ton.tong_ton || 0
+        ton_coso: coso === 'cs2' ? (ton.ton_cs2 || 0) : (ton.ton_cs1 || 0)
       };
     })
-    .filter(r => {
-      return coso === 'cs2'
-        ? Number(r.ton_cs2 || 0) > 0
-        : Number(r.ton_cs1 || 0) > 0;
-    });
+    .filter(r => Number(r.ton_coso || 0) > 0);
 
   renderTable(dataCoTon, [
     { data: 'masp' },
     { data: 'tensp' },
-    { data: 'ton_cs1' },
-    { data: 'ton_cs2' },
-    { data: 'treomaucs1' },
-    { data: 'treomaucs2' },
-    { data: 'vitrikho1' },
-    { data: 'vitrikho2' }
+    { data: 'ton_coso' },
+    { data: 'vitri_chuan' },
+    { data: 'khu_vuc' },
+    { data: 'lan_kiem_cuoi' }
   ], [
     'Mã sản phẩm',
     'Tên sản phẩm',
-    'Tồn CS1',
-    'Tồn CS2',
-    'Treo mẫu CS1',
-    'Treo mẫu CS2',
-    'Vị trí kho CS1',
-    'Vị trí kho CS2'
+    'Tồn cơ sở',
+    'Vị trí mẫu chuẩn',
+    'Khu vực đã kiểm',
+    'Lần kiểm cuối'
   ]);
 
-  setPreview(`⚪ Có <b>${dataCoTon.length}</b> mã còn tồn nhưng chưa có treo mẫu.`);
+  setPreview(`⚪ Có <b>${dataCoTon.length}</b> mã còn tồn nhưng kiểm không thấy tại vị trí mẫu chuẩn.`);
 }
 
 async function loadReport() {
