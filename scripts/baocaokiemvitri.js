@@ -103,7 +103,7 @@ async function loadNhieuViTri() {
   const { coso, loai, masp } = getFilters();
 
   let q = supabase
-    .from('v_kiem_vitri_nhieu_vitri')
+    .from('v_nhieu_vitri')
     .select('*')
     .eq('coso', coso)
     .eq('loai_kiem', loai)
@@ -134,11 +134,10 @@ async function loadSaiChuan() {
   const { coso, loai, masp } = getFilters();
 
   let q = supabase
-    .from('v_kiem_vitri_so_sanh_dmhanghoa')
+    .from('v_sai_vitri_chuan')
     .select('*')
     .eq('coso', coso)
-    .eq('loai_kiem', loai)
-    .neq('ketqua', 'OK')
+    .eq('loai_kiem', loai)    
     .order('created_at', { ascending: false })
     .limit(500);
 
@@ -172,7 +171,7 @@ async function loadCanCapNhat() {
   const { coso, loai, masp } = getFilters();
 
   let q = supabase
-    .from('v_kiem_vitri_can_cap_nhat_dm')
+    .from('v_can_treo_mau')
     .select('*')
     .eq('coso', coso)
     .eq('loai_kiem', loai)
@@ -207,7 +206,7 @@ async function loadChuaTreo() {
   const { masp, coso } = getFilters();
 
   let q = supabase
-    .from('v_kiem_vitri_chua_co_treo_mau')
+    .from('v_thieu_treo_mau')
     .select('*')
     .limit(500);
 
