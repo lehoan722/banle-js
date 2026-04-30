@@ -73,14 +73,26 @@ function initTable() {
     afterOnCellMouseDown: function (event, coords) {
       if (!coords || coords.row < 0) return;
 
+      // Chỉ cho mở popup khi bấm vào cột mã sản phẩm
+      if (coords.col !== 0) return;
+
       const row = currentRows[coords.row];
       const masp = String(row?.masp || '').trim().toUpperCase();
 
       if (!masp) return;
 
-      if (typeof window.stockQuickPopup === 'function') {
-        window.stockQuickPopup(masp);
-      }
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+
+      setTimeout(() => {
+        if (typeof window.stockQuickPopup === 'function') {
+          window.stockQuickPopup(masp);
+        } else if (window.StockQuick?.showFor) {
+          window.StockQuick.showFor(document.body, masp);
+        } else {
+          alert('Chưa tải được stockQuickPopup.js');
+        }
+      }, 50);
     },
     licenseKey: 'non-commercial-and-evaluation',
     columns: []
@@ -137,7 +149,7 @@ async function loadSaiChuan() {
     .from('v_sai_vitri_chuan')
     .select('*')
     .eq('coso', coso)
-    .eq('loai_kiem', loai)    
+    .eq('loai_kiem', loai)
     .order('created_at', { ascending: false })
     .limit(500);
 
