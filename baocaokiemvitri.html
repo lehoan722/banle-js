@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <title>Báo Cáo Kiểm Vị Trí</title>
@@ -38,7 +39,9 @@
       margin-bottom: 8px;
     }
 
-    select, input, button {
+    select,
+    input,
+    button {
       min-height: 40px;
       border-radius: 8px;
       border: 1px solid #d1d5db;
@@ -78,7 +81,9 @@
     }
 
     @media(max-width: 768px) {
-      .row, .tabs {
+
+      .row,
+      .tabs {
         grid-template-columns: 1fr;
       }
     }
@@ -120,22 +125,57 @@
   <div id="preview">Chọn loại báo cáo rồi bấm tải dữ liệu.</div>
   <div id="hot"></div>
 
-  <div id="popup-phien" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4);">
-  <div style="background:#fff; width:400px; max-height:80%; margin:40px auto; padding:12px; border-radius:10px; overflow:auto;">
-    
-    <h3>Chọn phiên kiểm</h3>
+  <div id="popup-phien" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  z-index:9999;
+">
 
-    <input id="search-phien" placeholder="Tìm mã phiên..." style="width:100%; margin-bottom:8px;">
+    <div id="popup-content" style="
+    background:#fff;
+    width:420px;
+    max-height:80%;
+    margin:40px auto;
+    border-radius:10px;
+    display:flex;
+    flex-direction:column;
+  ">
 
-    <div id="list-phien"></div>
+      <div style="padding:12px; border-bottom:1px solid #ddd;">
+        <h3 style="margin:0;">Chọn phiên kiểm</h3>
 
-    <div style="margin-top:10px; display:flex; gap:8px;">
-      <button id="btn-chon-phien">Xác nhận</button>
-      <button onclick="document.getElementById('popup-phien').style.display='none'">Đóng</button>
+        <input id="search-phien" placeholder="Tìm mã phiên..." style="width:100%; margin-top:8px;">
+
+        <label style="display:block; margin-top:6px;">
+          <input type="checkbox" id="check-all-phien">
+          Chọn tất cả (theo danh sách đang lọc)
+        </label>
+      </div>
+
+      <div id="list-phien" style="
+      overflow:auto;
+      padding:8px;
+      flex:1;
+    "></div>
+
+      <div style="
+      padding:10px;
+      border-top:1px solid #ddd;
+      display:flex;
+      gap:8px;
+      position:sticky;
+      bottom:0;
+      background:#fff;
+    ">
+        <button id="btn-chon-phien">✅ Xác nhận</button>
+        <button id="btn-dong-popup">❌ Đóng</button>
+      </div>
+
     </div>
-
   </div>
-</div>
 
 </body>
+
 </html>
