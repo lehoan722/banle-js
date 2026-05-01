@@ -7,6 +7,66 @@ let hot;
 let currentTab = 'nhieu_vitri';
 let currentRows = [];
 
+let selectedPhienIds = [];
+
+async function moPopupChonPhien() {
+  document.getElementById('popup-phien').style.display = 'block';
+
+  const { coso, loai } = getFilters();
+
+  const { data, error } = await supabase
+    .from('kiem_vitri_phien')
+    .select('*')
+    .eq('coso', coso)
+    .eq('loai_kiem', loai)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  renderListPhien(data);
+}
+
+function renderListPhien(list) {
+  const box = document.getElementById('list-phien');
+
+  box.innerHTML = list.map(p => `
+    <div>
+      <label>
+        <input type="checkbox" value="${p.ma_phien}">
+        ${p.ma_phien}
+      </label>
+    </div>
+  `).join('');
+}
+
+document.getElementById('search-phien')?.addEventListener('input', e => {
+  const kw = e.target.value.toLowerCase();
+
+  document.querySelectorAll('#list-phien div').forEach(div => {
+    const text = div.innerText.toLowerCase();
+    div.style.display = text.includes(kw) ? '' : 'none';
+  });
+});
+
+document.getElementById('btn-chon-phien')?.addEventListener('click', async () => {
+  const checked = Array.from(document.querySelectorAll('#list-phien input:checked'));
+
+  selectedPhienIds = checked.map(i => i.value);
+
+  if (selectedPhienIds.length === 0) {
+    alert('Bạn phải chọn ít nhất 1 phiên');
+    return;
+  }
+
+  document.getElementById('popup-phien').style.display = 'none';
+
+  await loadChuaTreoTheoPhien(); // gọi báo cáo mới
+});
+
 function getFilters() {
   return {
     coso: document.getElementById('filter-coso')?.value || 'cs1',
@@ -214,55 +274,62 @@ async function loadCanCapNhat() {
   setPreview(`🟡 Có <b>${data.length}</b> mã thực tế đã thấy nhưng danh mục chưa có vị trí chuẩn.`);
 }
 
-async function loadChuaTreo() {
-  const { masp, coso } = getFilters();
+async function loadChuaTreoTheoPhien() {
+  const { coso } = getFilters();
 
-  let q = supabase
-    .from('v_thieu_treo_mau')
+  // 1. Lấy dữ liệu thực tế theo phiên
+  const { data: thucte } = await supabase
+    .from('kiem_vitri_chitiet')
     .select('*')
-    .eq('coso', coso)
+    .in('ma_phien', selectedPhienIds)
     .eq('loai_kiem', 'treomau')
-    .order('lan_kiem_cuoi', { ascending: false })
-    .limit(500);
+    .eq('coso', coso);
 
-  if (masp) q = q.ilike('masp', `%${masp}%`);
+  const mapThucTe = new Set(
+    (thucte || []).map(r => (r.masp || '').toUpperCase())
+  );
 
-  const { data, error } = await q;
-  if (error) throw error;
+  // 2. Lấy danh mục chuẩn
+  const { data: dm } = await supabase
+    .from('dmhanghoa')
+    .select('*');
 
-  const tonMap = await layTonNhanhTheoMasps((data || []).map(r => r.masp));
+  const listChuan = dm.filter(r => {
+    return coso === 'cs1'
+      ? r.treomaucs1
+      : r.treomaucs2;
+  });
 
-  const dataCoTon = (data || [])
+  // 3. So sánh thiếu
+  const thieu = listChuan.filter(r => {
+    const masp = (r.masp || '').toUpperCase();
+    return !mapThucTe.has(masp);
+  });
+
+  // 4. Lấy tồn kho
+  const tonMap = await layTonNhanhTheoMasps(thieu.map(r => r.masp));
+
+  const final = thieu
     .map(r => {
-      const ma = String(r.masp || '').trim().toUpperCase();
-      const ton = tonMap[ma] || {};
-
+      const ton = tonMap[r.masp] || {};
       return {
         ...r,
-        ton_cs1: ton.ton_cs1 || 0,
-        ton_cs2: ton.ton_cs2 || 0,
-        ton_coso: coso === 'cs2' ? (ton.ton_cs2 || 0) : (ton.ton_cs1 || 0)
+        ton: coso === 'cs1' ? ton.ton_cs1 : ton.ton_cs2
       };
     })
-    .filter(r => Number(r.ton_coso || 0) > 0);
+    .filter(r => r.ton > 0);
 
-  renderTable(dataCoTon, [
+  renderTable(final, [
     { data: 'masp' },
     { data: 'tensp' },
-    { data: 'ton_coso' },
-    { data: 'vitri_chuan' },
-    { data: 'khu_vuc' },
-    { data: 'lan_kiem_cuoi' }
+    { data: 'ton' }
   ], [
     'Mã sản phẩm',
     'Tên sản phẩm',
-    'Tồn cơ sở',
-    'Vị trí mẫu chuẩn',
-    'Khu vực đã kiểm',
-    'Lần kiểm cuối'
+    'Tồn'
   ]);
 
-  setPreview(`⚪ Có <b>${dataCoTon.length}</b> mã còn tồn nhưng kiểm không thấy tại vị trí mẫu chuẩn.`);
+  setPreview(`⚪ Có <b>${final.length}</b> mã thiếu tại mẫu (theo phiên đã chọn)`);
 }
 
 async function loadReport() {
@@ -278,6 +345,12 @@ async function loadReport() {
     console.error(err);
     setPreview(`<span style="color:red;">❌ Lỗi tải báo cáo: ${err.message || err}</span>`);
   }
+
+  if (currentTab === 'chua_treo') {
+    moPopupChonPhien(); // KHÔNG load ngay
+    return;
+  }
+
 }
 
 function getSelectedRow() {
