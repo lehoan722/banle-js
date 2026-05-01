@@ -946,7 +946,7 @@
 
     <div style="
         font-family:serif;
-        font-size:13pt;
+        font-size:11pt;
         line-height:1;
         white-space:nowrap;
         overflow:hidden;
@@ -957,11 +957,12 @@
 
     <svg class="barcode"
          data-code="${((t.size ?? '').toString().trim() && (t.size ?? '').toString().trim() !== '0') ? `${t.masp}_${(t.size ?? '').toString().trim()}` : t.masp}"
-         style="width:31mm;height:5.5mm;"></svg>
+         style="width:26mm;height:3mm; display:block; margin:0 auto;"></svg>
+         
 
     <div style="
         font-family:serif;
-        font-size:14pt;
+        font-size:13pt;
         line-height:1;
         white-space:nowrap;
         overflow:hidden;
@@ -972,7 +973,7 @@
 
     <div style="
         font-family:serif;
-        font-size:16pt;
+        font-size:14pt;
         line-height:1;
         white-space:nowrap;
         overflow:hidden;
@@ -1112,8 +1113,8 @@
                         JsBarcode(el, code, {
                             format: "CODE128",
                             displayValue: false,
-                            width: 1.1,
-                            height: 28,
+                            width: 0.7,
+                            height: 14,
                             margin: 0
                         });
                     });
