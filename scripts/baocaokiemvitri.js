@@ -275,71 +275,124 @@ async function loadCanCapNhat() {
 }
 
 async function loadChuaTreoTheoPhien() {
-  const { coso } = getFilters();
+  const { coso, masp } = getFilters();
 
-  // 1. Lấy dữ liệu thực tế theo phiên
-  const { data: thucte } = await supabase
-    .from('kiem_vitri_chitiet')
-    .select('*')
-    .in('ma_phien', selectedPhienIds)
-    .eq('loai_kiem', 'treomau')
-    .eq('coso', coso);
+  if (!selectedPhienIds || selectedPhienIds.length === 0) {
+    alert("Bạn cần chọn ít nhất 1 phiên kiểm.");
+    return;
+  }
+
+  setPreview("⏳ Đang so sánh thiếu mẫu theo khu vực của phiên đã chọn...");
+
+  // 1. Lấy thông tin phiên để biết các khu vực đã kiểm
+  const { data: phienInfo, error: phienErr } = await supabase
+    .from("kiem_vitri_phien")
+    .select("ma_phien, khu_vuc, coso, loai_kiem")
+    .in("ma_phien", selectedPhienIds)
+    .eq("coso", coso)
+    .eq("loai_kiem", "treomau");
+
+  if (phienErr) throw phienErr;
+
+  const khuVucSet = new Set(
+    (phienInfo || [])
+      .map(p => String(p.khu_vuc || "").trim().toUpperCase())
+      .filter(Boolean)
+  );
+
+  if (khuVucSet.size === 0) {
+    alert("Các phiên đã chọn chưa có khu vực kiểm hợp lệ.");
+    return;
+  }
+
+  // 2. Lấy dữ liệu thực tế trong đúng các phiên đã chọn
+  const { data: thucte, error: ctErr } = await supabase
+    .from("kiem_vitri_chitiet")
+    .select("ma_phien, masp, vitri_thucte, khu_vuc, coso, loai_kiem")
+    .in("ma_phien", selectedPhienIds)
+    .eq("coso", coso)
+    .eq("loai_kiem", "treomau");
+
+  if (ctErr) throw ctErr;
 
   const mapThucTe = new Set(
     (thucte || []).map(r => {
-      const masp = (r.masp || '').toUpperCase();
-      const vitri = (r.vitri_thucte || '').trim().toUpperCase();
-      return masp + '|' + vitri;
+      const ma = String(r.masp || "").trim().toUpperCase();
+      const vt = String(r.vitri_thucte || r.khu_vuc || "").trim().toUpperCase();
+      return `${ma}|${vt}`;
     })
   );
 
-  // 2. Lấy danh mục chuẩn
-  const { data: dm } = await supabase
-    .from('dmhanghoa')
-    .select('*');
+  // 3. Lấy danh mục chuẩn, nhưng CHỈ lấy những mã thuộc khu vực đã kiểm
+  let q = supabase
+    .from("dmhanghoa")
+    .select("masp, tensp, treomaucs1, treomaucs2, vitrikho1, vitrikho2")
+    .not(coso === "cs2" ? "treomaucs2" : "treomaucs1", "is", null);
 
-  const listChuan = dm.filter(r => {
-    return coso === 'cs1'
-      ? r.treomaucs1
-      : r.treomaucs2;
+  if (masp) q = q.ilike("masp", `%${masp}%`);
+
+  const { data: dm, error: dmErr } = await q;
+  if (dmErr) throw dmErr;
+
+  const listChuanTrongKhuVucDaKiem = (dm || []).filter(r => {
+    const vitriChuan = coso === "cs2" ? r.treomaucs2 : r.treomaucs1;
+    const vt = String(vitriChuan || "").trim().toUpperCase();
+    return vt && khuVucSet.has(vt);
   });
 
-  // 3. So sánh thiếu
-  const thieu = listChuan.filter(r => {
-    const masp = (r.masp || '').toUpperCase();
-    const vitriChuan = coso === 'cs1'
-      ? r.treomaucs1
-      : r.treomaucs2;
-
-    const key = (r.masp || '').toUpperCase() + '|' + (vitriChuan || '').trim().toUpperCase();
-
-    return !mapThucTe.has(key);
+  // 4. So sánh thiếu: có trong chuẩn của khu vực đã kiểm, nhưng không thấy trong phiên
+  const thieu = listChuanTrongKhuVucDaKiem.filter(r => {
+    const ma = String(r.masp || "").trim().toUpperCase();
+    const vitriChuan = coso === "cs2" ? r.treomaucs2 : r.treomaucs1;
+    const vt = String(vitriChuan || "").trim().toUpperCase();
+    return !mapThucTe.has(`${ma}|${vt}`);
   });
 
-  // 4. Lấy tồn kho
+  // 5. Lọc tồn kho cơ sở > 0
   const tonMap = await layTonNhanhTheoMasps(thieu.map(r => r.masp));
 
   const final = thieu
     .map(r => {
-      const ton = tonMap[r.masp] || {};
+      const ma = String(r.masp || "").trim().toUpperCase();
+      const ton = tonMap[ma] || {};
+      const vitriChuan = coso === "cs2" ? r.treomaucs2 : r.treomaucs1;
+
       return {
-        ...r,
-        ton: coso === 'cs1' ? ton.ton_cs1 : ton.ton_cs2
+        masp: ma,
+        tensp: r.tensp || "",
+        ton: coso === "cs2" ? Number(ton.ton_cs2 || 0) : Number(ton.ton_cs1 || 0),
+        vitri_chuan: vitriChuan || "",
+        phien_da_chon: selectedPhienIds.join(", "),
+        khu_vuc_da_kiem: Array.from(khuVucSet).join(", ")
       };
     })
-    .filter(r => r.ton > 0);
+    .filter(r => Number(r.ton || 0) > 0);
 
   renderTable(final, [
-    { data: 'masp' },
-    { data: 'tensp' },
-    { data: 'ton' }
+    { data: "masp" },
+    { data: "tensp" },
+    { data: "ton" },
+    { data: "vitri_chuan" },
+    { data: "khu_vuc_da_kiem" }
   ], [
-    'Mã sản phẩm',
-    'Tên sản phẩm',
-    'Tồn'
+    "Mã sản phẩm",
+    "Tên sản phẩm",
+    "Tồn cơ sở",
+    "Vị trí mẫu chuẩn",
+    "Khu vực đã kiểm"
   ]);
 
-  setPreview(`⚪ Có <b>${final.length}</b> mã thiếu tại mẫu (theo phiên đã chọn)`);
+  setPreview(
+    `⚪ Có <b>${final.length}</b> mã thiếu tại mẫu trong khu vực đã kiểm. ` +
+    `Phiên chọn: <b>${selectedPhienIds.length}</b>. ` +
+    `Khu vực: <b>${Array.from(khuVucSet).join(", ")}</b>`
+  );
+
+  console.log("Phiên đã chọn:", selectedPhienIds);
+  console.log("Khu vực đã kiểm:", Array.from(khuVucSet));
+  console.log("Số mã chuẩn trong khu vực:", listChuanTrongKhuVucDaKiem.length);
+  console.log("Số mã thực tế:", mapThucTe.size);
+  console.log("Thiếu sau lọc tồn:", final.length);
 }
 
 async function loadReport() {
