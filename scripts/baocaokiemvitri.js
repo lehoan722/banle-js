@@ -1,6 +1,22 @@
-import { supabase } from './supabaseClient.js';
-if (typeof window !== 'undefined') {
-  window.supabase = supabase;
+import {
+  khoiTaoDangNhapDungChung,
+  getCurrentUserInfo
+} from './authModule.js';
+
+const supabase = window.supabase;
+
+let currentUserInfo = null;
+
+function isAdminUser() {
+  currentUserInfo = getCurrentUserInfo();
+  return currentUserInfo?.is_admin === true;
+}
+
+function capNhatQuyenPopupPhien() {
+  const btnXoa = document.getElementById("btn-xoa-phien");
+  if (!btnXoa) return;
+
+  btnXoa.style.display = isAdminUser() ? "" : "none";
 }
 
 let hot;
@@ -11,6 +27,7 @@ let selectedPhienIds = [];
 
 async function moPopupChonPhien() {
   document.getElementById('popup-phien').style.display = 'block';
+  capNhatQuyenPopupPhien();
 
   const { coso, loai } = getFilters();
 
@@ -694,7 +711,63 @@ async function boQuaTam() {
   alert('Đã đánh dấu bỏ qua tạm.');
 }
 
+async function xoaPhienKiemDaChon() {
+  if (!isAdminUser()) {
+    alert("Chỉ ADMIN mới được phép xóa phiên kiểm.");
+    return;
+  }
+
+  const checked = Array.from(document.querySelectorAll("#list-phien input:checked"));
+  const maPhienList = checked.map(i => String(i.value || "").trim()).filter(Boolean);
+
+  if (maPhienList.length === 0) {
+    alert("Bạn cần chọn ít nhất 1 phiên để xóa.");
+    return;
+  }
+
+  const msg =
+    `Bạn có chắc chắn muốn xóa ${maPhienList.length} phiên kiểm này không?\n\n` +
+    maPhienList.join(", ") +
+    `\n\nDữ liệu chi tiết và đầu phiếu sẽ bị xóa.`;
+
+  if (!confirm(msg)) return;
+
+  setPreview("⏳ Đang xóa phiên kiểm...");
+
+  // 1. Xóa chi tiết trước
+  const { error: ctErr } = await supabase
+    .from("kiem_vitri_chitiet")
+    .delete()
+    .in("ma_phien", maPhienList);
+
+  if (ctErr) {
+    alert("Lỗi xóa chi tiết phiên kiểm: " + ctErr.message);
+    return;
+  }
+
+  // 2. Xóa đầu phiếu sau
+  const { error: phienErr } = await supabase
+    .from("kiem_vitri_phien")
+    .delete()
+    .in("ma_phien", maPhienList);
+
+  if (phienErr) {
+    alert("Đã xóa chi tiết nhưng lỗi khi xóa đầu phiếu: " + phienErr.message);
+    return;
+  }
+
+  alert("Đã xóa phiên kiểm thành công.");
+
+  selectedPhienIds = selectedPhienIds.filter(x => !maPhienList.includes(x));
+
+  await moPopupChonPhien();
+
+  renderTable([], [], []);
+  setPreview(`✅ Đã xóa ${maPhienList.length} phiên kiểm.`);
+}
+
 function attachEvents() {
+  document.getElementById("btn-xoa-phien")?.addEventListener("click", xoaPhienKiemDaChon);
   document.getElementById('btn-load')?.addEventListener('click', loadReport);
   document.getElementById('btn-cap-nhat')?.addEventListener('click', capNhatViTriChuan);
   document.getElementById('btn-tai-phien')?.addEventListener('click', moPopupChonPhien);
@@ -720,7 +793,19 @@ function attachEvents() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initTable();
-  attachEvents();
-  await loadReport();
+  khoiTaoDangNhapDungChung({
+    loginContainerId: "login-container",
+    appContainerId: "app-container",
+    macDinhDiaDiem: "cs1",
+    onLoginSuccess: async () => {
+      currentUserInfo = getCurrentUserInfo();
+
+      initTable();
+      attachEvents();
+      capNhatQuyenPopupPhien();
+
+      await loadReport();
+      return true;
+    }
+  });
 });
