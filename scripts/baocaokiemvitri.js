@@ -81,7 +81,7 @@ document.getElementById('btn-chon-phien')?.addEventListener('click', async () =>
 
   document.getElementById('popup-phien').style.display = 'none';
 
-  await loadChiTietTheoPhien();
+  await loadChuaTreoTheoPhien(); // gọi báo cáo mới
 });
 
 function getFilters() {
@@ -774,7 +774,7 @@ function attachEvents() {
   document.getElementById("btn-xoa-phien")?.addEventListener("click", xoaPhienKiemDaChon);
   document.getElementById('btn-load')?.addEventListener('click', loadReport);
   document.getElementById('btn-cap-nhat')?.addEventListener('click', capNhatViTriChuan);
-  document.getElementById('btn-tai-phien')?.addEventListener('click', moPopupChonPhien);
+  document.getElementById('btn-bo-qua')?.addEventListener('click', boQuaTam);
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
