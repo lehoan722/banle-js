@@ -176,6 +176,44 @@
     </div>
   </div>
 
+  <script>
+    document.getElementById('check-all-phien')?.addEventListener('change', e => {
+      const checked = e.target.checked;
+
+      document.querySelectorAll('#list-phien div').forEach(div => {
+        if (div.style.display === 'none') return;
+
+        const input = div.querySelector('input');
+        if (input) input.checked = checked;
+      });
+    });
+
+    document.getElementById('btn-dong-popup')?.addEventListener('click', () => {
+      document.getElementById('popup-phien').style.display = 'none';
+    });
+
+    const popup = document.getElementById('popup-phien');
+
+    popup?.addEventListener('click', e => {
+      if (e.target.id === 'popup-phien') {
+        popup.style.display = 'none';
+      }
+    });
+
+    document.getElementById('search-phien')?.addEventListener('input', e => {
+      const kw = e.target.value.toLowerCase();
+
+      document.querySelectorAll('#list-phien div').forEach(div => {
+        const text = div.innerText.toLowerCase();
+        div.style.display = text.includes(kw) ? '' : 'none';
+      });
+
+      // reset check-all
+      document.getElementById('check-all-phien').checked = false;
+    });
+
+  </script>
+
 </body>
 
 </html>
