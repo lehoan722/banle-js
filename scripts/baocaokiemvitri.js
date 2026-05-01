@@ -286,7 +286,11 @@ async function loadChuaTreoTheoPhien() {
     .eq('coso', coso);
 
   const mapThucTe = new Set(
-    (thucte || []).map(r => (r.masp || '').toUpperCase())
+    (thucte || []).map(r => {
+      const masp = (r.masp || '').toUpperCase();
+      const vitri = (r.vitri_thucte || '').trim().toUpperCase();
+      return masp + '|' + vitri;
+    })
   );
 
   // 2. Lấy danh mục chuẩn
@@ -303,7 +307,13 @@ async function loadChuaTreoTheoPhien() {
   // 3. So sánh thiếu
   const thieu = listChuan.filter(r => {
     const masp = (r.masp || '').toUpperCase();
-    return !mapThucTe.has(masp);
+    const vitriChuan = coso === 'cs1'
+      ? r.treomaucs1
+      : r.treomaucs2;
+
+    const key = (r.masp || '').toUpperCase() + '|' + (vitriChuan || '').trim().toUpperCase();
+
+    return !mapThucTe.has(key);
   });
 
   // 4. Lấy tồn kho
