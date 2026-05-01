@@ -91,41 +91,45 @@
 </head>
 
 <body>
-  <h2>📊 Báo Cáo Kiểm Vị Trí</h2>
 
-  <div class="toolbar">
-    <div class="row">
-      <select id="filter-coso">
-        <option value="cs1">Cơ sở 1</option>
-        <option value="cs2">Cơ sở 2</option>
-      </select>
+  <div id="login-container"></div>
+  <div id="app-container">
 
-      <select id="filter-loai">
-        <option value="treomau">Treo mẫu</option>
-        <option value="vitrikho">Vị trí kho</option>
-      </select>
+    <h2>📊 Báo Cáo Kiểm Vị Trí</h2>
 
-      <input id="filter-masp" placeholder="Lọc mã sản phẩm">
+    <div class="toolbar">
+      <div class="row">
+        <select id="filter-coso">
+          <option value="cs1">Cơ sở 1</option>
+          <option value="cs2">Cơ sở 2</option>
+        </select>
+
+        <select id="filter-loai">
+          <option value="treomau">Treo mẫu</option>
+          <option value="vitrikho">Vị trí kho</option>
+        </select>
+
+        <input id="filter-masp" placeholder="Lọc mã sản phẩm">
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="nhieu_vitri">🔴 Nhiều vị trí</button>
+        <button class="tab-btn" data-tab="sai_chuan">🟠 Sai vị trí chuẩn</button>
+        <button class="tab-btn" data-tab="can_cap_nhat">🟡 Cần cập nhật DM</button>
+        <button class="tab-btn" data-tab="chua_treo">⚪ Chưa có treo mẫu</button>
+      </div>
+
+      <div class="row" style="margin-top:8px;">
+        <button id="btn-load">🔄 Tải báo cáo</button>
+        <button id="btn-cap-nhat">✅ Cập nhật vị trí chuẩn</button>
+        <button id="btn-tai-phien">📥 Tải về phiên kiểm</button>
+      </div>
     </div>
 
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="nhieu_vitri">🔴 Nhiều vị trí</button>
-      <button class="tab-btn" data-tab="sai_chuan">🟠 Sai vị trí chuẩn</button>
-      <button class="tab-btn" data-tab="can_cap_nhat">🟡 Cần cập nhật DM</button>
-      <button class="tab-btn" data-tab="chua_treo">⚪ Chưa có treo mẫu</button>
-    </div>
+    <div id="preview">Chọn loại báo cáo rồi bấm tải dữ liệu.</div>
+    <div id="hot"></div>
 
-    <div class="row" style="margin-top:8px;">
-      <button id="btn-load">🔄 Tải báo cáo</button>
-      <button id="btn-cap-nhat">✅ Cập nhật vị trí chuẩn</button>
-      <button id="btn-tai-phien">📥 Tải về phiên kiểm</button>
-    </div>
-  </div>
-
-  <div id="preview">Chọn loại báo cáo rồi bấm tải dữ liệu.</div>
-  <div id="hot"></div>
-
-  <div id="popup-phien" style="
+    <div id="popup-phien" style="
   display:none;
   position:fixed;
   inset:0;
@@ -133,7 +137,7 @@
   z-index:9999;
 ">
 
-    <div id="popup-content" style="
+      <div id="popup-content" style="
     background:#fff;
     width:420px;
     max-height:80%;
@@ -143,24 +147,24 @@
     flex-direction:column;
   ">
 
-      <div style="padding:12px; border-bottom:1px solid #ddd;">
-        <h3 style="margin:0;">Chọn phiên kiểm</h3>
+        <div style="padding:12px; border-bottom:1px solid #ddd;">
+          <h3 style="margin:0;">Chọn phiên kiểm</h3>
 
-        <input id="search-phien" placeholder="Tìm mã phiên..." style="width:100%; margin-top:8px;">
+          <input id="search-phien" placeholder="Tìm mã phiên..." style="width:100%; margin-top:8px;">
 
-        <label style="display:block; margin-top:6px;">
-          <input type="checkbox" id="check-all-phien">
-          Chọn tất cả (theo danh sách đang lọc)
-        </label>
-      </div>
+          <label style="display:block; margin-top:6px;">
+            <input type="checkbox" id="check-all-phien">
+            Chọn tất cả (theo danh sách đang lọc)
+          </label>
+        </div>
 
-      <div id="list-phien" style="
+        <div id="list-phien" style="
       overflow:auto;
       padding:8px;
       flex:1;
     "></div>
 
-      <div style="
+        <div style="
       padding:10px;
       border-top:1px solid #ddd;
       display:flex;
@@ -169,50 +173,55 @@
       bottom:0;
       background:#fff;
     ">
-        <button id="btn-chon-phien">✅ Xác nhận</button>
-        <button id="btn-dong-popup">❌ Đóng</button>
+          <button id="btn-chon-phien">✅ Xác nhận</button>
+          <button id="btn-xoa-phien" style="display:none; background:#fee2e2; color:#b91c1c;">
+            🗑️ Xóa phiên
+          </button>
+          <button id="btn-dong-popup">❌ Đóng</button>
+        </div>
+
       </div>
-
     </div>
+
+    <script>
+      document.getElementById('check-all-phien')?.addEventListener('change', e => {
+        const checked = e.target.checked;
+
+        document.querySelectorAll('#list-phien div').forEach(div => {
+          if (div.style.display === 'none') return;
+
+          const input = div.querySelector('input');
+          if (input) input.checked = checked;
+        });
+      });
+
+      document.getElementById('btn-dong-popup')?.addEventListener('click', () => {
+        document.getElementById('popup-phien').style.display = 'none';
+      });
+
+      const popup = document.getElementById('popup-phien');
+
+      popup?.addEventListener('click', e => {
+        if (e.target.id === 'popup-phien') {
+          popup.style.display = 'none';
+        }
+      });
+
+      document.getElementById('search-phien')?.addEventListener('input', e => {
+        const kw = e.target.value.toLowerCase();
+
+        document.querySelectorAll('#list-phien div').forEach(div => {
+          const text = div.innerText.toLowerCase();
+          div.style.display = text.includes(kw) ? '' : 'none';
+        });
+
+        // reset check-all
+        document.getElementById('check-all-phien').checked = false;
+      });
+
+    </script>
+
   </div>
-
-  <script>
-    document.getElementById('check-all-phien')?.addEventListener('change', e => {
-      const checked = e.target.checked;
-
-      document.querySelectorAll('#list-phien div').forEach(div => {
-        if (div.style.display === 'none') return;
-
-        const input = div.querySelector('input');
-        if (input) input.checked = checked;
-      });
-    });
-
-    document.getElementById('btn-dong-popup')?.addEventListener('click', () => {
-      document.getElementById('popup-phien').style.display = 'none';
-    });
-
-    const popup = document.getElementById('popup-phien');
-
-    popup?.addEventListener('click', e => {
-      if (e.target.id === 'popup-phien') {
-        popup.style.display = 'none';
-      }
-    });
-
-    document.getElementById('search-phien')?.addEventListener('input', e => {
-      const kw = e.target.value.toLowerCase();
-
-      document.querySelectorAll('#list-phien div').forEach(div => {
-        const text = div.innerText.toLowerCase();
-        div.style.display = text.includes(kw) ? '' : 'none';
-      });
-
-      // reset check-all
-      document.getElementById('check-all-phien').checked = false;
-    });
-
-  </script>
 
 </body>
 
