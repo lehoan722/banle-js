@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>kiem vitri _nv</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Handsontable, JSZip, FileSaver -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <!-- Script chính của trang -->
+    <script src="./scripts/stockQuickPopup.js"></script>
+    <script type="module" src="scripts/kiemvitri_nv.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 8px;
+            background: #f6f7fb;
+        }
+
+        #app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            margin: 6px 0 10px;
+            font-size: 20px;
+            line-height: 1.25;
+        }
+
+        .top-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: #f6f7fb;
+            padding-bottom: 8px;
+        }
+
+        .toolbar-card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .toolbar-row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .toolbar-row-1 {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .toolbar-card select,
+        .toolbar-card input,
+        .toolbar-card button {
+            width: 100%;
+            min-height: 42px;
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            box-sizing: border-box;
+            padding: 8px 10px;
+            font-size: 16px;
+        }
+
+        .toolbar-card select,
+        .toolbar-card input {
+            background: #fff;
+        }
+
+        #btn-toggle-tools {
+            background: #eef2f7;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .tools-panel {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .tools-grid button {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #0f172a;
+            min-height: 40px;
+            font-size: 15px;
+        }
+
+        .quick-suggest-panel {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
+            max-height: 280px;
+            overflow-y: auto;
+            font-size: 13px;
+            min-width: 220px;
+        }
+
+        #preview {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        #hot {
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            h2 {
+                font-size: 18px;
+            }
+
+            .toolbar-card select,
+            .toolbar-card input,
+            .toolbar-card button {
+                min-height: 40px;
+                font-size: 15px;
+            }
+
+            .tools-grid button {
+                min-height: 38px;
+                font-size: 14px;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="app-container" style="display:none;">
+        <h2>🛠️ Sửa Danh Mục Hàng Hóa - Nhân Viên</h2>
+
+        <div class="top-toolbar">
+            <div class="toolbar-card">
+
+                <!-- Dòng 1: chọn cơ sở + loại kiểm -->
+                <div class="toolbar-row-2">
+                    <select id="kiem-coso">
+                        <option value="cs2">Cơ sở 2</option>                        
+                    </select>
+
+                    <select id="kiem-loai">                        
+                        <option value="vitrikho">Kiểm vị trí kho</option>
+                    </select>
+                </div>
+
+                <!-- Dòng 2: nhập khu vực đang kiểm -->
+                <div class="toolbar-row-1">
+                    <input id="kiem-khuvuc" type="text"
+                        placeholder="Nhập khu vực đang kiểm, ví dụ: GIAAO1-1, GIAAO1-5, KHO-K1"
+                        style="text-transform:uppercase;">
+                </div>
+
+                <!-- Ẩn select cũ để JS cũ không lỗi -->
+                <select id="col-select" style="display:none;"></select>
+                <input id="filter-value" type="hidden">
+
+                <!-- Dòng 2: nhập mã sản phẩm -->
+                <div class="toolbar-row-1">
+                    <input id="quick-masp" type="text" placeholder="Nhập mã SP rồi Enter..." autocomplete="off"
+                        style="text-transform:uppercase;">
+
+                    <div id="quick-masp-suggest" class="quick-suggest-panel"></div>
+                </div>
+
+                <!-- Dòng 3: nút mở công cụ -->
+                <div class="toolbar-row-1" style="margin-bottom:0;">
+                    <button id="btn-toggle-tools" type="button">☰ Công cụ ▼</button>
+                </div>
+
+                <!-- Panel công cụ xổ xuống -->
+                <div id="tools-panel" class="tools-panel" style="display:none;">
+                    <div class="tools-grid">
+                        <button id="btn-luu">💾 Lưu phiên kiểm</button>
+                        <button id="btn-phan-tich">📊 Phân tích</button>
+
+                        <button id="btn-xoa-trung">🧹 Xóa trùng</button>
+                        <button id="btn-xoa-dong">Xóa dòng</button>
+
+                        <button id="btn-dien-cot-b">Điền vị trí</button>
+                        <button id="btn-ton-nhanh">📦 Tồn nhanh</button>
+
+                        <button id="btn-reset">🔁 Làm lại</button>
+                        <button id="btn-copy-ab">📋 Copy</button>
+                        <button id="btn-paste-ab">📥 Dán</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="preview"></div>
+
+        <div id="backup-overlay" style="
+            display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:9999;
+            background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
+            <div style="position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);">
+                <img src="https://i.gifer.com/ZZ5H.gif" width="64" alt="loading...">
+                <div style="font-size:1.2em;font-weight:bold; color:#004;">
+                    Đang backup toàn bộ dữ liệu, vui lòng chờ...
+                </div>
+            </div>
+        </div>
+
+        <div id="hot"></div>
+    </div>
+</body>
+
+</html>
