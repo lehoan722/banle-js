@@ -484,20 +484,16 @@ async function loadChuaTreoTheoPhien() {
 
   renderTable(final, [
     { data: "masp" },
-    { data: "tensp" },
     { data: "ton" },
     { data: "vitri_chuan" },
-    { data: "vitri_thucte" },
-    { data: "trang_thai" },
-    { data: "khu_vuc_kiem" }
+    { data: "khu_vuc_kiem" },
+    { data: "trang_thai" }
   ], [
     "Mã sản phẩm",
-    "Tên sản phẩm",
     "Tồn cơ sở",
     "Vị trí chuẩn",
-    "Vị trí thực tế",
-    "Trạng thái",
-    "Khu vực kiểm"
+    "Khu vực kiểm",
+    "Trạng thái"
   ]);
 
   setPreview(
