@@ -64,7 +64,7 @@ document.getElementById('btn-chon-phien')?.addEventListener('click', async () =>
 
   document.getElementById('popup-phien').style.display = 'none';
 
-  await loadChuaTreoTheoPhien(); // gọi báo cáo mới
+  await loadChiTietTheoPhien();
 });
 
 function getFilters() {
@@ -511,6 +511,55 @@ async function loadChuaTreoTheoPhien() {
   console.log("Đúng:", soDung, "Sai/Thừa:", soThua, "Thiếu:", soThieu);
 }
 
+async function loadChiTietTheoPhien() {
+  const { coso, loai, masp } = getFilters();
+
+  if (!selectedPhienIds || selectedPhienIds.length === 0) {
+    alert("Bạn cần chọn ít nhất 1 phiên kiểm.");
+    return;
+  }
+
+  setPreview("⏳ Đang tải dữ liệu chi tiết phiên kiểm...");
+
+  let q = supabase
+    .from("kiem_vitri_chitiet")
+    .select("*")
+    .in("ma_phien", selectedPhienIds)
+    .eq("coso", coso)
+    .eq("loai_kiem", loai)
+    .order("created_at", { ascending: true });
+
+  if (masp) {
+    q = q.ilike("masp", `%${masp}%`);
+  }
+
+  const { data, error } = await q;
+
+  if (error) throw error;
+
+  renderTable(data || [], [
+    { data: "ma_phien" },
+    { data: "masp" },
+    { data: "vitri_thucte" },
+    { data: "khu_vuc" },
+    { data: "coso" },
+    { data: "loai_kiem" },
+    { data: "created_at" }
+  ], [
+    "Mã phiên",
+    "Mã sản phẩm",
+    "Vị trí thực tế",
+    "Khu vực kiểm",
+    "Cơ sở",
+    "Loại kiểm",
+    "Ngày kiểm"
+  ]);
+
+  setPreview(
+    `✅ Đã tải <b>${data?.length || 0}</b> dòng chi tiết từ phiên kiểm: <b>${selectedPhienIds.join(", ")}</b>.`
+  );
+}
+
 async function loadReport() {
   try {
     setPreview('⏳ Đang tải báo cáo...');
@@ -648,7 +697,7 @@ async function boQuaTam() {
 function attachEvents() {
   document.getElementById('btn-load')?.addEventListener('click', loadReport);
   document.getElementById('btn-cap-nhat')?.addEventListener('click', capNhatViTriChuan);
-  document.getElementById('btn-bo-qua')?.addEventListener('click', boQuaTam);
+  document.getElementById('btn-tai-phien')?.addEventListener('click', moPopupChonPhien);
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
