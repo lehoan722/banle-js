@@ -339,16 +339,14 @@ async function loadReport() {
     if (currentTab === 'nhieu_vitri') await loadNhieuViTri();
     if (currentTab === 'sai_chuan') await loadSaiChuan();
     if (currentTab === 'can_cap_nhat') await loadCanCapNhat();
-    if (currentTab === 'chua_treo') await loadChuaTreo();
+    if (currentTab === 'chua_treo') {
+      moPopupChonPhien(); // KHÔNG load ngay
+      return;
+    }
 
   } catch (err) {
     console.error(err);
     setPreview(`<span style="color:red;">❌ Lỗi tải báo cáo: ${err.message || err}</span>`);
-  }
-
-  if (currentTab === 'chua_treo') {
-    moPopupChonPhien(); // KHÔNG load ngay
-    return;
   }
 
 }
