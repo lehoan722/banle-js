@@ -282,7 +282,7 @@ async function loadChuaTreoTheoPhien() {
     return;
   }
 
-  setPreview("⏳ Đang so sánh dữ liệu chuẩn với phiên kiểm đã chọn...");
+  setPreview("⏳ Đang kiểm tra ĐÚNG / THỪA / THIẾU theo khu vực phiên đã chọn...");
 
   const fieldTreo = coso === "cs2" ? "treomaucs2" : "treomaucs1";
 
@@ -307,8 +307,8 @@ async function loadChuaTreoTheoPhien() {
     return;
   }
 
-  // 2. Lấy dữ liệu thực tế trong đúng phiên đã chọn
-  const { data: thucte, error: ctErr } = await supabase
+  // 2. Lấy dữ liệu thực tế từ các phiên đã chọn
+  const { data: thucTeRows, error: ctErr } = await supabase
     .from("kiem_vitri_chitiet")
     .select("ma_phien, masp, vitri_thucte, khu_vuc, coso, loai_kiem")
     .in("ma_phien", selectedPhienIds)
@@ -317,104 +317,170 @@ async function loadChuaTreoTheoPhien() {
 
   if (ctErr) throw ctErr;
 
-  // 3. Lấy danh mục hàng hóa
-  const { data: dm, error: dmErr } = await supabase
-    .from("dmhanghoa")
-    .select("masp, tensp, treomaucs1, treomaucs2");
-
-  if (dmErr) throw dmErr;
-
-  const dmMap = new Map(
-    (dm || []).map(r => [
-      String(r.masp || "").trim().toUpperCase(),
-      r
-    ])
-  );
-
-  // 4. Danh sách chuẩn trong đúng khu vực đã kiểm
-  const listChuanTrongKhuVuc = (dm || []).filter(r => {
-    const ma = String(r.masp || "").trim().toUpperCase();
-    const vt = String(r[fieldTreo] || "").trim().toUpperCase();
-
-    if (masp && !ma.includes(masp)) return false;
-
-    return vt && khuVucSet.has(vt);
-  });
-
-  const mapThucTe = new Set(
-    (thucte || []).map(r => {
-      const ma = String(r.masp || "").trim().toUpperCase();
-      const vt = String(r.vitri_thucte || r.khu_vuc || "").trim().toUpperCase();
-      return `${ma}|${vt}`;
-    })
-  );
-
-  // 5. Thiếu: chuẩn có trong khu vực, nhưng phiên kiểm không thấy
-  const thieuRaw = listChuanTrongKhuVuc.filter(r => {
-    const ma = String(r.masp || "").trim().toUpperCase();
-    const vt = String(r[fieldTreo] || "").trim().toUpperCase();
-    return !mapThucTe.has(`${ma}|${vt}`);
-  });
-
-  // 6. Sai vị trí: phiên kiểm thấy mã ở khu vực này, nhưng chuẩn của mã đó không phải khu vực này
-  const saiRaw = (thucte || []).filter(r => {
-    const ma = String(r.masp || "").trim().toUpperCase();
-    const vtThucTe = String(r.vitri_thucte || r.khu_vuc || "").trim().toUpperCase();
-
-    if (masp && !ma.includes(masp)) return false;
-    if (!khuVucSet.has(vtThucTe)) return false;
-
-    const hh = dmMap.get(ma);
-
-    if (!hh) return true;
-
-    const vtChuan = String(hh[fieldTreo] || "").trim().toUpperCase();
-
-    return vtChuan && vtChuan !== vtThucTe;
-  });
-
-  // 7. Lấy tồn kho cho cả thiếu và sai
-  const allMasps = [
-    ...thieuRaw.map(r => r.masp),
-    ...saiRaw.map(r => r.masp)
-  ];
-
-  const tonMap = await layTonNhanhTheoMasps(allMasps);
-
-  const rowsThieu = thieuRaw
+  // Chỉ lấy dòng thực tế thuộc đúng khu vực đã kiểm
+  const thucTeTrongKhuVuc = (thucTeRows || [])
     .map(r => {
       const ma = String(r.masp || "").trim().toUpperCase();
-      const ton = tonMap[ma] || {};
-
+      const vt = String(r.vitri_thucte || r.khu_vuc || "").trim().toUpperCase();
       return {
-        masp: ma,
-        tensp: r.tensp || "",
-        ton: coso === "cs2" ? Number(ton.ton_cs2 || 0) : Number(ton.ton_cs1 || 0),
-        vitri_chuan: r[fieldTreo] || "",
-        vitri_thucte: "",
-        trang_thai: "CHUA_BAY_MAU",
-        khu_vuc_kiem: Array.from(khuVucSet).join(", ")
+        ...r,
+        masp_norm: ma,
+        vitri_thucte_norm: vt
+      };
+    })
+    .filter(r => {
+      if (!r.masp_norm) return false;
+      if (masp && !r.masp_norm.includes(masp)) return false;
+      return khuVucSet.has(r.vitri_thucte_norm);
+    });
+
+  const thucTeMasps = new Set(thucTeTrongKhuVuc.map(r => r.masp_norm));
+
+  // 3. Lấy danh sách chuẩn trong đúng khu vực đã kiểm
+  // Dùng phân trang để không bị giới hạn 1000 dòng mặc định của Supabase
+  const chuanRows = [];
+  let from = 0;
+  const step = 1000;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("dmhanghoa")
+      .select(`masp, tensp, ${fieldTreo}`)
+      .not(fieldTreo, "is", null)
+      .range(from, from + step - 1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    chuanRows.push(...data);
+
+    if (data.length < step) break;
+    from += step;
+  }
+
+  const chuanTrongKhuVuc = chuanRows
+    .map(r => {
+      const ma = String(r.masp || "").trim().toUpperCase();
+      const vt = String(r[fieldTreo] || "").trim().toUpperCase();
+      return {
+        ...r,
+        masp_norm: ma,
+        vitri_chuan_norm: vt
+      };
+    })
+    .filter(r => {
+      if (!r.masp_norm || !r.vitri_chuan_norm) return false;
+      if (masp && !r.masp_norm.includes(masp)) return false;
+      return khuVucSet.has(r.vitri_chuan_norm);
+    });
+
+  const chuanMap = new Map();
+  for (const r of chuanTrongKhuVuc) {
+    if (!chuanMap.has(r.masp_norm)) {
+      chuanMap.set(r.masp_norm, r);
+    }
+  }
+
+  // 4. Lấy vị trí chuẩn thật của toàn bộ mã thực tế để xác định THỪA / SAI VỊ TRÍ
+  const uniqueMaspThucTe = Array.from(new Set(thucTeTrongKhuVuc.map(r => r.masp_norm)));
+
+  const dmThucTeMap = new Map();
+
+  for (let i = 0; i < uniqueMaspThucTe.length; i += 500) {
+    const arr = uniqueMaspThucTe.slice(i, i + 500);
+
+    const { data, error } = await supabase
+      .from("dmhanghoa")
+      .select(`masp, tensp, ${fieldTreo}`)
+      .in("masp", arr);
+
+    if (error) throw error;
+
+    (data || []).forEach(r => {
+      const ma = String(r.masp || "").trim().toUpperCase();
+      if (ma) dmThucTeMap.set(ma, r);
+    });
+  }
+
+  let soDung = 0;
+  let soThua = 0;
+  let soThieu = 0;
+
+  // 5. THỰC TẾ: mã quét được
+  // - Có trong chuẩn khu vực => ĐÚNG, không hiển thị
+  // - Không có trong chuẩn khu vực => THỪA / SAI VỊ TRÍ, hiển thị
+  const rowsThuaSai = [];
+
+  for (const r of thucTeTrongKhuVuc) {
+    const ma = r.masp_norm;
+
+    if (chuanMap.has(ma)) {
+      soDung++;
+      continue;
+    }
+
+    soThua++;
+
+    const dmRow = dmThucTeMap.get(ma);
+    const vtChuan = dmRow ? String(dmRow[fieldTreo] || "").trim().toUpperCase() : "";
+
+    rowsThuaSai.push({
+      masp: ma,
+      tensp: dmRow?.tensp || "",
+      ton: null,
+      vitri_chuan: vtChuan || "KHÔNG CÓ TRONG DM",
+      vitri_thucte: r.vitri_thucte_norm,
+      trang_thai: vtChuan ? "SAI_VI_TRI" : "MA_KHONG_TON_TAI",
+      khu_vuc_kiem: r.vitri_thucte_norm
+    });
+  }
+
+  // 6. THIẾU: có trong chuẩn khu vực nhưng không có trong thực tế
+  const rowsThieuRaw = [];
+
+  for (const [ma, r] of chuanMap.entries()) {
+    if (thucTeMasps.has(ma)) continue;
+
+    rowsThieuRaw.push({
+      masp: ma,
+      tensp: r.tensp || "",
+      vitri_chuan: r.vitri_chuan_norm,
+      vitri_thucte: "",
+      trang_thai: "CHUA_BAY_MAU",
+      khu_vuc_kiem: r.vitri_chuan_norm
+    });
+  }
+
+  // 7. Lọc tồn kho > 0 cho dòng thiếu; dòng sai vị trí vẫn hiển thị để xử lý
+  const tonMap = await layTonNhanhTheoMasps([
+    ...rowsThieuRaw.map(r => r.masp),
+    ...rowsThuaSai.map(r => r.masp)
+  ]);
+
+  const rowsThieu = rowsThieuRaw
+    .map(r => {
+      const ton = tonMap[r.masp] || {};
+      return {
+        ...r,
+        ton: coso === "cs2" ? Number(ton.ton_cs2 || 0) : Number(ton.ton_cs1 || 0)
       };
     })
     .filter(r => Number(r.ton || 0) > 0);
 
-  const rowsSai = saiRaw.map(r => {
-    const ma = String(r.masp || "").trim().toUpperCase();
-    const hh = dmMap.get(ma);
-    const ton = tonMap[ma] || {};
+  soThieu = rowsThieu.length;
 
+  const rowsThuaSaiCoTon = rowsThuaSai.map(r => {
+    const ton = tonMap[r.masp] || {};
     return {
-      masp: ma,
-      tensp: hh?.tensp || "",
-      ton: coso === "cs2" ? Number(ton.ton_cs2 || 0) : Number(ton.ton_cs1 || 0),
-      vitri_chuan: hh ? (hh[fieldTreo] || "") : "KHÔNG CÓ TRONG DM",
-      vitri_thucte: r.vitri_thucte || r.khu_vuc || "",
-      trang_thai: hh ? "SAI_VI_TRI" : "MA_KHONG_TON_TAI",
-      khu_vuc_kiem: r.khu_vuc || r.vitri_thucte || ""
+      ...r,
+      ton: coso === "cs2" ? Number(ton.ton_cs2 || 0) : Number(ton.ton_cs1 || 0)
     };
   });
 
-  const final = [...rowsThieu, ...rowsSai];
+  const final = [
+    ...rowsThuaSaiCoTon,
+    ...rowsThieu
+  ];
 
   renderTable(final, [
     { data: "masp" },
@@ -435,11 +501,18 @@ async function loadChuaTreoTheoPhien() {
   ]);
 
   setPreview(
-    `⚪ Kết quả theo phiên đã chọn: ` +
-    `<b>${rowsThieu.length}</b> mã chưa bày mẫu, ` +
-    `<b>${rowsSai.length}</b> mã sai vị trí. ` +
-    `Khu vực kiểm: <b>${Array.from(khuVucSet).join(", ")}</b>`
+    `✅ Kiểm tra xong theo phiên đã chọn. ` +
+    `Đúng: <b>${soDung}</b> &nbsp; ` +
+    `Sai/Thừa: <b style="color:#2e7d32;">${soThua}</b> &nbsp; ` +
+    `Chưa bày mẫu/Thiếu: <b style="color:#ef6c00;">${soThieu}</b>. ` +
+    `Khu vực kiểm: <b>${Array.from(khuVucSet).join(", ")}</b>.`
   );
+
+  console.log("Phiên đã chọn:", selectedPhienIds);
+  console.log("Khu vực đã kiểm:", Array.from(khuVucSet));
+  console.log("Chuẩn trong khu vực:", chuanMap.size);
+  console.log("Thực tế trong khu vực:", thucTeTrongKhuVuc.length);
+  console.log("Đúng:", soDung, "Sai/Thừa:", soThua, "Thiếu:", soThieu);
 }
 
 async function loadReport() {
