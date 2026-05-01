@@ -447,6 +447,7 @@
                             <option value="giaydep">Tem giày dép</option>
                             <option value="quanao">Tem quần áo</option>
                             <option value="tem_giamgia">Tem giảm giá</option>
+                            <option value="tem_mavach">Tem mã vạch</option>
                             <option value="insize_tomy114">In size </option>
                         </select>
                     </label>
@@ -475,6 +476,8 @@
 
         <!-- QR Code lib -->
         <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+        <!-- ma vach Code  -->
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
         <!-- SheetJS for export Excel -->
         <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
@@ -924,6 +927,61 @@
                     const t = pageTems[i] || null;
                     if (!t) html += `<div class="tem tem-blank"></div>`;
                     else html += `
+                    
+
+                    ${loaiTem === "tem_mavach" ? `
+<div class="tem"
+     data-masp="${t.masp}"
+     data-size="${(t.size ?? '').toString().trim()}"
+     style="
+        width:${TEM_WIDTH_MM}mm;
+        height:${TEM_HEIGHT_MM}mm;
+        box-sizing:border-box;
+        overflow:hidden;
+        border:0;
+        margin:0;
+        padding:0.8mm 1mm 0.5mm 1mm;
+        text-align:center;
+     ">
+
+    <div style="
+        font-family:serif;
+        font-size:13pt;
+        line-height:1;
+        white-space:nowrap;
+        overflow:hidden;
+        margin-bottom:0.4mm;
+    ">
+        Shop Hoàn Tuyết
+    </div>
+
+    <svg class="barcode"
+         data-code="${((t.size ?? '').toString().trim() && (t.size ?? '').toString().trim() !== '0') ? `${t.masp}_${(t.size ?? '').toString().trim()}` : t.masp}"
+         style="width:31mm;height:5.5mm;"></svg>
+
+    <div style="
+        font-family:serif;
+        font-size:14pt;
+        line-height:1;
+        white-space:nowrap;
+        overflow:hidden;
+        margin-top:0.2mm;
+    ">
+        ${((t.size ?? '').toString().trim() && (t.size ?? '').toString().trim() !== '0') ? `${t.masp}_${(t.size ?? '').toString().trim()}` : t.masp}
+    </div>
+
+    <div style="
+        font-family:serif;
+        font-size:16pt;
+        line-height:1;
+        white-space:nowrap;
+        overflow:hidden;
+        margin-top:0.5mm;
+    ">
+        Giá: ${formatGia(t.giale)}
+    </div>
+</div>
+` : `
 
 
   <!--bat dau khu vuc thiet ke hien thi tem -->
@@ -1039,10 +1097,27 @@
 <!--HET khu vuc thiet ke hien thi tem -->
 
 
+`}
 `;
                 }
                 html += `</div></div>`;
                 previewArea.innerHTML = html;
+
+                // Sinh mã vạch cho loại tem mã vạch
+                if (loaiTem === "tem_mavach") {
+                    document.querySelectorAll('.tem .barcode').forEach((el) => {
+                        const code = el.getAttribute('data-code') || '';
+                        if (!code) return;
+
+                        JsBarcode(el, code, {
+                            format: "CODE128",
+                            displayValue: false,
+                            width: 1.1,
+                            height: 28,
+                            margin: 0
+                        });
+                    });
+                }
 
                 // Sinh QR code cho từng tem
                 document.querySelectorAll('.tem .qr').forEach((el) => {
