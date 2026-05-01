@@ -782,11 +782,68 @@ async function xoaPhienKiemDaChon() {
   setPreview(`✅ Đã xóa ${maPhienList.length} phiên kiểm.`);
 }
 
+async function moXemAnhNhanh() {
+  try {
+    const masps = Array.from(
+      new Set(
+        (currentRows || [])
+          .map(r => String(r?.masp || "").trim().toUpperCase())
+          .filter(Boolean)
+      )
+    );
+
+    if (!masps.length) {
+      alert("Chưa có mã sản phẩm nào để xem ảnh.");
+      return;
+    }
+
+    const { data: dmRows, error: dmErr } = await supabase
+      .from("dmhanghoa")
+      .select("masp,giale")
+      .in("masp", masps);
+
+    if (dmErr) throw dmErr;
+
+    const giaMap = new Map();
+    (dmRows || []).forEach(r => {
+      giaMap.set(String(r.masp || "").trim().toUpperCase(), Number(r.giale || 0));
+    });
+
+    const tonMap = await layTonNhanhTheoMasps(masps);
+
+    const list = masps.map(masp => {
+      const ton = tonMap[masp] || {};
+
+      return {
+        masp,
+        giale: giaMap.get(masp) || 0,
+        toncs1: Number(ton.ton_cs1 || 0),
+        toncs2: Number(ton.ton_cs2 || 0)
+      };
+    });
+
+    sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
+    sessionStorage.setItem("XNT14_FILTERS", JSON.stringify({
+      den_ngay: getTodayYMD(),
+      source: "baocaokiemvitri",
+      coso: getFilters().coso,
+      loai: getFilters().loai,
+      tab: currentTab
+    }));
+
+    window.open("xemanhxnt14.html", "_blank");
+  } catch (err) {
+    console.error("[moXemAnhNhanh]", err);
+    alert("Lỗi mở xem ảnh nhanh: " + (err.message || err));
+  }
+}
+
 function attachEvents() {
   document.getElementById("btn-xoa-phien")?.addEventListener("click", xoaPhienKiemDaChon);
   document.getElementById('btn-load')?.addEventListener('click', loadReport);
   document.getElementById('btn-cap-nhat')?.addEventListener('click', capNhatViTriChuan);
   document.getElementById('btn-bo-qua')?.addEventListener('click', boQuaTam);
+  document.getElementById('btn-xem-anh-nhanh')?.addEventListener('click', moXemAnhNhanh);
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
