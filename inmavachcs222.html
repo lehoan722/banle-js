@@ -40,7 +40,8 @@
         }
 
         .product-list {
-            height: 280px;
+            height: 160px;
+            /* 👈 giảm xuống (280 → 180) */
             overflow-y: auto;
             margin-top: 10px;
             border-top: 1px solid #eee;
@@ -234,6 +235,86 @@
             color: #888;
             margin-left: 4px;
         }
+
+        .multi-color-box {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .multi-color-box input {
+            flex: 1 1 auto;
+            width: 100%;
+            min-width: 0;
+            border-right: none;
+        }
+
+        .color-picker-btn {
+            flex: 0 0 34px;
+            width: 34px;
+            border: 1px solid #999;
+            background: #f3f3f3;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 0;
+        }
+
+        .color-picker-btn:hover {
+            background: #e6e6e6;
+        }
+
+        .mausac-popup {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            background: #f8f3df;
+            border: 1px solid #c8b98b;
+            border-radius: 4px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+            max-height: 260px;
+            overflow-y: auto;
+            margin-top: 2px;
+            padding: 4px 0;
+        }
+
+        .mausac-popup-row {
+            display: grid;
+            grid-template-columns: 1fr 28px;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-bottom: 1px solid #eadfb9;
+        }
+
+        .mausac-popup-row:last-child {
+            border-bottom: none;
+        }
+
+        .mausac-popup-row:hover {
+            background: #efe5bf;
+        }
+
+        .mausac-popup-row input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 3px 6px;
+            font-size: 13px;
+        }
+
+        .mausac-popup-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            justify-self: center;
+        }
+
+        .mausac-preview {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #666;
+            min-height: 14px;
+        }
     </style>
 </head>
 
@@ -250,8 +331,7 @@
                 </div>
                 <div class="product-list" id="productList"></div>
 
-                <div id="productInputForm"
-                    style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px; height: 40vh; ">
+                <div id="productInputForm" style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px;">
                     <b style="font-size: 14px;">Thêm/Sửa sản phẩm</b>
 
                     <form id="addProductForm" autocomplete="off">
@@ -283,13 +363,24 @@
                                 <input name="giale" id="gialeInput" type="text" required />
                             </div>
                         </div>
+
                         <div class="form-row">
                             <label for="mausacInput">Màu sắc</label>
-                            <div class="form-input">
-                                <input name="mausac" id="mausacInput" list="mausacList" autocomplete="off" />
-                                <datalist id="mausacList"></datalist>
+                            <div class="form-input" id="mausacWrap">
+                                <div class="multi-color-box">
+                                    <input name="mausac" id="mausacInput" type="text" autocomplete="off"
+                                        placeholder="Chọn hoặc nhập: DEN,TRANG,XANH" />
+                                    <button type="button" id="toggleMauSacPopup" class="color-picker-btn">▼</button>
+                                </div>
+
+                                <div id="mausacPopup" class="mausac-popup" style="display:none;">
+                                    <div id="mausacPopupList" class="mausac-popup-list"></div>
+                                </div>
+
+                                <div id="mausacPreview" class="mausac-preview"></div>
                             </div>
                         </div>
+
                         <div class="form-row">
                             <label for="khuyenmaiInput">Khuyến mãi</label>
                             <div class="form-input">
@@ -355,6 +446,8 @@
                             <option value="">– Chọn loại tem –</option>
                             <option value="giaydep">Tem giày dép</option>
                             <option value="quanao">Tem quần áo</option>
+                            <option value="tem_giamgia">Tem giảm giá</option>
+                            <option value="tem_mavach">Tem mã vạch</option>
                             <option value="insize_tomy114">In size </option>
                         </select>
                     </label>
@@ -363,11 +456,13 @@
                     <button class="btn" onclick="exportExcel()">Xuất Excel</button>
                     <button class="btn" id="btnCreateNhapHD">Tạo HĐ nhập</button>
 
+
+
                     <!-- [ADD] Nút tạo HĐ nhập tạm 
                 <button class="btn" id="btnCreateNhapTam">Tạo HĐ nhập tạm</button> -->
                     <button class="btnTaoNhapTam" id="btnCreateNhaptamcs2">Tạo HĐ nhập tạm</button>
 
-                    <button id="btnTaoNhapTam" class="btn-blue">📦 Tạo HĐ nhập tạm 222</button>
+                    <button id="btnTaoNhapTam" class="btn-blue">📦 Tạo HĐ nhập tạm 111</button>
 
                 </div>
                 <div class="preview-area" id="previewArea"></div>
@@ -381,6 +476,8 @@
 
         <!-- QR Code lib -->
         <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+        <!-- ma vach Code  -->
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
         <!-- SheetJS for export Excel -->
         <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
@@ -388,6 +485,7 @@
             // 1) Import client chuẩn + module đăng nhập dùng chung
             import { supabase } from './scripts/supabaseClient.js';
             import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+            import { tinhKhuyenMai } from './scripts/khuyenmai.js';
 
             // (nhớ sửa lại đường dẫn ./scripts/... theo đúng folder của bạn:
             //  ví dụ '../scripts/authModule.js' nếu file nằm sâu thêm 1 cấp)
@@ -470,6 +568,7 @@
                     }
                 });
 
+                // ✅ Click 1 dòng trong bảng "Danh sách tem in" => bật popup tồn nhanh
                 // ✅ Chỉ click cột "Mã hàng" (col = 1) mới mở popup tồn nhanh
                 hot.addHook('afterOnCellMouseDown', function (event, coords) {
                     try {
@@ -494,15 +593,16 @@
                     }
                 });
 
+
                 window.hotInstance = hot;
                 window.hot = hot;
 
-                // 🔐 Khởi tạo đăng nhập chuẩn cho trang in mã vạch CS1
+                // 🔐 Khởi tạo đăng nhập chuẩn cho trang in mã vạch cs2
                 khoiTaoDangNhapDungChung({
                     appContainerId: 'app-container',   // ID mình vừa bọc ở bước 2
-                    macDinhDiaDiem: 'cs1',
+                    macDinhDiaDiem: 'cs2',
                     tuDongKhoaCoSo: true,
-                    loginApiPath: '/api/login-cs1',
+                    loginApiPath: '/api/login-cs2',
                     onLoginSuccess: async (nhanvien, context) => {
                         // Sau khi đăng nhập xong mới load danh mục, tránh query khi chưa có session
                         await loadDropdownOptions();
@@ -516,7 +616,7 @@
             window.fetchGiaLeByMasps = fetchGiaLeByMasps;
 
             // ==== CẤU HÌNH THÔNG SỐ IN TEM ====
-            const PAGE_MARGIN_TOP_MM = 3;      // Lề trên của toàn bộ khối tem (mm)
+            const PAGE_MARGIN_TOP_MM = 2.8;      // Lề trên của toàn bộ khối tem (mm),  cs2  CS2
             const PAGE_MARGIN_LEFT_MM = 11;   // Lề trái của toàn bộ khối tem (mm)
             const TEM_H_GAP_MM = 0;          // Khoảng cách ngang giữa 2 tem (mm)
             const TEM_V_GAP_MM = 0;          // Khoảng cách dọc giữa 2 tem (mm)
@@ -528,6 +628,68 @@
             let products = [];
             let filtered = [];
             let selected = [];
+            let allMauSacOptions = [];
+            let selectedColorOrder = [];
+
+            // ==== QUY TẮC TỰ GÁN NHÓM HÀNG THEO HẬU TỐ MÃ SẢN PHẨM ====
+            const NHOMHANG_SUFFIX_MAP = {
+                'AP': 'AP',
+                'SM': 'SM',
+                'QB': 'QB',
+                'QT': 'QT',
+                'NG': 'NGO',
+                'BOC': 'BOC',
+                'QV': 'QV',
+                'QNI': 'QNI',
+                'BOD': 'BOD'
+            };
+
+            function getNhomHangByMaspSuffix(masp) {
+                const code = (masp || '').trim().toUpperCase();
+                if (!code) return '';
+
+                const lastDashIndex = code.lastIndexOf('-');
+                if (lastDashIndex === -1) return '';
+
+                const suffix = code.slice(lastDashIndex + 1).trim().toUpperCase();
+                if (!suffix) return '';
+
+                // Ưu tiên mã dài hơn trước để tránh khớp nhầm
+                const suffixKeys = Object.keys(NHOMHANG_SUFFIX_MAP).sort((a, b) => b.length - a.length);
+
+                for (const key of suffixKeys) {
+                    if (suffix.startsWith(key)) {
+                        return NHOMHANG_SUFFIX_MAP[key];
+                    }
+                }
+
+                return '';
+            }
+
+            function autoFillNhomHangFromMasp(options = {}) {
+                const {
+                    force = false
+                } = options;
+
+                const masp = document.getElementById('maspInput')?.value.trim().toUpperCase() || '';
+                const nhomhangInput = document.getElementById('nhomhangInput');
+
+                if (!nhomhangInput) return;
+                if (!masp) return;
+
+                // Nếu không force thì chỉ tự điền khi ô nhóm hàng đang trống
+                if (!force && nhomhangInput.value.trim()) return;
+
+                const nhomhangAuto = getNhomHangByMaspSuffix(masp);
+
+                if (nhomhangAuto) {
+                    nhomhangInput.value = nhomhangAuto;
+                } else if (force) {
+                    // Nếu là mã mới và không khớp quy tắc thì để trống cho người dùng tự nhập
+                    nhomhangInput.value = '';
+                    mausacInput.value = '';
+                }
+            }
 
             // Elements
             const searchInput = document.getElementById('search');
@@ -693,7 +855,7 @@
             let temsAll = [];
 
 
-            window.renderPreview = function (page = 1) {
+            window.renderPreview = async function (page = 1) {
                 syncHandsontableToSelected();
                 // Kiểm tra chọn loại tem
                 const loaiTem = document.getElementById('loaiTem') ? document.getElementById('loaiTem').value : "";
@@ -731,6 +893,13 @@
                     }
                 });
 
+                let spKhuyenMaiMap = {};
+                if (loaiTem === "tem_giamgia") {
+                    spKhuyenMaiMap = await fetchKhuyenMaiByMasps(
+                        temsAll.map(x => x.masp)
+                    );
+                }
+
                 totalPages = Math.ceil(temsAll.length / 40) || 1;
                 currentPage = page > totalPages ? totalPages : page;
                 const fromRow = parseInt(fromRowInput.value) || 1;
@@ -749,18 +918,74 @@
         grid-template-columns: 35mm 35mm 35mm 35mm 35mm ;
         grid-template-rows: 19mm 19mm 19mm 19mm 19mm 19mm 19mm 19mm ;
         column-gap: 5mm;
-        row-gap: 1.8mm;        
+        row-gap: 1.4mm;        
     ">`;
 
-                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
+                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs2  row-gap: 1.5mm; voi cs2
                 for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
                 for (let i = 0; i < maxTems; i++) {
                     const t = pageTems[i] || null;
                     if (!t) html += `<div class="tem tem-blank"></div>`;
                     else html += `
+                    
+
+                    ${loaiTem === "tem_mavach" ? `
+<div class="tem"
+     data-masp="${t.masp}"
+     data-size="${(t.size ?? '').toString().trim()}"
+     style="
+        width:${TEM_WIDTH_MM}mm;
+        height:${TEM_HEIGHT_MM}mm;
+        box-sizing:border-box;
+        overflow:hidden;
+        border:0;
+        margin:0;
+        padding:0.8mm 1mm 0.5mm 1mm;
+        text-align:center;
+     ">
+
+    <div style="
+        font-family:serif;
+        font-size:11pt;
+        line-height:1;
+        white-space:nowrap;
+        overflow:hidden;
+        margin-bottom:0.4mm;
+    ">
+        Shop Hoàn Tuyết
+    </div>
+
+    <svg class="barcode"
+         data-code="${((t.size ?? '').toString().trim() && (t.size ?? '').toString().trim() !== '0') ? `${t.masp}_${(t.size ?? '').toString().trim()}` : t.masp}"
+         style="width:28mm;height:2mm; display:block; margin:0 auto;"></svg>
+         
+
+    <div style="
+        font-family:serif;
+        font-size:13pt;
+        line-height:1;
+        white-space:nowrap;
+        overflow:hidden;
+        margin-top:0.2mm;
+    ">
+        ${((t.size ?? '').toString().trim() && (t.size ?? '').toString().trim() !== '0') ? `${t.masp}_${(t.size ?? '').toString().trim()}` : t.masp}
+    </div>
+
+    <div style="
+        font-family:serif;
+        font-size:14pt;
+        line-height:1;
+        white-space:nowrap;
+        overflow:hidden;
+        margin-top:0.5mm;
+    ">
+        Giá: ${formatGia(t.giale)}
+    </div>
+</div>
+` : `
 
 
- <!--bat dau khu vuc thiet ke hien thi tem -->
+  <!--bat dau khu vuc thiet ke hien thi tem -->
 
 <div class="tem"
      data-masp="${t.masp}"
@@ -807,19 +1032,41 @@
         Shop HoànTuyết,TháiNguyên
       </div>
 
-      <!-- THÔNG TIN CHUNG ở đáy cột trái -->
+      ${loaiTem === "tem_giamgia" ? (() => {
+                            const giaInfo = tinhGiaTemGiamGia(t, spKhuyenMaiMap);
+
+                            return `
+        <div style="
+            font-size:10pt;
+            line-height:1;
+            white-space:nowrap;
+            text-decoration:line-through;
+            margin-top:1mm;
+        ">
+            Giá: ${formatGia(giaInfo.giaGoc)}
+        </div>
+
+        <div style="
+            font-size:13pt;
+            font-weight:bold;
+            line-height:1;
+            white-space:nowrap;
+            margin-top:1.2mm;
+        ">
+            Giá: ${formatGia(giaInfo.giaSauGiam)}
+        </div>
+    `;
+                        })() : `
     <div style="font-size:5.5pt; line-height:1; word-break:break-word;
                 width:100%; margin:0; padding:0;">
       ${infoChung}
     </div>    
 
-      
-
-      <!-- GIÁ (không xuống dòng, cắt bên phải) -->
-      <div style="font-size:12pt; font-weight:bold; line-height:1;
-                  white-space:nowrap; text-overflow:clip; margin:0;">
-        Giá: ${formatGia(t.giale)}
-      </div>
+    <div style="font-size:12pt; font-weight:bold; line-height:1;
+                white-space:nowrap; text-overflow:clip; margin:0;">
+      Giá: ${formatGia(t.giale)}
+    </div>
+`}
 
       
     </div>
@@ -851,10 +1098,27 @@
 <!--HET khu vuc thiet ke hien thi tem -->
 
 
+`}
 `;
                 }
                 html += `</div></div>`;
                 previewArea.innerHTML = html;
+
+                // Sinh mã vạch cho loại tem mã vạch
+                if (loaiTem === "tem_mavach") {
+                    document.querySelectorAll('.tem .barcode').forEach((el) => {
+                        const code = el.getAttribute('data-code') || '';
+                        if (!code) return;
+
+                        JsBarcode(el, code, {
+                            format: "CODE128",
+                            displayValue: false,
+                            width: 0.7,
+                            height: 14,
+                            margin: 0
+                        });
+                    });
+                }
 
                 // Sinh QR code cho từng tem
                 document.querySelectorAll('.tem .qr').forEach((el) => {
@@ -907,7 +1171,7 @@
                 const maxTems = PER_PAGE - (currentPage === 1 ? blank : 0);
 
                 // Dựng HTML: padding theo thông số bạn cung cấp
-                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs2
+                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs2  row-gap: 1.5mm; voi cs2
                 let html = `<div class="print-preview" style="padding-top:5.5mm; padding-left:9.3mm;">
     <div class="tem-grid" style="
       display:grid;
@@ -947,17 +1211,17 @@
             }
 
 
-            window.prevPage = function () {
+            window.prevPage = async function () {
                 const t = document.getElementById('loaiTem').value;
                 if (currentPage <= 1) return;
                 if (t === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage - 1);
-                else renderPreview(currentPage - 1);
+                else await renderPreview(currentPage - 1);
             };
-            window.nextPage = function () {
+            window.nextPage = async function () {
                 const t = document.getElementById('loaiTem').value;
                 if (currentPage >= totalPages) return;
                 if (t === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage + 1);
-                else renderPreview(currentPage + 1);
+                else await renderPreview(currentPage + 1);
             };
 
 
@@ -965,6 +1229,87 @@
             function formatGia(val) {
                 if (!val || val == 0) return '';
                 return parseInt(val).toLocaleString('vi-VN');
+            }
+
+            async function fetchKhuyenMaiByMasps(masps = []) {
+                const uniq = Array.from(new Set(
+                    (masps || []).map(m => String(m || '').trim().toUpperCase()).filter(Boolean)
+                ));
+
+                if (!uniq.length) return {};
+
+                const { data, error } = await supabase
+                    .from('dmhanghoa')
+                    .select('*')
+                    .in('masp', uniq);
+
+                if (error) {
+                    console.warn('fetchKhuyenMaiByMasps error:', error);
+                    return {};
+                }
+
+                const map = {};
+                (data || []).forEach(sp => {
+                    map[String(sp.masp || '').trim().toUpperCase()] = sp;
+                });
+
+                return map;
+            }
+
+            function tinhGiaTemGiamGia(row, spMap) {
+                const masp = String(row.masp || '').trim().toUpperCase();
+                const sp = spMap[masp] || row;
+
+                const giaGoc = Number(sp.giale || row.giale || 0);
+                const tienGiam = tinhKhuyenMai(sp, giaGoc) || 0;
+                const giaSauGiam = Math.max(0, giaGoc - tienGiam);
+
+                return {
+                    giaGoc,
+                    tienGiam,
+                    giaSauGiam
+                };
+            }
+
+            function kiemTraGiaLeTruocKhiIn() {
+                syncHandsontableToSelected();
+
+                const dsCanhBao = (selected || []).filter(row => {
+                    if (!row || !row.tick) return false;
+
+                    const gianhap = Number(row.gianhap) || 0;
+                    const giale = Number(row.giale) || 0;
+
+                    // Nếu không có giá nhập thì bỏ qua kiểm tra
+                    if (gianhap <= 0) return false;
+
+                    return giale < (gianhap * 1.4);
+                });
+
+                if (!dsCanhBao.length) {
+                    return true;
+                }
+
+                const dsText = dsCanhBao.map((row, idx) => {
+                    const masp = row.masp || '';
+                    const tensp = row.tensp || '';
+                    const gianhap = Number(row.gianhap) || 0;
+                    const giale = Number(row.giale) || 0;
+                    const giaToiThieu = Math.ceil(gianhap * 1.4);
+
+                    return `${idx + 1}. ${masp}${tensp ? ' - ' + tensp : ''}\n` +
+                        `   Giá nhập: ${gianhap.toLocaleString('vi-VN')} | ` +
+                        `Giá lẻ: ${giale.toLocaleString('vi-VN')} | ` +
+                        `Tối thiểu nên là: ${giaToiThieu.toLocaleString('vi-VN')}`;
+                }).join('\n\n');
+
+                const msg =
+                    `⚠️ Bạn kiểm tra lại giá lẻ.\n\n` +
+                    `Có ${dsCanhBao.length} sản phẩm có giá lẻ chưa cao hơn giá nhập 40%.\n\n` +
+                    `${dsText}\n\n` +
+                    `Bạn có đồng ý in tem với giá lẻ hiện tại không?`;
+
+                return confirm(msg);
             }
 
             // Xuất Excel
@@ -989,19 +1334,29 @@
 
             // chon loai tem in
 
-            window.checkLoaiTemAndRender = function () {
+            window.checkLoaiTemAndRender = async function () {
                 const loaiTem = document.getElementById('loaiTem').value;
-                if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
+                if (!loaiTem) {
+                    alert("Vui lòng chọn loại tem cần in!");
+                    return;
+                }
+
+                const ok = kiemTraGiaLeTruocKhiIn();
+                if (!ok) {
+                    return;
+                }
+
                 applyFromLimits(); // đảm bảo max fromRow/fromCol đúng
                 if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(1);
-                else renderPreview(1);
+                else await renderPreview(1);
             };
-            window.checkLoaiTemAndPrint = function () {
+
+            window.checkLoaiTemAndPrint = async function () {
                 const loaiTem = document.getElementById('loaiTem').value;
                 if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
                 // render lại đúng mode trước khi in
                 if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage || 1);
-                else renderPreview(currentPage || 1);
+                else await renderPreview(currentPage || 1);
                 window.print();
             };
 
@@ -1028,11 +1383,11 @@
                 const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
                 if (b64.length <= 1800) {
-                    window.open(`/nhapmoimtcs2.html#imp=${b64} `, '_blank');
+                    window.open(`/nhapmoimtcs2.html#imp=${b64}`, '_blank');
                 } else {
                     const key = 'IMP_' + Date.now();
                     localStorage.setItem(key, json);
-                    window.open(`/nhapmoimtcs2.html#impkey=${key} `, '_blank');
+                    window.open(`/nhapmoimtcs2.html#impkey=${key}`, '_blank');
                 }
             }
 
@@ -1043,11 +1398,11 @@
                 const b64 = btoa(unescape(encodeURIComponent(json))); // base64 cho gọn URL
 
                 if (b64.length <= 1800) {
-                    window.open(`/nhaptamcs2.html#imp=${b64} `, '_blank');
+                    window.open(`/nhaptamcs2.html#imp=${b64}`, '_blank');
                 } else {
                     const key = 'IMP_' + Date.now();
                     localStorage.setItem(key, json);
-                    window.open(`/nhaptamcs2.html#impkey=${key} `, '_blank');
+                    window.open(`/nhaptamcs2.html#impkey=${key}`, '_blank');
                 }
             }
 
@@ -1079,11 +1434,11 @@
                 const b64 = btoa(unescape(encodeURIComponent(json)));
 
                 if (b64.length <= 1800) {
-                    window.open(`/nhaptamcs222.html#imp=${b64} `, '_blank');
+                    window.open(`/nhaptamcs211.html#imp=${b64} `, '_blank');
                 } else {
                     const key = 'IMP_' + Date.now();
                     localStorage.setItem(key, json);
-                    window.open(`/nhaptamcs222.html#impkey=${key} `, '_blank');
+                    window.open(`/nhaptamcs211.html#impkey=${key} `, '_blank');
                 }
             }
 
@@ -1100,7 +1455,7 @@
 
 
             // ==== CẤU HÌNH GIỮ LẠI TRƯỜNG ====giale
-            const GIU_LAI_FIELDS = ['tensp', 'giale', 'nhacc', 'nhomhang', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai', 'nhomhang'];
+            const GIU_LAI_FIELDS = ['tensp', 'giale', 'nhacc', 'chungloai'];  //['masp', 'tensp', 'nhacc', 'chungloai'];
 
             // ==== Dropdown: lấy danh sách dữ liệu unique cho từng trường dropdown ====
             // ==== Dropdown: nạp danh mục từ bảng chuẩn và hiển thị "MÃ - TÊN" ====
@@ -1132,18 +1487,26 @@
                         .join('');
                 } catch (e) { console.error(e); }
 
-                // 3) MÀU SẮC: dmmausac → value = MÃ MÀU, label = "MÃ - TÊN"
+                // 3) MÀU SẮC: dmmausac
                 try {
                     const { data: ms, error: errMs } = await supabase
                         .from('dmmausac')
                         .select('mamau, tenmau')
                         .order('mamau', { ascending: true });
+
                     if (errMs) console.error('Load Màu sắc error:', errMs);
-                    document.getElementById('mausacList').innerHTML = (ms || [])
+
+                    allMauSacOptions = (ms || [])
                         .filter(r => r.mamau)
-                        .map(r => `<option value="${(r.mamau || '').toUpperCase()}" label = "${(r.mamau || '').toUpperCase()} - ${r.tenmau || ''}" ></option > `)
-                        .join('');
-                } catch (e) { console.error(e); }
+                        .map(r => ({
+                            mamau: (r.mamau || '').toUpperCase(),
+                            tenmau: (r.tenmau || '').trim()
+                        }));
+
+                    renderMauSacPopup();
+                } catch (e) {
+                    console.error(e);
+                }
 
                 // 4) NHÓM HÀNG: dmnhomhang → value = MÃ, label = "MÃ - TÊN"
                 try {
@@ -1164,33 +1527,25 @@
 
             // ==== Khi nhập xong mã sản phẩm, kiểm tra tồn tại, nếu có thì tải dữ liệu lên form ====
             document.getElementById('maspInput').addEventListener('blur', checkExistAndFillForm);
-            document.getElementById('maspInput').addEventListener('keydown', function (e) {
+            document.getElementById('maspInput').addEventListener('keydown', async function (e) {
                 if (e.key === "Enter") {
                     e.preventDefault();
                     e.stopPropagation();
 
-                    // Đóng popup gợi ý mã sản phẩm (nếu đang mở)
                     try {
                         const pop = document.getElementById('maspSuggestList');
                         if (pop) pop.style.display = 'none';
                     } catch (_) { }
 
-                    // Nếu vừa lưu xong và đang quay lại ô mã SP,
-                    // Enter sẽ nhảy thẳng xuống ô Màu sắc để nhập nhanh
-                    if (justSavedReturnToMasp) {
-                        justSavedReturnToMasp = false;
-                        const mausac = document.getElementById('mausacInput');
-                        if (mausac) {
-                            mausac.focus();
-                            setTimeout(() => mausac.select?.(), 10);
-                        }
-                        return;
-                    }
+                    justSavedReturnToMasp = false;
 
-                    // Luồng cũ
-                    checkExistAndFillForm();
-                    const tensp = document.getElementById('tenspInput');
-                    if (tensp) { tensp.focus(); setTimeout(() => tensp.select?.(), 10); }
+                    await checkExistAndFillForm();
+
+                    const maspInput = document.getElementById('maspInput');
+                    if (maspInput) {
+                        maspInput.focus();
+                        setTimeout(() => maspInput.select?.(), 10);
+                    }
                 }
             });
 
@@ -1225,6 +1580,8 @@
             let isEditMode = false; // Đánh dấu đang sửa hay thêm mới
             let justSavedReturnToMasp = false; // vừa lưu xong và đang đứng lại ở ô mã sản phẩm
             let skipNextAutoFillFromMaspBlur = false; // bỏ qua 1 lần auto fill khi rời ô mã SP sau khi lưu
+            let originalGiaNhap = null;
+            let originalGiaLe = null;
 
             async function checkExistAndFillForm() {
                 if (skipNextAutoFillFromMaspBlur) {
@@ -1244,7 +1601,13 @@
                     document.getElementById('tenspInput').value = data.tensp || '';
                     document.getElementById('gianhapInput').value = data.gianhap || '';
                     document.getElementById('gialeInput').value = data.giale || '';
+
+                    originalGiaNhap = Number(data.gianhap) || 0;
+                    originalGiaLe = Number(data.giale) || 0;
                     document.getElementById('mausacInput').value = data.mausac || '';
+                    selectedColorOrder = parseColorsFromInput(data.mausac || '');
+                    updateMauSacPreview();
+                    syncPopupChecksFromInput();
                     document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
                     document.getElementById('nhaccInput').value = data.nhacc || '';
                     document.getElementById('nhomhangInput').value = data.nhomhang || '';
@@ -1254,11 +1617,14 @@
                     syncQuanLyKichCoByGiaLe();
                     document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
                 } else {
-                    // Không fill gì cả, không reset
+                    // Mã mới không tồn tại -> chuyển sang chế độ THÊM MỚI
                     isEditMode = false;
+                    originalGiaNhap = null;
+                    originalGiaLe = null;
                     document.getElementById('addProductForm').style.border = '';
-                    // Không gọi resetForm ở đây!
-                    // Giữ nguyên các trường, để người dùng nhập tiếp tục
+
+                    // Mã mới: tự gán nhóm hàng theo hậu tố sau dấu "-"
+                    autoFillNhomHangFromMasp({ force: true });
                 }
             }
 
@@ -1282,11 +1648,21 @@
                     //if (keepMasp && field === 'masp') return; // Trường hợp muốn giữ lại mã sp cũ
                     document.getElementById(field + 'Input').value = data[field] || '';
                 });
+
+                // Không giữ lại nhóm hàng cũ khi thêm mã mới, sẽ để hệ thống tự suy ra lại từ mã sản phẩm
+                document.getElementById('nhomhangInput').value = '';
+
                 document.getElementById('addProductMessage').textContent = '';
                 document.getElementById('addProductForm').style.border = '';
                 isEditMode = false;
+                originalGiaNhap = null;
+                originalGiaLe = null;
                 // NEW: đồng bộ lại QLKC theo giá lẻ đang được “giữ lại”
                 syncQuanLyKichCoByGiaLe();
+
+                selectedColorOrder = parseColorsFromInput(document.getElementById('mausacInput').value || '');
+                updateMauSacPreview();
+                syncPopupChecksFromInput();
             }
 
             // ==== Validate các trường bắt buộc ====
@@ -1315,108 +1691,322 @@
                 return { valid, msg: msg.join(', ') };
             }
 
+            function getUnknownColors(colors) {
+                const knownSet = new Set((allMauSacOptions || []).map(x => x.mamau));
+                return colors.filter(c => !knownSet.has(c));
+            }
+
+            async function getOtherColorProductsByBaseCode(maspDayDu) {
+                const maspFull = (maspDayDu || '').trim().toUpperCase();
+                if (!maspFull.includes('.')) {
+                    return [];
+                }
+
+                const maspGoc = maspFull.split('.')[0].trim();
+                if (!maspGoc) {
+                    return [];
+                }
+
+                const { data, error } = await supabase
+                    .from('dmhanghoa')
+                    .select('masp, mausac')
+                    .ilike('masp', `${maspGoc}.%`)
+                    .order('masp', { ascending: true });
+
+                if (error) {
+                    console.error('Lỗi tải danh sách màu cùng mã gốc:', error);
+                    return [];
+                }
+
+                return (data || []).filter(x => (x.masp || '').toUpperCase() !== maspFull);
+            }
+
+            async function confirmBulkPriceUpdateBeforeSave({
+                maspDayDu,
+                giaNhapChanged,
+                giaLeChanged
+            }) {
+                const maspFull = (maspDayDu || '').trim().toUpperCase();
+
+                // Không phải mã có màu => không cần hỏi
+                if (!maspFull.includes('.')) {
+                    return { proceed: true, siblings: [] };
+                }
+
+                // Không sửa giá => không cần hỏi
+                if (!giaNhapChanged && !giaLeChanged) {
+                    return { proceed: true, siblings: [] };
+                }
+
+                const siblings = await getOtherColorProductsByBaseCode(maspFull);
+
+                // Không có màu còn lại => cho lưu bình thường
+                if (!siblings.length) {
+                    return { proceed: true, siblings: [] };
+                }
+
+                const mauConLai = siblings.map(x => x.masp || '').join('\n- ');
+                const noiDungSua = [
+                    giaNhapChanged ? 'Giá nhập' : null,
+                    giaLeChanged ? 'Giá lẻ' : null
+                ].filter(Boolean).join(' và ');
+
+                const ok = confirm(
+                    `⚠️ Bạn vừa sửa ${noiDungSua} của mã:\n` +
+                    `${maspFull}\n\n` +
+                    `Các mã màu còn lại cùng sản phẩm:\n- ${mauConLai}\n\n` +
+                    `Bạn có muốn cập nhật ${noiDungSua} cho tất cả các mã màu còn lại không?\n\n` +
+                    `OK = cập nhật đồng bộ tất cả màu\n` +
+                    `Hủy = không cập nhật gì cả`
+                );
+
+                if (!ok) {
+                    return { proceed: false, siblings: [] };
+                }
+
+                return { proceed: true, siblings };
+            }
 
 
             // ==== Nút Lưu (submit form) ====
             document.getElementById('addProductForm').onsubmit = async function (e) {
                 e.preventDefault();
-                // Validate
+
                 const { valid, msg } = validateForm();
                 if (!valid) {
                     document.getElementById('addProductMessage').textContent = msg;
                     return;
                 }
-                // NEW: chốt lại trạng thái QLKC trước khi đọc checked
+
                 syncQuanLyKichCoByGiaLe();
 
-                // Chuẩn hóa dữ liệu
                 const gianhapVal = document.getElementById('gianhapInput').value.replace(/\./g, '');
                 const gialeVal = document.getElementById('gialeInput').value.replace(/\./g, '');
+                const maspRaw = document.getElementById('maspInput').value.trim().toUpperCase();
+                const maspGoc = maspRaw.split('.')[0].trim();
 
-                const data = {
-                    masp: document.getElementById('maspInput').value.trim().toUpperCase(),
+                const colors = parseColorsFromInput(document.getElementById('mausacInput').value);
+                const maspDayDu = maspRaw;
+
+                if (!maspGoc) {
+                    document.getElementById('addProductMessage').style.color = 'red';
+                    document.getElementById('addProductMessage').textContent = 'Mã sản phẩm gốc không hợp lệ.';
+                    return;
+                }
+
+                const baseData = {
                     tensp: document.getElementById('tenspInput').value.trim(),
                     gianhap: parseInt(gianhapVal) || 1,
                     giale: parseInt(gialeVal) || 0,
-                    mausac: document.getElementById('mausacInput').value.trim().toUpperCase(),
                     khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
                     nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),
-                    nhomhang: (document.getElementById('nhomhangInput').value.trim().toUpperCase() || null),//cho phep
+                    nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
                     chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(),
                     quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
                 };
 
-                let errorMsg;
-                // ✅ Quyết định INSERT/UPDATE dựa trên sự tồn tại thực tế của mã hiện tại
-                const { data: existed, error: existErr } = await supabase
-                    .from('dmhanghoa')
-                    .select('masp')
-                    .eq('masp', data.masp)
-                    .maybeSingle();
+                const giaNhapMoi = Number(baseData.gianhap) || 0;
+                const giaLeMoi = Number(baseData.giale) || 0;
 
-                let res;
-                if (existed) {
-                    const userConfirm = confirm(`⚠️ Mã sản phẩm "${data.masp}" đã tồn tại.\nBạn có muốn cập nhật thông tin không?`);
-                    if (!userConfirm) {
-                        const msgEl = document.getElementById('addProductMessage');
-                        msgEl.style.color = 'orange';
-                        msgEl.textContent = `⛔ Đã hủy cập nhật sản phẩm "${data.masp}".`;
+                const giaNhapChanged = isEditMode && originalGiaNhap !== null && giaNhapMoi !== originalGiaNhap;
+                const giaLeChanged = isEditMode && originalGiaLe !== null && giaLeMoi !== originalGiaLe;
+
+                let records = [];
+
+                // 1) Có màu => giữ logic cũ: tạo / cập nhật theo MASP.MAU
+                if (colors.length) {
+                    const unknownColors = getUnknownColors(colors);
+                    if (unknownColors.length) {
+                        const ok = confirm(
+                            `⚠️ Có ${unknownColors.length} màu không có trong danh mục màu:\n` +
+                            `${unknownColors.join(', ')}\n\n` +
+                            `Bạn vẫn muốn lưu chứ?`
+                        );
+                        if (!ok) return;
+                    }
+
+                    records = colors.map(color => ({
+                        masp: `${maspGoc}.${color}`,
+                        mausac: color,
+                        ...baseData
+                    }));
+                }
+                // 2) Không có màu => chỉ chấp nhận nếu đang sửa mã cũ không có màu
+                else {
+                    if (isEditMode && !maspDayDu.includes('.')) {
+                        records = [{
+                            masp: maspDayDu,
+                            mausac: '',
+                            ...baseData
+                        }];
+                    } else {
+                        alert(
+                            `⚠️ LỖI NHẬP LIỆU !!!
+
+Bạn chưa nhập màu sắc.
+
+✔ Nếu là mã mới → BẮT BUỘC phải chọn màu.
+✔ Chỉ được bỏ qua màu khi:
+   → SỬA mã cũ KHÔNG có màu.
+
+👉 Vui lòng kiểm tra lại!`
+                        );
                         return;
                     }
-                    // UPDATE và yêu cầu trả về dòng đã thay đổi để chắc chắn
-                    res = await supabase.from('dmhanghoa').update(data).eq('masp', data.masp).select();
-                    if (res.error) errorMsg = 'Lỗi cập nhật: ' + res.error.message;
-                    if (!errorMsg && (!res.data || res.data.length === 0)) {
-                        errorMsg = 'Cập nhật không thành công (không có dòng nào được thay đổi).';
-                    }
-                } else {
-                    // INSERT mới
-                    res = await supabase.from('dmhanghoa').insert([data]);
-                    if (res.error) errorMsg = 'Lỗi thêm mới: ' + res.error.message;
                 }
 
-                if (errorMsg) {
-                    document.getElementById('addProductMessage').style.color = 'red';
-                    document.getElementById('addProductMessage').textContent = errorMsg;
+                let bulkPriceDecision = { proceed: true, siblings: [] };
+
+                if (records.length === 1) {
+                    bulkPriceDecision = await confirmBulkPriceUpdateBeforeSave({
+                        maspDayDu: records[0].masp,
+                        giaNhapChanged,
+                        giaLeChanged
+                    });
+
+                    if (!bulkPriceDecision.proceed) {
+                        document.getElementById('addProductMessage').style.color = 'red';
+                        document.getElementById('addProductMessage').textContent =
+                            'Đã hủy cập nhật. Không có mã nào được thay đổi.';
+                        return;
+                    }
+                }
+
+                let insertCount = 0;
+                let updateCount = 0;
+                let errorList = [];
+                let savedRecords = [];   // chỉ chứa mã lưu thành công
+                let failedRecords = [];  // chứa mã lưu thất bại
+
+                for (const record of records) {
+                    try {
+                        const { data: existed, error: existErr } = await supabase
+                            .from('dmhanghoa')
+                            .select('masp')
+                            .eq('masp', record.masp)
+                            .maybeSingle();
+
+                        if (existErr) {
+                            errorList.push(`${record.masp}: ${existErr.message}`);
+                            failedRecords.push(record);
+                            continue;
+                        }
+
+                        if (existed) {
+                            const { error: updErr } = await supabase
+                                .from('dmhanghoa')
+                                .update(record)
+                                .eq('masp', record.masp);
+
+                            if (updErr) {
+                                errorList.push(`${record.masp}: ${updErr.message}`);
+                                failedRecords.push(record);
+                            } else {
+                                updateCount++;
+                                savedRecords.push(record);
+                            }
+                        } else {
+                            const { error: insErr } = await supabase
+                                .from('dmhanghoa')
+                                .insert([record]);
+
+                            if (insErr) {
+                                errorList.push(`${record.masp}: ${insErr.message}`);
+                                failedRecords.push(record);
+                            } else {
+                                insertCount++;
+                                savedRecords.push(record);
+                            }
+                        }
+                    } catch (err) {
+                        errorList.push(`${record.masp}: ${err.message}`);
+                        failedRecords.push(record);
+                    }
+                }
+
+                if (
+                    errorList.length === 0 &&
+                    records.length === 1 &&
+                    bulkPriceDecision.proceed &&
+                    bulkPriceDecision.siblings.length > 0 &&
+                    (giaNhapChanged || giaLeChanged)
+                ) {
+                    const updateData = {};
+                    if (giaNhapChanged) updateData.gianhap = baseData.gianhap;
+                    if (giaLeChanged) updateData.giale = baseData.giale;
+
+                    for (const item of bulkPriceDecision.siblings) {
+                        const { error } = await supabase
+                            .from('dmhanghoa')
+                            .update(updateData)
+                            .eq('masp', item.masp);
+
+                        if (error) {
+                            errorList.push(`${item.masp}: ${error.message}`);
+                            console.error('Lỗi cập nhật đồng bộ màu:', item.masp, error);
+                        } else {
+                            updateCount++;
+                        }
+                    }
+                }
+
+                const msgEl = document.getElementById('addProductMessage');
+
+                if (errorList.length) {
+                    msgEl.style.color = 'red';
+
+                    const detailText = errorList.join('\n');
+
+                    if (savedRecords.length === 0) {
+                        msgEl.textContent = '❌ Không lưu được dữ liệu vào bảng danh mục hàng hóa.';
+                        alert(
+                            '❌ Không lưu được dữ liệu vào bảng danh mục hàng hóa.\n\n' +
+                            'Các lỗi gặp phải:\n' + detailText +
+                            '\n\nMã sản phẩm sẽ KHÔNG được đưa sang danh sách tem in.'
+                        );
+                    } else {
+                        msgEl.textContent =
+                            `⚠️ Lưu một phần. Thêm mới: ${insertCount}, cập nhật: ${updateCount}, lỗi: ${errorList.length}.`;
+                        alert(
+                            '⚠️ Có sản phẩm lưu không thành công vào bảng danh mục hàng hóa.\n\n' +
+                            'Các lỗi gặp phải:\n' + detailText +
+                            '\n\nChỉ những mã lưu thành công mới được đưa sang danh sách tem in.'
+                        );
+                    }
+
+                    console.error('Chi tiết lỗi lưu sản phẩm:', errorList);
+                } else {
+                    msgEl.style.color = '#0a9e1c';
+                    msgEl.textContent =
+                        `Lưu thành công! Thêm mới: ${insertCount}, cập nhật: ${updateCount}.`;
+                }
+
+                if (savedRecords.length === 0) {
                     return;
                 }
 
-                // Hiện thông báo thành công
-                document.getElementById('addProductMessage').style.color = '#0a9e1c';
-                document.getElementById('addProductMessage').textContent = existed ? 'Cập nhật thành công!' : 'Thêm mới thành công!';
+                const savedMaspGoc = savedRecords[0]?.masp || maspRaw;
 
-                // Lưu lại mã vừa dùng trước khi reset form
-                const savedMasp = data.masp || '';
-
-                // Reset lại form theo giữ lại trường
                 resetForm();
 
-                // Sau khi reset:
-                // - giữ nguyên mã sản phẩm
-                // - xóa trắng màu sắc
-                // - focus lại vào ô mã sản phẩm
-                // - bôi đen toàn bộ mã để người dùng gõ mã mới thì tự đè,
-                //   còn nếu muốn giữ mã cũ thì chỉ việc Enter / nhập màu mới
                 const maspInput = document.getElementById('maspInput');
-                const mausacInput = document.getElementById('mausacInput');
+                maspInput.value = savedMaspGoc;
+                document.getElementById('mausacInput').value = '';
 
-                maspInput.value = savedMasp;
-                mausacInput.value = '';
+                updateMauSacPreview();
+                syncPopupChecksFromInput();
 
                 maspInput.focus();
                 setTimeout(() => maspInput.select(), 10);
                 justSavedReturnToMasp = true;
                 skipNextAutoFillFromMaspBlur = true;
 
-                // Load lại dropdown option (nếu có giá trị mới)
                 loadDropdownOptions();
-
-                // Sau khi lưu xong, gọi searchProducts và truyền thêm callback
                 searchProducts(document.getElementById('search').value.trim().toLowerCase());
 
-                // Đẩy sản phẩm vừa lưu vào danh sách tem in
-                pushProductToGrid(data);
-            }
+                // Chỉ đẩy các mã lưu THÀNH CÔNG vào lưới tem in
+                savedRecords.forEach(pushProductToGrid);
+            };
 
             loadDropdownOptions();
 
@@ -1474,12 +2064,15 @@
 
 
             maspInput.addEventListener('input', async function () {
+                autoFillNhomHangFromMasp();
                 const val = maspInput.value.trim().toLowerCase();
                 if (val.length === 0) {
                     maspSuggestDiv.style.display = 'none';
                     maspSuggestDiv.innerHTML = '';
                     return;
                 }
+
+
                 // Lọc mã & tên
                 let { data } = await supabase
                     .from('dmhanghoa')
@@ -1505,12 +2098,16 @@
 
                 // Sự kiện chọn
                 maspSuggestDiv.querySelectorAll('tr[data-masp]').forEach(row => {
-                    row.onclick = function () {
+                    row.onclick = async function () {
                         maspInput.value = row.dataset.masp;
                         document.getElementById('tenspInput').value = row.dataset.tensp;
                         maspSuggestDiv.style.display = 'none';
-                        checkExistAndFillForm(); // Tải info nếu có
-                        document.getElementById('tenspInput').focus();
+                        autoFillNhomHangFromMasp();
+
+                        await checkExistAndFillForm(); // Tải info nếu có
+
+                        maspInput.focus();
+                        setTimeout(() => maspInput.select?.(), 10);
                     }
                 });
             });
@@ -1534,60 +2131,277 @@
 
             const gianhapInput = document.getElementById('gianhapInput');
             const gialeInput = document.getElementById('gialeInput');
+
+            const mausacInput = document.getElementById('mausacInput');
+            const mausacPopup = document.getElementById('mausacPopup');
+            const mausacPopupList = document.getElementById('mausacPopupList');
+            const toggleMauSacPopupBtn = document.getElementById('toggleMauSacPopup');
+            const mausacPreview = document.getElementById('mausacPreview');
+            const mausacWrap = document.getElementById('mausacWrap');
+
+            function normalizeColorToken(str) {
+                return (str || '')
+                    .trim()
+                    .toUpperCase()
+                    .replace(/\s+/g, '');
+            }
+
+            function parseColorsFromInput(value) {
+                const arr = (value || '')
+                    .split(',')
+                    .map(normalizeColorToken)
+                    .filter(Boolean);
+
+                return [...new Set(arr)];
+            }
+
+            function syncSelectedColorOrderFromInput() {
+                selectedColorOrder = parseColorsFromInput(mausacInput.value);
+            }
+
+            function updateInputFromSelectedColorOrder() {
+                mausacInput.value = selectedColorOrder.join(',');
+                updateMauSacPreview();
+            }
+
+            function setColorsToInput(colors) {
+                selectedColorOrder = [...colors];
+                mausacInput.value = selectedColorOrder.join(',');
+                updateMauSacPreview();
+            }
+
+            function updateMauSacPreview() {
+                const baseCode = ((document.getElementById('maspInput').value || '').trim().toUpperCase().split('.')[0] || '');
+                const colors = parseColorsFromInput(mausacInput.value);
+
+                if (!baseCode || !colors.length) {
+                    mausacPreview.textContent = '';
+                    return;
+                }
+
+                const previewCodes = colors.map(c => `${baseCode}.${c}`);
+                mausacPreview.textContent = 'Sẽ tạo: ' + previewCodes.join(', ');
+            }
+
+            function renderMauSacPopup(keyword = '') {
+                if (!mausacPopupList) return;
+
+                const kw = normalizeColorToken(keyword);
+                const filteredOptions = !kw
+                    ? allMauSacOptions
+                    : allMauSacOptions.filter(item =>
+                        (item.mamau || '').includes(kw) ||
+                        normalizeColorToken(item.tenmau || '').includes(kw)
+                    );
+
+                let html = '';
+
+                if (!filteredOptions.length) {
+                    html = `<div class="mausac-popup-row"><div style="padding:6px 8px;color:#666;">Không có màu phù hợp</div></div>`;
+                } else {
+                    filteredOptions.forEach(item => {
+                        html += `
+                <div class="mausac-popup-row" data-mamau="${item.mamau}">
+                    <input type="text" value="${item.mamau}" readonly tabindex="-1" />
+                    <input type="checkbox" class="mausac-check" value="${item.mamau}" />
+                </div>
+            `;
+                    });
+                }
+
+                mausacPopupList.innerHTML = html;
+                syncPopupChecksFromInput();
+            }
+
+            function syncPopupChecksFromInput() {
+                const selectedColors = selectedColorOrder.length
+                    ? selectedColorOrder
+                    : parseColorsFromInput(mausacInput.value);
+
+                document.querySelectorAll('.mausac-check').forEach(chk => {
+                    chk.checked = selectedColors.includes(normalizeColorToken(chk.value));
+                });
+            }
+
+            function updateInputFromPopupChecks(changedColor = '', isChecked = false) {
+                const color = normalizeColorToken(changedColor);
+
+                if (!selectedColorOrder.length) {
+                    selectedColorOrder = parseColorsFromInput(mausacInput.value);
+                }
+
+                let popupSelected = selectedColorOrder.filter(c =>
+                    allMauSacOptions.some(m => m.mamau === c)
+                );
+
+                const manualColors = parseColorsFromInput(mausacInput.value)
+                    .filter(c => !allMauSacOptions.some(m => m.mamau === c));
+
+                if (color) {
+                    if (isChecked) {
+                        if (!popupSelected.includes(color)) popupSelected.push(color);
+                    } else {
+                        popupSelected = popupSelected.filter(c => c !== color);
+                    }
+                }
+
+                selectedColorOrder = [...popupSelected, ...manualColors];
+
+                // Nếu vừa tick chọn màu thì tự chèn dấu phẩy cuối
+                // để người dùng chọn tiếp màu khác ngay
+                if (isChecked && selectedColorOrder.length) {
+                    mausacInput.value = selectedColorOrder.join(',') + ',';
+                } else {
+                    mausacInput.value = selectedColorOrder.join(',');
+                }
+
+                updateMauSacPreview();
+
+                const parts = (mausacInput.value || '').split(',');
+                const currentKeyword = (parts[parts.length - 1] || '').trim();
+                renderMauSacPopup(currentKeyword);
+
+                // giữ focus để chọn tiếp
+                setTimeout(() => {
+                    mausacInput.focus();
+                    const len = mausacInput.value.length;
+                    mausacInput.setSelectionRange(len, len);
+                }, 0);
+            }
+
+            function openMauSacPopup(keyword = '') {
+                renderMauSacPopup(keyword);
+                syncPopupChecksFromInput();
+                mausacPopup.style.display = 'block';
+            }
+
+            function closeMauSacPopup() {
+                mausacPopup.style.display = 'none';
+                updateMauSacPreview();
+            }
+
             // [ADD] Cấu hình ngưỡng khóa checkbox quản lý kích cỡ theo Giá lẻ
             const GIALE_LOCK_THRESHOLD = 150000; // đổi sau này nếu cần
 
             // === Nối hậu tố màu vào Mã sản phẩm khi rời ô Màu sắc ===
-            const mausacInput = document.getElementById('mausacInput');
             const maspInputEl = document.getElementById('maspInput');
 
-            function updateMaspWithColorSuffix() {
-                if (!mausacInput || !maspInputEl) return;
+            toggleMauSacPopupBtn?.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
 
-                const color = (mausacInput.value || '').trim(); // giữ nguyên người dùng gõ
-                if (!color) {
-                    if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-                    return;
-                }
-
-                let masp = (maspInputEl.value || '').trim();
-                if (!masp) {
-                    if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-                    return;
-                }
-
-                // Dùng . làm ký tự phân màu. Nếu trước đây có '/', chuẩn hoá luôn về '.'
-                masp = masp.replace(/\//g, '.');
-
-                const tildeIdx = masp.indexOf('.');
-                if (tildeIdx === -1) {
-                    masp = masp + '.' + color;
+                if (mausacPopup.style.display === 'block') {
+                    closeMauSacPopup();
                 } else {
-                    masp = masp.slice(0, tildeIdx + 1) + color;
-                }
-                maspInputEl.value = masp;
-
-                // Chuyển sang trạng thái THÊM MỚI
-                isEditMode = false;
-                window.isEditMode = false;
-                document.getElementById('addProductForm').style.border = '';
-
-                if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
-            }
-            // BLUR: rời ô Màu -> nối hậu tố + đóng popup gợi ý mã SP
-            mausacInput?.addEventListener('blur', updateMaspWithColorSuffix);
-
-            // ENTER trong ô Màu -> nối hậu tố + đóng popup gợi ý mã SP + nhảy tiếp như flow cũ
-            mausacInput?.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    updateMaspWithColorSuffix();
-                    // chuyển sang ô Khuyến mãi như thứ tự formOrder
-                    const km = document.getElementById('khuyenmaiInput');
-                    if (km) { km.focus(); setTimeout(() => km.select?.(), 10); }
+                    // Bấm nút tam giác thì luôn mở FULL danh sách màu,
+                    // không lọc theo giá trị đang có trong ô
+                    openMauSacPopup('');
                 }
             });
 
+            mausacPopupList?.addEventListener('change', function (e) {
+                if (e.target.classList.contains('mausac-check')) {
+                    updateInputFromPopupChecks(e.target.value, e.target.checked);
+                }
+            });
+
+            mausacInput?.addEventListener('input', function () {
+                selectedColorOrder = parseColorsFromInput(mausacInput.value);
+                updateMauSacPreview();
+
+                const rawValue = mausacInput.value || '';
+                const parts = rawValue.split(',');
+                const currentKeyword = (parts[parts.length - 1] || '').trim();
+
+                if (currentKeyword.length >= 1) {
+                    openMauSacPopup(currentKeyword);
+                } else {
+                    renderMauSacPopup('');
+                    syncPopupChecksFromInput();
+                }
+            });
+
+            mausacInput?.addEventListener('blur', function () {
+                setTimeout(() => {
+                    if (isClickingMauSacPopup) return;
+
+                    let colors = parseColorsFromInput(mausacInput.value);
+
+                    // Xóa các màu chỉ có 1 ký tự
+                    colors = colors.filter(c => (c || '').trim().length > 1);
+
+                    selectedColorOrder = [...colors];
+                    updateInputFromSelectedColorOrder();
+                    syncPopupChecksFromInput();
+                    updateMauSacPreview();
+                    closeMauSacPopup();
+                }, 120);
+            });
+
+            mausacInput?.addEventListener('focus', function () {
+                updateMauSacPreview();
+
+                const rawValue = mausacInput.value || '';
+                const parts = rawValue.split(',');
+                const currentKeyword = (parts[parts.length - 1] || '').trim();
+
+                // Nếu ô đang là 1 mã màu hoàn chỉnh như DEN
+                // thì focus vào ô sẽ mở full danh sách để chọn tiếp
+                const isExactColor = allMauSacOptions.some(
+                    item => item.mamau === normalizeColorToken(currentKeyword)
+                );
+
+                openMauSacPopup(isExactColor ? '' : currentKeyword);
+            });
+
+            mausacInput?.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter') return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const rawValue = (mausacInput.value || '').trim();
+
+                // Nếu ô màu sắc đang trống
+                // => giữ nguyên focus tại đây, không chuyển sang ô khác
+                if (!rawValue) {
+                    mausacInput.focus();
+                    return;
+                }
+
+                // Chuẩn hóa dữ liệu màu
+                let colors = parseColorsFromInput(mausacInput.value);
+
+                // Xóa các mục màu chỉ có 1 ký tự
+                // vì đó chỉ là ký tự người dùng gõ để tìm kiếm
+                colors = colors.filter(c => (c || '').trim().length > 1);
+
+                selectedColorOrder = [...colors];
+                updateInputFromSelectedColorOrder();
+                syncPopupChecksFromInput();
+                updateMauSacPreview();
+
+                // Đóng popup màu
+                closeMauSacPopup();
+
+                // Nhảy sang ô khuyến mãi
+                const km = document.getElementById('khuyenmaiInput');
+                if (km) {
+                    km.focus();
+                    setTimeout(() => km.select?.(), 10);
+                }
+            });
+
+            document.addEventListener('mousedown', function (e) {
+                if (!mausacWrap?.contains(e.target)) {
+                    if (mausacPopup.style.display === 'block') {
+                        closeMauSacPopup();
+                    }
+                }
+            });
+
+            maspInputEl?.addEventListener('input', updateMauSacPreview);
+            maspInputEl?.addEventListener('blur', updateMauSacPreview);
 
             //Format số cho giá nhập & giá lẻ trên FORM
             [gianhapInput, gialeInput].forEach(inp => {
@@ -1626,6 +2440,7 @@
                 qlkcCheckbox.title = '';
                 qlkcLabel?.classList.remove('locked');
             }
+
             // [ADD] Đồng bộ trạng thái checkbox dựa trên Giá lẻ hiện tại
             function syncQuanLyKichCoByGiaLe() {
                 if (!gialeInput || !qlkcCheckbox) return;
@@ -1708,9 +2523,9 @@
                     const el = document.getElementById(id);
                     if (!el) return;
 
-                    // Riêng ô mã sản phẩm đã có logic Enter riêng,
+                    // Riêng ô mã sản phẩm và ô màu sắc đã có logic Enter riêng
                     // nên không gắn điều hướng Enter tuần tự ở đây nữa
-                    if (id === 'maspInput') {
+                    if (id === 'mausacInput') {
                         el.addEventListener('focus', () => setTimeout(() => el.select?.(), 10));
                         return;
                     }
@@ -1739,7 +2554,6 @@
                     }
                 });
             }
-
 
 
             function pushProductToGrid(product) {
@@ -1847,6 +2661,7 @@
             document.addEventListener("DOMContentLoaded", () => { importFromHashToInTem(); });
 
         </script>
+
 
         <script>
             (function () {
@@ -1977,7 +2792,7 @@
                         items
                     };
                     const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-                    const url = `nhaptamcs222.html?data=${encoded}`;
+                    const url = `nhaptamcs211.html?data=${encoded}`;
                     window.open(url, "_blank");
                 } catch (err) {
                     console.error("❌ Lỗi khi tạo nhập tạm:", err);
@@ -1990,20 +2805,27 @@
 
             // 2) Mỗi khi quay lại tab, làm “refresh nhẹ”
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) {
-                    supabase.auth.refreshSession().catch(() => { });
+                const sb = window.supabase;         // lấy từ global
+                if (!document.hidden && sb?.auth) {
+                    sb.auth.refreshSession().catch(() => { });
                 }
             });
 
             // 3) Gia cố: canh thời điểm gần hết hạn thì refresh sớm
             const REFRESH_EARLY_SEC = 300; // 5 phút trước khi hết hạn
+
             setInterval(async () => {
-                const { data: { session } } = await supabase.auth.getSession();
+                const sb = window.supabase;
+                if (!sb?.auth) return;              // chưa khởi tạo thì bỏ qua
+
+                const { data: { session } = { session: null } } = await sb.auth.getSession();
                 const expMs = session?.expires_at ? session.expires_at * 1000 : 0;
+
                 if (expMs && expMs - Date.now() < REFRESH_EARLY_SEC * 1000) {
-                    await supabase.auth.refreshSession().catch(() => { });
+                    await sb.auth.refreshSession().catch(() => { });
                 }
             }, 60 * 1000);
+
 
         </script>
 
