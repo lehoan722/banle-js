@@ -24,8 +24,12 @@ let currentTab = 'nhieu_vitri';
 let currentRows = [];
 
 let selectedPhienIds = [];
+let popupPhienMode = "chua_treo";
+// chua_treo = kiểm chưa bày mẫu
+// tai_chitiet = tải chi tiết phiên kiểm
 
-async function moPopupChonPhien() {
+async function moPopupChonPhien(mode = "chua_treo") {
+  popupPhienMode = mode;
   document.getElementById('popup-phien').style.display = 'block';
   capNhatQuyenPopupPhien();
 
@@ -81,7 +85,15 @@ document.getElementById('btn-chon-phien')?.addEventListener('click', async () =>
 
   document.getElementById('popup-phien').style.display = 'none';
 
-  await loadChuaTreoTheoPhien(); // gọi báo cáo mới
+  if (popupPhienMode === "tai_chitiet") {
+    await loadChiTietTheoPhien();
+    return;
+  }
+
+  if (popupPhienMode === "chua_treo") {
+    await loadChuaTreoTheoPhien();
+    return;
+  }
 });
 
 function getFilters() {
@@ -589,7 +601,7 @@ async function loadReport() {
     if (currentTab === 'sai_chuan') await loadSaiChuan();
     if (currentTab === 'can_cap_nhat') await loadCanCapNhat();
     if (currentTab === 'chua_treo') {
-      moPopupChonPhien(); // KHÔNG load ngay
+      moPopupChonPhien("chua_treo");
       return;
     }
 
@@ -790,6 +802,10 @@ function attachEvents() {
       e.preventDefault();
       await loadReport();
     }
+  });
+
+  document.getElementById('btn-tai-phien')?.addEventListener('click', () => {
+    moPopupChonPhien("tai_chitiet");
   });
 
   document.getElementById('filter-coso')?.addEventListener('change', loadReport);
