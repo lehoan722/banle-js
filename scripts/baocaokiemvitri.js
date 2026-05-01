@@ -282,9 +282,11 @@ async function loadChuaTreoTheoPhien() {
     return;
   }
 
-  setPreview("⏳ Đang so sánh thiếu mẫu theo khu vực của phiên đã chọn...");
+  setPreview("⏳ Đang so sánh dữ liệu chuẩn với phiên kiểm đã chọn...");
 
-  // 1. Lấy thông tin phiên để biết các khu vực đã kiểm
+  const fieldTreo = coso === "cs2" ? "treomaucs2" : "treomaucs1";
+
+  // 1. Lấy thông tin phiên để biết khu vực đã kiểm
   const { data: phienInfo, error: phienErr } = await supabase
     .from("kiem_vitri_phien")
     .select("ma_phien, khu_vuc, coso, loai_kiem")
@@ -305,7 +307,7 @@ async function loadChuaTreoTheoPhien() {
     return;
   }
 
-  // 2. Lấy dữ liệu thực tế trong đúng các phiên đã chọn
+  // 2. Lấy dữ liệu thực tế trong đúng phiên đã chọn
   const { data: thucte, error: ctErr } = await supabase
     .from("kiem_vitri_chitiet")
     .select("ma_phien, masp, vitri_thucte, khu_vuc, coso, loai_kiem")
@@ -315,6 +317,30 @@ async function loadChuaTreoTheoPhien() {
 
   if (ctErr) throw ctErr;
 
+  // 3. Lấy danh mục hàng hóa
+  const { data: dm, error: dmErr } = await supabase
+    .from("dmhanghoa")
+    .select("masp, tensp, treomaucs1, treomaucs2");
+
+  if (dmErr) throw dmErr;
+
+  const dmMap = new Map(
+    (dm || []).map(r => [
+      String(r.masp || "").trim().toUpperCase(),
+      r
+    ])
+  );
+
+  // 4. Danh sách chuẩn trong đúng khu vực đã kiểm
+  const listChuanTrongKhuVuc = (dm || []).filter(r => {
+    const ma = String(r.masp || "").trim().toUpperCase();
+    const vt = String(r[fieldTreo] || "").trim().toUpperCase();
+
+    if (masp && !ma.includes(masp)) return false;
+
+    return vt && khuVucSet.has(vt);
+  });
+
   const mapThucTe = new Set(
     (thucte || []).map(r => {
       const ma = String(r.masp || "").trim().toUpperCase();
@@ -323,76 +349,97 @@ async function loadChuaTreoTheoPhien() {
     })
   );
 
-  // 3. Lấy danh mục chuẩn, nhưng CHỈ lấy những mã thuộc khu vực đã kiểm
-  let q = supabase
-    .from("dmhanghoa")
-    .select("masp, tensp, treomaucs1, treomaucs2, vitrikho1, vitrikho2")
-    .not(coso === "cs2" ? "treomaucs2" : "treomaucs1", "is", null);
-
-  if (masp) q = q.ilike("masp", `%${masp}%`);
-
-  const { data: dm, error: dmErr } = await q;
-  if (dmErr) throw dmErr;
-
-  const listChuanTrongKhuVucDaKiem = (dm || []).filter(r => {
-    const vitriChuan = coso === "cs2" ? r.treomaucs2 : r.treomaucs1;
-    const vt = String(vitriChuan || "").trim().toUpperCase();
-    return vt && khuVucSet.has(vt);
-  });
-
-  // 4. So sánh thiếu: có trong chuẩn của khu vực đã kiểm, nhưng không thấy trong phiên
-  const thieu = listChuanTrongKhuVucDaKiem.filter(r => {
+  // 5. Thiếu: chuẩn có trong khu vực, nhưng phiên kiểm không thấy
+  const thieuRaw = listChuanTrongKhuVuc.filter(r => {
     const ma = String(r.masp || "").trim().toUpperCase();
-    const vitriChuan = coso === "cs2" ? r.treomaucs2 : r.treomaucs1;
-    const vt = String(vitriChuan || "").trim().toUpperCase();
+    const vt = String(r[fieldTreo] || "").trim().toUpperCase();
     return !mapThucTe.has(`${ma}|${vt}`);
   });
 
-  // 5. Lọc tồn kho cơ sở > 0
-  const tonMap = await layTonNhanhTheoMasps(thieu.map(r => r.masp));
+  // 6. Sai vị trí: phiên kiểm thấy mã ở khu vực này, nhưng chuẩn của mã đó không phải khu vực này
+  const saiRaw = (thucte || []).filter(r => {
+    const ma = String(r.masp || "").trim().toUpperCase();
+    const vtThucTe = String(r.vitri_thucte || r.khu_vuc || "").trim().toUpperCase();
 
-  const final = thieu
+    if (masp && !ma.includes(masp)) return false;
+    if (!khuVucSet.has(vtThucTe)) return false;
+
+    const hh = dmMap.get(ma);
+
+    if (!hh) return true;
+
+    const vtChuan = String(hh[fieldTreo] || "").trim().toUpperCase();
+
+    return vtChuan && vtChuan !== vtThucTe;
+  });
+
+  // 7. Lấy tồn kho cho cả thiếu và sai
+  const allMasps = [
+    ...thieuRaw.map(r => r.masp),
+    ...saiRaw.map(r => r.masp)
+  ];
+
+  const tonMap = await layTonNhanhTheoMasps(allMasps);
+
+  const rowsThieu = thieuRaw
     .map(r => {
       const ma = String(r.masp || "").trim().toUpperCase();
       const ton = tonMap[ma] || {};
-      const vitriChuan = coso === "cs2" ? r.treomaucs2 : r.treomaucs1;
 
       return {
         masp: ma,
         tensp: r.tensp || "",
         ton: coso === "cs2" ? Number(ton.ton_cs2 || 0) : Number(ton.ton_cs1 || 0),
-        vitri_chuan: vitriChuan || "",
-        phien_da_chon: selectedPhienIds.join(", "),
-        khu_vuc_da_kiem: Array.from(khuVucSet).join(", ")
+        vitri_chuan: r[fieldTreo] || "",
+        vitri_thucte: "",
+        trang_thai: "CHUA_BAY_MAU",
+        khu_vuc_kiem: Array.from(khuVucSet).join(", ")
       };
     })
     .filter(r => Number(r.ton || 0) > 0);
+
+  const rowsSai = saiRaw.map(r => {
+    const ma = String(r.masp || "").trim().toUpperCase();
+    const hh = dmMap.get(ma);
+    const ton = tonMap[ma] || {};
+
+    return {
+      masp: ma,
+      tensp: hh?.tensp || "",
+      ton: coso === "cs2" ? Number(ton.ton_cs2 || 0) : Number(ton.ton_cs1 || 0),
+      vitri_chuan: hh ? (hh[fieldTreo] || "") : "KHÔNG CÓ TRONG DM",
+      vitri_thucte: r.vitri_thucte || r.khu_vuc || "",
+      trang_thai: hh ? "SAI_VI_TRI" : "MA_KHONG_TON_TAI",
+      khu_vuc_kiem: r.khu_vuc || r.vitri_thucte || ""
+    };
+  });
+
+  const final = [...rowsThieu, ...rowsSai];
 
   renderTable(final, [
     { data: "masp" },
     { data: "tensp" },
     { data: "ton" },
     { data: "vitri_chuan" },
-    { data: "khu_vuc_da_kiem" }
+    { data: "vitri_thucte" },
+    { data: "trang_thai" },
+    { data: "khu_vuc_kiem" }
   ], [
     "Mã sản phẩm",
     "Tên sản phẩm",
     "Tồn cơ sở",
-    "Vị trí mẫu chuẩn",
-    "Khu vực đã kiểm"
+    "Vị trí chuẩn",
+    "Vị trí thực tế",
+    "Trạng thái",
+    "Khu vực kiểm"
   ]);
 
   setPreview(
-    `⚪ Có <b>${final.length}</b> mã thiếu tại mẫu trong khu vực đã kiểm. ` +
-    `Phiên chọn: <b>${selectedPhienIds.length}</b>. ` +
-    `Khu vực: <b>${Array.from(khuVucSet).join(", ")}</b>`
+    `⚪ Kết quả theo phiên đã chọn: ` +
+    `<b>${rowsThieu.length}</b> mã chưa bày mẫu, ` +
+    `<b>${rowsSai.length}</b> mã sai vị trí. ` +
+    `Khu vực kiểm: <b>${Array.from(khuVucSet).join(", ")}</b>`
   );
-
-  console.log("Phiên đã chọn:", selectedPhienIds);
-  console.log("Khu vực đã kiểm:", Array.from(khuVucSet));
-  console.log("Số mã chuẩn trong khu vực:", listChuanTrongKhuVucDaKiem.length);
-  console.log("Số mã thực tế:", mapThucTe.size);
-  console.log("Thiếu sau lọc tồn:", final.length);
 }
 
 async function loadReport() {
