@@ -159,29 +159,22 @@ function initTable() {
     height: 520,
     stretchH: 'all',
     manualColumnResize: true,
-    afterOnCellMouseDown: function (event, coords) {
+    afterOnCellMouseDown: function (event, coords, td) {
       if (!coords || coords.row < 0) return;
-
-      // Chỉ cho mở popup khi bấm vào cột mã sản phẩm
       if (coords.col !== 0) return;
 
       const row = currentRows[coords.row];
-      const masp = String(row?.masp || '').trim().toUpperCase();
-
+      const masp = String(row?.masp || "").trim().toUpperCase();
       if (!masp) return;
 
       event?.preventDefault?.();
       event?.stopPropagation?.();
 
-      setTimeout(() => {
-        if (typeof window.stockQuickPopup === 'function') {
-          window.stockQuickPopup(masp);
-        } else if (window.StockQuick?.showFor) {
-          window.StockQuick.showFor(document.body, masp);
-        } else {
-          alert('Chưa tải được stockQuickPopup.js');
-        }
-      }, 50);
+      if (window.StockQuick?.showFor) {
+        window.StockQuick.showFor(td, masp);
+      } else {
+        alert("Chưa tải được stockQuickPopup.js");
+      }
     },
     licenseKey: 'non-commercial-and-evaluation',
     columns: []
@@ -198,6 +191,16 @@ function renderTable(rows, columns, headers) {
   });
 
   hot.render();
+
+  setTimeout(() => {
+    document.querySelectorAll("#hot .htCore tbody tr td:first-child").forEach(td => {
+      td.style.cursor = "pointer";
+      td.style.color = "#0b57d0";
+      td.style.fontWeight = "700";
+      td.style.textDecoration = "underline";
+    });
+  }, 50);
+
 }
 
 async function loadNhieuViTri() {
