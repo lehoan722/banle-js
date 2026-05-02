@@ -3,12 +3,31 @@ function toggleMenu() {
   if (menu) menu.classList.toggle("show");
 }
 
+/*
+  Ảnh nền trình chiếu lấy từ Supabase Storage bucket: anhsanpham
+
+  Quy tắc:
+  - Bạn upload đúng 5 ảnh với tên:
+    anh-nen-1.jpg
+    anh-nen-2.jpg
+    anh-nen-3.jpg
+    anh-nen-4.jpg
+    anh-nen-5.jpg
+
+  Sau này muốn đổi ảnh nền:
+  - Chỉ cần upload ảnh mới đè lên đúng tên cũ trong Supabase Storage
+  - Không cần sửa code nữa
+*/
+
+const SUPABASE_IMAGE_BASE =
+  "https://rddjrmbjftlcvgrzlyby.supabase.co/storage/v1/object/public/anhsanpham";
+
 const heroImages = [
-  "/images/slide1.jpg",
-  "/images/slide2.jpg",
-  "/images/slide3.jpg",
-  "/images/slide4.jpg",
-  "/images/slide5.jpg"
+  `${SUPABASE_IMAGE_BASE}/anh-nen-1.jpg`,
+  `${SUPABASE_IMAGE_BASE}/anh-nen-2.jpg`,
+  `${SUPABASE_IMAGE_BASE}/anh-nen-3.jpg`,
+  `${SUPABASE_IMAGE_BASE}/anh-nen-4.jpg`,
+  `${SUPABASE_IMAGE_BASE}/anh-nen-5.jpg`
 ];
 
 let currentHeroIndex = 0;
