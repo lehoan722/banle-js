@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <title>Đăng ký khách hàng thân thiết</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
     <style>
         body {
@@ -153,6 +154,10 @@
             <span>Đồng ý nhận khuyến mãi qua Zalo/SMS</span>
         </label>
 
+        <div style="margin-top:16px;">
+            <div class="g-recaptcha" data-sitekey="6LcKDtUsAAAAALox4xuwyhhjaSMocWHIjn2vZZTv"></div>
+        </div>
+
         <button id="btnSave">Lưu đăng ký</button>
 
         <div id="msg" class="msg"></div>
@@ -165,34 +170,16 @@
     <script type="module">
         import { supabase } from "./scripts/supabaseClient.js";
 
-        let userLat = null;
-        let userLng = null;
 
-        function getLocation() {
-            return new Promise((resolve) => {
-                if (!navigator.geolocation) return resolve(false);
-
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        userLat = pos.coords.latitude;
-                        userLng = pos.coords.longitude;
-                        resolve(true);
-                    },
-                    () => resolve(false),
-                    { enableHighAccuracy: true, timeout: 10000 }
-                );
-            });
-        }
 
         async function saveDangKy() {
             const btn = document.getElementById("btnSave");
             btn.disabled = true;
-            btn.textContent = "Đang kiểm tra vị trí...";
 
-            const hasLocation = await getLocation();
+            const captchaToken = grecaptcha.getResponse();
 
-            if (!hasLocation) {
-                alert("Không lấy được định vị. Vui lòng bật GPS và cho phép truy cập vị trí.");
+            if (!captchaToken) {
+                alert("Vui lòng xác nhận bạn không phải robot.");
                 btn.disabled = false;
                 btn.textContent = "Lưu đăng ký";
                 return;
@@ -212,8 +199,8 @@
                     p_thangsinh: thang || null,
                     p_marketing_opt_in: document.getElementById("marketing_opt_in").checked,
                     p_zalo_sms_opt_in: document.getElementById("zalo_sms_opt_in").checked,
-                    p_lat: userLat,
-                    p_lng: userLng
+                    p_lat: null,
+                    p_lng: null
                 }
             );
 
