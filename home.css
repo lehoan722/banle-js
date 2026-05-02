@@ -1,0 +1,299 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  color: #111;
+  background: #fff;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.top-bar {
+  background: #050505;
+  color: white;
+  height: 42px;
+  padding: 0 42px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.top-bar a {
+  margin-left: 22px;
+  font-weight: bold;
+}
+
+.header {
+  height: 86px;
+  padding: 0 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border-bottom: 1px solid #eee;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logo {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+
+.menu {
+  display: flex;
+  gap: 28px;
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.menu a:hover {
+  color: #9b0000;
+}
+
+.menu-toggle {
+  display: none;
+  font-size: 26px;
+  background: none;
+  border: none;
+}
+
+.hero {
+  min-height: 680px;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.78), rgba(0,0,0,.22)),
+    url("https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1600&auto=format&fit=crop");
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  padding: 80px 8%;
+  color: white;
+}
+
+.hero-content {
+  max-width: 620px;
+}
+
+.sub-title {
+  letter-spacing: 4px;
+  font-weight: bold;
+  color: #d7b56d;
+}
+
+.hero h1 {
+  font-size: 72px;
+  margin: 10px 0;
+  letter-spacing: 4px;
+}
+
+.hero h2 {
+  font-size: 38px;
+  margin: 0 0 20px;
+}
+
+.hero p {
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.hero-buttons {
+  margin-top: 32px;
+  display: flex;
+  gap: 16px;
+}
+
+.btn {
+  padding: 14px 28px;
+  border-radius: 3px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.btn.primary {
+  background: #9b0000;
+  color: white;
+}
+
+.btn.secondary {
+  background: white;
+  color: #111;
+}
+
+.categories {
+  padding: 70px 8%;
+  text-align: center;
+}
+
+.categories h2,
+.stores h2 {
+  font-size: 34px;
+  margin-bottom: 36px;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+}
+
+.category-card {
+  border: 1px solid #eee;
+  background: #fff;
+  text-align: left;
+  transition: .2s;
+}
+
+.category-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(0,0,0,.08);
+}
+
+.category-img {
+  height: 230px;
+  background: linear-gradient(135deg, #111, #444);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.category-card h3 {
+  margin: 18px 18px 6px;
+  font-size: 22px;
+}
+
+.category-card p {
+  margin: 0 18px 22px;
+  color: #555;
+}
+
+.sale-section {
+  margin: 40px 8%;
+  padding: 50px;
+  background: #111;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 30px;
+}
+
+.sale-section h2 {
+  font-size: 34px;
+  margin: 8px 0;
+}
+
+.sale-section p {
+  color: #ddd;
+  line-height: 1.6;
+}
+
+.stores {
+  padding: 70px 8%;
+  background: #f7f7f7;
+}
+
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.store-card {
+  background: white;
+  padding: 28px;
+  border: 1px solid #eee;
+}
+
+.store-card h3 {
+  font-size: 24px;
+  margin-top: 0;
+}
+
+.store-card a {
+  color: #9b0000;
+  font-weight: bold;
+}
+
+.footer {
+  background: #050505;
+  color: white;
+  text-align: center;
+  padding: 45px 20px;
+}
+
+.footer h2 {
+  letter-spacing: 3px;
+}
+
+@media (max-width: 900px) {
+  .top-bar {
+    padding: 0 16px;
+    font-size: 12px;
+  }
+
+  .top-bar div:last-child a:not(:first-child) {
+    display: none;
+  }
+
+  .header {
+    padding: 0 18px;
+  }
+
+  .menu {
+    display: none;
+    position: absolute;
+    top: 86px;
+    left: 0;
+    right: 0;
+    background: white;
+    flex-direction: column;
+    padding: 18px;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .menu.show {
+    display: flex;
+  }
+
+  .menu-toggle {
+    display: block;
+  }
+
+  .hero {
+    min-height: 560px;
+    padding: 50px 24px;
+  }
+
+  .hero h1 {
+    font-size: 46px;
+  }
+
+  .hero h2 {
+    font-size: 26px;
+  }
+
+  .category-grid,
+  .store-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sale-section {
+    margin: 24px;
+    padding: 30px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
