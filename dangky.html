@@ -209,11 +209,7 @@
                 btn.disabled = false;
                 btn.textContent = "Lưu đăng ký";
                 return;
-            }
-
-            const msg = document.getElementById("msg");
-            msg.className = "msg success";
-            msg.innerHTML = "Đăng ký thành công 🎉<br>Quét Zalo để nhận ưu đãi!";
+            }            
 
             document.querySelectorAll("input").forEach(i => i.disabled = true);
             btn.disabled = true;
@@ -251,7 +247,7 @@
        border-radius:10px;
        font-weight:bold;
      ">
-    Mở Zalo để tham gia nhóm
+    Mở Zalo để nhận ưu đãi!
   </a>
 `;
 
