@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient.js';
 
 let currentOnSelect = null;
 
-const CREATE_URL_BASE = 'https://banle-js.vercel.app/nhapdmkhachhang.html';
+const CREATE_URL_BASE = 'https://app.hoantuyet.vn/nhapdmkhachhang.html';
 
 function ensurePopupDom() {
   if (document.getElementById('popupTimKH')) return;
