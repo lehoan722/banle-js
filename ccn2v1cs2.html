@@ -1503,35 +1503,36 @@
     </script>
 
     <script>
-        (function () {
+        window.khoaNhapSauKhiLuu = function () {
             const masp = document.getElementById('masp');
+            const popupMasp = document.getElementById('popup_masp');
 
-            function khoaMasp() {
-                if (!masp) return;
+            if (!masp) return;
 
-                masp.value = '';
-                masp.setAttribute('readonly', true);
-                masp.style.background = '#ccc';
-                masp.style.cursor = 'not-allowed';
-                masp.placeholder = 'ĐÃ KHÓA SAU KHI LƯU - F5 để làm mới';
+            masp.value = '';
+            masp.readOnly = true;
+            masp.disabled = true;
+            masp.style.background = '#ccc';
+            masp.style.color = '#555';
+            masp.style.cursor = 'not-allowed';
+            masp.placeholder = 'ĐÃ LƯU - BẤM F5 ĐỂ TẠO HÓA ĐƠN MỚI';
+
+            if (popupMasp) {
+                popupMasp.style.display = 'none';
             }
 
-            // ===== BẮT alert() =====
-            const originalAlert = window.alert;
+            window.__DA_KHOA_NHAP_SAU_LUU__ = true;
+        };
 
-            window.alert = function (msg) {
-                try {
-                    if (typeof msg === 'string' && msg.includes('Đã lưu hóa đơn CCN')) {
-                        // 👉 Nếu thấy thông báo thành công → khóa ngay
-                        khoaMasp();
-                    }
-                } catch (e) { }
+        document.addEventListener('keydown', function (e) {
+            if (!window.__DA_KHOA_NHAP_SAU_LUU__) return;
 
-                // vẫn gọi alert gốc
-                return originalAlert.apply(this, arguments);
-            };
-
-        })();
+            const active = document.activeElement;
+            if (active && active.id === 'masp') {
+                e.preventDefault();
+                alert('Hóa đơn đã lưu. Vui lòng tải lại trang để tạo hóa đơn mới.');
+            }
+        }, true);
     </script>
 
     <script type="module">
@@ -1548,7 +1549,8 @@
                 const result = await saveBanLe111("BTN-LUU-CCN");
 
                 if (result?.ok) {
-                    // có thể để trống
+                    window.khoaNhapSauKhiLuu?.();
+                    alert("✅ Đã lưu dữ liệu. Ô nhập mã sản phẩm đã bị khóa. Muốn tạo hóa đơn mới vui lòng tải lại trang.");
                 } else {
                     console.warn("saveBanLe111 không trả về ok=true:", result);
                 }
