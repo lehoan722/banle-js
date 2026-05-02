@@ -12,6 +12,22 @@ function toIsoDate(d) {
   return `${y}-${m}-${day}`;
 }
 
+function isFirstDayOfMonth(dateStr) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr + "T00:00:00");
+  return d.getDate() === 1;
+}
+
+function getLastDayOfMonth(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const y = d.getFullYear();
+  const m = d.getMonth();
+
+  // ngày 0 của tháng sau = ngày cuối tháng hiện tại
+  const lastDay = new Date(y, m + 1, 0);
+  return toIsoDate(lastDay);
+}
+
 function setDefaultDates() {
   const tuNgayInput = document.getElementById("tu_ngay");
   const denNgayInput = document.getElementById("den_ngay");
@@ -313,6 +329,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   setStatus(
     "Chọn khoảng ngày, chọn mã NV, nhập lương giờ, khoán/giờ và % thưởng trên phần chênh lệch so với khoán (có thể âm/dương) rồi bấm Tính lương."
   );
+
+  const tuNgayInput = document.getElementById("tu_ngay");
+  const denNgayInput = document.getElementById("den_ngay");
+
+  if (tuNgayInput && denNgayInput) {
+    tuNgayInput.addEventListener("change", () => {
+      const tuNgay = tuNgayInput.value;
+
+      if (isFirstDayOfMonth(tuNgay)) {
+        denNgayInput.value = getLastDayOfMonth(tuNgay);
+      }
+    });
+  }
 
   // Đổ danh sách nhân viên vào datalist ds-manv
   const manvDatalist = document.getElementById("ds-manv");
