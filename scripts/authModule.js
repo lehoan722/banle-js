@@ -163,12 +163,12 @@ async function hydrateCurrentUserFromSession(macDinhDiaDiem = "cs1") {
       if (uid) {
         const { data: nv, error: nvErr } = await window.supabase
           .from("dmnhanvien")
-          .select("manv, tennv, sua_hoadon, xoa_hoadon, active")
+          .select("manv, tennv, sua_hoadon, xoa_hoadon, trangthai")
           .eq("user_id", uid)
           .maybeSingle();
 
         if (!nvErr && nv) {
-          if (Object.prototype.hasOwnProperty.call(nv, "active") && nv.active === false) {
+          if (nv.trangthai === false) {
             await window.supabase.auth.signOut().catch(() => { });
             throw new Error("Tài khoản nhân viên đang bị khóa");
           }
