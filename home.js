@@ -23,11 +23,11 @@ const SUPABASE_IMAGE_BASE =
   "https://rddjrmbjftlcvgrzlyby.supabase.co/storage/v1/object/public/anhsanpham";
 
 const heroImages = [
-  `${SUPABASE_IMAGE_BASE}/anh-nen-1.jpg`,
-  `${SUPABASE_IMAGE_BASE}/anh-nen-2.jpg`,
-  `${SUPABASE_IMAGE_BASE}/anh-nen-3.jpg`,
-  `${SUPABASE_IMAGE_BASE}/anh-nen-4.jpg`,
-  `${SUPABASE_IMAGE_BASE}/anh-nen-5.jpg`
+  `${SUPABASE_IMAGE_BASE}/ANH-NEN-1.jpg`,
+  `${SUPABASE_IMAGE_BASE}/ANH-NEN-2.jpg`,
+  `${SUPABASE_IMAGE_BASE}/ANH-NEN-3.jpg`,
+  `${SUPABASE_IMAGE_BASE}/ANH-NEN-4.jpg`,
+  `${SUPABASE_IMAGE_BASE}/ANH-NEN-5.jpg`
 ];
 
 let currentHeroIndex = 0;
