@@ -20,7 +20,7 @@ function toggleMenu() {
 */
 
 const SUPABASE_IMAGE_BASE =
-  "https://rddjrmbjftlcvgrzlyby.supabase.co/storage/v1/object/public/anhsanpham";
+  "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham";
 
 const heroImages = [
   `${SUPABASE_IMAGE_BASE}/ANH-NEN-1.jpg`,
