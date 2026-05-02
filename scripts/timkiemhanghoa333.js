@@ -2051,7 +2051,7 @@ window.openDatHangFor = async function (masp, anchorEl) {
     //  }
 
     if (!hasImg) {
-        const url = `https://banle-js.vercel.app/upanhnhanh.html?masp=${encodeURIComponent(CURRENT_MASP)}`;
+        const url = `https://app.hoantuyet.vn/upanhnhanh.html?masp=${encodeURIComponent(CURRENT_MASP)}`;
         window.open(url, '_blank');
         return false;
     }
