@@ -3,38 +3,44 @@ function toggleMenu() {
   if (menu) menu.classList.toggle("show");
 }
 
-/*
-  Ảnh nền trình chiếu lấy từ Supabase Storage bucket: anhsanpham
+const SUPABASE_URL = "https://rddjrmbjftlcvrgzlyby.supabase.co";
+const SUPABASE_ANON_KEY = "DAN_ANON_KEY_CUA_BAN_VAO_DAY";
 
-  Quy tắc:
-  - Bạn upload đúng 5 ảnh với tên:
-    anh-nen-1.jpg
-    anh-nen-2.jpg
-    anh-nen-3.jpg
-    anh-nen-4.jpg
-    anh-nen-5.jpg
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  Sau này muốn đổi ảnh nền:
-  - Chỉ cần upload ảnh mới đè lên đúng tên cũ trong Supabase Storage
-  - Không cần sửa code nữa
-*/
-
-const SUPABASE_IMAGE_BASE =
-  "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham";
-
-const heroImages = [
-  `${SUPABASE_IMAGE_BASE}/ANH-NEN-1.JPG`,
-  `${SUPABASE_IMAGE_BASE}/ANH-NEN-2.JPG`,
-  `${SUPABASE_IMAGE_BASE}/ANH-NEN-3.JPG`,
-  `${SUPABASE_IMAGE_BASE}/ANH-NEN-4.JPG`,
-  `${SUPABASE_IMAGE_BASE}/ANH-NEN-5.JPG`
-];
-
+let heroImages = [];
 let currentHeroIndex = 0;
+
+async function loadHeroSlides() {
+  const { data, error } = await supabase
+    .from("web_slides")
+    .select("image_url")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("Lỗi tải ảnh trình chiếu:", error);
+    return;
+  }
+
+  heroImages = (data || []).map(item => item.image_url).filter(Boolean);
+
+  if (heroImages.length === 0) {
+    heroImages = [
+      "https://rddjrmbjftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/ANH-NEN-1.jpg",
+      "https://rddjrmbjftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/ANH-NEN-2.jpg",
+      "https://rddjrmbjftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/ANH-NEN-3.jpg",
+      "https://rddjrmbjftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/ANH-NEN-4.jpg",
+      "https://rddjrmbjftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/ANH-NEN-5.jpg"
+    ];
+  }
+
+  startHeroSlider();
+}
 
 function startHeroSlider() {
   const hero = document.getElementById("heroSlider");
-  if (!hero) return;
+  if (!hero || heroImages.length === 0) return;
 
   function updateHeroImage() {
     hero.style.backgroundImage = `
@@ -49,4 +55,4 @@ function startHeroSlider() {
   setInterval(updateHeroImage, 4500);
 }
 
-document.addEventListener("DOMContentLoaded", startHeroSlider);
+document.addEventListener("DOMContentLoaded", loadHeroSlides);
