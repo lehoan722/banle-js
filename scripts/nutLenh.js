@@ -141,7 +141,7 @@ export function ganSuKienNutLenh() {
   });
 
   document.getElementById("timkiem")?.addEventListener("click", () => {
-    window.open("https://banle-js.vercel.app/xemhoadon.html", "_blank");
+    window.open("https://app.hoantuyet.vn/xemhoadon.html", "_blank");
   });
 
   document.getElementById("xoa")?.addEventListener("click", () => {
