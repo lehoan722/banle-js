@@ -2675,8 +2675,8 @@ function patchAlertWithBeep() {
 
   function getTransferPageUrlByDir(dir) {
     const d = String(dir || "").trim().toLowerCase();
-    if (d === "1v2") return "https://banle-js.vercel.app/ccn1v2cs1.html";
-    if (d === "2v1") return "https://banle-js.vercel.app/ccn2v1cs2.html";
+    if (d === "1v2") return "https://app.hoantuyet.vn/ccn1v2cs1.html";
+    if (d === "2v1") return "https://app.hoantuyet.vn/ccn2v1cs2.html";
     return "";
   }
 
