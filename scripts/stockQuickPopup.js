@@ -1683,7 +1683,7 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
         setTimeout(() => (btnPhoto.innerHTML = old), 900);
 
         // mở trang up ảnh nhanh (tab mới)
-        const url = "https://banle-js.vercel.app/upanhnhanh.html?masp=" + encodeURIComponent(maspPopup);
+        const url = "https://app.hoantuyet.vn/upanhnhanh.html?masp=" + encodeURIComponent(maspPopup);
         window.open(url, "_blank");
 
       };
