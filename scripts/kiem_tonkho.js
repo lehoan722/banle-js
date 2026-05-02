@@ -2457,7 +2457,7 @@ import "./stockQuickPopup.js";
             return;
         }
 
-        const url = "https://banle-js.vercel.app/ccn1v2cs1.html";
+        const url = "https://app.hoantuyet.vn/ccn1v2cs1.html";
         const newTab = window.open(url);
 
         if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
@@ -2506,7 +2506,7 @@ import "./stockQuickPopup.js";
             return;
         }
 
-        const url = "https://banle-js.vercel.app/ccn2v1cs2.html";
+        const url = "https://app.hoantuyet.vn/ccn2v1cs2.html";
 
         const newTab = window.open(url);
 
