@@ -111,10 +111,18 @@ function validateBeforeSave() {
     return false;
   }
 
-  const manvGuard = getText("manv") || localStorage.getItem("manv") || "";
-  if (!manvGuard || manvGuard.toUpperCase() === "ADMIN") {
+  const manvGuard = (getText("manv") || localStorage.getItem("manv") || "").trim();
+  const isAdminLogin = localStorage.getItem("is_admin") === "true";
+
+  if (!manvGuard) {
     alert("❌ Lỗi xác định nhân viên (manv). Vui lòng đăng nhập lại.");
-    console.error("GUARD BLOCKED SAVE – manv =", manvGuard);
+    console.error("GUARD BLOCKED SAVE – manv rỗng");
+    return false;
+  }
+
+  if (manvGuard.toUpperCase() === "ADMIN" && !isAdminLogin) {
+    alert("❌ Tài khoản ADMIN chưa xác thực đúng quyền.");
+    console.error("GUARD BLOCKED SAVE – ADMIN nhưng không có quyền admin");
     return false;
   }
 
