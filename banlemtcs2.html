@@ -988,7 +988,7 @@
             const img = document.querySelector('.product-image');
             if (img) {
                 img.addEventListener('dblclick', function () {
-                    window.open('https://app.hoantuyet.vn/xemhoadon111.html', '_blank');
+                    window.open('https://banle-js.vercel.app/xemhoadon111.html', '_blank');
                 });
             }
         });
@@ -1171,30 +1171,12 @@
         });
     </script>
 
-    <!-- <script>
-        // Sau khi DOMContentLoaded hoặc ở script type="module" 
-        document.getElementById('btn-luu').onclick = async function () {
-            if (window.dangLuu) return;
-            window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
-
-            try {
-                await window.luuHoaDonCaHaiBan?.();
-            } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + e.message);
-            }
-
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
-        };
-    </script>  -->
-
     <script>
         // Sau khi DOMContentLoaded hoặc ở script type="module" 
+
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
+
             window.dangLuu = true;
             this.disabled = true;
             this.innerText = "Đang lưu...";
@@ -1202,13 +1184,16 @@
             try {
                 await window.luuHoaDonCaHaiBan?.();
             } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + e.message);
+                alert("Lỗi lưu hóa đơn: " + (e?.message || e));
+            } finally {
+                setTimeout(() => {
+                    window.dangLuu = false;
+                    this.disabled = false;
+                    this.innerText = "💾 Lưu";
+                }, 800);
             }
-
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
         };
+
     </script>
 
     <script>
@@ -1243,28 +1228,36 @@
             }
 
             async function luuTheoHinhThucThanhToan() {
-                if (window.dangLuu) return;
+                if (window.dangLuu) return false;
 
                 const isTienMatT = hinhThucTT.value === 'tmt';
 
-                if (isTienMatT) {
-                    // Tiền mặtt => chạy đúng kiểu của nút Lưu hiện tại
-                    if (!btnLuu) return;
-                    btnLuu.click();
-                    return;
-                }
+                window.dangLuu = true;
 
-                // Các trường hợp còn lại => chạy F2 cũ
                 try {
+                    if (isTienMatT) {
+                        if (!btnLuu) return false;
+                        await btnLuu.click();
+                        return true;
+                    }
+
                     if (typeof window.LUU_HOADON_F2 === 'function') {
                         await window.LUU_HOADON_F2();
+                        return true;
                     } else if (typeof window.luuHoaDonQuaAPI === 'function') {
                         await window.luuHoaDonQuaAPI();
+                        return true;
                     } else {
                         alert('Không tìm thấy hàm lưu F2 hiện tại.');
+                        return false;
                     }
                 } catch (e) {
                     alert('Lỗi lưu hóa đơn: ' + (e?.message || e));
+                    return false;
+                } finally {
+                    setTimeout(() => {
+                        window.dangLuu = false;
+                    }, 800);
                 }
             }
 
@@ -1289,6 +1282,9 @@
                 if (e.key === 'F2') {
                     e.preventDefault();
                     e.stopPropagation();
+
+                    if (e.repeat) return;
+
                     await luuTheoHinhThucThanhToan();
                     return;
                 }
@@ -1586,42 +1582,69 @@
             // ====== API cho luuhoadon.js dùng chung ======
             window.getPrintMode = () => (chk?.checked ? 'direct' : 'preview');
 
+            // Mở overlay để xem/in
             window.openPrintOverlay = (url, { autoPrint = false } = {}) => {
-                const w = window.open(url, "_blank");
+                openOverlay(url);
 
-                if (!w) {
-                    alert("Trình duyệt đang chặn popup in hóa đơn. Hãy cho phép popup cho app.hoantuyet.vn.");
-                    return;
-                }
-
-                if (autoPrint) {
-                    setTimeout(() => {
-                        try {
-                            w.focus();
-                            w.print();
-                        } catch (e) {
-                            console.error(e);
-                        }
-                    }, 800);
-                }
+                frame.onload = () => {
+                    if (autoPrint) {
+                        // autoPrint: in luôn và thoát luôn
+                        setTimeout(doPrintAndExit, 150);
+                    }
+                };
             };
 
+            // ✅ In nhanh thật sự: KHÔNG mở overlay, chỉ gọi print bằng iframe ẩn
             window.quickPrint = (url) => {
-                const w = window.open(url, "_blank");
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                document.body.appendChild(iframe);
 
-                if (!w) {
-                    alert("Trình duyệt đang chặn popup in nhanh. Hãy cho phép popup cho app.hoantuyet.vn.");
-                    return;
-                }
-
-                setTimeout(() => {
+                // ✅ gom lại 1 hàm “dọn + focus” để gọi ở mọi nhánh
+                const cleanupAndFocus = () => {
+                    try { iframe.remove(); } catch (e) { }
                     try {
-                        w.focus();
-                        w.print();
-                    } catch (e) {
-                        console.error(e);
-                    }
-                }, 800);
+                        // focus về trang chính trước (một số máy cần)
+                        window.focus?.();
+                    } catch (e) { }
+
+                    // ✅ trả focus về ô mã sản phẩm
+                    try { focusMasp(); } catch (e) { }
+                };
+
+                iframe.onload = () => {
+                    setTimeout(() => {
+                        try {
+                            // chặn Enter “dội” sau khi in nhanh
+                            __blockEnterUntil = Date.now() + 1500;
+
+                            const w = iframe.contentWindow;
+
+                            // cleanup 1 lần thôi
+                            let cleaned = false;
+                            const cleanupOnce = () => {
+                                if (cleaned) return;
+                                cleaned = true;
+                                try { w?.removeEventListener?.('afterprint', cleanupOnce); } catch (e) { }
+                                cleanupAndFocus();
+                            };
+
+                            // gắn tự cleanup sau in (nếu afterprint chạy)
+                            try { w?.addEventListener?.('afterprint', cleanupOnce); } catch (e) { }
+
+                            // gọi in
+                            w?.focus();
+                            w?.print();
+
+                            // fallback: nếu afterprint không chạy → vẫn cleanup + focus
+                            setTimeout(cleanupOnce, 2000);
+                        } catch (e) {
+                            console.error(e);
+                            cleanupAndFocus();
+                        }
+                    }, 150);
+                };
             };
 
         });
