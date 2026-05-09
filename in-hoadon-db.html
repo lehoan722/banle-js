@@ -383,6 +383,28 @@
       text-align: left;
       overflow-wrap: anywhere;
     }
+
+    @media screen {
+      .qr-tools {
+        position: sticky;
+        bottom: 8px;
+        background: white;
+        padding: 6px 0 8px 0;
+        z-index: 99;
+      }
+
+      #qrAmountInput {
+        background: white;
+      }
+    }
+
+    @media print {
+
+      #qrAmountInput,
+      #btnPrintQR {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 
@@ -441,6 +463,21 @@
 
           <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
 
+          <div class="qr-tools" style="margin-top:10px; text-align:center;">
+            <input id="qrAmountInput" type="text"
+              style="width:160px; padding:6px; font-size:22px; text-align:center; color:#007bff;" />
+
+            <br />
+
+            <button id="btnPrintQR" style="
+      margin-top:6px;
+      padding:6px 16px;
+      font-size:16px;
+      cursor:pointer;
+    ">
+              In hoa don
+            </button>
+          </div>
 
         </div>
 
@@ -538,12 +575,12 @@
           const elAmount = document.getElementById("qr_amount");
           const elAddInfo = document.getElementById("qr_addinfo");
 
-         //if (thanhtoan <= 0) {
+          //if (thanhtoan <= 0) {
           //  document.querySelector('.invoice-layout').style.display = 'none';
           //  document.getElementById('invalidInvoiceBox').style.display = 'block';
           //  localStorage.removeItem("data_hoadon_in");
           //  return;
-         // }
+          // }
 
           if (elBank) elBank.textContent = bankLabel;
           if (elAccNo) elAccNo.textContent = accountNo;
@@ -645,6 +682,81 @@
 
         // Cho phép in bằng phím Enter
         // Cho phép in bằng phím Enter + đóng tab bằng F5
+
+        let qrCustomAmount = null;
+
+        function formatNumber(n) {
+          return Number(n).toLocaleString("vi-VN");
+        }
+
+        function parseNumber(str) {
+          return Number(String(str || "").replace(/[^\d]/g, "")) || 0;
+        }
+
+        function setupQRInput() {
+          const input = document.getElementById("qrAmountInput");
+          if (!input) return;
+
+          const defaultAmount = Math.round(Number(thanhtoan) || 0);
+
+          input.value = formatNumber(defaultAmount);
+
+          setTimeout(() => {
+            input.focus();
+            input.select();
+          }, 300);
+
+          function updateQRByAmount(num) {
+            qrCustomAmount = num;
+            input.value = formatNumber(num);
+
+            const elAmount = document.getElementById("qr_amount");
+            if (elAmount) elAmount.textContent = formatSo(num);
+
+            const img = document.getElementById("vietqr_img");
+            if (!img) return;
+
+            const src = new URL(img.src);
+            src.searchParams.set("amount", String(num));
+            src.searchParams.set("t", String(Date.now()));
+            img.src = src.toString();
+          }
+
+          input.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.stopPropagation();
+
+              const num = parseNumber(input.value);
+              const defaultAmount = Math.round(Number(thanhtoan) || 0);
+
+              updateQRByAmount(num);
+
+              if (num === defaultAmount) {
+                window.print();
+              } else {
+                input.select();
+              }
+            }
+          });
+
+          input.addEventListener("blur", function () {
+            const num = parseNumber(input.value);
+            updateQRByAmount(num || defaultAmount);
+          });
+
+          const btn = document.getElementById("btnPrintQR");
+          if (btn) {
+            btn.addEventListener("click", function () {
+              const num = parseNumber(input.value);
+              updateQRByAmount(num || defaultAmount);
+              window.print();
+            });
+          }
+        }
+
+        setupQRInput();
+
         document.addEventListener("keydown", function (e) {
           if (e.key === "Enter") {
             e.preventDefault();
