@@ -226,8 +226,7 @@ function printInvoice(hoadon, chitiet, forceSpecial = false) {
       console.error("❌ URL iframe sai:", url);
       return;
     }
-
-    const fast1 = getInput("inNhanh")?.checked;
+        
     const fast1 = getInput("inNhanh")?.checked;
     const fast2 = getInput("chk_innhanh")?.checked;
     const fast = !!(fast1 || fast2);
