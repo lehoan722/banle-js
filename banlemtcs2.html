@@ -1332,6 +1332,14 @@
             this.innerText = "Đang lưu...";
 
             try {
+                if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                    window.capNhatBangKetQuaTuDOM();
+                } else if (typeof capNhatBangKetQuaTuDOM_Fallback_BanLe === "function") {
+                    capNhatBangKetQuaTuDOM_Fallback_BanLe();
+                }
+
+                console.log("🧾 bangKetQua trước khi lưu:", window.bangKetQua);
+
                 const result = await saveBanLe111("BTN-LUU");
 
                 if (result?.ok) {
@@ -1753,6 +1761,19 @@
 
             // ✅ In nhanh thật sự: KHÔNG mở overlay, chỉ gọi print bằng iframe ẩn
             window.quickPrint = (url) => {
+                console.log("🖨️ quickPrint URL nhận được:", url);
+
+                if (
+                    !url ||
+                    url === "/" ||
+                    url === location.origin ||
+                    url === location.origin + "/"
+                ) {
+                    alert("❌ Link in nhanh bị sai, đang trỏ về trang chủ: " + url);
+                    console.error("❌ Chặn quickPrint URL sai:", url);
+                    return;
+                }
+
                 const iframe = document.createElement('iframe');
                 iframe.style.display = 'none';
                 iframe.src = url;
