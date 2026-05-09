@@ -390,6 +390,20 @@
       text-align: left;
       overflow-wrap: anywhere;
     }
+
+    @media screen {
+      .qr-tools {
+        position: sticky;
+        bottom: 8px;
+        background: white;
+        padding: 6px 0 8px 0;
+        z-index: 99;
+      }
+
+      #qrAmountInput {
+        background: white;
+      }
+    }
   </style>
 </head>
 
@@ -477,8 +491,8 @@
               <div class="payqr-amount">Số tiền: <span id="qr_amount">0</span> đ</div>
             </div>
           </div>
-        </div>  
-        
+        </div>
+
       </div>
 
       <script>
