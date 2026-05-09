@@ -449,6 +449,48 @@
                 });
             }
 
+            function gomLichSuTheoHoaDon(rows) {
+                const map = new Map();
+
+                rows.forEach(r => {
+                    const key = r.sohd || `NO_HD_${r.id}`;
+
+                    if (!map.has(key)) {
+                        map.set(key, { ...r });
+                        return;
+                    }
+
+                    const old = map.get(key);
+
+                    // Lấy ngày mới nhất để hiển thị
+                    if (new Date(r.ngay) > new Date(old.ngay)) {
+                        old.ngay = r.ngay;
+                        old.diem_sau = r.diem_sau;
+                        old.diem_con_lai = r.diem_con_lai;
+                        old.loai = r.loai;
+                        old.diem = r.diem;
+                        old.giatri_quydoi = r.giatri_quydoi;
+                        old.lydo = r.lydo;
+                        old.nguon = r.nguon;
+                        old.manv = r.manv;
+                        old.created_by_name = r.created_by_name;
+                        old.diadiem = r.diadiem;
+                    }
+
+                    // Lấy điểm trước từ dòng cũ nhất của hóa đơn
+                    if (new Date(r.ngay) < new Date(old.ngay_dau || old.ngay)) {
+                        old.ngay_dau = r.ngay;
+                        old.diem_truoc = r.diem_truoc;
+                    }
+
+                    // Cộng tổng điểm trong cùng hóa đơn
+                    old.diem = Number(old.diem || 0) + Number(r.diem || 0);
+                    old.giatri_quydoi = Number(old.giatri_quydoi || 0) + Number(r.giatri_quydoi || 0);
+                });
+
+                return Array.from(map.values()).sort((a, b) => new Date(b.ngay) - new Date(a.ngay));
+            }
+
             async function taiDuLieu() {
                 setStatus("Đang tải dữ liệu...");
 
@@ -487,7 +529,7 @@
                     return;
                 }
 
-                allRows = data || [];
+                allRows = gomLichSuTheoHoaDon(data || []);
 
                 if (khachhang) {
                     allRows = allRows.filter(r => {
