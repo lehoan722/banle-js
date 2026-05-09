@@ -410,6 +410,38 @@
             border: 2px solid #8b0000 !important;
             font-weight: bold;
         }
+
+        .khach-footer-info {
+            width: 75%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 8px;
+            background: #f7f7f7;
+            border-top: 1px solid #d0d0d0;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        .khach-footer-info label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .khach-footer-info input {
+            width: 110px;
+            height: 24px;
+            font-size: 14px;
+            padding: 2px 5px;
+            box-sizing: border-box;
+        }
+
+        #diem_tru {
+            background: #fffbe6;
+        }
     </style>
 
     <script>
@@ -610,15 +642,7 @@
                         <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
 
                         <!-- khu vuc tìm khách hàng -->
-                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                            <input id="makh" placeholder="mã khách"
-                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
-                            <button id="btnPopupKH" type="button"
-                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                                🔍
-                            </button>
-                        </div>
-                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
+
 
                         <!-- Popup tìm khách hàng -->
                         <div id="popupTimKH"
@@ -666,6 +690,27 @@
             </div>
         </div>
 
+        <div class="khach-footer-info">
+            <div id="khBox" style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
+                <input id="makh" placeholder="mã khách" style="width:100%;padding-right:32px;box-sizing:border-box;"
+                    autocomplete="off">
+                <button id="btnPopupKH" type="button"
+                    style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                    🔍
+                </button>
+
+                <div id="khSuggestList"
+                    style="display:none; position:absolute; bottom:100%; left:0; width:360px; max-height:240px; overflow:auto; background:#fff; border:1px solid #888; z-index:99999; box-shadow:0 -3px 12px #999;">
+                </div>
+            </div>
+            <label>Khách hàng <input id="khachhang" readonly="" /></label>
+
+            <label>Điểm KH <input id="diem_hientai" readonly /></label>
+            <label>Hạng KH <input id="hang_khach" readonly /></label>
+            <label>Điểm dùng <input id="diem_tru" value="0" /></label>
+            <label>Giảm điểm <input id="tien_doi_diem" readonly /></label>
+
+        </div>
 
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
@@ -711,9 +756,9 @@
                 style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
             <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
                 style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon1()">Xác nhận</button>
 
-            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
+            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủyhh</button>
         </div>
 
         <!-- Popup xác nhận thêm mới -->
@@ -727,6 +772,8 @@
         </div>
 
     </div>
+
+
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -779,6 +826,82 @@
 
     <script src="scripts/stockQuickPopup.js"></script>
 
+    <script type="module">
+        import { mountKhachHangSuggest } from "./scripts/dmkhachhang_diem.js";
+
+        function setVal(id, val) {
+            const el = document.getElementById(id);
+            if (el) el.value = val ?? "";
+        }
+
+        async function napKhachHangTheoSoHoaDon(sohd) {
+            sohd = String(sohd || "").trim();
+            if (!sohd || !window.supabase) return;
+
+            const { data: hd, error } = await window.supabase
+                .from("hoadon_banle")
+                .select("sohd, makh, khachhang, diem_tru, tien_doi_diem")
+                .eq("sohd", sohd)
+                .maybeSingle();
+
+            if (error) {
+                console.error("❌ Lỗi nạp khách theo hóa đơn:", error);
+                return;
+            }
+
+            if (!hd) return;
+
+            setVal("makh", hd.makh || "");
+            setVal("khachhang", hd.khachhang || "");
+            setVal("diem_tru", hd.diem_tru || 0);
+            setVal("tien_doi_diem", Number(hd.tien_doi_diem || 0).toLocaleString("vi-VN"));
+
+            if (hd.makh) {
+                const { data: kh } = await window.supabase
+                    .from("dmkhachhang")
+                    .select("diem_hientai, hang_khach")
+                    .eq("makh", hd.makh)
+                    .maybeSingle();
+
+                if (kh) {
+                    setVal("diem_hientai", kh.diem_hientai ?? "");
+                    setVal("hang_khach", kh.hang_khach ?? "");
+                }
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            mountKhachHangSuggest({
+                inputId: "makh",
+                tenInputId: "khachhang",
+                suggestBoxId: "khSuggestList",
+                btnSearchId: "btnPopupKH",
+                diemInputId: "diem_hientai",
+                hangInputId: "hang_khach",
+                diemTruInputId: "diem_tru",
+                tienDoiDiemInputId: "tien_doi_diem",
+                nhapKhachUrl: "/nhapdmkhachhang.html"
+            });
+
+            const sohdEl = document.getElementById("sohd");
+            if (!sohdEl) return;
+
+            let lastSohd = "";
+
+            async function checkSohdVaNapKhach() {
+                const sohd = String(sohdEl.value || "").trim();
+                if (!sohd || sohd === lastSohd) return;
+
+                lastSohd = sohd;
+                await napKhachHangTheoSoHoaDon(sohd);
+            }
+
+            sohdEl.addEventListener("change", checkSohdVaNapKhach);
+            sohdEl.addEventListener("input", checkSohdVaNapKhach);
+
+            setInterval(checkSohdVaNapKhach, 500);
+        });
+    </script>
 
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
@@ -786,49 +909,6 @@
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
     <script type="module">
-        // Nút kính lúp cạnh ô nhập mã KH
-        document.getElementById('btnPopupKH').onclick = showPopupTimKH;
-
-        // Hàm show popup
-        function showPopupTimKH() {
-            const popup = document.getElementById('popupTimKH');
-            popup.style.display = '';
-            document.getElementById('txtSearchKH').value = '';
-            document.getElementById('txtSearchKH').focus();
-            loadListKH('');
-        }
-
-        // Tìm kiếm realtime theo ký tự gõ
-        document.getElementById('txtSearchKH').oninput = function () {
-            loadListKH(this.value.trim());
-        };
-
-        // Hàm load danh sách KH (gọi Supabase)
-        async function loadListKH(keyword) {
-            const table = document.getElementById('tableKH');
-            table.innerHTML = `<tr><td>Đang tìm...</td></tr>`;
-            let query = window.supabase.from('dmkhachhang').select('makh,tenkh').limit(30);
-            if (keyword) {
-                query = query.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
-            }
-            const { data, error } = await query;
-            if (error || !data || !data.length) {
-                table.innerHTML = '<tr><td>Không tìm thấy khách hàng phù hợp.</td></tr>';
-                return;
-            }
-            table.innerHTML = data.map(kh =>
-                `<tr class="chonkh" style="cursor:pointer" data-makh="${kh.makh}" data-tenkh="${kh.tenkh}">
-        <td>${kh.makh}</td><td>${kh.tenkh}</td>
-      </tr>`
-            ).join('');
-            Array.from(table.querySelectorAll('.chonkh')).forEach(row => {
-                row.onclick = function () {
-                    document.getElementById('makh').value = this.dataset.makh;
-                    document.getElementById('khachhang').value = this.dataset.tenkh;
-                    document.getElementById('popupTimKH').style.display = 'none';
-                }
-            });
-        }
 
         // Copy bảng sang clipboard,
         document.getElementById('btnCopy').onclick = function () {
@@ -905,7 +985,7 @@
             const img = document.querySelector('.product-image');
             if (img) {
                 img.addEventListener('dblclick', function () {
-                    window.open('https://banle-js.vercel.app/xemhoadon111.html', '_blank');
+                    window.open('https://app.hoantuyet.vn/xemhoadon111.html', '_blank');
                 });
             }
         });
@@ -1064,7 +1144,6 @@
 
     </script>
 
-
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
 
 
@@ -1089,19 +1168,31 @@
         });
     </script>
 
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs211SaveEntry.js";
+
+        setTimeout(function () {
+            window.LUU_HOADON_F2 = async () => {
+                return await saveBanLe111("F2");
+            };
+        }, 1000);
+    </script>
+
+
     <script>  //<!-- banlemobile -->
 
         // goi phím F2
-        setTimeout(function () {
-            window.LUU_HOADON_F2 = window.luuHoaDonQuaAPI;
-        }, 1000);
+
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
         const dispatchTarget = document.body || document.documentElement;
 
         document.getElementById('sua')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
+            if (typeof window.moPopupXacThucSua === 'function') {
+                window.moPopupXacThucSua();
+            } else {
+                alert("❌ Chưa nạp được popup sửa mới.");
+            }
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
         // document.getElementById('btn-luu')?.addEventListener('click', () => {
@@ -1123,74 +1214,116 @@
 
     </script>
 
-    <script>
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs211SaveEntry.js";
+
         // Mở popup xác thực + focus ngay vào #xacmanv
-        function moPopupXacThucSua() {
-            const p = document.getElementById('popupXacThucSua');
-            p.style.display = 'block';
+        window.moPopupXacThucSua = function () {
+            const p = document.getElementById("popupXacThucSua");
+            if (!p) return;
+
+            p.style.display = "block";
+
             setTimeout(() => {
-                const manv = document.getElementById('xacmanv');
-                if (manv) { manv.focus(); manv.select(); }
+                const manv = document.getElementById("xacmanv");
+                if (manv) {
+                    manv.focus();
+                    manv.select?.();
+                }
             }, 0);
-        }
+        };
+
+        // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs211 
+        window.xacNhanSuaHoaDon1 = async function () {
+            const popup = document.getElementById("popupXacThucSua");
+            const closePopup = () => {
+                if (popup) popup.style.display = "none";
+            };
+
+            try {
+                const { data: { user } } = await window.supabase.auth.getUser();
+                if (!user) {
+                    alert("❌ Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được phiên đăng nhập.");
+                closePopup();
+                return;
+            }
+
+            try {
+                const { data: isAdmin, error } = await window.supabase.rpc("is_admin");
+                if (error || isAdmin !== true) {
+                    alert("❌ Bạn không có quyền sửa hóa đơn.");
+                    closePopup();
+                    return;
+                }
+            } catch (e) {
+                alert("❌ Không kiểm tra được quyền sửa hóa đơn.");
+                closePopup();
+                return;
+            }
+
+            window.dangSuaHoaDon = true;
+            window.choPhepSua = true;
+            window.HD_CTX = {
+                ...(window.HD_CTX || {}),
+                mode: "EDIT",
+                fromConfirm: true,
+                edit_at: new Date().toISOString()
+            };
+
+            closePopup();
+
+            console.log("🛠️ BANLE111 OVERRIDE: đang gọi LUỒNG SỬA MỚI");
+
+            await saveBanLe111("EDIT-CONFIRM");
+        };
 
         // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
-        document.addEventListener('DOMContentLoaded', () => {
-            const manv = document.getElementById('xacmanv');
-            const mk = document.getElementById('xacmatkhau');
-            const btn = document.getElementById('btnXacNhanSua');
+        document.addEventListener("DOMContentLoaded", () => {
+            const manv = document.getElementById("xacmanv");
+            const mk = document.getElementById("xacmatkhau");
+            const btn = document.getElementById("btnXacNhanSua");
 
             if (manv) {
-                manv.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                manv.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
                         e.preventDefault();
-                        if (mk) { mk.focus(); mk.select(); }
+                        if (mk) {
+                            mk.focus();
+                            mk.select?.();
+                        }
                     }
                 });
             }
 
             if (mk) {
-                mk.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                mk.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
                         e.preventDefault();
-                        if (btn) { btn.focus(); }
+                        if (btn) btn.focus();
                     }
                 });
             }
 
             if (btn) {
-                btn.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                btn.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
                         e.preventDefault();
-                        btn.click(); // = gọi xacNhanSuaHoaDon() 
+                        btn.click();
                     }
                 });
             }
         });
     </script>
 
-    <!-- <script>
-        // Sau khi DOMContentLoaded hoặc ở script type="module" 
-        document.getElementById('btn-luu').onclick = async function () {
-            if (window.dangLuu) return;
-            window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
 
-            try {
-                await window.luuHoaDonCaHaiBan?.();
-            } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + e.message);
-            }
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs211SaveEntry.js";
 
-            window.dangLuu = false;
-            this.disabled = false;
-            this.innerText = "💾 Lưu";
-        };
-    </script>  -->
-
-    <script>
-        // Sau khi DOMContentLoaded hoặc ở script type="module" 
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
 
@@ -1199,15 +1332,20 @@
             this.innerText = "Đang lưu...";
 
             try {
-                await window.luuHoaDonCaHaiBan?.();
+                const result = await saveBanLe111("BTN-LUU");
+
+                if (result?.ok) {
+                    // alert("✅ Lưu thành công (banlemtcs211)");
+                } else {
+                    console.warn("saveBanLe111 không trả về ok=true:", result);
+                }
             } catch (e) {
-                alert("Lỗi lưu hóa đơn: " + (e?.message || e));
+                console.error(e);
+                alert("❌ Lỗi lưu: " + (e?.message || e));
             } finally {
-                setTimeout(() => {
-                    window.dangLuu = false;
-                    this.disabled = false;
-                    this.innerText = "💾 Lưu";
-                }, 800);
+                window.dangLuu = false;
+                this.disabled = false;
+                this.innerText = "💾 Lưu";
             }
         };
     </script>
@@ -1244,40 +1382,28 @@
             }
 
             async function luuTheoHinhThucThanhToan() {
-                if (window.dangLuu) return false;
+                if (window.dangLuu) return;
 
                 const isTienMatT = hinhThucTT.value === 'tmt';
 
-                // ✅ Khóa từ đầu để chống giữ phím F2
-                window.dangLuu = true;
+                if (isTienMatT) {
+                    // Tiền mặtt => chạy đúng kiểu của nút Lưu hiện tại
+                    if (!btnLuu) return;
+                    btnLuu.click();
+                    return;
+                }
 
+                // Các trường hợp còn lại => chạy F2 cũ
                 try {
-                    if (isTienMatT) {
-                        // Tiền mặtt => chạy đúng kiểu của nút Lưu hiện tại
-                        if (!btnLuu) return false;
-                        await btnLuu.click();
-                        return true;
-                    }
-
-                    // Các trường hợp còn lại => chạy F2 cũ
                     if (typeof window.LUU_HOADON_F2 === 'function') {
                         await window.LUU_HOADON_F2();
-                        return true;
                     } else if (typeof window.luuHoaDonQuaAPI === 'function') {
                         await window.luuHoaDonQuaAPI();
-                        return true;
                     } else {
                         alert('Không tìm thấy hàm lưu F2 hiện tại.');
-                        return false;
                     }
                 } catch (e) {
                     alert('Lỗi lưu hóa đơn: ' + (e?.message || e));
-                    return false;
-                } finally {
-                    // ✅ Nhả khóa chậm 1 chút để chống phím bị kẹt / auto repeat
-                    setTimeout(() => {
-                        window.dangLuu = false;
-                    }, 800);
                 }
             }
 
@@ -1302,10 +1428,6 @@
                 if (e.key === 'F2') {
                     e.preventDefault();
                     e.stopPropagation();
-
-                    // ✅ Nếu đang giữ phím, bỏ các lần lặp
-                    if (e.repeat) return;
-
                     await luuTheoHinhThucThanhToan();
                     return;
                 }
@@ -1729,8 +1851,7 @@
                         gianhap: row.gia || 0
                     });
                 });
-            });          
-
+            });
 
             // Lấy cơ sở động theo input #diadiem (cs1/cs2). File bạn đang là cs1 nên sẽ ra cs1.
             const csRaw = (document.getElementById("diadiem")?.value || "cs1").toLowerCase();
