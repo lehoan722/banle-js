@@ -575,6 +575,12 @@ export function mountKhachHangSuggest(options = {}) {
 
     btnPopup?.addEventListener("click", () => {
       const kw = makhInput.value.trim();
+
+      if (kw && typeof window.moPopupThongTinKhachHangNhanh === "function") {
+        window.moPopupThongTinKhachHangNhanh(kw);
+        return;
+      }
+
       timKhachHang(kw);
       makhInput.focus();
     });
