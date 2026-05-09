@@ -352,7 +352,7 @@ import "./stockQuickPopup.js";
 
             if (!size) continue;
             if (!isValidSize(size)) continue;
-            if (sl <= 0) continue;
+            if (sl < 0) continue;
 
             out.push({ size, sl });
         }
