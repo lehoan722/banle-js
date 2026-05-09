@@ -1632,14 +1632,32 @@
             }
 
             function openOverlay(url) {
-                printedOnce = false;
-                overlay.style.display = 'block';
-                frame.src = url;
 
-                // đưa focus lên overlay để Enter không dính ô masp phía sau
+                console.log("🖨️ openOverlay URL:", url);
+
+                printedOnce = false;
+
+                // reset iframe cũ
+                frame.src = "about:blank";
+
                 setTimeout(() => {
-                    (btnPrint || btnClose || overlay).focus?.();
-                }, 0);
+
+                    overlay.style.display = 'block';
+
+                    // chống cache iframe lỗi của Chrome
+                    const finalUrl =
+                        url + (url.includes("?") ? "&" : "?") + "_t=" + Date.now();
+
+                    console.log("🖨️ final iframe URL:", finalUrl);
+
+                    frame.src = finalUrl;
+
+                    // focus overlay
+                    setTimeout(() => {
+                        (btnPrint || btnClose || overlay).focus?.();
+                    }, 0);
+
+                }, 50);
             }
 
             // Đóng “mềm”: chỉ ẩn overlay, giữ iframe để print không lỗi
