@@ -1632,6 +1632,19 @@
             }
 
             function openOverlay(url) {
+                console.log("🖨️ openOverlay URL nhận được:", url);
+
+                if (
+                    !url ||
+                    url === "/" ||
+                    url === location.origin ||
+                    url === location.origin + "/"
+                ) {
+                    alert("❌ Link in bị sai, đang trỏ về trang chủ: " + url);
+                    console.error("❌ Chặn không cho iframe mở trang chủ:", url);
+                    return;
+                }
+
                 printedOnce = false;
                 overlay.style.display = 'block';
                 frame.src = url;
@@ -1727,6 +1740,7 @@
 
             // Mở overlay để xem/in
             window.openPrintOverlay = (url, { autoPrint = false } = {}) => {
+                console.log("🖨️ openPrintOverlay URL nhận được:", url);
                 openOverlay(url);
 
                 frame.onload = () => {
