@@ -828,6 +828,7 @@
 
     <script type="module">
         import { mountKhachHangSuggest } from "./scripts/dmkhachhang_diem.js";
+        import { mountKhachHangQuickInfoPopup } from "./scripts/khachHangQuickInfoPopup.js";
 
         function setVal(id, val) {
             const el = document.getElementById(id);
@@ -881,6 +882,12 @@
                 diemTruInputId: "diem_tru",
                 tienDoiDiemInputId: "tien_doi_diem",
                 nhapKhachUrl: "/nhapdmkhachhang.html"
+            });
+
+            mountKhachHangQuickInfoPopup({
+                inputId: "makh",
+                buttonId: "btnPopupKH",
+                limit: 10
             });
 
             const sohdEl = document.getElementById("sohd");
