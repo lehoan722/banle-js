@@ -427,9 +427,9 @@
           </div>
 
           <div class="invoice-info">
-            NB: <span id="diadiem"></span> - KH: <span id="khachhang"></span><br>
-            (<span id="sohd"></span>)<br>
-            Date: <span id="ngay"></span> - <span id="gio"></span>
+            NB: <span id="diadiem"></span>
+            -
+            KH: <span id="khachhang_full"></span>
           </div>
 
           <table class="items">
@@ -639,19 +639,15 @@
 
         // Hiển thị thông tin hóa đơn
         document.getElementById("diadiem").textContent = hoadon.diadiem || "";
-        document.getElementById("khachhang").textContent = hoadon.khachhang || "";
-        document.getElementById("sohd").textContent = hoadon.sohd || "";
+        const tenKH = hoadon.khachhang || "";
+        const sdtKH =
+          hoadon.makh ||
+          hoadon.sodienthoai ||
+          hoadon.dienthoai ||
+          "";
 
-        function formatDateTime(d = new Date()) {
-          const pad = n => String(n).padStart(2, '0');
-          // dd/mm/yyyy hh:mm
-          return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-        }
-
-        const timeSrc = hoadon.created_at ? new Date(hoadon.created_at) : new Date();
-        document.getElementById("ngay").textContent = formatDateTime(timeSrc);
-        document.getElementById("gio").textContent = "";
-
+        document.getElementById("khachhang_full").textContent =
+          sdtKH ? `${tenKH} ${sdtKH}` : tenKH;
 
         // Hiển thị danh sách sản phẩm
         // Hiển thị danh sách sản phẩm
