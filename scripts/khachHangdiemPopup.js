@@ -171,9 +171,8 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
             </tr>
           </thead>
           <tbody>
-            ${
-              logs.length
-                ? logs.map(r => `
+            ${logs.length
+        ? logs.map(r => `
                   <tr>
                     <td style="border:1px solid #ddd;padding:6px;">${fmtDate(r.ngay)}</td>
                     <td style="border:1px solid #ddd;padding:6px;">${r.sohd || ""}</td>
@@ -182,8 +181,8 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
                     <td style="border:1px solid #ddd;padding:6px;text-align:right;">${fmtMoney(r.diem_con_lai)}</td>
                   </tr>
                 `).join("")
-                : `<tr><td colspan="5" style="padding:12px;text-align:center;color:#777;">Chưa có lịch sử điểm</td></tr>`
-            }
+        : `<tr><td colspan="5" style="padding:12px;text-align:center;color:#777;">Chưa có lịch sử điểm</td></tr>`
+      }
           </tbody>
         </table>
       </div>
@@ -225,12 +224,12 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
       return;
     }
 
-    const { data: logs, error: logErr } = await window.supabase
+    const { data: rawLogs, error: logErr } = await window.supabase
       .from("kh_lichsu_diem")
       .select("ngay, sohd, diem_truoc, diem_sau, diem_con_lai")
       .eq("makh", khach.makh)
       .order("ngay", { ascending: false })
-      .limit(limit);
+      .limit(100);
 
     if (logErr) {
       console.error("❌ Lỗi đọc lịch sử điểm:", logErr);
@@ -238,7 +237,38 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
       return;
     }
 
-    renderData(popup, khach, logs || []);
+    const mapHoaDon = new Map();
+
+    (rawLogs || []).forEach(r => {
+      const sohd = r.sohd || "";
+      if (!sohd) return;
+
+      if (!mapHoaDon.has(sohd)) {
+        mapHoaDon.set(sohd, {
+          ngay: r.ngay,
+          sohd: r.sohd,
+          diem_truoc: r.diem_truoc,
+          diem_sau: r.diem_sau,
+          diem_con_lai: r.diem_con_lai
+        });
+      } else {
+        const old = mapHoaDon.get(sohd);
+
+        if (new Date(r.ngay) < new Date(old.ngay)) {
+          old.diem_truoc = r.diem_truoc;
+        }
+
+        if (new Date(r.ngay) > new Date(old.ngay)) {
+          old.ngay = r.ngay;
+          old.diem_sau = r.diem_sau;
+          old.diem_con_lai = r.diem_con_lai;
+        }
+      }
+    });
+
+    const logs = Array.from(mapHoaDon.values()).slice(0, limit);
+
+    renderData(popup, khach, logs);
   }
 
   window.moPopupThongTinKhachHangNhanh = openQuickInfo;
