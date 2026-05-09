@@ -208,9 +208,26 @@ function printInvoice(hoadon, chitiet, forceSpecial = false) {
   const isHoaDonDacBiet =
     forceSpecial || (getInput("sohd")?.getAttribute("data-mod3") === "yes");
 
-  const url = isHoaDonDacBiet ? "/in-hoadon-db.html" : "/in-hoadon.html";
+  const url = isHoaDonDacBiet
+    ? `${location.origin}/in-hoadon-db.html`
+    : `${location.origin}/in-hoadon.html`;
+
+  console.log("🖨️ URL IN HÓA ĐƠN:", url);
 
   if (typeof window.openPrintOverlay === "function") {
+
+    if (
+      !url ||
+      url === location.origin ||
+      url === location.origin + "/" ||
+      url === "/"
+    ) {
+      alert("❌ URL in hóa đơn bị sai: " + url);
+      console.error("❌ URL iframe sai:", url);
+      return;
+    }
+
+    const fast1 = getInput("inNhanh")?.checked;
     const fast1 = getInput("inNhanh")?.checked;
     const fast2 = getInput("chk_innhanh")?.checked;
     const fast = !!(fast1 || fast2);
