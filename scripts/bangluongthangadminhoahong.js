@@ -13,6 +13,7 @@ const khoanGioInput = document.getElementById("khoan_gio");
 const pctThuongInput = document.getElementById("pct_thuong");
 
 const btnTai = document.getElementById("btn-tai");
+const btnCopyLuong = document.getElementById("btn-copy-luong");
 const tbodyLuong = document.getElementById("tbody-bangluong");
 const statusEl = document.getElementById("status");
 
@@ -20,7 +21,7 @@ const statusEl = document.getElementById("status");
 const hotLuongContainer = document.getElementById("hotLuong");
 const hotBangCongContainer = document.getElementById("hotBangCong");
 
-// Biến lưu instance Handsontable
+// Biến lưu instance Handsontable 
 let hotLuong = null;
 let hotBangCong = null;
 
@@ -378,6 +379,37 @@ function renderLuongHot(data) {
   } else {
     hotLuong.updateSettings(settings);
     hotLuong.render();
+  }
+}
+
+async function copyBangLuong() {
+  if (!hotLuong) {
+    alert("Chưa có dữ liệu bảng lương để copy.");
+    return;
+  }
+
+  const headers = hotLuong.getColHeader();
+  const data = hotLuong.getData();
+
+  const lines = [];
+
+  // Dòng tiêu đề: thêm STT
+  lines.push(["STT", ...headers].join("\t"));
+
+  // Dữ liệu: thêm số thứ tự
+  data.forEach((row, index) => {
+    const cleanRow = row.map(v => v == null ? "" : String(v));
+    lines.push([index + 1, ...cleanRow].join("\t"));
+  });
+
+  const text = lines.join("\n");
+
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus("Đã copy toàn bộ bảng lương gồm tiêu đề và số thứ tự.");
+  } catch (e) {
+    console.error("Lỗi copy bảng lương:", e);
+    alert("Không copy được dữ liệu. Vui lòng thử lại.");
   }
 }
 
@@ -812,6 +844,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setStatus("Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương.");
 
   if (btnTai) btnTai.addEventListener("click", taiBangLuong);
+  if (btnCopyLuong) btnCopyLuong.addEventListener("click", copyBangLuong);
 
   const btnBangCong = document.getElementById("btn-bangcong");
   if (btnBangCong) btnBangCong.addEventListener("click", taiBangCong);
