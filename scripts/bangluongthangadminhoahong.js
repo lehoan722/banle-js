@@ -13,6 +13,7 @@ const khoanGioInput = document.getElementById("khoan_gio");
 const pctThuongInput = document.getElementById("pct_thuong");
 
 const btnTai = document.getElementById("btn-tai");
+const btnLuuLuong = document.getElementById("btn-luu-luong");
 const btnCopyLuong = document.getElementById("btn-copy-luong");
 const tbodyLuong = document.getElementById("tbody-bangluong");
 const statusEl = document.getElementById("status");
@@ -379,6 +380,135 @@ function renderLuongHot(data) {
   } else {
     hotLuong.updateSettings(settings);
     hotLuong.render();
+  }
+}
+
+async function luuBangLuongThang() {
+  if (!hotLuong) {
+    alert("Chưa có dữ liệu bảng lương để lưu. Vui lòng bấm Tải bảng lương trước.");
+    return;
+  }
+
+  const tu_ngay = tuNgayInput?.value;
+  const den_ngay = denNgayInput?.value;
+  const diadiem = diadiemSelect?.value || null;
+  const luong_gio = Number(luongGioInput?.value || 0);
+  const khoan_gio = Number(khoanGioInput?.value || 0);
+  const pct_thuong = Number(pctThuongInput?.value || 0);
+
+  if (!tu_ngay || !den_ngay) {
+    alert("Vui lòng chọn Từ ngày và Đến ngày.");
+    return;
+  }
+
+  const data = hotLuong.getData() || [];
+
+  if (!data.length) {
+    alert("Bảng lương chưa có dữ liệu.");
+    return;
+  }
+
+  const dongTong = data.find(r => String(r[0] || "").trim().toUpperCase() === "TỔNG");
+
+  const tong_luong = Number(dongTong?.[13] || 0);
+  const tong_khoan_tru = Number(dongTong?.[14] || 0);
+  const tong_thuc_linh = Number(dongTong?.[15] || 0);
+
+  const ok = confirm(
+    `Bạn có chắc muốn lưu/chốt bảng lương từ ${tu_ngay} đến ${den_ngay} không?\n\n` +
+    `Tổng lương: ${fmt(tong_luong, 0)} đ\n` +
+    `Khoản trừ: ${fmt(tong_khoan_tru, 0)} đ\n` +
+    `Thực lĩnh: ${fmt(tong_thuc_linh, 0)} đ`
+  );
+
+  if (!ok) return;
+
+  try {
+    setStatus("Đang lưu bảng lương...");
+
+    const nv = authModule.getCurrentUserInfo?.();
+    const created_by = nv?.manv || nv?.email || "";
+
+    // 1. Lưu đầu bảng lương
+    const { data: headerData, error: headerError } = await supabase
+      .from("bangluong_thang")
+      .insert({
+        tu_ngay,
+        den_ngay,
+        diadiem,
+        luong_gio,
+        khoan_gio,
+        pct_thuong,
+        tong_luong,
+        tong_khoan_tru,
+        tong_thuc_linh,
+        ghichu: "Chốt từ trang bảng lương tháng",
+        created_by
+      })
+      .select("id")
+      .single();
+
+    if (headerError) {
+      console.error("Lỗi lưu bangluong_thang:", headerError);
+      alert("Lỗi lưu đầu bảng lương: " + headerError.message);
+      setStatus("Lỗi lưu bảng lương.", true);
+      return;
+    }
+
+    const bangluong_id = headerData.id;
+
+    // 2. Lưu chi tiết từng nhân viên, bỏ dòng TỔNG
+    const chiTietRows = data
+      .filter(r => String(r[0] || "").trim().toUpperCase() !== "TỔNG")
+      .map((r, index) => ({
+        bangluong_id,
+        stt: index + 1,
+
+        manv: r[0] || "",
+        tennv: r[1] || "",
+        diadiem: r[2] || "",
+
+        gio_cong: Number(r[3] || 0),
+        gio_tru: Number(r[4] || 0),
+        gio_tinh_luong: Number(r[5] || 0),
+
+        doanh_thu: Number(r[6] || 0),
+        hoa_hong: Number(r[7] || 0),
+        khoan_gio: Number(r[8] || 0),
+        khoan_thang: Number(r[9] || 0),
+        tien_vuot: Number(r[10] || 0),
+        thuong_vuot_khoan: Number(r[11] || 0),
+        luong_cung: Number(r[12] || 0),
+        tong_luong: Number(r[13] || 0),
+        khoan_tru: Number(r[14] || 0),
+        thuc_linh: Number(r[15] || 0),
+        luong_1_gio: Number(r[16] || 0)
+      }));
+
+    if (!chiTietRows.length) {
+      alert("Không có dòng nhân viên nào để lưu.");
+      setStatus("Không có dữ liệu chi tiết để lưu.", true);
+      return;
+    }
+
+    const { error: detailError } = await supabase
+      .from("bangluong_thang_chitiet")
+      .insert(chiTietRows);
+
+    if (detailError) {
+      console.error("Lỗi lưu bangluong_thang_chitiet:", detailError);
+      alert("Lỗi lưu chi tiết bảng lương: " + detailError.message);
+      setStatus("Lỗi lưu chi tiết bảng lương.", true);
+      return;
+    }
+
+    setStatus(`Đã lưu bảng lương thành công. Mã chốt: ${bangluong_id}`);
+    alert("Đã lưu/chốt bảng lương thành công.");
+
+  } catch (e) {
+    console.error("Exception luuBangLuongThang:", e);
+    alert("Có lỗi xảy ra khi lưu bảng lương.");
+    setStatus("Có lỗi xảy ra khi lưu bảng lương.", true);
   }
 }
 
@@ -844,6 +974,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setStatus("Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương.");
 
   if (btnTai) btnTai.addEventListener("click", taiBangLuong);
+  if (btnLuuLuong) btnLuuLuong.addEventListener("click", luuBangLuongThang);
   if (btnCopyLuong) btnCopyLuong.addEventListener("click", copyBangLuong);
 
   const btnBangCong = document.getElementById("btn-bangcong");
