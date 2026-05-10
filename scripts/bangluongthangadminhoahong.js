@@ -28,6 +28,7 @@ const hotBangCongContainer = document.getElementById("hotBangCong");
 // Biến lưu instance Handsontable 
 let hotLuong = null;
 let hotBangCong = null;
+let thongKeCsHienTai = null;
 
 // =============================
 // KIỂM SOÁT QUYỀN TRUY CẬP TRANG
@@ -446,6 +447,7 @@ async function luuBangLuongThang() {
         tong_luong,
         tong_khoan_tru,
         tong_thuc_linh,
+        thongke_cs: thongKeCsHienTai || {},
         ghichu: "Chốt từ trang bảng lương tháng",
         created_by
       })
@@ -668,9 +670,28 @@ async function xemBangLuongDaLuu() {
     if (khoanGioInput) khoanGioInput.value = header.khoan_gio || 0;
     if (pctThuongInput) pctThuongInput.value = header.pct_thuong || 0;
 
+    const thongKeCs = header.thongke_cs || {};
+
+    const dongThongKeCS = ["cs1", "cs2"]
+      .map(cs => {
+        const r = thongKeCs[cs];
+        if (!r) return null;
+
+        return (
+          `${cs.toUpperCase()}: DT/giờ công ${fmt(r.dt_moi_gio, 0)} đ/h | ` +
+          `Khoán ${fmt(r.khoan_gio, 0)} đ/h | ` +
+          `Đạt ${Number(r.ty_le_dat || 0).toFixed(1)}%`
+        );
+      })
+      .filter(Boolean)
+      .join("\n");
+
     setStatus(
       `Đã tải bảng lương đã lưu: ${header.tu_ngay} → ${header.den_ngay} | ` +
-      `Thực lĩnh: ${fmt(header.tong_thuc_linh, 0)} đ`
+      `Tổng lương: ${fmt(header.tong_luong, 0)} đ | ` +
+      `Khoản trừ: ${fmt(header.tong_khoan_tru, 0)} đ | ` +
+      `Thực lĩnh: ${fmt(header.tong_thuc_linh, 0)} đ` +
+      (dongThongKeCS ? `\n${dongThongKeCS}` : "")
     );
 
   } catch (e) {
@@ -1005,6 +1026,8 @@ async function taiBangLuong() {
     // Render HOT
     renderLuongHot(bangLuongData);
 
+    thongKeCsHienTai = {};
+
     const dongThongKeCS = ["cs1", "cs2"]
       .map(cs => {
         const doanhthu = thongKeTheoCS[cs].doanhthu;
@@ -1014,6 +1037,14 @@ async function taiBangLuong() {
 
         const dtMoiGio = doanhthu / gioTinh;
         const tyLeDat = khoan_gio > 0 ? (dtMoiGio / khoan_gio) * 100 : 0;
+
+        thongKeCsHienTai[cs] = {
+          doanhthu: Math.round(doanhthu),
+          gio_tinh: Number(gioTinh.toFixed(2)),
+          dt_moi_gio: Math.round(dtMoiGio),
+          khoan_gio: Math.round(khoan_gio),
+          ty_le_dat: Number(tyLeDat.toFixed(1))
+        };
 
         return (
           `${cs.toUpperCase()}: DT/giờ công ${fmt(dtMoiGio, 0)} đ/h | ` +
