@@ -86,6 +86,28 @@ function setDefaultDates() {
   if (denNgayInput) denNgayInput.value = toIsoDate(today);
 }
 
+function getLastDayOfMonth(dateStr) {
+  if (!dateStr) return "";
+
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return "";
+
+  const lastDay = new Date(y, m, 0);
+  return toIsoDate(lastDay);
+}
+
+function autoSetDenNgayTheoTuNgay() {
+  const tuNgay = tuNgayInput?.value;
+  if (!tuNgay || !denNgayInput) return;
+
+  const [y, m, d] = tuNgay.split("-").map(Number);
+
+  // Chỉ tự động nếu người dùng chọn ngày mùng 1
+  if (d === 1) {
+    denNgayInput.value = getLastDayOfMonth(tuNgay);
+  }
+}
+
 function fmt(n, d = 0) {
   if (n == null || Number.isNaN(Number(n))) return "0";
   return Number(n).toLocaleString("vi-VN", {
@@ -1205,6 +1227,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setDefaultDates();
   setStatus("Chọn tháng, lương/giờ, khoán/giờ và % thưởng rồi bấm Tải bảng lương.");
+  if (tuNgayInput) {
+    tuNgayInput.addEventListener("change", autoSetDenNgayTheoTuNgay);
+  }
 
   if (btnTai) btnTai.addEventListener("click", taiBangLuong);
   if (btnLuuLuong) btnLuuLuong.addEventListener("click", luuBangLuongThang);
