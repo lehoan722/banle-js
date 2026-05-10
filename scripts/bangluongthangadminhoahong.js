@@ -17,6 +17,7 @@ const btnLuuLuong = document.getElementById("btn-luu-luong");
 const selectLuongDaLuu = document.getElementById("chon-bangluong-da-luu");
 const btnTaiDsLuongDaLuu = document.getElementById("btn-tai-ds-luong-da-luu");
 const btnXemLuongDaLuu = document.getElementById("btn-xem-luong-da-luu");
+const btnXoaLuongDaLuu = document.getElementById("btn-xoa-luong-da-luu");
 const btnCopyLuong = document.getElementById("btn-copy-luong");
 const tbodyLuong = document.getElementById("tbody-bangluong");
 const statusEl = document.getElementById("status");
@@ -723,6 +724,58 @@ async function xemBangLuongDaLuu() {
   }
 }
 
+async function xoaBangLuongDaLuu() {
+  const bangluong_id = selectLuongDaLuu?.value;
+
+  if (!bangluong_id) {
+    alert("Vui lòng chọn bảng lương đã lưu cần xóa.");
+    return;
+  }
+
+  const selectedText =
+    selectLuongDaLuu.options[selectLuongDaLuu.selectedIndex]?.textContent || "";
+
+  const ok = confirm(
+    "Bạn có chắc muốn xóa bảng lương đã lưu này không?\n\n" +
+    selectedText +
+    "\n\nDữ liệu chi tiết cũng sẽ bị xóa theo."
+  );
+
+  if (!ok) return;
+
+  try {
+    setStatus("Đang xóa bảng lương đã lưu...");
+
+    const { error } = await supabase
+      .from("bangluong_thang")
+      .delete()
+      .eq("id", bangluong_id);
+
+    if (error) {
+      console.error("Lỗi xóa bảng lương:", error);
+      alert("Lỗi xóa bảng lương đã lưu: " + error.message);
+      setStatus("Lỗi xóa bảng lương đã lưu.", true);
+      return;
+    }
+
+    alert("Đã xóa bảng lương đã lưu.");
+
+    if (selectLuongDaLuu) {
+      selectLuongDaLuu.value = "";
+    }
+
+    renderLuongHot([]);
+    await taiDanhSachBangLuongDaLuu();
+
+    setStatus("Đã xóa bảng lương đã lưu.");
+
+  } catch (e) {
+    console.error("Exception xoaBangLuongDaLuu:", e);
+    alert("Có lỗi xảy ra khi xóa bảng lương đã lưu.");
+    setStatus("Có lỗi xảy ra khi xóa bảng lương đã lưu.", true);
+  }
+}
+
 async function copyBangLuong() {
   if (!hotLuong) {
     alert("Chưa có dữ liệu bảng lương để copy.");
@@ -1240,6 +1293,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnXemLuongDaLuu) {
     btnXemLuongDaLuu.addEventListener("click", xemBangLuongDaLuu);
+  }
+
+  if (btnXoaLuongDaLuu) {
+    btnXoaLuongDaLuu.addEventListener("click", xoaBangLuongDaLuu);
   }
 
   if (btnCopyLuong) btnCopyLuong.addEventListener("click", copyBangLuong);
