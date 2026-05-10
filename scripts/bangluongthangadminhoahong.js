@@ -14,6 +14,9 @@ const pctThuongInput = document.getElementById("pct_thuong");
 
 const btnTai = document.getElementById("btn-tai");
 const btnLuuLuong = document.getElementById("btn-luu-luong");
+const selectLuongDaLuu = document.getElementById("chon-bangluong-da-luu");
+const btnTaiDsLuongDaLuu = document.getElementById("btn-tai-ds-luong-da-luu");
+const btnXemLuongDaLuu = document.getElementById("btn-xem-luong-da-luu");
 const btnCopyLuong = document.getElementById("btn-copy-luong");
 const tbodyLuong = document.getElementById("tbody-bangluong");
 const statusEl = document.getElementById("status");
@@ -512,6 +515,170 @@ async function luuBangLuongThang() {
   }
 }
 
+async function taiDanhSachBangLuongDaLuu() {
+  if (!selectLuongDaLuu) return;
+
+  try {
+    setStatus("Đang tải danh sách bảng lương đã lưu...");
+
+    const { data, error } = await supabase
+      .from("bangluong_thang")
+      .select("id, tu_ngay, den_ngay, diadiem, tong_luong, tong_thuc_linh, created_at, created_by")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error("Lỗi tải danh sách bảng lương đã lưu:", error);
+      alert("Lỗi tải danh sách bảng lương đã lưu: " + error.message);
+      setStatus("Lỗi tải danh sách bảng lương đã lưu.", true);
+      return;
+    }
+
+    selectLuongDaLuu.innerHTML = `<option value="">-- Chọn bảng lương đã lưu --</option>`;
+
+    (data || []).forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+
+      const ngayTao = r.created_at
+        ? new Date(r.created_at).toLocaleString("vi-VN")
+        : "";
+
+      opt.textContent =
+        `${r.tu_ngay} → ${r.den_ngay}` +
+        ` | ${r.diadiem || "Tất cả"}` +
+        ` | Thực lĩnh: ${fmt(r.tong_thuc_linh, 0)} đ` +
+        ` | ${ngayTao}` +
+        `${r.created_by ? " | " + r.created_by : ""}`;
+
+      selectLuongDaLuu.appendChild(opt);
+    });
+
+    setStatus(`Đã tải ${data?.length || 0} bản lương đã lưu.`);
+
+  } catch (e) {
+    console.error("Exception taiDanhSachBangLuongDaLuu:", e);
+    alert("Có lỗi khi tải danh sách bảng lương đã lưu.");
+    setStatus("Có lỗi khi tải danh sách bảng lương đã lưu.", true);
+  }
+}
+
+async function xemBangLuongDaLuu() {
+  const bangluong_id = selectLuongDaLuu?.value;
+
+  if (!bangluong_id) {
+    alert("Vui lòng chọn một bảng lương đã lưu.");
+    return;
+  }
+
+  try {
+    setStatus("Đang tải chi tiết bảng lương đã lưu...");
+
+    // 1. Lấy đầu bảng lương
+    const { data: header, error: headerError } = await supabase
+      .from("bangluong_thang")
+      .select("*")
+      .eq("id", bangluong_id)
+      .single();
+
+    if (headerError) {
+      console.error("Lỗi tải đầu bảng lương:", headerError);
+      alert("Lỗi tải đầu bảng lương: " + headerError.message);
+      setStatus("Lỗi tải đầu bảng lương.", true);
+      return;
+    }
+
+    // 2. Lấy chi tiết bảng lương
+    const { data: rows, error: detailError } = await supabase
+      .from("bangluong_thang_chitiet")
+      .select("*")
+      .eq("bangluong_id", bangluong_id)
+      .order("stt", { ascending: true });
+
+    if (detailError) {
+      console.error("Lỗi tải chi tiết bảng lương:", detailError);
+      alert("Lỗi tải chi tiết bảng lương: " + detailError.message);
+      setStatus("Lỗi tải chi tiết bảng lương.", true);
+      return;
+    }
+
+    const bangLuongData = (rows || []).map(r => [
+      r.manv || "",
+      r.tennv || "",
+      r.diadiem || "",
+      Number(r.gio_cong || 0),
+      Number(r.gio_tru || 0),
+      Number(r.gio_tinh_luong || 0),
+      Number(r.doanh_thu || 0),
+      Number(r.hoa_hong || 0),
+      Number(r.khoan_gio || 0),
+      Number(r.khoan_thang || 0),
+      Number(r.tien_vuot || 0),
+      Number(r.thuong_vuot_khoan || 0),
+      Number(r.luong_cung || 0),
+      Number(r.tong_luong || 0),
+      Number(r.khoan_tru || 0),
+      Number(r.thuc_linh || 0),
+      Number(r.luong_1_gio || 0)
+    ]);
+
+    // 3. Thêm dòng TỔNG cuối bảng
+    const tongGioCong = bangLuongData.reduce((s, r) => s + Number(r[3] || 0), 0);
+    const tongGioTru = bangLuongData.reduce((s, r) => s + Number(r[4] || 0), 0);
+    const tongGioTinh = bangLuongData.reduce((s, r) => s + Number(r[5] || 0), 0);
+    const tongDoanhThu = bangLuongData.reduce((s, r) => s + Number(r[6] || 0), 0);
+    const tongHoaHong = bangLuongData.reduce((s, r) => s + Number(r[7] || 0), 0);
+    const tongKhoanThang = bangLuongData.reduce((s, r) => s + Number(r[9] || 0), 0);
+    const tongTienVuot = bangLuongData.reduce((s, r) => s + Number(r[10] || 0), 0);
+    const tongThuongVuot = bangLuongData.reduce((s, r) => s + Number(r[11] || 0), 0);
+    const tongLuongCung = bangLuongData.reduce((s, r) => s + Number(r[12] || 0), 0);
+    const tongLuong = bangLuongData.reduce((s, r) => s + Number(r[13] || 0), 0);
+    const tongKhoanTru = bangLuongData.reduce((s, r) => s + Number(r[14] || 0), 0);
+    const tongThucLinh = bangLuongData.reduce((s, r) => s + Number(r[15] || 0), 0);
+
+    bangLuongData.push([
+      "TỔNG",
+      "",
+      "",
+      Number(tongGioCong.toFixed(2)),
+      Number(tongGioTru.toFixed(2)),
+      Number(tongGioTinh.toFixed(2)),
+      Math.round(tongDoanhThu),
+      Math.round(tongHoaHong),
+      Number(header.khoan_gio || 0),
+      Math.round(tongKhoanThang),
+      Math.round(tongTienVuot),
+      Math.round(tongThuongVuot),
+      Math.round(tongLuongCung),
+      Math.round(tongLuong),
+      Math.round(tongKhoanTru),
+      Math.round(tongThucLinh),
+      Math.round(tongGioCong > 0 ? tongLuong / tongGioCong : 0)
+    ]);
+
+    // 4. Render lại vào bảng lương hiện tại
+    renderLuongHot(bangLuongData);
+
+    // 5. Đổ lại thông tin kỳ lương lên bộ lọc
+    if (tuNgayInput) tuNgayInput.value = header.tu_ngay || "";
+    if (denNgayInput) denNgayInput.value = header.den_ngay || "";
+    if (diadiemSelect) diadiemSelect.value = header.diadiem || "";
+    if (luongGioInput) luongGioInput.value = header.luong_gio || 0;
+    if (khoanGioInput) khoanGioInput.value = header.khoan_gio || 0;
+    if (pctThuongInput) pctThuongInput.value = header.pct_thuong || 0;
+
+    setStatus(
+      `Đã tải bảng lương đã lưu: ${header.tu_ngay} → ${header.den_ngay} | ` +
+      `Thực lĩnh: ${fmt(header.tong_thuc_linh, 0)} đ`
+    );
+
+  } catch (e) {
+    console.error("Exception xemBangLuongDaLuu:", e);
+    alert("Có lỗi khi xem bảng lương đã lưu.");
+    setStatus("Có lỗi khi xem bảng lương đã lưu.", true);
+  }
+}
+
 async function copyBangLuong() {
   if (!hotLuong) {
     alert("Chưa có dữ liệu bảng lương để copy.");
@@ -975,6 +1142,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnTai) btnTai.addEventListener("click", taiBangLuong);
   if (btnLuuLuong) btnLuuLuong.addEventListener("click", luuBangLuongThang);
+
+  if (btnTaiDsLuongDaLuu) {
+  btnTaiDsLuongDaLuu.addEventListener("click", taiDanhSachBangLuongDaLuu);
+}
+
+if (btnXemLuongDaLuu) {
+  btnXemLuongDaLuu.addEventListener("click", xemBangLuongDaLuu);
+}
+
   if (btnCopyLuong) btnCopyLuong.addEventListener("click", copyBangLuong);
 
   const btnBangCong = document.getElementById("btn-bangcong");
