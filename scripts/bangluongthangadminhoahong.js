@@ -97,6 +97,7 @@ function setStatus(msg, isError = false) {
   if (!statusEl) return;
   statusEl.textContent = msg || "";
   statusEl.style.color = isError ? "#b00020" : "#222";
+  statusEl.style.whiteSpace = "pre-line";
 }
 
 // =================== HELPERS (tối ưu & normalize) ===================
@@ -826,6 +827,12 @@ async function taiBangLuong() {
     let sum_gio_phat = 0;
     let sum_gio_tinh = 0;
     let sum_doanhthu = 0;
+
+    const thongKeTheoCS = {
+      cs1: { doanhthu: 0, gio_tinh: 0 },
+      cs2: { doanhthu: 0, gio_tinh: 0 }
+    };
+
     let sum_hoa_hong = 0;
     let sum_khoan_thang = 0;
     let sum_tien_vuot = 0;
@@ -871,6 +878,14 @@ async function taiBangLuong() {
       sum_gio_phat += gio_phat_tanca_lich;
       sum_gio_tinh += gio_tinh;
       sum_doanhthu += doanhthu;
+
+      const keyCS = String(dia || "").trim().toLowerCase();
+
+      if (thongKeTheoCS[keyCS]) {
+        thongKeTheoCS[keyCS].doanhthu += doanhthu;
+        thongKeTheoCS[keyCS].gio_tinh += gio_tinh;
+      }
+
       sum_hoa_hong += hoa_hong;
       sum_khoan_thang += khoan_thang;
       sum_tien_vuot += tien_vuot;
@@ -990,10 +1005,30 @@ async function taiBangLuong() {
     // Render HOT
     renderLuongHot(bangLuongData);
 
+    const dongThongKeCS = ["cs1", "cs2"]
+      .map(cs => {
+        const doanhthu = thongKeTheoCS[cs].doanhthu;
+        const gioTinh = thongKeTheoCS[cs].gio_tinh;
+
+        if (gioTinh <= 0) return null;
+
+        const dtMoiGio = doanhthu / gioTinh;
+        const tyLeDat = khoan_gio > 0 ? (dtMoiGio / khoan_gio) * 100 : 0;
+
+        return (
+          `${cs.toUpperCase()}: DT/giờ công ${fmt(dtMoiGio, 0)} đ/h | ` +
+          `Khoán ${fmt(khoan_gio, 0)} đ/h | ` +
+          `Đạt ${tyLeDat.toFixed(1)}%`
+        );
+      })
+      .filter(Boolean)
+      .join("\n");
+
     setStatus(
       `Đã tải xong. Tổng lương: ${fmt(sum_tong_luong, 0)} đ | ` +
       `Khoản trừ: ${fmt(sum_khoan_tru, 0)} đ | ` +
-      `Thực lĩnh: ${fmt(sum_thuc_linh, 0)} đ`
+      `Thực lĩnh: ${fmt(sum_thuc_linh, 0)} đ` +
+      (dongThongKeCS ? `\n${dongThongKeCS}` : "")
     );
   } catch (e) {
     console.error(e);
@@ -1144,12 +1179,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnLuuLuong) btnLuuLuong.addEventListener("click", luuBangLuongThang);
 
   if (btnTaiDsLuongDaLuu) {
-  btnTaiDsLuongDaLuu.addEventListener("click", taiDanhSachBangLuongDaLuu);
-}
+    btnTaiDsLuongDaLuu.addEventListener("click", taiDanhSachBangLuongDaLuu);
+  }
 
-if (btnXemLuongDaLuu) {
-  btnXemLuongDaLuu.addEventListener("click", xemBangLuongDaLuu);
-}
+  if (btnXemLuongDaLuu) {
+    btnXemLuongDaLuu.addEventListener("click", xemBangLuongDaLuu);
+  }
 
   if (btnCopyLuong) btnCopyLuong.addEventListener("click", copyBangLuong);
 
