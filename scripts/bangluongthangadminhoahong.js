@@ -1238,6 +1238,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const ok = await kiemTraQuyenXemTrang(window.location.pathname);
       // Nếu OK, bạn có thể tự động tải dữ liệu ở đây nếu muốn:
       // if (ok) taiBangLuong();
+      taiDanhSachBangLuongDaLuu();
       return ok;
     }
   });
