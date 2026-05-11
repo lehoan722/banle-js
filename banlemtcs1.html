@@ -858,15 +858,22 @@
             setVal("tien_doi_diem", Number(hd.tien_doi_diem || 0).toLocaleString("vi-VN"));
 
             if (hd.makh) {
-                const { data: kh } = await window.supabase
-                    .from("dmkhachhang")
-                    .select("diem_hientai, hang_khach")
-                    .eq("makh", hd.makh)
-                    .maybeSingle();
+                if (typeof window.napThongTinDiemKhach === "function") {
+                    await window.napThongTinDiemKhach(hd.makh);
+                } else {
+                    const { data: kh } = await window.supabase
+                        .from("dmkhachhang")
+                        .select("diem_hientai, hang_khach, created_by_manv")
+                        .eq("makh", hd.makh)
+                        .maybeSingle();
 
-                if (kh) {
-                    setVal("diem_hientai", kh.diem_hientai ?? "");
-                    setVal("hang_khach", kh.hang_khach ?? "");
+                    if (kh) {
+                        setVal("diem_hientai", kh.diem_hientai ?? "");
+
+                        const hangText = kh.hang_khach || "THUONG";
+                        const nvTaoText = kh.created_by_manv ? "/" + kh.created_by_manv : "";
+                        setVal("hang_khach", hangText + nvTaoText);
+                    }
                 }
             }
         }
