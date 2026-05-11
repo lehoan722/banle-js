@@ -190,36 +190,6 @@ export function mountKhachHangSuggest(options = {}) {
     renderSuggest(data || []);
   }
 
-  function tinhDiemToiDaCoTheDung() {
-    const diemHienTai = parseMoneyInput(diemInputId);
-    const tongPhaiTra = parseMoneyInput("phaithanhtoan");
-
-    if (!diemHienTai || !tongPhaiTra) return 0;
-
-    // 1 điểm = 1.000đ
-    const giaTriMoiDiem = 1000;
-
-    // Tối đa 10% hóa đơn
-    const tienToiDaDuocGiam = Math.floor(tongPhaiTra * TY_LE_TOI_DA_DUNG_DIEM);
-
-    const diemToiDaTheoHoaDon = Math.floor(tienToiDaDuocGiam / giaTriMoiDiem);
-
-    return Math.max(0, Math.min(diemHienTai, diemToiDaTheoHoaDon));
-  }
-
-  function tuDongDungDiemMax() {
-    const diemTruEl = getEl(diemTruInputId);
-    if (!diemTruEl) return;
-
-    const diemMax = tinhDiemToiDaCoTheDung();
-
-    diemTruEl.value = diemMax > 0 ? diemMax : "0";
-
-    // Kích hoạt lại logic tính giảm điểm đang có sẵn
-    diemTruEl.dispatchEvent(new Event("input", { bubbles: true }));
-    diemTruEl.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-
   async function chonKhachHang(idx) {
     const kh = dsSuggest[idx];
     if (!kh) return;
@@ -243,8 +213,6 @@ export function mountKhachHangSuggest(options = {}) {
     await napThongTinDiemKhach(kh.makh);
 
     setTimeout(() => {
-      tuDongDungDiemMax();
-
       const diemTruEl = getEl(diemTruInputId);
       if (diemTruEl) {
         diemTruEl.focus();
