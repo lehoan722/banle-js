@@ -28,6 +28,10 @@ import {
   calcTongThanhTienFromBangKetQua
 } from '../luuhoadon/pricing.js';
 
+import {
+  validateKhachHangBatBuoc
+} from "./validateKhachHangTichDiem.js";
+
 function getInput(id) {
   return document.getElementById(id);
 }
@@ -88,7 +92,7 @@ function isEditMode(ctx) {
   return !!ctx?.isEdit;
 }
 
-function validateBeforeSave() {
+async function validateBeforeSave() {
   capNhatThongTinTong(getBangKetQua());
   apDungGiamDiemVaoThanhToan();
 
@@ -140,6 +144,12 @@ function validateBeforeSave() {
     return false;
   }
 
+  // ===== BẮT BUỘC KHÁCH HÀNG TÍCH ĐIỂM =====
+  const okKh = await validateKhachHangBatBuoc();
+
+  if (!okKh) {
+    return false;
+  }
   const bangKetQua = getBangKetQua();
   if (!bangKetQua || Object.keys(bangKetQua).length === 0) {
     alert("❌ Không có dữ liệu để lưu.");
@@ -293,7 +303,7 @@ async function resetAfterSave() {
 }
 
 async function saveNewBanLe() {
-  if (!validateBeforeSave()) return;
+  if (!(await validateBeforeSave())) return;
 
   const sohdNhap = getText("sohd");
   const existed = await hoaDonDaTonTaiAny(sohdNhap);
@@ -397,7 +407,7 @@ async function saveNewBanLe() {
 }
 
 async function saveEditBanLe() {
-  if (!validateBeforeSave()) return;
+  if (!(await validateBeforeSave())) return;
 
   const sohd = getText("sohd");
   if (!sohd) {
