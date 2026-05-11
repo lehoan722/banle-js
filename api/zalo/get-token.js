@@ -1,8 +1,9 @@
 export default async function handler(req, res) {
+
   try {
 
     const appId = process.env.ZALO_APP_ID;
-    const secretKey = process.env.ZALO_APP_SECRET;
+    const secretKey = process.env.ZALO_OA_SECRET_KEY;
 
     const response = await fetch(
       "https://oauth.zaloapp.com/v4/oa/access_token",
@@ -30,4 +31,5 @@ export default async function handler(req, res) {
     });
 
   }
+
 }
