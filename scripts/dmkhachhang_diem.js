@@ -377,6 +377,15 @@ export function mountKhachHangSuggest(options = {}) {
       return;
     }
 
+    const manvTao =
+      String(getEl("manv")?.value || localStorage.getItem("manv") || "").trim();
+
+    const tennvTao =
+      String(getEl("tennv")?.value || localStorage.getItem("tennv") || "").trim();
+
+    const diadiemTao =
+      String(getEl("diadiem")?.value || localStorage.getItem("diadiem") || "").trim();
+
     const obj = {
       makh,
       tenkh,
@@ -385,7 +394,11 @@ export function mountKhachHangSuggest(options = {}) {
       diem_hientai: 0,
       hang_khach: "THUONG",
       so_lan_mua: 0,
-      tong_chi_tieu: 0
+      tong_chi_tieu: 0,
+
+      created_by_manv: manvTao || null,
+      created_by_tennv: tennvTao || null,
+      created_by_diadiem: diadiemTao || null
     };
 
     const { error } = await window.supabase
