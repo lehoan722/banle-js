@@ -104,7 +104,7 @@ export function mountKhachHangSuggest(options = {}) {
 
     const { data, error } = await window.supabase
       .from("dmkhachhang")
-      .select("makh, tenkh, diem_hientai, hang_khach, tong_chi_tieu, so_lan_mua")
+      .select("makh, tenkh, diem_hientai, hang_khach, tong_chi_tieu, so_lan_mua, created_by_manv")
       .eq("makh", makh)
       .maybeSingle();
 
@@ -114,7 +114,10 @@ export function mountKhachHangSuggest(options = {}) {
     }
 
     setVal(diemInputId, data.diem_hientai || 0);
-    setVal(hangInputId, data.hang_khach || "THUONG");
+    const hangText = data.hang_khach || "THUONG";
+    const nvTaoText = data.created_by_manv ? "/" + data.created_by_manv : "";
+
+    setVal(hangInputId, hangText + nvTaoText);
     setVal(diemTruInputId, "0");
     setVal(tienDoiDiemInputId, "0");
 
@@ -175,7 +178,7 @@ export function mountKhachHangSuggest(options = {}) {
 
     const { data, error } = await window.supabase
       .from("dmkhachhang")
-      .select("makh, tenkh, dienthoai, diem_hientai, hang_khach")
+      .select("makh, tenkh, dienthoai, diem_hientai, hang_khach, created_by_manv")
       .or(`makh.ilike.%${kw}%,tenkh.ilike.%${kw}%,dienthoai.ilike.%${kw}%`)
       .order("makh", { ascending: true })
       .limit(20);
@@ -416,7 +419,10 @@ export function mountKhachHangSuggest(options = {}) {
     makhInput.value = makh;
     setVal(tenInputId, tenkh);
     setVal(diemInputId, "0");
-    setVal(hangInputId, "THUONG");
+    const manvTao =
+      String(getEl("manv")?.value || localStorage.getItem("manv") || "").trim();
+
+    setVal(hangInputId, manvTao ? "THUONG/" + manvTao : "THUONG");
     setVal(diemTruInputId, "0");
     setVal(tienDoiDiemInputId, "0");
 
