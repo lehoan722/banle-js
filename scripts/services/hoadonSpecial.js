@@ -26,6 +26,10 @@ import {
   calcTongThanhTienFromBangKetQua
 } from '../luuhoadon/pricing.js';
 
+import {
+  validateKhachHangBatBuoc
+} from "./validateKhachHangTichDiem.js";
+
 import { guiHoaDonViettel } from '../viettelInvoice.js';
 
 
@@ -72,7 +76,7 @@ function askConfirmSpecialSave() {
   );
 }
 
-function validateBeforeSave2Ban() {
+async function validateBeforeSave2Ban() {
   capNhatThongTinTong(getBangKetQua());
   apDungGiamDiemVaoThanhToan();
 
@@ -99,6 +103,12 @@ function validateBeforeSave2Ban() {
   if (!manvGuard || manvGuard.toUpperCase() === "ADMIN") {
     alert("❌ Lỗi xác định nhân viên (manv). Vui lòng đăng nhập lại.");
     console.error("GUARD BLOCKED SAVE 2 BAN – manv =", manvGuard);
+    return false;
+  }
+
+  const okKh = await validateKhachHangBatBuoc();
+
+  if (!okKh) {
     return false;
   }
 
@@ -226,7 +236,7 @@ function printInvoice(hoadon, chitiet, forceSpecial = false) {
       console.error("❌ URL iframe sai:", url);
       return;
     }
-        
+
     const fast1 = getInput("inNhanh")?.checked;
     const fast2 = getInput("chk_innhanh")?.checked;
     const fast = !!(fast1 || fast2);
@@ -289,7 +299,7 @@ async function resetAfterSave() {
 export async function saveHoaDonSpecial(ctx) {
   console.log("📄 Service lưu 2 bản chạy độc lập");
 
-  if (!validateBeforeSave2Ban()) return;
+  if (!(await validateBeforeSave2Ban())) return;
 
   const sohdNhap = getText("sohd");
   if (!sohdNhap) {
