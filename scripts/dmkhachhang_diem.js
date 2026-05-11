@@ -419,9 +419,6 @@ export function mountKhachHangSuggest(options = {}) {
     makhInput.value = makh;
     setVal(tenInputId, tenkh);
     setVal(diemInputId, "0");
-    const manvTao =
-      String(getEl("manv")?.value || localStorage.getItem("manv") || "").trim();
-
     setVal(hangInputId, manvTao ? "THUONG/" + manvTao : "THUONG");
     setVal(diemTruInputId, "0");
     setVal(tienDoiDiemInputId, "0");
