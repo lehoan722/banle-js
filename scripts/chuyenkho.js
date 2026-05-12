@@ -115,6 +115,16 @@ function showError(msg, err) {
   alert(msg);
 }
 
+function setGoiYStatus(msg, type = "") {
+  const el = $("goiy-status");
+  if (!el) return;
+
+  el.className = "goiy-status";
+  if (type) el.classList.add(type);
+
+  el.textContent = msg || "";
+}
+
 function setHeaderBasicInfo() {
   $("loai_ct").value = PAGE_CFG.loaiCt;
   $("tu_coso").value = PAGE_CFG.tuCoso;
