@@ -612,6 +612,30 @@ export function mountKhachHangSuggest(options = {}) {
 
     makhInput.addEventListener("keydown", async (e) => {
       const popupOpen = suggestBox.style.display !== "none";
+      const kwNow = String(makhInput.value || "").trim().toUpperCase();
+
+      if (kwNow === "KL") {
+        e.preventDefault();
+        suggestBox.style.display = "none";
+
+        setVal(tenInputId, "KHACH LE");
+        setVal(diemInputId, "0");
+        setVal(hangInputId, "KHACH LE");
+        setVal(diemTruInputId, "0");
+        setVal(tienDoiDiemInputId, "0");
+
+        if (typeof capNhatTrangThaiDiemTheoKhach === "function") {
+          capNhatTrangThaiDiemTheoKhach();
+        }
+
+        const maspEl = getEl("masp");
+        setTimeout(() => {
+          maspEl?.focus();
+          maspEl?.select?.();
+        }, 50);
+
+        return;
+      }
 
       if (e.key === "ArrowDown" && popupOpen && dsSuggest.length) {
         e.preventDefault();
