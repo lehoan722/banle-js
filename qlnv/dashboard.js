@@ -41,7 +41,8 @@ khoiTaoDangNhapDungChung({
 
       return false;
     }
-    
+
+    await loadDashboard();
     return true;
   }
 });
@@ -193,4 +194,4 @@ selectDiadiem.addEventListener(
   loadDashboard
 )
 
-loadDashboard()
+
