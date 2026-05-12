@@ -2949,18 +2949,18 @@ function patchAlertWithBeep() {
       }
 
       const lines = rows.map((tr) => {
-        const col1 = String(tr.children[0]?.innerText || "").trim();
+        const masp = normalizeMasp(tr.dataset.masp || tr.children[0]?.dataset?.masp || "");
 
-        // đổi toàn bộ xuống dòng trong ô Size/SL thành khoảng trắng
-        const col2 = String(tr.children[1]?.innerText || "")
+        const sizeSlText = String(tr.querySelector(".cell-nhap-sizesl")?.innerText || "")
           .replace(/\r/g, "")
           .replace(/\n+/g, " ")
           .replace(/\s+/g, " ")
           .trim();
 
-        const col3 = String(tr.children[2]?.innerText || "").trim();
+        const tongSlText = String(tr.querySelector(".cell-nhap-tongsl")?.innerText || "").trim();
 
-        return [col1, col2, col3].join("\t");
+        if (!masp) return "";
+        return [masp, sizeSlText, tongSlText].join("\t");
       }).filter(Boolean);
 
       const text = lines.join("\n");
@@ -3023,7 +3023,13 @@ function patchAlertWithBeep() {
     for (const line of lines) {
       const cols = line.split("\t");
 
-      const masp = normalizeMasp(cols[0] || "");
+      let masp = normalizeMasp(cols[0] || "");
+
+      // Nếu cột mã bị dính thêm dòng vị trí/kho thì chỉ lấy dòng đầu
+      if (masp.includes("\n")) {
+        masp = normalizeMasp(masp.split("\n")[0]);
+      }
+
       const sizeSlText = String(cols[1] || "").trim();
       const tongSlText = String(cols[2] || "").trim();
 
