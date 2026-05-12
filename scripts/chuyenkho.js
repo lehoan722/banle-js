@@ -216,7 +216,8 @@ function getSelectedNhomHangs() {
 
   return uniq(
     text
-      .split(",")
+      .replaceAll("，", ",")
+      .split(/[,\n\r;]+/)
       .map(v => String(v || "").trim().toUpperCase())
       .filter(Boolean)
   );
@@ -344,12 +345,18 @@ async function fetchMaspsByNhomHang(nhomHangs) {
 
   const { data, error } = await supabase
     .from("dmhanghoa")
-    .select("masp, nhomhang")
-    .in("nhomhang", list);
+    .select("masp, nhomhang");
 
   if (error) throw error;
 
-  return uniq((data || []).map(r => normalizeMasp(r.masp)).filter(Boolean));
+  const setNhom = new Set(list);
+
+  return uniq(
+    (data || [])
+      .filter(r => setNhom.has(String(r.nhomhang || "").trim().toUpperCase()))
+      .map(r => normalizeMasp(r.masp))
+      .filter(Boolean)
+  );
 }
 
 function getKeywordFiltersFromTextarea() {
@@ -604,26 +611,40 @@ function filterSuggestionRowsByTextarea(rows) {
 ========================================================= */
 async function layGoiY() {
   try {
+    setGoiYStatus("Đang lấy dữ liệu gợi ý...", "loading");
+
     const maspsFromText = getMaspsFromTextarea();
     const nhomHangs = getSelectedNhomHangs();
 
     let masps = [];
+    let sourceLabel = "";
 
     if (maspsFromText.length) {
       masps = maspsFromText;
+      sourceLabel = `theo ${maspsFromText.length} mã sản phẩm nhập tay`;
     } else if (nhomHangs.length) {
       masps = await fetchMaspsByNhomHang(nhomHangs);
+      sourceLabel = `theo nhóm hàng: ${nhomHangs.join(",")}`;
+
+      if (!masps.length) {
+        STATE.rows = [];
+        renderBang();
+        capNhatTong();
+        setGoiYStatus(`Không tìm thấy mã sản phẩm nào thuộc nhóm: ${nhomHangs.join(",")}`, "warning");
+        return;
+      }
     } else {
       masps = await fetchMaspsByDateRange();
+      sourceLabel = `theo khoảng ngày ${$("tu_ngay").value} đến ${$("den_ngay").value}`;
     }
 
     if (!masps.length) {
-      alert("Không có mã sản phẩm để gợi ý.");
       STATE.rows = [];
       STATE.chungLoaiMap = new Map();
       STATE.allChungLoaiSet = new Set();
       renderBang();
       capNhatTong();
+      setGoiYStatus("Không có mã sản phẩm để lấy gợi ý.", "warning");
       return;
     }
 
@@ -640,7 +661,22 @@ async function layGoiY() {
     renderBang();
     capNhatTong();
     $("hd_state").value = $("hd_state").value || "moi";
+
+    if (!STATE.rows.length) {
+      setGoiYStatus(
+        `Đã kiểm tra ${masps.length} mã ${sourceLabel}, nhưng không có sản phẩm nào cần chuyển kho hướng ${PAGE_CFG.dir}.`,
+        "warning"
+      );
+      return;
+    }
+
+    setGoiYStatus(
+      `Đã tải thành công: ${STATE.rows.length} dòng gợi ý từ ${masps.length} mã ${sourceLabel}.`,
+      "success"
+    );
+
   } catch (e) {
+    setGoiYStatus("Lỗi: không lấy được dữ liệu gợi ý chuyển kho.", "error");
     showError("Không lấy được dữ liệu gợi ý chuyển kho.", e);
   }
 }
