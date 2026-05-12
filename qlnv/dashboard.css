@@ -1,0 +1,133 @@
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  font-family:Arial;
+}
+
+body{
+  background:#f4f6f9;
+}
+
+.topbar{
+  height:70px;
+  background:#111827;
+  color:white;
+
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+
+  padding:0 20px;
+}
+
+.topbar h1{
+  font-size:22px;
+}
+
+.left{
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+
+#selectDiadiem{
+  height:38px;
+  padding:0 12px;
+}
+
+#storeModeBadge{
+  background:#2563eb;
+  padding:10px 16px;
+  border-radius:8px;
+  font-weight:bold;
+}
+
+.dashboard-grid{
+  padding:20px;
+
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+
+.card{
+  background:white;
+  border-radius:12px;
+  padding:20px;
+}
+
+.card h2{
+  margin-bottom:16px;
+}
+
+.overview-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:15px;
+}
+
+.overview-item{
+  background:#f3f4f6;
+  padding:20px;
+  border-radius:10px;
+}
+
+.overview-item label{
+  display:block;
+  margin-bottom:8px;
+  color:#6b7280;
+}
+
+.overview-item span{
+  font-size:28px;
+  font-weight:bold;
+}
+
+.section-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+
+  margin-bottom:15px;
+}
+
+button{
+  border:none;
+  background:#2563eb;
+  color:white;
+
+  padding:10px 16px;
+  border-radius:8px;
+
+  cursor:pointer;
+}
+
+.staff-item,
+.task-item,
+.log-item{
+  border:1px solid #e5e7eb;
+
+  padding:12px;
+  border-radius:10px;
+
+  margin-bottom:12px;
+}
+
+.staff-name{
+  font-weight:bold;
+  margin-bottom:6px;
+}
+
+.status-badge{
+  display:inline-block;
+
+  padding:4px 10px;
+  border-radius:999px;
+
+  font-size:12px;
+  font-weight:bold;
+
+  background:#dbeafe;
+  color:#1d4ed8;
+}
