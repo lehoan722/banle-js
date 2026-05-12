@@ -1491,21 +1491,50 @@ async function taoPhieuCCN() {
    18) XÓA DÒNG / TỒN NHANH
 ========================================================= */
 function xoaDongDangChon() {
-  if (STATE.selectedIndex < 0) {
-    alert("Chưa chọn dòng.");
+  // Trường hợp 1: đã click chọn 1 dòng trong bảng
+  if (STATE.selectedIndex >= 0) {
+    const row = STATE.rows[STATE.selectedIndex];
+
+    if (row?.trang_thai_dong === "da_chuyen") {
+      alert("Dòng đã chuyển không được phép xóa.");
+      return;
+    }
+
+    STATE.rows.splice(STATE.selectedIndex, 1);
+    STATE.selectedIndex = -1;
+    renderBang();
+    capNhatTong();
     return;
   }
 
-  const row = STATE.rows[STATE.selectedIndex];
-  if (row?.trang_thai_dong === "da_chuyen") {
-    alert("Dòng đã chuyển không được phép xóa.");
+  // Trường hợp 2: chưa click dòng nào, nhưng có tick checkbox ở cột Chọn
+  const selectedCount = STATE.rows.filter(r => !!r.selected).length;
+
+  if (selectedCount > 0) {
+    const unselectedCount = STATE.rows.length - selectedCount;
+
+    if (unselectedCount <= 0) {
+      alert("Tất cả các dòng đều đã được chọn, không có dòng chưa chọn để xóa.");
+      return;
+    }
+
+    const ok = confirm(
+      `Bạn có muốn xóa ${unselectedCount} dòng chưa chọn không?\n\n` +
+      `Hệ thống sẽ giữ lại ${selectedCount} dòng đã chọn.`
+    );
+
+    if (!ok) return;
+
+    STATE.rows = STATE.rows.filter(r => !!r.selected);
+    STATE.selectedIndex = -1;
+
+    renderBang();
+    capNhatTong();
     return;
   }
 
-  STATE.rows.splice(STATE.selectedIndex, 1);
-  STATE.selectedIndex = -1;
-  renderBang();
-  capNhatTong();
+  // Trường hợp 3: chưa click dòng nào và cũng chưa tick dòng nào
+  alert("Chưa chọn dòng nào để xóa.");
 }
 
 function openQuickStock(masp) {
