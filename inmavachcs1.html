@@ -994,7 +994,12 @@
                 // ===== TÍNH PHÂN TRANG CHUẨN =====
                 const sucChuaTrang = 40;
 
-                const soTemTrangDau = sucChuaTrang - blank;
+                const fromRow = parseInt(fromRowInput.value) || 1;
+                const fromCol = parseInt(fromColInput.value) || 1;
+
+                // Số ô trống chỉ áp dụng cho trang đầu
+                const blankTrangDau = (fromRow - 1) * 5 + (fromCol - 1);
+                const soTemTrangDau = sucChuaTrang - blankTrangDau;
 
                 if (temsAll.length <= soTemTrangDau) {
                     totalPages = 1;
@@ -1002,11 +1007,13 @@
                     const conLai = temsAll.length - soTemTrangDau;
                     totalPages = 1 + Math.ceil(conLai / sucChuaTrang);
                 }
+
                 currentPage = page > totalPages ? totalPages : page;
-                const fromRow = parseInt(fromRowInput.value) || 1;
-                const fromCol = parseInt(fromColInput.value) || 1;
-                let blank = (currentPage === 1) ? (fromRow - 1) * 5 + (fromCol - 1) : 0;
-                let maxTems = 40 - blank;
+
+                // Khi render trang 1 thì có ô trống, từ trang 2 trở đi không có ô trống
+                let blank = (currentPage === 1) ? blankTrangDau : 0;
+                let maxTems = sucChuaTrang - blank;
+
                 let startIndex = 0;
                 let endIndex = 0;
 
