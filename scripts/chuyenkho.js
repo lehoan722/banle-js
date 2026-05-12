@@ -162,6 +162,7 @@ function initLogin() {
       setCurrentDateTimeOnHeader();
       setDefaultDates();
       await taoPhieuMoi();
+      await loadNhomHangOptions();
       ganSuKien();
       return true;
     },
@@ -206,6 +207,63 @@ function getMaspsFromTextarea() {
     .map(normalizeMasp)
     .filter(Boolean);
   return uniq(list);
+}
+
+function getSelectedNhomHangs() {
+  const el = $("select-nhomhang");
+  if (!el) return [];
+
+  return Array.from(el.selectedOptions || [])
+    .map(opt => String(opt.value || "").trim().toUpperCase())
+    .filter(Boolean);
+}
+
+async function loadNhomHangOptions() {
+  const el = $("select-nhomhang");
+  if (!el) return;
+
+  const { data, error } = await supabase
+    .from("dmnhomhang")
+    .select("manhom, tennhom, diadiem")
+    .in("diadiem", ["ALL", PAGE_CFG.macDinhDiaDiem.toUpperCase()])
+    .order("manhom", { ascending: true });
+
+  if (error) {
+    console.error("loadNhomHangOptions error:", error);
+    el.innerHTML = `<option value="">Lỗi tải nhóm hàng</option>`;
+    return;
+  }
+
+  el.innerHTML = "";
+
+  (data || []).forEach(r => {
+    const manhom = String(r.manhom || "").trim().toUpperCase();
+    const tennhom = String(r.tennhom || "").trim();
+
+    if (!manhom) return;
+
+    const opt = document.createElement("option");
+    opt.value = manhom;
+    opt.textContent = tennhom ? `${manhom} - ${tennhom}` : manhom;
+    el.appendChild(opt);
+  });
+}
+
+async function fetchMaspsByNhomHang(nhomHangs) {
+  const list = (nhomHangs || [])
+    .map(v => String(v || "").trim().toUpperCase())
+    .filter(Boolean);
+
+  if (!list.length) return [];
+
+  const { data, error } = await supabase
+    .from("dmhanghoa")
+    .select("masp, nhomhang")
+    .in("nhomhang", list);
+
+  if (error) throw error;
+
+  return uniq((data || []).map(r => normalizeMasp(r.masp)).filter(Boolean));
 }
 
 function getKeywordFiltersFromTextarea() {
@@ -461,12 +519,17 @@ function filterSuggestionRowsByTextarea(rows) {
 async function layGoiY() {
   try {
     const maspsFromText = getMaspsFromTextarea();
+    const nhomHangs = getSelectedNhomHangs();
 
-    // Nếu textarea có nhập mã thì lấy theo textarea
-    // Nếu rỗng thì mới lấy theo khoảng ngày
-    const masps = maspsFromText.length
-      ? maspsFromText
-      : await fetchMaspsByDateRange();
+    let masps = [];
+
+    if (maspsFromText.length) {
+      masps = maspsFromText;
+    } else if (nhomHangs.length) {
+      masps = await fetchMaspsByNhomHang(nhomHangs);
+    } else {
+      masps = await fetchMaspsByDateRange();
+    }
 
     if (!masps.length) {
       alert("Không có mã sản phẩm để gợi ý.");
@@ -486,13 +549,7 @@ async function layGoiY() {
     STATE.chungLoaiMap = dmhhInfo.chungLoaiMap || new Map();
     STATE.allChungLoaiSet = dmhhInfo.allChungLoaiSet || new Set();
 
-    const baseRows = buildSuggestionRows({ xntRows });
-
-    // Chỉ lọc textarea khi textarea đang dùng như từ khóa/chủng loại.
-    // Nếu textarea là danh sách mã cụ thể thì không cần lọc lại nữa.
-    STATE.rows = maspsFromText.length
-      ? baseRows
-      : filterSuggestionRowsByTextarea(baseRows);
+    STATE.rows = buildSuggestionRows({ xntRows });
 
     renderBang();
     capNhatTong();
