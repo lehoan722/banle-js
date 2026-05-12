@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <title>QLNV Dashboard</title>
+
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+
+<body>
+
+  <!-- HEADER -->
+
+  <header class="topbar">
+
+    <div class="left">
+
+      <h1>QUẢN LÝ NHÂN VIÊN</h1>
+
+      <select id="selectDiadiem">
+        <option value="cs1">Cơ sở 1</option>
+        <option value="cs2">Cơ sở 2</option>
+      </select>
+
+    </div>
+
+    <div class="right">
+
+      <span id="storeModeBadge">
+        NORMAL
+      </span>
+
+    </div>
+
+  </header>
+
+  <!-- MAIN -->
+
+  <main class="dashboard-grid">
+
+    <!-- TỔNG QUAN -->
+
+    <section class="card">
+
+      <h2>Tổng quan</h2>
+
+      <div class="overview-grid">
+
+        <div class="overview-item">
+          <label>Nhân viên trong ca</label>
+          <span id="tongNhanVien">0</span>
+        </div>
+
+        <div class="overview-item">
+          <label>Đang phục vụ khách</label>
+          <span id="dangPhucVu">0</span>
+        </div>
+
+        <div class="overview-item">
+          <label>Task chưa xong</label>
+          <span id="taskChuaXong">0</span>
+        </div>
+
+        <div class="overview-item">
+          <label>Task hoàn thành</label>
+          <span id="taskHoanThanh">0</span>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- NHÂN VIÊN -->
+
+    <section class="card">
+
+      <div class="section-header">
+        <h2>Nhân viên trong ca</h2>
+      </div>
+
+      <div id="staffContainer">
+
+      </div>
+
+    </section>
+
+    <!-- TASK -->
+
+    <section class="card">
+
+      <div class="section-header">
+
+        <h2>Công việc hôm nay</h2>
+
+        <button id="btnThemTask">
+          + Thêm task
+        </button>
+
+      </div>
+
+      <div id="taskContainer">
+
+      </div>
+
+    </section>
+
+    <!-- LOG -->
+
+    <section class="card">
+
+      <h2>Nhật ký vận hành</h2>
+
+      <div id="logContainer">
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script type="module" src="dashboard.js"></script>
+
+</body>
+</html>
