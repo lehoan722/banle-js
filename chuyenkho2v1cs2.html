@@ -76,12 +76,58 @@
       box-sizing: border-box;
     }
 
-    #textarea-masp {
-      width: 460px;
-      min-height: 88px;
-      max-width: 460px;
-      resize: vertical;
+    .filter-input-zone {
       grid-column: 1 / span 3;
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      gap: 8px;
+      width: 100%;
+    }
+
+    #textarea-masp {
+      width: 100%;
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    .nhomhang-picker {
+      position: relative;
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 6px;
+      align-items: start;
+    }
+
+    #input-nhomhang-search,
+    #input-nhomhang-selected {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px;
+      font-size: 15px;
+    }
+
+    .nhomhang-dropdown {
+      display: none;
+      position: absolute;
+      top: 36px;
+      left: 0;
+      width: 150px;
+      max-height: 220px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #aaa;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+      z-index: 9999;
+    }
+
+    .nhomhang-option {
+      padding: 7px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+
+    .nhomhang-option:hover {
+      background: #e9e9e9;
     }
 
     .filter-actions {
@@ -253,6 +299,34 @@
     .highlight-row {
       background: #fff8d8;
     }
+
+    .goiy-status {
+      grid-column: 1 / span 2;
+      font-size: 13px;
+      min-height: 18px;
+      color: #555;
+      padding-top: 2px;
+    }
+
+    .goiy-status.loading {
+      color: #0b63c8;
+      font-weight: bold;
+    }
+
+    .goiy-status.success {
+      color: #0a7a26;
+      font-weight: bold;
+    }
+
+    .goiy-status.warning {
+      color: #c77700;
+      font-weight: bold;
+    }
+
+    .goiy-status.error {
+      color: #c00000;
+      font-weight: bold;
+    }
   </style>
 
   <link rel="stylesheet" href="chuyenkho.css">
@@ -281,8 +355,16 @@
     <div class="filter-bar">
       <input id="tu_ngay" type="date" />
       <input id="den_ngay" type="date" />
-      <textarea id="textarea-masp"
-        placeholder="Danh sách mã SP, mỗi dòng 1 mã.&#10;Nếu ô này có dữ liệu thì hệ thống chỉ gợi ý theo các mã này."></textarea>
+      <div class="filter-input-zone">
+        <textarea id="textarea-masp" placeholder="Mã SP, mỗi dòng 1 mã.&#10;Ưu tiên cao nhất."></textarea>
+
+        <div class="nhomhang-picker">
+          <input id="input-nhomhang-search" placeholder="Gõ/chọn nhóm..." autocomplete="off">
+          <input id="input-nhomhang-selected" placeholder="VD: AP,SM,QV" >
+          <div id="nhomhang-dropdown" class="nhomhang-dropdown"></div>
+          <div id="goiy-status" class="goiy-status"></div>
+        </div>
+      </div>
 
       <div class="filter-actions">
         <button id="btn-goi-y" type="button">Lấy gợi ý</button>
@@ -314,7 +396,7 @@
                 </div>
               </th>
               <th style="width:130px">Mã SP</th>
-              
+
               <th style="width:65px">Size</th>
               <th style="width:70px">Tồn nguồn</th>
               <th style="width:70px">Tồn đích</th>
