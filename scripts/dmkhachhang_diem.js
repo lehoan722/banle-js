@@ -40,6 +40,48 @@ export function mountKhachHangSuggest(options = {}) {
     if (el) el.value = val ?? "";
   }
 
+  function laKhachLe() {
+    const makh = String(makhInput?.value || "").trim().toUpperCase();
+    const tenkh = String(getEl(tenInputId)?.value || "").trim().toUpperCase();
+
+    return makh === "KL" || tenkh === "KHACH LE" || tenkh === "KHÁCH LẺ";
+  }
+
+  function khoaDiemKhachLe() {
+    const diemTruEl = getEl(diemTruInputId);
+
+    setVal(diemInputId, "0");
+    setVal(hangInputId, "KHACH LE");
+    setVal(diemTruInputId, "0");
+    setVal(tienDoiDiemInputId, "0");
+    setVal("km_diem_hienthi", "0");
+
+    if (diemTruEl) {
+      diemTruEl.value = "0";
+      diemTruEl.readOnly = true;
+      diemTruEl.style.background = "#e5e5e5";
+      diemTruEl.title = "Khách lẻ không được sử dụng điểm khuyến mại";
+    }
+  }
+
+  function moKhoaDiemKhachThuong() {
+    const diemTruEl = getEl(diemTruInputId);
+
+    if (diemTruEl) {
+      diemTruEl.readOnly = false;
+      diemTruEl.style.background = "#fffbe6";
+      diemTruEl.title = "";
+    }
+  }
+
+  function capNhatTrangThaiDiemTheoKhach() {
+    if (laKhachLe()) {
+      khoaDiemKhachLe();
+    } else {
+      moKhoaDiemKhachThuong();
+    }
+  }
+
   function parseMoneyValue(val) {
     return Number(String(val || "0").replace(/\D/g, "")) || 0;
   }
@@ -214,6 +256,7 @@ export function mountKhachHangSuggest(options = {}) {
     localStorage.setItem("pending_tenkh_banle", kh.tenkh || "");
 
     await napThongTinDiemKhach(kh.makh);
+    capNhatTrangThaiDiemTheoKhach();
 
     setTimeout(() => {
       const diemTruEl = getEl(diemTruInputId);
@@ -500,6 +543,10 @@ export function mountKhachHangSuggest(options = {}) {
     }
 
     diemTruEl.addEventListener("input", () => {
+      if (laKhachLe()) {
+        khoaDiemKhachLe();
+        return;
+      }
       let raw = String(diemTruEl.value || "").trim();
 
       if (raw === "") {
@@ -544,6 +591,13 @@ export function mountKhachHangSuggest(options = {}) {
 
       khoiPhucTongGocTruocKhiDoiKhach();
       clearThongTinKhachHang();
+
+      if (String(kw).trim().toUpperCase() === "KL") {
+        setVal(tenInputId, "KHACH LE");
+        capNhatTrangThaiDiemTheoKhach();
+        suggestBox.style.display = "none";
+        return;
+      }
 
       clearTimeout(searchTimer);
       searchTimer = setTimeout(() => {
