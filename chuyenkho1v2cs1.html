@@ -59,7 +59,7 @@
 
     .filter-bar {
       display: grid;
-      grid-template-columns: 130px 130px 460px 90px 90px;
+      grid-template-columns: 130px 130px 520px 90px 90px;
       gap: 8px;
       padding: 8px;
       background: #eef3fb;
@@ -76,12 +76,22 @@
       box-sizing: border-box;
     }
 
-    #textarea-masp {
-      width: 460px;
-      min-height: 88px;
-      max-width: 460px;
-      resize: vertical;
+    .filter-inputs {
       grid-column: 1 / span 3;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    #textarea-masp {
+      width: 100%;
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    #select-nhomhang {
+      width: 100%;
+      min-height: 88px;
     }
 
     .filter-actions {
@@ -283,8 +293,13 @@
     <div class="filter-bar">
       <input id="tu_ngay" type="date" />
       <input id="den_ngay" type="date" />
-      <textarea id="textarea-masp"
-        placeholder="Danh sách mã SP, mỗi dòng 1 mã.&#10;Nếu ô này có dữ liệu thì hệ thống chỉ gợi ý theo các mã này."></textarea>
+      <div class="filter-inputs">
+        <textarea id="textarea-masp" placeholder="Mã SP, mỗi dòng 1 mã.&#10;Ưu tiên cao nhất."></textarea>
+
+        <select id="select-nhomhang" multiple size="4">
+          <option value="">Đang tải nhóm hàng...</option>
+        </select>
+      </div>
 
       <div class="filter-actions">
         <button id="btn-goi-y" type="button">Lấy gợi ý</button>
