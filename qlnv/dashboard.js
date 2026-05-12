@@ -1,21 +1,52 @@
-import { supabase } from './supabaseClient.js'
+import {
+  khoiTaoDangNhapDungChung,
+  getSupabaseClient,
+  getCurrentUserInfo,
+  dangXuatDungChung
+} from "../scripts/authModule.js";
+
+const supabase = getSupabaseClient();
 
 const selectDiadiem =
-document.getElementById('selectDiadiem')
+  document.getElementById('selectDiadiem')
 
 const storeModeBadge =
-document.getElementById('storeModeBadge')
+  document.getElementById('storeModeBadge')
 
 const staffContainer =
-document.getElementById('staffContainer')
+  document.getElementById('staffContainer')
 
 const taskContainer =
-document.getElementById('taskContainer')
+  document.getElementById('taskContainer')
 
 const logContainer =
-document.getElementById('logContainer')
+  document.getElementById('logContainer')
 
-async function loadDashboard(){
+khoiTaoDangNhapDungChung({
+  loginContainerId: "login-container",
+  appContainerId: "app-container",
+  macDinhDiaDiem: "cs1",
+
+  onLoginSuccess: async () => {
+    const user = getCurrentUserInfo();
+
+    if (!user.is_admin) {
+      alert("Trang quản lý nhân viên chỉ cho phép ADMIN đăng nhập.");
+
+      await dangXuatDungChung({
+        loginContainerId: "login-container",
+        appContainerId: "app-container",
+        reloadPage: false
+      });
+
+      return false;
+    }
+    
+    return true;
+  }
+});
+
+async function loadDashboard() {
 
   const diadiem = selectDiadiem.value
 
@@ -29,7 +60,7 @@ async function loadDashboard(){
 
 }
 
-async function loadStoreStatus(diadiem){
+async function loadStoreStatus(diadiem) {
 
   const { data } = await supabase
     .schema('qlnv')
@@ -38,7 +69,7 @@ async function loadStoreStatus(diadiem){
     .eq('diadiem', diadiem)
     .single()
 
-  if(data){
+  if (data) {
 
     storeModeBadge.innerText =
       data.store_mode.toUpperCase()
@@ -47,7 +78,7 @@ async function loadStoreStatus(diadiem){
 
 }
 
-async function loadStaff(diadiem){
+async function loadStaff(diadiem) {
 
   const { data } = await supabase
     .schema('qlnv')
@@ -57,7 +88,7 @@ async function loadStaff(diadiem){
 
   staffContainer.innerHTML = ''
 
-  for(const item of data || []){
+  for (const item of data || []) {
 
     const div = document.createElement('div')
 
@@ -83,7 +114,7 @@ async function loadStaff(diadiem){
 
 }
 
-async function loadTasks(diadiem){
+async function loadTasks(diadiem) {
 
   const { data } = await supabase
     .schema('qlnv')
@@ -91,12 +122,12 @@ async function loadTasks(diadiem){
     .select('*')
     .eq('diadiem', diadiem)
     .order('created_at', {
-      ascending:false
+      ascending: false
     })
 
   taskContainer.innerHTML = ''
 
-  for(const item of data || []){
+  for (const item of data || []) {
 
     const div = document.createElement('div')
 
@@ -120,7 +151,7 @@ async function loadTasks(diadiem){
 
 }
 
-async function loadLogs(diadiem){
+async function loadLogs(diadiem) {
 
   const { data } = await supabase
     .schema('qlnv')
@@ -128,13 +159,13 @@ async function loadLogs(diadiem){
     .select('*')
     .eq('diadiem', diadiem)
     .order('created_at', {
-      ascending:false
+      ascending: false
     })
     .limit(20)
 
   logContainer.innerHTML = ''
 
-  for(const item of data || []){
+  for (const item of data || []) {
 
     const div = document.createElement('div')
 
@@ -147,7 +178,7 @@ async function loadLogs(diadiem){
 
       <small>
         ${new Date(item.created_at)
-          .toLocaleString()}
+        .toLocaleString()}
       </small>
     `
 
