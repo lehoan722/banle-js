@@ -191,6 +191,13 @@ async function taoPhieuMoi() {
     $("ghi_chu_phieu").value = "";
     $("so_ct_ccn").value = "";
     $("history-box").textContent = "Chưa có lịch sử.";
+
+    if ($("textarea-masp")) $("textarea-masp").value = "";
+    if ($("input-nhomhang-search")) $("input-nhomhang-search").value = "";
+    if ($("input-nhomhang-selected")) $("input-nhomhang-selected").value = "";
+    if ($("nhomhang-dropdown")) $("nhomhang-dropdown").style.display = "none";
+    if ($("goiy-status")) setGoiYStatus("");
+
     STATE.rows = [];
     STATE.oldHeader = null;
     STATE.oldRowsMap = new Map();
