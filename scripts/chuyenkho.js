@@ -460,8 +460,13 @@ function filterSuggestionRowsByTextarea(rows) {
 ========================================================= */
 async function layGoiY() {
   try {
-    // Luôn lấy danh sách mã gốc theo khoảng ngày trước
-    const masps = await fetchMaspsByDateRange();
+    const maspsFromText = getMaspsFromTextarea();
+
+    // Nếu textarea có nhập mã thì lấy theo textarea
+    // Nếu rỗng thì mới lấy theo khoảng ngày
+    const masps = maspsFromText.length
+      ? maspsFromText
+      : await fetchMaspsByDateRange();
 
     if (!masps.length) {
       alert("Không có mã sản phẩm để gợi ý.");
@@ -481,11 +486,13 @@ async function layGoiY() {
     STATE.chungLoaiMap = dmhhInfo.chungLoaiMap || new Map();
     STATE.allChungLoaiSet = dmhhInfo.allChungLoaiSet || new Set();
 
-    // Bước 1: dựng toàn bộ gợi ý theo logic ngày như cũ
     const baseRows = buildSuggestionRows({ xntRows });
 
-    // Bước 2: nếu textarea có nhập thì lọc thêm 1 lần nữa trên baseRows
-    STATE.rows = filterSuggestionRowsByTextarea(baseRows);
+    // Chỉ lọc textarea khi textarea đang dùng như từ khóa/chủng loại.
+    // Nếu textarea là danh sách mã cụ thể thì không cần lọc lại nữa.
+    STATE.rows = maspsFromText.length
+      ? baseRows
+      : filterSuggestionRowsByTextarea(baseRows);
 
     renderBang();
     capNhatTong();
