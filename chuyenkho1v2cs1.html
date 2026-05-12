@@ -59,7 +59,7 @@
 
     .filter-bar {
       display: grid;
-      grid-template-columns: 130px 130px 520px 90px 90px;
+      grid-template-columns: 130px 130px 460px 90px 90px;
       gap: 8px;
       padding: 8px;
       background: #eef3fb;
@@ -76,11 +76,12 @@
       box-sizing: border-box;
     }
 
-    .filter-inputs {
+    .filter-input-zone {
       grid-column: 1 / span 3;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 230px 1fr;
       gap: 8px;
+      width: 100%;
     }
 
     #textarea-masp {
@@ -89,9 +90,44 @@
       resize: vertical;
     }
 
-    #select-nhomhang {
+    .nhomhang-picker {
+      position: relative;
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 6px;
+      align-items: start;
+    }
+
+    #input-nhomhang-search,
+    #input-nhomhang-selected {
       width: 100%;
-      min-height: 88px;
+      box-sizing: border-box;
+      padding: 6px;
+      font-size: 15px;
+    }
+
+    .nhomhang-dropdown {
+      display: none;
+      position: absolute;
+      top: 36px;
+      left: 0;
+      width: 150px;
+      max-height: 220px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #aaa;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+      z-index: 9999;
+    }
+
+    .nhomhang-option {
+      padding: 7px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+
+    .nhomhang-option:hover {
+      background: #e9e9e9;
     }
 
     .filter-actions {
@@ -293,12 +329,14 @@
     <div class="filter-bar">
       <input id="tu_ngay" type="date" />
       <input id="den_ngay" type="date" />
-      <div class="filter-inputs">
+      <div class="filter-input-zone">
         <textarea id="textarea-masp" placeholder="Mã SP, mỗi dòng 1 mã.&#10;Ưu tiên cao nhất."></textarea>
 
-        <select id="select-nhomhang" multiple size="4">
-          <option value="">Đang tải nhóm hàng...</option>
-        </select>
+        <div class="nhomhang-picker">
+          <input id="input-nhomhang-search" placeholder="Gõ/chọn nhóm..." autocomplete="off">
+          <input id="input-nhomhang-selected" placeholder="VD: AP,SM,QV" readonly>
+          <div id="nhomhang-dropdown" class="nhomhang-dropdown"></div>
+        </div>
       </div>
 
       <div class="filter-actions">
