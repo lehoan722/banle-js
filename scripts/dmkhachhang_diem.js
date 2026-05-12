@@ -49,7 +49,16 @@ export function mountKhachHangSuggest(options = {}) {
 
   function khoaDiemKhachLe() {
     const diemTruEl = getEl(diemTruInputId);
+    const tienGiamEl = getEl(tienDoiDiemInputId);
 
+    // Chuẩn hóa kl/Kl/kL thành KL nhưng KHÔNG khóa ô mã khách
+    if (makhInput) {
+      makhInput.value = "KL";
+      makhInput.readOnly = false;
+      makhInput.disabled = false;
+    }
+
+    setVal(tenInputId, "KHACH LE");
     setVal(diemInputId, "0");
     setVal(hangInputId, "KHACH LE");
     setVal(diemTruInputId, "0");
@@ -59,18 +68,43 @@ export function mountKhachHangSuggest(options = {}) {
     if (diemTruEl) {
       diemTruEl.value = "0";
       diemTruEl.readOnly = true;
+      diemTruEl.disabled = false;
       diemTruEl.style.background = "#e5e5e5";
       diemTruEl.title = "Khách lẻ không được sử dụng điểm khuyến mại";
     }
+
+    if (tienGiamEl) {
+      tienGiamEl.value = "0";
+      tienGiamEl.readOnly = true;
+      tienGiamEl.disabled = false;
+      tienGiamEl.style.background = "#e5e5e5";
+      tienGiamEl.title = "Khách lẻ không được sử dụng điểm khuyến mại";
+    }
+
+    suggestBox.style.display = "none";
   }
 
   function moKhoaDiemKhachThuong() {
     const diemTruEl = getEl(diemTruInputId);
+    const tienGiamEl = getEl(tienDoiDiemInputId);
+
+    if (makhInput) {
+      makhInput.readOnly = false;
+      makhInput.disabled = false;
+    }
 
     if (diemTruEl) {
       diemTruEl.readOnly = false;
+      diemTruEl.disabled = false;
       diemTruEl.style.background = "#fffbe6";
       diemTruEl.title = "";
+    }
+
+    if (tienGiamEl) {
+      tienGiamEl.readOnly = true;
+      tienGiamEl.disabled = false;
+      tienGiamEl.style.background = "";
+      tienGiamEl.title = "";
     }
   }
 
@@ -606,7 +640,14 @@ export function mountKhachHangSuggest(options = {}) {
     });
 
     makhInput.addEventListener("focus", () => {
-      const kw = makhInput.value.trim();
+      const kw = String(makhInput.value || "").trim();
+
+      if (kw.toUpperCase() === "KL") {
+        khoaDiemKhachLe();
+        suggestBox.style.display = "none";
+        return;
+      }
+
       if (kw) timKhachHang(kw);
     });
 
