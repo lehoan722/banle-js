@@ -632,6 +632,8 @@ export function mountKhachHangSuggest(options = {}) {
         suggestBox.style.display = "none";
         return;
       }
+      // Khi người dùng xóa/sửa KL sang mã khác thì mở lại ô điểm dùng
+      moKhoaDiemKhachThuong();
 
       clearTimeout(searchTimer);
       searchTimer = setTimeout(() => {
@@ -656,26 +658,21 @@ export function mountKhachHangSuggest(options = {}) {
       const kwNow = String(makhInput.value || "").trim().toUpperCase();
 
       if (kwNow === "KL") {
-        e.preventDefault();
         suggestBox.style.display = "none";
+        capNhatTrangThaiDiemTheoKhach();
 
-        setVal(tenInputId, "KHACH LE");
-        setVal(diemInputId, "0");
-        setVal(hangInputId, "KHACH LE");
-        setVal(diemTruInputId, "0");
-        setVal(tienDoiDiemInputId, "0");
+        // Chỉ chặn phím Enter, còn Backspace/Delete/nhập mã khác vẫn cho sửa bình thường
+        if (e.key === "Enter") {
+          e.preventDefault();
 
-        if (typeof capNhatTrangThaiDiemTheoKhach === "function") {
-          capNhatTrangThaiDiemTheoKhach();
+          const maspEl = getEl("masp");
+          setTimeout(() => {
+            maspEl?.focus();
+            maspEl?.select?.();
+          }, 50);
+
+          return;
         }
-
-        const maspEl = getEl("masp");
-        setTimeout(() => {
-          maspEl?.focus();
-          maspEl?.select?.();
-        }, 50);
-
-        return;
       }
 
       if (e.key === "ArrowDown" && popupOpen && dsSuggest.length) {
