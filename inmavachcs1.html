@@ -141,6 +141,15 @@
                 }
             }
 
+            .print-preview-page {
+                page-break-after: always;
+                break-after: page;
+            }
+
+            .print-preview-page:last-child {
+                page-break-after: auto;
+                break-after: auto;
+            }
 
 
         }
@@ -1434,13 +1443,91 @@
                 else await renderPreview(1);
             };
 
+            async function renderAllPagesForPrint() {
+                syncHandsontableToSelected();
+
+                const loaiTem = document.getElementById('loaiTem')?.value || "";
+                if (!loaiTem) {
+                    alert("Vui lòng chọn loại tem cần in!");
+                    return false;
+                }
+
+                // Render trang 1 trước để tính totalPages, temsAll
+                if (loaiTem === 'insize_tomy114') {
+                    renderPreviewInSizeTomy114(1);
+                } else {
+                    await renderPreview(1);
+                }
+
+                const tongTrang = totalPages || 1;
+                const allHtml = [];
+
+                for (let p = 1; p <= tongTrang; p++) {
+                    if (loaiTem === 'insize_tomy114') {
+                        renderPreviewInSizeTomy114(p);
+                    } else {
+                        await renderPreview(p);
+                    }
+
+                    const htmlPage = previewArea.innerHTML;
+                    allHtml.push(`<div class="print-preview-page">${htmlPage}</div>`);
+                }
+
+                previewArea.innerHTML = allHtml.join('');
+
+                // Sinh lại mã vạch cho toàn bộ trang nếu là tem mã vạch
+                if (loaiTem === "tem_mavach") {
+                    document.querySelectorAll('.tem .barcode').forEach((el) => {
+                        const code = el.getAttribute('data-code') || '';
+                        if (!code) return;
+
+                        JsBarcode(el, code, {
+                            format: "CODE128",
+                            displayValue: false,
+                            width: 0.7,
+                            height: 14,
+                            margin: 0
+                        });
+                    });
+                }
+
+                // Sinh lại QR cho toàn bộ trang
+                document.querySelectorAll('.tem .qr').forEach((el) => {
+                    const parent = el.closest('.tem');
+                    if (!parent || parent.classList.contains('tem-blank')) return;
+
+                    const masp = (parent.getAttribute('data-masp') || '').trim().toUpperCase();
+                    const size = (parent.getAttribute('data-size') || '').trim().toUpperCase();
+                    const qrValue = (size && size !== '0') ? `${masp}_${size}` : masp;
+
+                    new QRious({
+                        element: el,
+                        value: qrValue,
+                        size: 128,
+                        level: 'M'
+                    });
+                });
+
+                document.getElementById("pageInfo").textContent = `In tất cả ${tongTrang} trang`;
+                return true;
+            }
+
             window.checkLoaiTemAndPrint = async function () {
                 const loaiTem = document.getElementById('loaiTem').value;
-                if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
-                // render lại đúng mode trước khi in
-                if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage || 1);
-                else await renderPreview(currentPage || 1);
-                window.print();
+                if (!loaiTem) {
+                    alert("Vui lòng chọn loại tem cần in!");
+                    return;
+                }
+
+                const okGia = kiemTraGiaLeTruocKhiIn();
+                if (!okGia) return;
+
+                const ok = await renderAllPagesForPrint();
+                if (!ok) return;
+
+                setTimeout(() => {
+                    window.print();
+                }, 300);
             };
 
 
