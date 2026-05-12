@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>QLNV Dashboard</title>
 
@@ -11,116 +12,123 @@
 
 <body>
 
-  <!-- HEADER -->
+  <div id="login-container"></div>
 
-  <header class="topbar">
+  <div id="app-container">
 
-    <div class="left">
+    <!-- HEADER -->
 
-      <h1>QUẢN LÝ NHÂN VIÊN</h1>
+    <header class="topbar">
 
-      <select id="selectDiadiem">
-        <option value="cs1">Cơ sở 1</option>
-        <option value="cs2">Cơ sở 2</option>
-      </select>
+      <div class="left">
 
-    </div>
+        <h1>QUẢN LÝ NHÂN VIÊN</h1>
 
-    <div class="right">
+        <select id="selectDiadiem">
+          <option value="cs1">Cơ sở 1</option>
+          <option value="cs2">Cơ sở 2</option>
+        </select>
 
-      <span id="storeModeBadge">
-        NORMAL
-      </span>
+      </div>
 
-    </div>
+      <div class="right">
 
-  </header>
+        <span id="storeModeBadge">
+          NORMAL
+        </span>
 
-  <!-- MAIN -->
+      </div>
 
-  <main class="dashboard-grid">
+    </header>
 
-    <!-- TỔNG QUAN -->
+    <!-- MAIN -->
 
-    <section class="card">
+    <main class="dashboard-grid">
 
-      <h2>Tổng quan</h2>
+      <!-- TỔNG QUAN -->
 
-      <div class="overview-grid">
+      <section class="card">
 
-        <div class="overview-item">
-          <label>Nhân viên trong ca</label>
-          <span id="tongNhanVien">0</span>
+        <h2>Tổng quan</h2>
+
+        <div class="overview-grid">
+
+          <div class="overview-item">
+            <label>Nhân viên trong ca</label>
+            <span id="tongNhanVien">0</span>
+          </div>
+
+          <div class="overview-item">
+            <label>Đang phục vụ khách</label>
+            <span id="dangPhucVu">0</span>
+          </div>
+
+          <div class="overview-item">
+            <label>Task chưa xong</label>
+            <span id="taskChuaXong">0</span>
+          </div>
+
+          <div class="overview-item">
+            <label>Task hoàn thành</label>
+            <span id="taskHoanThanh">0</span>
+          </div>
+
         </div>
 
-        <div class="overview-item">
-          <label>Đang phục vụ khách</label>
-          <span id="dangPhucVu">0</span>
+      </section>
+
+      <!-- NHÂN VIÊN -->
+
+      <section class="card">
+
+        <div class="section-header">
+          <h2>Nhân viên trong ca</h2>
         </div>
 
-        <div class="overview-item">
-          <label>Task chưa xong</label>
-          <span id="taskChuaXong">0</span>
+        <div id="staffContainer">
+
         </div>
 
-        <div class="overview-item">
-          <label>Task hoàn thành</label>
-          <span id="taskHoanThanh">0</span>
+      </section>
+
+      <!-- TASK -->
+
+      <section class="card">
+
+        <div class="section-header">
+
+          <h2>Công việc hôm nay</h2>
+
+          <button id="btnThemTask">
+            + Thêm task
+          </button>
+
         </div>
 
-      </div>
+        <div id="taskContainer">
 
-    </section>
+        </div>
 
-    <!-- NHÂN VIÊN -->
+      </section>
 
-    <section class="card">
+      <!-- LOG -->
 
-      <div class="section-header">
-        <h2>Nhân viên trong ca</h2>
-      </div>
+      <section class="card">
 
-      <div id="staffContainer">
+        <h2>Nhật ký vận hành</h2>
 
-      </div>
+        <div id="logContainer">
 
-    </section>
+        </div>
 
-    <!-- TASK -->
+      </section>
 
-    <section class="card">
+    </main>
 
-      <div class="section-header">
-
-        <h2>Công việc hôm nay</h2>
-
-        <button id="btnThemTask">
-          + Thêm task
-        </button>
-
-      </div>
-
-      <div id="taskContainer">
-
-      </div>
-
-    </section>
-
-    <!-- LOG -->
-
-    <section class="card">
-
-      <h2>Nhật ký vận hành</h2>
-
-      <div id="logContainer">
-
-      </div>
-
-    </section>
-
-  </main>
+  </div>
 
   <script type="module" src="dashboard.js"></script>
 
 </body>
+
 </html>
