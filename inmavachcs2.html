@@ -460,8 +460,7 @@
                     <!-- [ADD] Nút tạo HĐ nhập tạm 
                 <button class="btn" id="btnCreateNhapTam">Tạo HĐ nhập tạm</button> -->
                     <button class="btnTaoNhapTam" id="btnCreateNhaptamcs2">Tạo HĐ nhập tạm</button>
-
-                    <button id="btnTaoNhapTam" class="btn-blue">📦 Tạo HĐ nhập tạm 111</button>
+                    <button class="btn" id="btnKiemTraDuLieu">Kiểm tra dữ liệu</button>
 
                 </div>
                 <div class="preview-area" id="previewArea"></div>
@@ -512,6 +511,90 @@
                 });
                 return map;
             }
+
+            async function kiemTraDuLieuTemIn() {
+                if (!hot) {
+                    alert('Bảng dữ liệu chưa sẵn sàng.');
+                    return;
+                }
+
+                const rawData = hot.getData();
+
+                const masps = rawData
+                    .map(row => String(row[1] || '').trim().toUpperCase())
+                    .filter(Boolean);
+
+                if (!masps.length) {
+                    alert('Bạn chưa nhập mã sản phẩm vào cột Mã hàng.');
+                    return;
+                }
+
+                const uniqMasps = Array.from(new Set(masps));
+
+                const { data, error } = await supabase
+                    .from('dmhanghoa')
+                    .select('masp, tensp, dvt, gianhap, giale')
+                    .in('masp', uniqMasps);
+
+                if (error) {
+                    console.error('Lỗi kiểm tra dữ liệu:', error);
+                    alert('Lỗi tải dữ liệu sản phẩm từ Supabase.');
+                    return;
+                }
+
+                const productMap = {};
+                (data || []).forEach(sp => {
+                    productMap[String(sp.masp || '').trim().toUpperCase()] = sp;
+                });
+
+                const notFound = [];
+
+                const newData = masps.map((masp, index) => {
+                    const sp = productMap[masp];
+
+                    if (!sp) {
+                        notFound.push(masp);
+
+                        return [
+                            index + 1,
+                            masp,
+                            'KHÔNG TÌM THẤY',
+                            '0',
+                            1,
+                            '',
+                            0,
+                            false,
+                            0
+                        ];
+                    }
+
+                    return [
+                        index + 1,
+                        sp.masp,
+                        sp.tensp || '',
+                        '0',
+                        1,
+                        sp.dvt || 'sp',
+                        Number(sp.gianhap) || 0,
+                        true,
+                        Number(sp.giale) || 0
+                    ];
+                });
+
+                hot.loadData(newData);
+                syncHandsontableToSelected();
+
+                if (notFound.length) {
+                    alert(
+                        'Đã kiểm tra xong, nhưng có mã không tìm thấy trong danh mục:\n\n' +
+                        notFound.join('\n')
+                    );
+                } else {
+                    alert('Đã kiểm tra và nạp đầy đủ dữ liệu sản phẩm.');
+                }
+            }
+
+            window.kiemTraDuLieuTemIn = kiemTraDuLieuTemIn;
 
             // -- CẤU HÌNH BẢNG 9 CỘT HANDSONTABLE --
             let hot;
@@ -1338,6 +1421,10 @@
                     return;
                 }
                 openNhapFromItems(items);
+            });
+
+            document.getElementById('btnKiemTraDuLieu').addEventListener('click', async () => {
+                await kiemTraDuLieuTemIn();
             });
 
             // Click nút "Tạo HĐ nhập"
