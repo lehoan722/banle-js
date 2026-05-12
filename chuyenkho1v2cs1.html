@@ -301,6 +301,34 @@
     .highlight-row {
       background: #fff8d8;
     }
+
+    .goiy-status {
+      grid-column: 1 / span 2;
+      font-size: 13px;
+      min-height: 18px;
+      color: #555;
+      padding-top: 2px;
+    }
+
+    .goiy-status.loading {
+      color: #0b63c8;
+      font-weight: bold;
+    }
+
+    .goiy-status.success {
+      color: #0a7a26;
+      font-weight: bold;
+    }
+
+    .goiy-status.warning {
+      color: #c77700;
+      font-weight: bold;
+    }
+
+    .goiy-status.error {
+      color: #c00000;
+      font-weight: bold;
+    }
   </style>
 
   <link rel="stylesheet" href="chuyenkho.css">
@@ -336,6 +364,7 @@
           <input id="input-nhomhang-search" placeholder="Gõ/chọn nhóm..." autocomplete="off">
           <input id="input-nhomhang-selected" placeholder="VD: AP,SM,QV" readonly>
           <div id="nhomhang-dropdown" class="nhomhang-dropdown"></div>
+          <div id="goiy-status" class="goiy-status"></div>
         </div>
       </div>
 
