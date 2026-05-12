@@ -890,6 +890,7 @@
 
             }
 
+            window.syncHandsontableToSelected = syncHandsontableToSelected;
 
             // Render lưới chọn
             function renderSelectedTable() {
@@ -2686,66 +2687,90 @@ Bạn chưa nhập màu sắc.
             }
 
             // ===== NHẬN DỮ LIỆU TỪ TRANG NHẬP MỚI =====
-            async function importFromHashToInTem() {
-                const hash = location.hash || "";
-                if (!hash.startsWith("#imp=")) return;
 
-                let imp = hash.slice(5).trim();
+            async function importFromHashToInTem() {
+                const rawHash = (location.hash || '').replace(/^#/, '');
+                if (!rawHash) return;
+
+                const params = new URLSearchParams(rawHash);
+                let imp = params.get('imp');
                 if (!imp) return;
-                imp = imp.replace(/-/g, "+").replace(/_/g, "/");
+
+                imp = imp.trim().replace(/ /g, '+').replace(/-/g, '+').replace(/_/g, '/');
+
                 const pad = imp.length % 4;
-                if (pad) imp += "=".repeat(4 - pad);
+                if (pad) imp += '='.repeat(4 - pad);
 
                 let payload = null;
+
                 try {
-                    payload = JSON.parse(decodeURIComponent(escape(atob(imp))));
+                    const json = decodeURIComponent(escape(atob(imp)));
+                    payload = JSON.parse(json);
                 } catch (e) {
-                    console.error("Decode imp error", e);
+                    console.error('[IN-TEM] Decode imp error:', e);
+                    alert('Không đọc được dữ liệu chuyển sang trang in mã vạch.');
                     return;
                 }
-                if (!payload || !Array.isArray(payload.items)) return;
 
-                console.log("[IN-TEM] Nhận dữ liệu từ trang nhập:", payload);
+                if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) {
+                    alert('Dữ liệu chuyển sang trang in mã vạch bị rỗng.');
+                    return;
+                }
 
-                // 🆕 Lấy map { MASP → {giale,gianhap,dvt,tensp} } từ CSDL
-                const masps = payload.items.map(it => (it.masp || '').toUpperCase());
-                const spMap = await fetchGiaLeByMasps(masps);
+                console.log('[IN-TEM] Payload nhận được:', payload);
 
-                // Chuyển items thành data đúng 9 cột và LẤY GIÁ LẺ từ spMap
+                const masps = payload.items
+                    .map(it => String(it.masp || '').trim().toUpperCase())
+                    .filter(Boolean);
+
+                const spMap = await window.fetchGiaLeByMasps(masps);
+
                 const data = payload.items.map((it, idx) => {
-                    const masp = (it.masp || '').toUpperCase();
+                    const masp = String(it.masp || '').trim().toUpperCase();
                     const sp = spMap[masp] || {};
+
                     return [
-                        idx + 1,                        // STT
-                        masp,                           // Mã hàng
-                        it.tensp || sp.tensp || "",     // Tên hàng (ưu tiên payload)
-                        it.size || "0",                 // Kích cỡ
-                        it.sl || 0,                     // Số lượng
-                        it.dvt || sp.dvt || "sp",       // ĐVT
-                        (it.gianhap ?? sp.gianhap) || 0,// Giá nhập (nếu muốn hiển thị)
-                        true,                           // In
-                        (it.giale ?? sp.giale) || 0     // 🔥 GIÁ LẺ – lấy từ DB nếu payload không có
+                        idx + 1,
+                        masp,
+                        it.tensp || sp.tensp || '',
+                        it.size || '0',
+                        Number(it.sl) || 1,
+                        it.dvt || sp.dvt || 'sp',
+                        Number(it.gianhap ?? sp.gianhap) || 0,
+                        true,
+                        Number(it.giale ?? sp.giale) || 0
                     ];
                 });
 
-                // Đợi hot sẵn sàng rồi nạp
                 const tryLoad = () => {
-                    const inst = window.hotInstance || window.hot;  // ưu tiên instance thật
+                    const inst = window.hotInstance || window.hot;
+
                     if (inst && typeof inst.loadData === 'function') {
                         inst.loadData(data);
-                        console.log("[IN-TEM] Đã nạp vào Handsontable:", inst.getData?.());
-                        // Xoá hash / query để tránh nạp lại
-                        history.replaceState(null, "", location.pathname + location.hash);
+
+                        if (typeof window.syncHandsontableToSelected === 'function') {
+                            window.syncHandsontableToSelected();
+                        }
+
+                        console.log('[IN-TEM] Đã nạp dữ liệu vào bảng:', data);
+
+                        history.replaceState(null, '', location.pathname);
                         return true;
                     }
+
                     return false;
                 };
 
                 if (!tryLoad()) {
-                    const tm = setInterval(() => { if (tryLoad()) clearInterval(tm); }, 300);
+                    const tm = setInterval(() => {
+                        if (tryLoad()) clearInterval(tm);
+                    }, 300);
                 }
             }
-            document.addEventListener("DOMContentLoaded", () => { importFromHashToInTem(); });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(importFromHashToInTem, 500);
+            });
 
         </script>
 
