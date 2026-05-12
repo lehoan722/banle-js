@@ -38,6 +38,8 @@ const STATE = {
   allChungLoaiSet: new Set() // tập tất cả mã chủng loại có trong DB
 };
 
+let NHOMHANG_OPTIONS = [];
+
 /* =========================================================
    2) HELPER DOM
 ========================================================= */
@@ -210,18 +212,17 @@ function getMaspsFromTextarea() {
 }
 
 function getSelectedNhomHangs() {
-  const el = $("select-nhomhang");
-  if (!el) return [];
+  const text = $("input-nhomhang-selected")?.value || "";
 
-  return Array.from(el.selectedOptions || [])
-    .map(opt => String(opt.value || "").trim().toUpperCase())
-    .filter(Boolean);
+  return uniq(
+    text
+      .split(",")
+      .map(v => String(v || "").trim().toUpperCase())
+      .filter(Boolean)
+  );
 }
 
 async function loadNhomHangOptions() {
-  const el = $("select-nhomhang");
-  if (!el) return;
-
   const { data, error } = await supabase
     .from("dmnhomhang")
     .select("manhom, tennhom, diadiem")
@@ -230,22 +231,107 @@ async function loadNhomHangOptions() {
 
   if (error) {
     console.error("loadNhomHangOptions error:", error);
-    el.innerHTML = `<option value="">Lỗi tải nhóm hàng</option>`;
     return;
   }
 
-  el.innerHTML = "";
+  NHOMHANG_OPTIONS = (data || [])
+    .map(r => ({
+      manhom: String(r.manhom || "").trim().toUpperCase(),
+      tennhom: String(r.tennhom || "").trim()
+    }))
+    .filter(r => r.manhom);
 
-  (data || []).forEach(r => {
-    const manhom = String(r.manhom || "").trim().toUpperCase();
-    const tennhom = String(r.tennhom || "").trim();
+  bindNhomHangPicker();
+}
 
-    if (!manhom) return;
+function renderNhomHangDropdown(keyword = "") {
+  const box = $("nhomhang-dropdown");
+  if (!box) return;
 
-    const opt = document.createElement("option");
-    opt.value = manhom;
-    opt.textContent = tennhom ? `${manhom} - ${tennhom}` : manhom;
-    el.appendChild(opt);
+  const kw = String(keyword || "").trim().toUpperCase();
+  const selected = new Set(getSelectedNhomHangs());
+
+  const list = NHOMHANG_OPTIONS
+    .filter(x => !selected.has(x.manhom))
+    .filter(x => !kw || x.manhom.includes(kw) || x.tennhom.toUpperCase().includes(kw))
+    .slice(0, 80);
+
+  box.innerHTML = list.length
+    ? list.map(x => `
+        <div class="nhomhang-option" data-manhom="${escapeAttr(x.manhom)}">
+          <b>${escapeHtml(x.manhom)}</b>${x.tennhom ? " - " + escapeHtml(x.tennhom) : ""}
+        </div>
+      `).join("")
+    : `<div class="nhomhang-option">Không có nhóm phù hợp</div>`;
+
+  box.style.display = "block";
+}
+
+function addNhomHangSelected(manhom) {
+  const el = $("input-nhomhang-selected");
+  const search = $("input-nhomhang-search");
+  if (!el) return;
+
+  const current = getSelectedNhomHangs();
+  const mh = String(manhom || "").trim().toUpperCase();
+
+  if (!mh || current.includes(mh)) return;
+
+  current.push(mh);
+  el.value = current.join(",");
+
+  if (search) search.value = "";
+}
+
+function bindNhomHangPicker() {
+  const input = $("input-nhomhang-search");
+  const box = $("nhomhang-dropdown");
+  const selected = $("input-nhomhang-selected");
+
+  if (!input || !box || input.dataset.bound === "1") return;
+  input.dataset.bound = "1";
+
+  input.addEventListener("focus", () => renderNhomHangDropdown(input.value));
+  input.addEventListener("input", () => renderNhomHangDropdown(input.value));
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const first = box.querySelector(".nhomhang-option[data-manhom]");
+      if (first) {
+        addNhomHangSelected(first.dataset.manhom);
+        box.style.display = "none";
+      }
+    }
+
+    if (e.key === "Escape") {
+      box.style.display = "none";
+    }
+
+    if (e.key === "Backspace" && !input.value && selected?.value) {
+      const arr = getSelectedNhomHangs();
+      arr.pop();
+      selected.value = arr.join(",");
+    }
+  });
+
+  box.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    const row = e.target.closest(".nhomhang-option[data-manhom]");
+    if (!row) return;
+
+    addNhomHangSelected(row.dataset.manhom);
+    box.style.display = "none";
+  });
+
+  selected?.addEventListener("dblclick", () => {
+    selected.value = "";
+  });
+
+  document.addEventListener("mousedown", (e) => {
+    if (!input.contains(e.target) && !box.contains(e.target)) {
+      box.style.display = "none";
+    }
   });
 }
 
