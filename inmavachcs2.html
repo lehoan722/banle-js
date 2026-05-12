@@ -91,14 +91,56 @@
         }
 
         /* In preview tem */
+
         @media print {
-            body * {
-                visibility: hidden;
+            @page {
+                size: A4 portrait;
+                margin: 0;
             }
 
-            .print-preview,
-            .print-preview * {
-                visibility: visible;
+            html,
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+            }
+
+            body * {
+                visibility: hidden !important;
+            }
+
+            #previewArea,
+            #previewArea * {
+                visibility: visible !important;
+            }
+
+            #previewArea {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 210mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                background: white !important;
+            }
+
+            .print-preview-page {
+                position: relative !important;
+                display: block !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                overflow: visible !important;
+                background: white !important;
+            }
+
+            .print-preview-page:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
             }
 
             .print-preview {
@@ -114,35 +156,19 @@
                 transform-origin: top left;
             }
 
-            body,
-            html {
-                margin: 0 !important;
-                padding: 0 !important;
+            .print-preview * {
+                box-sizing: border-box;
             }
 
-            @media print {
-                …
-
-                /* Giữ lại padding/margin của .print-preview (để canh lề mm không bị xóa) */
-                .print-preview * {
-                    box-sizing: border-box;
-                }
-
-                /* Chỉ reset margin/padding bên trong từng tem nếu muốn gọn */
-                .print-preview .tem,
-                .print-preview .tem * {
-                    margin: 0;
-                    padding: 0;
-                }
-
-                /* Bắt buộc giữ lùi xuống 2.5mm cho cột QR khi in */
-                .print-preview .qr-col {
-                    margin-top: 2.8mm !important;
-                }
+            .print-preview .tem,
+            .print-preview .tem * {
+                margin: 0;
+                padding: 0;
             }
 
-
-
+            .print-preview .qr-col {
+                margin-top: 2.8mm !important;
+            }
         }
 
         .btn {
@@ -447,6 +473,7 @@
                             <option value="giaydep">Tem giày dép</option>
                             <option value="quanao">Tem quần áo</option>
                             <option value="tem_giamgia">Tem giảm giá</option>
+                            <option value="tem_mavach">Tem mã vạch</option>
                             <option value="insize_tomy114">In size </option>
                         </select>
                     </label>
@@ -461,7 +488,6 @@
                 <button class="btn" id="btnCreateNhapTam">Tạo HĐ nhập tạm</button> -->
                     <button class="btnTaoNhapTam" id="btnCreateNhaptamcs2">Tạo HĐ nhập tạm</button>
                     <button class="btn" id="btnKiemTraDuLieu">Kiểm tra dữ liệu</button>
-
                 </div>
                 <div class="preview-area" id="previewArea"></div>
                 <div style="margin: 8px 0;">
@@ -474,6 +500,8 @@
 
         <!-- QR Code lib -->
         <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
+        <!-- ma vach Code  -->
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
         <!-- SheetJS for export Excel -->
         <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
@@ -980,13 +1008,41 @@
                     );
                 }
 
-                totalPages = Math.ceil(temsAll.length / 40) || 1;
-                currentPage = page > totalPages ? totalPages : page;
+                // ===== TÍNH PHÂN TRANG CHUẨN =====
+                const sucChuaTrang = 40;
+
                 const fromRow = parseInt(fromRowInput.value) || 1;
                 const fromCol = parseInt(fromColInput.value) || 1;
-                let blank = (currentPage === 1) ? (fromRow - 1) * 5 + (fromCol - 1) : 0;
-                let maxTems = 40 - blank;
-                let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
+
+                // Số ô trống chỉ áp dụng cho trang đầu
+                const blankTrangDau = (fromRow - 1) * 5 + (fromCol - 1);
+                const soTemTrangDau = sucChuaTrang - blankTrangDau;
+
+                if (temsAll.length <= soTemTrangDau) {
+                    totalPages = 1;
+                } else {
+                    const conLai = temsAll.length - soTemTrangDau;
+                    totalPages = 1 + Math.ceil(conLai / sucChuaTrang);
+                }
+
+                currentPage = page > totalPages ? totalPages : page;
+
+                // Khi render trang 1 thì có ô trống, từ trang 2 trở đi không có ô trống
+                let blank = (currentPage === 1) ? blankTrangDau : 0;
+                let maxTems = sucChuaTrang - blank;
+
+                let startIndex = 0;
+                let endIndex = 0;
+
+                if (currentPage === 1) {
+                    startIndex = 0;
+                    endIndex = soTemTrangDau;
+                } else {
+                    startIndex = soTemTrangDau + ((currentPage - 2) * sucChuaTrang);
+                    endIndex = startIndex + sucChuaTrang;
+                }
+
+                let pageTems = temsAll.slice(startIndex, endIndex);
 
                 // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
                 let html = `<div class="print-preview" style="
@@ -1007,6 +1063,63 @@
                     const t = pageTems[i] || null;
                     if (!t) html += `<div class="tem tem-blank"></div>`;
                     else html += `
+                    
+
+                    ${loaiTem === "tem_mavach" ? `
+<div class="tem"
+     data-masp="${t.masp}"
+     data-size="${(t.size ?? '').toString().trim()}"
+     style="
+        width:${TEM_WIDTH_MM}mm;
+        height:${TEM_HEIGHT_MM}mm;
+        box-sizing:border-box;
+        overflow:hidden;
+        border:0;
+        margin:0;
+        padding:0.8mm 1mm 0.5mm 1mm;
+        text-align:center;
+     ">
+
+    <div style="
+        font-family:serif;
+        font-size:11pt;
+        line-height:1;
+        white-space:nowrap;
+        overflow:hidden;
+        margin-bottom:0.4mm;
+    ">
+        Shop Hoàn Tuyết
+    </div>
+
+    <svg class="barcode"
+         data-code="${((t.size ?? '').toString().trim() && (t.size ?? '').toString().trim() !== '0') ? `${t.masp}_${(t.size ?? '').toString().trim()}` : t.masp}"
+         
+         style="width:26mm;height:2mm; display:block; margin-left:0;"></svg>
+         
+
+    <div style="
+        font-family:serif;
+        font-size:13pt;
+        line-height:1;
+        white-space:nowrap;
+        overflow:hidden;
+        margin-top:0.2mm;
+    ">
+        ${((t.size ?? '').toString().trim() && (t.size ?? '').toString().trim() !== '0') ? `${t.masp}_${(t.size ?? '').toString().trim()}` : t.masp}
+    </div>
+
+    <div style="
+        font-family:serif;
+        font-size:14pt;
+        line-height:1;
+        white-space:nowrap;
+        overflow:hidden;
+        margin-top:0.5mm;
+    ">
+        Giá: ${formatGia(t.giale)}
+    </div>
+</div>
+` : `
 
 
   <!--bat dau khu vuc thiet ke hien thi tem -->
@@ -1122,10 +1235,27 @@
 <!--HET khu vuc thiet ke hien thi tem -->
 
 
+`}
 `;
                 }
                 html += `</div></div>`;
                 previewArea.innerHTML = html;
+
+                // Sinh mã vạch cho loại tem mã vạch
+                if (loaiTem === "tem_mavach") {
+                    document.querySelectorAll('.tem .barcode').forEach((el) => {
+                        const code = el.getAttribute('data-code') || '';
+                        if (!code) return;
+
+                        JsBarcode(el, code, {
+                            format: "CODE128",
+                            displayValue: false,
+                            width: 0.7,
+                            height: 14,
+                            margin: 0
+                        });
+                    });
+                }
 
                 // Sinh QR code cho từng tem
                 document.querySelectorAll('.tem .qr').forEach((el) => {
@@ -1358,13 +1488,91 @@
                 else await renderPreview(1);
             };
 
+            async function renderAllPagesForPrint() {
+                syncHandsontableToSelected();
+
+                const loaiTem = document.getElementById('loaiTem')?.value || "";
+                if (!loaiTem) {
+                    alert("Vui lòng chọn loại tem cần in!");
+                    return false;
+                }
+
+                // Render trang 1 trước để tính totalPages, temsAll
+                if (loaiTem === 'insize_tomy114') {
+                    renderPreviewInSizeTomy114(1);
+                } else {
+                    await renderPreview(1);
+                }
+
+                const tongTrang = totalPages || 1;
+                const allHtml = [];
+
+                for (let p = 1; p <= tongTrang; p++) {
+                    if (loaiTem === 'insize_tomy114') {
+                        renderPreviewInSizeTomy114(p);
+                    } else {
+                        await renderPreview(p);
+                    }
+
+                    const htmlPage = previewArea.innerHTML;
+                    allHtml.push(`<div class="print-preview-page">${htmlPage}</div>`);
+                }
+
+                previewArea.innerHTML = allHtml.join('');
+
+                // Sinh lại mã vạch cho toàn bộ trang nếu là tem mã vạch
+                if (loaiTem === "tem_mavach") {
+                    document.querySelectorAll('.tem .barcode').forEach((el) => {
+                        const code = el.getAttribute('data-code') || '';
+                        if (!code) return;
+
+                        JsBarcode(el, code, {
+                            format: "CODE128",
+                            displayValue: false,
+                            width: 0.7,
+                            height: 14,
+                            margin: 0
+                        });
+                    });
+                }
+
+                // Sinh lại QR cho toàn bộ trang
+                document.querySelectorAll('.tem .qr').forEach((el) => {
+                    const parent = el.closest('.tem');
+                    if (!parent || parent.classList.contains('tem-blank')) return;
+
+                    const masp = (parent.getAttribute('data-masp') || '').trim().toUpperCase();
+                    const size = (parent.getAttribute('data-size') || '').trim().toUpperCase();
+                    const qrValue = (size && size !== '0') ? `${masp}_${size}` : masp;
+
+                    new QRious({
+                        element: el,
+                        value: qrValue,
+                        size: 128,
+                        level: 'M'
+                    });
+                });
+
+                document.getElementById("pageInfo").textContent = `In tất cả ${tongTrang} trang`;
+                return true;
+            }
+
             window.checkLoaiTemAndPrint = async function () {
                 const loaiTem = document.getElementById('loaiTem').value;
-                if (!loaiTem) { alert("Vui lòng chọn loại tem cần in!"); return; }
-                // render lại đúng mode trước khi in
-                if (loaiTem === 'insize_tomy114') renderPreviewInSizeTomy114(currentPage || 1);
-                else await renderPreview(currentPage || 1);
-                window.print();
+                if (!loaiTem) {
+                    alert("Vui lòng chọn loại tem cần in!");
+                    return;
+                }
+
+                const okGia = kiemTraGiaLeTruocKhiIn();
+                if (!okGia) return;
+
+                const ok = await renderAllPagesForPrint();
+                if (!ok) return;
+
+                setTimeout(() => {
+                    window.print();
+                }, 300);
             };
 
 
