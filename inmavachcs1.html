@@ -991,13 +991,34 @@
                     );
                 }
 
-                totalPages = Math.ceil(temsAll.length / 40) || 1;
+                // ===== TÍNH PHÂN TRANG CHUẨN =====
+                const sucChuaTrang = 40;
+
+                const soTemTrangDau = sucChuaTrang - blank;
+
+                if (temsAll.length <= soTemTrangDau) {
+                    totalPages = 1;
+                } else {
+                    const conLai = temsAll.length - soTemTrangDau;
+                    totalPages = 1 + Math.ceil(conLai / sucChuaTrang);
+                }
                 currentPage = page > totalPages ? totalPages : page;
                 const fromRow = parseInt(fromRowInput.value) || 1;
                 const fromCol = parseInt(fromColInput.value) || 1;
                 let blank = (currentPage === 1) ? (fromRow - 1) * 5 + (fromCol - 1) : 0;
                 let maxTems = 40 - blank;
-                let pageTems = temsAll.slice((currentPage - 1) * 40 - (currentPage === 1 ? 0 : blank), (currentPage) * 40 - (currentPage === 1 ? 0 : blank));
+                let startIndex = 0;
+                let endIndex = 0;
+
+                if (currentPage === 1) {
+                    startIndex = 0;
+                    endIndex = soTemTrangDau;
+                } else {
+                    startIndex = soTemTrangDau + ((currentPage - 2) * sucChuaTrang);
+                    endIndex = startIndex + sucChuaTrang;
+                }
+
+                let pageTems = temsAll.slice(startIndex, endIndex);
 
                 // ---- ÁP DỤNG MARGIN, GAP, KÍCH THƯỚC ----
                 let html = `<div class="print-preview" style="
