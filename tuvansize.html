@@ -1,398 +1,637 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Tư vấn size</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      color: #222;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Tư vấn size</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+        }
 
-    .header {
-      background: #0088cc;
-      color: white;
-      padding: 12px;
-      font-size: 22px;
-      font-weight: bold;
-      text-align: center;
-    }
+        .header {
+            background: #0088cc;
+            color: white;
+            padding: 12px;
+            font-size: 22px;
+            font-weight: bold;
+            text-align: center;
+        }
 
-    .container {
-      padding: 10px;
-    }
+        .container {
+            padding: 10px;
+        }
 
-    .card {
-      background: white;
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 10px;
-      box-shadow: 0 1px 5px rgba(0,0,0,0.15);
-    }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
+        }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
 
-    label {
-      font-size: 14px;
-      font-weight: bold;
-      display: block;
-      margin-bottom: 4px;
-    }
+        label {
+            font-size: 14px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 4px;
+        }
 
-    input, select {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 9px;
-      font-size: 16px;
-      border: 1px solid #bbb;
-      border-radius: 7px;
-    }
+        input,
+        select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 9px;
+            font-size: 16px;
+            border: 1px solid #bbb;
+            border-radius: 7px;
+        }
 
-    button {
-      width: 100%;
-      padding: 12px;
-      font-size: 18px;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      background: #0088cc;
-      color: white;
-      margin-top: 10px;
-    }
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            background: #0088cc;
+            color: white;
+            margin-top: 10px;
+        }
 
-    .result {
-      background: #fff3cd;
-      border: 1px solid #e6c15c;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 17px;
-      line-height: 1.5;
-    }
+        .result {
+            background: #fff3cd;
+            border: 1px solid #e6c15c;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 17px;
+            line-height: 1.5;
+        }
 
-    .result b {
-      color: #c00000;
-      font-size: 20px;
-    }
+        .result b {
+            color: #c00000;
+            font-size: 20px;
+        }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-      background: white;
-    }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            background: white;
+        }
 
-    th, td {
-      border: 1px solid #ccc;
-      padding: 7px;
-      text-align: center;
-    }
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 7px;
+            text-align: center;
+        }
 
-    th {
-      background: #e8f3ff;
-    }
+        th {
+            background: #e8f3ff;
+        }
 
-    .form-box {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-    }
+        .form-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
 
-    .fit {
-      background: #f7f7f7;
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      text-align: center;
-      font-size: 13px;
-    }
+        .fit {
+            background: #f7f7f7;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+            font-size: 13px;
+        }
 
-    .fit-img {
-      width: 100%;
-      height: 110px;
-      background: linear-gradient(#ddd, #f8f8f8);
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #777;
-      margin-bottom: 6px;
-    }
+        .fit-img {
+            width: 100%;
+            height: 110px;
+            background: linear-gradient(#ddd, #f8f8f8);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #777;
+            margin-bottom: 6px;
+        }
 
-    .note {
-      font-size: 14px;
-      color: #555;
-      line-height: 1.5;
-    }
-  </style>
+        .body-slider {
+            display: grid;
+            grid-template-columns: 0.8fr 1.25fr 0.8fr;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .body-card {
+            background: #f7f7f7;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 7px;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .body-card.active {
+            border: 2px solid #0088cc;
+            background: #eef8ff;
+        }
+
+        .body-card.small {
+            opacity: 0.75;
+        }
+
+        .body-title {
+            font-weight: bold;
+            color: #0066aa;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+
+        .body-card.active .body-title {
+            font-size: 17px;
+            color: #c00000;
+        }
+
+        .body-card img {
+            width: 100%;
+            height: 230px;
+            object-fit: contain;
+            background: #fff;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .body-card.active img {
+            height: 300px;
+        }
+
+        .body-desc {
+            font-size: 13px;
+            margin-top: 6px;
+            line-height: 1.35;
+        }
+
+        @media (max-width: 600px) {
+            .body-slider {
+                grid-template-columns: 0.7fr 1.4fr 0.7fr;
+                gap: 5px;
+            }
+
+            .body-card {
+                padding: 5px;
+            }
+
+            .body-card img {
+                height: 155px;
+            }
+
+            .body-card.active img {
+                height: 240px;
+            }
+
+            .body-desc {
+                font-size: 11px;
+            }
+
+            .body-title {
+                font-size: 12px;
+            }
+
+            .body-card.active .body-title {
+                font-size: 15px;
+            }
+        }
+
+        .note {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.5;
+        }
+    </style>
 </head>
 
 <body>
-  <div class="header">📏 Tư vấn size nhanh</div>
+    <div class="header">📏 Tư vấn size nhanh</div>
 
-  <div class="container">
+    <div class="container">
 
-    <div class="card">
-      <div class="grid">
-        <div>
-          <label>Loại sản phẩm</label>
-          <select id="loai">
-            <option value="somi_slim">Sơ mi Slim</option>
-            <option value="somi_regular">Sơ mi Regular</option>
-            <option value="somi_comfort">Sơ mi Comfort</option>
-            <option value="quan_slim">Quần Slim/Côn</option>
-            <option value="quan_regular">Quần Regular</option>
-          </select>
+        <div class="card">
+            <div class="grid">
+                <div>
+                    <label>Loại sản phẩm</label>
+                    <select id="loai">
+                        <option value="">-- Chọn loại SP --</option>
+                        <option value="somi_slim">Sơ mi Slim</option>
+                        <option value="somi_regular">Sơ mi Regular</option>
+                        <option value="somi_comfort">Sơ mi Comfort</option>
+                        <option value="quan_slim">Quần Slim/Côn</option>
+                        <option value="quan_regular">Quần Regular</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Thích mặc</label>
+                    <select id="camgiac">
+                        <option value="">-- Chọn cảm giác mặc --</option>
+                        <option value="vua">Vừa chuẩn</option>
+                        <option value="om">Ôm body</option>
+                        <option value="rong">Rộng thoải mái</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Chiều cao cm</label>
+                    <input id="cao" type="number" placeholder="VD 170">
+                </div>
+
+                <div>
+                    <label>Cân nặng kg</label>
+                    <input id="kg" type="number" placeholder="VD 68">
+                </div>
+
+                <div>
+                    <label>Vòng ngực cm</label>
+                    <input id="nguc" type="number" placeholder="Áo">
+                </div>
+
+                <div>
+                    <label>Vòng bụng cm</label>
+                    <input id="bung" type="number" placeholder="Quần/áo">
+                </div>
+
+                <div>
+                    <label>Dáng người</label>
+                    <select id="dangnguoi">
+                        <option value="">-- Chọn dáng người --</option>
+                        <option value="can_doi">Cân đối</option>
+                        <option value="gay">Gầy</option>
+                        <option value="gym">Gym vai/ngực to</option>
+                        <option value="bung_nhe">Bụng nhẹ</option>
+                        <option value="bung_to">Bụng to</option>
+                        <option value="dui_to">Đùi to</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>Độ tuổi</label>
+                    <select id="dotuoi">
+                        <option value="">-- Chọn độ tuổi --</option>
+                        <option value="tre">Dưới 30</option>
+                        <option value="congso">30–40</option>
+                        <option value="trungnien">Trên 40</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="goiYSize()">Gợi ý size</button>
         </div>
 
-        <div>
-          <label>Thích mặc</label>
-          <select id="camgiac">
-            <option value="vua">Vừa chuẩn</option>
-            <option value="om">Ôm body</option>
-            <option value="rong">Rộng thoải mái</option>
-          </select>
+        <div class="card">
+            <div id="ketqua" class="result">
+                Nhập thông tin khách rồi bấm <b>Gợi ý size</b>.
+            </div>
         </div>
 
-        <div>
-          <label>Chiều cao cm</label>
-          <input id="cao" type="number" placeholder="VD 170">
+        <div class="card">
+            <h3>Bảng ngực/bụng nhanh</h3>
+            <table>
+                <tr>
+                    <th>Áo - Ngực thật</th>
+                    <th>Size</th>
+                    <th>Quần - Bụng thật</th>
+                    <th>Size</th>
+                </tr>
+                <tr>
+                    <td>88–92</td>
+                    <td>S</td>
+                    <td>76–79</td>
+                    <td>29</td>
+                </tr>
+                <tr>
+                    <td>93–97</td>
+                    <td>M</td>
+                    <td>80–83</td>
+                    <td>30</td>
+                </tr>
+                <tr>
+                    <td>98–102</td>
+                    <td>L</td>
+                    <td>84–86</td>
+                    <td>31</td>
+                </tr>
+                <tr>
+                    <td>103–108</td>
+                    <td>XL</td>
+                    <td>87–89</td>
+                    <td>32</td>
+                </tr>
+                <tr>
+                    <td>109–114</td>
+                    <td>XXL</td>
+                    <td>90–92</td>
+                    <td>33</td>
+                </tr>
+                <tr>
+                    <td>115–120</td>
+                    <td>3XL</td>
+                    <td>93–95</td>
+                    <td>34</td>
+                </tr>
+            </table>
         </div>
 
-        <div>
-          <label>Cân nặng kg</label>
-          <input id="kg" type="number" placeholder="VD 68">
+        <div class="card">
+            <h3>Minh họa dáng người</h3>
+
+            <div class="body-slider">
+                <div class="body-card small">
+                    <div class="body-title" id="prevTen">Trước</div>
+                    <img id="prevImg" src="" alt="">
+                    <div class="body-desc" id="prevMoTa"></div>
+                </div>
+
+                <div class="body-card active">
+                    <div class="body-title" id="mainTen">Chọn dáng người</div>
+                    <img id="mainImg" src="" alt="">
+                    <div class="body-desc" id="mainMoTa">Chọn dáng người để xem ảnh minh họa.</div>
+                </div>
+
+                <div class="body-card small">
+                    <div class="body-title" id="nextTen">Sau</div>
+                    <img id="nextImg" src="" alt="">
+                    <div class="body-desc" id="nextMoTa"></div>
+                </div>
+            </div>
         </div>
 
-        <div>
-          <label>Vòng ngực cm</label>
-          <input id="nguc" type="number" placeholder="Áo">
+        <div class="card note">
+            <b>Quy tắc nhớ nhanh:</b><br>
+            Áo sơ mi: ưu tiên ngực, vai, bụng.<br>
+            Quần: ưu tiên vòng bụng, sau đó đùi và chiều cao.<br>
+            Khách bụng to hoặc gym: thường tăng 1 size.<br>
+            Khách công sở trên 30 tuổi: ưu tiên Regular hơn Slim.
         </div>
 
-        <div>
-          <label>Vòng bụng cm</label>
-          <input id="bung" type="number" placeholder="Quần/áo">
-        </div>
-
-        <div>
-          <label>Dáng người</label>
-          <select id="dangnguoi">
-            <option value="can_doi">Cân đối</option>
-            <option value="gay">Gầy</option>
-            <option value="gym">Gym vai/ngực to</option>
-            <option value="bung_nhe">Bụng nhẹ</option>
-            <option value="bung_to">Bụng to</option>
-            <option value="dui_to">Đùi to</option>
-          </select>
-        </div>
-
-        <div>
-          <label>Độ tuổi</label>
-          <select id="dotuoi">
-            <option value="tre">Dưới 30</option>
-            <option value="congso">30–40</option>
-            <option value="trungnien">Trên 40</option>
-          </select>
-        </div>
-      </div>
-
-      <button onclick="goiYSize()">Gợi ý size</button>
     </div>
 
-    <div class="card">
-      <div id="ketqua" class="result">
-        Nhập thông tin khách rồi bấm <b>Gợi ý size</b>.
-      </div>
-    </div>
+    <script>
 
-    <div class="card">
-      <h3>Bảng ngực/bụng nhanh</h3>
-      <table>
-        <tr>
-          <th>Áo - Ngực thật</th>
-          <th>Size</th>
-          <th>Quần - Bụng thật</th>
-          <th>Size</th>
-        </tr>
-        <tr><td>88–92</td><td>S</td><td>76–79</td><td>29</td></tr>
-        <tr><td>93–97</td><td>M</td><td>80–83</td><td>30</td></tr>
-        <tr><td>98–102</td><td>L</td><td>84–86</td><td>31</td></tr>
-        <tr><td>103–108</td><td>XL</td><td>87–89</td><td>32</td></tr>
-        <tr><td>109–114</td><td>XXL</td><td>90–92</td><td>33</td></tr>
-        <tr><td>115–120</td><td>3XL</td><td>93–95</td><td>34</td></tr>
-      </table>
-    </div>
+        const BODY_IMAGE_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 
-    <div class="card">
-      <h3>Form mặc thực tế</h3>
-      <div class="form-box">
-        <div class="fit">
-          <div class="fit-img">Ảnh Slim</div>
-          <b>Slim</b><br>
-          Trẻ, ôm, gọn người.
-        </div>
-        <div class="fit">
-          <div class="fit-img">Ảnh Regular</div>
-          <b>Regular</b><br>
-          Công sở, dễ mặc.
-        </div>
-        <div class="fit">
-          <div class="fit-img">Ảnh Comfort</div>
-          <b>Comfort</b><br>
-          Rộng, hợp bụng to.
-        </div>
-      </div>
-    </div>
+        const bodyTypes = [
+            {
+                key: "can_doi",
+                ten: "Cân đối",
+                img: "can_doi.jpg",
+                mota: "Vai, ngực, eo tương đối cân đối. Dễ chọn size, mặc được nhiều form."
+            },
+            {
+                key: "gay",
+                ten: "Gầy",
+                img: "gay.jpg",
+                mota: "Người mảnh, vai nhỏ. Nên chọn slim hoặc vừa người, tránh quá rộng."
+            },
+            {
+                key: "gym",
+                ten: "Vai/ngực to",
+                img: "vai_nguc_to.jpg",
+                mota: "Vai và ngực lớn. Áo ưu tiên vai/ngực, quần chọn theo bụng."
+            },
+            {
+                key: "bung_nhe",
+                ten: "Bụng nhẹ",
+                img: "bung_nhe.jpg",
+                mota: "Bụng dưới hơi nhô. Nên ưu tiên form regular, có thể tăng 1 size áo."
+            },
+            {
+                key: "bung_to",
+                ten: "Bụng to",
+                img: "bung_to.jpg",
+                mota: "Vòng bụng lớn. Áo/quần ưu tiên bụng, nên chọn regular hoặc comfort."
+            },
+            {
+                key: "dui_to",
+                ten: "Đùi to",
+                img: "dui_to.jpg",
+                mota: "Phần đùi lớn. Quần nên tăng 1 size hoặc chọn regular/ống đứng."
+            }
+        ];
 
-    <div class="card note">
-      <b>Quy tắc nhớ nhanh:</b><br>
-      Áo sơ mi: ưu tiên ngực, vai, bụng.<br>
-      Quần: ưu tiên vòng bụng, sau đó đùi và chiều cao.<br>
-      Khách bụng to hoặc gym: thường tăng 1 size.<br>
-      Khách công sở trên 30 tuổi: ưu tiên Regular hơn Slim.
-    </div>
+        function setBodyCard(prefix, item) {
+            const ten = document.getElementById(prefix + "Ten");
+            const img = document.getElementById(prefix + "Img");
+            const mota = document.getElementById(prefix + "MoTa");
 
-  </div>
+            if (!ten || !img || !mota) return;
 
-  <script>
-    function laySizeTheoKg(loai, kg) {
-      if (!kg) return "";
+            if (!item) {
+                ten.textContent = "";
+                img.src = "";
+                img.style.display = "none";
+                mota.textContent = "";
+                return;
+            }
 
-      const bang = {
-        somi_slim: [
-          [50, 58, "S"], [58, 65, "M"], [65, 72, "L"],
-          [72, 80, "XL"], [80, 88, "XXL"], [88, 98, "3XL"]
-        ],
-        somi_regular: [
-          [55, 63, "S"], [63, 70, "M"], [70, 77, "L"],
-          [77, 85, "XL"], [85, 95, "XXL"], [95, 105, "3XL"]
-        ],
-        somi_comfort: [
-          [60, 70, "M"], [70, 80, "L"], [80, 90, "XL"],
-          [90, 100, "XXL"], [100, 110, "3XL"]
-        ],
-        quan_slim: [
-          [50, 57, "29"], [57, 63, "30"], [63, 68, "31"],
-          [68, 74, "32"], [74, 80, "33"], [80, 86, "34"],
-          [86, 92, "35"], [92, 100, "36"]
-        ],
-        quan_regular: [
-          [55, 63, "29"], [63, 70, "30"], [70, 77, "31"],
-          [77, 84, "32"], [84, 90, "33"], [90, 98, "34"],
-          [98, 105, "36"]
-        ]
-      };
-
-      const list = bang[loai] || [];
-      const item = list.find(x => kg >= x[0] && kg < x[1]);
-      return item ? item[2] : "";
-    }
-
-    function laySizeTheoNguc(nguc) {
-      if (!nguc) return "";
-      if (nguc <= 92) return "S";
-      if (nguc <= 97) return "M";
-      if (nguc <= 102) return "L";
-      if (nguc <= 108) return "XL";
-      if (nguc <= 114) return "XXL";
-      return "3XL";
-    }
-
-    function laySizeTheoBungQuan(bung) {
-      if (!bung) return "";
-      if (bung <= 79) return "29";
-      if (bung <= 83) return "30";
-      if (bung <= 86) return "31";
-      if (bung <= 89) return "32";
-      if (bung <= 92) return "33";
-      if (bung <= 95) return "34";
-      if (bung <= 98) return "35";
-      return "36";
-    }
-
-    function tangSizeAo(size) {
-      const arr = ["S", "M", "L", "XL", "XXL", "3XL"];
-      const i = arr.indexOf(size);
-      return i >= 0 && i < arr.length - 1 ? arr[i + 1] : size;
-    }
-
-    function tangSizeQuan(size) {
-      const n = Number(size);
-      return n ? String(n + 1) : size;
-    }
-
-    function goiYSize() {
-      const loai = document.getElementById("loai").value;
-      const kg = Number(document.getElementById("kg").value || 0);
-      const cao = Number(document.getElementById("cao").value || 0);
-      const nguc = Number(document.getElementById("nguc").value || 0);
-      const bung = Number(document.getElementById("bung").value || 0);
-      const dangnguoi = document.getElementById("dangnguoi").value;
-      const camgiac = document.getElementById("camgiac").value;
-      const dotuoi = document.getElementById("dotuoi").value;
-
-      let sizeKg = laySizeTheoKg(loai, kg);
-      let sizeDo = "";
-      let finalSize = sizeKg;
-      let note = [];
-
-      const laAo = loai.startsWith("somi");
-      const laQuan = loai.startsWith("quan");
-
-      if (laAo) {
-        sizeDo = laySizeTheoNguc(nguc);
-        if (sizeDo) finalSize = sizeDo;
-
-        if (bung && nguc && bung >= nguc - 4) {
-          finalSize = tangSizeAo(finalSize);
-          note.push("Bụng gần bằng ngực → nên tăng 1 size để không bung nút.");
+            ten.textContent = item.ten;
+            img.src = BODY_IMAGE_BASE + item.img;
+            img.style.display = "block";
+            mota.textContent = item.mota;
         }
 
-        if (dangnguoi === "gym") {
-          finalSize = tangSizeAo(finalSize);
-          note.push("Khách gym vai/ngực to → ưu tiên vai và ngực.");
+        function capNhatAnhDangNguoi() {
+            const key = document.getElementById("dangnguoi")?.value || "";
+            const index = bodyTypes.findIndex(x => x.key === key);
+
+            if (index < 0) {
+                setBodyCard("prev", null);
+                setBodyCard("main", {
+                    ten: "Chọn dáng người",
+                    img: "",
+                    mota: "Chọn dáng người để xem ảnh minh họa."
+                });
+                setBodyCard("next", null);
+
+                const mainImg = document.getElementById("mainImg");
+                if (mainImg) mainImg.style.display = "none";
+                return;
+            }
+
+            const prev = bodyTypes[(index - 1 + bodyTypes.length) % bodyTypes.length];
+            const main = bodyTypes[index];
+            const next = bodyTypes[(index + 1) % bodyTypes.length];
+
+            setBodyCard("prev", prev);
+            setBodyCard("main", main);
+            setBodyCard("next", next);
         }
 
-        if (dotuoi !== "tre" && loai === "somi_slim") {
-          note.push("Khách công sở/trung niên nên cân nhắc Regular thay vì Slim.");
+        document.addEventListener("DOMContentLoaded", () => {
+            const dangnguoi = document.getElementById("dangnguoi");
+            if (dangnguoi) {
+                dangnguoi.addEventListener("change", capNhatAnhDangNguoi);
+            }
+
+            capNhatAnhDangNguoi();
+        });
+
+        function laySizeTheoKg(loai, kg) {
+            if (!kg) return "";
+
+            const bang = {
+                somi_slim: [
+                    [50, 58, "S"], [58, 65, "M"], [65, 72, "L"],
+                    [72, 80, "XL"], [80, 88, "XXL"], [88, 98, "3XL"]
+                ],
+                somi_regular: [
+                    [55, 63, "S"], [63, 70, "M"], [70, 77, "L"],
+                    [77, 85, "XL"], [85, 95, "XXL"], [95, 105, "3XL"]
+                ],
+                somi_comfort: [
+                    [60, 70, "M"], [70, 80, "L"], [80, 90, "XL"],
+                    [90, 100, "XXL"], [100, 110, "3XL"]
+                ],
+                quan_slim: [
+                    [50, 57, "29"], [57, 63, "30"], [63, 68, "31"],
+                    [68, 74, "32"], [74, 80, "33"], [80, 86, "34"],
+                    [86, 92, "35"], [92, 100, "36"]
+                ],
+                quan_regular: [
+                    [55, 63, "29"], [63, 70, "30"], [70, 77, "31"],
+                    [77, 84, "32"], [84, 90, "33"], [90, 98, "34"],
+                    [98, 105, "36"]
+                ]
+            };
+
+            const list = bang[loai] || [];
+            const item = list.find(x => kg >= x[0] && kg < x[1]);
+            return item ? item[2] : "";
         }
-      }
 
-      if (laQuan) {
-        sizeDo = laySizeTheoBungQuan(bung);
-        if (sizeDo) finalSize = sizeDo;
-
-        if (dangnguoi === "bung_to" || dangnguoi === "dui_to") {
-          finalSize = tangSizeQuan(finalSize);
-          note.push("Bụng/đùi to → nên tăng 1 size.");
+        function laySizeTheoNguc(nguc) {
+            if (!nguc) return "";
+            if (nguc <= 92) return "S";
+            if (nguc <= 97) return "M";
+            if (nguc <= 102) return "L";
+            if (nguc <= 108) return "XL";
+            if (nguc <= 114) return "XXL";
+            return "3XL";
         }
 
-        if (camgiac === "rong") {
-          finalSize = tangSizeQuan(finalSize);
-          note.push("Khách thích rộng → tăng 1 size hoặc đổi sang Regular.");
+        function laySizeTheoBungQuan(bung) {
+            if (!bung) return "";
+            if (bung <= 79) return "29";
+            if (bung <= 83) return "30";
+            if (bung <= 86) return "31";
+            if (bung <= 89) return "32";
+            if (bung <= 92) return "33";
+            if (bung <= 95) return "34";
+            if (bung <= 98) return "35";
+            return "36";
         }
-      }
 
-      if (camgiac === "om") {
-        note.push("Khách thích ôm → ưu tiên đúng size, không tăng nếu không cần.");
-      }
+        function tangSizeAo(size) {
+            const arr = ["S", "M", "L", "XL", "XXL", "3XL"];
+            const i = arr.indexOf(size);
+            return i >= 0 && i < arr.length - 1 ? arr[i + 1] : size;
+        }
 
-      if (cao && kg && cao < 168 && kg >= 75) {
-        note.push("Khách thấp nhưng nặng → ưu tiên bụng hơn chiều cao.");
-      }
+        function tangSizeQuan(size) {
+            const n = Number(size);
+            return n ? String(n + 1) : size;
+        }
 
-      if (!finalSize) {
-        finalSize = "Chưa đủ dữ liệu";
-        note.push("Nên nhập ít nhất cân nặng, hoặc nhập ngực/bụng để chính xác hơn.");
-      }
+        function goiYSize() {
+            const loai = document.getElementById("loai").value;
 
-      document.getElementById("ketqua").innerHTML = `
+            if (!loai) {
+                document.getElementById("ketqua").innerHTML = `
+    <div><b>Chưa chọn loại sản phẩm</b></div>
+    <div>Vui lòng chọn Sơ mi / Quần trước khi gợi ý size.</div>
+  `;
+                return;
+            }
+
+            const kg = Number(document.getElementById("kg").value || 0);
+            const cao = Number(document.getElementById("cao").value || 0);
+            const nguc = Number(document.getElementById("nguc").value || 0);
+            const bung = Number(document.getElementById("bung").value || 0);
+            const dangnguoi = document.getElementById("dangnguoi").value;
+            const camgiac = document.getElementById("camgiac").value;
+            const dotuoi = document.getElementById("dotuoi").value;
+
+            let sizeKg = laySizeTheoKg(loai, kg);
+            let sizeDo = "";
+            let finalSize = sizeKg;
+            let note = [];
+
+            const laAo = loai.startsWith("somi");
+            const laQuan = loai.startsWith("quan");
+
+            if (laAo) {
+                sizeDo = laySizeTheoNguc(nguc);
+                if (sizeDo) finalSize = sizeDo;
+
+                if (bung && nguc && bung >= nguc - 4) {
+                    finalSize = tangSizeAo(finalSize);
+                    note.push("Bụng gần bằng ngực → nên tăng 1 size để không bung nút.");
+                }
+
+                if (dangnguoi === "gym") {
+                    finalSize = tangSizeAo(finalSize);
+                    note.push("Khách gym vai/ngực to → ưu tiên vai và ngực.");
+                }
+
+                if (dotuoi !== "tre" && loai === "somi_slim") {
+                    note.push("Khách công sở/trung niên nên cân nhắc Regular thay vì Slim.");
+                }
+            }
+
+            if (laQuan) {
+                sizeDo = laySizeTheoBungQuan(bung);
+                if (sizeDo) finalSize = sizeDo;
+
+                if (dangnguoi === "bung_to" || dangnguoi === "dui_to") {
+                    finalSize = tangSizeQuan(finalSize);
+                    note.push("Bụng/đùi to → nên tăng 1 size.");
+                }
+
+                if (camgiac === "rong") {
+                    finalSize = tangSizeQuan(finalSize);
+                    note.push("Khách thích rộng → tăng 1 size hoặc đổi sang Regular.");
+                }
+            }
+
+            if (!camgiac) {
+                note.push("Chưa chọn cảm giác mặc. Nên hỏi khách thích ôm, vừa hay rộng.");
+            }
+
+            if (camgiac === "om") {
+                note.push("Khách thích ôm → ưu tiên đúng size, không tăng nếu không cần.");
+            }
+
+            if (cao && kg && cao < 168 && kg >= 75) {
+                note.push("Khách thấp nhưng nặng → ưu tiên bụng hơn chiều cao.");
+            }
+
+            if (!finalSize) {
+                finalSize = "Chưa đủ dữ liệu";
+                note.push("Nên nhập ít nhất cân nặng, hoặc nhập ngực/bụng để chính xác hơn.");
+            }
+
+            document.getElementById("ketqua").innerHTML = `
         <div>Size gợi ý: <b>${finalSize}</b></div>
         <div>Size theo cân nặng: <b>${sizeKg || "-"}</b></div>
         <div>Size theo số đo: <b>${sizeDo || "-"}</b></div>
@@ -400,7 +639,8 @@
         <div><b>Lưu ý tư vấn:</b></div>
         <div>${note.length ? note.map(x => "• " + x).join("<br>") : "• Khách dáng cân đối, có thể tư vấn đúng size."}</div>
       `;
-    }
-  </script>
+        }
+    </script>
 </body>
+
 </html>
