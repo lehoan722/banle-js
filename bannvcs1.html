@@ -519,6 +519,11 @@
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
 
+            <button id="btnQrOA" type="button"
+                style="background:#10c95a;color:white;font-weight:bold;border:none;border-radius:8px;padding:5px 12px;font-size:18px;">
+                📱 QR OA
+            </button>
+
             <button id="btnQRZalo" style="
     background:#00c853;
     color:white;
@@ -1225,6 +1230,111 @@
             });
 
         });
+    </script>
+
+    <!-- Popup QR OA / Thành viên -->
+    <div id="popupQrOA"
+        style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999999;align-items:center;justify-content:center;">
+        <div
+            style="width:92%;max-width:430px;background:#fff;border-radius:22px;padding:22px;text-align:center;box-shadow:0 10px 35px #0007;">
+            <div style="font-size:30px;font-weight:900;color:#078bd3;margin-bottom:8px;">
+                🎉 THÀNH VIÊN 🎉
+            </div>
+
+            <div style="font-size:18px;margin-bottom:14px;color:#333;">
+                Khách quét mã để kích hoạt tích điểm
+            </div>
+
+            <img id="qrOAImg" src="" alt="QR OA"
+                style="width:260px;height:260px;border:1px solid #ddd;border-radius:16px;padding:8px;background:white;">
+
+            <div style="margin-top:14px;color:#777;font-size:17px;">
+                SĐT tích điểm
+            </div>
+
+            <div id="qrOAPhone"
+                style="font-size:42px;font-weight:900;color:#e53935;letter-spacing:1px;margin:5px 0 12px;">
+                ---
+            </div>
+
+            <div style="font-size:15px;color:#444;margin-bottom:16px;line-height:1.5;">
+                Vui lòng kiểm tra đúng số điện thoại trước khi khách quét mã.
+            </div>
+
+            <button id="btnCloseQrOA"
+                style="width:100%;border:none;border-radius:14px;background:#078bd3;color:white;font-size:22px;font-weight:bold;padding:14px;">
+                Đóng
+            </button>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const LANDING_URL = "https://hoantuyet.vn/thamgia";
+
+            function onlyDigits(s) {
+                return String(s || "").replace(/\D/g, "");
+            }
+
+            function formatPhone(s) {
+                const d = onlyDigits(s);
+                if (d.length === 10) {
+                    return d.slice(0, 4) + " " + d.slice(4, 7) + " " + d.slice(7);
+                }
+                return d || "---";
+            }
+
+            function getVal(id) {
+                return String(document.getElementById(id)?.value || "").trim();
+            }
+
+            function moPopupQrOA() {
+                const phone = onlyDigits(getVal("makh"));
+
+                if (!phone || phone.length !== 10) {
+                    alert("❌ Vui lòng nhập mã khách là số điện thoại 10 số trước khi tạo QR OA.");
+                    document.getElementById("makh")?.focus();
+                    return;
+                }
+
+                const manv = getVal("manv") || localStorage.getItem("manv") || "";
+                const tennv = getVal("tennv") || localStorage.getItem("tennv") || "";
+                const cs = getVal("diadiem") || localStorage.getItem("diadiem") || "";
+                const tenkh = getVal("khachhang") || "";
+                const sohd = getVal("sohd") || "";
+
+                const landing = new URL(LANDING_URL);
+                landing.searchParams.set("sdt", phone);
+                landing.searchParams.set("makh", phone);
+                landing.searchParams.set("manv", manv);
+                landing.searchParams.set("tennv", tennv);
+                landing.searchParams.set("cs", cs);
+                landing.searchParams.set("tenkh", tenkh);
+                landing.searchParams.set("sohd", sohd);
+
+                const qrUrl =
+                    "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" +
+                    encodeURIComponent(landing.toString());
+
+                document.getElementById("qrOAImg").src = qrUrl;
+                document.getElementById("qrOAPhone").textContent = formatPhone(phone);
+                document.getElementById("popupQrOA").style.display = "flex";
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                document.getElementById("btnQrOA")?.addEventListener("click", moPopupQrOA);
+
+                document.getElementById("btnCloseQrOA")?.addEventListener("click", function () {
+                    document.getElementById("popupQrOA").style.display = "none";
+                });
+
+                document.getElementById("popupQrOA")?.addEventListener("click", function (e) {
+                    if (e.target.id === "popupQrOA") {
+                        e.currentTarget.style.display = "none";
+                    }
+                });
+            });
+        })();
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
