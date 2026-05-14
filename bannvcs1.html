@@ -518,6 +518,19 @@
             <input id="sohd" placeholder="Số HĐ" />
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
+
+            <button id="btnQRZalo" style="
+    background:#00c853;
+    color:white;
+    font-weight:bold;
+    border:none;
+    border-radius:6px;
+    padding:0 10px;
+    font-size:16px;
+    ">
+                📱 QR
+            </button>
+
             <button id="ghivitri">✏️</button>
         </div>
 
@@ -1066,6 +1079,86 @@
         });
     </script>
 
+    <!-- Popup QR Zalo -->
+    <div id="popupQRZalo" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    z-index:20000;
+    align-items:center;
+    justify-content:center;
+    ">
+
+        <div style="
+        width:92%;
+        max-width:420px;
+        background:white;
+        border-radius:14px;
+        padding:20px;
+        text-align:center;
+        box-shadow:0 0 20px rgba(0,0,0,0.3);
+    ">
+
+            <div style="
+            font-size:28px;
+            font-weight:bold;
+            color:#00a1ff;
+            margin-bottom:10px;
+        ">
+                🎉 NHẬN ƯU ĐÃI 🎉
+            </div>
+
+            <div style="
+            font-size:18px;
+            margin-bottom:12px;
+            color:#333;
+        ">
+                Quét mã để tham gia nhóm Zalo
+            </div>
+
+            <img src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/QR_NHOM_ZALO.JPG"
+                style="
+            width:260px;
+            max-width:90%;
+            border:1px solid #ddd;
+            border-radius:10px;
+            ">
+
+            <div style="
+            margin-top:18px;
+            font-size:16px;
+            color:#666;
+        ">
+                SĐT tích điểm
+            </div>
+
+            <div id="qrSdtKhach" style="
+            font-size:34px;
+            font-weight:bold;
+            color:#e53935;
+            margin-top:6px;
+            letter-spacing:1px;
+        ">
+            </div>
+
+            <button id="btnDongQR" style="
+            margin-top:20px;
+            width:100%;
+            padding:12px;
+            border:none;
+            border-radius:10px;
+            background:#0088cc;
+            color:white;
+            font-size:18px;
+            font-weight:bold;
+            ">
+                Đóng
+            </button>
+
+        </div>
+    </div>
+
     <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
         <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
@@ -1094,6 +1187,45 @@
 
     <script type="module" src="scripts/feedback.js"></script>
     <script type="module" src="scripts/scanner.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+
+            const btnQR = document.getElementById("btnQRZalo");
+            const popup = document.getElementById("popupQRZalo");
+            const btnDong = document.getElementById("btnDongQR");
+            const qrSdt = document.getElementById("qrSdtKhach");
+
+            if (btnQR) {
+                btnQR.addEventListener("click", () => {
+
+                    const makh = document.getElementById("makh")?.value?.trim() || "";
+
+                    if (!makh) {
+                        alert("Vui lòng nhập số điện thoại khách hàng trước.");
+                        return;
+                    }
+
+                    qrSdt.textContent = makh;
+
+                    popup.style.display = "flex";
+                });
+            }
+
+            if (btnDong) {
+                btnDong.addEventListener("click", () => {
+                    popup.style.display = "none";
+                });
+            }
+
+            popup?.addEventListener("click", (e) => {
+                if (e.target === popup) {
+                    popup.style.display = "none";
+                }
+            });
+
+        });
+    </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
     <script src="scripts/stockQuickSimilar.js"></script>
