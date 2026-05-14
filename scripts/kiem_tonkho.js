@@ -2085,6 +2085,46 @@ import "./stockQuickPopup.js";
         }
     }
 
+    function timDanhSachMaspXacNhanHetHangBangSize0() {
+        docLaiNhapTuBangHTML();
+
+        const state = getState();
+        const nhapMap = getMapNhapTong();
+        const xuatMap = state.xuat || {};
+
+        const maspSet = new Set([
+            ...Object.values(nhapMap).map(r => normalizeMasp(r?.masp)).filter(Boolean),
+            ...Object.values(xuatMap).map(r => normalizeMasp(r?.masp)).filter(Boolean)
+        ]);
+
+        const result = [];
+
+        for (const masp of maspSet) {
+            const nhapRows = Object.values(nhapMap)
+                .filter(r => normalizeMasp(r?.masp) === masp);
+
+            const xuatRows = Object.values(xuatMap)
+                .filter(r => normalizeMasp(r?.masp) === masp);
+
+            const chiNhapSize0 =
+                nhapRows.length === 1 &&
+                normalizeSize(nhapRows[0].size) === "0" &&
+                normalizeNumber(nhapRows[0].sl) === 1;
+
+            if (!chiNhapSize0) continue;
+
+            const tongTonMay = xuatRows.reduce((sum, r) => sum + normalizeNumber(r.sl), 0);
+            const coDuong = xuatRows.some(r => normalizeNumber(r.sl) > 0);
+            const coAm = xuatRows.some(r => normalizeNumber(r.sl) < 0);
+
+            if (tongTonMay === 0 && coDuong && coAm) {
+                result.push(masp);
+            }
+        }
+
+        return result;
+    }
+
     async function canDoiSizeKiemTon() {
         try {
             if (!window.supabase) {
@@ -2117,21 +2157,48 @@ import "./stockQuickPopup.js";
 
             const { manv, tennv } = getCurrentUserInfo();
 
+            const dsHetHangSize0 = timDanhSachMaspXacNhanHetHangBangSize0();
+            const isCanDoiHetHang = dsHetHangSize0.length > 0;
+
             const ok = confirm(
-                "Bạn có chắc muốn CÂN ĐỐI SIZE theo phiếu này?\n\n" +
-                "- Chỉ admin mới được phép chạy.\n" +
-                "- Hệ thống sẽ sửa size trên hóa đơn bán cơ sở.\n" +
-                "- Sau khi chạy xong sẽ nạp lại tồn máy và kiểm tra lại."
+                isCanDoiHetHang
+                    ? (
+                        "Bạn có chắc muốn CÂN ĐỐI HẾT HÀNG cho mã nhập 0/1?\n\n" +
+                        "- Quy ước: 0/1 = xác nhận mã này thực tế hết hàng.\n" +
+                        "- Chỉ xử lý mã có tổng tồn máy = 0, có size âm và size dương.\n" +
+                        "- Hệ thống sẽ bù trừ âm/dương để tồn kho về 0.\n\n" +
+                        "Số mã xử lý: " + dsHetHangSize0.length + "\n" +
+                        dsHetHangSize0.slice(0, 10).join(", ")
+                    )
+                    : (
+                        "Bạn có chắc muốn CÂN ĐỐI SIZE theo phiếu này?\n\n" +
+                        "- Chỉ admin mới được phép chạy.\n" +
+                        "- Hệ thống sẽ sửa size trên hóa đơn bán cơ sở.\n" +
+                        "- Sau khi chạy xong sẽ nạp lại tồn máy và kiểm tra lại."
+                    )
             );
             if (!ok) return;
 
             phatAmThanhSize();
 
-            const { data, error } = await window.supabase.rpc("rpc_can_doi_size_kiem_ton", {
-                p_so_phieu: soPhieu,
-                p_nguoi_thuc_hien: manv || null,
-                p_ten_nguoi_thuc_hien: tennv || null
-            });
+            const rpcName = isCanDoiHetHang
+                ? "rpc_can_doi_size_kiem_ton_het_hang"
+                : "rpc_can_doi_size_kiem_ton";
+
+            const rpcParams = isCanDoiHetHang
+                ? {
+                    p_so_phieu: soPhieu,
+                    p_ds_masp: dsHetHangSize0,
+                    p_nguoi_thuc_hien: manv || null,
+                    p_ten_nguoi_thuc_hien: tennv || null
+                }
+                : {
+                    p_so_phieu: soPhieu,
+                    p_nguoi_thuc_hien: manv || null,
+                    p_ten_nguoi_thuc_hien: tennv || null
+                };
+
+            const { data, error } = await window.supabase.rpc(rpcName, rpcParams);
 
             if (error) {
                 console.error("[KTK] rpc_can_doi_size_kiem_ton error:", error);
