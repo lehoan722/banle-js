@@ -405,6 +405,46 @@
         display: none !important;
       }
     }
+
+    /* ===== QR nhóm Zalo khách hàng ===== */
+    .zalo-club-qr {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px dashed #333;
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .zalo-club-title {
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .zalo-club-img {
+      width: 105px;
+      height: 105px;
+      display: block;
+      margin: 4px auto;
+    }
+
+    .zalo-club-note {
+      text-align: left;
+      font-size: 10.5px;
+    }
+
+    @media print {
+      .zalo-club-qr {
+        display: block !important;
+        page-break-inside: avoid;
+      }
+
+      .zalo-club-img {
+        width: 95px !important;
+        height: 95px !important;
+      }
+    }
   </style>
 </head>
 
@@ -462,6 +502,26 @@
           </div>
 
           <div class="thankyou">CẢM ƠN! HẸN GẶP LẠI</div>
+
+          <div class="zalo-club-qr">
+            <div class="zalo-club-title">
+              QUÉT QR THAM GIA CLB KHÁCH HÀNG SHOP HOÀN TUYẾT
+            </div>
+
+            <img class="zalo-club-img"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Fzalo.me%2Fg%2Frz31sxl6fvcidvehzvty"
+              alt="QR nhóm Zalo Shop Hoàn Tuyết" />
+
+            <div class="zalo-club-note">
+              Mời quý khách quét mã QR để tham gia nhóm Zalo nhận thông tin hàng mới,
+              sản phẩm khuyến mại và ưu đãi thành viên.
+              <br>
+              Thành viên trong nhóm được tích điểm 2% cho hóa đơn mua hàng.
+              Riêng tháng sinh nhật được tích điểm 5%.
+              <br>
+              Ưu đãi áp dụng cho khách đang là thành viên nhóm Zalo tại thời điểm mua hàng.
+            </div>
+          </div>
 
           <div class="qr-tools" style="margin-top:10px; text-align:center;">
             <input id="qrAmountInput" type="text"
