@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Kích hoạt thành viên Shop Hoàn Tuyết</title>
+  <link rel="icon" href="/favicon.ico" />
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(180deg, #eaf6ff, #ffffff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      color: #123;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: white;
+      border-radius: 22px;
+      padding: 24px 18px 22px;
+      text-align: center;
+      box-shadow: 0 10px 35px rgba(0,0,0,.12);
+    }
+
+    .logo {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      margin-bottom: 10px;
+      border-radius: 16px;
+    }
+
+    h1 {
+      font-size: 25px;
+      color: #078bd3;
+      margin: 8px 0 8px;
+      line-height: 1.25;
+    }
+
+    .sub {
+      font-size: 16px;
+      color: #444;
+      margin-bottom: 18px;
+    }
+
+    .phone-label {
+      font-size: 15px;
+      color: #777;
+      margin-top: 8px;
+    }
+
+    .phone {
+      font-size: 38px;
+      font-weight: 800;
+      color: #e53935;
+      letter-spacing: 1px;
+      margin: 6px 0 16px;
+      white-space: nowrap;
+    }
+
+    .benefits {
+      text-align: left;
+      background: #f5fbff;
+      border: 1px solid #dcefff;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin: 14px 0 18px;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .btn {
+      width: 100%;
+      border: none;
+      border-radius: 16px;
+      padding: 17px 12px;
+      font-size: 21px;
+      font-weight: 800;
+      color: white;
+      background: linear-gradient(90deg, #008ee6, #006fd6);
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(0,123,220,.25);
+    }
+
+    .btn:active {
+      transform: scale(.98);
+    }
+
+    .note {
+      margin-top: 13px;
+      font-size: 13px;
+      color: #666;
+      line-height: 1.45;
+    }
+
+    .done {
+      display: none;
+      background: #e8fff0;
+      color: #0c7a34;
+      border: 1px solid #b6ecc8;
+      padding: 12px;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: bold;
+      margin: 12px 0;
+    }
+
+    .oa-link {
+      display: none;
+      margin-top: 12px;
+      font-size: 15px;
+    }
+
+    .oa-link a {
+      color: #0078d7;
+      font-weight: bold;
+      text-decoration: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <img class="logo" src="/favicon.ico" alt="Shop Hoàn Tuyết" />
+
+    <h1>🎉 KÍCH HOẠT THÀNH VIÊN 🎉</h1>
+    <div class="sub">Shop Hoàn Tuyết</div>
+
+    <div id="doneBox" class="done">✅ Bạn đã là thành viên</div>
+
+    <div class="phone-label">SĐT tích điểm</div>
+    <div id="phoneView" class="phone">---</div>
+
+    <div class="benefits">
+      ✅ Tích điểm 2% cho hóa đơn thông thường<br>
+      🎂 Sinh nhật tích điểm 4%<br>
+      ✅ Nhận thông báo hàng mới và ưu đãi thành viên
+    </div>
+
+    <button id="btnJoin" class="btn">🎁 XÁC NHẬN TÍCH ĐIỂM</button>
+
+    <div class="note">
+      Sau khi bấm, Zalo sẽ mở nhóm khách hàng trước.  
+      Vui lòng tham gia nhóm và quan tâm Official Account của shop.
+    </div>
+
+    <div id="oaLink" class="oa-link">
+      Nếu chưa mở OA, bấm tại đây:<br>
+      <a href="https://zalo.me/s/2332738582622777725/">Quan tâm Zalo Official Account</a>
+    </div>
+  </div>
+
+  <script>
+    const GROUP_URL = "https://zalo.me/g/rz31sxl6fvcidvehzvty";
+    const OA_URL = "https://zalo.me/s/2332738582622777725/";
+
+    const params = new URLSearchParams(window.location.search);
+    const sdtRaw = params.get("sdt") || params.get("phone") || "";
+    const manv = params.get("manv") || "";
+    const cs = params.get("cs") || "";
+
+    function onlyDigits(s) {
+      return String(s || "").replace(/\D/g, "");
+    }
+
+    function formatPhone(s) {
+      const d = onlyDigits(s);
+      if (d.length === 10) {
+        return d.slice(0, 4) + " " + d.slice(4, 7) + " " + d.slice(7);
+      }
+      return d || "---";
+    }
+
+    const phone = onlyDigits(sdtRaw);
+    const phoneView = document.getElementById("phoneView");
+    const btnJoin = document.getElementById("btnJoin");
+    const doneBox = document.getElementById("doneBox");
+    const oaLink = document.getElementById("oaLink");
+
+    phoneView.textContent = formatPhone(phone);
+
+    const activeKey = "ht_zalo_member_active_" + phone;
+
+    if (phone && localStorage.getItem(activeKey) === "1") {
+      doneBox.style.display = "block";
+      btnJoin.textContent = "MỞ NHÓM ZALO";
+    }
+
+    async function ghiNhanKichHoat() {
+      localStorage.setItem(activeKey, "1");
+
+      // Bước đầu: nếu API chưa có thì tự bỏ qua, không làm lỗi trang.
+      try {
+        await fetch("/api/zalo/member-activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone,
+            makh: phone,
+            manv,
+            cs,
+            source: "landing_thamgia",
+            activated_at: new Date().toISOString()
+          })
+        });
+      } catch (e) {
+        console.warn("Chưa có API tracking, bỏ qua:", e);
+      }
+    }
+
+    btnJoin.addEventListener("click", async () => {
+      if (!phone) {
+        alert("Thiếu số điện thoại khách hàng. Vui lòng quét lại mã QR tại quầy.");
+        return;
+      }
+
+      await ghiNhanKichHoat();
+
+      doneBox.style.display = "block";
+      oaLink.style.display = "block";
+
+      // Mở group trước theo yêu cầu
+      window.location.href = GROUP_URL;
+
+      // Lưu ý: mobile Safari/Zalo có thể không cho tự mở link thứ hai.
+      // Vì vậy ta hiện link OA dự phòng trên trang.
+    });
+  </script>
+</body>
+</html>
