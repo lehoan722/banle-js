@@ -220,6 +220,35 @@
             color: #555;
             line-height: 1.5;
         }
+
+        .reverse-box {
+            margin-top: 12px;
+            padding: 10px;
+            background: #eef8ff;
+            border: 1px solid #b7ddf5;
+            border-radius: 10px;
+        }
+
+        .reverse-result {
+            margin-top: 10px;
+            background: #fff;
+            border: 1px solid #b7ddf5;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .reverse-result b {
+            color: #c00000;
+            font-size: 18px;
+        }
+
+        .card h3 {
+            margin: 4px 0 10px;
+            color: #0066aa;
+            font-size: 17px;
+        }
     </style>
 </head>
 
@@ -229,10 +258,12 @@
     <div class="container">
 
         <div class="card">
+            <h3>1. Chọn nhanh thông tin tư vấn</h3>
+
             <div class="grid">
                 <div>
                     <label>Loại sản phẩm</label>
-                    <select id="loai">
+                    <select id="loai" onchange="capNhatDanhSachSizeNguoc()">
                         <option value="">-- Chọn loại SP --</option>
                         <option value="somi_slim">Sơ mi Slim</option>
                         <option value="somi_regular">Sơ mi Regular</option>
@@ -250,26 +281,6 @@
                         <option value="om">Ôm body</option>
                         <option value="rong">Rộng thoải mái</option>
                     </select>
-                </div>
-
-                <div>
-                    <label>Chiều cao cm</label>
-                    <input id="cao" type="number" placeholder="VD 170">
-                </div>
-
-                <div>
-                    <label>Cân nặng kg</label>
-                    <input id="kg" type="number" placeholder="VD 68">
-                </div>
-
-                <div>
-                    <label>Vòng ngực cm</label>
-                    <input id="nguc" type="number" placeholder="Áo">
-                </div>
-
-                <div>
-                    <label>Vòng bụng cm</label>
-                    <input id="bung" type="number" placeholder="Quần/áo">
                 </div>
 
                 <div>
@@ -296,7 +307,53 @@
                 </div>
             </div>
 
-            <button onclick="goiYSize()">Gợi ý size</button>
+            <div class="reverse-box">
+                <h3>2. Xem ngược theo size sản phẩm</h3>
+
+                <div class="grid">
+                    <div>
+                        <label>Chọn size</label>
+                        <select id="sizeNguoc">
+                            <option value="">-- Chọn loại SP trước --</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label>&nbsp;</label>
+                        <button type="button" onclick="xemThongSoTheoSize()">Xem thông số size</button>
+                    </div>
+                </div>
+
+                <div id="ketquaNguoc" class="reverse-result">
+                    Chọn loại sản phẩm và size để xem khách phù hợp với size đó.
+                </div>
+            </div>
+
+            <h3>3. Nhập số đo khách để gợi ý size</h3>
+
+            <div class="grid">
+                <div>
+                    <label>Chiều cao cm</label>
+                    <input id="cao" type="number" placeholder="VD 170">
+                </div>
+
+                <div>
+                    <label>Cân nặng kg</label>
+                    <input id="kg" type="number" placeholder="VD 68">
+                </div>
+
+                <div>
+                    <label>Vòng ngực cm</label>
+                    <input id="nguc" type="number" placeholder="Áo">
+                </div>
+
+                <div>
+                    <label>Vòng bụng cm</label>
+                    <input id="bung" type="number" placeholder="Quần/áo">
+                </div>
+            </div>
+
+            <button onclick="goiYSize()">Gợi ý size theo khách</button>
         </div>
 
         <div class="card">
@@ -485,7 +542,176 @@
             }
 
             capNhatAnhDangNguoi();
+            capNhatDanhSachSizeNguoc();
         });
+
+        const sizeNguocData = {
+            somi_slim: {
+                label: "Sơ mi Slim",
+                sizes: {
+                    S: { cao: "1m60 – 1m68", kg: "50 – 58kg", nguc: "88 – 92cm", bung: "Dưới 88cm", note: "Hợp người gầy, cân đối, thích mặc ôm." },
+                    M: { cao: "1m65 – 1m72", kg: "58 – 65kg", nguc: "93 – 97cm", bung: "Dưới 92cm", note: "Hợp người cân đối, mặc ôm vừa." },
+                    L: { cao: "1m68 – 1m75", kg: "65 – 72kg", nguc: "98 – 102cm", bung: "Dưới 96cm", note: "Nếu vai/ngực to có thể lên XL." },
+                    XL: { cao: "1m70 – 1m78", kg: "72 – 80kg", nguc: "103 – 108cm", bung: "Dưới 100cm", note: "Hợp người hơi to, bụng không quá lớn." },
+                    XXL: { cao: "1m72 – 1m82", kg: "80 – 88kg", nguc: "109 – 114cm", bung: "Dưới 104cm", note: "Nếu bụng to nên chuyển Regular/Comfort." },
+                    "3XL": { cao: "1m72 – 1m85", kg: "88 – 98kg", nguc: "115 – 120cm", bung: "Dưới 110cm", note: "Slim 3XL vẫn không hợp khách bụng quá lớn." }
+                }
+            },
+
+            somi_regular: {
+                label: "Sơ mi Regular",
+                sizes: {
+                    S: { cao: "1m60 – 1m68", kg: "55 – 63kg", nguc: "88 – 92cm", bung: "Dưới 96cm", note: "Dễ mặc hơn Slim, hợp công sở." },
+                    M: { cao: "1m65 – 1m73", kg: "63 – 70kg", nguc: "93 – 97cm", bung: "Dưới 100cm", note: "Size phổ biến, hợp khách cân đối." },
+                    L: { cao: "1m68 – 1m76", kg: "70 – 77kg", nguc: "98 – 102cm", bung: "Dưới 104cm", note: "Hợp khách công sở, bụng nhẹ." },
+                    XL: { cao: "1m70 – 1m80", kg: "77 – 85kg", nguc: "103 – 108cm", bung: "Dưới 108cm", note: "Hợp khách trung niên hoặc thích thoải mái." },
+                    XXL: { cao: "1m72 – 1m83", kg: "85 – 95kg", nguc: "109 – 114cm", bung: "Dưới 112cm", note: "Hợp khách to người, bụng vừa." },
+                    "3XL": { cao: "1m72 – 1m86", kg: "95 – 105kg", nguc: "115 – 120cm", bung: "Dưới 118cm", note: "Nếu bụng lớn nên ưu tiên Comfort." }
+                }
+            },
+
+            somi_comfort: {
+                label: "Sơ mi Comfort",
+                sizes: {
+                    M: { cao: "1m63 – 1m72", kg: "60 – 70kg", nguc: "93 – 100cm", bung: "Dưới 106cm", note: "Form rộng, hợp khách thích thoải mái." },
+                    L: { cao: "1m68 – 1m76", kg: "70 – 80kg", nguc: "100 – 108cm", bung: "Dưới 110cm", note: "Hợp khách bụng nhẹ hoặc trung niên." },
+                    XL: { cao: "1m70 – 1m80", kg: "80 – 90kg", nguc: "108 – 116cm", bung: "Dưới 114cm", note: "Hợp khách bụng to vừa." },
+                    XXL: { cao: "1m72 – 1m83", kg: "90 – 100kg", nguc: "116 – 122cm", bung: "Dưới 118cm", note: "Ưu tiên cho khách cần thoải mái." },
+                    "3XL": { cao: "1m72 – 1m86", kg: "100 – 110kg", nguc: "122 – 128cm", bung: "Dưới 124cm", note: "Hợp khách to người, bụng lớn." }
+                }
+            },
+
+            quan_slim: {
+                label: "Quần Slim/Côn",
+                sizes: {
+                    29: { cao: "1m60 – 1m68", kg: "50 – 57kg", bung: "76 – 79cm", nguc: "-", note: "Hợp khách gầy, chân nhỏ." },
+                    30: { cao: "1m63 – 1m70", kg: "57 – 63kg", bung: "80 – 83cm", nguc: "-", note: "Hợp khách cân đối, thích quần ôm." },
+                    31: { cao: "1m65 – 1m73", kg: "63 – 68kg", bung: "84 – 86cm", nguc: "-", note: "Nếu đùi to nên thử size 32." },
+                    32: { cao: "1m68 – 1m75", kg: "68 – 74kg", bung: "87 – 89cm", nguc: "-", note: "Size phổ biến cho khách 68–74kg." },
+                    33: { cao: "1m70 – 1m78", kg: "74 – 80kg", bung: "90 – 92cm", nguc: "-", note: "Nếu bụng to hoặc đùi to nên lên 34." },
+                    34: { cao: "1m72 – 1m80", kg: "80 – 86kg", bung: "93 – 95cm", nguc: "-", note: "Slim size 34 có thể bó đùi." },
+                    35: { cao: "1m72 – 1m83", kg: "86 – 92kg", bung: "96 – 98cm", nguc: "-", note: "Nên hỏi kỹ đùi và bụng." },
+                    36: { cao: "1m75 – 1m85", kg: "92 – 100kg", bung: "99 – 102cm", nguc: "-", note: "Nếu thích thoải mái nên chọn Regular." }
+                }
+            },
+
+            quan_regular: {
+                label: "Quần Regular",
+                sizes: {
+                    29: { cao: "1m60 – 1m68", kg: "55 – 63kg", bung: "76 – 79cm", nguc: "-", note: "Dễ mặc hơn slim." },
+                    30: { cao: "1m65 – 1m72", kg: "63 – 70kg", bung: "80 – 83cm", nguc: "-", note: "Hợp khách công sở cân đối." },
+                    31: { cao: "1m68 – 1m75", kg: "70 – 77kg", bung: "84 – 86cm", nguc: "-", note: "Đùi thoải mái hơn quần côn." },
+                    32: { cao: "1m70 – 1m78", kg: "77 – 84kg", bung: "87 – 89cm", nguc: "-", note: "Hợp khách bụng nhẹ." },
+                    33: { cao: "1m72 – 1m80", kg: "84 – 90kg", bung: "90 – 92cm", nguc: "-", note: "Hợp khách trung niên." },
+                    34: { cao: "1m72 – 1m82", kg: "90 – 98kg", bung: "93 – 95cm", nguc: "-", note: "Nếu bụng lớn có thể thử 35/36." },
+                    36: { cao: "1m75 – 1m85", kg: "98 – 105kg", bung: "99 – 102cm", nguc: "-", note: "Ưu tiên khách cần thoải mái." }
+                }
+            }
+        };
+
+        function capNhatDanhSachSizeNguoc() {
+            const loai = document.getElementById("loai").value;
+            const sizeSelect = document.getElementById("sizeNguoc");
+            const ketquaNguoc = document.getElementById("ketquaNguoc");
+
+            if (!sizeSelect) return;
+
+            sizeSelect.innerHTML = "";
+
+            if (!loai || !sizeNguocData[loai]) {
+                sizeSelect.innerHTML = `<option value="">-- Chọn loại SP trước --</option>`;
+                if (ketquaNguoc) {
+                    ketquaNguoc.innerHTML = "Chọn loại sản phẩm và size để xem khách phù hợp với size đó.";
+                }
+                return;
+            }
+
+            sizeSelect.innerHTML = `<option value="">-- Chọn size --</option>`;
+
+            const sizes = Object.keys(sizeNguocData[loai].sizes);
+            sizes.forEach(size => {
+                const opt = document.createElement("option");
+                opt.value = size;
+                opt.textContent = size;
+                sizeSelect.appendChild(opt);
+            });
+
+            if (ketquaNguoc) {
+                ketquaNguoc.innerHTML = `Đã chọn <b>${sizeNguocData[loai].label}</b>. Tiếp tục chọn size để xem thông số khách phù hợp.`;
+            }
+        }
+
+        function xemThongSoTheoSize() {
+            const loai = document.getElementById("loai").value;
+            const size = document.getElementById("sizeNguoc").value;
+            const ketquaNguoc = document.getElementById("ketquaNguoc");
+            const camgiac = document.getElementById("camgiac").value;
+            const dangnguoi = document.getElementById("dangnguoi").value;
+            const dotuoi = document.getElementById("dotuoi").value;
+
+            if (!ketquaNguoc) return;
+
+            if (!loai) {
+                ketquaNguoc.innerHTML = `<b>Chưa chọn loại sản phẩm.</b><br>Vui lòng chọn loại sản phẩm trước.`;
+                return;
+            }
+
+            if (!size) {
+                ketquaNguoc.innerHTML = `<b>Chưa chọn size.</b><br>Vui lòng chọn size cần tư vấn.`;
+                return;
+            }
+
+            const item = sizeNguocData[loai]?.sizes?.[size];
+
+            if (!item) {
+                ketquaNguoc.innerHTML = "Không có dữ liệu cho size này.";
+                return;
+            }
+
+            let them = [];
+
+            if (camgiac === "om") {
+                them.push("Khách thích ôm: có thể chọn đúng size nếu số đo không vượt ngưỡng.");
+            }
+
+            if (camgiac === "rong") {
+                them.push("Khách thích rộng: cân nhắc tăng 1 size hoặc đổi sang form rộng hơn.");
+            }
+
+            if (dangnguoi === "gym") {
+                them.push("Dáng vai/ngực to: áo nên ưu tiên vai/ngực, có thể tăng 1 size.");
+            }
+
+            if (dangnguoi === "bung_nhe") {
+                them.push("Bụng nhẹ: nên ưu tiên Regular hơn Slim.");
+            }
+
+            if (dangnguoi === "bung_to") {
+                them.push("Bụng to: ưu tiên bụng, chọn Regular/Comfort hoặc tăng size.");
+            }
+
+            if (dangnguoi === "dui_to") {
+                them.push("Đùi to: với quần nên tăng 1 size hoặc chọn Regular/ống đứng.");
+            }
+
+            if (dotuoi === "congso" || dotuoi === "trungnien") {
+                them.push("Khách công sở/trung niên: nên tư vấn form vừa hoặc thoải mái.");
+            }
+
+            ketquaNguoc.innerHTML = `
+    <div>Size đang xem: <b>${size}</b> - ${sizeNguocData[loai].label}</div>
+    <hr>
+    <div><b>Khách phù hợp:</b></div>
+    <div>• Chiều cao: ${item.cao}</div>
+    <div>• Cân nặng: ${item.kg}</div>
+    <div>• Vòng ngực: ${item.nguc}</div>
+    <div>• Vòng bụng: ${item.bung}</div>
+    <hr>
+    <div><b>Lưu ý:</b></div>
+    <div>• ${item.note}</div>
+    ${them.length ? `<div>${them.map(x => "• " + x).join("<br>")}</div>` : ""}
+  `;
+        }
 
         function laySizeTheoKg(loai, kg) {
             if (!kg) return "";
