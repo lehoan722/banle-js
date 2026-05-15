@@ -33,7 +33,7 @@ const editableFields = [
 ];
 
 const columns = [
-  { data: "makh", title: "Mã KH", readOnly: false },
+  { data: "makh", title: "Mã KH", readOnly: true },
   { data: "tenkh", title: "Tên khách" },
   { data: "ngaysinh", title: "Ngày sinh", type: "date", dateFormat: "YYYY-MM-DD", correctFormat: true },
   { data: "thangsinh", title: "Tháng sinh", type: "numeric" },
@@ -215,6 +215,7 @@ function createHot(data) {
 
       if (field === "makh" && rowData.created_at) {
         props.readOnly = true;
+        props.editor = false;
         props.className = `${props.className || ""} readonly-cell`;
       }
 
@@ -473,6 +474,32 @@ function exportCsv() {
   });
 }
 
+async function copyAllTableToClipboard() {
+  if (!hot) return;
+
+  const headers = columns.map(c => c.title);
+
+  const rows = hot.getSourceData().map(row => {
+    return columns.map(c => {
+      const value = row?.[c.data];
+      return value === null || value === undefined ? "" : String(value);
+    });
+  });
+
+  const text = [
+    headers.join("\t"),
+    ...rows.map(r => r.join("\t"))
+  ].join("\n");
+
+  try {
+    await navigator.clipboard.writeText(text);
+    alert(`Đã copy ${rows.length} dòng vào clipboard. Bạn có thể dán vào Excel hoặc Google Sheet.`);
+  } catch (err) {
+    console.error(err);
+    alert("Không copy được vào clipboard. Hãy dùng Ctrl + A trong bảng rồi Ctrl + C.");
+  }
+}
+
 function bindEvents() {
   $("btnLoad").addEventListener("click", loadData);
   $("btnSave").addEventListener("click", saveChanges);
@@ -480,6 +507,7 @@ function bindEvents() {
   $("btnHide").addEventListener("click", () => setActiveForSelected(false));
   $("btnRestore").addEventListener("click", () => setActiveForSelected(true));
   $("btnExport").addEventListener("click", exportCsv);
+  $("btnCopyAll").addEventListener("click", copyAllTableToClipboard);
   $("quickSearch").addEventListener("input", quickSearch);
 
   $("btnLogout").addEventListener("click", async () => {
