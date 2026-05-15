@@ -493,7 +493,17 @@ khoiTaoDangNhapDungChung({
       return false;
     }
 
-    await khoiTaoTrangQuanLyKhachHang();
+    setTimeout(async () => {
+      await khoiTaoTrangQuanLyKhachHang();
+
+      setTimeout(() => {
+        if (hot) {
+          hot.refreshDimensions();
+          hot.render();
+        }
+      }, 300);
+    }, 300);
+
     return true;
   }
 });
