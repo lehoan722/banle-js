@@ -43,8 +43,12 @@ export function mountKhachHangSuggest(options = {}) {
   function chuanHoaMakhNhap(value) {
     const raw = String(value || "").trim().toUpperCase();
 
-    // Cho phép nhập khách lẻ KL
+    // Cho phép gõ từng bước: K -> KL
+    if (raw === "K") return "K";
     if (raw === "KL") return "KL";
+
+    // Nếu bắt đầu bằng K nhưng không phải KL thì chỉ giữ K để người dùng sửa tiếp
+    if (raw.startsWith("K")) return raw.slice(0, 2);
 
     // Các trường hợp còn lại vẫn chỉ lấy số điện thoại 10 số
     return raw.replace(/\D/g, "").slice(0, 10);
