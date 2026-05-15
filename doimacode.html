@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <title>Đổi mã sản phẩm / nhân viên</title>
@@ -10,48 +11,57 @@
       padding: 16px;
       background: #f5f5f5;
     }
+
     .container {
       max-width: 600px;
       margin: 0 auto;
       background: #fff;
       padding: 16px 20px;
       border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
+
     h1 {
       font-size: 20px;
       margin-bottom: 12px;
       text-align: center;
     }
+
     fieldset {
       border: 1px solid #ddd;
       border-radius: 6px;
       margin-bottom: 12px;
       padding: 10px 12px;
     }
+
     legend {
       font-weight: bold;
       padding: 0 6px;
     }
+
     .row {
       display: flex;
       gap: 8px;
       margin-bottom: 10px;
       align-items: center;
     }
+
     .row label {
       width: 110px;
     }
+
     .row input[type="text"] {
       flex: 1;
       padding: 6px 8px;
       border-radius: 4px;
       border: 1px solid #ccc;
     }
+
     .actions {
       text-align: center;
       margin-top: 10px;
     }
+
     button {
       padding: 8px 16px;
       border: none;
@@ -61,47 +71,60 @@
       cursor: pointer;
       font-weight: bold;
     }
+
     button:disabled {
       background: #999;
       cursor: not-allowed;
     }
-    .result, .error, .msg {
+
+    .result,
+    .error,
+    .msg {
       margin-top: 14px;
       padding: 10px;
       border-radius: 6px;
       font-size: 14px;
       white-space: pre-wrap;
     }
+
     .result {
       background: #e9f7ef;
       border: 1px solid #a9dfbf;
     }
+
     .error {
       background: #fdecea;
       border: 1px solid #f5b7b1;
       color: #b03a2e;
     }
+
     .msg {
       background: #f8f9fa;
       border: 1px solid #d6d8db;
       color: #555;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 6px;
     }
-    table th, table td {
+
+    table th,
+    table td {
       border: 1px solid #ccc;
       padding: 4px 6px;
       text-align: left;
     }
+
     .hidden {
       display: none;
     }
+
     /* login-container / app-container do authModule.js điều khiển hiển thị */
   </style>
 </head>
+
 <body>
   <!-- Khu vực login – authModule.js sẽ chèn form vào đây -->
   <div id="login-container"></div>
@@ -109,7 +132,7 @@
   <!-- Khu vực app chính – chỉ hiển thị sau khi login thành công -->
   <div id="app-container" style="display:none;">
     <div class="container">
-      <h1>Đổi mã sản phẩm / nhân viên</h1>
+      <h1>Đổi mã sản phẩm / nhân viên / khách hàng</h1>
 
       <div id="msg" class="msg"></div>
 
@@ -125,6 +148,12 @@
             <input type="radio" name="mode" value="manv" />
             Đổi mã nhân viên (rename_manv)
           </label>
+          <br />
+          <label>
+            <input type="radio" name="mode" value="makh" />
+            Đổi mã khách hàng (rename_makh)
+          </label>
+          
         </fieldset>
 
         <div class="row">
@@ -158,4 +187,5 @@
   <!-- Script chính: dùng chung supabaseClient + authModule như duyetca.js -->
   <script type="module" src="./scripts/doimacode.js"></script>
 </body>
+
 </html>
