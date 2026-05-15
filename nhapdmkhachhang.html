@@ -245,6 +245,10 @@
         <input id="ngaysinh" type="date" maxlength="12">
       </div>
       <div class="row">
+        <label>Tháng sinh</label>
+        <input id="thangsinh" type="number" min="1" max="12" placeholder="1 - 12">
+      </div>
+      <div class="row">
         <label>Địa chỉ</label>
         <input id="diachi" maxlength="100">
       </div>
@@ -300,14 +304,23 @@
     function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ""; }
 
     function layThangSinhTuNgaySinh() {
+
+      // Ưu tiên lấy tháng sinh người dùng nhập tay
+      const thangNhap = Number(getVal("thangsinh"));
+
+      if (thangNhap >= 1 && thangNhap <= 12) {
+        return thangNhap;
+      }
+
+      // Nếu chưa nhập thì tự lấy từ ngày sinh
       const raw = getVal("ngaysinh");
       if (!raw) return null;
 
-      // input type="date" trả về dạng yyyy-mm-dd
       const m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!m) return null;
 
       const thang = Number(m[2]);
+
       if (thang < 1 || thang > 12) return null;
 
       return thang;
@@ -326,7 +339,7 @@
     }
 
     function resetForm() {
-      ["makh", "tenkh", "dienthoai", "ngaysinh", "diachi", "email", "taikhoan", "mst", "cccd"].forEach(id => setVal(id, ""));
+      ["makh", "tenkh", "dienthoai", "ngaysinh", "thangsinh", "diachi", "email", "taikhoan", "mst", "cccd"].forEach(id => setVal(id, ""));
       setVal("la_ncc", "");
       editingOld = false;
       const mk = document.getElementById("makh");
@@ -347,6 +360,7 @@
         setVal("tenkh", data.tenkh);
         setVal("dienthoai", data.dienthoai);
         setVal("ngaysinh", data.ngaysinh ? String(data.ngaysinh).slice(0, 10) : "");
+        setVal("thangsinh", data.thangsinh || "");
         setVal("diachi", data.diachi);
         setVal("email", data.email);
         setVal("taikhoan", data.taikhoan);
@@ -361,7 +375,7 @@
         editingOld = false;
         const mk = document.getElementById("makh");
         if (mk) mk.readOnly = false;
-        ["tenkh", "dienthoai", "ngaysinh", "diachi", "email", "taikhoan", "mst", "cccd", "la_ncc"].forEach(id => setVal(id, ""));
+        ["tenkh", "dienthoai", "ngaysinh", "thangsinh", "diachi", "email", "taikhoan", "mst", "cccd", "la_ncc"].forEach(id => setVal(id, ""));
         showMsg("Mã mới, nhập đủ thông tin để lưu!", "");
       }
     }
@@ -481,7 +495,7 @@
 
 
     // Thứ tự chuyển focus khi nhấn Enter
-    const ENTER_FLOW = ["makh", "tenkh", "dienthoai", "la_ncc", "ngaysinh", "diachi", "email", "taikhoan", "mst", "cccd"];
+    const ENTER_FLOW = ["makh", "tenkh", "dienthoai", "la_ncc", "ngaysinh", "thangsinh", "diachi", "email", "taikhoan", "mst", "cccd"];
     function focusNextFrom(id) {
       const idx = ENTER_FLOW.indexOf(id);
       if (idx < 0) return;
@@ -496,6 +510,29 @@
       makhInp?.addEventListener("input", suggestKH);
       makhInp?.addEventListener("focus", suggestKH);
       makhInp?.addEventListener("blur", autoFillPhoneFromMaKH);
+
+      const ngaysinhEl = document.getElementById("ngaysinh");
+
+      ngaysinhEl?.addEventListener("change", () => {
+
+        const raw = getVal("ngaysinh");
+
+        if (!raw) {
+          setVal("thangsinh", "");
+          return;
+        }
+
+        const m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+        if (!m) return;
+
+        const thang = Number(m[2]);
+
+        if (thang >= 1 && thang <= 12) {
+          setVal("thangsinh", thang);
+        }
+      });
+
       document.getElementById("makhSuggestList")?.addEventListener("mousedown", (ev) => {
         const item = ev.target.closest(".suggest-item");
         if (!item) return;
