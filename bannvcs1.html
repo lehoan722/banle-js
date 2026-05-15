@@ -836,10 +836,12 @@
     <script type="module">
         import { backupAllTablesToZip } from './scripts/backup.js';
 
-        document.getElementById('btn-logout').onclick = async function () {
-
-            await dangXuatApp();
-        };
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.onclick = async function () {
+                await dangXuatApp();
+            };
+        }
 
         async function dangXuatApp() {
             // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
