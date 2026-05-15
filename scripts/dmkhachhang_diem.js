@@ -365,22 +365,33 @@ export function mountKhachHangSuggest(options = {}) {
     return /^\d{10}$/.test(digits);
   }
 
-  function chuanHoaThangSinh(raw) {
+  function chuanHoaThangNamSinh(raw) {
     const s = String(raw || "").trim();
-    if (!s) return null;
+    if (!s) return { thangsinh: null, namsinh: null };
 
-    if (!/^\d{1,2}$/.test(s)) {
-      alert("❌ Tháng sinh chỉ nhập số từ 1 đến 12.");
+    // Cho phép nhập: 4/1998, 04/1998, 4-1998, 04-1998
+    const m = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
+
+    if (!m) {
+      alert("❌ Vui lòng nhập tháng/năm sinh, ví dụ: 4/1998 hoặc 11/2001.");
       return false;
     }
 
-    const thang = Number(s);
-    if (thang < 1 || thang > 12) {
+    const thangsinh = Number(m[1]);
+    const namsinh = Number(m[2]);
+    const namHienTai = new Date().getFullYear();
+
+    if (thangsinh < 1 || thangsinh > 12) {
       alert("❌ Tháng sinh không hợp lệ. Chỉ nhập từ 1 đến 12.");
       return false;
     }
 
-    return thang;
+    if (namsinh < 1900 || namsinh > namHienTai) {
+      alert("❌ Năm sinh không hợp lệ.");
+      return false;
+    }
+
+    return { thangsinh, namsinh };
   }
 
   function damBaoPopupKhachMoi() {
@@ -415,8 +426,8 @@ export function mountKhachHangSuggest(options = {}) {
       </div>
 
       <div style="margin-bottom:16px;">
-        <label>Tháng sinh</label>
-<input id="popup_thangsinh" style="width:100%;padding:9px;font-size:16px;" placeholder="Nhập tháng sinh, ví dụ: 4 hoặc 11">
+        <label>Tháng/Năm sinh</label>
+<input id="popup_thangsinh" style="width:100%;padding:9px;font-size:16px;" placeholder="Ví dụ: 4/1998 hoặc 11/2001">
       </div>
 
       <div style="display:flex;gap:12px;justify-content:center;">
@@ -510,11 +521,13 @@ export function mountKhachHangSuggest(options = {}) {
       return;
     }
 
-    const thangsinh = chuanHoaThangSinh(thangsinhRaw);
-    if (thangsinh === false) {
+    const sinh = chuanHoaThangNamSinh(thangsinhRaw);
+    if (sinh === false) {
       document.getElementById("popup_thangsinh")?.focus();
       return;
     }
+
+    const { thangsinh, namsinh } = sinh;
 
     const manvTao =
       String(getEl("manv")?.value || localStorage.getItem("manv") || "").trim();
@@ -530,6 +543,7 @@ export function mountKhachHangSuggest(options = {}) {
       tenkh,
       dienthoai: makh,
       thangsinh,
+      namsinh,
       diem_hientai: 0,
       hang_khach: "THUONG",
       so_lan_mua: 0,
