@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý danh mục hàng hóa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body { margin:0; font-family:Arial; background:#f4f6f8; }
+    .header { background:#005b8f; color:white; padding:10px 16px; font-size:22px; font-weight:bold; }
+    .toolbar { padding:10px; display:flex; flex-wrap:wrap; gap:8px; background:#e9eef5; align-items:center; }
+    .toolbar input, .toolbar select, .toolbar button {
+      padding:7px 10px; font-size:14px;
+    }
+    .toolbar button { cursor:pointer; font-weight:bold; }
+    #hot { height:calc(100vh - 135px); overflow:hidden; }
+    .status { padding:7px 12px; background:#fff; border-top:1px solid #ccc; font-size:14px; }
+    .btn-save { background:#18804f; color:white; border:none; }
+    .btn-load { background:#006bb6; color:white; border:none; }
+    .btn-danger { background:#b00020; color:white; border:none; }
+  </style>
+</head>
+
+<body>
+  <div class="header">QUẢN LÝ DANH MỤC HÀNG HÓA</div>
+
+  <div class="toolbar">
+    <button id="btnTai" class="btn-load">🔄 Tải dữ liệu</button>
+    <button id="btnLuu" class="btn-save">💾 Lưu thay đổi</button>
+    <button id="btnKiemTra">✅ Kiểm tra lỗi</button>
+    <button id="btnChuanHoa">🔠 Chuẩn hóa mã SP</button>
+
+    <input id="txtSearch" placeholder="Tìm mã, tên, nhóm, chủng loại..." style="width:260px">
+
+    <select id="sortField">
+      <option value="">-- Sắp xếp --</option>
+      <option value="masp">Mã SP</option>
+      <option value="tenhang">Tên hàng</option>
+      <option value="nhom">Nhóm</option>
+      <option value="chungloai">Chủng loại</option>
+      <option value="vitri">Vị trí</option>
+      <option value="created_at">Ngày tạo</option>
+    </select>
+
+    <button id="btnSortAsc">⬆️ Tăng</button>
+    <button id="btnSortDesc">⬇️ Giảm</button>
+
+    <button id="btnExport">📤 Xuất Excel</button>
+    <input type="file" id="fileExcel" accept=".xlsx,.xls,.csv" style="display:none">
+    <button id="btnImport">📥 Nhập Excel</button>
+
+    <button id="btnThemDong">➕ Thêm dòng</button>
+    <button id="btnXoaDong" class="btn-danger">🗑 Xóa dòng khỏi bảng</button>
+  </div>
+
+  <div id="hot"></div>
+
+  <div class="status" id="status">
+    Chưa tải dữ liệu.
+  </div>
+
+  <script type="module" src="./scripts/quanlydmhanghoa.js"></script>
+</body>
+</html>
