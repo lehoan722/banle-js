@@ -141,20 +141,32 @@ function validateRow(row, rowIndex) {
 function createHot(data) {
   const container = $("hot");
 
+  if (!container) {
+    alert("Không tìm thấy vùng hiển thị bảng #hot");
+    return;
+  }
+
+  container.innerHTML = "";
+  container.style.display = "block";
+  container.style.width = "100%";
+  container.style.height = "650px";
+  container.style.minHeight = "650px";
+  container.style.background = "#fff";
+
   if (hot) {
     hot.destroy();
     hot = null;
   }
 
   hot = new Handsontable(container, {
-    data,
-    columns,
+    data: data,
+    columns: columns,
     rowHeaders: true,
     colHeaders: columns.map(c => c.title),
     licenseKey: "non-commercial-and-evaluation",
 
     width: "100%",
-    height: "100%",
+    height: 650,
     stretchH: "all",
 
     filters: true,
@@ -163,9 +175,6 @@ function createHot(data) {
     manualColumnResize: true,
     manualColumnMove: true,
     contextMenu: true,
-    hiddenColumns: {
-      indicators: true
-    },
     fixedColumnsStart: 2,
 
     cells(row, col) {
@@ -225,6 +234,11 @@ function createHot(data) {
       hot.render();
     }
   });
+
+  setTimeout(() => {
+    hot.refreshDimensions();
+    hot.render();
+  }, 500);
 }
 
 async function loadData() {
