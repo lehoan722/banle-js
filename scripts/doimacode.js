@@ -31,7 +31,7 @@ function toUpperTrim(value) {
 function updateMergeVisibility() {
   const mode = document.querySelector('input[name="mode"]:checked')?.value;
   // Hiện checkbox cho cả mã sản phẩm & mã nhân viên
-  if (mode === "masp" || mode === "manv") {
+  if (mode === "masp" || mode === "manv" || mode === "makh") {
     mergeRow?.classList.remove("hidden");
   } else {
     mergeRow?.classList.add("hidden");
@@ -239,11 +239,17 @@ async function handleSubmit(e) {
         p_new_code: newCode,
         p_merge_if_exists: mergeIfExists
       }));
-    } else {
+    } else if (mode === "manv") {
       ({ data, error } = await supabase.rpc("rename_manv", {
         p_old_manv: oldCode,
         p_new_manv: newCode,
-        p_merge_if_exists: mergeIfExists   // <<< thêm dòng này
+        p_merge_if_exists: mergeIfExists
+      }));
+    } else if (mode === "makh") {
+      ({ data, error } = await supabase.rpc("rename_makh", {
+        p_old_makh: oldCode,
+        p_new_makh: newCode,
+        p_merge_if_exists: mergeIfExists
       }));
     }
 
