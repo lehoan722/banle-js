@@ -35,17 +35,42 @@ export function mountKhachHangSuggest(options = {}) {
 
   // Ép ô mã khách chỉ nhập số + hiển thị bàn phím số trên điện thoại
   makhInput.setAttribute("type", "tel");
-  makhInput.setAttribute("inputmode", "numeric");
-  makhInput.setAttribute("pattern", "[0-9]*");
+  makhInput.setAttribute("inputmode", "text");
+  makhInput.setAttribute("pattern", "[0-9KkLl]*");
   makhInput.setAttribute("maxlength", "10");
   makhInput.setAttribute("autocomplete", "tel");
 
+  function chuanHoaMakhNhap(value) {
+    const raw = String(value || "").trim().toUpperCase();
+
+    // Cho phép nhập khách lẻ KL
+    if (raw === "KL") return "KL";
+
+    // Các trường hợp còn lại vẫn chỉ lấy số điện thoại 10 số
+    return raw.replace(/\D/g, "").slice(0, 10);
+  }
+
+  // Giữ tên cũ để không ảnh hưởng các chỗ gọi cũ
   function chiLaySo(value) {
-    return String(value || "").replace(/\D/g, "").slice(0, 10);
+    return chuanHoaMakhNhap(value);
   }
 
   async function copyMakhNeuDu10So() {
-    const makh = chiLaySo(makhInput.value);
+    const makh = chuanHoaMakhNhap(makhInput.value);
+
+    if (makh === "KL") {
+      makhInput.value = "KL";
+      khoaDiemKhachLe();
+      suggestBox.style.display = "none";
+
+      const maspEl = getEl("masp");
+      setTimeout(() => {
+        maspEl?.focus();
+        maspEl?.select?.();
+      }, 50);
+
+      return;
+    }
 
     if (makh.length !== 10) return;
     if (makh === lastCopiedMakh) return;
@@ -652,10 +677,10 @@ export function mountKhachHangSuggest(options = {}) {
 
   function bindEvents() {
     makhInput.addEventListener("input", () => {
-      const soMoi = chiLaySo(makhInput.value);
+      const maMoi = chuanHoaMakhNhap(makhInput.value);
 
-      if (makhInput.value !== soMoi) {
-        makhInput.value = soMoi;
+      if (makhInput.value !== maMoi) {
+        makhInput.value = maMoi;
       }
 
       copyMakhNeuDu10So();
@@ -720,7 +745,8 @@ export function mountKhachHangSuggest(options = {}) {
     async function xuLyMakhNhuEnter() {
       if (dangXuLyMakhBlur) return;
 
-      const makh = chiLaySo(makhInput.value);
+      const makh = chuanHoaMakhNhap(makhInput.value);
+      if (makh === "KL") return;
 
       // Chưa nhập gì thì thôi
       if (!makh) {
