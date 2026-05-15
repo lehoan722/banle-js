@@ -231,7 +231,7 @@ export function mountKhachHangSuggest(options = {}) {
 
   function renderSuggest(data) {
     dsSuggest = data || [];
-    suggestIndex = dsSuggest.length ? 0 : -1;
+    suggestIndex = -1;
 
     if (!dsSuggest.length) {
       suggestBox.innerHTML = `
@@ -702,48 +702,78 @@ export function mountKhachHangSuggest(options = {}) {
 
     let dangXuLyMakhBlur = false;
 
+    async function timKhachHangChinhXacTheoMakh(makh) {
+      const { data, error } = await window.supabase
+        .from("dmkhachhang")
+        .select("makh, tenkh, dienthoai, diem_hientai, hang_khach, created_by_manv")
+        .eq("makh", makh)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Lỗi tìm chính xác khách hàng:", error);
+        return null;
+      }
+
+      return data || null;
+    }
+
     async function xuLyMakhNhuEnter() {
       if (dangXuLyMakhBlur) return;
 
-      const kwNow = String(makhInput.value || "").trim().toUpperCase();
-      if (!kwNow) return;
+      const makh = chiLaySo(makhInput.value);
+
+      // Chưa nhập gì thì thôi
+      if (!makh) {
+        clearThongTinKhachHang();
+        suggestBox.style.display = "none";
+        return;
+      }
+
+      // Chưa đủ 10 số thì KHÔNG báo lỗi, KHÔNG chọn khách, chỉ xóa thông tin khách
+      if (makh.length < 10) {
+        makhInput.value = "";
+        clearThongTinKhachHang();
+        suggestBox.style.display = "none";
+        return;
+      }
 
       dangXuLyMakhBlur = true;
 
       try {
-        if (kwNow === "KL") {
+        makhInput.value = makh;
+
+        const kh = await timKhachHangChinhXacTheoMakh(makh);
+
+        if (kh) {
+          khoiPhucTongGocTruocKhiDoiKhach();
+
+          makhInput.value = chiLaySo(kh.makh || "");
+          setVal(tenInputId, kh.tenkh || "");
+          copyMakhNeuDu10So();
+
           suggestBox.style.display = "none";
+          dangTaoKhachMoi = false;
+          makhMoiTam = "";
+
+          const tenEl = getEl(tenInputId);
+          if (tenEl) tenEl.readOnly = true;
+
+          localStorage.setItem("pending_makh_banle", kh.makh || "");
+          localStorage.setItem("pending_tenkh_banle", kh.tenkh || "");
+
+          await napThongTinDiemKhach(kh.makh);
           capNhatTrangThaiDiemTheoKhach();
 
-          const maspEl = getEl("masp");
-          setTimeout(() => {
-            maspEl?.focus();
-            maspEl?.select?.();
-          }, 50);
-
           return;
         }
 
-        if (dsSuggest.length && suggestIndex >= 0) {
-          await chonKhachHang(suggestIndex);
-        } else {
-          await timKhachHang(kwNow);
+        // Đủ 10 số nhưng chưa có khách thì mở popup thêm nhanh
+        moTrangNhapKhachMoi();
 
-          setTimeout(async () => {
-            if (dsSuggest.length && suggestIndex >= 0) {
-              await chonKhachHang(suggestIndex);
-            } else {
-              moTrangNhapKhachMoi();
-            }
-            dangXuLyMakhBlur = false;
-          }, 250);
-
-          return;
-        }
       } finally {
         setTimeout(() => {
           dangXuLyMakhBlur = false;
-        }, 300);
+        }, 500);
       }
     }
 
