@@ -509,7 +509,7 @@ export function mountKhachHangSuggest(options = {}) {
     localStorage.setItem("pending_makh_banle", makh);
     localStorage.setItem("pending_tenkh_banle", tenkh);
 
-    alert("✅ Đã thêm khách hàng mới và sử dụng cho hóa đơn hiện tại.");
+    //alert("✅ Đã thêm khách hàng mới và sử dụng cho hóa đơn hiện tại.");
 
     setTimeout(() => {
       const maspEl = getEl("masp");
