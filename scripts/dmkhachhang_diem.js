@@ -31,6 +31,35 @@ export function mountKhachHangSuggest(options = {}) {
   let dangTaoKhachMoi = false;
   let makhMoiTam = "";
 
+  let lastCopiedMakh = "";
+
+  // Ép ô mã khách chỉ nhập số + hiển thị bàn phím số trên điện thoại
+  makhInput.setAttribute("type", "tel");
+  makhInput.setAttribute("inputmode", "numeric");
+  makhInput.setAttribute("pattern", "[0-9]*");
+  makhInput.setAttribute("maxlength", "10");
+  makhInput.setAttribute("autocomplete", "tel");
+
+  function chiLaySo(value) {
+    return String(value || "").replace(/\D/g, "").slice(0, 10);
+  }
+
+  async function copyMakhNeuDu10So() {
+    const makh = chiLaySo(makhInput.value);
+
+    if (makh.length !== 10) return;
+    if (makh === lastCopiedMakh) return;
+
+    lastCopiedMakh = makh;
+
+    try {
+      await navigator.clipboard.writeText(makh);
+      console.log("✅ Đã copy mã khách:", makh);
+    } catch (e) {
+      console.warn("⚠️ Không copy được clipboard:", e);
+    }
+  }
+
   function getEl(id) {
     return document.getElementById(id);
   }
@@ -276,8 +305,9 @@ export function mountKhachHangSuggest(options = {}) {
     // ✅ Trước khi đổi khách, khôi phục hóa đơn về tổng gốc
     khoiPhucTongGocTruocKhiDoiKhach();
 
-    makhInput.value = kh.makh || "";
+    makhInput.value = chiLaySo(kh.makh || "");
     setVal(tenInputId, kh.tenkh || "");
+    copyMakhNeuDu10So();
     suggestBox.style.display = "none";
 
     dangTaoKhachMoi = false;
@@ -493,8 +523,9 @@ export function mountKhachHangSuggest(options = {}) {
 
     document.getElementById("popupKhachMoiBanLe").style.display = "none";
 
-    makhInput.value = makh;
+    makhInput.value = chiLaySo(makh);
     setVal(tenInputId, tenkh);
+    copyMakhNeuDu10So();
     setVal(diemInputId, "0");
     setVal(hangInputId, manvTao ? "THUONG/" + manvTao : "THUONG");
     setVal(diemTruInputId, "0");
@@ -621,6 +652,14 @@ export function mountKhachHangSuggest(options = {}) {
 
   function bindEvents() {
     makhInput.addEventListener("input", () => {
+      const soMoi = chiLaySo(makhInput.value);
+
+      if (makhInput.value !== soMoi) {
+        makhInput.value = soMoi;
+      }
+
+      copyMakhNeuDu10So();
+
       const kw = makhInput.value.trim();
 
       khoiPhucTongGocTruocKhiDoiKhach();
@@ -642,6 +681,14 @@ export function mountKhachHangSuggest(options = {}) {
     });
 
     makhInput.addEventListener("focus", () => {
+      makhInput.select?.();
+
+      setTimeout(() => {
+        makhInput.select?.();
+      }, 50);
+
+      copyMakhNeuDu10So();
+
       const kw = String(makhInput.value || "").trim();
 
       if (kw.toUpperCase() === "KL") {
@@ -651,6 +698,67 @@ export function mountKhachHangSuggest(options = {}) {
       }
 
       if (kw) timKhachHang(kw);
+    });
+
+    let dangXuLyMakhBlur = false;
+
+    async function xuLyMakhNhuEnter() {
+      if (dangXuLyMakhBlur) return;
+
+      const kwNow = String(makhInput.value || "").trim().toUpperCase();
+      if (!kwNow) return;
+
+      dangXuLyMakhBlur = true;
+
+      try {
+        if (kwNow === "KL") {
+          suggestBox.style.display = "none";
+          capNhatTrangThaiDiemTheoKhach();
+
+          const maspEl = getEl("masp");
+          setTimeout(() => {
+            maspEl?.focus();
+            maspEl?.select?.();
+          }, 50);
+
+          return;
+        }
+
+        if (dsSuggest.length && suggestIndex >= 0) {
+          await chonKhachHang(suggestIndex);
+        } else {
+          await timKhachHang(kwNow);
+
+          setTimeout(async () => {
+            if (dsSuggest.length && suggestIndex >= 0) {
+              await chonKhachHang(suggestIndex);
+            } else {
+              moTrangNhapKhachMoi();
+            }
+            dangXuLyMakhBlur = false;
+          }, 250);
+
+          return;
+        }
+      } finally {
+        setTimeout(() => {
+          dangXuLyMakhBlur = false;
+        }, 300);
+      }
+    }
+
+    makhInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        const active = document.activeElement;
+
+        // Nếu đang bấm chọn trong danh sách gợi ý hoặc popup tìm khách thì không xử lý blur
+        if (suggestBox?.contains(active)) return;
+
+        const popupKhachMoi = document.getElementById("popupKhachMoiBanLe");
+        if (popupKhachMoi && popupKhachMoi.style.display !== "none") return;
+
+        xuLyMakhNhuEnter();
+      }, 180);
     });
 
     makhInput.addEventListener("keydown", async (e) => {
@@ -691,12 +799,7 @@ export function mountKhachHangSuggest(options = {}) {
 
       if (e.key === "Enter") {
         e.preventDefault();
-
-        if (dsSuggest.length && suggestIndex >= 0) {
-          await chonKhachHang(suggestIndex);
-        } else {
-          moTrangNhapKhachMoi();
-        }
+        await xuLyMakhNhuEnter();
         return;
       }
 
