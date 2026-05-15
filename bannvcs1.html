@@ -1236,39 +1236,37 @@
     <script>
         // Tự động mở QR Zalo sau khi thêm nhanh khách hàng thành công
         document.addEventListener("DOMContentLoaded", () => {
-            if (window.__autoOpenQrAfterQuickCustomer) return;
-            window.__autoOpenQrAfterQuickCustomer = true;
+            if (window.__autoOpenQrAfterQuickCustomer_v2) return;
+            window.__autoOpenQrAfterQuickCustomer_v2 = true;
 
-            function moQrZaloTuDong(phone) {
+            let canMoQrSauKhiLuuKhachNhanh = false;
+
+            function moQrZaloTuDong() {
+                const makh = document.getElementById("makh")?.value?.trim() || "";
                 const popup = document.getElementById("popupQRZalo");
                 const qrSdt = document.getElementById("qrSdtKhach");
-                const makhEl = document.getElementById("makh");
 
-                const sdt = String(phone || makhEl?.value || "").trim();
+                if (!makh || !popup || !qrSdt) return false;
 
-                if (!sdt || !popup || !qrSdt) return;
-
-                qrSdt.textContent = sdt;
+                qrSdt.textContent = makh;
                 popup.style.display = "flex";
+                return true;
             }
 
-            document.addEventListener("click", function (e) {
+            // Bắt sự kiện từ sớm, trước khi popup thêm nhanh bị đóng
+            document.addEventListener("pointerdown", function (e) {
                 const btn = e.target.closest("button");
                 if (!btn) return;
 
-                const btnText = String(btn.textContent || "").trim();
-                if (btnText !== "Lưu dữ liệu") return;
+                const txt = String(btn.textContent || "").trim();
 
-                const box = btn.closest("div");
-                const boxText = String(box?.textContent || "");
+                if (txt === "Lưu dữ liệu") {
+                    canMoQrSauKhiLuuKhachNhanh = true;
+                }
+            }, true);
 
-                if (!boxText.includes("THÊM NHANH KHÁCH HÀNG")) return;
-
-                const inputs = box.querySelectorAll("input");
-                const sdtNhanh =
-                    inputs[2]?.value?.trim() ||
-                    inputs[0]?.value?.trim() ||
-                    "";
+            document.addEventListener("click", function () {
+                if (!canMoQrSauKhiLuuKhachNhanh) return;
 
                 let count = 0;
 
@@ -1278,18 +1276,21 @@
                     const makh = document.getElementById("makh")?.value?.trim() || "";
                     const tenkh = document.getElementById("khachhang")?.value?.trim() || "";
 
-                    // Chỉ mở QR khi dữ liệu khách đã được đẩy về form chính
                     if (makh && tenkh) {
                         clearInterval(timer);
-                        moQrZaloTuDong(makh || sdtNhanh);
+                        canMoQrSauKhiLuuKhachNhanh = false;
+
+                        setTimeout(() => {
+                            moQrZaloTuDong();
+                        }, 300);
                     }
 
-                    // Sau khoảng 4 giây mà chưa đổ dữ liệu thì dừng, tránh mở QR sai
-                    if (count >= 20) {
+                    if (count >= 30) {
                         clearInterval(timer);
+                        canMoQrSauKhiLuuKhachNhanh = false;
                     }
                 }, 200);
-            });
+            }, true);
         });
     </script>
 
