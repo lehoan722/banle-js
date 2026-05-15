@@ -26,6 +26,7 @@ const editableFields = [
   "ghi_chu_chamsoc",
   "active",
   "thangsinh",
+  "namsinh",
   "marketing_opt_in",
   "zalo_sms_opt_in",
   "nguon_dangky"
@@ -36,6 +37,7 @@ const columns = [
   { data: "tenkh", title: "Tên khách" },
   { data: "ngaysinh", title: "Ngày sinh", type: "date", dateFormat: "YYYY-MM-DD", correctFormat: true },
   { data: "thangsinh", title: "Tháng sinh", type: "numeric" },
+  { data: "namsinh", title: "Năm sinh", type: "numeric" },
   { data: "dienthoai", title: "Điện thoại" },
   { data: "diachi", title: "Địa chỉ" },
   { data: "email", title: "Email" },
@@ -97,6 +99,7 @@ function normalizeRow(row) {
     ghi_chu_chamsoc: row.ghi_chu_chamsoc || null,
     active: row.active !== false,
     thangsinh: row.thangsinh === "" || row.thangsinh == null ? null : Number(row.thangsinh),
+    namsinh: row.namsinh === "" || row.namsinh == null ? null : Number(row.namsinh),
     marketing_opt_in: !!row.marketing_opt_in,
     zalo_sms_opt_in: !!row.zalo_sms_opt_in,
     nguon_dangky: row.nguon_dangky || null,
@@ -122,6 +125,15 @@ function validateRow(row, rowIndex) {
     const m = Number(row.thangsinh);
     if (!Number.isInteger(m) || m < 1 || m > 12) {
       errors.push("Tháng sinh phải từ 1 đến 12");
+    }
+  }
+
+  if (row.namsinh !== null && row.namsinh !== "" && row.namsinh !== undefined) {
+    const y = Number(row.namsinh);
+    const currentYear = new Date().getFullYear();
+
+    if (!Number.isInteger(y) || y < 1900 || y > currentYear) {
+      errors.push(`Năm sinh phải từ 1900 đến ${currentYear}`);
     }
   }
 
@@ -294,6 +306,7 @@ function addRow() {
     ghi_chu_chamsoc: "",
     active: true,
     thangsinh: null,
+    namsinh: null,
     marketing_opt_in: false,
     zalo_sms_opt_in: false,
     nguon_dangky: "ADMIN",
