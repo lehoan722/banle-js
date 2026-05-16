@@ -1,5 +1,6 @@
 // scripts/authModule.js
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/+esm";
+import { initCopyDuLieu } from "./copyDuLieu.js";
 
 // =======================================================
 // 1) CẤU HÌNH SUPABASE DÙNG CHUNG (frontend anon key)
@@ -335,7 +336,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     if (macDinhDiaDiem) csSelect.value = macDinhDiaDiem;
   }
 
-  if (tuDongKhoaCoSo) csSelect.disabled = true;  
+  if (tuDongKhoaCoSo) csSelect.disabled = true;
 
   function showAppAfterLogin(nhanvienLike, context) {
     const hook =
@@ -355,12 +356,17 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
         // ✅ áp quyền UI ngay sau login/auto-session
         try { window.capNhatQuyenGiaoDien?.(); } catch { }
+        try {
+          initCopyDuLieu();
+        } catch (e) {
+          console.warn("Không khởi tạo được module copy dữ liệu:", e);
+        }
 
         if (appContainer) appContainer.style.display = "";
         loginContainer.style.display = "none";
       })
       .catch(console.error);
-  }  
+  }
 
   function resolveLoginApiPath(cs) {
     try {
@@ -605,13 +611,13 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       if (savedId) manvInput.value = savedId;
       if (savedBranch) csSelect.value = savedBranch;
 
-            const { session } = await hydrateCurrentUserFromSession(macDinhDiaDiem);
+      const { session } = await hydrateCurrentUserFromSession(macDinhDiaDiem);
       if (!session) return;
 
       showAppAfterLogin(getCurrentUserInfo(), {
         diadiem: localStorage.getItem("diadiem") || macDinhDiaDiem,
         session,
-      });    
+      });
 
     } catch {
       // ignore
