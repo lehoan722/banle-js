@@ -808,6 +808,10 @@ export function mountKhachHangSuggest(options = {}) {
           await napThongTinDiemKhach(kh.makh);
           capNhatTrangThaiDiemTheoKhach();
 
+          if (typeof window.kiemTraCanhBaoMuaNhieuKhachHang === "function") {
+            window.kiemTraCanhBaoMuaNhieuKhachHang();
+          }
+
           return;
         }
 
