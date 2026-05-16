@@ -41,7 +41,7 @@ export async function validateKhachHangBatBuoc(loaiHoaDon = "") {
     getMoney("khachtra") ||
     0;
 
-  if (tongThanhToan < 200000) {
+  if (tongThanhToan < 700000) {
     return true;
   }
 
@@ -49,7 +49,7 @@ export async function validateKhachHangBatBuoc(loaiHoaDon = "") {
 
   if (!makh) {
     alert(
-      "❌ Hóa đơn từ 200.000đ trở lên cần nhập khách hàng để tích điểm.\n\n" +
+      "❌ Hóa đơn từ 700.000đ trở lên cần nhập khách hàng để tích điểm.\n\n" +
       "Vui lòng nhập SĐT / mã khách hàng."
     );
 
