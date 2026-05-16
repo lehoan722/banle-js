@@ -2,14 +2,20 @@
 
 import { supabase } from "../supabaseClient.js";
 
+const LOAI_BAT_BUOC_KHACH_HANG = [
+  "bancs1",
+  "bancs2",
+  "bannvcs1",
+  "bannvcs2"
+];
+
 function getInput(id) {
   return document.getElementById(id);
 }
 
 function getMoney(id) {
   return parseInt(
-    String(getInput(id)?.value || "")
-      .replace(/[^\d]/g, ""),
+    String(getInput(id)?.value || "").replace(/[^\d]/g, ""),
     10
   ) || 0;
 }
@@ -18,14 +24,23 @@ function getText(id) {
   return String(getInput(id)?.value || "").trim();
 }
 
-export async function validateKhachHangBatBuoc() {
+function normalizeLoai(loai) {
+  return String(loai || "").trim().toLowerCase();
+}
+
+export async function validateKhachHangBatBuoc(loaiHoaDon = "") {
+  const loai = normalizeLoai(loaiHoaDon);
+
+  // Chỉ áp dụng cho 4 loại hóa đơn bán hàng cần tích điểm
+  if (!LOAI_BAT_BUOC_KHACH_HANG.includes(loai)) {
+    return true;
+  }
 
   const tongThanhToan =
     getMoney("phaithanhtoan") ||
     getMoney("khachtra") ||
     0;
 
-  // dưới 200k => bỏ qua
   if (tongThanhToan < 200000) {
     return true;
   }
@@ -51,7 +66,6 @@ export async function validateKhachHangBatBuoc() {
     .maybeSingle();
 
   if (error || !data) {
-
     alert(
       "❌ Mã khách hàng không tồn tại trong danh mục khách hàng.\n\n" +
       "Vui lòng kiểm tra lại."
