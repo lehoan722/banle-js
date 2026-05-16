@@ -185,3 +185,66 @@ button {
   margin-top: 6px;
   color: #6b7280;
 }
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+
+.hidden{
+  display:none;
+}
+
+.modal-content{
+  background:white;
+  width:420px;
+  max-width:95vw;
+  border-radius:12px;
+  padding:20px;
+}
+
+.modal-content h2{
+  margin-bottom:15px;
+}
+
+.modal-content label{
+  display:block;
+  margin-top:10px;
+  margin-bottom:5px;
+  font-weight:bold;
+}
+
+.modal-content input,
+.modal-content select,
+.modal-content textarea{
+  width:100%;
+  padding:9px;
+  border:1px solid #d1d5db;
+  border-radius:8px;
+}
+
+.modal-content textarea{
+  min-height:80px;
+}
+
+.checkbox-line{
+  display:flex !important;
+  gap:8px;
+  align-items:center;
+}
+
+.checkbox-line input{
+  width:auto;
+}
+
+.modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:16px;
+}
