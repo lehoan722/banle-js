@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Việc hằng ngày</title>
+
+  <link rel="stylesheet" href="viechangngay.css" />
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+</head>
+
+<body>
+  <div id="login-container"></div>
+
+  <div id="app-container" style="display:none;">
+
+    <header class="topbar">
+      <div>
+        <h1>VIỆC HẰNG NGÀY</h1>
+        <p>Quản lý mẫu công việc và khu vực cửa hàng</p>
+      </div>
+
+      <button id="btnLogout">Đăng xuất</button>
+    </header>
+
+    <main class="page">
+
+      <div class="toolbar">
+        <button id="tabTemplates" class="tab-btn active">Mẫu công việc</button>
+        <button id="tabAreas" class="tab-btn">Khu vực / Giá kệ</button>
+
+        <button id="btnLoad">Tải dữ liệu</button>
+        <button id="btnAddRow">Thêm dòng</button>
+        <button id="btnSave">Lưu dữ liệu</button>
+        <button id="btnCopy">Copy bảng</button>
+      </div>
+
+      <div id="statusText" class="status-text"></div>
+
+      <section class="table-wrap">
+        <div id="hot"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="viechangngay.js"></script>
+</body>
+</html>
