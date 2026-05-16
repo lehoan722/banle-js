@@ -710,6 +710,10 @@
             </div>
         </div>
 
+        <div id="khCanhBaoMuaNhieu"
+            style="display:none;width:75%;padding:3px 8px;font-size:14px;font-weight:bold;background:#fff7d6;border-top:1px solid #ddd;box-sizing:border-box;">
+        </div>
+
         <div class="khach-footer-info">
             <div id="khBox" style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
                 <input id="makh" placeholder="mã khách" style="width:100%;padding-right:32px;box-sizing:border-box;"
@@ -849,6 +853,7 @@
     <script type="module">
         import { mountKhachHangSuggest } from "./scripts/dmkhachhang_diem.js";
         import { mountKhachHangQuickInfoPopup } from "./scripts/khachHangdiemPopup.js";
+        import { mountKhachHangCanhBaoMuaNhieu } from "./scripts/khachHangCanhBaoMuaNhieu.js";
 
         function setVal(id, val) {
             const el = document.getElementById(id);
@@ -915,6 +920,12 @@
                 inputId: "makh",
                 buttonId: "btnPopupKH",
                 limit: 10
+            });
+
+            mountKhachHangCanhBaoMuaNhieu({
+                inputId: "makh",
+                boxId: "khCanhBaoMuaNhieu",
+                autoHideMs: 5000
             });
 
             const sohdEl = document.getElementById("sohd");
