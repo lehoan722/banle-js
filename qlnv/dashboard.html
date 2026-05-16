@@ -127,6 +127,56 @@
 
   </div>
 
+  <div id="taskModal" class="modal hidden">
+    <div class="modal-content">
+
+      <h2>Thêm công việc</h2>
+
+      <label>Nhân viên</label>
+      <select id="taskAssignedTo"></select>
+
+      <label>Loại việc</label>
+      <select id="taskType">
+        <option value="vesinh">Vệ sinh</option>
+        <option value="kiemhang">Kiểm hàng</option>
+        <option value="treomau">Treo mẫu</option>
+        <option value="baymau">Bày mẫu</option>
+        <option value="luanchuyen">Luân chuyển hàng</option>
+        <option value="khac">Khác</option>
+      </select>
+
+      <label>Tiêu đề</label>
+      <input id="taskTitle" type="text" placeholder="Ví dụ: Vệ sinh giá giày 01-05">
+
+      <label>Mô tả</label>
+      <textarea id="taskDescription" placeholder="Ghi chú chi tiết công việc"></textarea>
+
+      <label>Khu vực</label>
+      <input id="taskArea" type="text" placeholder="Ví dụ: Giá giày, kho sau, quầy áo">
+
+      <label>Mức ưu tiên</label>
+      <select id="taskPriority">
+        <option value="1">Cao</option>
+        <option value="2" selected>Bình thường</option>
+        <option value="3">Thấp</option>
+      </select>
+
+      <label>Thời hạn</label>
+      <input id="taskDueAt" type="datetime-local">
+
+      <label class="checkbox-line">
+        <input id="taskImageRequired" type="checkbox">
+        Cần ảnh xác nhận
+      </label>
+
+      <div class="modal-actions">
+        <button id="btnSaveTask">Lưu task</button>
+        <button id="btnCloseTaskModal" type="button">Đóng</button>
+      </div>
+
+    </div>
+  </div>
+
   <script type="module" src="dashboard.js"></script>
 
 </body>
