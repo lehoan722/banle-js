@@ -198,8 +198,8 @@ function createHot(data) {
   container.innerHTML = "";
   container.style.display = "block";
   container.style.width = "100%";
-  container.style.height = "calc(100vh - 320px)";
-  container.style.minHeight = "360px";
+  container.style.height = "calc(100vh - 230px)";
+  container.style.minHeight = "460px";
   container.style.background = "#fff";
 
   if (hot) {
