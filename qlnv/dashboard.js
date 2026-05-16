@@ -5,6 +5,9 @@ import {
   dangXuatDungChung
 } from "../scripts/authModule.js";
 
+let taskTemplatesCache = [];
+let workAreasCache = [];
+
 const supabase = getSupabaseClient();
 
 const selectDiadiem =
@@ -28,10 +31,11 @@ const btnCloseTaskModal = document.getElementById('btnCloseTaskModal');
 const btnSaveTask = document.getElementById('btnSaveTask');
 
 const taskAssignedTo = document.getElementById('taskAssignedTo');
-const taskType = document.getElementById('taskType');
+const taskTemplate = document.getElementById('taskTemplate');
+const taskAreaSelect = document.getElementById('taskAreaSelect');
+const taskAreaLabel = document.getElementById('taskAreaLabel');
 const taskTitle = document.getElementById('taskTitle');
 const taskDescription = document.getElementById('taskDescription');
-const taskArea = document.getElementById('taskArea');
 const taskPriority = document.getElementById('taskPriority');
 const taskEstimatedMinutes = document.getElementById('taskEstimatedMinutes');
 const taskImageRequired = document.getElementById('taskImageRequired');
@@ -343,6 +347,22 @@ function setupRealtimeDashboard() {
 async function openTaskModal() {
   const diadiem = selectDiadiem.value;
 
+  await loadAssignableStaff(diadiem);
+  await loadTaskTemplates();
+  await loadWorkAreas(diadiem);
+
+  taskTitle.value = '';
+  taskDescription.value = '';
+  taskPriority.value = '2';
+  taskEstimatedMinutes.value = '30';
+  taskImageRequired.checked = false;
+
+  applySelectedTemplate();
+
+  taskModal.classList.remove('hidden');
+}
+
+async function loadAssignableStaff(diadiem) {
   const { data, error } = await supabase
     .schema('qlnv')
     .from('v_staff_today_status')
@@ -363,22 +383,97 @@ async function openTaskModal() {
     taskAssignedTo.innerHTML = `
       <option value="">Không có nhân viên nào có thể giao việc</option>
     `;
-  } else {
-    taskAssignedTo.innerHTML = data.map(item => `
-      <option value="${item.manv}" data-name="${item.tennv || item.manv}">
-        ${item.tennv || item.manv} (${item.manv})
-      </option>
-    `).join('');
+    return;
   }
 
-  taskTitle.value = '';
-  taskDescription.value = '';
-  taskArea.value = '';
-  taskPriority.value = '2';
-  taskEstimatedMinutes.value = '30';
-  taskImageRequired.checked = false;
+  taskAssignedTo.innerHTML = data.map(item => `
+    <option value="${item.manv}" data-name="${item.tennv || item.manv}">
+      ${item.tennv || item.manv} (${item.manv})
+    </option>
+  `).join('');
+}
 
-  taskModal.classList.remove('hidden');
+async function loadTaskTemplates() {
+  const { data, error } = await supabase
+    .schema('qlnv')
+    .from('task_templates')
+    .select('*')
+    .eq('is_active', true)
+    .order('id', { ascending: true });
+
+  if (error) {
+    console.error('Lỗi tải mẫu công việc:', error);
+    alert('Không tải được mẫu công việc.');
+    return;
+  }
+
+  taskTemplatesCache = data || [];
+
+  if (!taskTemplatesCache.length) {
+    taskTemplate.innerHTML = `
+      <option value="">Chưa có mẫu công việc</option>
+    `;
+    return;
+  }
+
+  taskTemplate.innerHTML = taskTemplatesCache.map(item => `
+    <option value="${item.template_code}">
+      ${item.title}
+    </option>
+  `).join('');
+}
+
+async function loadWorkAreas(diadiem) {
+  const { data, error } = await supabase
+    .schema('qlnv')
+    .from('work_areas')
+    .select('*')
+    .eq('diadiem', diadiem)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    console.error('Lỗi tải khu vực:', error);
+    alert('Không tải được khu vực.');
+    return;
+  }
+
+  workAreasCache = data || [];
+
+  taskAreaSelect.innerHTML = `
+    <option value="">-- Không chọn khu vực --</option>
+  ` + workAreasCache.map(item => `
+    <option value="${item.area_code}" data-name="${item.area_name}">
+      ${item.area_name}
+    </option>
+  `).join('');
+}
+
+function applySelectedTemplate() {
+  const code = taskTemplate.value;
+
+  const tpl = taskTemplatesCache.find(
+    item => item.template_code === code
+  );
+
+  if (!tpl) {
+    return;
+  }
+
+  taskTitle.value = tpl.title || '';
+  taskDescription.value = tpl.description || '';
+  taskPriority.value = String(tpl.default_priority || 2);
+  taskEstimatedMinutes.value = String(tpl.default_minutes || 30);
+  taskImageRequired.checked = !!tpl.image_required;
+
+  if (tpl.apply_to_area) {
+    taskAreaLabel.style.display = '';
+    taskAreaSelect.style.display = '';
+  } else {
+    taskAreaLabel.style.display = 'none';
+    taskAreaSelect.style.display = 'none';
+    taskAreaSelect.value = '';
+  }
 }
 
 async function saveTask() {
@@ -390,8 +485,28 @@ async function saveTask() {
     return;
   }
 
-  const selectedOption = taskAssignedTo.options[taskAssignedTo.selectedIndex];
-  const assignedName = selectedOption?.dataset?.name || manv;
+  const selectedStaff = taskAssignedTo.options[taskAssignedTo.selectedIndex];
+  const assignedName = selectedStaff?.dataset?.name || manv;
+
+  const templateCode = taskTemplate.value;
+  const tpl = taskTemplatesCache.find(
+    item => item.template_code === templateCode
+  );
+
+  if (!tpl) {
+    alert('Vui lòng chọn mẫu công việc.');
+    return;
+  }
+
+  const selectedArea = taskAreaSelect.options[taskAreaSelect.selectedIndex];
+  const areaCode = taskAreaSelect.value || null;
+  const areaName = selectedArea?.dataset?.name || null;
+
+  if (tpl.apply_to_area && !areaCode) {
+    alert('Công việc này cần chọn khu vực.');
+    taskAreaSelect.focus();
+    return;
+  }
 
   const title = taskTitle.value.trim();
 
@@ -403,20 +518,25 @@ async function saveTask() {
 
   const user = getCurrentUserInfo();
 
+  const finalTitle = areaName
+    ? `${title} - ${areaName}`
+    : title;
+
   const payload = {
-    title,
+    title: finalTitle,
     description: taskDescription.value.trim() || null,
-    task_type: taskType.value,
+    task_type: tpl.task_type || 'khac',
     diadiem,
-    area: taskArea.value.trim() || null,
+    area: areaName,
     assigned_to: manv,
     assigned_name: assignedName,
-    priority: Number(taskPriority.value || 2),
+    priority: Number(taskPriority.value || tpl.default_priority || 2),
     status: 'pending',
-    estimated_minutes: Number(taskEstimatedMinutes.value || 30),
     due_at: null,
+    estimated_minutes: Number(taskEstimatedMinutes.value || tpl.default_minutes || 30),
     image_required: taskImageRequired.checked,
-    created_by: user.manv || 'ADMIN'
+    created_by: user.manv || 'ADMIN',
+    note: templateCode
   };
 
   const { data, error } = await supabase
@@ -439,10 +559,10 @@ async function saveTask() {
       diadiem,
       manv,
       tennv: assignedName,
-      action: `Admin giao task: ${title}`,
+      action: `Admin giao task từ mẫu: ${finalTitle}`,
       ref_type: 'task',
       ref_id: data.id,
-      note: payload.description,
+      note: templateCode,
       created_at: new Date().toISOString()
     });
 
@@ -452,6 +572,8 @@ async function saveTask() {
   await loadLogs(diadiem);
 }
 
+taskTemplate?.addEventListener('change', applySelectedTemplate);
+
 btnThemTask?.addEventListener('click', openTaskModal);
 
 btnCloseTaskModal?.addEventListener('click', () => {
@@ -459,6 +581,7 @@ btnCloseTaskModal?.addEventListener('click', () => {
 });
 
 btnSaveTask?.addEventListener('click', saveTask);
+
 
 selectDiadiem.addEventListener("change", async () => {
   await loadDashboard();
