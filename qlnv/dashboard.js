@@ -33,7 +33,7 @@ const taskTitle = document.getElementById('taskTitle');
 const taskDescription = document.getElementById('taskDescription');
 const taskArea = document.getElementById('taskArea');
 const taskPriority = document.getElementById('taskPriority');
-const taskDueAt = document.getElementById('taskDueAt');
+const taskEstimatedMinutes = document.getElementById('taskEstimatedMinutes');
 const taskImageRequired = document.getElementById('taskImageRequired');
 
 khoiTaoDangNhapDungChung({
@@ -375,7 +375,7 @@ async function openTaskModal() {
   taskDescription.value = '';
   taskArea.value = '';
   taskPriority.value = '2';
-  taskDueAt.value = '';
+  taskEstimatedMinutes.value = '30';
   taskImageRequired.checked = false;
 
   taskModal.classList.remove('hidden');
@@ -413,7 +413,8 @@ async function saveTask() {
     assigned_name: assignedName,
     priority: Number(taskPriority.value || 2),
     status: 'pending',
-    due_at: taskDueAt.value ? new Date(taskDueAt.value).toISOString() : null,
+    estimated_minutes: Number(taskEstimatedMinutes.value || 30),
+    due_at: null,
     image_required: taskImageRequired.checked,
     created_by: user.manv || 'ADMIN'
   };
