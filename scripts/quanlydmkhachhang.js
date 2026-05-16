@@ -49,15 +49,15 @@ const columns = [
   { data: "ghi_chu_chamsoc", title: "Ghi chú chăm sóc" },
   { data: "active", title: "Active", type: "checkbox" },
   { data: "marketing_opt_in", title: "Marketing", type: "checkbox" },
-  { data: "marketing_opt_in_at", title: "Marketing lúc", readOnly: true },
+  { data: "marketing_opt_in_at", title: "Marketing lúc", readOnly: true, renderer: vnDateTimeRenderer },
   { data: "zalo_sms_opt_in", title: "Zalo/SMS", type: "checkbox" },
   { data: "nguon_dangky", title: "Nguồn đăng ký" },
 
   { data: "diem_hientai", title: "Điểm hiện tại", readOnly: true, type: "numeric" },
   { data: "tong_chi_tieu", title: "Tổng chi tiêu", readOnly: true, type: "numeric" },
   { data: "so_lan_mua", title: "Số lần mua", readOnly: true, type: "numeric" },
-  { data: "lan_mua_cuoi", title: "Lần mua cuối", readOnly: true },
-  { data: "created_at", title: "Ngày tạo", readOnly: true },
+  { data: "lan_mua_cuoi", title: "Lần mua cuối", readOnly: true, renderer: vnDateTimeRenderer },
+  { data: "created_at", title: "Ngày tạo", readOnly: true, renderer: vnDateTimeRenderer },
   { data: "created_by_manv", title: "NV tạo", readOnly: true },
   { data: "created_by_tennv", title: "Tên NV tạo", readOnly: true },
   { data: "created_by_diadiem", title: "CS tạo", readOnly: true }
@@ -83,21 +83,32 @@ const compactFields = [
 function formatDateTimeVN(value) {
   if (!value) return "";
 
-  const d = new Date(value);
+  // Ép dữ liệu DB là giờ UTC, sau đó hiển thị theo giờ Việt Nam
+  const text = String(value);
+  const isoText = /Z$|[+-]\d{2}:\d{2}$/.test(text) ? text : text + "Z";
+
+  const d = new Date(isoText);
   if (Number.isNaN(d.getTime())) return value;
 
-  const pad = n => String(n).padStart(2, "0");
+  const parts = new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour12: false
+  }).formatToParts(d);
 
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  const get = type => parts.find(p => p.type === type)?.value || "";
+
+  return `${get("hour")}:${get("minute")}:${get("second")} ${get("day")}/${get("month")}/${get("year")}`;
 }
 
-function formatRowForDisplay(row) {
-  return {
-    ...row,
-    lan_mua_cuoi: formatDateTimeVN(row.lan_mua_cuoi),
-    created_at: formatDateTimeVN(row.created_at),
-    marketing_opt_in_at: formatDateTimeVN(row.marketing_opt_in_at)
-  };
+function vnDateTimeRenderer(instance, td, row, col, prop, value, cellProperties) {
+  Handsontable.renderers.TextRenderer.apply(this, arguments);
+  td.textContent = formatDateTimeVN(value);
 }
 
 function $(id) {
@@ -316,7 +327,7 @@ async function loadData() {
     return;
   }
 
-  rawData = Array.isArray(data) ? data.map(formatRowForDisplay) : [];
+  rawData = Array.isArray(data) ? data : [];
   changedMakhs.clear();
   errorRows.clear();
 
