@@ -22,6 +22,20 @@ const taskContainer =
 const logContainer =
   document.getElementById('logContainer')
 
+const btnThemTask = document.getElementById('btnThemTask');
+const taskModal = document.getElementById('taskModal');
+const btnCloseTaskModal = document.getElementById('btnCloseTaskModal');
+const btnSaveTask = document.getElementById('btnSaveTask');
+
+const taskAssignedTo = document.getElementById('taskAssignedTo');
+const taskType = document.getElementById('taskType');
+const taskTitle = document.getElementById('taskTitle');
+const taskDescription = document.getElementById('taskDescription');
+const taskArea = document.getElementById('taskArea');
+const taskPriority = document.getElementById('taskPriority');
+const taskDueAt = document.getElementById('taskDueAt');
+const taskImageRequired = document.getElementById('taskImageRequired');
+
 khoiTaoDangNhapDungChung({
   loginContainerId: "login-container",
   appContainerId: "app-container",
@@ -157,7 +171,7 @@ async function loadStaff(diadiem) {
   document.getElementById('dangPhucVu').innerText = dangPhucVu;
 }
 
-function getWorkStateText(state){
+function getWorkStateText(state) {
   const map = {
     CO_CHAMCONG_KHONG_CO_LICH: 'Có chấm công - Chưa có lịch',
     CO_LICH_CHUA_VAO_CA: 'Có lịch - Chưa vào ca',
@@ -172,7 +186,7 @@ function getWorkStateText(state){
   return map[state] || state || 'Không xác định';
 }
 
-function getWorkStateClass(state){
+function getWorkStateClass(state) {
   const map = {
     CO_CHAMCONG_KHONG_CO_LICH: 'status-warning',
     CO_LICH_CHUA_VAO_CA: 'status-muted',
@@ -325,6 +339,125 @@ function setupRealtimeDashboard() {
       console.log("QLNV realtime status:", status);
     });
 }
+
+async function openTaskModal() {
+  const diadiem = selectDiadiem.value;
+
+  const { data, error } = await supabase
+    .schema('qlnv')
+    .from('v_staff_today_status')
+    .select('manv, tennv, can_assign_task')
+    .eq('diadiem', diadiem)
+    .eq('can_assign_task', true)
+    .order('tennv', { ascending: true });
+
+  if (error) {
+    console.error('Lỗi tải nhân viên có thể giao việc:', error);
+    alert('Không tải được danh sách nhân viên.');
+    return;
+  }
+
+  taskAssignedTo.innerHTML = '';
+
+  if (!data || data.length === 0) {
+    taskAssignedTo.innerHTML = `
+      <option value="">Không có nhân viên nào có thể giao việc</option>
+    `;
+  } else {
+    taskAssignedTo.innerHTML = data.map(item => `
+      <option value="${item.manv}" data-name="${item.tennv || item.manv}">
+        ${item.tennv || item.manv} (${item.manv})
+      </option>
+    `).join('');
+  }
+
+  taskTitle.value = '';
+  taskDescription.value = '';
+  taskArea.value = '';
+  taskPriority.value = '2';
+  taskDueAt.value = '';
+  taskImageRequired.checked = false;
+
+  taskModal.classList.remove('hidden');
+}
+
+async function saveTask() {
+  const diadiem = selectDiadiem.value;
+  const manv = taskAssignedTo.value;
+
+  if (!manv) {
+    alert('Không có nhân viên để giao việc.');
+    return;
+  }
+
+  const selectedOption = taskAssignedTo.options[taskAssignedTo.selectedIndex];
+  const assignedName = selectedOption?.dataset?.name || manv;
+
+  const title = taskTitle.value.trim();
+
+  if (!title) {
+    alert('Vui lòng nhập tiêu đề công việc.');
+    taskTitle.focus();
+    return;
+  }
+
+  const user = getCurrentUserInfo();
+
+  const payload = {
+    title,
+    description: taskDescription.value.trim() || null,
+    task_type: taskType.value,
+    diadiem,
+    area: taskArea.value.trim() || null,
+    assigned_to: manv,
+    assigned_name: assignedName,
+    priority: Number(taskPriority.value || 2),
+    status: 'pending',
+    due_at: taskDueAt.value ? new Date(taskDueAt.value).toISOString() : null,
+    image_required: taskImageRequired.checked,
+    created_by: user.manv || 'ADMIN'
+  };
+
+  const { data, error } = await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Lỗi lưu task:', error);
+    alert('Không lưu được task.');
+    return;
+  }
+
+  await supabase
+    .schema('qlnv')
+    .from('logs')
+    .insert({
+      diadiem,
+      manv,
+      tennv: assignedName,
+      action: `Admin giao task: ${title}`,
+      ref_type: 'task',
+      ref_id: data.id,
+      note: payload.description,
+      created_at: new Date().toISOString()
+    });
+
+  taskModal.classList.add('hidden');
+
+  await loadTasks(diadiem);
+  await loadLogs(diadiem);
+}
+
+btnThemTask?.addEventListener('click', openTaskModal);
+
+btnCloseTaskModal?.addEventListener('click', () => {
+  taskModal.classList.add('hidden');
+});
+
+btnSaveTask?.addEventListener('click', saveTask);
 
 selectDiadiem.addEventListener("change", async () => {
   await loadDashboard();
