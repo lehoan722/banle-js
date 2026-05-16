@@ -43,6 +43,7 @@ khoiTaoDangNhapDungChung({
     }
 
     await loadDashboard();
+    setupRealtimeDashboard();
     return true;
   }
 });
@@ -189,9 +190,73 @@ async function loadLogs(diadiem) {
 
 }
 
-selectDiadiem.addEventListener(
-  'change',
-  loadDashboard
-)
+let qlnvRealtimeChannel = null;
 
+function setupRealtimeDashboard() {
+  const diadiem = selectDiadiem.value;
+
+  if (qlnvRealtimeChannel) {
+    supabase.removeChannel(qlnvRealtimeChannel);
+    qlnvRealtimeChannel = null;
+  }
+
+  qlnvRealtimeChannel = supabase
+    .channel(`qlnv-dashboard-${diadiem}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "qlnv",
+        table: "staff_status",
+        filter: `diadiem=eq.${diadiem}`
+      },
+      async () => {
+        await loadStaff(diadiem);
+      }
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "qlnv",
+        table: "logs",
+        filter: `diadiem=eq.${diadiem}`
+      },
+      async () => {
+        await loadLogs(diadiem);
+      }
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "qlnv",
+        table: "tasks",
+        filter: `diadiem=eq.${diadiem}`
+      },
+      async () => {
+        await loadTasks(diadiem);
+      }
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "qlnv",
+        table: "store_status",
+        filter: `diadiem=eq.${diadiem}`
+      },
+      async () => {
+        await loadStoreStatus(diadiem);
+      }
+    )
+    .subscribe((status) => {
+      console.log("QLNV realtime status:", status);
+    });
+}
+
+selectDiadiem.addEventListener("change", async () => {
+  await loadDashboard();
+  setupRealtimeDashboard();
+});
 
