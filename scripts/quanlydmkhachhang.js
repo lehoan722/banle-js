@@ -63,6 +63,43 @@ const columns = [
   { data: "created_by_diadiem", title: "CS tạo", readOnly: true }
 ];
 
+let currentColumns = columns;
+let isCompactMode = false;
+
+const compactFields = [
+  "makh",
+  "tenkh",
+  "thangsinh",
+  "namsinh",
+  "dienthoai",
+  "diem_hientai",
+  "tong_chi_tieu",
+  "so_lan_mua",
+  "lan_mua_cuoi",
+  "created_at",
+  "created_by_manv"
+];
+
+function formatDateTimeVN(value) {
+  if (!value) return "";
+
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+
+  const pad = n => String(n).padStart(2, "0");
+
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+function formatRowForDisplay(row) {
+  return {
+    ...row,
+    lan_mua_cuoi: formatDateTimeVN(row.lan_mua_cuoi),
+    created_at: formatDateTimeVN(row.created_at),
+    marketing_opt_in_at: formatDateTimeVN(row.marketing_opt_in_at)
+  };
+}
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -161,8 +198,8 @@ function createHot(data) {
   container.innerHTML = "";
   container.style.display = "block";
   container.style.width = "100%";
-  container.style.height = "650px";
-  container.style.minHeight = "650px";
+  container.style.height = "calc(100vh - 320px)";
+  container.style.minHeight = "360px";
   container.style.background = "#fff";
 
   if (hot) {
@@ -172,13 +209,13 @@ function createHot(data) {
 
   hot = new Handsontable(container, {
     data: data,
-    columns: columns,
+    columns: currentColumns,
     rowHeaders: true,
-    colHeaders: columns.map(c => c.title),
+    colHeaders: currentColumns.map(c => c.title),
     licenseKey: "non-commercial-and-evaluation",
 
     width: "100%",
-    height: 650,
+    height: "100%",
     stretchH: "all",
 
     filters: true,
@@ -192,7 +229,7 @@ function createHot(data) {
     cells(row, col) {
       const props = {};
       const rowData = hot?.getSourceDataAtRow(row);
-      const field = columns[col]?.data;
+      const field = currentColumns[col]?.data;
 
       if (!rowData) return props;
 
@@ -208,7 +245,7 @@ function createHot(data) {
         props.className = "cell-edited";
       }
 
-      if (columns[col]?.readOnly) {
+      if (currentColumns[col]?.readOnly) {
         props.readOnly = true;
         props.className = `${props.className || ""} readonly-cell`;
       }
@@ -279,7 +316,7 @@ async function loadData() {
     return;
   }
 
-  rawData = Array.isArray(data) ? data : [];
+  rawData = Array.isArray(data) ? data.map(formatRowForDisplay) : [];
   changedMakhs.clear();
   errorRows.clear();
 
@@ -477,10 +514,10 @@ function exportCsv() {
 async function copyAllTableToClipboard() {
   if (!hot) return;
 
-  const headers = columns.map(c => c.title);
+  const headers = currentColumns.map(c => c.title);
 
   const rows = hot.getSourceData().map(row => {
-    return columns.map(c => {
+    return currentColumns.map(c => {
       const value = row?.[c.data];
       return value === null || value === undefined ? "" : String(value);
     });
@@ -500,6 +537,28 @@ async function copyAllTableToClipboard() {
   }
 }
 
+function toggleColumnsMode() {
+  if (!hot) return;
+
+  isCompactMode = !isCompactMode;
+
+  currentColumns = isCompactMode
+    ? columns.filter(c => compactFields.includes(c.data))
+    : columns;
+
+  hot.updateSettings({
+    columns: currentColumns,
+    colHeaders: currentColumns.map(c => c.title)
+  });
+
+  $("btnToggleColumns").textContent = isCompactMode ? "Đầy đủ" : "Rút gọn";
+
+  hot.refreshDimensions();
+  hot.render();
+
+  setStatus(isCompactMode ? "Đang hiển thị bảng rút gọn." : "Đang hiển thị bảng đầy đủ.");
+}
+
 function bindEvents() {
   $("btnLoad").addEventListener("click", loadData);
   $("btnSave").addEventListener("click", saveChanges);
@@ -509,6 +568,7 @@ function bindEvents() {
   $("btnExport").addEventListener("click", exportCsv);
   $("btnCopyAll").addEventListener("click", copyAllTableToClipboard);
   $("quickSearch").addEventListener("input", quickSearch);
+  $("btnToggleColumns").addEventListener("click", toggleColumnsMode);
 
   $("btnLogout").addEventListener("click", async () => {
     await dangXuatDungChung({
