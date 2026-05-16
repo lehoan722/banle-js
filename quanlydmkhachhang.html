@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <title>Quản lý danh mục khách hàng</title>
@@ -34,7 +35,9 @@
       margin-bottom: 8px;
     }
 
-    input, select, button {
+    input,
+    select,
+    button {
       padding: 6px 8px;
       font-size: 14px;
     }
@@ -66,7 +69,8 @@
 
     #hot {
       width: 100%;
-      height: calc(100vh - 170px);
+      height: calc(100vh - 320px);
+      min-height: 360px;
       overflow: hidden;
       background: white;
     }
@@ -128,6 +132,7 @@
         <button id="btnRestore">Khôi phục khách chọn</button>
         <button id="btnExport">Xuất Excel/CSV</button>
         <button id="btnCopyAll">Copy bảng</button>
+        <button id="btnToggleColumns">Rút gọn</button>
       </div>
 
       <div id="status">Sẵn sàng.</div>
@@ -139,4 +144,5 @@
   <script src="https://cdn.jsdelivr.net/npm/handsontable@14.6.1/dist/handsontable.full.min.js"></script>
   <script type="module" src="./scripts/quanlydmkhachhang.js"></script>
 </body>
+
 </html>
