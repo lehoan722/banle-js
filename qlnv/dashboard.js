@@ -82,38 +82,109 @@ async function loadStoreStatus(diadiem) {
 
 async function loadStaff(diadiem) {
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .schema('qlnv')
-    .from('staff_status')
+    .from('v_staff_today_status')
     .select('*')
     .eq('diadiem', diadiem)
+    .order('gio_bat_dau', {
+      ascending: true,
+      nullsFirst: false
+    });
 
-  staffContainer.innerHTML = ''
+  if (error) {
+    console.error('Lỗi loadStaff:', error);
+    return;
+  }
+
+  staffContainer.innerHTML = '';
+
+  let tongNhanVien = 0;
+  let dangPhucVu = 0;
 
   for (const item of data || []) {
 
-    const div = document.createElement('div')
+    tongNhanVien++;
 
-    div.className = 'staff-item'
+    if (item.work_state === 'DANG_PHUC_VU_KHACH') {
+      dangPhucVu++;
+    }
+
+    const statusText = getWorkStateText(item.work_state);
+    const statusClass = getWorkStateClass(item.work_state);
+
+    const shiftText = item.gio_bat_dau && item.gio_ket_thuc
+      ? `Ca: ${item.gio_bat_dau} - ${item.gio_ket_thuc}`
+      : `Không có lịch hôm nay`;
+
+    const assignText = item.can_assign_task
+      ? `<span class="assign-ok">Có thể giao việc</span>`
+      : `<span class="assign-no">Chưa thể giao việc</span>`;
+
+    const div = document.createElement('div');
+    div.className = 'staff-item';
 
     div.innerHTML = `
       <div class="staff-name">
         ${item.tennv || item.manv}
       </div>
 
-      <div>
-        ${item.current_area || ''}
+      <div class="staff-sub">
+        Mã NV: ${item.manv}
       </div>
 
-      <div class="status-badge">
-        ${item.current_status}
+      <div class="staff-sub">
+        ${shiftText}
       </div>
-    `
 
-    staffContainer.appendChild(div)
+      <div class="staff-sub">
+        Lịch: ${item.trang_thai_lich || 'Không có'}
+      </div>
 
+      <div class="status-badge ${statusClass}">
+        ${statusText}
+      </div>
+
+      <div class="staff-sub">
+        ${assignText}
+      </div>
+    `;
+
+    staffContainer.appendChild(div);
   }
 
+  document.getElementById('tongNhanVien').innerText = tongNhanVien;
+  document.getElementById('dangPhucVu').innerText = dangPhucVu;
+}
+
+function getWorkStateText(state){
+  const map = {
+    CO_CHAMCONG_KHONG_CO_LICH: 'Có chấm công - Chưa có lịch',
+    CO_LICH_CHUA_VAO_CA: 'Có lịch - Chưa vào ca',
+    DA_VAO_CA_DANG_RANH: 'Đã vào ca - Đang rảnh',
+    DANG_NGHI: 'Đang nghỉ',
+    DANG_PHUC_VU_KHACH: 'Đang phục vụ khách',
+    DANG_LAM_TASK: 'Đang làm task',
+    DA_TAN_CA: 'Đã tan ca',
+    KHONG_XAC_DINH: 'Không xác định'
+  };
+
+  return map[state] || state || 'Không xác định';
+}
+
+function getWorkStateClass(state){
+  const map = {
+    CO_CHAMCONG_KHONG_CO_LICH: 'status-warning',
+    CO_LICH_CHUA_VAO_CA: 'status-muted',
+    DA_VAO_CA_DANG_RANH: 'status-free',
+    DANG_NGHI: 'status-break',
+    DANG_PHUC_VU_KHACH: 'status-serving',
+    DANG_LAM_TASK: 'status-task',
+    DA_TAN_CA: 'status-off',
+    KHONG_XAC_DINH: 'status-muted'
+  };
+
+  return map[state] || 'status-muted';
 }
 
 async function loadTasks(diadiem) {
