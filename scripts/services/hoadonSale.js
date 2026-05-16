@@ -145,7 +145,14 @@ async function validateBeforeSave() {
   }
 
   // ===== BẮT BUỘC KHÁCH HÀNG TÍCH ĐIỂM =====
-  const okKh = await validateKhachHangBatBuoc();
+  let loaiKiemTraKhach = getLoaiFromSoHDInput();
+
+  if (!loaiKiemTraKhach) {
+    const sohdLower = getText("sohd").toLowerCase();
+    loaiKiemTraKhach = sohdLower.split("_")[0] || "";
+  }
+
+  const okKh = await validateKhachHangBatBuoc(loaiKiemTraKhach);
 
   if (!okKh) {
     return false;
