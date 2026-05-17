@@ -122,30 +122,15 @@ function renderTaskTimer(task) {
     return '';
   }
 
-  const start =
+  const startTs =
     new Date(task.started_at).getTime();
 
-  const now =
-    Date.now();
-
-  const diff =
-    Math.floor((now - start) / 1000);
-
-  const h =
-    String(Math.floor(diff / 3600))
-      .padStart(2, '0');
-
-  const m =
-    String(Math.floor((diff % 3600) / 60))
-      .padStart(2, '0');
-
-  const s =
-    String(diff % 60)
-      .padStart(2, '0');
-
   return `
-    <span class="task-timer">
-      ⏱ ${h}:${m}:${s}
+    <span
+      class="task-timer"
+      data-start="${startTs}"
+    >
+      ⏱ 00:00:00
     </span>
   `;
 }
@@ -586,6 +571,46 @@ async function loadTasks(diadiem) {
   if (doingCountEl) doingCountEl.innerText = doingCount;
   if (doneCountEl) doneCountEl.innerText = doneCount;
   if (menuTaskBadge) menuTaskBadge.innerText = pendingCount + doingCount;
+  startRealtimeTaskTimers();
+}
+
+function startRealtimeTaskTimers() {
+
+  const timers =
+    document.querySelectorAll('.task-timer');
+
+  timers.forEach(el => {
+
+    const start =
+      Number(el.dataset.start);
+
+    if (!start) return;
+
+    function update() {
+
+      const diff =
+        Math.floor((Date.now() - start) / 1000);
+
+      const h =
+        String(Math.floor(diff / 3600))
+          .padStart(2, '0');
+
+      const m =
+        String(Math.floor((diff % 3600) / 60))
+          .padStart(2, '0');
+
+      const s =
+        String(diff % 60)
+          .padStart(2, '0');
+
+      el.innerHTML =
+        `⏱ ${h}:${m}:${s}`;
+    }
+
+    update();
+
+    setInterval(update, 1000);
+  });
 }
 
 async function updateTaskStatus(task, newStatus) {
