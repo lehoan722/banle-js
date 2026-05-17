@@ -373,20 +373,6 @@
         }
     </style>
 
-
-    <script>
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active');
-            document.getElementById('btn_' + tabName).classList.add('active');
-        }
-        document.addEventListener("DOMContentLoaded", () => {
-            switchTab("thongtin");
-        });
-
-
     </script>
 
     <!-- banlemobile -->
@@ -1393,46 +1379,58 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            if (window.__autoOpenQrAfterQuickCustomer_v5) return;
-            window.__autoOpenQrAfterQuickCustomer_v5 = true;
 
-            function moQrZaloTuDongSauThemKhach() {
+            let lastAutoQrMakh = "";
+
+            function moQrZaloTuDong() {
+
+                // ❌ Không mở khi QLMK đang chạy
+                if (window.__chanTuDongMoQrZalo) return;
+
                 const makh = document.getElementById("makh")?.value?.trim() || "";
                 const tenkh = document.getElementById("khachhang")?.value?.trim() || "";
+
                 const popup = document.getElementById("popupQRZalo");
                 const qrSdt = document.getElementById("qrSdtKhach");
 
-                if (!makh || !tenkh || !popup || !qrSdt) return false;
-                if (makh.toUpperCase() === "KL") return false;
+                if (!makh || !tenkh) return;
+
+                if (makh.toUpperCase() === "KL") return;
+
+                // ❌ Không mở lại cùng mã
+                if (lastAutoQrMakh === makh) return;
+
+                lastAutoQrMakh = makh;
 
                 qrSdt.textContent = makh;
+
                 popup.style.display = "flex";
-                return true;
+
+                console.log("✅ Tự mở QR Zalo:", makh);
             }
 
-            document.addEventListener("click", function (e) {
-                const btn = e.target.closest("button");
-                if (!btn) return;
+            // Theo dõi thay đổi mã khách
+            let oldMakh = "";
 
-                const txt = String(btn.textContent || "").trim();
+            setInterval(() => {
 
-                // Chỉ bắt nút Lưu dữ liệu trong popup thêm khách mới
-                if (!txt.includes("Lưu dữ liệu")) return;
+                const makh = document.getElementById("makh")?.value?.trim() || "";
 
-                let count = 0;
-                const timer = setInterval(() => {
-                    count++;
+                if (!makh) return;
 
-                    if (moQrZaloTuDongSauThemKhach()) {
-                        clearInterval(timer);
-                        return;
-                    }
+                // Chỉ khi mã KH thay đổi thật
+                if (makh !== oldMakh) {
 
-                    if (count >= 50) {
-                        clearInterval(timer);
-                    }
-                }, 300);
-            }, true);
+                    oldMakh = makh;
+
+                    // Delay nhẹ để chờ tên KH load xong
+                    setTimeout(() => {
+                        moQrZaloTuDong();
+                    }, 500);
+                }
+
+            }, 400);
+
         });
     </script>
 
