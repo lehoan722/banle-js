@@ -116,6 +116,40 @@ function getTaskStatusClass(status) {
   return map[status] || 'task-pending';
 }
 
+function renderTaskTimer(task) {
+
+  if (!task.started_at) {
+    return '';
+  }
+
+  const start =
+    new Date(task.started_at).getTime();
+
+  const now =
+    Date.now();
+
+  const diff =
+    Math.floor((now - start) / 1000);
+
+  const h =
+    String(Math.floor(diff / 3600))
+      .padStart(2, '0');
+
+  const m =
+    String(Math.floor((diff % 3600) / 60))
+      .padStart(2, '0');
+
+  const s =
+    String(diff % 60)
+      .padStart(2, '0');
+
+  return `
+    <span class="task-timer">
+      ⏱ ${h}:${m}:${s}
+    </span>
+  `;
+}
+
 khoiTaoDangNhapDungChung({
   loginContainerId: "login-container",
   appContainerId: "app-container",
@@ -486,8 +520,14 @@ async function loadTasks(diadiem) {
       </div>
 
       <div class="task-footer">
-        <span>${getTaskStatusText(status)}</span>
-      </div>
+
+  <span>
+    ${getTaskStatusText(status)}
+  </span>
+
+  ${renderTaskTimer(item)}
+
+</div>
 
       <div class="task-actions"></div>
     `;
@@ -549,28 +589,105 @@ async function loadTasks(diadiem) {
 }
 
 async function updateTaskStatus(task, newStatus) {
-  const diadiem = selectDiadiem.value;
-  const user = getCurrentUserInfo();
 
-  const statusText = getTaskStatusText(newStatus);
+  const diadiem =
+    selectDiadiem.value;
 
-  const ok = confirm(`Chuyển task "${task.title}" sang trạng thái "${statusText}"?`);
+  const user =
+    getCurrentUserInfo();
+
+  const statusText =
+    getTaskStatusText(newStatus);
+
+  const ok = confirm(
+    `Chuyển task "${task.title}" sang trạng thái "${statusText}" ?`
+  );
 
   if (!ok) return;
+
+  const updateData = {
+    status: newStatus
+  };
+
+  /*
+    =========================
+    TASK TIMER
+    =========================
+  */
+
+  if (newStatus === 'in_progress') {
+
+    updateData.started_at =
+      new Date().toISOString();
+  }
+
+  if (newStatus === 'done') {
+
+    updateData.completed_at =
+      new Date().toISOString();
+  }
+
+  /*
+    =========================
+    UPDATE TASK
+    =========================
+  */
 
   const { error } = await supabase
     .schema('qlnv')
     .from('tasks')
-    .update({
-      status: newStatus
-    })
+    .update(updateData)
     .eq('id', task.id);
 
   if (error) {
-    console.error('Lỗi cập nhật task:', error);
-    alert('Không cập nhật được trạng thái task.');
+
+    console.error(error);
+
+    alert('Không cập nhật được task');
+
     return;
   }
+
+  /*
+    =========================
+    SYNC STAFF STATUS
+    =========================
+  */
+
+  if (task.assigned_to) {
+
+    let staffStatus = null;
+
+    if (newStatus === 'in_progress') {
+      staffStatus = 'task';
+    }
+
+    if (newStatus === 'done') {
+      staffStatus = 'free';
+    }
+
+    if (staffStatus) {
+
+      await supabase
+        .schema('qlnv')
+        .from('staff_status')
+        .update({
+          current_status: staffStatus,
+          current_task_id:
+            newStatus === 'in_progress'
+              ? task.id
+              : null
+        })
+        .eq('manv', task.assigned_to)
+        .eq('diadiem', diadiem);
+    }
+  }
+
+  /*
+    =========================
+    LOG
+    =========================
+  */
 
   await supabase
     .schema('qlnv')
@@ -579,15 +696,26 @@ async function updateTaskStatus(task, newStatus) {
       diadiem,
       manv: task.assigned_to || null,
       tennv: task.assigned_name || null,
-      action: `${user.manv || 'ADMIN'} chuyển task "${task.title}" sang "${statusText}"`,
+      action:
+        `${user.manv || 'ADMIN'} chuyển task "${task.title}" sang "${statusText}"`,
       ref_type: 'task',
       ref_id: task.id,
-      note: newStatus,
-      created_at: new Date().toISOString()
+      note: newStatus
     });
 
+  /*
+    =========================
+    REFRESH
+    =========================
+  */
+
+  await loadStaff(diadiem);
+
   await loadTasks(diadiem);
+
   await loadLogs(diadiem);
+
+  await loadAlerts(diadiem);
 }
 
 async function loadLogs(diadiem) {
