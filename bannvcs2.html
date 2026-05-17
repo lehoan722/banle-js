@@ -373,20 +373,6 @@
         }
     </style>
 
-
-    <script>
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active');
-            document.getElementById('btn_' + tabName).classList.add('active');
-        }
-        document.addEventListener("DOMContentLoaded", () => {
-            switchTab("thongtin");
-        });
-
-
     </script>
 
     <!-- banlemobile -->
@@ -1023,6 +1009,7 @@
         }
 
         async function quayLaiMaKhach() {
+            window.__chanTuDongMoQrZalo = true;
             const btn = document.getElementById("btnQLMK");
             if (btn) {
                 btn.disabled = true;
@@ -1058,6 +1045,10 @@
                     btn.disabled = false;
                     btn.innerText = "QLMK";
                 }
+
+                setTimeout(() => {
+                    window.__chanTuDongMoQrZalo = false;
+                }, 1500);
             }
         }
 
@@ -1347,6 +1338,7 @@
     <script type="module" src="scripts/scanner.js"></script>
 
     <script>
+        // Tự động mở QR Zalo sau khi thêm nhanh khách hàng thành công
         document.addEventListener("DOMContentLoaded", () => {
 
             const btnQR = document.getElementById("btnQRZalo");
@@ -1386,63 +1378,31 @@
     </script>
 
     <script>
-        // Tự động mở QR Zalo sau khi thêm nhanh khách hàng thành công
         document.addEventListener("DOMContentLoaded", () => {
-            if (window.__autoOpenQrAfterQuickCustomer_v2) return;
-            window.__autoOpenQrAfterQuickCustomer_v2 = true;
+            if (window.__autoOpenQrOnlyAfterNewCustomer_v1) return;
+            window.__autoOpenQrOnlyAfterNewCustomer_v1 = true;
 
-            let canMoQrSauKhiLuuKhachNhanh = false;
-
-            function moQrZaloTuDong() {
-                const makh = document.getElementById("makh")?.value?.trim() || "";
+            function moQrZaloSauKhiLuuKhachMoi(makh) {
                 const popup = document.getElementById("popupQRZalo");
                 const qrSdt = document.getElementById("qrSdtKhach");
 
-                if (!makh || !popup || !qrSdt) return false;
+                if (!makh || !popup || !qrSdt) return;
+                if (String(makh).toUpperCase() === "KL") return;
 
                 qrSdt.textContent = makh;
                 popup.style.display = "flex";
-                return true;
             }
 
-            // Bắt sự kiện từ sớm, trước khi popup thêm nhanh bị đóng
-            document.addEventListener("pointerdown", function (e) {
-                const btn = e.target.closest("button");
-                if (!btn) return;
+            window.addEventListener("ht:khachhangmoi:saved", (e) => {
+                const makh =
+                    e.detail?.makh ||
+                    document.getElementById("makh")?.value?.trim() ||
+                    "";
 
-                const txt = String(btn.textContent || "").trim();
-
-                if (txt === "Lưu dữ liệu") {
-                    canMoQrSauKhiLuuKhachNhanh = true;
-                }
-            }, true);
-
-            document.addEventListener("click", function () {
-                if (!canMoQrSauKhiLuuKhachNhanh) return;
-
-                let count = 0;
-
-                const timer = setInterval(() => {
-                    count++;
-
-                    const makh = document.getElementById("makh")?.value?.trim() || "";
-                    const tenkh = document.getElementById("khachhang")?.value?.trim() || "";
-
-                    if (makh && tenkh) {
-                        clearInterval(timer);
-                        canMoQrSauKhiLuuKhachNhanh = false;
-
-                        setTimeout(() => {
-                            moQrZaloTuDong();
-                        }, 300);
-                    }
-
-                    if (count >= 30) {
-                        clearInterval(timer);
-                        canMoQrSauKhiLuuKhachNhanh = false;
-                    }
-                }, 200);
-            }, true);
+                setTimeout(() => {
+                    moQrZaloSauKhiLuuKhachMoi(makh);
+                }, 300);
+            });
         });
     </script>
 
