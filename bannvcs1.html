@@ -373,20 +373,6 @@
         }
     </style>
 
-
-    <script>
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active');
-            document.getElementById('btn_' + tabName).classList.add('active');
-        }
-        document.addEventListener("DOMContentLoaded", () => {
-            switchTab("thongtin");
-        });
-
-
     </script>
 
     <!-- banlemobile -->
@@ -1023,6 +1009,7 @@
         }
 
         async function quayLaiMaKhach() {
+            window.__chanTuDongMoQrZalo = true;
             const btn = document.getElementById("btnQLMK");
             if (btn) {
                 btn.disabled = true;
@@ -1058,6 +1045,10 @@
                     btn.disabled = false;
                     btn.innerText = "QLMK";
                 }
+
+                setTimeout(() => {
+                    window.__chanTuDongMoQrZalo = false;
+                }, 1500);
             }
         }
 
@@ -1388,30 +1379,30 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            if (window.__autoOpenQrAfterCustomerSelected_v4) return;
-            window.__autoOpenQrAfterCustomerSelected_v4 = true;
+            if (window.__autoOpenQrOnlyAfterNewCustomer_v1) return;
+            window.__autoOpenQrOnlyAfterNewCustomer_v1 = true;
 
-            let lastOpenedMakh = "";
-
-            function moQrZaloTheoKhach() {
-                const makh = document.getElementById("makh")?.value?.trim() || "";
-                const tenkh = document.getElementById("khachhang")?.value?.trim() || "";
+            function moQrZaloSauKhiLuuKhachMoi(makh) {
                 const popup = document.getElementById("popupQRZalo");
                 const qrSdt = document.getElementById("qrSdtKhach");
 
-                if (!makh || !tenkh || !popup || !qrSdt) return false;
-                if (makh.toUpperCase() === "KL") return false;
-                if (makh === lastOpenedMakh) return false;
+                if (!makh || !popup || !qrSdt) return;
+                if (String(makh).toUpperCase() === "KL") return;
 
-                lastOpenedMakh = makh;
                 qrSdt.textContent = makh;
                 popup.style.display = "flex";
-                return true;
             }
 
-            setInterval(() => {
-                moQrZaloTheoKhach();
-            }, 800);
+            window.addEventListener("ht:khachhangmoi:saved", (e) => {
+                const makh =
+                    e.detail?.makh ||
+                    document.getElementById("makh")?.value?.trim() ||
+                    "";
+
+                setTimeout(() => {
+                    moQrZaloSauKhiLuuKhachMoi(makh);
+                }, 300);
+            });
         });
     </script>
 
