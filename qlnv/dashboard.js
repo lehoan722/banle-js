@@ -283,6 +283,21 @@ async function loadStaff(diadiem) {
   if (staffAssignableEl) staffAssignableEl.innerText = coTheGiao;
 }
 
+function getWorkStateText(state) {
+  const map = {
+    CO_CHAMCONG_KHONG_CO_LICH: 'Có chấm công - chưa có lịch',
+    CO_LICH_CHUA_VAO_CA: 'Chưa vào ca',
+    DA_VAO_CA_DANG_RANH: 'Đang rảnh',
+    DANG_NGHI: 'Đang nghỉ',
+    DANG_PHUC_VU_KHACH: 'Đang bán hàng',
+    DANG_LAM_TASK: 'Đang làm việc',
+    DA_TAN_CA: 'Đã tan ca',
+    KHONG_XAC_DINH: 'Không rõ'
+  };
+
+  return map[state] || state || 'Không rõ';
+}
+
 function getWorkStateClass(state) {
   const map = {
     CO_CHAMCONG_KHONG_CO_LICH: 'staff-warning',
