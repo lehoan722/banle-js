@@ -168,7 +168,6 @@ async function loadStoreStatus(diadiem) {
 }
 
 async function loadStaff(diadiem) {
-
   const { data, error } = await supabase
     .schema('qlnv')
     .from('v_staff_today_status')
@@ -180,78 +179,123 @@ async function loadStaff(diadiem) {
     });
 
   if (error) {
-    console.error(error);
+    console.error('Lỗi loadStaff:', error);
     return;
   }
 
   staffContainer.innerHTML = '';
 
   let tongNhanVien = 0;
-  let dangPhucVu = 0;
+  let trongCa = 0;
+  let dangBan = 0;
+  let dangNghi = 0;
+  let coTheGiao = 0;
 
   for (const item of data || []) {
-
     tongNhanVien++;
 
-    if (item.work_state === 'DANG_PHUC_VU_KHACH') {
-      dangPhucVu++;
+    const state = item.work_state || 'KHONG_XAC_DINH';
+
+    if ([
+      'DA_VAO_CA_DANG_RANH',
+      'DANG_PHUC_VU_KHACH',
+      'DANG_LAM_TASK',
+      'DANG_NGHI'
+    ].includes(state)) {
+      trongCa++;
     }
 
+    if (state === 'DANG_PHUC_VU_KHACH') {
+      dangBan++;
+    }
+
+    if (state === 'DANG_NGHI') {
+      dangNghi++;
+    }
+
+    if (item.can_assign_task) {
+      coTheGiao++;
+    }
+
+    const ten = item.tennv || item.manv || '';
+    const chuCai = ten ? ten.trim().charAt(0).toUpperCase() : '?';
+
+    const shiftText = item.gio_bat_dau && item.gio_ket_thuc
+      ? `${item.gio_bat_dau} - ${item.gio_ket_thuc}`
+      : 'Không có lịch';
+
+    const statusText = getWorkStateText(state);
+    const statusClass = getWorkStateClass(state);
+
+    const assignText = item.can_assign_task
+      ? 'Có thể giao'
+      : 'Chưa giao';
+
     const div = document.createElement('div');
-
-    div.className = 'staff-card';
-
-    const shiftText =
-      item.gio_bat_dau && item.gio_ket_thuc
-        ? `${item.gio_bat_dau} - ${item.gio_ket_thuc}`
-        : 'Không có lịch';
+    div.className = `staff-card ${statusClass}`;
 
     div.innerHTML = `
-      <div class="staff-header">
-        <div class="staff-avatar">
-          ${(item.tennv || item.manv || '?').charAt(0)}
-        </div>
+      <div class="staff-main">
+        <div class="staff-avatar">${chuCai}</div>
 
         <div class="staff-info">
-          <div class="staff-name">
-            ${item.tennv || item.manv}
-          </div>
+          <div class="staff-name">${ten}</div>
+          <div class="staff-code">Mã NV: ${item.manv || ''}</div>
+        </div>
 
-          <div class="staff-role">
-            ${shiftText}
-          </div>
+        <div class="staff-badge ${statusClass}">
+          ${statusText}
         </div>
       </div>
 
-      <div class="staff-status">
-        ${getWorkStateText(item.work_state)}
+      <div class="staff-meta">
+        <div>
+          <span>Ca làm</span>
+          <b>${shiftText}</b>
+        </div>
+
+        <div>
+          <span>Lịch</span>
+          <b>${item.trang_thai_lich || 'Không có'}</b>
+        </div>
+
+        <div>
+          <span>Giao việc</span>
+          <b>${assignText}</b>
+        </div>
       </div>
     `;
 
     staffContainer.appendChild(div);
   }
 
-  document.getElementById('tongNhanVien').innerText =
-    tongNhanVien;
+  document.getElementById('tongNhanVien').innerText = tongNhanVien;
+  document.getElementById('dangPhucVu').innerText = dangBan;
 
-  document.getElementById('dangPhucVu').innerText =
-    dangPhucVu;
+  const staffTotalEl = document.getElementById('staffTotal');
+  const staffInShiftEl = document.getElementById('staffInShift');
+  const staffBreakEl = document.getElementById('staffBreak');
+  const staffAssignableEl = document.getElementById('staffAssignable');
+
+  if (staffTotalEl) staffTotalEl.innerText = tongNhanVien;
+  if (staffInShiftEl) staffInShiftEl.innerText = trongCa;
+  if (staffBreakEl) staffBreakEl.innerText = dangNghi;
+  if (staffAssignableEl) staffAssignableEl.innerText = coTheGiao;
 }
 
-function getWorkStateText(state) {
-
+function getWorkStateClass(state) {
   const map = {
-    CO_CHAMCONG_KHONG_CO_LICH: 'Có chấm công',
-    CO_LICH_CHUA_VAO_CA: 'Chưa vào ca',
-    DA_VAO_CA_DANG_RANH: 'Đang rảnh',
-    DANG_NGHI: 'Đang nghỉ',
-    DANG_PHUC_VU_KHACH: 'Phục vụ khách',
-    DANG_LAM_TASK: 'Đang làm task',
-    DA_TAN_CA: 'Đã tan ca',
-    KHONG_XAC_DINH: 'Không rõ'
+    CO_CHAMCONG_KHONG_CO_LICH: 'staff-warning',
+    CO_LICH_CHUA_VAO_CA: 'staff-waiting',
+    DA_VAO_CA_DANG_RANH: 'staff-free',
+    DANG_NGHI: 'staff-break',
+    DANG_PHUC_VU_KHACH: 'staff-serving',
+    DANG_LAM_TASK: 'staff-task',
+    DA_TAN_CA: 'staff-off',
+    KHONG_XAC_DINH: 'staff-muted'
   };
 
-  return map[state] || state || 'Không rõ';
+  return map[state] || 'staff-muted';
 }
 
 async function loadTasks(diadiem) {
