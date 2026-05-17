@@ -1388,55 +1388,30 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            if (window.__autoOpenQrAfterQuickCustomer_v3) return;
-            window.__autoOpenQrAfterQuickCustomer_v3 = true;
+            if (window.__autoOpenQrAfterCustomerSelected_v4) return;
+            window.__autoOpenQrAfterCustomerSelected_v4 = true;
 
-            let dangChoMoQrSauLuuKhach = false;
+            let lastOpenedMakh = "";
 
-            function moQrZaloTuDong() {
+            function moQrZaloTheoKhach() {
                 const makh = document.getElementById("makh")?.value?.trim() || "";
                 const tenkh = document.getElementById("khachhang")?.value?.trim() || "";
                 const popup = document.getElementById("popupQRZalo");
                 const qrSdt = document.getElementById("qrSdtKhach");
 
                 if (!makh || !tenkh || !popup || !qrSdt) return false;
+                if (makh.toUpperCase() === "KL") return false;
+                if (makh === lastOpenedMakh) return false;
 
+                lastOpenedMakh = makh;
                 qrSdt.textContent = makh;
                 popup.style.display = "flex";
                 return true;
             }
 
-            document.addEventListener("click", function (e) {
-                const btn = e.target.closest("button");
-                if (!btn) return;
-
-                const txt = String(btn.textContent || "").trim();
-
-                if (!txt.includes("Lưu dữ liệu")) return;
-
-                dangChoMoQrSauLuuKhach = true;
-
-                let count = 0;
-                const timer = setInterval(() => {
-                    count++;
-
-                    if (!dangChoMoQrSauLuuKhach) {
-                        clearInterval(timer);
-                        return;
-                    }
-
-                    if (moQrZaloTuDong()) {
-                        dangChoMoQrSauLuuKhach = false;
-                        clearInterval(timer);
-                        return;
-                    }
-
-                    if (count >= 100) {
-                        dangChoMoQrSauLuuKhach = false;
-                        clearInterval(timer);
-                    }
-                }, 300);
-            }, true);
+            setInterval(() => {
+                moQrZaloTheoKhach();
+            }, 800);
         });
     </script>
 
