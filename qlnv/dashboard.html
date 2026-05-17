@@ -14,118 +14,285 @@
 
   <div id="login-container"></div>
 
-  <div id="app-container">
+  <div id="app-container" class="qlnv-app">
 
-    <!-- HEADER -->
-
-    <header class="topbar">
-
-      <div class="left">
-
-        <h1>QUẢN LÝ NHÂN VIÊN</h1>
-
-        <select id="selectDiadiem">
-          <option value="cs1">Cơ sở 1</option>
-          <option value="cs2">Cơ sở 2</option>
-        </select>
-
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-icon">HT</div>
+        <div>
+          <div class="brand-title">QLNV</div>
+          <div class="brand-subtitle">HOÀN TUYẾT</div>
+        </div>
       </div>
 
-      <div class="right">
+      <nav class="sidebar-menu">
+        <a class="menu-item active" href="dashboard.html">
+          <span class="menu-icon">🏠</span>
+          <span>Tổng quan</span>
+        </a>
 
-        <span id="storeModeBadge">
-          NORMAL
+        <a class="menu-item" href="#">
+          <span class="menu-icon">👥</span>
+          <span>Nhân viên</span>
+        </a>
+
+        <a class="menu-item" href="#">
+          <span class="menu-icon">📅</span>
+          <span>Lịch làm & Ca</span>
+        </a>
+
+        <a class="menu-item" href="#">
+          <span class="menu-icon">⏱️</span>
+          <span>Chấm công</span>
+        </a>
+
+        <a class="menu-item" href="#">
+          <span class="menu-icon">✅</span>
+          <span>Công việc</span>
+          <b id="menuTaskBadge">0</b>
+        </a>
+
+        <a class="menu-item" href="#">
+          <span class="menu-icon">🛒</span>
+          <span>Giao dịch</span>
+        </a>
+
+        <a class="menu-item" href="#">
+          <span class="menu-icon">📦</span>
+          <span>Kho hàng</span>
+        </a>
+
+        <a class="menu-item" href="#">
+          <span class="menu-icon">📊</span>
+          <span>Báo cáo</span>
+        </a>
+
+        <a class="menu-item" href="viechangngay.html">
+          <span class="menu-icon">⚙️</span>
+          <span>Việc hằng ngày</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="tip-box">
+          <b>Mẹo sử dụng</b>
+          <span>Dùng dashboard này làm trung tâm điều hành toàn bộ shop.</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-shell">
+
+      <header class="topbar">
+
+        <button id="btnToggleSidebar" class="icon-btn" type="button">☰</button>
+
+        <div class="topbar-control">
+          <label>Cơ sở</label>
+          <select id="selectDiadiem">
+            <option value="cs1">Cơ sở 1</option>
+            <option value="cs2">Cơ sở 2</option>
+          </select>
+        </div>
+
+        <div class="topbar-control date-box">
+          <label>Ngày vận hành</label>
+          <span id="todayText">Hôm nay</span>
+        </div>
+
+        <button id="btnToday" class="primary-soft" type="button">Hôm nay</button>
+
+        <div class="topbar-spacer"></div>
+
+        <span class="realtime-badge">
+          <i></i>
+          Đang realtime
         </span>
 
-      </div>
+        <span id="storeModeBadge">NORMAL</span>
 
-    </header>
+        <div class="topbar-alert">
+          🔔
+          <b id="topAlertBadge">0</b>
+        </div>
 
-    <!-- MAIN -->
-
-    <main class="dashboard-grid">
-
-      <!-- TỔNG QUAN -->
-
-      <section class="card">
-
-        <h2>Tổng quan</h2>
-
-        <div class="overview-grid">
-
-          <div class="overview-item">
-            <label>Nhân viên trong ca</label>
-            <span id="tongNhanVien">0</span>
+        <div class="user-box">
+          <div class="avatar">A</div>
+          <div>
+            <b>admin</b>
+            <span>Quản trị hệ thống</span>
           </div>
-
-          <div class="overview-item">
-            <label>Đang phục vụ khách</label>
-            <span id="dangPhucVu">0</span>
-          </div>
-
-          <div class="overview-item">
-            <label>Task chưa xong</label>
-            <span id="taskChuaXong">0</span>
-          </div>
-
-          <div class="overview-item">
-            <label>Task hoàn thành</label>
-            <span id="taskHoanThanh">0</span>
-          </div>
-
         </div>
 
-      </section>
+      </header>
 
-      <!-- NHÂN VIÊN -->
+      <main class="dashboard-page">
 
-      <section class="card">
+        <section class="kpi-grid">
 
-        <div class="section-header">
-          <h2>Nhân viên trong ca</h2>
-        </div>
+          <article class="kpi-card blue">
+            <div class="kpi-icon">👥</div>
+            <div>
+              <label>Nhân viên trong ca</label>
+              <strong><span id="tongNhanVien">0</span></strong>
+              <small>Đang được theo dõi hôm nay</small>
+            </div>
+          </article>
 
-        <div id="staffContainer">
+          <article class="kpi-card green">
+            <div class="kpi-icon">🛍️</div>
+            <div>
+              <label>Đang phục vụ khách</label>
+              <strong><span id="dangPhucVu">0</span></strong>
+              <small>Nhân viên đang bận</small>
+            </div>
+          </article>
 
-        </div>
+          <article class="kpi-card orange">
+            <div class="kpi-icon">🧾</div>
+            <div>
+              <label>Task chưa xong</label>
+              <strong><span id="taskChuaXong">0</span></strong>
+              <small>Cần xử lý tiếp</small>
+            </div>
+          </article>
 
-      </section>
+          <article class="kpi-card purple">
+            <div class="kpi-icon">✅</div>
+            <div>
+              <label>Task hoàn thành</label>
+              <strong><span id="taskHoanThanh">0</span></strong>
+              <small>Đã hoàn thành hôm nay</small>
+            </div>
+          </article>
 
-      <!-- TASK -->
+          <article class="kpi-card red">
+            <div class="kpi-icon">⚠️</div>
+            <div>
+              <label>Cảnh báo</label>
+              <strong><span id="canhBaoCount">0</span></strong>
+              <small>Việc cần chú ý</small>
+            </div>
+          </article>
 
-      <section class="card">
+          <article class="kpi-card cyan">
+            <div class="kpi-icon">💬</div>
+            <div>
+              <label>Tin nhắn / thông báo</label>
+              <strong><span id="messageCount">0</span></strong>
+              <small>Chờ tích hợp thêm</small>
+            </div>
+          </article>
 
-        <div class="section-header">
+        </section>
 
-          <h2>Công việc hôm nay</h2>
+        <section class="content-grid">
 
-          <button id="btnThemTask">
-            + Thêm task
-          </button>
+          <section class="card staff-card">
+            <div class="section-header">
+              <div>
+                <h2>Nhân viên trong ca</h2>
+                <p>Theo realtime từ chấm công và lịch làm</p>
+              </div>
+              <a href="#" class="link-action">Xem tất cả</a>
+            </div>
 
-        </div>
+            <div id="staffContainer" class="staff-list"></div>
 
-        <div id="taskContainer">
+            <div class="mini-summary">
+              <div>
+                <b id="sumTotalStaff">0</b>
+                <span>Tổng NV</span>
+              </div>
+              <div>
+                <b id="sumWorkingStaff">0</b>
+                <span>Trong ca</span>
+              </div>
+              <div>
+                <b id="sumBusyStaff">0</b>
+                <span>Đang bận</span>
+              </div>
+              <div>
+                <b id="sumFreeStaff">0</b>
+                <span>Có thể giao</span>
+              </div>
+            </div>
+          </section>
 
-        </div>
+          <section class="card task-card">
+            <div class="section-header">
+              <div>
+                <h2>Công việc hôm nay</h2>
+                <p>Quản lý lifecycle: chưa làm, đang làm, hoàn thành</p>
+              </div>
+              <button id="btnThemTask" type="button">+ Thêm task</button>
+            </div>
 
-      </section>
+            <div class="task-board" id="taskContainer"></div>
+          </section>
 
-      <!-- LOG -->
+          <aside class="right-column">
 
-      <section class="card">
+            <section class="card alert-card">
+              <div class="section-header">
+                <div>
+                  <h2>Thông báo / Cảnh báo</h2>
+                  <p>Các biến động cần chú ý</p>
+                </div>
+                <a href="#" class="link-action">Xem tất cả</a>
+              </div>
 
-        <h2>Nhật ký vận hành</h2>
+              <div id="alertContainer" class="alert-list">
+                <div class="empty-note">Chưa có cảnh báo riêng.</div>
+              </div>
+            </section>
 
-        <div id="logContainer">
+            <section class="card message-card">
+              <div class="section-header">
+                <div>
+                  <h2>Tin nhắn nội bộ</h2>
+                  <p>Sẵn sàng gắn module tin nhắn</p>
+                </div>
+                <a href="#" class="link-action">Xem tất cả</a>
+              </div>
 
-        </div>
+              <div id="messageContainer" class="message-list">
+                <div class="empty-note">Chưa tích hợp tin nhắn.</div>
+              </div>
+            </section>
 
-      </section>
+            <section class="card log-card">
+              <div class="section-header">
+                <div>
+                  <h2>Nhật ký hoạt động</h2>
+                  <p>Log vận hành trong ngày</p>
+                </div>
+              </div>
 
-    </main>
+              <div id="logContainer" class="log-list"></div>
+            </section>
+
+          </aside>
+
+        </section>
+
+      </main>
+
+      <footer class="app-footer">
+        <span>© 2026 QLNV Hoàn Tuyết</span>
+        <span class="footer-status"><i></i> Đang kết nối realtime</span>
+      </footer>
+
+    </div>
 
   </div>
+
+  <nav class="mobile-nav">
+    <a class="active" href="dashboard.html">🏠<span>Tổng quan</span></a>
+    <a href="#">👥<span>Nhân viên</span></a>
+    <a href="#">✅<span>Công việc</span></a>
+    <a href="#">🔔<span>Thông báo</span></a>
+  </nav>
 
   <div id="taskModal" class="modal hidden">
     <div class="modal-content">
