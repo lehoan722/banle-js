@@ -242,38 +242,101 @@ async function loadStaff(diadiem) {
     div.className = `staff-card ${statusClass}`;
 
     div.innerHTML = `
-      <div class="staff-main">
-        <div class="staff-avatar">${chuCai}</div>
+  <div class="staff-main">
 
-        <div class="staff-info">
-          <div class="staff-name">${ten}</div>
-          <div class="staff-code">Mã NV: ${item.manv || ''}</div>
-        </div>
+    <div class="staff-avatar">
+      ${chuCai}
+    </div>
 
-        <div class="staff-badge ${statusClass}">
-          ${statusText}
-        </div>
+    <div class="staff-info">
+
+      <div class="staff-name">
+        ${ten}
       </div>
 
-      <div class="staff-meta">
-        <div>
-          <span>Ca làm</span>
-          <b>${shiftText}</b>
-        </div>
-
-        <div>
-          <span>Lịch</span>
-          <b>${item.trang_thai_lich || 'Không có'}</b>
-        </div>
-
-        <div>
-          <span>Giao việc</span>
-          <b>${assignText}</b>
-        </div>
+      <div class="staff-code">
+        Mã NV: ${item.manv || ''}
       </div>
-    `;
+
+    </div>
+
+    <div class="staff-badge ${statusClass}">
+      ${statusText}
+    </div>
+
+  </div>
+
+  <div class="staff-meta">
+
+    <div>
+      <span>Ca làm</span>
+      <b>${shiftText}</b>
+    </div>
+
+    <div>
+      <span>Lịch</span>
+      <b>${item.trang_thai_lich || 'Không có'}</b>
+    </div>
+
+    <div>
+      <span>Giao việc</span>
+      <b>${assignText}</b>
+    </div>
+
+  </div>
+
+  <div class="staff-actions">
+
+    <button class="staff-btn free">
+      Rảnh
+    </button>
+
+    <button class="staff-btn sale">
+      Bán hàng
+    </button>
+
+    <button class="staff-btn task">
+      Làm task
+    </button>
+
+    <button class="staff-btn break">
+      Nghỉ
+    </button>
+
+    <button class="staff-btn off">
+      Tan ca
+    </button>
+
+  </div>
+`;
 
     staffContainer.appendChild(div);
+
+    div.querySelector('.free')
+      ?.addEventListener('click', () => {
+        updateStaffStatus(item, 'free');
+      });
+
+    div.querySelector('.sale')
+      ?.addEventListener('click', () => {
+        updateStaffStatus(item, 'serving');
+      });
+
+    div.querySelector('.task')
+      ?.addEventListener('click', () => {
+        updateStaffStatus(item, 'task');
+      });
+
+    div.querySelector('.break')
+      ?.addEventListener('click', () => {
+        updateStaffStatus(item, 'break');
+      });
+
+    div.querySelector('.off')
+      ?.addEventListener('click', () => {
+        updateStaffStatus(item, 'off');
+      });
+
   }
 
   document.getElementById('tongNhanVien').innerText = tongNhanVien;
@@ -318,6 +381,66 @@ function getWorkStateClass(state) {
   };
 
   return map[state] || 'staff-muted';
+}
+
+async function updateStaffStatus(staff, newStatus) {
+
+  const diadiem =
+    selectDiadiem.value;
+
+  const statusTextMap = {
+    free: 'Đang rảnh',
+    serving: 'Đang bán hàng',
+    task: 'Đang làm task',
+    break: 'Đang nghỉ',
+    off: 'Đã tan ca'
+  };
+
+  const text =
+    statusTextMap[newStatus] || newStatus;
+
+  const ok = confirm(
+    `Chuyển ${staff.tennv} sang trạng thái "${text}" ?`
+  );
+
+  if (!ok) return;
+
+  const { error } = await supabase
+    .schema('qlnv')
+    .from('staff_status')
+    .update({
+      current_status: newStatus
+    })
+    .eq('manv', staff.manv)
+    .eq('diadiem', diadiem);
+
+  if (error) {
+
+    console.error(error);
+
+    alert('Không cập nhật được trạng thái');
+
+    return;
+  }
+
+  await supabase
+    .schema('qlnv')
+    .from('logs')
+    .insert({
+      diadiem,
+      manv: staff.manv,
+      tennv: staff.tennv,
+      action:
+        `Chuyển trạng thái → ${text}`,
+      ref_type: 'staff_status',
+      note: newStatus
+    });
+
+  await loadStaff(diadiem);
+
+  await loadLogs(diadiem);
+
+  await loadAlerts(diadiem);
 }
 
 async function loadTasks(diadiem) {
