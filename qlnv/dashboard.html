@@ -228,7 +228,31 @@
               <button id="btnThemTask" type="button">+ Thêm task</button>
             </div>
 
-            <div class="task-board" id="taskContainer"></div>
+            <div class="task-board">
+
+              <div class="task-column">
+                <div class="task-column-title pending">
+                  Chưa làm <span id="pendingCount">0</span>
+                </div>
+                <div id="pendingContainer" class="task-list"></div>
+              </div>
+
+              <div class="task-column">
+                <div class="task-column-title doing">
+                  Đang làm <span id="doingCount">0</span>
+                </div>
+                <div id="doingContainer" class="task-list"></div>
+              </div>
+
+              <div class="task-column">
+                <div class="task-column-title done">
+                  Hoàn thành <span id="doneCount">0</span>
+                </div>
+                <div id="doneContainer" class="task-list"></div>
+              </div>
+
+            </div>
+
           </section>
 
           <aside class="right-column">
