@@ -314,9 +314,7 @@ function getWorkStateClass(state) {
 }
 
 async function loadTasks(diadiem) {
-
-  const { startIso, endIso } =
-    getTodayRangeVN();
+  const { startIso, endIso } = getTodayRangeVN();
 
   const { data, error } = await supabase
     .schema('qlnv')
@@ -325,12 +323,10 @@ async function loadTasks(diadiem) {
     .eq('diadiem', diadiem)
     .gte('created_at', startIso)
     .lt('created_at', endIso)
-    .order('created_at', {
-      ascending: false
-    });
+    .order('created_at', { ascending: false });
 
   if (error) {
-    console.error(error);
+    console.error('Lỗi loadTasks:', error);
     return;
   }
 
@@ -338,56 +334,130 @@ async function loadTasks(diadiem) {
   doingContainer.innerHTML = '';
   doneContainer.innerHTML = '';
 
-  let taskChuaXong = 0;
-  let taskHoanThanh = 0;
+  let pendingCount = 0;
+  let doingCount = 0;
+  let doneCount = 0;
 
   for (const item of data || []) {
+    const status = item.status || 'pending';
 
-    if (item.status === 'done') {
-      taskHoanThanh++;
-    }
-
-    if (['pending', 'in_progress'].includes(item.status)) {
-      taskChuaXong++;
-    }
+    if (status === 'pending') pendingCount++;
+    if (status === 'in_progress') doingCount++;
+    if (status === 'done') doneCount++;
 
     const div = document.createElement('div');
-
-    div.className = `
-      task-card
-      ${getTaskStatusClass(item.status)}
-    `;
+    div.className = `task-card ${getTaskStatusClass(status)}`;
 
     div.innerHTML = `
-      <div class="task-title">
-        ${item.title || ''}
-      </div>
+      <div class="task-title">${item.title || ''}</div>
 
       <div class="task-user">
-        ${item.assigned_name || ''}
+        ${item.assigned_name || item.assigned_to || ''}
       </div>
 
       <div class="task-footer">
-        ${getTaskStatusText(item.status)}
+        <span>${getTaskStatusText(status)}</span>
       </div>
+
+      <div class="task-actions"></div>
     `;
 
-    if (item.status === 'pending') {
+    const actionBox = div.querySelector('.task-actions');
+
+    if (status === 'pending') {
+      actionBox.innerHTML = `
+        <button class="task-btn start">Bắt đầu</button>
+        <button class="task-btn cancel">Hủy</button>
+      `;
+
+      actionBox.querySelector('.start').addEventListener('click', () => {
+        updateTaskStatus(item, 'in_progress');
+      });
+
+      actionBox.querySelector('.cancel').addEventListener('click', () => {
+        updateTaskStatus(item, 'cancelled');
+      });
+
       pendingContainer.appendChild(div);
     }
-    else if (item.status === 'in_progress') {
+
+    else if (status === 'in_progress') {
+      actionBox.innerHTML = `
+        <button class="task-btn done">Hoàn thành</button>
+        <button class="task-btn cancel">Hủy</button>
+      `;
+
+      actionBox.querySelector('.done').addEventListener('click', () => {
+        updateTaskStatus(item, 'done');
+      });
+
+      actionBox.querySelector('.cancel').addEventListener('click', () => {
+        updateTaskStatus(item, 'cancelled');
+      });
+
       doingContainer.appendChild(div);
     }
-    else if (item.status === 'done') {
+
+    else if (status === 'done') {
+      actionBox.innerHTML = `<span class="task-done-text">Đã xong</span>`;
       doneContainer.appendChild(div);
     }
   }
 
-  document.getElementById('taskChuaXong').innerText =
-    taskChuaXong;
+  document.getElementById('taskChuaXong').innerText = pendingCount + doingCount;
+  document.getElementById('taskHoanThanh').innerText = doneCount;
 
-  document.getElementById('taskHoanThanh').innerText =
-    taskHoanThanh;
+  const pendingCountEl = document.getElementById('pendingCount');
+  const doingCountEl = document.getElementById('doingCount');
+  const doneCountEl = document.getElementById('doneCount');
+  const menuTaskBadge = document.getElementById('menuTaskBadge');
+
+  if (pendingCountEl) pendingCountEl.innerText = pendingCount;
+  if (doingCountEl) doingCountEl.innerText = doingCount;
+  if (doneCountEl) doneCountEl.innerText = doneCount;
+  if (menuTaskBadge) menuTaskBadge.innerText = pendingCount + doingCount;
+}
+
+async function updateTaskStatus(task, newStatus) {
+  const diadiem = selectDiadiem.value;
+  const user = getCurrentUserInfo();
+
+  const statusText = getTaskStatusText(newStatus);
+
+  const ok = confirm(`Chuyển task "${task.title}" sang trạng thái "${statusText}"?`);
+
+  if (!ok) return;
+
+  const { error } = await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .update({
+      status: newStatus
+    })
+    .eq('id', task.id);
+
+  if (error) {
+    console.error('Lỗi cập nhật task:', error);
+    alert('Không cập nhật được trạng thái task.');
+    return;
+  }
+
+  await supabase
+    .schema('qlnv')
+    .from('logs')
+    .insert({
+      diadiem,
+      manv: task.assigned_to || null,
+      tennv: task.assigned_name || null,
+      action: `${user.manv || 'ADMIN'} chuyển task "${task.title}" sang "${statusText}"`,
+      ref_type: 'task',
+      ref_id: task.id,
+      note: newStatus,
+      created_at: new Date().toISOString()
+    });
+
+  await loadTasks(diadiem);
+  await loadLogs(diadiem);
 }
 
 async function loadLogs(diadiem) {
