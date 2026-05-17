@@ -569,6 +569,10 @@ export function mountKhachHangSuggest(options = {}) {
     makhInput.value = chiLaySo(makh);
     setVal(tenInputId, tenkh);
     copyMakhNeuDu10So();
+
+    window.dispatchEvent(new CustomEvent("ht:khachhangmoi:saved", {
+      detail: { makh, tenkh }
+    }));
     setVal(diemInputId, "0");
     setVal(hangInputId, manvTao ? "THUONG/" + manvTao : "THUONG");
     setVal(diemTruInputId, "0");
