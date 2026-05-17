@@ -10,6 +10,43 @@ let workAreasCache = [];
 
 const supabase = getSupabaseClient();
 
+function getTodayRangeVN() {
+  const now = new Date();
+
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  return {
+    startIso: start.toISOString(),
+    endIso: end.toISOString()
+  };
+}
+
+function getTaskStatusText(status) {
+  const map = {
+    pending: 'Chưa làm',
+    in_progress: 'Đang làm',
+    done: 'Hoàn thành',
+    cancelled: 'Đã hủy'
+  };
+
+  return map[status] || status || 'Không rõ';
+}
+
+function getTaskStatusClass(status) {
+  const map = {
+    pending: 'status-warning',
+    in_progress: 'status-task',
+    done: 'status-free',
+    cancelled: 'status-off'
+  };
+
+  return map[status] || 'status-muted';
+}
+
 const selectDiadiem =
   document.getElementById('selectDiadiem')
 
@@ -206,77 +243,92 @@ function getWorkStateClass(state) {
 }
 
 async function loadTasks(diadiem) {
+  const { startIso, endIso } = getTodayRangeVN();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .schema('qlnv')
     .from('tasks')
     .select('*')
     .eq('diadiem', diadiem)
-    .order('created_at', {
-      ascending: false
-    })
+    .gte('created_at', startIso)
+    .lt('created_at', endIso)
+    .order('created_at', { ascending: false });
 
-  taskContainer.innerHTML = ''
+  if (error) {
+    console.error('Lỗi loadTasks:', error);
+    return;
+  }
+
+  taskContainer.innerHTML = '';
+
+  let taskChuaXong = 0;
+  let taskHoanThanh = 0;
 
   for (const item of data || []) {
+    if (item.status === 'done') {
+      taskHoanThanh++;
+    } else if (['pending', 'in_progress'].includes(item.status)) {
+      taskChuaXong++;
+    }
 
-    const div = document.createElement('div')
-
-    div.className = 'task-item'
+    const div = document.createElement('div');
+    div.className = 'task-item';
 
     div.innerHTML = `
-      <b>${item.title}</b>
+      <b>${item.title || ''}</b>
 
       <div>
         ${item.assigned_name || ''}
       </div>
 
-      <div class="status-badge">
-        ${item.status}
+      <div class="status-badge ${getTaskStatusClass(item.status)}">
+        ${getTaskStatusText(item.status)}
       </div>
-    `
+    `;
 
-    taskContainer.appendChild(div)
-
+    taskContainer.appendChild(div);
   }
 
+  document.getElementById('taskChuaXong').innerText = taskChuaXong;
+  document.getElementById('taskHoanThanh').innerText = taskHoanThanh;
 }
 
 async function loadLogs(diadiem) {
+  const { startIso, endIso } = getTodayRangeVN();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .schema('qlnv')
     .from('logs')
     .select('*')
     .eq('diadiem', diadiem)
-    .order('created_at', {
-      ascending: false
-    })
-    .limit(20)
+    .gte('created_at', startIso)
+    .lt('created_at', endIso)
+    .order('created_at', { ascending: false })
+    .limit(50);
 
-  logContainer.innerHTML = ''
+  if (error) {
+    console.error('Lỗi loadLogs:', error);
+    return;
+  }
+
+  logContainer.innerHTML = '';
 
   for (const item of data || []) {
-
-    const div = document.createElement('div')
-
-    div.className = 'log-item'
+    const div = document.createElement('div');
+    div.className = 'log-item';
 
     div.innerHTML = `
       <b>${item.tennv || ''}</b>
 
-      <div>${item.action}</div>
+      <div>${item.action || ''}</div>
 
       <small>
-        ${new Date(item.created_at)
-        .toLocaleString()}
+        ${new Date(item.created_at).toLocaleString('vi-VN')}
       </small>
-    `
+    `;
 
-    logContainer.appendChild(div)
-
+    logContainer.appendChild(div);
   }
-
 }
 
 let qlnvRealtimeChannel = null;
