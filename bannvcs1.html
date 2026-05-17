@@ -373,6 +373,20 @@
         }
     </style>
 
+
+    <script>
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            document.getElementById('btn_' + tabName).classList.add('active');
+        }
+        document.addEventListener("DOMContentLoaded", () => {
+            switchTab("thongtin");
+        });
+
+
     </script>
 
     <!-- banlemobile -->
@@ -1009,7 +1023,6 @@
         }
 
         async function quayLaiMaKhach() {
-            window.__chanTuDongMoQrZalo = true;
             const btn = document.getElementById("btnQLMK");
             if (btn) {
                 btn.disabled = true;
@@ -1045,10 +1058,6 @@
                     btn.disabled = false;
                     btn.innerText = "QLMK";
                 }
-
-                setTimeout(() => {
-                    window.__chanTuDongMoQrZalo = false;
-                }, 1500);
             }
         }
 
@@ -1379,58 +1388,30 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            if (window.__autoOpenQrAfterCustomerSelected_v4) return;
+            window.__autoOpenQrAfterCustomerSelected_v4 = true;
 
-            let lastAutoQrMakh = "";
+            let lastOpenedMakh = "";
 
-            function moQrZaloTuDong() {
-
-                // ❌ Không mở khi QLMK đang chạy
-                if (window.__chanTuDongMoQrZalo) return;
-
+            function moQrZaloTheoKhach() {
                 const makh = document.getElementById("makh")?.value?.trim() || "";
                 const tenkh = document.getElementById("khachhang")?.value?.trim() || "";
-
                 const popup = document.getElementById("popupQRZalo");
                 const qrSdt = document.getElementById("qrSdtKhach");
 
-                if (!makh || !tenkh) return;
+                if (!makh || !tenkh || !popup || !qrSdt) return false;
+                if (makh.toUpperCase() === "KL") return false;
+                if (makh === lastOpenedMakh) return false;
 
-                if (makh.toUpperCase() === "KL") return;
-
-                // ❌ Không mở lại cùng mã
-                if (lastAutoQrMakh === makh) return;
-
-                lastAutoQrMakh = makh;
-
+                lastOpenedMakh = makh;
                 qrSdt.textContent = makh;
-
                 popup.style.display = "flex";
-
-                console.log("✅ Tự mở QR Zalo:", makh);
+                return true;
             }
 
-            // Theo dõi thay đổi mã khách
-            let oldMakh = "";
-
             setInterval(() => {
-
-                const makh = document.getElementById("makh")?.value?.trim() || "";
-
-                if (!makh) return;
-
-                // Chỉ khi mã KH thay đổi thật
-                if (makh !== oldMakh) {
-
-                    oldMakh = makh;
-
-                    // Delay nhẹ để chờ tên KH load xong
-                    setTimeout(() => {
-                        moQrZaloTuDong();
-                    }, 500);
-                }
-
-            }, 400);
-
+                moQrZaloTheoKhach();
+            }, 800);
         });
     </script>
 
