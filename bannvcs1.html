@@ -1347,6 +1347,7 @@
     <script type="module" src="scripts/scanner.js"></script>
 
     <script>
+        // Tự động mở QR Zalo sau khi thêm nhanh khách hàng thành công
         document.addEventListener("DOMContentLoaded", () => {
 
             const btnQR = document.getElementById("btnQRZalo");
@@ -1386,62 +1387,55 @@
     </script>
 
     <script>
-        // Tự động mở QR Zalo sau khi thêm nhanh khách hàng thành công
         document.addEventListener("DOMContentLoaded", () => {
-            if (window.__autoOpenQrAfterQuickCustomer_v2) return;
-            window.__autoOpenQrAfterQuickCustomer_v2 = true;
+            if (window.__autoOpenQrAfterQuickCustomer_v3) return;
+            window.__autoOpenQrAfterQuickCustomer_v3 = true;
 
-            let canMoQrSauKhiLuuKhachNhanh = false;
+            let dangChoMoQrSauLuuKhach = false;
 
             function moQrZaloTuDong() {
                 const makh = document.getElementById("makh")?.value?.trim() || "";
+                const tenkh = document.getElementById("khachhang")?.value?.trim() || "";
                 const popup = document.getElementById("popupQRZalo");
                 const qrSdt = document.getElementById("qrSdtKhach");
 
-                if (!makh || !popup || !qrSdt) return false;
+                if (!makh || !tenkh || !popup || !qrSdt) return false;
 
                 qrSdt.textContent = makh;
                 popup.style.display = "flex";
                 return true;
             }
 
-            // Bắt sự kiện từ sớm, trước khi popup thêm nhanh bị đóng
-            document.addEventListener("pointerdown", function (e) {
+            document.addEventListener("click", function (e) {
                 const btn = e.target.closest("button");
                 if (!btn) return;
 
                 const txt = String(btn.textContent || "").trim();
 
-                if (txt === "Lưu dữ liệu") {
-                    canMoQrSauKhiLuuKhachNhanh = true;
-                }
-            }, true);
+                if (!txt.includes("Lưu dữ liệu")) return;
 
-            document.addEventListener("click", function () {
-                if (!canMoQrSauKhiLuuKhachNhanh) return;
+                dangChoMoQrSauLuuKhach = true;
 
                 let count = 0;
-
                 const timer = setInterval(() => {
                     count++;
 
-                    const makh = document.getElementById("makh")?.value?.trim() || "";
-                    const tenkh = document.getElementById("khachhang")?.value?.trim() || "";
-
-                    if (makh && tenkh) {
+                    if (!dangChoMoQrSauLuuKhach) {
                         clearInterval(timer);
-                        canMoQrSauKhiLuuKhachNhanh = false;
-
-                        setTimeout(() => {
-                            moQrZaloTuDong();
-                        }, 300);
+                        return;
                     }
 
-                    if (count >= 30) {
+                    if (moQrZaloTuDong()) {
+                        dangChoMoQrSauLuuKhach = false;
                         clearInterval(timer);
-                        canMoQrSauKhiLuuKhachNhanh = false;
+                        return;
                     }
-                }, 200);
+
+                    if (count >= 100) {
+                        dangChoMoQrSauLuuKhach = false;
+                        clearInterval(timer);
+                    }
+                }, 300);
             }, true);
         });
     </script>
