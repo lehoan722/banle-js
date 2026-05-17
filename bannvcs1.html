@@ -1023,6 +1023,7 @@
         }
 
         async function quayLaiMaKhach() {
+            window.__chanTuDongMoQrZalo = true;
             const btn = document.getElementById("btnQLMK");
             if (btn) {
                 btn.disabled = true;
@@ -1058,6 +1059,10 @@
                     btn.disabled = false;
                     btn.innerText = "QLMK";
                 }
+
+                setTimeout(() => {
+                    window.__chanTuDongMoQrZalo = false;
+                }, 1500);
             }
         }
 
@@ -1394,6 +1399,7 @@
             let lastOpenedMakh = "";
 
             function moQrZaloTheoKhach() {
+                if (window.__chanTuDongMoQrZalo) return false;
                 const makh = document.getElementById("makh")?.value?.trim() || "";
                 const tenkh = document.getElementById("khachhang")?.value?.trim() || "";
                 const popup = document.getElementById("popupQRZalo");
