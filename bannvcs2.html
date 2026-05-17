@@ -519,19 +519,37 @@
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
 
+            <button id="btnQLMK" type="button" style="
+    background:#ff9800;
+    color:white;
+    font-weight:bold;
+    border:none;
+    border-radius:8px;
+    padding:0 12px;
+    font-size:18px;
+">
+                QLMK
+            </button>
+
             <button id="btnQRZalo" style="
     background:#00c853;
     color:white;
     font-weight:bold;
     border:none;
-    border-radius:6px;
-    padding:0 10px;
-    font-size:16px;
-    ">
+    border-radius:8px;
+    padding:0 12px;
+    font-size:18px;
+">
                 📱 QR
             </button>
 
             <button id="ghivitri">✏️</button>
+
+            <button id="btnQrOA" type="button"
+                style="background:#10c95a;color:white;font-weight:bold;border:none;border-radius:6px;padding:5px 10px;font-size:16px;">
+                📱 QR OA
+            </button>
+
         </div>
 
 
@@ -830,10 +848,12 @@
     <script type="module">
         import { backupAllTablesToZip } from './scripts/backup.js';
 
-        document.getElementById('btn-logout').onclick = async function () {
-
-            await dangXuatApp();
-        };
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.onclick = async function () {
+                await dangXuatApp();
+            };
+        }
 
         async function dangXuatApp() {
             // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
@@ -908,6 +928,139 @@
             }
         }
 
+        let dsQLMK = [];
+        let indexQLMK = -1;
+
+        function layPrefixBanNhanVienTheoTrang() {
+            const path = String(location.pathname || "").toLowerCase();
+
+            if (path.includes("cs2")) return "bannvcs2_";
+            return "bannvcs2_";
+        }
+
+        async function napDanhSachQLMK() {
+            if (!window.supabase) {
+                alert("Chưa kết nối Supabase.");
+                return [];
+            }
+
+            const prefix = layPrefixBanNhanVienTheoTrang();
+
+            const { data, error } = await window.supabase
+                .from("hoadon_banle")
+                .select("sohd, ngay, created_at, makh, khachhang, diadiem")
+                .like("sohd", `${prefix}%`)
+                .not("makh", "is", null)
+                .neq("makh", "")
+                .order("created_at", { ascending: false })
+                .limit(50);
+
+            if (error) {
+                console.error("❌ Lỗi tải danh sách QLMK:", error);
+                alert("Không tải được danh sách khách gần đây.");
+                return [];
+            }
+
+            const seen = new Set();
+            const ds = [];
+
+            (data || []).forEach(row => {
+                const makh = String(row.makh || "").trim();
+                if (!makh) return;
+                if (seen.has(makh)) return;
+
+                seen.add(makh);
+                ds.push(row);
+            });
+
+            return ds;
+        }
+
+        async function napChiTietKhachChoQLMK(makh, tenFallback = "") {
+            const makhEl = document.getElementById("makh");
+            const tenEl = document.getElementById("khachhang");
+            const diemEl = document.getElementById("diem_hientai");
+            const hangEl = document.getElementById("hang_khach");
+            const diemTruEl = document.getElementById("diem_tru");
+            const tienDoiDiemEl = document.getElementById("tien_doi_diem");
+
+            if (makhEl) makhEl.value = makh || "";
+            if (tenEl) tenEl.value = tenFallback || "";
+            if (diemTruEl) diemTruEl.value = "0";
+            if (tienDoiDiemEl) tienDoiDiemEl.value = "0";
+
+            if (!makh) return;
+
+            const { data: kh, error } = await window.supabase
+                .from("dmkhachhang")
+                .select("makh, tenkh, diem_hientai, hang_khach, created_by_manv")
+                .eq("makh", makh)
+                .maybeSingle();
+
+            if (error) {
+                console.warn("⚠️ Không đọc được chi tiết khách QLMK:", error);
+                return;
+            }
+
+            if (kh) {
+                if (tenEl) tenEl.value = kh.tenkh || tenFallback || "";
+                if (diemEl) diemEl.value = kh.diem_hientai ?? 0;
+
+                const nvTao = kh.created_by_manv ? "/" + kh.created_by_manv : "";
+                if (hangEl) hangEl.value = (kh.hang_khach || "THUONG") + nvTao;
+            }
+
+            localStorage.setItem("pending_makh_banle", makh || "");
+            localStorage.setItem("pending_tenkh_banle", tenEl?.value || "");
+
+            setTimeout(() => {
+                const maspEl = document.getElementById("masp");
+                if (maspEl) {
+                    maspEl.focus();
+                    maspEl.select?.();
+                }
+            }, 50);
+        }
+
+        async function quayLaiMaKhach() {
+            const btn = document.getElementById("btnQLMK");
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "Đang...";
+            }
+
+            try {
+                if (!dsQLMK.length) {
+                    dsQLMK = await napDanhSachQLMK();
+                    indexQLMK = -1;
+                }
+
+                if (!dsQLMK.length) {
+                    alert("Chưa có khách hàng gần đây để quay lại.");
+                    return;
+                }
+
+                indexQLMK++;
+
+                if (indexQLMK >= dsQLMK.length) {
+                    indexQLMK = 0;
+                }
+
+                const kh = dsQLMK[indexQLMK];
+
+                await napChiTietKhachChoQLMK(
+                    String(kh.makh || "").trim(),
+                    String(kh.khachhang || "").trim()
+                );
+
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = "QLMK";
+                }
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
             mountKhachHangSuggest({
                 inputId: "makh",
@@ -920,6 +1073,11 @@
                 tienDoiDiemInputId: "tien_doi_diem",
                 nhapKhachUrl: "/nhapdmkhachhang.html"
             });
+
+            const btnQLMK = document.getElementById("btnQLMK");
+            if (btnQLMK) {
+                btnQLMK.addEventListener("click", quayLaiMaKhach);
+            }
 
             const sohdEl = document.getElementById("sohd");
             if (!sohdEl) return;
@@ -1286,6 +1444,111 @@
                 }, 200);
             }, true);
         });
+    </script>
+
+    <!-- Popup QR OA / Thành viên -->
+    <div id="popupQrOA"
+        style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999999;align-items:center;justify-content:center;">
+        <div
+            style="width:92%;max-width:430px;background:#fff;border-radius:22px;padding:22px;text-align:center;box-shadow:0 10px 35px #0007;">
+            <div style="font-size:30px;font-weight:900;color:#078bd3;margin-bottom:8px;">
+                🎉 THÀNH VIÊN 🎉
+            </div>
+
+            <div style="font-size:18px;margin-bottom:14px;color:#333;">
+                Khách quét mã để kích hoạt tích điểm
+            </div>
+
+            <img id="qrOAImg" src="" alt="QR OA"
+                style="width:260px;height:260px;border:1px solid #ddd;border-radius:16px;padding:8px;background:white;">
+
+            <div style="margin-top:14px;color:#777;font-size:17px;">
+                SĐT tích điểm
+            </div>
+
+            <div id="qrOAPhone"
+                style="font-size:42px;font-weight:900;color:#e53935;letter-spacing:1px;margin:5px 0 12px;">
+                ---
+            </div>
+
+            <div style="font-size:15px;color:#444;margin-bottom:16px;line-height:1.5;">
+                Vui lòng kiểm tra đúng số điện thoại trước khi khách quét mã.
+            </div>
+
+            <button id="btnCloseQrOA"
+                style="width:100%;border:none;border-radius:14px;background:#078bd3;color:white;font-size:22px;font-weight:bold;padding:14px;">
+                Đóng
+            </button>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const LANDING_URL = "https://app.hoantuyet.vn/thamgia.html";
+
+            function onlyDigits(s) {
+                return String(s || "").replace(/\D/g, "");
+            }
+
+            function formatPhone(s) {
+                const d = onlyDigits(s);
+                if (d.length === 10) {
+                    return d.slice(0, 4) + " " + d.slice(4, 7) + " " + d.slice(7);
+                }
+                return d || "---";
+            }
+
+            function getVal(id) {
+                return String(document.getElementById(id)?.value || "").trim();
+            }
+
+            function moPopupQrOA() {
+                const phone = onlyDigits(getVal("makh"));
+
+                if (!phone || phone.length !== 10) {
+                    alert("❌ Vui lòng nhập mã khách là số điện thoại 10 số trước khi tạo QR OA.");
+                    document.getElementById("makh")?.focus();
+                    return;
+                }
+
+                const manv = getVal("manv") || localStorage.getItem("manv") || "";
+                const tennv = getVal("tennv") || localStorage.getItem("tennv") || "";
+                const cs = getVal("diadiem") || localStorage.getItem("diadiem") || "";
+                const tenkh = getVal("khachhang") || "";
+                const sohd = getVal("sohd") || "";
+
+                const landing = new URL(LANDING_URL);
+                landing.searchParams.set("sdt", phone);
+                landing.searchParams.set("makh", phone);
+                landing.searchParams.set("manv", manv);
+                landing.searchParams.set("tennv", tennv);
+                landing.searchParams.set("cs", cs);
+                landing.searchParams.set("tenkh", tenkh);
+                landing.searchParams.set("sohd", sohd);
+
+                const qrUrl =
+                    "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" +
+                    encodeURIComponent(landing.toString());
+
+                document.getElementById("qrOAImg").src = qrUrl;
+                document.getElementById("qrOAPhone").textContent = formatPhone(phone);
+                document.getElementById("popupQrOA").style.display = "flex";
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                document.getElementById("btnQrOA")?.addEventListener("click", moPopupQrOA);
+
+                document.getElementById("btnCloseQrOA")?.addEventListener("click", function () {
+                    document.getElementById("popupQrOA").style.display = "none";
+                });
+
+                document.getElementById("popupQrOA")?.addEventListener("click", function (e) {
+                    if (e.target.id === "popupQrOA") {
+                        e.currentTarget.style.display = "none";
+                    }
+                });
+            });
+        })();
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
