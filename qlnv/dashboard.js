@@ -31,6 +31,12 @@ const doneContainer =
 const logContainer =
   document.getElementById('logContainer');
 
+const alertContainer =
+  document.getElementById('alertContainer');
+
+const topAlertBadge =
+  document.getElementById('topAlertBadge');
+
 const btnThemTask =
   document.getElementById('btnThemTask');
 
@@ -148,7 +154,8 @@ async function loadDashboard() {
     loadStoreStatus(diadiem),
     loadStaff(diadiem),
     loadTasks(diadiem),
-    loadLogs(diadiem)
+    loadLogs(diadiem),
+    loadAlerts(diadiem)
   ]);
 }
 
@@ -507,6 +514,128 @@ async function loadLogs(diadiem) {
 
     logContainer.appendChild(div);
   }
+}
+
+async function loadAlerts(diadiem) {
+
+  const alerts = [];
+
+  /*
+    =========================
+    NHÂN VIÊN
+    =========================
+  */
+
+  const { data: staffData } = await supabase
+    .schema('qlnv')
+    .from('v_staff_today_status')
+    .select('*')
+    .eq('diadiem', diadiem);
+
+  for (const item of staffData || []) {
+
+    const ten = item.tennv || item.manv || '';
+
+    if (item.work_state === 'CO_LICH_CHUA_VAO_CA') {
+
+      alerts.push({
+        type: 'warning',
+        text: `${ten} chưa vào ca`
+      });
+    }
+
+    if (
+      item.work_state === 'CO_CHAMCONG_KHONG_CO_LICH'
+    ) {
+
+      alerts.push({
+        type: 'danger',
+        text: `${ten} có chấm công nhưng chưa có lịch`
+      });
+    }
+  }
+
+  /*
+    =========================
+    TASK
+    =========================
+  */
+
+  const { startIso, endIso } =
+    getTodayRangeVN();
+
+  const { data: taskData } = await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .select('*')
+    .eq('diadiem', diadiem)
+    .gte('created_at', startIso)
+    .lt('created_at', endIso);
+
+  for (const task of taskData || []) {
+
+    if (
+      task.status === 'pending'
+    ) {
+
+      alerts.push({
+        type: 'info',
+        text: `Task chưa làm: ${task.title}`
+      });
+    }
+
+    if (
+      task.status === 'in_progress'
+    ) {
+
+      alerts.push({
+        type: 'success',
+        text: `Đang thực hiện: ${task.title}`
+      });
+    }
+  }
+
+  /*
+    =========================
+    RENDER
+    =========================
+  */
+
+  alertContainer.innerHTML = '';
+
+  if (!alerts.length) {
+
+    alertContainer.innerHTML = `
+      <div class="alert-empty">
+        Không có cảnh báo hôm nay
+      </div>
+    `;
+
+    document.getElementById('canhBaoCount').innerText = 0;
+
+    return;
+  }
+
+  for (const item of alerts) {
+
+    const div = document.createElement('div');
+
+    div.className =
+      `alert-item ${item.type}`;
+
+    div.innerHTML = `
+      <div class="alert-dot"></div>
+
+      <div class="alert-text">
+        ${item.text}
+      </div>
+    `;
+
+    alertContainer.appendChild(div);
+  }
+
+  document.getElementById('canhBaoCount').innerText =
+    alerts.length;
 }
 
 let qlnvRealtimeChannel = null;
