@@ -1393,13 +1393,10 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            if (window.__autoOpenQrAfterCustomerSelected_v4) return;
-            window.__autoOpenQrAfterCustomerSelected_v4 = true;
+            if (window.__autoOpenQrAfterQuickCustomer_v5) return;
+            window.__autoOpenQrAfterQuickCustomer_v5 = true;
 
-            let lastOpenedMakh = "";
-
-            function moQrZaloTheoKhach() {
-                if (window.__chanTuDongMoQrZalo) return false;
+            function moQrZaloTuDongSauThemKhach() {
                 const makh = document.getElementById("makh")?.value?.trim() || "";
                 const tenkh = document.getElementById("khachhang")?.value?.trim() || "";
                 const popup = document.getElementById("popupQRZalo");
@@ -1407,17 +1404,35 @@
 
                 if (!makh || !tenkh || !popup || !qrSdt) return false;
                 if (makh.toUpperCase() === "KL") return false;
-                if (makh === lastOpenedMakh) return false;
 
-                lastOpenedMakh = makh;
                 qrSdt.textContent = makh;
                 popup.style.display = "flex";
                 return true;
             }
 
-            setInterval(() => {
-                moQrZaloTheoKhach();
-            }, 800);
+            document.addEventListener("click", function (e) {
+                const btn = e.target.closest("button");
+                if (!btn) return;
+
+                const txt = String(btn.textContent || "").trim();
+
+                // Chỉ bắt nút Lưu dữ liệu trong popup thêm khách mới
+                if (!txt.includes("Lưu dữ liệu")) return;
+
+                let count = 0;
+                const timer = setInterval(() => {
+                    count++;
+
+                    if (moQrZaloTuDongSauThemKhach()) {
+                        clearInterval(timer);
+                        return;
+                    }
+
+                    if (count >= 50) {
+                        clearInterval(timer);
+                    }
+                }, 300);
+            }, true);
         });
     </script>
 
