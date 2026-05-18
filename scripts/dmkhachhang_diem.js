@@ -1,6 +1,7 @@
 // scripts/services/dmkhachhang.js
 
-const TY_LE_TOI_DA_DUNG_DIEM = 0.10;
+let TY_LE_TOI_DA_DUNG_DIEM = 0.05;
+let TIEN_MOI_DIEM_KHACHHANG = 1000;
 export function mountKhachHangSuggest(options = {}) {
   const {
     inputId = "makh",
@@ -91,6 +92,30 @@ export function mountKhachHangSuggest(options = {}) {
 
   function getEl(id) {
     return document.getElementById(id);
+  }
+
+  async function taiCauHinhDiemKhachHang() {
+    try {
+      const { data, error } = await window.supabase
+        .from("cauhinh_diem_khachhang")
+        .select("tien_moi_diem, ty_le_toi_da_dung_diem")
+        .eq("id", 1)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("⚠️ Không đọc được cấu hình điểm:", error);
+        return;
+      }
+
+      if (data) {
+        TY_LE_TOI_DA_DUNG_DIEM = Number(data.ty_le_toi_da_dung_diem || 0.05);
+        TIEN_MOI_DIEM_KHACHHANG = Number(data.tien_moi_diem || 1000);
+        window.TIEN_MOI_DIEM_KHACHHANG = TIEN_MOI_DIEM_KHACHHANG;
+      }
+    } catch (e) {
+      console.warn("⚠️ Lỗi tải cấu hình điểm:", e);
+    }
   }
 
   function setVal(id, val) {
@@ -613,7 +638,7 @@ export function mountKhachHangSuggest(options = {}) {
     };
 
     function layTienMoiDiem() {
-      return Number(window.TIEN_MOI_DIEM_KHACHHANG || 1000);
+      return Number(window.TIEN_MOI_DIEM_KHACHHANG || TIEN_MOI_DIEM_KHACHHANG || 1000);
     }
 
     function layTongGocHoaDon() {
@@ -941,7 +966,9 @@ export function mountKhachHangSuggest(options = {}) {
     bindDiemTru();
   }
 
-  bindEvents();
+  taiCauHinhDiemKhachHang().finally(() => {
+    bindEvents();
+  });
 
   // Cho các file khác gọi lại nếu cần
   window.napThongTinDiemKhach = napThongTinDiemKhach;
