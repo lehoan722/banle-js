@@ -40,7 +40,7 @@
         }
 
         .product-list {
-            height: 160px;
+            height: 95px;
             /* 👈 giảm xuống (280 → 180) */
             overflow-y: auto;
             margin-top: 10px;
@@ -208,7 +208,7 @@
         .form-row {
             display: flex;
             align-items: center;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             position: relative;
         }
 
@@ -226,14 +226,14 @@
 
         .form-input input {
             width: 100%;
-            padding: 2px 5px;
+            padding: 1px 5px;
             font-size: 13px;
             box-sizing: border-box;
         }
 
         .form-input select {
             width: 100%;
-            padding: 2px 5px;
+            padding: 1px 5px;
             font-size: 13px;
             box-sizing: border-box;
         }
@@ -448,7 +448,7 @@
                         <div class="form-row">
                             <label for="formAoInput">Form</label>
                             <div class="form-input">
-                                <select name="form_ao" id="formAoInput">
+                                <select name="form" id="formAoInput">
                                     <option value="">-- Không chọn --</option>
                                     <option value="bo">Bó</option>
                                     <option value="vua">Vừa</option>
@@ -1846,7 +1846,7 @@
                     document.getElementById('nhaccInput').value = data.nhacc || '';
                     document.getElementById('nhomhangInput').value = data.nhomhang || '';
                     document.getElementById('chungloaiInput').value = data.chungloai || '';
-                    document.getElementById('formAoInput').value = data.form_ao || '';
+                    document.getElementById('formAoInput').value = data.form || '';
                     document.getElementById('rongOngInput').value = data.rong_ong || '';
                     document.getElementById('coGianInput').value = data.co_gian || '';
                     document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
@@ -2042,7 +2042,7 @@
                     nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),
                     nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
                     chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(),
-                    form_ao: document.getElementById('formAoInput').value || null,
+                    form: document.getElementById('formAoInput').value || null,
                     rong_ong: document.getElementById('rongOngInput').value
                         ? Number(document.getElementById('rongOngInput').value)
                         : null,
