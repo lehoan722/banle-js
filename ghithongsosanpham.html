@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Ghi thông số sản phẩm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 15px;
+            margin: 0;
+            background: #f4f6f8;
+        }
+
+        #app-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 12px;
+        }
+
+        h2 {
+            margin: 8px 0 14px;
+            font-size: 22px;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .field {
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        input, select {
+            width: 100%;
+            height: 38px;
+            box-sizing: border-box;
+            font-size: 16px;
+            padding: 6px 8px;
+        }
+
+        .suggest-box {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 66px;
+            background: white;
+            border: 1px solid #bbb;
+            z-index: 99;
+            max-height: 220px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
+
+        .suggest-item {
+            padding: 7px 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .suggest-item:hover {
+            background: #eaf2ff;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        button {
+            border: none;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .btn-blue {
+            background: #1f7ae0;
+            color: white;
+        }
+
+        .btn-red {
+            background: #d63333;
+            color: white;
+        }
+
+        .btn-gray {
+            background: #666;
+            color: white;
+        }
+
+        .message {
+            margin-top: 8px;
+            color: #d63333;
+            font-weight: bold;
+            min-height: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 7px;
+            text-align: left;
+            font-size: 15px;
+        }
+
+        th {
+            background: #f1f1f1;
+        }
+
+        tr.selected {
+            background: #dcecff;
+        }
+
+        .note {
+            font-size: 13px;
+            color: #666;
+            margin-top: 6px;
+        }
+
+        @media (max-width: 700px) {
+            #app-container {
+                padding: 8px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+
+            button {
+                padding: 11px 6px;
+                font-size: 15px;
+            }
+
+            th, td {
+                font-size: 13px;
+                padding: 6px 4px;
+            }
+
+            .suggest-box {
+                top: 64px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div id="app-container">
+    <h2>GHI THÔNG SỐ SẢN PHẨM</h2>
+
+    <div class="card">
+        <div class="form-grid">
+            <div class="field">
+                <label for="maspInput">Mã sản phẩm</label>
+                <input id="maspInput" type="text" autocomplete="off" placeholder="Quét hoặc nhập mã SP">
+                <div id="maspSuggestBox" class="suggest-box"></div>
+            </div>
+
+            <div class="field">
+                <label for="formInput">Form</label>
+                <input id="formInput" list="formList" autocomplete="off" placeholder="SLIM / REGULAR / WIDE">
+                <datalist id="formList">
+                    <option value="SLIM"></option>
+                    <option value="REGULAR"></option>
+                    <option value="WIDE"></option>
+                </datalist>
+            </div>
+
+            <div class="field">
+                <label for="rongOngInput">Rộng ống</label>
+                <input id="rongOngInput" list="rongOngList" autocomplete="off" placeholder="16 / 18 / 20 / 22">
+                <datalist id="rongOngList">
+                    <option value="16"></option>
+                    <option value="18"></option>
+                    <option value="20"></option>
+                    <option value="22"></option>
+                </datalist>
+            </div>
+
+            <div class="field">
+                <label for="coGianInput">Co giãn</label>
+                <input id="coGianInput" list="coGianList" autocomplete="off" placeholder="CO / KHONG">
+                <datalist id="coGianList">
+                    <option value="CO"></option>
+                    <option value="KHONG"></option>
+                </datalist>
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button id="btnThemMoi" class="btn-blue">Thêm mới</button>
+            <button id="btnLuu" class="btn-blue">Lưu</button>
+            <button id="btnXoaDong" class="btn-red">Xóa dòng</button>
+        </div>
+
+        <div id="message" class="message"></div>
+        <div class="note">
+            Quy tắc lưu: chỉ cập nhật ô đang trống trong danh mục hàng hóa, không ghi đè dữ liệu cũ.
+        </div>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Mã SP</th>
+                    <th>Form</th>
+                    <th>Rộng ống</th>
+                    <th>Co giãn</th>
+                </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module" src="./scripts/ghithongsosanpham.js"></script>
+</body>
+</html>
