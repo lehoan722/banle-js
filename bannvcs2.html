@@ -917,6 +917,14 @@
         let dsQLMK = [];
         let indexQLMK = -1;
 
+        function resetQLMK() {
+            dsQLMK = [];
+            indexQLMK = -1;
+            console.log("✅ Đã reset QLMK về khách gần nhất.");
+        }
+
+        window.resetQLMK = resetQLMK;
+
         function layPrefixBanNhanVienTheoTrang() {
             const path = String(location.pathname || "").toLowerCase();
 
@@ -1070,6 +1078,16 @@
                 btnQLMK.addEventListener("click", quayLaiMaKhach);
             }
 
+            const btnThemMoi = document.getElementById("them");
+            if (btnThemMoi) {
+                btnThemMoi.addEventListener("click", resetQLMK);
+            }
+
+            const btnThemMoiCo = document.getElementById("btnThemMoiCo");
+            if (btnThemMoiCo) {
+                btnThemMoiCo.addEventListener("click", resetQLMK);
+            }
+
             const sohdEl = document.getElementById("sohd");
             if (!sohdEl) return;
 
@@ -1114,7 +1132,13 @@
 
         setTimeout(function () {
             window.LUU_HOADON_F2 = async () => {
-                return await saveBanLe111("F2-NV");
+                const result = await saveBanLe111("F2-NV");
+
+                if (result?.ok) {
+                    window.resetQLMK?.();
+                }
+
+                return result;
             };
         }, 1000);
 
@@ -1137,8 +1161,11 @@
 
             try {
                 const result = await saveBanLe111("BTN-LUU-NV");
+
                 if (!result?.ok) {
                     console.warn("saveBanLe111 NV không trả ok=true:", result);
+                } else {
+                    window.resetQLMK?.();
                 }
             } catch (e) {
                 console.error(e);
