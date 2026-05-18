@@ -231,6 +231,13 @@
             box-sizing: border-box;
         }
 
+        .form-input select {
+            width: 100%;
+            padding: 2px 5px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
         .required {
             color: red;
             font-weight: bold;
@@ -436,6 +443,42 @@
                                 <datalist id="chungloaiList"></datalist>
                             </div>
 
+                        </div>
+
+                        <div class="form-row">
+                            <label for="formInput">Form</label>
+                            <div class="form-input">
+                                <select name="form" id="formInput">
+                                    <option value="">-- Không chọn --</option>
+                                    <option value="bo">Bó</option>
+                                    <option value="vua">Vừa</option>
+                                    <option value="rong">Rộng</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="rongOngInput">Rộng ống</label>
+                            <div class="form-input">
+                                <select name="rong_ong" id="rongOngInput">
+                                    <option value="">-- Không chọn --</option>
+                                    <option value="16">16</option>
+                                    <option value="18">18</option>
+                                    <option value="20">20</option>
+                                    <option value="22">22</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="coGianInput">Co giãn</label>
+                            <div class="form-input">
+                                <select name="co_gian" id="coGianInput">
+                                    <option value="">-- Không chọn --</option>
+                                    <option value="co">Có</option>
+                                    <option value="khong">Không</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="form-row">
@@ -1803,6 +1846,9 @@
                     document.getElementById('nhaccInput').value = data.nhacc || '';
                     document.getElementById('nhomhangInput').value = data.nhomhang || '';
                     document.getElementById('chungloaiInput').value = data.chungloai || '';
+                    document.getElementById('formInput').value = data.form || '';
+                    document.getElementById('rongOngInput').value = data.rong_ong || '';
+                    document.getElementById('coGianInput').value = data.co_gian || '';
                     document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                     // [ADD] Khi load form sửa, cũng xét lại theo Giá lẻ đang có
                     syncQuanLyKichCoByGiaLe();
@@ -1842,6 +1888,9 @@
 
                 // Không giữ lại nhóm hàng cũ khi thêm mã mới, sẽ để hệ thống tự suy ra lại từ mã sản phẩm
                 document.getElementById('nhomhangInput').value = '';
+                document.getElementById('formInput').value = '';
+                document.getElementById('rongOngInput').value = '';
+                document.getElementById('coGianInput').value = '';
 
                 document.getElementById('addProductMessage').textContent = '';
                 document.getElementById('addProductForm').style.border = '';
@@ -1993,6 +2042,11 @@
                     nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),
                     nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
                     chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(),
+                    form: document.getElementById('formInput').value || null,
+                    rong_ong: document.getElementById('rongOngInput').value
+                        ? Number(document.getElementById('rongOngInput').value)
+                        : null,
+                    co_gian: document.getElementById('coGianInput').value || null,
                     quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
                 };
 
