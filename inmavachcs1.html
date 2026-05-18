@@ -446,9 +446,9 @@
                         </div>
 
                         <div class="form-row">
-                            <label for="formInput">Form</label>
+                            <label for="formAoInput">Form</label>
                             <div class="form-input">
-                                <select name="form" id="formInput">
+                                <select name="form_ao" id="formAoInput">
                                     <option value="">-- Không chọn --</option>
                                     <option value="bo">Bó</option>
                                     <option value="vua">Vừa</option>
@@ -1846,7 +1846,7 @@
                     document.getElementById('nhaccInput').value = data.nhacc || '';
                     document.getElementById('nhomhangInput').value = data.nhomhang || '';
                     document.getElementById('chungloaiInput').value = data.chungloai || '';
-                    document.getElementById('formInput').value = data.form || '';
+                    document.getElementById('formAoInput').value = data.form_ao || '';
                     document.getElementById('rongOngInput').value = data.rong_ong || '';
                     document.getElementById('coGianInput').value = data.co_gian || '';
                     document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
@@ -1888,7 +1888,7 @@
 
                 // Không giữ lại nhóm hàng cũ khi thêm mã mới, sẽ để hệ thống tự suy ra lại từ mã sản phẩm
                 document.getElementById('nhomhangInput').value = '';
-                document.getElementById('formInput').value = '';
+                document.getElementById('formAoInput').value = '';
                 document.getElementById('rongOngInput').value = '';
                 document.getElementById('coGianInput').value = '';
 
@@ -2042,7 +2042,7 @@
                     nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),
                     nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
                     chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(),
-                    form: document.getElementById('formInput').value || null,
+                    form_ao: document.getElementById('formAoInput').value || null,
                     rong_ong: document.getElementById('rongOngInput').value
                         ? Number(document.getElementById('rongOngInput').value)
                         : null,
