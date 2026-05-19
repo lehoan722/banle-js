@@ -458,6 +458,7 @@
     let selectedForm = '';
     let selectedRongOng = '';
     let selectedCoGian = '';
+    let productIsGiayDep = false;
     let productHasForm = false;
     let btnSaveAll, btnNew;
     let maspInput, btnCheck, btnRetake, statusEl, cameraInp, galleryInp, thumb, thumbImg, thumbMeta, maspSuggestDiv, toastEl;
@@ -879,11 +880,10 @@
         return;
       }
 
-      if (!productHasForm && !selectedForm) {
+      if (!productIsGiayDep && !productHasForm && !selectedForm) {
         setStatus('Bắt buộc chọn Form trước khi lưu.', 'warn');
         return;
       }
-
       try {
         setState('uploading');
         setStatus('Đang lưu ảnh và thông số…');
@@ -960,6 +960,8 @@
       const masp = maspInput.value.trim();
       resetAttrButtons();
       productHasForm = false;
+      productIsGiayDep = false;
+      setAttrAreaDisabled(false);
       if (!masp || masp.length < 2) {
         setStatus('Mã sản phẩm chưa hợp lệ', 'warn');
         focusSelect();
@@ -968,11 +970,18 @@
 
       const { data: spInfo } = await supabase
         .from('dmhanghoa')
-        .select('form')
+        .select('form, chungloai')
         .eq('masp', masp.toUpperCase())
         .maybeSingle();
 
       productHasForm = !!(spInfo?.form && String(spInfo.form).trim() !== '');
+      productIsGiayDep = String(spInfo?.chungloai || '').trim().toUpperCase() === 'GD';
+
+      if (productIsGiayDep) {
+        resetAttrButtons();
+        setAttrAreaDisabled(true);
+        setStatus('Sản phẩm thuộc chủng loại giày dép. Không cần nhập thông tin mở rộng.', 'ok');
+      }
 
       if (productHasForm) {
         setStatus('Sản phẩm đã có Form. Có thể lưu ảnh mà không cần chọn Form.', 'ok');
@@ -1058,6 +1067,18 @@
       }
     }
 
+    function setAttrAreaDisabled(disabled) {
+      const area = document.getElementById('productAttrs');
+      if (!area) return;
+
+      area.style.opacity = disabled ? '0.35' : '1';
+      area.style.pointerEvents = disabled ? 'none' : 'auto';
+
+      document.querySelectorAll('.attr-btn').forEach(btn => {
+        btn.disabled = disabled;
+      });
+    }
+
     function resetAttrButtons() {
       selectedForm = '';
       selectedRongOng = '';
@@ -1071,6 +1092,8 @@
     function resetPageState() {
       pendingFile = null;
       productHasForm = false;
+      productIsGiayDep = false;
+      setAttrAreaDisabled(false);
 
       resetAttrButtons();
 
