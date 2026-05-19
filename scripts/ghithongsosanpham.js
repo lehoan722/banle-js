@@ -18,10 +18,24 @@ const coGianInput = document.getElementById('coGianInput');
 const maspSuggestBox = document.getElementById('maspSuggestBox');
 const resultBody = document.getElementById('resultBody');
 const messageEl = document.getElementById('message');
-
+const formBtns = document.querySelectorAll('.form-btn');
+const rongBtns = document.querySelectorAll('.rong-btn');
+const coGianBtns = document.querySelectorAll('.cogian-btn');
 function showMessage(msg, isOk = false) {
   messageEl.style.color = isOk ? '#168a2f' : '#d63333';
   messageEl.textContent = msg || '';
+}
+
+function activeButton(buttons, clickedBtn, inputEl) {
+  buttons.forEach(btn => btn.classList.remove('active'));
+
+  if (!clickedBtn) {
+    inputEl.value = '';
+    return;
+  }
+
+  clickedBtn.classList.add('active');
+  inputEl.value = clickedBtn.dataset.value || '';
 }
 
 function normalizeText(value) {
@@ -57,6 +71,9 @@ function openPickerDelay(el, delay = 450) {
 }
 
 function resetInputOnly() {
+  formBtns.forEach(btn => btn.classList.remove('active'));
+  rongBtns.forEach(btn => btn.classList.remove('active'));
+  coGianBtns.forEach(btn => btn.classList.remove('active'));
   maspInput.value = '';
   formInput.value = '';
   rongOngInput.value = '';
@@ -352,48 +369,22 @@ maspInput.addEventListener('keydown', async (e) => {
   openPicker(formInput);
 });
 
-formInput.addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter') return;
-
-  e.preventDefault();
-
-  if (!validateForm()) return;
-  showMessage('');
-  rongOngInput.focus();
+formBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeButton(formBtns, btn, formInput);
+  });
 });
 
-formInput.addEventListener('change', () => {
-  showMessage('');
-  //rongOngInput.focus();
+rongBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeButton(rongBtns, btn, rongOngInput);
+  });
 });
 
-rongOngInput.addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter') return;
-
-  e.preventDefault();
-
-  if (!validateRongOng()) return;
-  showMessage('');
-  coGianInput.focus();
-});
-
-rongOngInput.addEventListener('change', () => {
-  showMessage('');
-  //coGianInput.focus();
-});
-
-coGianInput.addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter') return;
-
-  e.preventDefault();
-
-  if (!validateCoGian()) return;
-  addCurrentRow();
-});
-
-coGianInput.addEventListener('change', () => {
-  if (!coGianInput.value) return;
-  addCurrentRow();
+coGianBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeButton(coGianBtns, btn, coGianInput);
+  });
 });
 
 document.getElementById('btnThemMoi').addEventListener('click', resetAll);
