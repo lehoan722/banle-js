@@ -27,9 +27,17 @@ function showMessage(msg, isOk = false) {
 }
 
 function activeButton(buttons, clickedBtn, inputEl) {
+  if (!clickedBtn) {
+    buttons.forEach(btn => btn.classList.remove('active'));
+    inputEl.value = '';
+    return;
+  }
+
+  const wasActive = clickedBtn.classList.contains('active');
+
   buttons.forEach(btn => btn.classList.remove('active'));
 
-  if (!clickedBtn) {
+  if (wasActive) {
     inputEl.value = '';
     return;
   }
