@@ -147,6 +147,29 @@
             margin-top: 6px;
         }
 
+        .choice-popup {
+            display: none;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 64px;
+            background: white;
+            border: 1px solid #bbb;
+            z-index: 9999;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .choice-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .choice-item:hover {
+            background: #eaf2ff;
+        }
+
         @media (max-width: 700px) {
             #app-container {
                 padding: 8px;
@@ -203,32 +226,20 @@
 
                 <div class="field">
                     <label for="formInput">Form</label>
-                    <select id="formInput">
-                        <option value="">-- Không chọn --</option>
-                        <option value="SLIM">SLIM</option>
-                        <option value="REGULAR">REGULAR</option>
-                        <option value="WIDE">WIDE</option>
-                    </select>
+                    <input id="formInput" readonly placeholder="SLIM / REGULAR / WIDE">
+                    <div id="formPopup" class="choice-popup"></div>
                 </div>
 
                 <div class="field">
                     <label for="rongOngInput">Rộng ống</label>
-                    <select id="rongOngInput">
-                        <option value="">-- Không chọn --</option>
-                        <option value="16">16</option>
-                        <option value="18">18</option>
-                        <option value="20">20</option>
-                        <option value="22">22</option>
-                    </select>
+                    <input id="rongOngInput" readonly placeholder="16 / 18 / 20 / 22">
+                    <div id="rongOngPopup" class="choice-popup"></div>
                 </div>
 
                 <div class="field">
                     <label for="coGianInput">Co giãn</label>
-                    <select id="coGianInput">
-                        <option value="">-- Không chọn --</option>
-                        <option value="CO">CO</option>
-                        <option value="KHONG">KHONG</option>
-                    </select>
+                    <input id="coGianInput" readonly placeholder="CO / KHONG">
+                    <div id="coGianPopup" class="choice-popup"></div>
                 </div>
 
 
