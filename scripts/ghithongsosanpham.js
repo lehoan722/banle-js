@@ -359,12 +359,12 @@ formInput.addEventListener('keydown', (e) => {
 
   if (!validateForm()) return;
   showMessage('');
-  openPickerDelay(rongOngInput, 250);
+  rongOngInput.focus();
 });
 
 formInput.addEventListener('change', () => {
   showMessage('');
-  openPickerDelay(rongOngInput, 450);
+  rongOngInput.focus();
 });
 
 rongOngInput.addEventListener('keydown', (e) => {
@@ -374,12 +374,12 @@ rongOngInput.addEventListener('keydown', (e) => {
 
   if (!validateRongOng()) return;
   showMessage('');
-  openPickerDelay(coGianInput, 250);
+  coGianInput.focus();
 });
 
 rongOngInput.addEventListener('change', () => {
   showMessage('');
-  openPickerDelay(coGianInput, 450);
+  coGianInput.focus();
 });
 
 coGianInput.addEventListener('keydown', (e) => {
