@@ -316,6 +316,14 @@ formInput.addEventListener('keydown', (e) => {
   rongOngInput.select();
 });
 
+formInput.addEventListener('change', () => {
+  rongOngInput.focus();
+});
+
+rongOngInput.addEventListener('change', () => {
+  coGianInput.focus();
+});
+
 rongOngInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
 
