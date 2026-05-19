@@ -40,22 +40,6 @@ function openPicker(el) {
   }
 }
 
-function openPickerDelay(el, delay = 450) {
-  if (!el) return;
-
-  setTimeout(() => {
-    el.focus();
-
-    if (typeof el.showPicker === 'function') {
-      try {
-        el.showPicker();
-      } catch (e) {
-        console.warn('showPicker bị chặn:', e);
-      }
-    }
-  }, delay);
-}
-
 function resetInputOnly() {
   maspInput.value = '';
   formInput.value = '';
