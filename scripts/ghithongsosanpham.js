@@ -28,6 +28,18 @@ function normalizeText(value) {
   return String(value || '').trim().toUpperCase();
 }
 
+function isMaspDuplicated(masp) {
+  return rows.some(r => normalizeText(r.masp) === normalizeText(masp));
+}
+
+function openPicker(el) {
+  if (!el) return;
+  el.focus();
+  if (typeof el.showPicker === 'function') {
+    setTimeout(() => el.showPicker(), 80);
+  }
+}
+
 function resetInputOnly() {
   maspInput.value = '';
   formInput.value = '';
@@ -127,6 +139,12 @@ async function checkMaspExists(masp) {
 
 function addCurrentRow() {
   if (!validateMasp()) return;
+  if (isMaspDuplicated(maspInput.value)) {
+    showMessage(`Mã sản phẩm ${maspInput.value} đã tồn tại trong bảng kết quả.`);
+    maspInput.focus();
+    maspInput.select();
+    return;
+  }
   if (!validateForm()) return;
   if (!validateRongOng()) return;
   if (!validateCoGian()) return;
@@ -290,6 +308,14 @@ maspInput.addEventListener('keydown', async (e) => {
   e.preventDefault();
 
   if (!validateMasp()) return;
+  if (isMaspDuplicated(maspInput.value)) {
+    maspSuggestBox.style.display = 'none';
+    maspSuggestBox.innerHTML = '';
+    showMessage(`Mã sản phẩm ${maspInput.value} đã tồn tại trong bảng kết quả.`);
+    maspInput.focus();
+    maspInput.select();
+    return;
+  }
 
   maspSuggestBox.style.display = 'none';
   maspSuggestBox.innerHTML = '';
@@ -302,7 +328,7 @@ maspInput.addEventListener('keydown', async (e) => {
   }
 
   maspSuggestBox.style.display = 'none';
-  formInput.focus();
+  openPicker(formInput);
 });
 
 formInput.addEventListener('keydown', (e) => {
@@ -317,11 +343,13 @@ formInput.addEventListener('keydown', (e) => {
 });
 
 formInput.addEventListener('change', () => {
-  rongOngInput.focus();
+  showMessage('');
+  openPicker(rongOngInput);
 });
 
 rongOngInput.addEventListener('change', () => {
-  coGianInput.focus();
+  showMessage('');
+  openPicker(coGianInput);
 });
 
 rongOngInput.addEventListener('keydown', (e) => {
