@@ -18,6 +18,9 @@ const coGianInput = document.getElementById('coGianInput');
 const maspSuggestBox = document.getElementById('maspSuggestBox');
 const resultBody = document.getElementById('resultBody');
 const messageEl = document.getElementById('message');
+const formPopup = document.getElementById('formPopup');
+const rongOngPopup = document.getElementById('rongOngPopup');
+const coGianPopup = document.getElementById('coGianPopup');
 
 function showMessage(msg, isOk = false) {
   messageEl.style.color = isOk ? '#168a2f' : '#d63333';
@@ -32,12 +35,47 @@ function isMaspDuplicated(masp) {
   return rows.some(r => normalizeText(r.masp) === normalizeText(masp));
 }
 
-function openPicker(el) {
-  if (!el) return;
-  el.focus();
-  if (typeof el.showPicker === 'function') {
-    setTimeout(() => el.showPicker(), 80);
-  }
+function hideChoicePopups() {
+  if (formPopup) formPopup.style.display = 'none';
+  if (rongOngPopup) rongOngPopup.style.display = 'none';
+  if (coGianPopup) coGianPopup.style.display = 'none';
+}
+
+function openChoicePopup(input, popup, values, nextInput = null, autoAdd = false) {
+  if (!input || !popup) return;
+
+  hideChoicePopups();
+
+  popup.innerHTML = values.map(v => `
+    <div class="choice-item" data-value="${v}">${v}</div>
+  `).join('');
+
+  popup.style.display = 'block';
+  input.focus();
+
+  popup.querySelectorAll('.choice-item').forEach(item => {
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+
+      input.value = item.dataset.value || '';
+      hideChoicePopups();
+      showMessage('');
+
+      if (autoAdd) {
+        addCurrentRow();
+        return;
+      }
+
+      if (nextInput === rongOngInput) {
+        openChoicePopup(rongOngInput, rongOngPopup, VALID_RONG_ONG, coGianInput);
+        return;
+      }
+
+      if (nextInput === coGianInput) {
+        openChoicePopup(coGianInput, coGianPopup, VALID_CO_GIAN, null, true);
+      }
+    });
+  });
 }
 
 function resetInputOnly() {
@@ -333,51 +371,40 @@ maspInput.addEventListener('keydown', async (e) => {
   }
 
   maspSuggestBox.style.display = 'none';
-  openPicker(formInput);
+  openChoicePopup(formInput, formPopup, VALID_FORM, rongOngInput);
 });
 
 formInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
-
   e.preventDefault();
 
-  if (!validateForm()) return;
-  showMessage('');
-  rongOngInput.focus();
+  openChoicePopup(formInput, formPopup, VALID_FORM, rongOngInput);
 });
 
-formInput.addEventListener('change', () => {
-  showMessage('');
-  rongOngInput.focus();
+formInput.addEventListener('click', () => {
+  openChoicePopup(formInput, formPopup, VALID_FORM, rongOngInput);
 });
 
 rongOngInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
-
   e.preventDefault();
 
-  if (!validateRongOng()) return;
-  showMessage('');
-  coGianInput.focus();
+  openChoicePopup(rongOngInput, rongOngPopup, VALID_RONG_ONG, coGianInput);
 });
 
-rongOngInput.addEventListener('change', () => {
-  showMessage('');
-  coGianInput.focus();
+rongOngInput.addEventListener('click', () => {
+  openChoicePopup(rongOngInput, rongOngPopup, VALID_RONG_ONG, coGianInput);
 });
 
 coGianInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
-
   e.preventDefault();
 
-  if (!validateCoGian()) return;
-  addCurrentRow();
+  openChoicePopup(coGianInput, coGianPopup, VALID_CO_GIAN, null, true);
 });
 
-coGianInput.addEventListener('change', () => {
-  if (!coGianInput.value) return;
-  addCurrentRow();
+coGianInput.addEventListener('click', () => {
+  openChoicePopup(coGianInput, coGianPopup, VALID_CO_GIAN, null, true);
 });
 
 document.getElementById('btnThemMoi').addEventListener('click', resetAll);
@@ -399,6 +426,18 @@ document.getElementById('btnLuu').addEventListener('click', saveRows);
 document.addEventListener('click', (e) => {
   if (!maspSuggestBox.contains(e.target) && e.target !== maspInput) {
     maspSuggestBox.style.display = 'none';
+  }
+
+  const isChoiceClick =
+    formPopup?.contains(e.target) ||
+    rongOngPopup?.contains(e.target) ||
+    coGianPopup?.contains(e.target) ||
+    e.target === formInput ||
+    e.target === rongOngInput ||
+    e.target === coGianInput;
+
+  if (!isChoiceClick) {
+    hideChoicePopups();
   }
 });
 
