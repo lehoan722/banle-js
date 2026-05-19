@@ -177,7 +177,13 @@
             }
 
             .suggest-box {
-                top: 64px;
+                position: fixed;
+                left: 12px;
+                right: 12px;
+                top: auto;
+                bottom: 16px;
+                max-height: 45vh;
+                z-index: 9999;
             }
         }
     </style>
@@ -203,7 +209,6 @@
                         <option value="REGULAR">REGULAR</option>
                         <option value="WIDE">WIDE</option>
                     </select>
-
                 </div>
 
                 <div class="field">
@@ -225,6 +230,8 @@
                         <option value="KHONG">KHONG</option>
                     </select>
                 </div>
+
+
             </div>
 
             <div class="btn-row">
