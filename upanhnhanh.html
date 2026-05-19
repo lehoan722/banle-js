@@ -388,8 +388,14 @@
 
       <div class="bottombar">
         <div class="bb-row2">
-          <button id="btnSaveAll" aria-label="Lưu dữ liệu">Lưu dữ liệu</button>
-          <button id="btnRetake" class="secondary" aria-label="Chèn ảnh mới">Chèn ảnh mới</button>
+          <div class="bb-row2">
+            <button id="btnNew" class="secondary">Thêm mới</button>
+            <button id="btnSaveAll" aria-label="Lưu dữ liệu">Lưu dữ liệu</button>
+          </div>
+
+          <div class="bb-row2">
+            <button id="btnRetake" class="secondary" aria-label="Chèn ảnh mới">Chèn ảnh mới</button>
+          </div>
         </div>
       </div>
 
@@ -451,7 +457,7 @@
     let selectedRongOng = '';
     let selectedCoGian = '';
     let productHasForm = false;
-    let btnSaveAll;
+    let btnSaveAll, btnNew;
     let maspInput, btnCheck, btnRetake, statusEl, cameraInp, galleryInp, thumb, thumbImg, thumbMeta, maspSuggestDiv, toastEl;
     let sourcePickerEl, spCameraBtn, spGalleryBtn, spCancelBtn;
 
@@ -937,6 +943,7 @@
         setStatus('Lưu ảnh và thông số thành công', 'ok');
         toast('✔ Đã lưu');
         updateThumb(masp);
+        resetAttrButtons();
       } catch (err) {
         console.error('Save image/attrs error:', err);
         setStatus('Lưu KHÔNG thành công: ' + (err.message || 'Không rõ lỗi'), 'warn');
@@ -948,6 +955,7 @@
 
     async function handleCheck() {
       const masp = maspInput.value.trim();
+      resetAttrButtons();
       productHasForm = false;
       if (!masp || masp.length < 2) {
         setStatus('Mã sản phẩm chưa hợp lệ', 'warn');
@@ -1047,30 +1055,95 @@
       }
     }
 
+    function resetAttrButtons() {
+      selectedForm = '';
+      selectedRongOng = '';
+      selectedCoGian = '';
+
+      document.querySelectorAll('.attr-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+    }
+
+    function resetPageState() {
+      pendingFile = null;
+      productHasForm = false;
+
+      resetAttrButtons();
+
+      thumb.style.display = 'none';
+      thumbImg.src = '';
+      thumbMeta.textContent = '';
+
+      maspInput.value = '';
+
+      setStatus('', '');
+
+      hideMaspSuggest();
+
+      focusSelect();
+    }
+
     function setupAttrButtons() {
+
+      // ===== FORM =====
       document.querySelectorAll('.form-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.form-btn').forEach(b => b.classList.remove('active'));
+
+          // nếu đang active => bỏ chọn
+          if (btn.classList.contains('active')) {
+            btn.classList.remove('active');
+            selectedForm = '';
+            return;
+          }
+
+          document.querySelectorAll('.form-btn').forEach(b => {
+            b.classList.remove('active');
+          });
+
           btn.classList.add('active');
           selectedForm = btn.dataset.value || '';
         });
       });
 
+      // ===== RỘNG ỐNG =====
       document.querySelectorAll('.rong-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.rong-btn').forEach(b => b.classList.remove('active'));
+
+          if (btn.classList.contains('active')) {
+            btn.classList.remove('active');
+            selectedRongOng = '';
+            return;
+          }
+
+          document.querySelectorAll('.rong-btn').forEach(b => {
+            b.classList.remove('active');
+          });
+
           btn.classList.add('active');
           selectedRongOng = btn.dataset.value || '';
         });
       });
 
+      // ===== CO GIÃN =====
       document.querySelectorAll('.cogian-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.cogian-btn').forEach(b => b.classList.remove('active'));
+
+          if (btn.classList.contains('active')) {
+            btn.classList.remove('active');
+            selectedCoGian = '';
+            return;
+          }
+
+          document.querySelectorAll('.cogian-btn').forEach(b => {
+            b.classList.remove('active');
+          });
+
           btn.classList.add('active');
           selectedCoGian = btn.dataset.value || '';
         });
       });
+
     }
 
     // === KHỞI TẠO APP SAU KHI ĐĂNG NHẬP ===
@@ -1083,6 +1156,7 @@
 
       maspInput = $('#masp');
       btnSaveAll = $('#btnSaveAll');
+      btnNew = $('#btnNew');
       btnRetake = $('#btnRetake');
       statusEl = $('#status');
       cameraInp = $('#camera');
@@ -1170,6 +1244,9 @@
       });
 
       btnSaveAll.addEventListener('click', saveImageAndAttrs);
+      btnNew.addEventListener('click', () => {
+        resetPageState();
+      });
       btnRetake.addEventListener('click', () => {
         const masp = maspInput.value.trim();
         if (!masp) {
