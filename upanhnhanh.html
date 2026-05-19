@@ -58,6 +58,48 @@
       gap: 10px;
     }
 
+    .product-attrs {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .attr-title {
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .attr-group {
+      margin-bottom: 10px;
+    }
+
+    .attr-label {
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .attr-options {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .attr-btn {
+      background: #fff;
+      color: #111;
+      border: 1px solid #ccc;
+      border-radius: 9px;
+      padding: 9px 12px;
+      font-size: 15px;
+    }
+
+    .attr-btn.active {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+    }
+
     .thumb img {
       width: 300px;
       height: 300px;
@@ -309,7 +351,36 @@
         <!-- Popup gợi ý mã sản phẩm -->
         <div id="maspSuggestList" style="display:none;"></div>
       </div>
+      <div class="product-attrs" id="productAttrs">
+        <div class="attr-title">Thông số sản phẩm</div>
 
+        <div class="attr-group">
+          <div class="attr-label">Form <span style="color:red">*</span></div>
+          <div class="attr-options">
+            <button type="button" class="attr-btn form-btn" data-value="SLIM">SLIM</button>
+            <button type="button" class="attr-btn form-btn" data-value="REGULAR">REGULAR</button>
+            <button type="button" class="attr-btn form-btn" data-value="WIDE">WIDE</button>
+          </div>
+        </div>
+
+        <div class="attr-group">
+          <div class="attr-label">Rộng ống</div>
+          <div class="attr-options">
+            <button type="button" class="attr-btn rong-btn" data-value="16">16</button>
+            <button type="button" class="attr-btn rong-btn" data-value="18">18</button>
+            <button type="button" class="attr-btn rong-btn" data-value="20">20</button>
+            <button type="button" class="attr-btn rong-btn" data-value="22">22</button>
+          </div>
+        </div>
+
+        <div class="attr-group">
+          <div class="attr-label">Co giãn</div>
+          <div class="attr-options">
+            <button type="button" class="attr-btn cogian-btn" data-value="CO">CO</button>
+            <button type="button" class="attr-btn cogian-btn" data-value="KHONG">KHONG</button>
+          </div>
+        </div>
+      </div>
       <div class="thumb" id="thumb" style="display:none;">
         <img id="thumbImg" alt="ảnh sản phẩm" />
         <div id="thumbMeta" style="font-size:13px;color:#555"></div>
@@ -317,7 +388,7 @@
 
       <div class="bottombar">
         <div class="bb-row2">
-          <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
+          <button id="btnSaveAll" aria-label="Lưu dữ liệu">Lưu dữ liệu</button>
           <button id="btnRetake" class="secondary" aria-label="Chèn ảnh mới">Chèn ảnh mới</button>
         </div>
       </div>
@@ -375,6 +446,12 @@
     /******** TIỆN ÍCH ********/
     const $ = (s) => document.querySelector(s);
     let supabase;          // sẽ lấy từ window.supabase sau khi đăng nhập
+    let pendingFile = null;
+    let selectedForm = '';
+    let selectedRongOng = '';
+    let selectedCoGian = '';
+    let productHasForm = false;
+    let btnSaveAll;
     let maspInput, btnCheck, btnRetake, statusEl, cameraInp, galleryInp, thumb, thumbImg, thumbMeta, maspSuggestDiv, toastEl;
     let sourcePickerEl, spCameraBtn, spGalleryBtn, spCancelBtn;
 
@@ -679,49 +756,14 @@
         return;
       }
 
-      try {
-        setState('uploading');
-        setStatus('Đang xử lý & lưu ảnh…');
+      pendingFile = file;
 
-        const manv = window.__UPANH_MANV__ || '';
-        const blob = await resizeImageFixed(file, 0.78, masp, manv);
+      thumb.style.display = 'flex';
+      thumbImg.src = URL.createObjectURL(file);
+      thumbMeta.textContent = `${FILE_NAMER(masp)} - chờ lưu`;
 
-        const key = FILE_NAMER(masp);
-
-        const { error } = await supabase.storage
-          .from(STORAGE_BUCKET)
-          .upload(PATH_PREFIX + key, blob, {
-            upsert: true,
-            contentType: 'image/jpeg',
-            cacheControl: '3600'
-          });
-
-        if (error) throw error;
-
-        imageKeySet.add(key);
-        imageKeySetLower.add(key.toLowerCase());
-        saveCache();
-        updateGlobalNames();
-        setStatus('Lưu ảnh thành công', 'ok');
-        toast('✔ Đã lưu');
-        updateThumb(masp);
-      } catch (err) {
-        console.error('Upload error:', err);
-        const msg = (err && (err.message || err.error_description || err.error))
-          ? String(err.message || err.error_description || err.error)
-          : 'KHÔNG rõ nguyên nhân';
-        setStatus('Lưu ảnh KHÔNG thành công: ' + msg, 'warn');
-        toast('✖ Lỗi lưu ảnh: ' + msg);
-      } finally {
-        setState('idle');
-        if (nextMaspQueued) {
-          maspInput.value = nextMaspQueued;
-          nextMaspQueued = null;
-          handleCheck();
-        } else {
-          focusSelect();
-        }
-      }
+      setStatus('Đã chọn ảnh. Hãy chọn Form rồi bấm Lưu dữ liệu.', 'ok');
+      setState('idle');
     }
 
     function fileToImage(file) {
@@ -814,12 +856,115 @@
       ctx.shadowOffsetY = 0;
     }
 
+    async function saveImageAndAttrs() {
+      const masp = maspInput.value.trim().toUpperCase();
+
+      if (!masp) {
+        setStatus('Bạn chưa nhập mã sản phẩm.', 'warn');
+        focusSelect();
+        return;
+      }
+
+      if (!pendingFile) {
+        setStatus('Bạn chưa chọn/chụp ảnh.', 'warn');
+        return;
+      }
+
+      if (!productHasForm && !selectedForm) {
+        setStatus('Bắt buộc chọn Form trước khi lưu.', 'warn');
+        return;
+      }
+
+      try {
+        setState('uploading');
+        setStatus('Đang lưu ảnh và thông số…');
+
+        const manv = window.__UPANH_MANV__ || '';
+        const blob = await resizeImageFixed(pendingFile, 0.78, masp, manv);
+        const key = FILE_NAMER(masp);
+
+        const { error: uploadError } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(PATH_PREFIX + key, blob, {
+            upsert: true,
+            contentType: 'image/jpeg',
+            cacheControl: '3600'
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: current, error: readError } = await supabase
+          .from('dmhanghoa')
+          .select('masp, form, rong_ong, co_gian')
+          .eq('masp', masp)
+          .maybeSingle();
+
+        if (readError) throw readError;
+
+        const updateData = {};
+
+        if (current) {
+          if ((!current.form || String(current.form).trim() === '') && selectedForm) {
+            updateData.form = selectedForm;
+          }
+
+          if ((current.rong_ong === null || current.rong_ong === '') && selectedRongOng) {
+            updateData.rong_ong = Number(selectedRongOng);
+          }
+
+          if ((!current.co_gian || String(current.co_gian).trim() === '') && selectedCoGian) {
+            updateData.co_gian = selectedCoGian;
+          }
+
+          if (Object.keys(updateData).length) {
+            const { error: updateError } = await supabase
+              .from('dmhanghoa')
+              .update(updateData)
+              .eq('masp', masp);
+
+            if (updateError) throw updateError;
+          }
+        }
+
+        imageKeySet.add(key);
+        imageKeySetLower.add(key.toLowerCase());
+        saveCache();
+        updateGlobalNames();
+
+        pendingFile = null;
+        productHasForm = !!(current?.form || selectedForm);
+
+        setStatus('Lưu ảnh và thông số thành công', 'ok');
+        toast('✔ Đã lưu');
+        updateThumb(masp);
+      } catch (err) {
+        console.error('Save image/attrs error:', err);
+        setStatus('Lưu KHÔNG thành công: ' + (err.message || 'Không rõ lỗi'), 'warn');
+      } finally {
+        setState('idle');
+        focusSelect();
+      }
+    }
+
     async function handleCheck() {
       const masp = maspInput.value.trim();
+      productHasForm = false;
       if (!masp || masp.length < 2) {
         setStatus('Mã sản phẩm chưa hợp lệ', 'warn');
         focusSelect();
         return;
+      }
+
+      const { data: spInfo } = await supabase
+        .from('dmhanghoa')
+        .select('form')
+        .eq('masp', masp.toUpperCase())
+        .maybeSingle();
+
+      productHasForm = !!(spInfo?.form && String(spInfo.form).trim() !== '');
+
+      if (productHasForm) {
+        setStatus('Sản phẩm đã có Form. Có thể lưu ảnh mà không cần chọn Form.', 'ok');
       }
 
       if (STATE === 'checking' || STATE === 'waiting_capture' || STATE === 'uploading') {
@@ -902,6 +1047,32 @@
       }
     }
 
+    function setupAttrButtons() {
+      document.querySelectorAll('.form-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.form-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          selectedForm = btn.dataset.value || '';
+        });
+      });
+
+      document.querySelectorAll('.rong-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.rong-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          selectedRongOng = btn.dataset.value || '';
+        });
+      });
+
+      document.querySelectorAll('.cogian-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.cogian-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          selectedCoGian = btn.dataset.value || '';
+        });
+      });
+    }
+
     // === KHỞI TẠO APP SAU KHI ĐĂNG NHẬP ===
     function initUpAnhNhanh() {
       supabase = window.supabase;
@@ -911,7 +1082,7 @@
       }
 
       maspInput = $('#masp');
-      btnCheck = $('#btnCheck');
+      btnSaveAll = $('#btnSaveAll');
       btnRetake = $('#btnRetake');
       statusEl = $('#status');
       cameraInp = $('#camera');
@@ -925,6 +1096,7 @@
       thumbMeta = $('#thumbMeta');
       maspSuggestDiv = document.getElementById('maspSuggestList');
       toastEl = $('#toast');
+      setupAttrButtons();
 
       // === NEW: Nhận masp từ URL (?masp=ABC...) rồi tự kiểm tra ===
       try {
@@ -997,7 +1169,7 @@
         if (STATE === 'idle') handleCheck();
       });
 
-      btnCheck.addEventListener('click', handleCheck);
+      btnSaveAll.addEventListener('click', saveImageAndAttrs);
       btnRetake.addEventListener('click', () => {
         const masp = maspInput.value.trim();
         if (!masp) {
