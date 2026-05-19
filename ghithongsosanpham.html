@@ -83,6 +83,29 @@
             background: #eaf2ff;
         }
 
+        .quick-options {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .quick-btn {
+            border: 1px solid #ccc;
+            background: white;
+            color: #333;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 15px;
+            cursor: pointer;
+            min-width: 70px;
+        }
+
+        .quick-btn.active {
+            background: #1f7ae0;
+            color: white;
+            border-color: #1f7ae0;
+        }
+
         .btn-row {
             display: flex;
             gap: 8px;
@@ -202,35 +225,40 @@
                 </div>
 
                 <div class="field">
-                    <label for="formInput">Form</label>
-                    <select id="formInput">
-                        <option value="">-- Không chọn --</option>
-                        <option value="SLIM">SLIM</option>
-                        <option value="REGULAR">REGULAR</option>
-                        <option value="WIDE">WIDE</option>
-                    </select>
+                    <label>Form</label>
+
+                    <div class="quick-options">
+                        <button type="button" class="quick-btn form-btn" data-value="SLIM">SLIM</button>
+                        <button type="button" class="quick-btn form-btn" data-value="REGULAR">REGULAR</button>
+                        <button type="button" class="quick-btn form-btn" data-value="WIDE">WIDE</button>
+                    </div>
+
+                    <input id="formInput" type="hidden">
                 </div>
 
                 <div class="field">
-                    <label for="rongOngInput">Rộng ống</label>
-                    <select id="rongOngInput">
-                        <option value="">-- Không chọn --</option>
-                        <option value="16">16</option>
-                        <option value="18">18</option>
-                        <option value="20">20</option>
-                        <option value="22">22</option>
-                    </select>
+                    <label>Rộng ống</label>
+
+                    <div class="quick-options">
+                        <button type="button" class="quick-btn rong-btn" data-value="16">16</button>
+                        <button type="button" class="quick-btn rong-btn" data-value="18">18</button>
+                        <button type="button" class="quick-btn rong-btn" data-value="20">20</button>
+                        <button type="button" class="quick-btn rong-btn" data-value="22">22</button>
+                    </div>
+
+                    <input id="rongOngInput" type="hidden">
                 </div>
 
                 <div class="field">
-                    <label for="coGianInput">Co giãn</label>
-                    <select id="coGianInput">
-                        <option value="">-- Không chọn --</option>
-                        <option value="CO">CO</option>
-                        <option value="KHONG">KHONG</option>
-                    </select>
-                </div>
+                    <label>Co giãn</label>
 
+                    <div class="quick-options">
+                        <button type="button" class="quick-btn cogian-btn" data-value="CO">CO</button>
+                        <button type="button" class="quick-btn cogian-btn" data-value="KHONG">KHONG</button>
+                    </div>
+
+                    <input id="coGianInput" type="hidden">
+                </div>
 
             </div>
 
