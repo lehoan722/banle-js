@@ -40,6 +40,22 @@ function openPicker(el) {
   }
 }
 
+function openPickerDelay(el, delay = 450) {
+  if (!el) return;
+
+  setTimeout(() => {
+    el.focus();
+
+    if (typeof el.showPicker === 'function') {
+      try {
+        el.showPicker();
+      } catch (e) {
+        console.warn('showPicker bị chặn:', e);
+      }
+    }
+  }, delay);
+}
+
 function resetInputOnly() {
   maspInput.value = '';
   formInput.value = '';
@@ -343,12 +359,12 @@ formInput.addEventListener('keydown', (e) => {
 
   if (!validateForm()) return;
   showMessage('');
-  rongOngInput.focus();
+  openPickerDelay(rongOngInput, 250);
 });
 
 formInput.addEventListener('change', () => {
   showMessage('');
-  rongOngInput.focus();
+  openPickerDelay(rongOngInput, 450);
 });
 
 rongOngInput.addEventListener('keydown', (e) => {
@@ -358,12 +374,12 @@ rongOngInput.addEventListener('keydown', (e) => {
 
   if (!validateRongOng()) return;
   showMessage('');
-  coGianInput.focus();
+  openPickerDelay(coGianInput, 250);
 });
 
 rongOngInput.addEventListener('change', () => {
   showMessage('');
-  coGianInput.focus();
+  openPickerDelay(coGianInput, 450);
 });
 
 coGianInput.addEventListener('keydown', (e) => {
