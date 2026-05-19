@@ -184,6 +184,12 @@ function addCurrentRow() {
     return;
   }
   if (!validateForm()) return;
+
+  if (!normalizeText(formInput.value)) {
+    showMessage('Bạn bắt buộc phải chọn Form trước khi đưa sản phẩm xuống bảng.');
+    return;
+  }
+
   if (!validateRongOng()) return;
   if (!validateCoGian()) return;
 
