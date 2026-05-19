@@ -18,9 +18,6 @@ const coGianInput = document.getElementById('coGianInput');
 const maspSuggestBox = document.getElementById('maspSuggestBox');
 const resultBody = document.getElementById('resultBody');
 const messageEl = document.getElementById('message');
-const formPopup = document.getElementById('formPopup');
-const rongOngPopup = document.getElementById('rongOngPopup');
-const coGianPopup = document.getElementById('coGianPopup');
 
 function showMessage(msg, isOk = false) {
   messageEl.style.color = isOk ? '#168a2f' : '#d63333';
@@ -35,47 +32,28 @@ function isMaspDuplicated(masp) {
   return rows.some(r => normalizeText(r.masp) === normalizeText(masp));
 }
 
-function hideChoicePopups() {
-  if (formPopup) formPopup.style.display = 'none';
-  if (rongOngPopup) rongOngPopup.style.display = 'none';
-  if (coGianPopup) coGianPopup.style.display = 'none';
+function openPicker(el) {
+  if (!el) return;
+  el.focus();
+  if (typeof el.showPicker === 'function') {
+    setTimeout(() => el.showPicker(), 80);
+  }
 }
 
-function openChoicePopup(input, popup, values, nextInput = null, autoAdd = false) {
-  if (!input || !popup) return;
+function openPickerDelay(el, delay = 450) {
+  if (!el) return;
 
-  hideChoicePopups();
+  setTimeout(() => {
+    el.focus();
 
-  popup.innerHTML = values.map(v => `
-    <div class="choice-item" data-value="${v}">${v}</div>
-  `).join('');
-
-  popup.style.display = 'block';
-  input.focus();
-
-  popup.querySelectorAll('.choice-item').forEach(item => {
-    item.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-
-      input.value = item.dataset.value || '';
-      hideChoicePopups();
-      showMessage('');
-
-      if (autoAdd) {
-        addCurrentRow();
-        return;
+    if (typeof el.showPicker === 'function') {
+      try {
+        el.showPicker();
+      } catch (e) {
+        console.warn('showPicker bị chặn:', e);
       }
-
-      if (nextInput === rongOngInput) {
-        openChoicePopup(rongOngInput, rongOngPopup, VALID_RONG_ONG, coGianInput);
-        return;
-      }
-
-      if (nextInput === coGianInput) {
-        openChoicePopup(coGianInput, coGianPopup, VALID_CO_GIAN, null, true);
-      }
-    });
-  });
+    }
+  }, delay);
 }
 
 function resetInputOnly() {
@@ -371,40 +349,51 @@ maspInput.addEventListener('keydown', async (e) => {
   }
 
   maspSuggestBox.style.display = 'none';
-  openChoicePopup(formInput, formPopup, VALID_FORM, rongOngInput);
+  openPicker(formInput);
 });
 
 formInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
+
   e.preventDefault();
 
-  openChoicePopup(formInput, formPopup, VALID_FORM, rongOngInput);
+  if (!validateForm()) return;
+  showMessage('');
+  rongOngInput.focus();
 });
 
-formInput.addEventListener('click', () => {
-  openChoicePopup(formInput, formPopup, VALID_FORM, rongOngInput);
+formInput.addEventListener('change', () => {
+  showMessage('');
+  //rongOngInput.focus();
 });
 
 rongOngInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
+
   e.preventDefault();
 
-  openChoicePopup(rongOngInput, rongOngPopup, VALID_RONG_ONG, coGianInput);
+  if (!validateRongOng()) return;
+  showMessage('');
+  coGianInput.focus();
 });
 
-rongOngInput.addEventListener('click', () => {
-  openChoicePopup(rongOngInput, rongOngPopup, VALID_RONG_ONG, coGianInput);
+rongOngInput.addEventListener('change', () => {
+  showMessage('');
+  //coGianInput.focus();
 });
 
 coGianInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
+
   e.preventDefault();
 
-  openChoicePopup(coGianInput, coGianPopup, VALID_CO_GIAN, null, true);
+  if (!validateCoGian()) return;
+  addCurrentRow();
 });
 
-coGianInput.addEventListener('click', () => {
-  openChoicePopup(coGianInput, coGianPopup, VALID_CO_GIAN, null, true);
+coGianInput.addEventListener('change', () => {
+  if (!coGianInput.value) return;
+  addCurrentRow();
 });
 
 document.getElementById('btnThemMoi').addEventListener('click', resetAll);
@@ -426,18 +415,6 @@ document.getElementById('btnLuu').addEventListener('click', saveRows);
 document.addEventListener('click', (e) => {
   if (!maspSuggestBox.contains(e.target) && e.target !== maspInput) {
     maspSuggestBox.style.display = 'none';
-  }
-
-  const isChoiceClick =
-    formPopup?.contains(e.target) ||
-    rongOngPopup?.contains(e.target) ||
-    coGianPopup?.contains(e.target) ||
-    e.target === formInput ||
-    e.target === rongOngInput ||
-    e.target === coGianInput;
-
-  if (!isChoiceClick) {
-    hideChoicePopups();
   }
 });
 
