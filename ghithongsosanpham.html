@@ -63,7 +63,7 @@
             position: absolute;
             left: 0;
             right: 0;
-            top: 66px;
+            bottom: 66px;
             background: white;
             border: 1px solid #bbb;
             z-index: 99;
@@ -197,32 +197,33 @@
 
                 <div class="field">
                     <label for="formInput">Form</label>
-                    <input id="formInput" list="formList" autocomplete="off" placeholder="SLIM / REGULAR / WIDE">
-                    <datalist id="formList">
-                        <option value="SLIM"></option>
-                        <option value="REGULAR"></option>
-                        <option value="WIDE"></option>
-                    </datalist>
+                    <select id="formInput">
+                        <option value="">-- Không chọn --</option>
+                        <option value="SLIM">SLIM</option>
+                        <option value="REGULAR">REGULAR</option>
+                        <option value="WIDE">WIDE</option>
+                    </select>
+
                 </div>
 
                 <div class="field">
                     <label for="rongOngInput">Rộng ống</label>
-                    <input id="rongOngInput" list="rongOngList" autocomplete="off" placeholder="16 / 18 / 20 / 22">
-                    <datalist id="rongOngList">
-                        <option value="16"></option>
-                        <option value="18"></option>
-                        <option value="20"></option>
-                        <option value="22"></option>
-                    </datalist>
+                    <select id="rongOngInput">
+                        <option value="">-- Không chọn --</option>
+                        <option value="16">16</option>
+                        <option value="18">18</option>
+                        <option value="20">20</option>
+                        <option value="22">22</option>
+                    </select>
                 </div>
 
                 <div class="field">
                     <label for="coGianInput">Co giãn</label>
-                    <input id="coGianInput" list="coGianList" autocomplete="off" placeholder="CO / KHONG">
-                    <datalist id="coGianList">
-                        <option value="CO"></option>
-                        <option value="KHONG"></option>
-                    </datalist>
+                    <select id="coGianInput">
+                        <option value="">-- Không chọn --</option>
+                        <option value="CO">CO</option>
+                        <option value="KHONG">KHONG</option>
+                    </select>
                 </div>
             </div>
 
