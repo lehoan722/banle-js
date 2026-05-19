@@ -462,6 +462,7 @@
     let btnSaveAll, btnNew;
     let maspInput, btnCheck, btnRetake, statusEl, cameraInp, galleryInp, thumb, thumbImg, thumbMeta, maspSuggestDiv, toastEl;
     let sourcePickerEl, spCameraBtn, spGalleryBtn, spCancelBtn;
+    let isClickingAttrButton = false;
 
     // ===== GỢI Ý MÃ SẢN PHẨM (dmhanghoa) – giống trang in mã vạch =====
     function positionMaspSuggestList() {
@@ -1094,6 +1095,10 @@
 
     function setupOneAttrGroup(selector, type) {
       document.querySelectorAll(selector).forEach(btn => {
+        btn.addEventListener('pointerdown', () => {
+          isClickingAttrButton = true;
+        });
+
         btn.addEventListener('click', () => {
           const wasActive = btn.classList.contains('active');
 
@@ -1105,6 +1110,11 @@
             if (type === 'form') selectedForm = '';
             if (type === 'rong') selectedRongOng = '';
             if (type === 'cogian') selectedCoGian = '';
+
+            setTimeout(() => {
+              isClickingAttrButton = false;
+            }, 100);
+
             return;
           }
 
@@ -1113,9 +1123,14 @@
           if (type === 'form') selectedForm = btn.dataset.value || '';
           if (type === 'rong') selectedRongOng = btn.dataset.value || '';
           if (type === 'cogian') selectedCoGian = btn.dataset.value || '';
+
+          setTimeout(() => {
+            isClickingAttrButton = false;
+          }, 100);
         });
       });
     }
+
     // === KHỞI TẠO APP SAU KHI ĐĂNG NHẬP ===
     function initUpAnhNhanh() {
       supabase = window.supabase;
@@ -1209,6 +1224,7 @@
       });
 
       maspInput.addEventListener('blur', () => {
+        if (isClickingAttrButton) return;
         if (!maspInput.value.trim()) return;
         if (STATE === 'idle') handleCheck();
       });
