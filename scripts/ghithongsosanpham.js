@@ -119,7 +119,7 @@ function validateCoGian() {
 async function checkMaspExists(masp) {
   const { data, error } = await supabase
     .from('dmhanghoa')
-    .select('masp')
+    .select('masp, form')
     .eq('masp', masp)
     .maybeSingle();
 
@@ -131,6 +131,11 @@ async function checkMaspExists(masp) {
 
   if (!data) {
     showMessage(`Mã sản phẩm ${masp} chưa có trong danh mục hàng hóa.`);
+    return false;
+  }
+
+  if (data.form !== null && String(data.form).trim() !== '') {
+    showMessage(`Mã sản phẩm ${masp} đã có thông số sản phẩm, không cần nhập lại.`);
     return false;
   }
 
@@ -339,17 +344,11 @@ formInput.addEventListener('keydown', (e) => {
   if (!validateForm()) return;
   showMessage('');
   rongOngInput.focus();
-  rongOngInput.select();
 });
 
 formInput.addEventListener('change', () => {
   showMessage('');
-  openPicker(rongOngInput);
-});
-
-rongOngInput.addEventListener('change', () => {
-  showMessage('');
-  openPicker(coGianInput);
+  rongOngInput.focus();
 });
 
 rongOngInput.addEventListener('keydown', (e) => {
@@ -360,7 +359,11 @@ rongOngInput.addEventListener('keydown', (e) => {
   if (!validateRongOng()) return;
   showMessage('');
   coGianInput.focus();
-  coGianInput.select();
+});
+
+rongOngInput.addEventListener('change', () => {
+  showMessage('');
+  coGianInput.focus();
 });
 
 coGianInput.addEventListener('keydown', (e) => {
