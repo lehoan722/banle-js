@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Up ảnh nhanh – MÃ SP → chụp → lưu</title>
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
+  <style>
+    :root {
+      --pad: 14px;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      background: #f7f7f8;
+      color: #111;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .wrap {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 10px;
+      padding: var(--pad);
+      padding-bottom: 140px;
+    }
+
+    .status {
+      font-size: 14px;
+      min-height: 24px;
+    }
+
+    .status.ok {
+      color: #16a34a;
+    }
+
+    .status.warn {
+      color: #ef4444;
+    }
+
+    .thumb {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .thumb img {
+      width: 300px;
+      height: 300px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .footer {
+      color: #666;
+      font-size: 12px;
+      text-align: center;
+      padding-bottom: 10px;
+    }
+
+    .ghost {
+      position: fixed;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+
+    .bottombar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 50;
+      background: #fff;
+      box-shadow: 0 -6px 16px rgba(0, 0, 0, .08);
+      padding: 10px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    }
+
+    .bottombar .bb-row1 {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .bottombar .bb-row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    #masp {
+      font-size: 18px;
+      padding: 14px 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fff;
+      width: 100%;
+      outline: none;
+    }
+
+    #masp:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, .15);
+    }
+
+    button {
+      font-size: 16px;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 12px;
+      background: #111;
+      color: #fff;
+    }
+
+    button.secondary {
+      background: #e5e7eb;
+      color: #111;
+    }
+
+    button:disabled {
+      opacity: .6;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      background: rgba(17, 17, 17, .92);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity .25s ease, transform .25s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    /* Luôn fit màn hình iPhone, tôn trọng safe-area */
+    body {
+      min-height: 100svh;
+    }
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Popup gợi ý mã sản phẩm (giống trang in mã vạch) */
+    #maspSuggestList {
+      position: fixed;
+      z-index: 9999;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
+      max-height: 280px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+
+    #maspSuggestList table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    #maspSuggestList tr {
+      cursor: pointer;
+    }
+
+    #maspSuggestList tr:hover {
+      background: #eff6ff;
+    }
+
+    #maspSuggestList td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    #maspSuggestList .col-masp {
+      font-weight: 600;
+      width: 110px;
+      white-space: nowrap;
+    }
+
+    #maspSuggestList .col-tensp {
+      color: #4b5563;
+    }
+
+    /* Nhỏ gọn module đăng nhập trên mobile */
+    #loginModule {
+      font-size: 12px;
+      color: #374151;
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+
+    #loginModule button {
+      font-size: 12px;
+      padding: 6px 8px;
+      border-radius: 8px;
+    }
+
+    /* === Source Picker (Camera / Gallery) === */
+    .sp-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 14px;
+    }
+
+    .sp-card {
+      width: min(420px, 100%);
+      background: #fff;
+      border-radius: 14px;
+      padding: 14px 14px 12px;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, .25);
+    }
+
+    .sp-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin: 2px 0 6px;
+    }
+
+    .sp-sub {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 12px;
+      line-height: 1.35;
+    }
+
+    .sp-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .sp-actions2 {
+      grid-template-columns: 1fr;
+      margin-bottom: 0;
+    }
+
+    #sourcePicker button {
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      background: #111;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #sourcePicker button.secondary {
+      background: #fff;
+      color: #111;
+    }
+
+    #sourcePicker button.ghostbtn {
+      background: #f6f6f6;
+      color: #111;
+      border-color: #e5e5e5;
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Khung login chung, authModule.js sẽ tự vẽ form đăng nhập ở đây -->
+  <div id="login-container"></div>
+
+  <!-- App chính: chỉ hiển thị sau khi đăng nhập thành công -->
+  <div id="app-container" style="display:none;">
+    <div class="wrap">
+
+      <div class="status" id="status"></div>
+
+      <div class="bb-row1">
+        <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…"
+          aria-label="Mã sản phẩm" />
+        <!-- Popup gợi ý mã sản phẩm -->
+        <div id="maspSuggestList" style="display:none;"></div>
+      </div>
+
+      <div class="thumb" id="thumb" style="display:none;">
+        <img id="thumbImg" alt="ảnh sản phẩm" />
+        <div id="thumbMeta" style="font-size:13px;color:#555"></div>
+      </div>
+
+      <div class="bottombar">
+        <div class="bb-row2">
+          <button id="btnCheck" aria-label="Kiểm tra">Kiểm tra</button>
+          <button id="btnRetake" class="secondary" aria-label="Chèn ảnh mới">Chèn ảnh mới</button>
+        </div>
+      </div>
+
+      <input id="camera" class="ghost" type="file" accept="image/*" capture="environment" />
+      <!-- Chọn ảnh từ thư viện (không capture để mở kho ảnh) -->
+      <input id="gallery" class="ghost" type="file" accept="image/*" />
+
+      <!-- Hộp chọn nguồn ảnh: Camera / Thư viện -->
+      <div id="sourcePicker" class="sp-backdrop" style="display:none;">
+        <div class="sp-card">
+          <div class="sp-title">Chèn ảnh mới</div>
+          <div class="sp-sub">Bạn muốn chụp ảnh hay chọn từ kho ảnh?</div>
+          <div class="sp-actions">
+            <button id="spCamera">📷 Chụp ảnh</button>
+            <button id="spGallery" class="secondary">🖼️ Chọn từ kho ảnh</button>
+          </div>
+          <div class="sp-actions sp-actions2">
+            <button id="spCancel" class="ghostbtn">Hủy</button>
+          </div>
+        </div>
+      </div>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- Script logic (đã sửa để dùng authModule) -->
+  <script type="module">
+    import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+
+    /******** CẤU HÌNH ********/
+    const STORAGE_BUCKET = window.STORAGE_BUCKET || 'anhsanpham';
+    const PATH_PREFIX = window.PATH_PREFIX || '';
+
+    // Tự mở camera sau khi CHẮC CHẮN chưa có ảnh
+    const AUTO_OPEN_CAMERA = true;      // giữ nguyên (tự mở sau khi kiểm tra xong)
+    const FORCE_AUTO_ON_IOS = false;    // ⬅️ không ép iOS mở quá sớm
+
+    // Đuôi ảnh có thể tồn tại
+    const EXT_CANDIDATES = ['.JPG', '.jpg', '.PNG', '.png'];
+
+    // --- STATE MACHINE chống chồng lệnh ---
+    let STATE = 'idle'; // 'idle' | 'checking' | 'waiting_capture' | 'uploading'
+    let nextMaspQueued = null;
+    let waitingPickerTimer = null;
+
+    function setState(s) {
+      STATE = s;
+    }
+
+    function queueNextMasp(masp) {
+      nextMaspQueued = String(masp || '').trim() || null;
+    }
+
+    /******** TIỆN ÍCH ********/
+    const $ = (s) => document.querySelector(s);
+    let supabase;          // sẽ lấy từ window.supabase sau khi đăng nhập
+    let maspInput, btnCheck, btnRetake, statusEl, cameraInp, galleryInp, thumb, thumbImg, thumbMeta, maspSuggestDiv, toastEl;
+    let sourcePickerEl, spCameraBtn, spGalleryBtn, spCancelBtn;
+
+    // ===== GỢI Ý MÃ SẢN PHẨM (dmhanghoa) – giống trang in mã vạch =====
+    function positionMaspSuggestList() {
+      if (!maspSuggestDiv || !maspInput) return;
+      const rect = maspInput.getBoundingClientRect();
+      maspSuggestDiv.style.left = (rect.left + window.scrollX) + 'px';
+      maspSuggestDiv.style.top = (rect.bottom + 4 + window.scrollY) + 'px';
+      maspSuggestDiv.style.minWidth = rect.width + 'px';
+    }
+
+    function hideMaspSuggest() {
+      if (maspSuggestDiv) maspSuggestDiv.style.display = 'none';
+    }
+
+    async function loadMaspSuggest(keyword) {
+      if (!maspSuggestDiv) return;
+      const q = (keyword || '').trim();
+      if (!q || q.length < 1) {
+        hideMaspSuggest();
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('dmhanghoa')
+        .select('masp, tensp')
+        .or(`masp.ilike.%${q}%,tensp.ilike.%${q}%`)
+        .order('masp')
+        .limit(100);
+
+      if (error) {
+        console.warn('Lỗi load gợi ý mã SP:', error);
+        hideMaspSuggest();
+        return;
+      }
+
+      if (!data || !data.length) {
+        hideMaspSuggest();
+        return;
+      }
+
+      let html = '<table><tbody>';
+      for (const row of data) {
+        const masp = (row.masp || '').toUpperCase();
+        const tensp = row.tensp || '';
+        html += `
+          <tr data-masp="${masp}" data-tensp="${tensp.replace(/"/g, '&quot;')}">
+            <td class="col-masp">${masp}</td>
+            <td class="col-tensp">${tensp}</td>
+          </tr>`;
+      }
+      html += '</tbody></table>';
+
+      maspSuggestDiv.innerHTML = html;
+      positionMaspSuggestList();
+      maspSuggestDiv.style.display = 'block';
+
+      maspSuggestDiv.querySelectorAll('tr').forEach(tr => {
+        tr.addEventListener('click', () => {
+          const masp = tr.dataset.masp || '';
+          const tensp = tr.dataset.tensp || '';
+          maspInput.value = masp;
+          hideMaspSuggest();
+          setStatus(`${masp} - ${tensp}`, '');
+          handleCheck();
+        });
+      });
+    }
+
+    const INSTANT_AUTO_ON_CACHE_MISS = true;
+
+
+    function startWaitingPickerTimer() {
+      clearTimeout(waitingPickerTimer);
+      waitingPickerTimer = setTimeout(() => {
+        if (STATE === 'waiting_capture') {
+          setStatus('Đã hủy chọn ảnh / camera. Bấm "Chèn ảnh mới" để thử lại.', 'warn');
+          setState('idle');
+        }
+      }, 12000);
+    }
+
+    function requestImageFrom(source) {
+      // source: 'camera' | 'gallery'
+      if (source === 'camera') {
+        cameraInp.value = '';
+        setState('waiting_capture');
+        cameraInp.click();
+        startWaitingPickerTimer();
+        return;
+      }
+      if (source === 'gallery') {
+        galleryInp.value = '';
+        setState('waiting_capture');
+        galleryInp.click();
+        startWaitingPickerTimer();
+        return;
+      }
+    }
+
+    function openSourcePicker() {
+      // Mở hộp chọn Camera / Thư viện
+      if (!sourcePickerEl) return;
+      sourcePickerEl.style.display = 'flex';
+    }
+
+    function closeSourcePicker() {
+      if (!sourcePickerEl) return;
+      sourcePickerEl.style.display = 'none';
+    }
+
+    function openCameraPicker() {
+      // ✅ Mở thẳng "native picker" của iOS/Android (menu: Thư viện ảnh / Chụp ảnh / Chọn tệp...)
+      // Không hiện popup chọn nguồn ảnh (tránh thừa 1 bước).
+      requestImageFrom('gallery');
+    }
+    function canInstantAutoOpen() {
+      return AUTO_OPEN_CAMERA &&
+        (FORCE_AUTO_ON_IOS || !(/iP(hone|od|ad)/.test(navigator.platform) || (/Mac/.test(navigator.userAgent) && 'ontouchend' in document))) &&
+        INSTANT_AUTO_ON_CACHE_MISS &&
+        (navigator.userActivation?.isActive ?? true);
+    }
+
+    function setStatus(msg, kind = '') {
+      statusEl.className = 'status ' + (kind || '');
+      statusEl.textContent = msg || '';
+    }
+
+    function focusSelect() {
+      maspInput.focus({ preventScroll: true });
+      maspInput.select();
+    }
+
+    function stripSizeSuffix(masp) {
+      const s = String(masp || '').trim();
+      const i = s.indexOf('_');
+      return i === -1 ? s : s.slice(0, i);
+    }
+
+    function sanitizeBaseName(str) {
+      const up = String(str || '').trim().toUpperCase();
+      let out = up.replace(/[^A-Z0-9\/.\s_-]+/g, '-').replace(/-+/g, '-');
+      out = out.replace(/\/-+/g, '/').replace(/-+\//g, '/').replace(/\/{2,}/g, '/');
+      out = out.replace(/^-+/, '').replace(/-+$/, '');
+      out = out.replace(/\s*\.\s*/g, '.');
+      return out;
+    }
+
+    const FILE_NAMER = (masp) => `${sanitizeBaseName(stripSizeSuffix(masp))}.JPG`;
+
+    function publicUrlFromKey(fileName) {
+      const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(PATH_PREFIX + fileName);
+      return (data?.publicUrl || '') + `?t=${Date.now()}`;
+    }
+
+    function isIOS() {
+      return /iP(hone|od|ad)/.test(navigator.platform) ||
+        (/Mac/.test(navigator.userAgent) && 'ontouchend' in document);
+    }
+
+    function shouldAutoOpen() {
+      return AUTO_OPEN_CAMERA && (FORCE_AUTO_ON_IOS || !isIOS());
+    }
+
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), 1500);
+    }
+
+    thumbImg?.addEventListener?.('click', () => {
+      if (thumbImg.src) window.open(thumbImg.src, '_blank');
+    });
+
+    /******** CACHE TÊN ẢNH ********/
+    const CACHE_KEY = 'image_keys_v3';
+    const MAX_LIST = 5000;
+    let imageKeySet = new Set();
+    let imageKeySetLower = new Set();
+
+    function loadCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (raw) {
+          const o = JSON.parse(raw);
+          if (Array.isArray(o.keys)) {
+            imageKeySet = new Set(o.keys);
+            imageKeySetLower = new Set(o.keys.map(k => String(k).toLowerCase()));
+          }
+        }
+      } catch { }
+    }
+
+    function saveCache() {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ keys: [...imageKeySet] }));
+      } catch { }
+    }
+
+    function updateGlobalNames() {
+      window.ANH_KEYS = Array.from(imageKeySet);
+    }
+
+    async function refreshKeysFromBucket() {
+      let offset = 0;
+      const page = 1000;
+      const keys = [];
+      while (offset < MAX_LIST) {
+        const { data, error } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .list(PATH_PREFIX, { limit: page, offset, sortBy: { column: 'name', order: 'asc' } });
+
+        if (error) break;
+        if (!data || !data.length) break;
+        for (const f of data) {
+          if (f?.name) keys.push(f.name);
+        }
+        offset += data.length;
+        if (data.length < page) break;
+      }
+      if (keys.length) {
+        imageKeySet = new Set(keys);
+        imageKeySetLower = new Set(keys.map(k => k.toLowerCase()));
+        saveCache();
+        updateGlobalNames();
+      }
+    }
+
+    function hasImageFor(masp) {
+      const base = sanitizeBaseName(stripSizeSuffix(masp));
+      for (const ext of EXT_CANDIDATES) {
+        if (imageKeySetLower.has((base + ext).toLowerCase())) return true;
+      }
+      return false;
+    }
+
+    function updateThumb(masp) {
+      const base = sanitizeBaseName(stripSizeSuffix(masp));
+      let found = null;
+      for (const ext of EXT_CANDIDATES) {
+        const key = base + ext;
+        if (imageKeySetLower.has(key.toLowerCase())) { found = key; break; }
+      }
+      if (!found) {
+        thumb.style.display = 'none';
+        return;
+      }
+      thumb.style.display = 'flex';
+      thumbImg.src = publicUrlFromKey(found);
+      thumbMeta.textContent = found;
+    }
+
+    async function existsOnServer(masp) {
+      const base = sanitizeBaseName(stripSizeSuffix(masp));
+      const paths = EXT_CANDIDATES.map(ext => PATH_PREFIX + base + ext);
+      const { data, error } = await supabase
+        .storage.from(STORAGE_BUCKET)
+        .createSignedUrls(paths, 1);
+
+      if (!error && Array.isArray(data)) {
+        for (let i = 0; i < data.length; i++) {
+          if (data[i]?.signedUrl) {
+            const full = paths[i];
+            const key = full.startsWith(PATH_PREFIX) ? full.slice(PATH_PREFIX.length) : full;
+            return { exists: true, keyFound: key };
+          }
+        }
+      }
+      return { exists: false, keyFound: null };
+    }
+
+    function openCamera() {
+      // Giữ tên hàm để code cũ không vỡ, nhưng hành vi mới là mở native picker luôn
+      requestImageFrom('gallery');
+    }
+
+    async function onFileChange(e) {
+      clearTimeout(waitingPickerTimer);
+
+      const file = e.target.files?.[0];
+      const masp = maspInput.value.trim();
+
+      if (!file) {
+        if (STATE === 'waiting_capture') {
+          setStatus('Đã hủy camera hoặc không chọn ảnh.', 'warn');
+          setState('idle');
+          if (nextMaspQueued) {
+            maspInput.value = nextMaspQueued;
+            nextMaspQueued = null;
+            handleCheck();
+          } else {
+            focusSelect();
+          }
+        }
+        return;
+      }
+      if (!masp) {
+        setStatus('Mã sản phẩm rỗng', 'warn');
+        setState('idle');
+        focusSelect();
+        return;
+      }
+
+      try {
+        setState('uploading');
+        setStatus('Đang xử lý & lưu ảnh…');
+
+        const manv = window.__UPANH_MANV__ || '';
+        const blob = await resizeImageFixed(file, 0.78, masp, manv);
+
+        const key = FILE_NAMER(masp);
+
+        const { error } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(PATH_PREFIX + key, blob, {
+            upsert: true,
+            contentType: 'image/jpeg',
+            cacheControl: '3600'
+          });
+
+        if (error) throw error;
+
+        imageKeySet.add(key);
+        imageKeySetLower.add(key.toLowerCase());
+        saveCache();
+        updateGlobalNames();
+        setStatus('Lưu ảnh thành công', 'ok');
+        toast('✔ Đã lưu');
+        updateThumb(masp);
+      } catch (err) {
+        console.error('Upload error:', err);
+        const msg = (err && (err.message || err.error_description || err.error))
+          ? String(err.message || err.error_description || err.error)
+          : 'KHÔNG rõ nguyên nhân';
+        setStatus('Lưu ảnh KHÔNG thành công: ' + msg, 'warn');
+        toast('✖ Lỗi lưu ảnh: ' + msg);
+      } finally {
+        setState('idle');
+        if (nextMaspQueued) {
+          maspInput.value = nextMaspQueued;
+          nextMaspQueued = null;
+          handleCheck();
+        } else {
+          focusSelect();
+        }
+      }
+    }
+
+    function fileToImage(file) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => res(img);
+        img.onerror = rej;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    async function resizeImageFixed(file, quality = 0.78, masp = '', manv = '') {
+      const img = await fileToImage(file);
+
+      // xác định ảnh ngang hay dọc
+      const isLandscape = img.width >= img.height;
+
+      // target size
+      const targetW = isLandscape ? 640 : 480;
+      const targetH = isLandscape ? 480 : 640;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+
+      const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, targetW, targetH);
+
+      // Scale để "fit" vào khung target (giữ tỷ lệ, không méo)
+      const scale = Math.min(targetW / img.width, targetH / img.height);
+      const drawW = Math.round(img.width * scale);
+      const drawH = Math.round(img.height * scale);
+      const dx = Math.round((targetW - drawW) / 2);
+      const dy = Math.round((targetH - drawH) / 2);
+
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+
+      // vẽ chữ (đang dùng hàm drawBottomLeftTag của bạn)
+      drawBottomLeftTag(ctx, targetW, targetH, masp, manv);
+
+      return await new Promise(res => canvas.toBlob(b => res(b), 'image/jpeg', quality));
+    }
+
+
+    function drawBottomLeftTag(ctx, w, h, masp, manv) {
+      const pad = Math.max(10, Math.round(Math.min(w, h) * 0.02)); // ~2%
+      const lineGap = Math.max(6, Math.round(Math.min(w, h) * 0.01));
+
+      const maspText = String(masp || '').trim().toUpperCase();
+      const manvText = String(manv || '').trim();
+      if (!maspText && !manvText) return;
+
+      // Font theo kích thước ảnh (đảm bảo nhìn rõ)
+      const fontSize = Math.max(22, Math.round(Math.min(w, h) * 0.05)); // ~5%
+      ctx.font = `700 ${fontSize}px -apple-system, system-ui, Segoe UI, Roboto, Arial`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top'; // ✅ QUAN TRỌNG: căn theo đỉnh
+      //ctx.textBaseline = 'alphabetic';  // ✅ QUAN TRỌNG: căn theo đay
+
+      // Đổ bóng + viền để nổi trên mọi nền
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+
+      ctx.lineWidth = Math.max(3, Math.round(fontSize * 0.12));
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.fillStyle = 'rgba(255,255,255,0.98)';
+
+      // 2 dòng ở góc dưới trái: dòng 2 sát đáy, dòng 1 nằm trên
+      const y1 = pad;                       // dòng MASP ở trên
+      const y2 = y1 + fontSize + lineGap;   // dòng MANV ngay dưới
+      //const y2 = h - pad;                      // ✅ QUAN TRỌNG: căn theo đay
+      //const y1 = y2 - fontSize - lineGap;      // ✅ QUAN TRỌNG: căn theo đay
+
+      if (maspText) {
+        ctx.strokeText(maspText, pad, y1);
+        ctx.fillText(maspText, pad, y1);
+      }
+      if (manvText) {
+        ctx.strokeText(manvText, pad, y2);
+        ctx.fillText(manvText, pad, y2);
+      }
+
+      // reset shadow để tránh ảnh hưởng vẽ khác (nếu có)
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    }
+
+    async function handleCheck() {
+      const masp = maspInput.value.trim();
+      if (!masp || masp.length < 2) {
+        setStatus('Mã sản phẩm chưa hợp lệ', 'warn');
+        focusSelect();
+        return;
+      }
+
+      if (STATE === 'checking' || STATE === 'waiting_capture' || STATE === 'uploading') {
+        queueNextMasp(masp);
+        setStatus('Đang bận thao tác trước, sẽ xử lý mã mới ngay sau đó…');
+        return;
+      }
+
+      setState('checking');
+      focusSelect();
+
+      if (hasImageFor(masp)) {
+        setStatus('ĐÃ CÓ ẢNH', 'ok');
+        updateThumb(masp);
+        setState('idle');
+        if (nextMaspQueued) {
+          maspInput.value = nextMaspQueued;
+          nextMaspQueued = null;
+          handleCheck();
+        }
+        return;
+      }
+
+      if (canInstantAutoOpen()) {
+        setStatus('Chưa có trong cache → mở camera và đang kiểm tra server…');
+        thumb.style.display = 'none';
+        openCameraPicker();
+
+        existsOnServer(masp).then(({ exists, keyFound }) => {
+          if (exists) {
+            imageKeySet.add(keyFound);
+            imageKeySetLower.add(keyFound.toLowerCase());
+            saveCache();
+            updateGlobalNames();
+            setStatus('ĐÃ CÓ ẢNH', 'ok');
+            updateThumb(masp);
+            if (STATE === 'waiting_capture') {
+              clearTimeout(waitingPickerTimer);
+              setState('idle');
+              if (nextMaspQueued) {
+                maspInput.value = nextMaspQueued;
+                nextMaspQueued = null;
+                handleCheck();
+              } else {
+                focusSelect();
+              }
+            }
+          } else {
+            setStatus('Chưa có ảnh. Mời chụp và lưu.');
+          }
+        }).catch(() => { });
+
+        return;
+      }
+
+      setStatus('Đang kiểm tra ảnh trên server…');
+      const { exists, keyFound } = await existsOnServer(masp);
+      if (exists) {
+        imageKeySet.add(keyFound);
+        imageKeySetLower.add(keyFound.toLowerCase());
+        saveCache();
+        updateGlobalNames();
+        setStatus('ĐÃ CÓ ẢNH', 'ok');
+        updateThumb(masp);
+        setState('idle');
+        if (nextMaspQueued) {
+          maspInput.value = nextMaspQueued;
+          nextMaspQueued = null;
+          handleCheck();
+        }
+        return;
+      }
+
+      setStatus('Chưa có ảnh. Sẽ mở camera để chụp…');
+      thumb.style.display = 'none';
+      if (shouldAutoOpen()) openCameraPicker();
+      else {
+        setStatus('Chưa có ảnh. Bấm "Chèn ảnh mới" để chụp (iPhone chế độ an toàn).');
+        setState('idle');
+      }
+    }
+
+    // === KHỞI TẠO APP SAU KHI ĐĂNG NHẬP ===
+    function initUpAnhNhanh() {
+      supabase = window.supabase;
+      if (!supabase) {
+        console.error('Supabase client chưa sẵn sàng!');
+        return;
+      }
+
+      maspInput = $('#masp');
+      btnCheck = $('#btnCheck');
+      btnRetake = $('#btnRetake');
+      statusEl = $('#status');
+      cameraInp = $('#camera');
+      galleryInp = $('#gallery');
+      sourcePickerEl = $('#sourcePicker');
+      spCameraBtn = $('#spCamera');
+      spGalleryBtn = $('#spGallery');
+      spCancelBtn = $('#spCancel');
+      thumb = $('#thumb');
+      thumbImg = $('#thumbImg');
+      thumbMeta = $('#thumbMeta');
+      maspSuggestDiv = document.getElementById('maspSuggestList');
+      toastEl = $('#toast');
+
+      // === NEW: Nhận masp từ URL (?masp=ABC...) rồi tự kiểm tra ===
+      try {
+        const params = new URLSearchParams(window.location.search || "");
+        const maspFromUrl = (params.get("masp") || "").trim();
+        if (maspFromUrl) {
+          maspInput.value = maspFromUrl.toUpperCase();
+          hideMaspSuggest();
+          setStatus("Đã nhận mã từ popup: " + maspInput.value, "ok");
+
+          // tự chạy kiểm tra sau khi DOM & supabase sẵn sàng
+          setTimeout(() => handleCheck(), 50);
+        }
+      } catch (e) {
+        console.warn("Không đọc được masp từ URL:", e);
+      }
+
+
+      // Gắn event cho input MÃ SP
+      maspInput.addEventListener('input', () => {
+        const v = maspInput.value || '';
+        if (!v.trim()) {
+          hideMaspSuggest();
+          return;
+        }
+        loadMaspSuggest(v).catch(() => { });
+      });
+
+      window.addEventListener('resize', positionMaspSuggestList);
+      window.addEventListener('scroll', positionMaspSuggestList, true);
+
+      document.addEventListener('click', (ev) => {
+        if (!maspSuggestDiv || maspSuggestDiv.style.display === 'none') return;
+        if (ev.target === maspInput || maspSuggestDiv.contains(ev.target)) return;
+        hideMaspSuggest();
+      });
+
+      cameraInp?.addEventListener('change', onFileChange);
+      galleryInp?.addEventListener('change', onFileChange);
+
+      // Source picker buttons
+      spCameraBtn?.addEventListener('click', () => {
+        closeSourcePicker();
+        requestImageFrom('camera');
+      });
+      spGalleryBtn?.addEventListener('click', () => {
+        closeSourcePicker();
+        requestImageFrom('gallery');
+      });
+      spCancelBtn?.addEventListener('click', () => {
+        closeSourcePicker();
+        setStatus('Đã hủy chèn ảnh.', 'warn');
+        // không đổi state nếu đang ở idle
+        if (STATE === 'waiting_capture') setState('idle');
+      });
+
+      // Click ra ngoài card để đóng
+      sourcePickerEl?.addEventListener('click', (e) => {
+        if (e.target === sourcePickerEl) spCancelBtn.click();
+      });
+      maspInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleCheck();
+        }
+      });
+
+      maspInput.addEventListener('blur', () => {
+        if (!maspInput.value.trim()) return;
+        if (STATE === 'idle') handleCheck();
+      });
+
+      btnCheck.addEventListener('click', handleCheck);
+      btnRetake.addEventListener('click', () => {
+        const masp = maspInput.value.trim();
+        if (!masp) {
+          setStatus('Nhập MÃ SP trước', 'warn');
+          maspInput.focus();
+          return;
+        }
+        setStatus('Chụp ảnh mới để ghi đè…');
+        openCamera();
+      });
+
+      // Khởi động
+      loadCache();
+      updateGlobalNames();
+      focusSelect();
+      refreshKeysFromBucket().catch(console.warn);
+    }
+
+    // === GỌI MODULE ĐĂNG NHẬP DÙNG CHUNG ===
+    khoiTaoDangNhapDungChung({
+      loginContainerId: 'login-container',
+      appContainerId: 'app-container',
+
+      // Khóa cứng CS1 (giữ đúng hành vi hiện tại của trang up ảnh nhanh)
+      macDinhDiaDiem: 'cs1',
+      tuDongKhoaCoSo: true,
+
+      // Giống xemhoadon111: login API theo cơ sở (nhưng trang này đang khóa cs1)
+      loginApiPath: (cs) => `/api/login-${cs}`,
+
+      // ✅ Cho cả ADMIN và nhân viên thường dùng được.
+      // Nếu là ADMIN (đăng nhập email/password) thì rpc('is_admin') sẽ true.
+      // Nếu là NV thường (đăng nhập qua bảng dmnhanvien) thì isAdmin sẽ false.
+      async onLoginSuccess(nv, ctx) {
+        let isAdmin = false;
+        try {
+          const { data, error } = await window.supabase.rpc('is_admin');
+          isAdmin = (!error && data === true);
+        } catch (e) {
+          isAdmin = false;
+        }
+
+        // Lưu cờ quyền để các hàm khác (nếu cần) có thể dùng
+        window.__UPANH_IS_ADMIN__ = isAdmin;
+
+        // ✅ thêm dòng này
+        // Lấy mã nhân viên an toàn cho mọi loại tài khoản
+        let manvSafe = '';
+
+        try {
+          // 1. Nhân viên thường
+          manvSafe =
+            nv?.manv ||
+            nv?.MANV ||
+            nv?.ma_nv ||
+            '';
+
+          // 2. Nếu vẫn rỗng → thử lấy từ Supabase user metadata
+          if (!manvSafe && window.supabase?.auth) {
+            const { data } = await window.supabase.auth.getUser();
+            manvSafe =
+              data?.user?.user_metadata?.manv ||
+              data?.user?.user_metadata?.ma_nv ||
+              data?.user?.email ||
+              '';
+          }
+
+        } catch (e) {
+          console.warn('Không lấy được mã nhân viên:', e);
+        }
+
+        window.__UPANH_MANV__ = String(manvSafe).toUpperCase().trim();
+        console.log('MANV đang dùng:', window.__UPANH_MANV__);
+
+
+        // Init app cho cả 2 loại tài khoản
+        initUpAnhNhanh({ nv, ctx, isAdmin });
+        return true;
+      }
+    });
+  </script>
+</body>
+
+
+</html>
