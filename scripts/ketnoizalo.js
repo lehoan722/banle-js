@@ -454,14 +454,7 @@ function bindEvents() {
   });
 }
 
-async function initPage() {
-
-  const ok = await checkAdmin();
-
-  if (!ok) {
-    alert("Không có quyền truy cập.");
-    return;
-  }
+async function initPage() {  
 
   const info = getCurrentUserInfo();
 
