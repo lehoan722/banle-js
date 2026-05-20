@@ -1,7 +1,5 @@
 import {
-  supabase,
-  logout,
-  checkAdmin
+  supabase
 } from "./supabaseClient.js";
 
 const $ = id => document.getElementById(id);
@@ -439,7 +437,11 @@ function bindEvents() {
 
   $("btnCloseZaloPopup").addEventListener("click", closeZaloPopup);
 
-  $("btnLogout").addEventListener("click", logout);
+  $("btnLogout").addEventListener("click", () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    location.href = "index.html";
+  });
 
   $("quickSearch").addEventListener("input", e => {
 
@@ -461,7 +463,7 @@ function bindEvents() {
   });
 }
 
-async function initPage() {  
+async function initPage() {
 
   const info = getCurrentUserInfo();
 
