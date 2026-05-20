@@ -132,13 +132,38 @@
         <button id="btnRestore">Khôi phục khách chọn</button>
         <button id="btnExport">Xuất Excel/CSV</button>
         <button id="btnCopyAll">Copy bảng</button>
-        <button id="btnToggleColumns">Rút gọn</button>
+        <button id="btnOpenColumnPopup">Tùy chọn hiển thị</button>
       </div>
 
       <div id="status">Sẵn sàng.</div>
     </div>
 
     <div id="hot"></div>
+
+    <div id="columnPopupOverlay"
+      style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.25); z-index:9999;">
+      <div
+        style="width:320px; max-height:80vh; overflow:auto; background:#fff; margin:70px auto; padding:12px; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.25);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <strong>Tùy chọn hiển thị cột</strong>
+          <button id="btnCloseColumnPopup">Đóng</button>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-bottom:8px;">
+          <button id="btnColumnFull" class="primary">Đầy đủ</button>
+          <button id="btnColumnCompact">Rút gọn</button>
+          <button id="btnApplyColumns" class="success">Áp dụng</button>
+        </div>
+
+        <label style="display:block; background:#f3f4f6; padding:6px; margin-bottom:6px;">
+          <input type="checkbox" id="chkAllColumns">
+          Chọn / bỏ chọn tất cả
+        </label>
+
+        <div id="columnCheckboxList"></div>
+      </div>
+    </div>
+
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/handsontable@14.6.1/dist/handsontable.full.min.js"></script>
