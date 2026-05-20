@@ -64,7 +64,7 @@ const columns = [
 ];
 
 let currentColumns = columns;
-let isCompactMode = false;
+let selectedColumnFields = [...compactFields];
 
 const compactFields = [
   "makh",
@@ -548,26 +548,88 @@ async function copyAllTableToClipboard() {
   }
 }
 
-function toggleColumnsMode() {
-  if (!hot) return;
+function openColumnPopup() {
+  renderColumnCheckboxList();
+  $("columnPopupOverlay").style.display = "block";
+}
 
-  isCompactMode = !isCompactMode;
+function closeColumnPopup() {
+  $("columnPopupOverlay").style.display = "none";
+}
 
-  currentColumns = isCompactMode
-    ? columns.filter(c => compactFields.includes(c.data))
-    : columns;
+function renderColumnCheckboxList() {
+  const box = $("columnCheckboxList");
+  box.innerHTML = "";
 
-  hot.updateSettings({
-    columns: currentColumns,
-    colHeaders: currentColumns.map(c => c.title)
+  columns.forEach(col => {
+    const label = document.createElement("label");
+    label.style.display = "block";
+    label.style.padding = "4px 6px";
+
+    label.innerHTML = `
+      <input type="checkbox" class="column-check" value="${col.data}" ${selectedColumnFields.includes(col.data) ? "checked" : ""}>
+      ${col.title}
+    `;
+
+    box.appendChild(label);
   });
 
-  $("btnToggleColumns").textContent = isCompactMode ? "Đầy đủ" : "Rút gọn";
+  updateCheckAllState();
+}
 
-  hot.refreshDimensions();
-  hot.render();
+function updateCheckAllState() {
+  const chkAll = $("chkAllColumns");
+  if (!chkAll) return;
 
-  setStatus(isCompactMode ? "Đang hiển thị bảng rút gọn." : "Đang hiển thị bảng đầy đủ.");
+  chkAll.checked = selectedColumnFields.length === columns.length;
+}
+
+function applySelectedColumns() {
+  const checked = [...document.querySelectorAll(".column-check:checked")]
+    .map(chk => chk.value);
+
+  if (checked.length === 0) {
+    alert("Vui lòng chọn ít nhất 1 cột để hiển thị.");
+    return;
+  }
+
+  selectedColumnFields = checked;
+
+  currentColumns = columns.filter(c => selectedColumnFields.includes(c.data));
+
+  if (hot) {
+    hot.updateSettings({
+      columns: currentColumns,
+      colHeaders: currentColumns.map(c => c.title),
+      fixedColumnsStart: Math.min(2, currentColumns.length)
+    });
+
+    hot.refreshDimensions();
+    hot.render();
+  }
+
+  closeColumnPopup();
+  setStatus(`Đang hiển thị ${currentColumns.length}/${columns.length} cột.`);
+}
+
+function selectFullColumns() {
+  selectedColumnFields = columns.map(c => c.data);
+  renderColumnCheckboxList();
+}
+
+function selectCompactColumns() {
+  selectedColumnFields = [...compactFields];
+  renderColumnCheckboxList();
+}
+
+function toggleAllColumnsByCheckbox() {
+  const checked = $("chkAllColumns").checked;
+
+  selectedColumnFields = checked
+    ? columns.map(c => c.data)
+    : [];
+
+  renderColumnCheckboxList();
 }
 
 function bindEvents() {
@@ -579,7 +641,18 @@ function bindEvents() {
   $("btnExport").addEventListener("click", exportCsv);
   $("btnCopyAll").addEventListener("click", copyAllTableToClipboard);
   $("quickSearch").addEventListener("input", quickSearch);
-  $("btnToggleColumns").addEventListener("click", toggleColumnsMode);
+  $("btnOpenColumnPopup").addEventListener("click", openColumnPopup);
+  $("btnCloseColumnPopup").addEventListener("click", closeColumnPopup);
+  $("btnColumnFull").addEventListener("click", selectFullColumns);
+  $("btnColumnCompact").addEventListener("click", selectCompactColumns);
+  $("btnApplyColumns").addEventListener("click", applySelectedColumns);
+  $("chkAllColumns").addEventListener("change", toggleAllColumnsByCheckbox);
+
+  $("columnCheckboxList").addEventListener("change", () => {
+    selectedColumnFields = [...document.querySelectorAll(".column-check:checked")]
+      .map(chk => chk.value);
+    updateCheckAllState();
+  });
 
   $("btnLogout").addEventListener("click", async () => {
     await dangXuatDungChung({
@@ -598,6 +671,8 @@ async function khoiTaoTrangQuanLyKhachHang() {
   $("denNgay").value = todayISO();
 
   bindEvents();
+  currentColumns = columns.filter(c => compactFields.includes(c.data));
+  selectedColumnFields = [...compactFields];
   await loadData();
 }
 
