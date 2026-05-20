@@ -64,7 +64,6 @@ const columns = [
 ];
 
 let currentColumns = columns;
-let selectedColumnFields = [...compactFields];
 
 const compactFields = [
   "makh",
@@ -79,6 +78,7 @@ const compactFields = [
   "created_at",
   "created_by_manv"
 ];
+let selectedColumnFields = [...compactFields];
 
 function formatDateTimeVN(value) {
   if (!value) return "";
