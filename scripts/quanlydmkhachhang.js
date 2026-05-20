@@ -29,6 +29,7 @@ const editableFields = [
   "namsinh",
   "marketing_opt_in",
   "zalo_sms_opt_in",
+  "da_tham_gia_congdong",
   "nguon_dangky"
 ];
 
@@ -44,6 +45,11 @@ const columns = [
     title: "Zalo",
     readOnly: true,
     renderer: zaloActionRenderer
+  },
+  {
+    data: "da_tham_gia_congdong",
+    title: "Đã vào nhóm",
+    type: "checkbox"
   },
   { data: "diachi", title: "Địa chỉ" },
   { data: "email", title: "Email" },
@@ -177,18 +183,18 @@ function setStatus(msg) {
 }
 
 function taoNoiDungMoiThamGia(rowData) {
-  return `Shop Hoàn Tuyết xin chào anh/chị ${rowData.tenkh || ""}
+  const ten = rowData.tenkh || "anh/chị";
+  const diem = Number(rowData.diem_hientai || 0);
+  const tienDiem = diem * 1000;
 
-Shop mời anh/chị tham gia cộng đồng Zalo VIP để:
+  return `Shop Hoàn Tuyết xin chào anh/chị ${ten}.
 
-✓ xem hàng mới sớm
-✓ giữ size trước
-✓ nhận ưu đãi riêng
-✓ nhận voucher sinh nhật
-✓ cập nhật chương trình khuyến mãi
+Cảm ơn anh/chị đã mua hàng tại shop. Hiện anh/chị đang có ${diem} điểm, tương đương ${tienDiem.toLocaleString("vi-VN")}đ ưu đãi cho lần mua tiếp theo.
 
-Link tham gia cộng đồng:
-https://zalo.me/g/rz31sxl6fvcidvehzvty`;
+Mời anh/chị tham gia cộng đồng khuyến mại của shop để nhận ưu đãi và tích điểm khi mua hàng:
+https://zalo.me/g/rz31sxl6fvcidvehzvty
+
+Shop chân thành cảm ơn!`;
 }
 
 async function saveZaloLog(rowData, message) {
@@ -215,6 +221,34 @@ async function saveZaloLog(rowData, message) {
   } catch (err) {
     console.error("Lỗi lưu log zalo:", err);
   }
+}
+
+async function saveZaloStatus(rowData, patch = {}) {
+  const info = getCurrentUserInfo();
+
+  const payload = {
+    makh: rowData.makh,
+    tenkh: rowData.tenkh,
+    dienthoai: rowData.dienthoai,
+
+    updated_by_manv: info.manv,
+    updated_by_tennv: info.tennv,
+    updated_at: new Date().toISOString(),
+
+    ...patch
+  };
+
+  const { error } = await supabase
+    .from("zalo_customer_status")
+    .upsert(payload, { onConflict: "makh" });
+
+  if (error) {
+    console.error(error);
+    alert("Lỗi lưu trạng thái Zalo: " + error.message);
+    return false;
+  }
+
+  return true;
 }
 
 function normalizeRow(row) {
@@ -363,6 +397,19 @@ function createHot(data) {
 
       changes.forEach(([rowIndex, prop, oldValue, newValue]) => {
         if (oldValue === newValue) return;
+        if (prop === "da_tham_gia_congdong") {
+          const row = hot.getSourceDataAtRow(rowIndex);
+
+          saveZaloStatus(row, {
+            da_tham_gia_congdong: !!newValue
+          }).then(ok => {
+            if (ok) {
+              setStatus(`${row.tenkh || row.makh} đã được cập nhật trạng thái nhóm Zalo.`);
+            }
+          });
+
+          return;
+        }
 
         const row = hot.getSourceDataAtRow(rowIndex);
         if (!row) return;
@@ -416,6 +463,26 @@ async function loadData() {
   }
 
   rawData = Array.isArray(data) ? data : [];
+
+  const makhs = rawData.map(r => r.makh).filter(Boolean);
+
+  if (makhs.length) {
+    const { data: zaloStatus, error: zaloError } = await supabase
+      .from("zalo_customer_status")
+      .select("makh, da_tham_gia_congdong, da_gui_loi_moi, lan_gui_cuoi")
+      .in("makh", makhs);
+
+    if (!zaloError && Array.isArray(zaloStatus)) {
+      const statusMap = new Map(zaloStatus.map(s => [s.makh, s]));
+
+      rawData = rawData.map(row => ({
+        ...row,
+        da_tham_gia_congdong: !!statusMap.get(row.makh)?.da_tham_gia_congdong,
+        da_gui_loi_moi: !!statusMap.get(row.makh)?.da_gui_loi_moi,
+        lan_gui_zalo_cuoi: statusMap.get(row.makh)?.lan_gui_cuoi || null
+      }));
+    }
+  }
   changedMakhs.clear();
   errorRows.clear();
 
@@ -720,8 +787,10 @@ function toggleAllColumnsByCheckbox() {
   renderColumnCheckboxList();
 }
 
-function openZaloMultiPopup() {
+let zaloSendQueue = [];
+let zaloCurrentIndex = 0;
 
+function openZaloMultiPopup() {
   const makhs = getSelectedMakhs();
 
   if (!makhs.length) {
@@ -729,75 +798,87 @@ function openZaloMultiPopup() {
     return;
   }
 
-  const selectedRows = hot.getSourceData().filter(r =>
-    makhs.includes(r.makh)
-  );
+  zaloSendQueue = hot.getSourceData()
+    .filter(r => makhs.includes(r.makh))
+    .filter(r => !r.da_tham_gia_congdong);
 
-  const defaultMessage =
-    `Shop Hoàn Tuyết xin chào anh/chị
+  if (!zaloSendQueue.length) {
+    alert("Các khách đã chọn đều đã được đánh dấu là đã vào nhóm Zalo.");
+    return;
+  }
 
-Shop mời anh/chị tham gia cộng đồng Zalo VIP để:
+  zaloCurrentIndex = 0;
+  $("zaloPopupOverlay").style.display = "block";
+  renderZaloAssistant();
+}
 
-✓ xem hàng mới sớm
-✓ giữ size trước
-✓ nhận ưu đãi riêng
-✓ nhận voucher sinh nhật
-
-Link tham gia:
-https://zalo.me/g/rz31sxl6fvcidvehzvty`;
-
-  $("zaloMessageContent").value = defaultMessage;
-
+function renderZaloAssistant() {
+  const row = zaloSendQueue[zaloCurrentIndex];
   const box = $("zaloCustomerList");
 
-  box.innerHTML = "";
-
-  selectedRows.forEach(row => {
-
-    const div = document.createElement("div");
-
-    div.style.borderBottom = "1px solid #ddd";
-    div.style.padding = "8px";
-
-    div.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <strong>${row.tenkh || ""}</strong>
-          - ${row.dienthoai || ""}
-        </div>
-
-        <button
-          style="
-            background:#0068ff;
-            color:white;
-            border:none;
-            padding:6px 10px;
-            border-radius:5px;
-            cursor:pointer;
-          "
-        >
-          Chat Zalo
-        </button>
+  if (!row) {
+    $("zaloMessageContent").value = "";
+    box.innerHTML = `
+      <div style="padding:12px;">
+        <b>Đã xử lý hết danh sách khách đã chọn.</b>
       </div>
     `;
+    return;
+  }
 
-    const btn = div.querySelector("button");
+  const msg = taoNoiDungMoiThamGia(row);
+  $("zaloMessageContent").value = msg;
 
-    btn.onclick = async () => {
+  box.innerHTML = `
+    <div style="padding:12px; border:1px solid #ddd; border-radius:8px;">
+      <p><b>Khách hiện tại:</b> ${row.tenkh || ""} - ${row.dienthoai || ""}</p>
+      <p><b>Điểm hiện tại:</b> ${row.diem_hientai || 0}</p>
+      <p><b>Tiến độ:</b> ${zaloCurrentIndex + 1}/${zaloSendQueue.length}</p>
 
-      const msg = $("zaloMessageContent").value;
+      <button id="btnOpenCurrentZalo" style="background:#0068ff;color:white;border:none;padding:8px 12px;border-radius:5px;">
+        Copy nội dung + mở Zalo
+      </button>
 
-      navigator.clipboard.writeText(msg);
+      <button id="btnMarkJoinedZalo" style="background:#16a34a;color:white;border:none;padding:8px 12px;border-radius:5px;margin-left:6px;">
+        Đánh dấu đã vào nhóm
+      </button>
 
-      await saveZaloLog(row, msg);
+      <button id="btnNextZaloCustomer" style="padding:8px 12px;border-radius:5px;margin-left:6px;">
+        Khách tiếp theo
+      </button>
+    </div>
+  `;
 
-      window.open(`https://zalo.me/${row.dienthoai}`, "_blank");
-    };
+  $("btnOpenCurrentZalo").addEventListener("click", async () => {
+    const currentMsg = $("zaloMessageContent").value;
 
-    box.appendChild(div);
+    await navigator.clipboard.writeText(currentMsg);
+    await saveZaloLog(row, currentMsg);
+    await saveZaloStatus(row, {
+      da_gui_loi_moi: true,
+      lan_gui_cuoi: new Date().toISOString()
+    });
+
+    window.open(`https://zalo.me/${row.dienthoai}`, "_blank");
+    setStatus(`Đã copy nội dung và mở Zalo cho ${row.tenkh || row.dienthoai}`);
   });
 
-  $("zaloPopupOverlay").style.display = "block";
+  $("btnMarkJoinedZalo").addEventListener("click", async () => {
+    const ok = await saveZaloStatus(row, {
+      da_tham_gia_congdong: true
+    });
+
+    if (ok) {
+      row.da_tham_gia_congdong = true;
+      hot.render();
+      alert("Đã đánh dấu khách này đã vào nhóm Zalo.");
+    }
+  });
+
+  $("btnNextZaloCustomer").addEventListener("click", () => {
+    zaloCurrentIndex++;
+    renderZaloAssistant();
+  });
 }
 
 function closeZaloPopup() {
