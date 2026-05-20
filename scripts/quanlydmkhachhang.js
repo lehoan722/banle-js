@@ -39,6 +39,12 @@ const columns = [
   { data: "thangsinh", title: "Tháng sinh", type: "numeric" },
   { data: "namsinh", title: "Năm sinh", type: "numeric" },
   { data: "dienthoai", title: "Điện thoại" },
+  {
+    data: "zalo_action",
+    title: "Zalo",
+    readOnly: true,
+    renderer: zaloActionRenderer
+  },
   { data: "diachi", title: "Địa chỉ" },
   { data: "email", title: "Email" },
   { data: "taikhoan", title: "Tài khoản" },
@@ -111,6 +117,47 @@ function vnDateTimeRenderer(instance, td, row, col, prop, value, cellProperties)
   td.textContent = formatDateTimeVN(value);
 }
 
+function zaloActionRenderer(instance, td, row, col, prop, value, cellProperties) {
+  Handsontable.dom.empty(td);
+
+  const rowData = instance.getSourceDataAtRow(row);
+
+  const phone = String(rowData?.dienthoai || "").trim();
+
+  if (!phone) {
+    td.innerHTML = `<span style="color:#999;">Không có SĐT</span>`;
+    return td;
+  }
+
+  const btn = document.createElement("button");
+
+  btn.textContent = "Chat Zalo";
+
+  btn.style.background = "#0068ff";
+  btn.style.color = "#fff";
+  btn.style.border = "none";
+  btn.style.padding = "4px 8px";
+  btn.style.borderRadius = "4px";
+  btn.style.cursor = "pointer";
+  btn.style.fontSize = "12px";
+
+  btn.onclick = async () => {
+    const message = taoNoiDungMoiThamGia(rowData);
+
+    await saveZaloLog(rowData, message);
+
+    navigator.clipboard.writeText(message);
+
+    window.open(`https://zalo.me/${phone}`, "_blank");
+
+    setStatus(`Đã copy nội dung và mở chat Zalo cho ${rowData.tenkh}`);
+  };
+
+  td.appendChild(btn);
+
+  return td;
+}
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -127,6 +174,47 @@ function firstDayOfMonthISO() {
 
 function setStatus(msg) {
   $("status").textContent = msg;
+}
+
+function taoNoiDungMoiThamGia(rowData) {
+  return `Shop Hoàn Tuyết xin chào anh/chị ${rowData.tenkh || ""}
+
+Shop mời anh/chị tham gia cộng đồng Zalo VIP để:
+
+✓ xem hàng mới sớm
+✓ giữ size trước
+✓ nhận ưu đãi riêng
+✓ nhận voucher sinh nhật
+✓ cập nhật chương trình khuyến mãi
+
+Link tham gia cộng đồng:
+https://zalo.me/g/rz31sxl6fvcidvehzvty`;
+}
+
+async function saveZaloLog(rowData, message) {
+  try {
+
+    const info = getCurrentUserInfo();
+
+    await supabase
+      .from("zalo_message_logs")
+      .insert({
+        makh: rowData.makh,
+        tenkh: rowData.tenkh,
+        dienthoai: rowData.dienthoai,
+
+        noi_dung: message,
+
+        nguoi_gui_manv: info.manv,
+        nguoi_gui_tennv: info.tennv,
+        nguoi_gui_diadiem: info.diadiem,
+
+        loai_gui: "ZALO_WEB"
+      });
+
+  } catch (err) {
+    console.error("Lỗi lưu log zalo:", err);
+  }
 }
 
 function normalizeRow(row) {
@@ -632,6 +720,90 @@ function toggleAllColumnsByCheckbox() {
   renderColumnCheckboxList();
 }
 
+function openZaloMultiPopup() {
+
+  const makhs = getSelectedMakhs();
+
+  if (!makhs.length) {
+    alert("Vui lòng chọn khách hàng.");
+    return;
+  }
+
+  const selectedRows = hot.getSourceData().filter(r =>
+    makhs.includes(r.makh)
+  );
+
+  const defaultMessage =
+    `Shop Hoàn Tuyết xin chào anh/chị
+
+Shop mời anh/chị tham gia cộng đồng Zalo VIP để:
+
+✓ xem hàng mới sớm
+✓ giữ size trước
+✓ nhận ưu đãi riêng
+✓ nhận voucher sinh nhật
+
+Link tham gia:
+https://zalo.me/g/rz31sxl6fvcidvehzvty`;
+
+  $("zaloMessageContent").value = defaultMessage;
+
+  const box = $("zaloCustomerList");
+
+  box.innerHTML = "";
+
+  selectedRows.forEach(row => {
+
+    const div = document.createElement("div");
+
+    div.style.borderBottom = "1px solid #ddd";
+    div.style.padding = "8px";
+
+    div.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <strong>${row.tenkh || ""}</strong>
+          - ${row.dienthoai || ""}
+        </div>
+
+        <button
+          style="
+            background:#0068ff;
+            color:white;
+            border:none;
+            padding:6px 10px;
+            border-radius:5px;
+            cursor:pointer;
+          "
+        >
+          Chat Zalo
+        </button>
+      </div>
+    `;
+
+    const btn = div.querySelector("button");
+
+    btn.onclick = async () => {
+
+      const msg = $("zaloMessageContent").value;
+
+      navigator.clipboard.writeText(msg);
+
+      await saveZaloLog(row, msg);
+
+      window.open(`https://zalo.me/${row.dienthoai}`, "_blank");
+    };
+
+    box.appendChild(div);
+  });
+
+  $("zaloPopupOverlay").style.display = "block";
+}
+
+function closeZaloPopup() {
+  $("zaloPopupOverlay").style.display = "none";
+}
+
 function bindEvents() {
   $("btnLoad").addEventListener("click", loadData);
   $("btnSave").addEventListener("click", saveChanges);
@@ -647,6 +819,9 @@ function bindEvents() {
   $("btnColumnCompact").addEventListener("click", selectCompactColumns);
   $("btnApplyColumns").addEventListener("click", applySelectedColumns);
   $("chkAllColumns").addEventListener("change", toggleAllColumnsByCheckbox);
+  $("btnZaloMulti").addEventListener("click", openZaloMultiPopup);
+
+  $("btnCloseZaloPopup").addEventListener("click", closeZaloPopup);
 
   $("columnCheckboxList").addEventListener("change", () => {
     selectedColumnFields = [...document.querySelectorAll(".column-check:checked")]
