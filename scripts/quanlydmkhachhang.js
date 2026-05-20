@@ -92,13 +92,12 @@ const compactFields = [
 ];
 
 const zaloFields = [
-  "tenkh",
-  "dienthoai",
+  "makh",
+  "tenkh",  
   "zalo_action",
   "da_tham_gia_congdong",
   "diem_hientai",
-  "created_by_manv",
-  "created_by_tennv"
+  "created_by_manv"
 ];
 
 let selectedColumnFields = [...compactFields];
