@@ -132,6 +132,9 @@
         <button id="btnRestore">Khôi phục khách chọn</button>
         <button id="btnExport">Xuất Excel/CSV</button>
         <button id="btnCopyAll">Copy bảng</button>
+        <button id="btnZaloMulti" style="background:#0068ff; color:white;">
+          Gửi Zalo nhiều khách
+        </button>
         <button id="btnOpenColumnPopup">Tùy chọn hiển thị</button>
       </div>
 
@@ -161,6 +164,33 @@
         </label>
 
         <div id="columnCheckboxList"></div>
+      </div>
+    </div>
+
+    <div id="zaloPopupOverlay"
+      style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:99999;">
+
+      <div style="
+    width:700px;
+    max-width:95vw;
+    max-height:90vh;
+    overflow:auto;
+    background:white;
+    margin:30px auto;
+    border-radius:10px;
+    padding:12px;
+  ">
+
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+          <strong>Gửi Zalo nhiều khách</strong>
+
+          <button id="btnCloseZaloPopup">Đóng</button>
+        </div>
+
+        <textarea id="zaloMessageContent" style="width:100%; height:140px; margin-bottom:10px;"></textarea>
+
+        <div id="zaloCustomerList"></div>
+
       </div>
     </div>
 
