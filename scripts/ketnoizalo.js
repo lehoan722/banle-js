@@ -1,7 +1,7 @@
 import {
   supabase,
-  getCurrentUserInfo,
-  logout
+  logout,
+  checkAdmin
 } from "./supabaseClient.js";
 
 const $ = id => document.getElementById(id);
@@ -53,6 +53,14 @@ const columns = [
 
 function setStatus(msg) {
   $("status").textContent = msg;
+}
+function getCurrentUserInfo() {
+
+  return {
+    manv: localStorage.getItem("manv") || "",
+    tennv: localStorage.getItem("tennv") || "",
+    diadiem: localStorage.getItem("diadiem") || ""
+  };
 }
 
 function taoNoiDungMoiThamGia(rowData) {
