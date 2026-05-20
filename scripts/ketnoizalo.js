@@ -1,8 +1,7 @@
 import {
   supabase,
   getCurrentUserInfo,
-  logout,
-  checkAdmin
+  logout
 } from "./supabaseClient.js";
 
 const $ = id => document.getElementById(id);
