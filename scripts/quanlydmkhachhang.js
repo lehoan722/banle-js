@@ -90,6 +90,17 @@ const compactFields = [
   "created_at",
   "created_by_manv"
 ];
+
+const zaloFields = [
+  "tenkh",
+  "dienthoai",
+  "zalo_action",
+  "da_tham_gia_congdong",
+  "diem_hientai",
+  "created_by_manv",
+  "created_by_tennv"
+];
+
 let selectedColumnFields = [...compactFields];
 
 function formatDateTimeVN(value) {
@@ -777,6 +788,11 @@ function selectCompactColumns() {
   renderColumnCheckboxList();
 }
 
+function selectZaloColumns() {
+  selectedColumnFields = [...zaloFields];
+  renderColumnCheckboxList();
+}
+
 function toggleAllColumnsByCheckbox() {
   const checked = $("chkAllColumns").checked;
 
@@ -898,6 +914,7 @@ function bindEvents() {
   $("btnCloseColumnPopup").addEventListener("click", closeColumnPopup);
   $("btnColumnFull").addEventListener("click", selectFullColumns);
   $("btnColumnCompact").addEventListener("click", selectCompactColumns);
+  $("btnColumnZalo").addEventListener("click", selectZaloColumns);
   $("btnApplyColumns").addEventListener("click", applySelectedColumns);
   $("chkAllColumns").addEventListener("change", toggleAllColumnsByCheckbox);
   $("btnZaloMulti").addEventListener("click", openZaloMultiPopup);
