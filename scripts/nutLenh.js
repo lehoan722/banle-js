@@ -46,8 +46,25 @@ export function ganSuKienNutLenh() {
     const tennvVal = localStorage.getItem("tennv") || document.getElementById("tennv").value;
     resetTrangThaiZaloKhachHang();
 
+    const giuNguyenKhiThemMoi = [
+      "diadiem",
+      "manv",
+      "tennv",
+      "hd_state",
+
+      // Khu vực thao tác nhanh - không reset
+      "nhapnhanh",
+      "size45",
+      "bansieunhanh",
+      "quanlysizetheonhom",
+      "inNhanh",
+      "hienthihinhanh",
+      "nhapsize",
+      "quanlysizetheogia"
+    ];
+
     document.querySelectorAll("input").forEach(input => {
-      if (["diadiem", "manv", "tennv", "hd_state"].includes(input.id)) return;
+      if (giuNguyenKhiThemMoi.includes(input.id)) return;
 
       if (input.type === "checkbox") {
         input.checked = false;
