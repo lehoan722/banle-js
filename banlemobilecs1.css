@@ -327,7 +327,7 @@
     order: 2;
     width: 100% !important;
     display: grid !important;
-    grid-template-columns: 30% 36% 14% 18%;
+    grid-template-columns: 30% 30% 15% 25%;
     gap: 4px;
     padding: 4px 6px;
     background: #f7f7f7;
