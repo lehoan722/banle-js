@@ -387,6 +387,28 @@ export async function saveHoaDonSpecial(ctx) {
 
   const sohdChinh = rpcRes[0].sohd;
 
+  // ✅ ÉP CẬP NHẬT LẠI HEADER CHÍNH SAU RPC
+// Giống hoadonSale.js để đảm bảo ghi đủ khách hàng và điểm khách hàng
+const { error: errUpdateHeaderChinh } = await supabase
+  .from("hoadon_banle")
+  .update({
+    makh: getText("makh") || headerChinhKhongSo.makh || null,
+    khachhang: headerChinhKhongSo.khachhang,
+    diem_tru: headerChinhKhongSo.diem_tru,
+    tien_doi_diem: headerChinhKhongSo.tien_doi_diem,
+    thanhtoan: headerChinhKhongSo.thanhtoan,
+    tongthanhtien: headerChinhKhongSo.tongthanhtien,
+    tongkm: headerChinhKhongSo.tongkm,
+    chietkhau: headerChinhKhongSo.chietkhau
+  })
+  .eq("sohd", sohdChinh);
+
+if (errUpdateHeaderChinh) {
+  console.error("❌ Lỗi cập nhật lại header chính sau RPC:", errUpdateHeaderChinh);
+  alert("❌ Đã cấp số hóa đơn đặc biệt nhưng chưa cập nhật được thông tin khách hàng/điểm.");
+  return;
+}
+
   const loaiT = loai + "T";
   const { data: sohdT, error: sohdTErr } = await supabase.rpc("next_sohd_only", {
     p_loai: loaiT
