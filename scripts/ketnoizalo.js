@@ -1,6 +1,11 @@
 import {
-  supabase
-} from "./supabaseClient.js";
+  getSupabaseClient,
+  getCurrentUserInfo,
+  khoiTaoDangNhapDungChung,
+  dangXuatDungChung
+} from "./authModule.js";
+
+const supabase = getSupabaseClient();
 
 const $ = id => document.getElementById(id);
 
@@ -51,14 +56,6 @@ const columns = [
 
 function setStatus(msg) {
   $("status").textContent = msg;
-}
-function getCurrentUserInfo() {
-
-  return {
-    manv: localStorage.getItem("manv") || "",
-    tennv: localStorage.getItem("tennv") || "",
-    diadiem: localStorage.getItem("diadiem") || ""
-  };
 }
 
 function taoNoiDungMoiThamGia(rowData) {
@@ -183,18 +180,28 @@ async function loadData() {
 
   setStatus("Đang tải dữ liệu...");
 
-  const { data, error } = await supabase
+  const info = getCurrentUserInfo();
+  const manvDangNhap = String(info.manv || "").trim().toUpperCase();
+  const isAdmin = !!info.is_admin;
+
+  let query = supabase
     .from("dmkhachhang")
     .select(`
-      makh,
-      tenkh,
-      dienthoai,
-      diem_hientai,
-      created_by_manv,
-      created_at
-    `)
+    makh,
+    tenkh,
+    dienthoai,
+    diem_hientai,
+    created_by_manv,
+    created_at
+  `)
     .order("created_at", { ascending: false })
     .limit(3000);
+
+  if (!isAdmin) {
+    query = query.eq("created_by_manv", manvDangNhap);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     alert(error.message);
@@ -243,7 +250,17 @@ function initTable() {
     width: "100%",
     height: "100%",
 
-    stretchH: "all",
+    stretchH: window.innerWidth <= 768 ? "none" : "all",
+
+    rowHeights: window.innerWidth <= 768 ? 34 : 28,
+
+    colWidths: window.innerWidth <= 768
+      ? [95, 120, 90, 85, 90, 80]
+      : undefined,
+
+    autoColumnSize: false,
+
+    wordWrap: false,
 
     manualColumnResize: true,
 
@@ -438,9 +455,10 @@ function bindEvents() {
   $("btnCloseZaloPopup").addEventListener("click", closeZaloPopup);
 
   $("btnLogout").addEventListener("click", () => {
-    localStorage.clear();
-    sessionStorage.clear();
-    location.href = "index.html";
+    dangXuatDungChung({
+      loginContainerId: "login-container",
+      appContainerId: "app-container"
+    });
   });
 
   $("quickSearch").addEventListener("input", e => {
@@ -478,4 +496,11 @@ async function initPage() {
   await loadData();
 }
 
-initPage();
+khoiTaoDangNhapDungChung({
+  loginContainerId: "login-container",
+  appContainerId: "app-container",
+  macDinhDiaDiem: "cs1",
+  onLoginSuccess: async () => {
+    await initPage();
+  }
+});
