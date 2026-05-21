@@ -3,10 +3,10 @@
 
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Kết nối Zalo khách hàng</title>
 
-  <link rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/handsontable@14.6.1/dist/handsontable.full.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.6.1/dist/handsontable.full.min.css" />
 
   <style>
     body {
@@ -73,6 +73,51 @@
       background: #f3f4f6 !important;
       color: #555 !important;
     }
+
+    @media (max-width: 768px) {
+      #app-container {
+        padding: 6px;
+      }
+
+      .topbar {
+        padding: 8px;
+        border-radius: 6px;
+      }
+
+      .row {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+      }
+
+      input,
+      button {
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 15px;
+        padding: 9px 10px;
+      }
+
+      #quickSearch {
+        width: 100% !important;
+      }
+
+      #hot {
+        height: calc(100vh - 230px);
+        min-height: 420px;
+      }
+
+      .handsontable {
+        font-size: 13px;
+      }
+
+      .handsontable td,
+      .handsontable th {
+        height: 34px !important;
+        line-height: 30px !important;
+      }
+    }
   </style>
 </head>
 
@@ -97,14 +142,11 @@
         <label>Đến ngày:</label>
         <input type="date" id="denNgay" />
 
-        <input type="text" id="quickSearch"
-          placeholder="Tìm mã khách, tên khách, SĐT..."
-          style="width:260px;" />
+        <input type="text" id="quickSearch" placeholder="Tìm mã khách, tên khách, SĐT..." style="width:260px;" />
 
         <button id="btnLoad" class="primary">Tải dữ liệu</button>
 
-        <button id="btnZaloMulti"
-          style="background:#0068ff; color:white;">
+        <button id="btnZaloMulti" style="background:#0068ff; color:white;">
           Gửi Zalo nhiều khách
         </button>
       </div>
@@ -134,8 +176,7 @@
           <button id="btnCloseZaloPopup">Đóng</button>
         </div>
 
-        <textarea id="zaloMessageContent"
-          style="width:100%; height:140px; margin-bottom:10px;"></textarea>
+        <textarea id="zaloMessageContent" style="width:100%; height:140px; margin-bottom:10px;"></textarea>
 
         <div id="zaloCustomerList"></div>
 
