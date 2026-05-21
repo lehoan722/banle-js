@@ -1215,6 +1215,7 @@ function renderMyTask() {
     const box = document.getElementById("my-task-box");
     const btnStart = document.getElementById("btn-my-task-start");
     const btnDone = document.getElementById("btn-my-task-done");
+    const btnResume = document.getElementById("btn-my-task-resume");
 
     if (!box) return;
 
@@ -1222,6 +1223,7 @@ function renderMyTask() {
         box.innerHTML = "Chưa có công việc được giao.";
         if (btnStart) btnStart.disabled = true;
         if (btnDone) btnDone.disabled = true;
+        if (btnResume) btnResume.disabled = true;
         return;
     }
 
@@ -1241,6 +1243,13 @@ function renderMyTask() {
 
     if (btnDone) {
         btnDone.disabled = currentAssignedTask.status !== "in_progress";
+    }
+
+    if (btnResume) {
+        btnResume.disabled = !(
+            currentAssignedTask.status === "in_progress" &&
+            currentAssignedTask.paused_at
+        );
     }
 }
 
@@ -1439,6 +1448,30 @@ async function resumeCurrentTaskIfPaused() {
     renderMyTask();
 }
 
+async function resumeTaskAndSetDoing() {
+    const manv = localStorage.getItem("manv");
+    const diadiem = getDiaDiemFromPath();
+
+    await resumeCurrentTaskIfPaused();
+
+    const ok = await updateQlnvStaffStatus({
+        manv,
+        diadiem,
+        status: currentAssignedTask?.status === "in_progress" ? "doing_task" : "free",
+        lastAction: currentAssignedTask?.status === "in_progress"
+            ? "Nhân viên làm tiếp task"
+            : "Nhân viên báo rảnh"
+    });
+
+    if (ok) {
+        renderWorkStatusText(
+            currentAssignedTask?.status === "in_progress" ? "doing_task" : "free"
+        );
+    }
+
+    await loadMyCurrentTask({ manv, diadiem });
+}
+
 function attachChamCongButtons(diadiem) {
     const manv = localStorage.getItem("manv");
     if (!manv) return;
@@ -1481,6 +1514,8 @@ function attachChamCongButtons(diadiem) {
     });
 
     btnWorkCleanup?.addEventListener("click", async () => {
+        await pauseCurrentTaskIfDoing();
+
         const ok = await updateQlnvStaffStatus({
             manv,
             diadiem,
@@ -1515,6 +1550,7 @@ function attachChamCongButtons(diadiem) {
     const btnTanca = document.getElementById("btn-tanca");
     const btnMyTaskStart = document.getElementById("btn-my-task-start");
     const btnMyTaskDone = document.getElementById("btn-my-task-done");
+    const btnMyTaskResume = document.getElementById("btn-my-task-resume");
 
     btnMyTaskStart?.addEventListener("click", async () => {
         await updateMyTaskStatus("in_progress");
@@ -1522,6 +1558,10 @@ function attachChamCongButtons(diadiem) {
 
     btnMyTaskDone?.addEventListener("click", async () => {
         await updateMyTaskStatus("done");
+    });
+
+    btnMyTaskResume?.addEventListener("click", async () => {
+        await resumeTaskAndSetDoing();
     });
 
     // Hàm xử lý bấm nút chấm công, chống double-click / nhiều listener
@@ -1665,6 +1705,56 @@ function attachChamCongButtons(diadiem) {
     renderTodayLog();
 }
 
+let cleanupAutoResumeInterval = null;
+
+function startAutoResumeAfterCleanup({ manv, diadiem }) {
+    if (cleanupAutoResumeInterval) {
+        clearInterval(cleanupAutoResumeInterval);
+        cleanupAutoResumeInterval = null;
+    }
+
+    cleanupAutoResumeInterval = setInterval(async () => {
+        const sp = await ensureSupabase();
+        if (!sp || !manv) return;
+
+        const { data, error } = await sp
+            .schema("qlnv")
+            .from("staff_status")
+            .select("current_status, cleanup_until")
+            .eq("manv", String(manv).toUpperCase())
+            .eq("diadiem", diadiem)
+            .maybeSingle();
+
+        if (error || !data) return;
+
+        if (data.current_status !== "cleanup_after_sale") return;
+        if (!data.cleanup_until) return;
+
+        const cleanupUntil = new Date(data.cleanup_until).getTime();
+
+        if (Date.now() < cleanupUntil) return;
+
+        await loadMyCurrentTask({ manv, diadiem });
+
+        if (
+            currentAssignedTask &&
+            currentAssignedTask.status === "in_progress" &&
+            currentAssignedTask.paused_at
+        ) {
+            await resumeTaskAndSetDoing();
+        } else {
+            await updateQlnvStaffStatus({
+                manv,
+                diadiem,
+                status: "free",
+                lastAction: "Tự động kết thúc dọn dẹp sau bán"
+            });
+
+            renderWorkStatusText("free");
+        }
+    }, 30000);
+}
+
 // Khởi tạo sau khi đăng nhập thành công
 async function initChamCong(diadiem) {
     supabase = window.supabase;
@@ -1691,6 +1781,7 @@ async function initChamCong(diadiem) {
     attachChamCongButtons(diadiem);
     await loadMyCurrentTask({ manv, diadiem });
     setupChamCongRealtime({ manv, diadiem });
+    startAutoResumeAfterCleanup({ manv, diadiem });
 
     // Bắt đầu auto check rời khỏi cửa hàng
     startAutoCheckLeave(manv, diadiem);
