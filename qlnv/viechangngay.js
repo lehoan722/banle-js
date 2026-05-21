@@ -172,7 +172,7 @@ function cleanRows(rows) {
     return rows
       .filter(r => r.template_code || r.title)
       .map(r => ({
-        ...(r.id ? { id: Number(r.id) } : {}),
+        ...(Number(r.id) > 0 ? { id: Number(r.id) } : {}),
         template_code: String(r.template_code || "").trim().toUpperCase(),
         title: String(r.title || "").trim(),
         description: String(r.description || "").trim() || null,
@@ -190,7 +190,7 @@ function cleanRows(rows) {
   return rows
     .filter(r => r.area_code || r.area_name)
     .map(r => ({
-      ...(r.id ? { id: Number(r.id) } : {}),
+      ...(Number(r.id) > 0 ? { id: Number(r.id) } : {}),
       area_code: String(r.area_code || "").trim().toUpperCase(),
       area_name: String(r.area_name || "").trim(),
       diadiem: String(r.diadiem || "cs1").trim().toLowerCase(),
