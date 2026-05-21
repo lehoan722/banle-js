@@ -338,12 +338,12 @@ async function loadStaff(diadiem) {
 
     div.querySelector('.sale')
       ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'serving');
+        updateStaffStatus(item, 'serving_customer');
       });
 
     div.querySelector('.task')
       ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'task');
+        updateStaffStatus(item, 'doing_task');
       });
 
     div.querySelector('.break')
@@ -409,8 +409,9 @@ async function updateStaffStatus(staff, newStatus) {
 
   const statusTextMap = {
     free: 'Đang rảnh',
-    serving: 'Đang bán hàng',
-    task: 'Đang làm task',
+    serving_customer: 'Đang bán hàng',
+    doing_task: 'Đang làm task',
+    cleanup_after_sale: 'Dọn dẹp sau bán',
     break: 'Đang nghỉ',
     off: 'Đã tan ca'
   };
@@ -684,7 +685,7 @@ async function updateTaskStatus(task, newStatus) {
     let staffStatus = null;
 
     if (newStatus === 'in_progress') {
-      staffStatus = 'task';
+      staffStatus = 'doing_task';
     }
 
     if (newStatus === 'done') {
