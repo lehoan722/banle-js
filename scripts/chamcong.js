@@ -1116,9 +1116,127 @@ async function startAutoCheckLeave(manv, diadiem) {
 
 // ==== GIAO DIỆN CHẤM CÔNG =============================
 
+async function updateQlnvStaffStatus({
+    manv,
+    diadiem,
+    status,
+    lastAction = null,
+    cleanupMinutes = null
+}) {
+    const sp = await ensureSupabase();
+    if (!sp || !manv) return false;
+
+    const nowIso = new Date().toISOString();
+
+    let cleanupUntil = null;
+
+    if (cleanupMinutes) {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() + cleanupMinutes);
+        cleanupUntil = d.toISOString();
+    }
+
+    const payload = {
+        manv: String(manv || "").trim().toUpperCase(),
+        diadiem,
+        current_status: status,
+        last_action: lastAction,
+        status_started_at: nowIso,
+        cleanup_until: cleanupUntil,
+        updated_by: manv,
+        updated_at: nowIso
+    };
+
+    if (status === "free" || status === "off" || status === "break") {
+        payload.current_task_id = null;
+        payload.current_invoice = null;
+    }
+
+    const { error } = await sp
+        .schema("qlnv")
+        .from("staff_status")
+        .upsert(payload, {
+            onConflict: "manv"
+        });
+
+    if (error) {
+        console.error("Lỗi cập nhật qlnv.staff_status:", error);
+        alert("Không cập nhật được trạng thái làm việc.");
+        return false;
+    }
+
+    return true;
+}
+
+function renderWorkStatusText(status) {
+    const el = document.getElementById("work-status-text");
+    if (!el) return;
+
+    const map = {
+        free: "Đang rảnh / có thể nhận việc",
+        serving_customer: "Đang phục vụ khách",
+        cleanup_after_sale: "Đang dọn dẹp sau bán",
+        doing_task: "Đang làm task",
+        break: "Đang nghỉ",
+        off: "Đã tan ca / không nhận việc"
+    };
+
+    el.textContent = map[status] || status || "Chưa xác định";
+}
+
 function attachChamCongButtons(diadiem) {
     const manv = localStorage.getItem("manv");
     if (!manv) return;
+
+    const btnWorkFree = document.getElementById("btn-work-free");
+    const btnWorkServing = document.getElementById("btn-work-serving");
+    const btnWorkCleanup = document.getElementById("btn-work-cleanup");
+    const btnWorkOff = document.getElementById("btn-work-off");
+
+    btnWorkFree?.addEventListener("click", async () => {
+        const ok = await updateQlnvStaffStatus({
+            manv,
+            diadiem,
+            status: "free",
+            lastAction: "Nhân viên báo rảnh"
+        });
+
+        if (ok) renderWorkStatusText("free");
+    });
+
+    btnWorkServing?.addEventListener("click", async () => {
+        const ok = await updateQlnvStaffStatus({
+            manv,
+            diadiem,
+            status: "serving_customer",
+            lastAction: "Nhân viên bắt đầu phục vụ khách"
+        });
+
+        if (ok) renderWorkStatusText("serving_customer");
+    });
+
+    btnWorkCleanup?.addEventListener("click", async () => {
+        const ok = await updateQlnvStaffStatus({
+            manv,
+            diadiem,
+            status: "cleanup_after_sale",
+            lastAction: "Dọn dẹp sau bán",
+            cleanupMinutes: 10
+        });
+
+        if (ok) renderWorkStatusText("cleanup_after_sale");
+    });
+
+    btnWorkOff?.addEventListener("click", async () => {
+        const ok = await updateQlnvStaffStatus({
+            manv,
+            diadiem,
+            status: "off",
+            lastAction: "Ngừng nhận việc"
+        });
+
+        if (ok) renderWorkStatusText("off");
+    });
 
     const statusManv = document.getElementById("status-manv");
     const statusMsg = document.getElementById("status-msg");
@@ -1210,6 +1328,46 @@ function attachChamCongButtons(diadiem) {
                     statusMsg.textContent = `Đã ghi: ${su_kien} lúc ${formatTime(now)}`;
                 }
                 renderTodayLog();
+
+                if (su_kien === "VAOCA") {
+                    await updateQlnvStaffStatus({
+                        manv,
+                        diadiem,
+                        status: "free",
+                        lastAction: "Vào ca"
+                    });
+                    renderWorkStatusText("free");
+                }
+
+                if (su_kien === "NTR" || su_kien === "NCH") {
+                    await updateQlnvStaffStatus({
+                        manv,
+                        diadiem,
+                        status: "break",
+                        lastAction: labelSuKien(su_kien)
+                    });
+                    renderWorkStatusText("break");
+                }
+
+                if (su_kien === "NTRD" || su_kien === "NCHD") {
+                    await updateQlnvStaffStatus({
+                        manv,
+                        diadiem,
+                        status: "free",
+                        lastAction: labelSuKien(su_kien)
+                    });
+                    renderWorkStatusText("free");
+                }
+
+                if (su_kien === "TANCA" || su_kien === "AUTO_TANCA") {
+                    await updateQlnvStaffStatus({
+                        manv,
+                        diadiem,
+                        status: "off",
+                        lastAction: labelSuKien(su_kien)
+                    });
+                    renderWorkStatusText("off");
+                }
 
                 // Khoá nút trong 5 phút như cũ
                 disableButtonTemporarily(btn);
