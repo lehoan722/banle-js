@@ -371,6 +371,17 @@
         #diem_tru {
             background: #fffbe6;
         }
+
+        .zalo-joined-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #zalo_da_vao_nhom {
+            width: 20px !important;
+            height: 20px !important;
+        }
     </style>
 
     </script>
@@ -380,7 +391,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-    <link rel="stylesheet" href="banlemobilecs1.css">
+    <link rel="stylesheet" href="banlemobilecs2.css">
 
 </head>
 
@@ -529,6 +540,18 @@
                 📱 QR
             </button>
 
+            <button id="btnMoiZalo" style="
+    background:#0068ff;
+    color:white;
+    font-weight:bold;
+    border:none;
+    border-radius:8px;
+    padding:0 12px;
+    font-size:18px;
+">
+                💬 Zalo
+            </button>
+
             <button id="ghivitri">✏️</button>
 
             <button id="btnQrOA" type="button"
@@ -645,7 +668,16 @@
             </div>
 
             <label> <input id="khachhang" placeholder="ten khách" readonly /></label>
-            <label> <input id="diem_hientai" placeholder="Điểm KH" readonly /></label>
+            <label>
+                <input id="diem_hientai" placeholder="Điểm KH" readonly style="width:55px;" />
+            </label>
+
+            <label class="zalo-joined-label">
+
+                <input id="zalo_da_vao_nhom" type="checkbox" />
+                <span id="zalo_joined_text" style="font-size:12px;color:#666;">chưa vào</span>
+            </label>
+
             <label>Hạng KH <input id="hang_khach" readonly /></label>
             <label>Điểm dùng <input id="diem_tru" value="0" /></label>
             <label>Giảm điểm <input id="tien_doi_diem" readonly /></label>
@@ -717,11 +749,11 @@
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
+        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs2",          // cố định cơ sở 1
+            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs2", // API backend mới
+            loginApiPath: "/api/login-cs1", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
@@ -910,7 +942,15 @@
                 if (kh) {
                     setVal("diem_hientai", kh.diem_hientai ?? "");
                     setVal("hang_khach", kh.hang_khach ?? "");
+
+                    await window.napTrangThaiZaloKhach?.(hd.makh);
                 }
+            }
+
+            if (hd.makh) {
+                await window.napTrangThaiZaloKhach?.(hd.makh);
+            } else {
+                window.resetZaloJoinedUI?.();
             }
         }
 
@@ -929,7 +969,7 @@
             const path = String(location.pathname || "").toLowerCase();
 
             if (path.includes("cs2")) return "bannvcs2_";
-            return "bannvcs2_";
+            return "bannvcs1_";
         }
 
         async function napDanhSachQLMK() {
@@ -1002,6 +1042,7 @@
 
                 const nvTao = kh.created_by_manv ? "/" + kh.created_by_manv : "";
                 if (hangEl) hangEl.value = (kh.hang_khach || "THUONG") + nvTao;
+                await window.napTrangThaiZaloKhach?.(makh);
             }
 
             localStorage.setItem("pending_makh_banle", makh || "");
@@ -1110,7 +1151,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs2");       // vd: "cs2" / "cs2"
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -1365,13 +1406,166 @@
     <script type="module" src="scripts/scanner.js"></script>
 
     <script>
+
+        function taoNoiDungMoiThamGiaZalo() {
+
+            const ten =
+                document.getElementById("khachhang")?.value?.trim()
+                || "anh/chị";
+
+            const diem =
+                Number(
+                    document.getElementById("diem_hientai")?.value || 0
+                );
+
+            const tienDiem = diem * 1000;
+
+            return `Shop Hoàn Tuyết xin chào anh/chị ${ten}.
+
+Cảm ơn anh/chị đã mua hàng tại shop.
+
+Hiện anh/chị đang có ${diem} điểm,
+tương đương ${tienDiem.toLocaleString("vi-VN")}đ ưu đãi cho lần mua tiếp theo.
+
+Mời anh/chị tham gia cộng đồng khuyến mại của shop để nhận ưu đãi và tích điểm khi mua hàng:
+
+https://zalo.me/g/rz31sxl6fvcidvehzvty
+
+Shop chân thành cảm ơn!`;
+        }
+
+        async function luuLogMoiZalo() {
+
+            if (!window.supabase) return;
+
+            const makh =
+                document.getElementById("makh")?.value?.trim() || "";
+
+            if (!makh) return;
+
+            const payload = {
+
+                makh,
+
+                tenkh:
+                    document.getElementById("khachhang")?.value || "",
+
+                dienthoai: makh,
+
+                noi_dung: taoNoiDungMoiThamGiaZalo(),
+
+                nguoi_gui_manv:
+                    localStorage.getItem("manv") || "",
+
+                nguoi_gui_tennv:
+                    localStorage.getItem("tennv") || "",
+
+                nguoi_gui_diadiem:
+                    localStorage.getItem("diadiem") || "",
+
+                loai_gui: "BANLE_ZALO"
+            };
+
+            await window.supabase
+                .from("zalo_message_logs")
+                .insert(payload);
+        }
+
+        async function capNhatDaGuiLoiMoiZalo() {
+
+            if (!window.supabase) return;
+
+            const makh =
+                document.getElementById("makh")?.value?.trim() || "";
+
+            if (!makh) return;
+
+            await window.supabase
+                .from("zalo_customer_status")
+                .upsert({
+
+                    makh,
+
+                    tenkh:
+                        document.getElementById("khachhang")?.value || "",
+
+                    dienthoai: makh,
+
+                    da_gui_loi_moi: true,
+
+                    lan_gui_cuoi:
+                        new Date().toISOString(),
+
+                    updated_by_manv:
+                        localStorage.getItem("manv") || "",
+
+                    updated_by_tennv:
+                        localStorage.getItem("tennv") || "",
+
+                    updated_at:
+                        new Date().toISOString()
+
+                }, {
+                    onConflict: "makh"
+                });
+        }
+
+    </script>
+
+    <script>
         // Tự động mở QR Zalo sau khi thêm nhanh khách hàng thành công
         document.addEventListener("DOMContentLoaded", () => {
 
             const btnQR = document.getElementById("btnQRZalo");
+            const btnMoiZalo =
+                document.getElementById("btnMoiZalo");
             const popup = document.getElementById("popupQRZalo");
             const btnDong = document.getElementById("btnDongQR");
             const qrSdt = document.getElementById("qrSdtKhach");
+
+            if (btnMoiZalo) {
+
+                btnMoiZalo.addEventListener("click", async () => {
+
+                    const makh =
+                        document.getElementById("makh")
+                            ?.value?.trim() || "";
+
+                    if (!makh) {
+                        alert("Vui lòng nhập mã khách.");
+                        return;
+                    }
+
+                    const text =
+                        taoNoiDungMoiThamGiaZalo();
+
+                    try {
+
+                        await navigator.clipboard.writeText(text);
+
+                        await luuLogMoiZalo();
+
+                        await capNhatDaGuiLoiMoiZalo();
+
+                        window.open(
+                            `https://zalo.me/${makh}`,
+                            "_blank"
+                        );
+
+                        alert(
+                            "Đã copy nội dung và mở Zalo."
+                        );
+
+                    } catch (err) {
+
+                        console.error(err);
+
+                        alert(
+                            "Không copy được nội dung."
+                        );
+                    }
+                });
+            }
 
             if (btnQR) {
                 btnQR.addEventListener("click", () => {
@@ -1384,6 +1578,19 @@
                     }
 
                     qrSdt.textContent = makh;
+
+                    window.supabase
+                        ?.from("zalo_customer_status")
+                        .upsert({
+                            makh,
+                            tenkh: document.getElementById("khachhang")?.value || "",
+                            dienthoai: makh,
+                            da_gui_loi_moi: true,
+                            lan_gui_cuoi: new Date().toISOString(),
+                            updated_by_manv: localStorage.getItem("manv") || "",
+                            updated_by_tennv: localStorage.getItem("tennv") || "",
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: "makh" });
 
                     popup.style.display = "flex";
                 });
