@@ -450,6 +450,27 @@
             text-align: right;
         }
 
+        .zalo-status-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .zalo-invited-label,
+        .zalo-joined-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        #zalo_da_moi,
+        #zalo_da_vao_nhom {
+            width: 20px !important;
+            height: 20px !important;
+        }
+
         #tien_doi_diem {
             width: 90px !important;
             text-align: right;
@@ -612,6 +633,19 @@
             <input id="sohd" placeholder="Số HĐ" />
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
+
+            <button id="btnMoiZalo" type="button" style="
+    background:#0068ff;
+    color:white;
+    font-weight:bold;
+    border:none;
+    border-radius:8px;
+    padding:0 12px;
+    font-size:18px;
+">
+                💬 Zalo
+            </button>
+
             <button id="ghivitri">✏️</button>
         </div>
 
@@ -730,6 +764,19 @@
             <label>Khách hàng <input id="khachhang" readonly="" /></label>
 
             <label>Điểm KH <input id="diem_hientai" readonly /></label>
+
+            <div class="zalo-status-wrap">
+                <label class="zalo-invited-label">
+                    Mời
+                    <input id="zalo_da_moi" type="checkbox" />
+                </label>
+
+                <label class="zalo-joined-label">
+                    Vào
+                    <input id="zalo_da_vao_nhom" type="checkbox" />
+                </label>
+            </div>
+
             <label>Hạng KH <input id="hang_khach" readonly /></label>
             <label>Điểm dùng <input id="diem_tru" value="0" /></label>
             <label>Tiền giảm <input id="tien_doi_diem" readonly /></label>
@@ -883,16 +930,29 @@
             setVal("tien_doi_diem", Number(hd.tien_doi_diem || 0).toLocaleString("vi-VN"));
 
             if (hd.makh) {
-                const { data: kh } = await window.supabase
-                    .from("dmkhachhang")
-                    .select("diem_hientai, hang_khach")
-                    .eq("makh", hd.makh)
-                    .maybeSingle();
+                if (typeof window.napThongTinDiemKhach === "function") {
+                    await window.napThongTinDiemKhach(hd.makh);
+                } else {
+                    const { data: kh } = await window.supabase
+                        .from("dmkhachhang")
+                        .select("diem_hientai, hang_khach, created_by_manv")
+                        .eq("makh", hd.makh)
+                        .maybeSingle();
 
-                if (kh) {
-                    setVal("diem_hientai", kh.diem_hientai ?? "");
-                    setVal("hang_khach", kh.hang_khach ?? "");
+                    if (kh) {
+                        setVal("diem_hientai", kh.diem_hientai ?? "");
+
+                        const hangText = kh.hang_khach || "THUONG";
+                        const nvTaoText = kh.created_by_manv ? "/" + kh.created_by_manv : "";
+                        setVal("hang_khach", hangText + nvTaoText);
+                    }
                 }
+            }
+
+            if (hd.makh) {
+                await window.napTrangThaiZaloKhach?.(hd.makh);
+            } else {
+                window.resetZaloJoinedUI?.();
             }
         }
 
@@ -1669,32 +1729,14 @@
             }
 
             function openOverlay(url) {
-
-                console.log("🖨️ openOverlay URL:", url);
-
                 printedOnce = false;
+                overlay.style.display = 'block';
+                frame.src = url;
 
-                // reset iframe cũ
-                frame.src = "about:blank";
-
+                // đưa focus lên overlay để Enter không dính ô masp phía sau
                 setTimeout(() => {
-
-                    overlay.style.display = 'block';
-
-                    // chống cache iframe lỗi của Chrome
-                    const finalUrl =
-                        url + (url.includes("?") ? "&" : "?") + "_t=" + Date.now();
-
-                    console.log("🖨️ final iframe URL:", finalUrl);
-
-                    frame.src = finalUrl;
-
-                    // focus overlay
-                    setTimeout(() => {
-                        (btnPrint || btnClose || overlay).focus?.();
-                    }, 0);
-
-                }, 50);
+                    (btnPrint || btnClose || overlay).focus?.();
+                }, 0);
             }
 
             // Đóng “mềm”: chỉ ẩn overlay, giữ iframe để print không lỗi
@@ -1908,10 +1950,10 @@
                 });
             });
 
-            // Lấy cơ sở động theo input #diadiem (cs1/cs2). File bạn đang là cs1 nên sẽ ra cs1.
-            const csRaw = (document.getElementById("diadiem")?.value || "cs1").toLowerCase();
-            const cs = (csRaw.includes("2")) ? "cs2" : "cs1";
-            const page = (cs === "cs2") ? "inmavachcs2.html" : "inmavachcs1.html";
+            // Lấy cơ sở động theo input #diadiem (cs2/cs2). File bạn đang là cs2 nên sẽ ra cs2.
+            const csRaw = (document.getElementById("diadiem")?.value || "cs2").toLowerCase();
+            const cs = (csRaw.includes("2")) ? "cs2" : "cs2";
+            const page = (cs === "cs2") ? "inmavachcs2.html" : "inmavachcs2.html";
 
             const payload = { source: "banle", cs, items };
             const json = JSON.stringify(payload);
@@ -1983,6 +2025,180 @@
     <!-- Flash + Toast -->
     <div id="flashOverlay"></div>
     <div id="toastMsg"></div>
+
+    <script>
+        function taoNoiDungMoiThamGiaZalo() {
+            const ten =
+                document.getElementById("khachhang")?.value?.trim()
+                || "anh/chị";
+
+            const diem =
+                Number(document.getElementById("diem_hientai")?.value || 0);
+
+            const tienDiem = diem * 1000;
+
+            return `Shop Hoàn Tuyết xin chào anh/chị ${ten}.
+
+Cảm ơn anh/chị đã mua hàng tại shop.
+
+Hiện anh/chị đang có ${diem} điểm,
+tương đương ${tienDiem.toLocaleString("vi-VN")}đ ưu đãi cho lần mua tiếp theo.
+
+Mời anh/chị tham gia cộng đồng khuyến mại của shop để nhận ưu đãi và tích điểm khi mua hàng:
+
+https://zalo.me/g/rz31sxl6fvcidvehzvty
+
+Shop chân thành cảm ơn!`;
+        }
+
+        async function luuLogMoiZalo() {
+            if (!window.supabase) return;
+
+            const makh = document.getElementById("makh")?.value?.trim() || "";
+            if (!makh) return;
+
+            const payload = {
+                makh,
+                tenkh: document.getElementById("khachhang")?.value || "",
+                dienthoai: makh,
+                noi_dung: taoNoiDungMoiThamGiaZalo(),
+                nguoi_gui_manv: localStorage.getItem("manv") || "",
+                nguoi_gui_tennv: localStorage.getItem("tennv") || "",
+                nguoi_gui_diadiem: localStorage.getItem("diadiem") || "",
+                loai_gui: "BANLE_ZALO"
+            };
+
+            await window.supabase
+                .from("zalo_message_logs")
+                .insert(payload);
+        }
+
+        async function capNhatDaGuiLoiMoiZalo() {
+            if (!window.supabase) return;
+
+            const makh = document.getElementById("makh")?.value?.trim() || "";
+            if (!makh) return;
+
+            await window.supabase
+                .from("zalo_customer_status")
+                .upsert({
+                    makh,
+                    tenkh: document.getElementById("khachhang")?.value || "",
+                    dienthoai: makh,
+                    da_gui_loi_moi: true,
+                    lan_gui_cuoi: new Date().toISOString(),
+                    updated_by_manv: localStorage.getItem("manv") || "",
+                    updated_by_tennv: localStorage.getItem("tennv") || "",
+                    updated_at: new Date().toISOString()
+                }, {
+                    onConflict: "makh"
+                });
+        }
+
+        window.resetZaloJoinedUI = function () {
+            const cbMoi = document.getElementById("zalo_da_moi");
+            const cbVao = document.getElementById("zalo_da_vao_nhom");
+
+            if (cbMoi) cbMoi.checked = false;
+            if (cbVao) cbVao.checked = false;
+        };
+
+        window.napTrangThaiZaloKhach = async function (makh) {
+            makh = String(makh || "").trim();
+
+            if (!makh || !window.supabase) {
+                window.resetZaloJoinedUI();
+                return;
+            }
+
+            const { data, error } = await window.supabase
+                .from("zalo_customer_status")
+                .select("da_gui_loi_moi, da_tham_gia_congdong")
+                .eq("makh", makh)
+                .maybeSingle();
+
+            if (error) {
+                console.error("❌ Lỗi nạp trạng thái Zalo:", error);
+                window.resetZaloJoinedUI();
+                return;
+            }
+
+            const cbMoi = document.getElementById("zalo_da_moi");
+            const cbVao = document.getElementById("zalo_da_vao_nhom");
+
+            if (cbMoi) cbMoi.checked = !!data?.da_gui_loi_moi;
+            if (cbVao) cbVao.checked = !!data?.da_tham_gia_congdong;
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const btnMoiZalo = document.getElementById("btnMoiZalo");
+            const cbVao = document.getElementById("zalo_da_vao_nhom");
+            const makhEl = document.getElementById("makh");
+
+            btnMoiZalo?.addEventListener("click", async () => {
+                const makh = document.getElementById("makh")?.value?.trim() || "";
+
+                if (!makh) {
+                    alert("Vui lòng nhập mã khách.");
+                    return;
+                }
+
+                const text = taoNoiDungMoiThamGiaZalo();
+
+                try {
+                    await navigator.clipboard.writeText(text);
+                    await luuLogMoiZalo();
+                    await capNhatDaGuiLoiMoiZalo();
+
+                    const cbMoi = document.getElementById("zalo_da_moi");
+                    if (cbMoi) cbMoi.checked = true;
+
+                    window.open(`https://zalo.me/${makh}`, "_blank");
+
+                    alert("Đã copy nội dung và mở Zalo.");
+                } catch (err) {
+                    console.error(err);
+                    alert("Không copy được nội dung Zalo.");
+                }
+            });
+
+            cbVao?.addEventListener("change", async () => {
+                if (!window.supabase) return;
+
+                const makh = document.getElementById("makh")?.value?.trim() || "";
+
+                if (!makh) {
+                    cbVao.checked = false;
+                    alert("Vui lòng nhập mã khách trước.");
+                    return;
+                }
+
+                await window.supabase
+                    .from("zalo_customer_status")
+                    .upsert({
+                        makh,
+                        tenkh: document.getElementById("khachhang")?.value || "",
+                        dienthoai: makh,
+                        da_tham_gia_congdong: cbVao.checked,
+                        ngay_tham_gia_congdong: cbVao.checked ? new Date().toISOString() : null,
+                        updated_by_manv: localStorage.getItem("manv") || "",
+                        updated_by_tennv: localStorage.getItem("tennv") || "",
+                        updated_at: new Date().toISOString()
+                    }, {
+                        onConflict: "makh"
+                    });
+            });
+
+            makhEl?.addEventListener("change", () => {
+                const makh = makhEl.value.trim();
+                if (makh) {
+                    window.napTrangThaiZaloKhach(makh);
+                } else {
+                    window.resetZaloJoinedUI();
+                }
+            });
+        });
+    </script>
 
 
     <script type="module" src="scripts/feedback.js"></script>
