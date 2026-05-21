@@ -123,6 +123,87 @@ export function mountKhachHangSuggest(options = {}) {
     if (el) el.value = val ?? "";
   }
 
+  function setZaloJoinedUI(checked, readonly = false) {
+    const cb = getEl("zalo_da_vao_nhom");
+    const text = getEl("zalo_joined_text");
+
+    if (cb) {
+      cb.checked = !!checked;
+      cb.disabled = !!readonly;
+    }
+
+    if (text) {
+      text.textContent = checked ? "đã vào" : "chưa vào";
+      text.style.color = checked ? "#16a34a" : "#666";
+      text.style.fontWeight = checked ? "bold" : "normal";
+    }
+  }
+
+  async function napTrangThaiZaloKhach(makh) {
+    makh = String(makh || "").trim();
+
+    if (!makh || makh.toUpperCase() === "KL") {
+      setZaloJoinedUI(false, true);
+      return false;
+    }
+
+    const { data, error } = await window.supabase
+      .from("zalo_customer_status")
+      .select("makh, da_tham_gia_congdong")
+      .eq("makh", makh)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Không đọc được trạng thái Zalo:", error);
+      setZaloJoinedUI(false, false);
+      return false;
+    }
+
+    const joined = !!data?.da_tham_gia_congdong;
+    setZaloJoinedUI(joined, false);
+    return joined;
+  }
+
+  async function luuTrangThaiZaloDaVaoNhom(makh, checked) {
+    makh = String(makh || "").trim();
+
+    if (!makh || makh.toUpperCase() === "KL") {
+      alert("Chưa có mã khách hợp lệ.");
+      setZaloJoinedUI(false, true);
+      return false;
+    }
+
+    const info = {
+      manv: localStorage.getItem("manv") || "",
+      tennv: localStorage.getItem("tennv") || ""
+    };
+
+    const tenkh = getEl(tenInputId)?.value || "";
+    const payload = {
+      makh,
+      tenkh,
+      dienthoai: makh,
+      da_tham_gia_congdong: !!checked,
+      updated_by_manv: info.manv,
+      updated_by_tennv: info.tennv,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await window.supabase
+      .from("zalo_customer_status")
+      .upsert(payload, { onConflict: "makh" });
+
+    if (error) {
+      console.error("Lỗi lưu trạng thái Zalo:", error);
+      alert("Không lưu được trạng thái Zalo: " + error.message);
+      await napTrangThaiZaloKhach(makh);
+      return false;
+    }
+
+    setZaloJoinedUI(!!checked, false);
+    return true;
+  }
+
   function laKhachLe() {
     const makh = String(makhInput?.value || "").trim().toUpperCase();
     const tenkh = String(getEl(tenInputId)?.value || "").trim().toUpperCase();
@@ -255,6 +336,7 @@ export function mountKhachHangSuggest(options = {}) {
     if (tenEl) tenEl.readOnly = true;
 
     dangTaoKhachMoi = false;
+    setZaloJoinedUI(false, false);
     makhMoiTam = "";
   }
 
@@ -280,6 +362,7 @@ export function mountKhachHangSuggest(options = {}) {
     setVal(diemTruInputId, "0");
     setVal(tienDoiDiemInputId, "0");
 
+    await napTrangThaiZaloKhach(makh);
     return data;
   }
 
@@ -723,6 +806,16 @@ export function mountKhachHangSuggest(options = {}) {
   }
 
   function bindEvents() {
+    const zaloCb = getEl("zalo_da_vao_nhom");
+
+    zaloCb?.addEventListener("change", async () => {
+      const makh = chuanHoaMakhNhap(makhInput.value);
+
+      await luuTrangThaiZaloDaVaoNhom(
+        makh,
+        zaloCb.checked
+      );
+    });
     makhInput.addEventListener("input", () => {
       const maMoi = chuanHoaMakhNhap(makhInput.value);
 
@@ -972,5 +1065,6 @@ export function mountKhachHangSuggest(options = {}) {
 
   // Cho các file khác gọi lại nếu cần
   window.napThongTinDiemKhach = napThongTinDiemKhach;
+  window.napTrangThaiZaloKhach = napTrangThaiZaloKhach;
   window.timKhachHangBanLe = timKhachHang;
 }
