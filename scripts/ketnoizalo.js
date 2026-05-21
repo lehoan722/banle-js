@@ -36,13 +36,13 @@ const columns = [
 
   {
     data: "da_tham_gia_congdong",
-    title: "Đã vào nhóm",
+    title: "Đã vào",
     type: "checkbox"
   },
 
   {
     data: "diem_hientai",
-    title: "Điểm hiện tại",
+    title: "Điểm",
     type: "numeric",
     readOnly: true
   },
