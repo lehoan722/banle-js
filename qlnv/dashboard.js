@@ -117,21 +117,18 @@ function getTaskStatusClass(status) {
 }
 
 function renderTaskTimer(task) {
-
-  if (!task.started_at) {
-    return '';
-  }
-
-  const startTs =
-    new Date(task.started_at).getTime();
+  if (!task.started_at) return '';
 
   return `
     <span
       class="task-timer"
-      data-start="${startTs}"
+      data-start="${new Date(task.started_at).getTime()}"
+      data-paused-at="${task.paused_at ? new Date(task.paused_at).getTime() : ''}"
+      data-paused-seconds="${Number(task.paused_seconds || 0)}"
     >
       ⏱ 00:00:00
     </span>
+    ${task.paused_at ? '<span style="color:#ef4444;font-size:11px;font-weight:700;"> Tạm dừng</span>' : ''}
   `;
 }
 
@@ -402,6 +399,58 @@ function getWorkStateClass(state) {
   return map[state] || 'staff-muted';
 }
 
+async function pauseStaffCurrentTask(staff) {
+  if (!staff.current_task_id) return;
+
+  const { data } = await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .select('id,status,paused_at')
+    .eq('id', staff.current_task_id)
+    .maybeSingle();
+
+  if (!data) return;
+  if (data.status !== 'in_progress') return;
+  if (data.paused_at) return;
+
+  await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .update({
+      paused_at: new Date().toISOString()
+    })
+    .eq('id', staff.current_task_id);
+}
+
+async function resumeStaffCurrentTask(staff) {
+  if (!staff.current_task_id) return;
+
+  const { data } = await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .select('id,status,paused_at,paused_seconds')
+    .eq('id', staff.current_task_id)
+    .maybeSingle();
+
+  if (!data) return;
+  if (data.status !== 'in_progress') return;
+  if (!data.paused_at) return;
+
+  const addSeconds = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(data.paused_at).getTime()) / 1000)
+  );
+
+  await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .update({
+      paused_at: null,
+      paused_seconds: Number(data.paused_seconds || 0) + addSeconds
+    })
+    .eq('id', staff.current_task_id);
+}
+
 async function updateStaffStatus(staff, newStatus) {
 
   const diadiem =
@@ -424,6 +473,13 @@ async function updateStaffStatus(staff, newStatus) {
   );
 
   if (!ok) return;
+  if (newStatus === 'serving_customer') {
+    await pauseStaffCurrentTask(staff);
+  }
+
+  if (newStatus === 'doing_task') {
+    await resumeStaffCurrentTask(staff);
+  }
 
   const { error } = await supabase
     .schema('qlnv')
@@ -576,41 +632,35 @@ async function loadTasks(diadiem) {
 }
 
 function startRealtimeTaskTimers() {
-
-  const timers =
-    document.querySelectorAll('.task-timer');
+  const timers = document.querySelectorAll('.task-timer');
 
   timers.forEach(el => {
-
-    const start =
-      Number(el.dataset.start);
+    const start = Number(el.dataset.start);
+    const pausedAt = Number(el.dataset.pausedAt || 0);
+    const pausedSeconds = Number(el.dataset.pausedSeconds || 0);
 
     if (!start) return;
 
     function update() {
+      const now = pausedAt || Date.now();
 
-      const diff =
-        Math.floor((Date.now() - start) / 1000);
+      const diff = Math.max(
+        0,
+        Math.floor((now - start) / 1000) - pausedSeconds
+      );
 
-      const h =
-        String(Math.floor(diff / 3600))
-          .padStart(2, '0');
+      const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+      const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+      const s = String(diff % 60).padStart(2, '0');
 
-      const m =
-        String(Math.floor((diff % 3600) / 60))
-          .padStart(2, '0');
-
-      const s =
-        String(diff % 60)
-          .padStart(2, '0');
-
-      el.innerHTML =
-        `⏱ ${h}:${m}:${s}`;
+      el.innerHTML = `⏱ ${h}:${m}:${s}`;
     }
 
     update();
 
-    setInterval(update, 1000);
+    if (!pausedAt) {
+      setInterval(update, 1000);
+    }
   });
 }
 
@@ -631,6 +681,15 @@ async function updateTaskStatus(task, newStatus) {
 
   if (!ok) return;
 
+  let finalPausedSeconds = Number(task.paused_seconds || 0);
+
+  if (newStatus === 'done' && task.paused_at) {
+    finalPausedSeconds += Math.max(
+      0,
+      Math.floor((Date.now() - new Date(task.paused_at).getTime()) / 1000)
+    );
+  }
+
   const updateData = {
     status: newStatus
   };
@@ -648,9 +707,9 @@ async function updateTaskStatus(task, newStatus) {
   }
 
   if (newStatus === 'done') {
-
-    updateData.completed_at =
-      new Date().toISOString();
+    updateData.completed_at = new Date().toISOString();
+    updateData.paused_at = null;
+    updateData.paused_seconds = finalPausedSeconds;
   }
 
   /*
