@@ -1082,5 +1082,7 @@ export function mountKhachHangSuggest(options = {}) {
   // Cho các file khác gọi lại nếu cần
   window.napThongTinDiemKhach = napThongTinDiemKhach;
   window.napTrangThaiZaloKhach = napTrangThaiZaloKhach;
+  window.resetZaloJoinedUI = resetZaloJoinedUI;
+  window.capNhatZaloTheoMakhHienTai = capNhatZaloTheoMakhHienTai;
   window.timKhachHangBanLe = timKhachHang;
 }
