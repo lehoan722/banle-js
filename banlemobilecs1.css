@@ -399,23 +399,39 @@
 
   /* ===== Ô trạng thái Zalo ===== */
 
-  .zalo-joined-label {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
+  .zalo-status-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
-    font-size: 12px !important;
+.zalo-invited-label,
+.zalo-joined-label {
 
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
 
-    height: 26px;
-    padding: 0 4px;
+  font-size: 11px !important;
 
-    box-sizing: border-box;
-  }
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+
+  height: 26px;
+  padding: 0 4px;
+
+  box-sizing: border-box;
+}
+
+#zalo_da_moi,
+#zalo_da_vao_nhom {
+
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0;
+}
 
   #zalo_da_vao_nhom {
     width: 18px !important;
