@@ -327,7 +327,7 @@
     order: 2;
     width: 100% !important;
     display: grid !important;
-    grid-template-columns: 34% 34% 28%;
+    grid-template-columns: 30% 36% 14% 18%;
     gap: 4px;
     padding: 4px 6px;
     background: #f7f7f7;
@@ -383,17 +383,49 @@
   }
 
   /* Chỉ giữ: mã khách, tên khách, điểm khách */
+  /* Ẩn các ô không cần trên mobile */
+
   .khach-footer-info label:has(#hang_khach),
   .khach-footer-info label:has(#diem_tru),
   .khach-footer-info label:has(#tien_doi_diem) {
     display: none !important;
   }
 
-  /* Nếu iPhone Safari không hỗ trợ :has thì ẩn theo thứ tự label */
-  .khach-footer-info label:nth-of-type(3),
-  .khach-footer-info label:nth-of-type(4),
-  .khach-footer-info label:nth-of-type(5) {
+  /* Safari fallback */
+
+  .khach-footer-info label.hide-mobile {
     display: none !important;
+  }
+
+  /* ===== Ô trạng thái Zalo ===== */
+
+  .zalo-joined-label {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    font-size: 12px !important;
+
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+
+    height: 26px;
+    padding: 0 4px;
+
+    box-sizing: border-box;
+  }
+
+  #zalo_da_vao_nhom {
+    width: 18px !important;
+    height: 18px !important;
+    margin: 0;
+  }
+
+  #zalo_joined_text {
+    font-size: 11px !important;
+    white-space: nowrap;
   }
 
   /* Popup gợi ý khách mở phía dưới ô mã khách, không làm vỡ ngang */
