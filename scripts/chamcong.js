@@ -5,6 +5,8 @@ import { khoiTaoDangNhapDungChung } from './authModule.js';
 
 // Supabase client sẽ được gán vào window.supabase sau khi đăng nhập
 let supabase = null;
+let currentAssignedTask = null;
+let qlnvChamCongChannel = null;
 
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.5525047, lng: 105.8423559 };
@@ -1184,6 +1186,151 @@ function renderWorkStatusText(status) {
     el.textContent = map[status] || status || "Chưa xác định";
 }
 
+async function loadMyCurrentTask({ manv, diadiem }) {
+    const sp = await ensureSupabase();
+    if (!sp || !manv) return;
+
+    const { data, error } = await sp
+        .schema("qlnv")
+        .from("tasks")
+        .select("*")
+        .eq("diadiem", diadiem)
+        .eq("assigned_to", String(manv).toUpperCase())
+        .in("status", ["pending", "in_progress"])
+        .order("priority", { ascending: true })
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        console.error("Lỗi load task nhân viên:", error);
+        return;
+    }
+
+    currentAssignedTask = data || null;
+    renderMyTask();
+}
+
+function renderMyTask() {
+    const box = document.getElementById("my-task-box");
+    const btnStart = document.getElementById("btn-my-task-start");
+    const btnDone = document.getElementById("btn-my-task-done");
+
+    if (!box) return;
+
+    if (!currentAssignedTask) {
+        box.innerHTML = "Chưa có công việc được giao.";
+        if (btnStart) btnStart.disabled = true;
+        if (btnDone) btnDone.disabled = true;
+        return;
+    }
+
+    box.innerHTML = `
+        <b>${currentAssignedTask.title || ""}</b><br>
+        ${currentAssignedTask.description || ""}<br>
+        Trạng thái: <b>${currentAssignedTask.status}</b>
+    `;
+
+    if (btnStart) {
+        btnStart.disabled = currentAssignedTask.status !== "pending";
+    }
+
+    if (btnDone) {
+        btnDone.disabled = currentAssignedTask.status !== "in_progress";
+    }
+}
+
+async function updateMyTaskStatus(newStatus) {
+    const sp = await ensureSupabase();
+    if (!sp || !currentAssignedTask) return;
+
+    const manv = localStorage.getItem("manv");
+    const diadiem = getDiaDiemFromPath();
+
+    const updateData = {
+        status: newStatus
+    };
+
+    if (newStatus === "in_progress") {
+        updateData.started_at = new Date().toISOString();
+    }
+
+    if (newStatus === "done") {
+        updateData.completed_at = new Date().toISOString();
+    }
+
+    const { error } = await sp
+        .schema("qlnv")
+        .from("tasks")
+        .update(updateData)
+        .eq("id", currentAssignedTask.id);
+
+    if (error) {
+        console.error("Lỗi cập nhật task:", error);
+        alert("Không cập nhật được công việc.");
+        return;
+    }
+
+    if (newStatus === "in_progress") {
+        await updateQlnvStaffStatus({
+            manv,
+            diadiem,
+            status: "doing_task",
+            lastAction: "Nhân viên bắt đầu task"
+        });
+        renderWorkStatusText("doing_task");
+    }
+
+    if (newStatus === "done") {
+        await updateQlnvStaffStatus({
+            manv,
+            diadiem,
+            status: "free",
+            lastAction: "Nhân viên hoàn thành task"
+        });
+        renderWorkStatusText("free");
+    }
+
+    await loadMyCurrentTask({ manv, diadiem });
+}
+
+function setupChamCongRealtime({ manv, diadiem }) {
+    if (!supabase || !manv) return;
+
+    if (qlnvChamCongChannel) {
+        supabase.removeChannel(qlnvChamCongChannel);
+        qlnvChamCongChannel = null;
+    }
+
+    qlnvChamCongChannel = supabase
+        .channel(`qlnv-chamcong-${diadiem}-${manv}`)
+        .on(
+            "postgres_changes",
+            {
+                event: "*",
+                schema: "qlnv",
+                table: "tasks",
+                filter: `assigned_to=eq.${String(manv).toUpperCase()}`
+            },
+            async () => {
+                await loadMyCurrentTask({ manv, diadiem });
+            }
+        )
+        .on(
+            "postgres_changes",
+            {
+                event: "*",
+                schema: "qlnv",
+                table: "staff_status",
+                filter: `manv=eq.${String(manv).toUpperCase()}`
+            },
+            async () => {
+                await loadMyCurrentTask({ manv, diadiem });
+            }
+        )
+        .subscribe();
+}
+
 function attachChamCongButtons(diadiem) {
     const manv = localStorage.getItem("manv");
     if (!manv) return;
@@ -1248,6 +1395,16 @@ function attachChamCongButtons(diadiem) {
     const btnNch = document.getElementById("btn-nch");
     const btnNchd = document.getElementById("btn-nchd");
     const btnTanca = document.getElementById("btn-tanca");
+    const btnMyTaskStart = document.getElementById("btn-my-task-start");
+    const btnMyTaskDone = document.getElementById("btn-my-task-done");
+
+    btnMyTaskStart?.addEventListener("click", async () => {
+        await updateMyTaskStatus("in_progress");
+    });
+
+    btnMyTaskDone?.addEventListener("click", async () => {
+        await updateMyTaskStatus("done");
+    });
 
     // Hàm xử lý bấm nút chấm công, chống double-click / nhiều listener
     // Hàm xử lý bấm nút chấm công, chống double-click / nhiều listener
@@ -1414,6 +1571,8 @@ async function initChamCong(diadiem) {
     // Tải log hôm nay và hiển thị
     todayEvents = await loadTodayEvents(manv, diadiem);
     attachChamCongButtons(diadiem);
+    await loadMyCurrentTask({ manv, diadiem });
+    setupChamCongRealtime({ manv, diadiem });
 
     // Bắt đầu auto check rời khỏi cửa hàng
     startAutoCheckLeave(manv, diadiem);
