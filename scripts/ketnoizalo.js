@@ -35,8 +35,14 @@ const columns = [
   },
 
   {
+    data: "da_gui_loi_moi",
+    title: "Đã mời",
+    type: "checkbox"
+  },
+
+  {
     data: "da_tham_gia_congdong",
-    title: "Đã vào",
+    title: "Đã vào nhóm",
     type: "checkbox"
   },
 
@@ -112,6 +118,10 @@ function zaloActionRenderer(instance, td, row) {
     });
 
     window.open(`https://zalo.me/${phone}`, "_blank");
+
+    rowData.da_gui_loi_moi = true;
+
+    hot.render();
 
     setStatus(`Đã copy nội dung và mở Zalo cho ${rowData.tenkh}`);
   };
@@ -214,7 +224,11 @@ async function loadData() {
 
   const { data: zaloStatus } = await supabase
     .from("zalo_customer_status")
-    .select("makh, da_tham_gia_congdong")
+    .select(`
+  makh,
+  da_tham_gia_congdong,
+  da_gui_loi_moi
+`)
     .in("makh", makhs);
 
   const statusMap = new Map(
@@ -223,7 +237,12 @@ async function loadData() {
 
   rawData = rawData.map(row => ({
     ...row,
-    da_tham_gia_congdong: !!statusMap.get(row.makh)?.da_tham_gia_congdong
+
+    da_tham_gia_congdong:
+      !!statusMap.get(row.makh)?.da_tham_gia_congdong,
+
+    da_gui_loi_moi:
+      !!statusMap.get(row.makh)?.da_gui_loi_moi
   }));
 
   rawData = rawData.filter(r => !r.da_tham_gia_congdong);
@@ -250,7 +269,23 @@ function initTable() {
     width: "100%",
     height: "100%",
 
-    stretchH: window.innerWidth <= 768 ? "none" : "all",
+    stretchH: "none",
+
+    autoColumnSize: {
+      samplingRatio: 20
+    },
+
+    wordWrap: true,
+    colWidths(index) {
+
+      const title =
+        columns[index]?.title || "";
+
+      return Math.max(
+        title.length * 11,
+        90
+      );
+    },
 
     rowHeights: window.innerWidth <= 768 ? 34 : 28,
 
@@ -288,6 +323,15 @@ function initTable() {
       const cellProperties = {};
 
       const prop = columns[col]?.data;
+      const rowData = hot?.getSourceDataAtRow(row);
+
+      if (rowData?.da_tham_gia_congdong) {
+
+        cellProperties.readOnly = true;
+
+        cellProperties.className =
+          "zalo-completed-row";
+      }
 
       if (prop !== "da_tham_gia_congdong") {
         cellProperties.readOnly = true;
@@ -315,11 +359,13 @@ function initTable() {
 
         if (ok) {
 
-          rawData = rawData.filter(r => r.makh !== row.makh);
+          row.da_tham_gia_congdong = !!newValue;
 
-          hot.loadData(rawData);
+          hot.render();
 
-          setStatus(`${row.tenkh} đã được đánh dấu đã tham gia nhóm Zalo.`);
+          setStatus(
+            `${row.tenkh} đã được đánh dấu đã tham gia nhóm Zalo.`
+          );
         }
       });
     }
