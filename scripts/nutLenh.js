@@ -9,6 +9,27 @@ import { luuHoaDonQuaAPI } from './luuhoadon.js';
 import { capNhatThongTinTong } from './utils.js';
 import { napLaiChiTietHoaDon } from './hoadon.js';
 
+function resetTrangThaiZaloKhachHang() {
+  if (typeof window.resetZaloJoinedUI === "function") {
+    window.resetZaloJoinedUI();
+    return;
+  }
+
+  const zaloCb = document.getElementById("zalo_da_vao_nhom");
+  const zaloText = document.getElementById("zalo_joined_text");
+
+  if (zaloCb) {
+    zaloCb.checked = false;
+    zaloCb.disabled = true;
+  }
+
+  if (zaloText) {
+    zaloText.textContent = "chưa vào";
+    zaloText.style.color = "#666";
+    zaloText.style.fontWeight = "normal";
+  }
+}
+
 function formatTimeHHMM(dateInput) {
   const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
   if (Number.isNaN(d.getTime())) return "";
@@ -23,12 +44,20 @@ export function ganSuKienNutLenh() {
     const diadiemVal = localStorage.getItem("diadiem") || document.getElementById("diadiem").value;
     const manvVal = localStorage.getItem("manv") || document.getElementById("manv").value;
     const tennvVal = localStorage.getItem("tennv") || document.getElementById("tennv").value;
-
+    resetTrangThaiZaloKhachHang();
 
     document.querySelectorAll("input").forEach(input => {
-      // ✅ Giữ lại cả ô trạng thái hóa đơn
-      if (!["diadiem", "manv", "tennv", "hd_state"].includes(input.id)) input.value = "";
+      if (["diadiem", "manv", "tennv", "hd_state"].includes(input.id)) return;
+
+      if (input.type === "checkbox") {
+        input.checked = false;
+        return;
+      }
+
+      input.value = "";
     });
+
+    resetTrangThaiZaloKhachHang();
 
     // ✅ Bắt đầu hóa đơn mới => set trạng thái "moi"
     const st = document.getElementById("hd_state");
