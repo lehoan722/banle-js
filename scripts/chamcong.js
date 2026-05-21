@@ -1226,10 +1226,14 @@ function renderMyTask() {
     }
 
     box.innerHTML = `
-        <b>${currentAssignedTask.title || ""}</b><br>
-        ${currentAssignedTask.description || ""}<br>
-        Trạng thái: <b>${currentAssignedTask.status}</b>
-    `;
+    <b>${currentAssignedTask.title || ""}</b><br>
+    ${currentAssignedTask.description || ""}<br>
+    Trạng thái: <b>${currentAssignedTask.status}</b><br>
+    Thời gian làm: <b id="my-task-timer">00:00:00</b>
+    ${currentAssignedTask.paused_at ? "<br><b style='color:#e53935'>Đang tạm dừng vì phục vụ khách</b>" : ""}
+`;
+
+    startMyTaskTimer();
 
     if (btnStart) {
         btnStart.disabled = currentAssignedTask.status !== "pending";
@@ -1240,12 +1244,59 @@ function renderMyTask() {
     }
 }
 
+let myTaskTimerInterval = null;
+
+function startMyTaskTimer() {
+    const el = document.getElementById("my-task-timer");
+    if (!el || !currentAssignedTask?.started_at) return;
+
+    if (myTaskTimerInterval) {
+        clearInterval(myTaskTimerInterval);
+        myTaskTimerInterval = null;
+    }
+
+    function update() {
+        const startedAt = new Date(currentAssignedTask.started_at).getTime();
+        const pausedSeconds = Number(currentAssignedTask.paused_seconds || 0);
+
+        let now = Date.now();
+
+        if (currentAssignedTask.paused_at) {
+            now = new Date(currentAssignedTask.paused_at).getTime();
+        }
+
+        const diff = Math.max(
+            0,
+            Math.floor((now - startedAt) / 1000) - pausedSeconds
+        );
+
+        const h = String(Math.floor(diff / 3600)).padStart(2, "0");
+        const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+        const s = String(diff % 60).padStart(2, "0");
+
+        el.textContent = `${h}:${m}:${s}`;
+    }
+
+    update();
+
+    if (!currentAssignedTask.paused_at) {
+        myTaskTimerInterval = setInterval(update, 1000);
+    }
+}
+
 async function updateMyTaskStatus(newStatus) {
     const sp = await ensureSupabase();
     if (!sp || !currentAssignedTask) return;
 
     const manv = localStorage.getItem("manv");
     const diadiem = getDiaDiemFromPath();
+
+    let finalPausedSeconds = Number(currentAssignedTask.paused_seconds || 0);
+
+    if (newStatus === "done" && currentAssignedTask.paused_at) {
+        const pausedAt = new Date(currentAssignedTask.paused_at).getTime();
+        finalPausedSeconds += Math.max(0, Math.floor((Date.now() - pausedAt) / 1000));
+    }
 
     const updateData = {
         status: newStatus
@@ -1257,6 +1308,8 @@ async function updateMyTaskStatus(newStatus) {
 
     if (newStatus === "done") {
         updateData.completed_at = new Date().toISOString();
+        updateData.paused_at = null;
+        updateData.paused_seconds = finalPausedSeconds;
     }
 
     const { error } = await sp
@@ -1331,6 +1384,61 @@ function setupChamCongRealtime({ manv, diadiem }) {
         .subscribe();
 }
 
+async function pauseCurrentTaskIfDoing() {
+    const sp = await ensureSupabase();
+    if (!sp || !currentAssignedTask) return;
+
+    if (currentAssignedTask.status !== "in_progress") return;
+    if (currentAssignedTask.paused_at) return;
+
+    const { error } = await sp
+        .schema("qlnv")
+        .from("tasks")
+        .update({
+            paused_at: new Date().toISOString()
+        })
+        .eq("id", currentAssignedTask.id);
+
+    if (error) {
+        console.error("Lỗi tạm dừng task:", error);
+        return;
+    }
+
+    currentAssignedTask.paused_at = new Date().toISOString();
+    renderMyTask();
+}
+
+async function resumeCurrentTaskIfPaused() {
+    const sp = await ensureSupabase();
+    if (!sp || !currentAssignedTask) return;
+
+    if (currentAssignedTask.status !== "in_progress") return;
+    if (!currentAssignedTask.paused_at) return;
+
+    const pausedAt = new Date(currentAssignedTask.paused_at).getTime();
+    const addSeconds = Math.max(0, Math.floor((Date.now() - pausedAt) / 1000));
+
+    const oldPausedSeconds = Number(currentAssignedTask.paused_seconds || 0);
+
+    const { error } = await sp
+        .schema("qlnv")
+        .from("tasks")
+        .update({
+            paused_at: null,
+            paused_seconds: oldPausedSeconds + addSeconds
+        })
+        .eq("id", currentAssignedTask.id);
+
+    if (error) {
+        console.error("Lỗi tiếp tục task:", error);
+        return;
+    }
+
+    currentAssignedTask.paused_at = null;
+    currentAssignedTask.paused_seconds = oldPausedSeconds + addSeconds;
+    renderMyTask();
+}
+
 function attachChamCongButtons(diadiem) {
     const manv = localStorage.getItem("manv");
     if (!manv) return;
@@ -1341,17 +1449,27 @@ function attachChamCongButtons(diadiem) {
     const btnWorkOff = document.getElementById("btn-work-off");
 
     btnWorkFree?.addEventListener("click", async () => {
+        await resumeCurrentTaskIfPaused();
+
         const ok = await updateQlnvStaffStatus({
             manv,
             diadiem,
-            status: "free",
-            lastAction: "Nhân viên báo rảnh"
+            status: currentAssignedTask?.status === "in_progress" ? "doing_task" : "free",
+            lastAction: currentAssignedTask?.status === "in_progress"
+                ? "Nhân viên quay lại làm task"
+                : "Nhân viên báo rảnh"
         });
 
-        if (ok) renderWorkStatusText("free");
+        if (ok) {
+            renderWorkStatusText(
+                currentAssignedTask?.status === "in_progress" ? "doing_task" : "free"
+            );
+        }
     });
 
     btnWorkServing?.addEventListener("click", async () => {
+        await pauseCurrentTaskIfDoing();
+
         const ok = await updateQlnvStaffStatus({
             manv,
             diadiem,
