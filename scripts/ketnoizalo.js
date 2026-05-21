@@ -333,7 +333,10 @@ function initTable() {
           "zalo-completed-row";
       }
 
-      if (prop !== "da_tham_gia_congdong") {
+      if (
+        prop !== "da_gui_loi_moi" &&
+        prop !== "da_tham_gia_congdong"
+      ) {
         cellProperties.readOnly = true;
         cellProperties.className = "readonly-cell";
       }
@@ -347,15 +350,27 @@ function initTable() {
 
       changes.forEach(async ([rowIndex, prop, oldValue, newValue]) => {
 
-        if (prop !== "da_tham_gia_congdong") return;
+        if (
+          prop !== "da_gui_loi_moi" &&
+          prop !== "da_tham_gia_congdong"
+        ) return;
 
         if (oldValue === newValue) return;
 
         const row = hot.getSourceDataAtRow(rowIndex);
 
-        const ok = await saveZaloStatus(row, {
-          da_tham_gia_congdong: !!newValue
-        });
+        const patch = {};
+
+        if (prop === "da_gui_loi_moi") {
+          patch.da_gui_loi_moi = !!newValue;
+          patch.lan_gui_cuoi = new Date().toISOString();
+        }
+
+        if (prop === "da_tham_gia_congdong") {
+          patch.da_tham_gia_congdong = !!newValue;
+        }
+
+        const ok = await saveZaloStatus(row, patch);
 
         if (ok) {
 
