@@ -391,7 +391,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-    <link rel="stylesheet" href="banlemobilecs2.css">
+    <link rel="stylesheet" href="banlemobilecs1.css">
 
 </head>
 
@@ -749,11 +749,11 @@
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
+        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
+            macDinhDiaDiem: "cs2",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs1", // API backend mới
+            loginApiPath: "/api/login-cs2", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
@@ -969,7 +969,7 @@
             const path = String(location.pathname || "").toLowerCase();
 
             if (path.includes("cs2")) return "bannvcs2_";
-            return "bannvcs1_";
+            return "bannvcs2_";
         }
 
         async function napDanhSachQLMK() {
@@ -1151,7 +1151,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
+        const cs = (localStorage.diadiem || "cs2");       // vd: "cs2" / "cs2"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -1169,7 +1169,7 @@
     </script>
 
     <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+        import { saveBanLe111 } from "./scripts/services/banlemtcs211SaveEntry.js";
 
         setTimeout(function () {
             window.LUU_HOADON_F2 = async () => {
