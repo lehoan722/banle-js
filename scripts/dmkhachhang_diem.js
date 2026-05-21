@@ -139,8 +139,21 @@ export function mountKhachHangSuggest(options = {}) {
     }
   }
 
+  function setZaloInvitedUI(checked, readonly = false) {
+
+    const cb = getEl("zalo_da_moi");
+
+    if (cb) {
+      cb.checked = !!checked;
+      cb.disabled = !!readonly;
+    }
+  }
+
   function resetZaloJoinedUI() {
+
     setZaloJoinedUI(false, true);
+
+    setZaloInvitedUI(false, true);
   }
 
   async function capNhatZaloTheoMakhHienTai() {
@@ -164,7 +177,11 @@ export function mountKhachHangSuggest(options = {}) {
 
     const { data, error } = await window.supabase
       .from("zalo_customer_status")
-      .select("makh, da_tham_gia_congdong")
+      .select(`
+  makh,
+  da_tham_gia_congdong,
+  da_gui_loi_moi
+`)
       .eq("makh", makh)
       .maybeSingle();
 
@@ -175,7 +192,10 @@ export function mountKhachHangSuggest(options = {}) {
     }
 
     const joined = !!data?.da_tham_gia_congdong;
+    const invited = !!data?.da_gui_loi_moi;
     setZaloJoinedUI(joined, false);
+
+    setZaloInvitedUI(invited, false);
     return joined;
   }
 
@@ -822,6 +842,65 @@ export function mountKhachHangSuggest(options = {}) {
 
   function bindEvents() {
     const zaloCb = getEl("zalo_da_vao_nhom");
+    const zaloMoiCb = getEl("zalo_da_moi");
+
+    zaloMoiCb?.addEventListener("change", async () => {
+
+      const makh =
+        chuanHoaMakhNhap(makhInput.value);
+
+      if (!makh || makh === "KL") {
+        alert("Chưa có mã khách.");
+        return;
+      }
+
+      const payload = {
+
+        makh,
+
+        tenkh:
+          getEl(tenInputId)?.value || "",
+
+        dienthoai: makh,
+
+        da_gui_loi_moi:
+          zaloMoiCb.checked,
+
+        updated_by_manv:
+          localStorage.getItem("manv") || "",
+
+        updated_by_tennv:
+          localStorage.getItem("tennv") || "",
+
+        updated_at:
+          new Date().toISOString()
+      };
+
+      const { error } =
+        await window.supabase
+          .from("zalo_customer_status")
+          .upsert(payload, {
+            onConflict: "makh"
+          });
+
+      if (error) {
+
+        console.error(error);
+
+        alert(
+          "Không lưu được trạng thái đã mời."
+        );
+
+        await napTrangThaiZaloKhach(makh);
+
+        return;
+      }
+
+      setZaloInvitedUI(
+        zaloMoiCb.checked,
+        false
+      );
+    });
 
     zaloCb?.addEventListener("change", async () => {
       const makh = chuanHoaMakhNhap(makhInput.value);
