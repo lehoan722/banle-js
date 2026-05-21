@@ -64,6 +64,20 @@ function setStatus(msg) {
   $("status").textContent = msg;
 }
 
+async function copyMakhToClipboard(rowData) {
+  const makh = String(rowData?.makh || "").trim();
+
+  if (!makh) return;
+
+  try {
+    await navigator.clipboard.writeText(makh);
+    setStatus(`Đã copy mã khách: ${makh}`);
+  } catch (err) {
+    console.error("Không copy được mã khách:", err);
+    setStatus(`Đã chọn mã khách: ${makh}`);
+  }
+}
+
 function taoNoiDungMoiThamGia(rowData) {
 
   const ten = rowData.tenkh || "anh/chị";
@@ -208,9 +222,8 @@ async function loadData() {
     .limit(3000);
 
   if (!isAdmin) {
-    query = query.eq("created_by_manv", manvDangNhap);
+    query = query.ilike("created_by_manv", manvDangNhap);
   }
-
   const { data, error } = await query;
 
   if (error) {
@@ -315,6 +328,11 @@ function initTable() {
         if (row?.makh) {
           selectedMakhs.push(row.makh);
         }
+      }
+
+      if (start === end) {
+        const row = hot.getSourceDataAtRow(start);
+        copyMakhToClipboard(row);
       }
     },
 
