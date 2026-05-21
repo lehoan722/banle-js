@@ -139,6 +139,21 @@ export function mountKhachHangSuggest(options = {}) {
     }
   }
 
+  function resetZaloJoinedUI() {
+    setZaloJoinedUI(false, true);
+  }
+
+  async function capNhatZaloTheoMakhHienTai() {
+    const makh = chuanHoaMakhNhap(makhInput.value);
+
+    if (!makh || makh === "KL") {
+      resetZaloJoinedUI();
+      return false;
+    }
+
+    return await napTrangThaiZaloKhach(makh);
+  }
+
   async function napTrangThaiZaloKhach(makh) {
     makh = String(makh || "").trim();
 
@@ -336,7 +351,7 @@ export function mountKhachHangSuggest(options = {}) {
     if (tenEl) tenEl.readOnly = true;
 
     dangTaoKhachMoi = false;
-    setZaloJoinedUI(false, false);
+    resetZaloJoinedUI();
     makhMoiTam = "";
   }
 
@@ -928,6 +943,7 @@ export function mountKhachHangSuggest(options = {}) {
           localStorage.setItem("pending_tenkh_banle", kh.tenkh || "");
 
           await napThongTinDiemKhach(kh.makh);
+          await napTrangThaiZaloKhach(kh.makh);
           capNhatTrangThaiDiemTheoKhach();
 
           if (typeof window.kiemTraCanhBaoMuaNhieuKhachHang === "function") {
