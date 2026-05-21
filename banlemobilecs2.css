@@ -1,510 +1,463 @@
-:root{
-  --bg:#f3f5f8;
-  --card:#ffffff;
-  --border:#dde3ea;
-  --text:#182230;
-  --muted:#6b7280;
-  --primary:#ff7a00;
-  --primary-dark:#e86e00;
-  --soft:#eef2f6;
-  --danger:#c62828;
-  --shadow:0 8px 24px rgba(0,0,0,.06);
-  --radius:16px;
-}
+/* ===== Bản mobile cho banlemtcs1.html ===== */
+@media (max-width: 480px) {
 
-html, body {
-  background: var(--bg);
-}
-
-body {
-  font-family: Arial, sans-serif;
-  color: var(--text);
-}
-
-.mobile-hidden-dom{
-  display:none !important;
-}
-
-.menu-bar{
-  position: sticky;
-  top: 0;
-  z-index: 1100;
-  background: linear-gradient(180deg,#ff8a1f 0%, #ff7a00 100%) !important;
-  padding: 8px 10px !important;
-  gap: 0 !important;
-  box-shadow: 0 2px 10px rgba(0,0,0,.08);
-}
-
-#app-menu,
-.menu-item{
-  display:none !important;
-}
-
-.tennv{
-  display:flex !important;
-  flex-direction:column;
-  width:100%;
-  gap:6px;
-  background:transparent !important;
-  padding:0 !important;
-}
-
-.mobile-pos-app{
-  min-height:100dvh;
-  padding:10px 10px 96px;
-  box-sizing:border-box;
-}
-
-.mobile-topbar,
-.mobile-entry-card,
-.mobile-list-card,
-.mobile-payment-card,
-.mobile-extra-card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  margin-bottom:10px;
-}
-
-.mobile-topbar{
-  padding:10px;
-}
-
-.mobile-topbar-row{
-  display:flex;
-  gap:8px;
-  margin-bottom:8px;
-}
-
-.mobile-topbar-row:last-child{
-  margin-bottom:0;
-}
-
-.mobile-badge{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  background:var(--soft);
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:8px 10px;
-  min-width:0;
-  flex:1;
-}
-
-.mobile-badge-state{
-  flex:0 0 92px;
-}
-
-.mobile-label{
-  font-size:12px;
-  color:var(--muted);
-  white-space:nowrap;
-}
-
-.mobile-badge input,
-.mobile-topbar input,
-.mobile-topbar button{
-  border:none;
-  background:transparent;
-  outline:none;
-  min-width:0;
-  width:100%;
-  font-size:14px;
-  font-weight:700;
-  color:var(--text);
-}
-
-.mobile-tennv{
-  flex:1;
-  background:var(--soft) !important;
-  border:1px solid var(--border) !important;
-  border-radius:12px;
-  padding:10px 12px !important;
-}
-
-#ngay, #gio{
-  flex:0 0 auto;
-  width:auto !important;
-  min-width:0;
-  background:var(--soft) !important;
-  border:1px solid var(--border) !important;
-  border-radius:12px;
-  padding:10px 12px !important;
-}
-
-.mobile-icon-btn{
-  width:44px !important;
-  flex:0 0 44px;
-  border:1px solid var(--border) !important;
-  background:var(--soft) !important;
-  border-radius:12px !important;
-  font-size:18px !important;
-}
-
-.mobile-entry-card{
-  padding:12px;
-}
-
-.mobile-card-title{
-  font-size:18px;
-  font-weight:700;
-  margin-bottom:10px;
-}
-
-.mobile-card-title-flex{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:8px;
-}
-
-.mobile-note{
-  font-size:12px;
-  color:var(--muted);
-}
-
-.mobile-input-main,
-#masp{
-  width:100% !important;
-  min-height:50px;
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:0 14px !important;
-  font-size:18px !important;
-  box-sizing:border-box;
-  background:#fff;
-}
-
-.mobile-entry-grid{
-  display:grid;
-  grid-template-columns: 70px 90px 1fr;
-  gap:8px;
-  margin-top:10px;
-}
-
-.mobile-entry-grid-2{
-  grid-template-columns: 1fr 1.1fr;
-}
-
-.mobile-field{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
-
-.mobile-field label{
-  font-size:12px;
-  color:var(--muted);
-}
-
-.mobile-field input,
-.mobile-field select{
-  width:100%;
-  min-height:44px;
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:0 10px;
-  box-sizing:border-box;
-  background:#fff;
-  font-size:16px;
-}
-
-.mobile-mini-actions{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-
-.mobile-mini-actions button{
-  min-height:44px;
-  border:none;
-  border-radius:12px;
-  background:var(--soft);
-  font-size:14px;
-  font-weight:700;
-}
-
-.mobile-table-area{
-  max-height:40dvh;
-  overflow:auto;
-  border-top:1px solid var(--border);
-  border-bottom:1px solid var(--border);
-}
-
-#bangketqua{
-  width:100%;
-  border-collapse:separate;
-  border-spacing:0;
-  min-width:760px;
-  background:#fff;
-}
-
-#bangketqua thead th{
-  position:sticky;
-  top:0;
-  background:#f8fafc;
-  z-index:2;
-  font-size:13px;
-  white-space:nowrap;
-}
-
-#bangketqua th,
-#bangketqua td{
-  border-bottom:1px solid #eef2f6;
-  padding:10px 8px;
-  text-align:center;
-  font-size:14px;
-}
-
-.product-image{
-  width:100% !important;
-  height:180px !important;
-  object-fit:contain;
-  object-position:center;
-  background:#f8fafc;
-  border:none;
-  border-top:1px solid var(--border);
-  border-radius:0 0 16px 16px;
-  margin:0 !important;
-  display:block;
-}
-
-.mobile-payment-card{
-  padding:10px 12px;
-}
-
-.mobile-money-line{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:8px 0;
-  border-bottom:1px dashed var(--border);
-}
-
-.mobile-money-line:last-child{
-  border-bottom:none;
-}
-
-.mobile-money-line span{
-  font-size:15px;
-  font-weight:600;
-}
-
-.mobile-money-line input{
-  width:42%;
-  min-height:42px;
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:0 12px;
-  text-align:right;
-  font-size:18px;
-  font-weight:700;
-  background:#fff;
-  box-sizing:border-box;
-}
-
-.mobile-total-line{
-  color:var(--danger);
-}
-
-.mobile-total-line input{
-  color:var(--danger);
-  background:#fff5f5;
-}
-
-.mobile-extra-card{
-  overflow:hidden;
-}
-
-.mobile-tabs{
-  background:#f8fafc;
-  border-bottom:1px solid var(--border);
-}
-
-.mobile-tabs button{
-  flex:1;
-  border:none;
-  background:transparent;
-  min-height:46px;
-  font-size:15px;
-  font-weight:700;
-}
-
-.mobile-tabs button.active{
-  background:#fff;
-  color:var(--primary-dark);
-  border-bottom:2px solid var(--primary);
-}
-
-.mobile-tab-content{
-  padding:12px;
-}
-
-.mobile-form-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-
-.mobile-form-grid label,
-.mobile-kh-wrap label{
-  display:flex !important;
-  flex-direction:column;
-  width:100% !important;
-  gap:6px;
-  margin-bottom:10px;
-  font-size:13px;
-  color:var(--muted);
-}
-
-.mobile-form-grid input,
-.mobile-form-grid select,
-.mobile-kh-wrap input{
-  width:100%;
-  min-height:42px;
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:0 10px;
-  box-sizing:border-box;
-  background:#fff;
-  color:var(--text);
-}
-
-.mobile-kh-search{
-  display:grid;
-  grid-template-columns:1fr 52px;
-  gap:8px;
-  margin-bottom:10px;
-}
-
-.mobile-kh-search button{
-  min-height:42px;
-  border:none;
-  border-radius:12px;
-  background:var(--soft);
-  font-size:18px;
-}
-
-.mobile-checkbox-list{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px 12px;
-}
-
-.mobile-checkbox-list label{
-  font-size:14px;
-  margin:0;
-}
-
-.mobile-secondary-actions{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-  margin-top:12px;
-}
-
-.mobile-secondary-actions button{
-  min-height:42px;
-  border:none;
-  border-radius:12px;
-  background:#eef2f6;
-  font-size:14px;
-  font-weight:700;
-}
-
-.mobile-footer-buttons{
-  position:fixed !important;
-  left:0;
-  right:0;
-  bottom:0;
-  width:100% !important;
-  display:grid !important;
-  grid-template-columns:1fr 1fr 1.4fr;
-  gap:8px;
-  padding:10px;
-  background:rgba(255,255,255,.95) !important;
-  backdrop-filter:blur(8px);
-  border-top:1px solid var(--border);
-  z-index:1200;
-  box-sizing:border-box;
-}
-
-.mobile-footer-buttons button{
-  min-width:0 !important;
-  min-height:50px;
-  border:none;
-  border-radius:14px;
-  font-size:16px;
-  font-weight:700;
-}
-
-#them{
-  background:#eef2f6;
-  color:#182230;
-}
-
-#sua{
-  background:#ffe9d6;
-  color:#ad4e00;
-}
-
-#btn-luu{
-  background:linear-gradient(180deg,#ff8a1f 0%, #ff7a00 100%);
-  color:#fff;
-  box-shadow:0 10px 24px rgba(255,122,0,.24);
-}
-
-.footer-buttons + .top-inputs,
-.footer-buttons ~ .top-inputs{
-  display:none !important;
-}
-
-@media (min-width: 768px){
-  .mobile-pos-app{
-    max-width:560px;
-    margin:0 auto;
+  /* 1) Header & Menu */
+  .menu-bar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 8px 10px;
   }
 
-  .mobile-table-area{
-    max-height:34vh;
+  .menu-item {
+    display: none !important;
   }
+
+  /* Ẩn menu thả xuống, giữ .tennv */
+  .app-menu {
+    display: none !important;
+  }
+
+  /* Ẩn menu thả xuống, giữ .tennv */
+
+  /* Khối tennv: luôn 1 dòng, khoảng cách gọn */
+  .tennv {
+    display: flex;
+    flex-wrap: nowrap;
+    /* không cho xuống dòng */
+    justify-content: flex-start;
+    /* không dàn đều tạo khoảng trống lớn */
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Label là flex-item thật, control bên trong fill 100% */
+  .tennv>label {
+    display: flex;
+    flex: 0 1 auto;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    /* tránh iOS ép min-content */
+  }
+
+  .tennv>label select,
+  .tennv>label input {
+    width: 100%;
+    min-width: 0;
+    height: 20px;
+    font-size: 15px;
+  }
+
+  /* Ưu tiên hiển thị Tên NV: thu gọn "Địa điểm" để không bị chèn mất */
+  /* Gợi ý: Địa điểm thường chỉ CS1/CS2 nên để dạng "fit" theo nội dung */
+  .tennv>label:has(#diadiem),
+  .tennv>label:nth-of-type(1) {
+    /* fallback nếu #diadiem là label đầu */
+    flex: 0 0 72px;
+    /* ~1/3 so với khối rộng 200px+ trước đây */
+    max-width: 72px;
+    min-width: 72px;
+  }
+
+  #diadiem {
+    width: 72px;
+    /* giữ gọn và ổn định trên iOS */
+    min-width: 0;
+  }
+
+  .tennv>label:has(#ngay),
+  .tennv>label:nth-of-type(2) {
+    /* fallback nếu #ngay là label thứ 2 */
+    flex: 0 0 120px;
+    max-width: 120px;
+    min-width: 120px;
+  }
+
+  #ngay {
+    width: 120px;
+    min-width: 0;
+  }
+
+  /* Ô Tên NV là flex-item trực tiếp */
+  #tennv {
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
+    height: 20px;
+    font-size: 15px;
+  }
+
+  /* Ẩn các mục không dùng */
+  #manv,
+  #btnReloadSP {
+    display: none !important;
+  }
+
+
+
+  /* 2) Khối nhập nhanh */
+  .top-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    /* cho phép tự xuống nhiều hàng */
+    gap: 6px;
+    padding: 8px;
+    background: #f6f7f9;
+    align-items: center;
+  }
+
+  /* Ẩn trường không dùng (giữ DOM để JS không lỗi) */
+  #dvt,
+  #khuyenmai,
+  #thanhtien {
+    display: none !important;
+  }
+
+  /* Reset width cũ (bỏ !important trước đó) + tránh iOS ép min-content */
+  #masp,
+  #soluong,
+  #size,
+  #gia,
+  #sohd,
+  #ghichu {
+    width: auto;
+    min-width: 0;
+  }
+
+  /* Mã SP nằm trong <div> wrapper -> chia % cho WRAPPER */
+  .top-inputs>div:first-child,
+  .top-inputs>div:has(#masp) {
+    /* :has là dự phòng, first-child đã đủ */
+    flex: 0 1 40%;
+    max-width: 40%;
+    min-width: 0;
+  }
+
+  /* Input #masp fill đủ bên trong wrapper */
+  #masp {
+    width: 100%;
+  }
+
+  /* Tỉ lệ bạn yêu cầu */
+  #soluong {
+    flex: 0 1 20%;
+    max-width: 10%;
+    text-align: center;
+  }
+
+  #size {
+    flex: 0 1 20%;
+    max-width: 15%;
+    text-align: center;
+  }
+
+  #gia {
+    flex: 0 1 30%;
+    max-width: 30%;
+    text-align: right;
+  }
+
+  /* Vị trí mới: 30% sau Số HĐ */
+  #vitri {
+    flex: 0 1 40%;
+    max-width: 40%;
+  }
+
+  #sohd {
+    flex: 0 1 40%;
+    max-width: 40%;
+  }
+
+  #ghichu {
+    display: none !important;
+  }
+
+  #mathang {
+    flex: 0 1 25%;
+    max-width: 25%;
+  }
+
+  #tongsl {
+    flex: 0 1 25%;
+    max-width: 25%;
+  }
+
+  /* Nút kính lúp theo nội dung, không chiếm % */
+  #masp-search {
+    display: none !important;
+  }
+
+  /* Ẩn các .top-inputs nằm SAU footer (hai dòng gạch) */
+  .footer-buttons~.top-inputs {
+    display: none !important;
+  }
+
+  /* 3) Main chuyển cột; bảng co giãn */
+  .main {
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  /*--------------------- mới — cho mobile nhìn “gấp đôi” và chắc chắn đẩy panel xuống dưới -------------------------------- */
+  /* Cho mobile: mở khóa chiều cao trang & cho phép cuộn */
+  #app-container {
+    height: auto;
+    /* bỏ height:100vh của trang chính */
+    min-height: 100dvh;
+    /* vẫn đủ tối thiểu bằng viewport, tương thích iOS */
+  }
+
+  .main {
+    height: auto;
+    /* bỏ height:1px */
+    overflow: visible;
+    /* bỏ overflow:hidden để toàn trang cuộn được */
+  }
+
+  /* Bảng vẫn cao ~75% màn hình như anh muốn */
+  .table-area {
+    height: 60dvh;
+    max-height: none !important;
+    /* gỡ trần 100% từ trang chính */
+    flex: 0 0 auto;
+    /* tránh flex:1 co lại */
+  }
+
+  /* Fallback cho máy chưa hỗ trợ dvh */
+  @supports not (height: 1dvh) {
+    .table-area {
+      height: 60vh;
+    }
+  }
+
+  /* (tuỳ chọn) để panel cuộn riêng nếu nội dung dài */
+  .sidebar {
+    max-height: none;
+    overflow: visible;
+  }
+
+  /*--------------------- mới — cho mobile nhìn “gấp đôi” và chắc chắn đẩy panel xuống dưới -------------------------------- */
+
+  .sidebar {
+    width: 100%;
+    border-left: 0;
+  }
+
+  /* 4) Ẩn bớt cột bảng theo thứ tự */
+  #bangketqua thead th:nth-child(2),
+  #bangketqua tbody td:nth-child(2),
+  #bangketqua thead th:nth-child(5),
+  #bangketqua tbody td:nth-child(5),
+  #bangketqua thead th:nth-child(7),
+  #bangketqua tbody td:nth-child(7) {
+    display: none;
+  }
+
+  /* 5) Thẻ tổng tiền/khách trả bố cục đẹp hơn */
+  .btn-big {
+    width: 100%;
+    font-size: 18px;
+  }
+
+  #phaithanhtoan,
+  #khachtra,
+  #conlai {
+    width: 140px !important;
+  }
+
+  /* 6) Ảnh sản phẩm */
+  .product-image {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 3px;
+  }
+
+  /* 7) Footer nút lớn sticky */
+  .footer-buttons {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px;
+    gap: 8px;
+    background: #dce9f9;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Ẩn nút phụ */
+  #tieptuc,
+  #xemin,
+  #btnCopy,
+  #xuatexcel,
+  #btn-logout {
+    display: none !important;
+  }
+
+  .footer-buttons button {
+    height: 44px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  /* 8) Tabs bên phải */
+  .tabs button {
+    padding: 10px;
+    font-size: 15px;
+  }
+
+  .tab-content {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  /* === MOBILE: đưa thông tin khách lên cao và chỉ giữ 3 ô cần dùng === */
+
+  #app-container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Đưa dòng khách hàng lên ngay sau khối nhập mã SP */
+  .khach-footer-info {
+    order: 2;
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 30% 30% 15% 25%;
+    gap: 4px;
+    padding: 4px 6px;
+    background: #f7f7f7;
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+
+  .main {
+    order: 3;
+  }
+
+  .footer-buttons {
+    order: 4;
+  }
+
+  /* Ô mã khách */
+  .khach-footer-info #khBox {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .khach-footer-info #makh {
+    width: 100% !important;
+    height: 26px;
+    font-size: 14px;
+    padding-right: 28px !important;
+  }
+
+  .khach-footer-info #btnPopupKH {
+    width: 26px !important;
+    height: 24px !important;
+  }
+
+  /* Label Khách hàng + Điểm KH */
+  .khach-footer-info label {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center;
+    gap: 3px;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0;
+    /* ẩn chữ label để tiết kiệm ngang */
+  }
+
+  .khach-footer-info label input {
+    width: 100% !important;
+    height: 26px;
+    font-size: 14px;
+    padding: 2px 5px;
+    box-sizing: border-box;
+  }
+
+  /* Chỉ giữ: mã khách, tên khách, điểm khách */
+  /* Ẩn các ô không cần trên mobile */
+
+  .khach-footer-info label:has(#hang_khach),
+  .khach-footer-info label:has(#diem_tru),
+  .khach-footer-info label:has(#tien_doi_diem) {
+    display: none !important;
+  }
+
+  /* Safari fallback */
+
+  .khach-footer-info label.hide-mobile {
+    display: none !important;
+  }
+
+  /* ===== Ô trạng thái Zalo ===== */
+
+  .zalo-joined-label {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    font-size: 12px !important;
+
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+
+    height: 26px;
+    padding: 0 4px;
+
+    box-sizing: border-box;
+  }
+
+  #zalo_da_vao_nhom {
+    width: 18px !important;
+    height: 18px !important;
+    margin: 0;
+  }
+
+  #zalo_joined_text {
+    font-size: 11px !important;
+    white-space: nowrap;
+  }
+
+  /* Popup gợi ý khách mở phía dưới ô mã khách, không làm vỡ ngang */
+  #khSuggestList {
+    width: 320px !important;
+    max-width: 92vw !important;
+    left: 0 !important;
+    bottom: auto !important;
+    top: 100% !important;
+    font-size: 14px;
+  }
+
+  /* Ẩn nút CCN trên mobile */
+  #btnCCN {
+    display: none !important;
+  }
+
 }
 
-@media (max-width: 480px){
-  .mobile-topbar-row{
-    flex-wrap:wrap;
-  }
+/* === GIỮ HIỂN THỊ ĐẦY ĐỦ CỘT KHI Ở DẠNG NGANG === */
+.bang-ngang-mode #bangketqua th,
+.bang-ngang-mode #bangketqua td {
+  display: table-cell !important;
+  visibility: visible !important;
+}
 
-  .mobile-badge{
-    min-width:0;
-  }
+/* Chỉ mở toàn bộ cột khi đang xem "dạng ngang" trên màn hình nhỏ */
+@media (max-width: 768px) {
 
-  .mobile-form-grid,
-  .mobile-checkbox-list,
-  .mobile-secondary-actions{
-    grid-template-columns:1fr;
-  }
-
-  .mobile-entry-grid{
-    grid-template-columns:72px 90px 1fr;
-  }
-
-  .mobile-entry-grid-2{
-    grid-template-columns:1fr;
-  }
-
-  .mobile-money-line input{
-    width:48%;
-  }
-
-  #ngay{
-    width:140px !important;
-  }
-
-  #gio{
-    width:82px !important;
+  #bangketqua[data-mode="ngang"] th,
+  #bangketqua[data-mode="ngang"] td {
+    display: table-cell !important;
+    visibility: visible !important;
   }
 }
