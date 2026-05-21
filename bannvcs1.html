@@ -661,7 +661,7 @@
             </label>
 
             <label class="zalo-joined-label">
-                Zalo
+
                 <input id="zalo_da_vao_nhom" type="checkbox" />
                 <span id="zalo_joined_text" style="font-size:12px;color:#666;">chưa vào</span>
             </label>
@@ -930,7 +930,15 @@
                 if (kh) {
                     setVal("diem_hientai", kh.diem_hientai ?? "");
                     setVal("hang_khach", kh.hang_khach ?? "");
+
+                    await window.napTrangThaiZaloKhach?.(hd.makh);
                 }
+            }
+
+            if (hd.makh) {
+                await window.napTrangThaiZaloKhach?.(hd.makh);
+            } else {
+                window.resetZaloJoinedUI?.();
             }
         }
 
