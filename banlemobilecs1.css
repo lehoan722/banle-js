@@ -329,7 +329,7 @@
     display: grid !important;
 
     /* makh | tenkh | diem | zalo */
-    grid-template-columns: 28% 26% 12% 34%;
+    grid-template-columns: 30% 23% 12% 35%;
 
     gap: 4px;
     padding: 4px 6px;
