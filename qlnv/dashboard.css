@@ -1440,3 +1440,89 @@ body.sidebar-collapsed .menu-item {
   font-size: 14px;
 }
 
+.staff-list {
+  padding: 8px 12px 12px;
+  display: grid;
+  gap: 0;
+}
+
+.staff-list::before {
+  content: "#   Mã NV        Tên NV        Cơ sở        Trạng thái, Sự kiện cuối, Giờ";
+  display: grid;
+  grid-template-columns: 34px 110px 180px 70px 1fr;
+  padding: 8px 10px;
+  background: #f1f5f9;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.staff-row {
+  display: grid;
+  grid-template-columns: 34px 110px 180px 70px 1fr;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  background: white;
+}
+
+.staff-row:nth-child(even) {
+  background: #f8fafc;
+}
+
+.staff-col {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-col {
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.staff-inline-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.staff-free.staff-inline-badge,
+.staff-serving.staff-inline-badge {
+  background: #bbf7d0;
+  color: #166534;
+}
+
+.staff-task.staff-inline-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.staff-break.staff-inline-badge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.staff-off.staff-inline-badge,
+.staff-muted.staff-inline-badge {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.staff-warning.staff-inline-badge,
+.staff-waiting.staff-inline-badge {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.mini-summary {
+  display: none;
+}
+
