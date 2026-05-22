@@ -198,6 +198,124 @@
 
           <section class="content-grid">
 
+            <section class="card staff-card">
+              <div class="section-header">
+                <div>
+                  <h2>Nhân viên trong ca</h2>
+                  <p>Theo realtime từ chấm công và lịch làm</p>
+                </div>
+                <a href="#" class="link-action">Xem tất cả</a>
+              </div>
+
+              <div id="staffContainer" class="staff-list"></div>
+
+              <div class="mini-summary">
+                <div>
+                  <b id="sumTotalStaff">0</b>
+                  <span>Tổng NV</span>
+                </div>
+                <div>
+                  <b id="sumWorkingStaff">0</b>
+                  <span>Trong ca</span>
+                </div>
+                <div>
+                  <b id="sumBusyStaff">0</b>
+                  <span>Đang bận</span>
+                </div>
+                <div>
+                  <b id="sumFreeStaff">0</b>
+                  <span>Có thể giao</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="card task-card">
+              <div class="section-header">
+                <div>
+                  <h2>Công việc hôm nay</h2>
+                  <p>Quản lý lifecycle: chưa làm, đang làm, hoàn thành</p>
+                </div>
+                <button id="btnThemTask" type="button">+ Thêm task</button>
+              </div>
+
+              <div class="task-board">
+
+                <div class="task-column">
+                  <div class="task-column-title pending">
+                    Chưa làm <span id="pendingCount">0</span>
+                  </div>
+                  <div id="pendingContainer" class="task-list"></div>
+                </div>
+
+                <div class="task-column">
+                  <div class="task-column-title doing">
+                    Đang làm <span id="doingCount">0</span>
+                  </div>
+                  <div id="doingContainer" class="task-list"></div>
+                </div>
+                <div class="task-column">
+                  <div class="task-column-title doing">
+                    Tạm dừng <span id="pausedCount">0</span>
+                  </div>
+                  <div id="pausedContainer" class="task-list"></div>
+                </div>
+
+                <div class="task-column">
+                  <div class="task-column-title done">
+                    Hoàn thành <span id="doneCount">0</span>
+                  </div>
+                  <div id="doneContainer" class="task-list"></div>
+                </div>
+
+              </div>
+
+            </section>
+
+            <aside class="right-column">
+
+              <section class="card alert-card">
+                <div class="section-header">
+                  <div>
+                    <h2>Thông báo / Cảnh báo</h2>
+                    <p>Các biến động cần chú ý</p>
+                  </div>
+                  <a href="#" class="link-action">Xem tất cả</a>
+                </div>
+
+                <div id="alertContainer" class="alert-list">
+                  <div class="empty-note">Chưa có cảnh báo riêng.</div>
+                </div>
+              </section>
+
+              <section class="card message-card">
+                <div class="section-header">
+                  <div>
+                    <h2>Tin nhắn nội bộ</h2>
+                    <p>Sẵn sàng gắn module tin nhắn</p>
+                  </div>
+                  <a href="#" class="link-action">Xem tất cả</a>
+                </div>
+
+                <div id="messageContainer" class="message-list">
+                  <div class="empty-note">Chưa tích hợp tin nhắn.</div>
+                </div>
+              </section>
+
+              <section class="card log-card">
+                <div class="section-header">
+                  <div>
+                    <h2>Nhật ký hoạt động</h2>
+                    <p>Log vận hành trong ngày</p>
+                  </div>
+                </div>
+
+                <div id="logContainer" class="log-list"></div>
+              </section>
+
+            </aside>
+
+          </section>
+
       </main>
 
       <footer class="app-footer">
