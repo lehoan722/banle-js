@@ -217,12 +217,25 @@ async function loadStoreStatus(diadiem) {
 }
 
 async function loadStaff(diadiem) {
-  const { data, error } = await supabase
-    .schema('qlnv')
-    .from('v_staff_today_status')
-    .select('*')
-    .eq('diadiem', diadiem)
-    .order('gio_bat_dau', { ascending: true, nullsFirst: false });
+  const { startIso, endIso } = getTodayRangeVN();
+
+  const [{ data, error }, { data: logsData }] = await Promise.all([
+    supabase
+      .schema('qlnv')
+      .from('v_staff_today_status')
+      .select('*')
+      .eq('diadiem', diadiem)
+      .order('gio_bat_dau', { ascending: true, nullsFirst: false }),
+
+    supabase
+      .schema('qlnv')
+      .from('logs')
+      .select('*')
+      .eq('diadiem', diadiem)
+      .gte('created_at', startIso)
+      .lt('created_at', endIso)
+      .order('created_at', { ascending: true })
+  ]);
 
   if (error) {
     console.error('Lỗi loadStaff:', error);
@@ -245,17 +258,29 @@ async function loadStaff(diadiem) {
       : 'Không có lịch';
 
     const statusText = getWorkStateText(state);
-    const statusClass = state === 'DA_VAO_CA_DANG_RANH' ? 'event-green' : 'event-red';
+    const statusClass = state === 'DA_VAO_CA_DANG_RANH'
+      ? 'event-green'
+      : 'event-red';
+
+    const staffLogs = (logsData || []).filter(log =>
+      String(log.manv || '').toUpperCase() === String(item.manv || '').toUpperCase()
+    );
+
+    const eventText = staffLogs.map(log => {
+      const time = new Date(log.created_at).toLocaleTimeString('vi-VN');
+      return `<span class="event-red">${log.action || log.note || ''}</span> ${time}`;
+    }).join(', ');
 
     const tr = document.createElement('tr');
 
     tr.innerHTML = `
       <td>${index + 1}</td>
-      <td><b>${item.manv || ''}</b></td>
+      <td>${item.manv || ''}</td>
       <td>${item.diadiem || ''}</td>
       <td>${shiftText}</td>
       <td>
-        <span class="${statusClass}">${statusText}</span>${buildStaffEventText(item)}
+        <span class="${statusClass}">${statusText}</span>
+        ${eventText ? ', ' + eventText : ''}
       </td>
     `;
 
@@ -534,7 +559,7 @@ async function loadTasks(diadiem) {
 function renderTaskCell(tasks) {
   if (!tasks || !tasks.length) return '';
 
-  const needMore = tasks.length > 2;
+  const needMore = tasks.length > 1;
 
   const html = tasks.map(task => `
     <div class="task-cell-item">
@@ -546,7 +571,7 @@ function renderTaskCell(tasks) {
 
   return `
     <div class="task-cell-list">${html}</div>
-    ${needMore ? '<span class="task-more">...</span>' : ''}
+    ${needMore ? '<span class="task-more">Xem thêm</span>' : ''}
   `;
 }
 
@@ -555,7 +580,9 @@ function bindTaskMoreButtons() {
     btn.addEventListener('click', () => {
       const list = btn.previousElementSibling;
       list?.classList.toggle('expanded');
-      btn.textContent = list?.classList.contains('expanded') ? 'Thu gọn' : '...';
+      btn.textContent = list?.classList.contains('expanded')
+        ? 'Thu gọn'
+        : 'Xem thêm';
     });
   });
 }
