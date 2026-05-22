@@ -538,9 +538,7 @@ async function updateStaffStatus(staff, newStatus) {
       note: newStatus
     });
 
-  await loadStaff(diadiem);
-
-  await loadLogs(diadiem);
+  await loadStaff(diadiem);  
 
   await loadAlerts(diadiem);
 }
@@ -831,9 +829,7 @@ async function updateTaskStatus(task, newStatus) {
 
   await loadStaff(diadiem);
 
-  await loadTasks(diadiem);
-
-  await loadLogs(diadiem);
+  await loadTasks(diadiem);  
 
   await loadAlerts(diadiem);
 }
@@ -1070,8 +1066,7 @@ function setupRealtimeDashboard() {
         table: "logs",
         filter: `diadiem=eq.${diadiem}`
       },
-      async () => {
-        await loadLogs(diadiem);
+      async () => {       
       }
     )
 
@@ -1327,9 +1322,7 @@ async function saveTask() {
 
   taskModal.classList.add('hidden');
 
-  await loadTasks(diadiem);
-
-  await loadLogs(diadiem);
+  await loadTasks(diadiem);  
 }
 
 taskTemplate?.addEventListener(
