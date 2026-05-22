@@ -95,6 +95,8 @@ function getTodayRangeVN() {
   };
 }
 
+const taskMatrixBody = document.getElementById('taskMatrixBody');
+
 function getTaskStatusText(status) {
 
   const map = {
@@ -220,10 +222,7 @@ async function loadStaff(diadiem) {
     .from('v_staff_today_status')
     .select('*')
     .eq('diadiem', diadiem)
-    .order('gio_bat_dau', {
-      ascending: true,
-      nullsFirst: false
-    });
+    .order('gio_bat_dau', { ascending: true, nullsFirst: false });
 
   if (error) {
     console.error('Lỗi loadStaff:', error);
@@ -235,10 +234,9 @@ async function loadStaff(diadiem) {
   let tongNhanVien = 0;
   let trongCa = 0;
   let dangBan = 0;
-  let dangNghi = 0;
   let coTheGiao = 0;
 
-  for (const item of data || []) {
+  (data || []).forEach((item, index) => {
     tongNhanVien++;
 
     const state = item.work_state || 'KHONG_XAC_DINH';
@@ -247,150 +245,57 @@ async function loadStaff(diadiem) {
       'DA_VAO_CA_DANG_RANH',
       'DANG_PHUC_VU_KHACH',
       'DANG_LAM_TASK',
-      'DANG_NGHI'
+      'DANG_NGHI',
+      'DON_DEP_SAU_BAN'
     ].includes(state)) {
       trongCa++;
     }
 
-    if (state === 'DANG_PHUC_VU_KHACH') {
-      dangBan++;
-    }
-
-    if (state === 'DANG_NGHI') {
-      dangNghi++;
-    }
-
-    if (item.can_assign_task) {
-      coTheGiao++;
-    }
-
-    const ten = item.tennv || item.manv || '';
-    const chuCai = ten ? ten.trim().charAt(0).toUpperCase() : '?';
+    if (state === 'DANG_PHUC_VU_KHACH') dangBan++;
+    if (item.can_assign_task) coTheGiao++;
 
     const shiftText = item.gio_bat_dau && item.gio_ket_thuc
       ? `${item.gio_bat_dau} - ${item.gio_ket_thuc}`
       : 'Không có lịch';
 
     const statusText = getWorkStateText(state);
-    const statusClass = getWorkStateClass(state);
+    const statusClass = state === 'DA_VAO_CA_DANG_RANH' ? 'event-green' : 'event-red';
 
-    const assignText = item.can_assign_task
-      ? 'Có thể giao'
-      : 'Chưa giao';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td><b>${item.manv || ''}</b></td>
+      <td>${item.diadiem || ''}</td>
+      <td>${shiftText}</td>
+      <td>
+        <span class="${statusClass}">${statusText}</span>
+        ${buildStaffEventText(item)}
+      </td>
+    `;
 
-    const div = document.createElement('div');
-    div.className = `staff-card ${statusClass}`;
-
-    div.innerHTML = `
-  <div class="staff-main">
-
-    <div class="staff-avatar">
-      ${chuCai}
-    </div>
-
-    <div class="staff-info">
-
-      <div class="staff-name">
-        ${ten}
-      </div>
-
-      <div class="staff-code">
-        Mã NV: ${item.manv || ''}
-      </div>
-
-    </div>
-
-    <div class="staff-badge ${statusClass}">
-      ${statusText}
-    </div>
-
-  </div>
-
-  <div class="staff-meta">
-
-    <div>
-      <span>Ca làm</span>
-      <b>${shiftText}</b>
-    </div>
-
-    <div>
-      <span>Lịch</span>
-      <b>${item.trang_thai_lich || 'Không có'}</b>
-    </div>
-
-    <div>
-      <span>Giao việc</span>
-      <b>${assignText}</b>
-    </div>
-
-  </div>
-
-  <div class="staff-actions">
-
-    <button class="staff-btn free">
-      Rảnh
-    </button>
-
-    <button class="staff-btn sale">
-      Bán hàng
-    </button>
-
-    <button class="staff-btn task">
-      Làm task
-    </button>
-
-    <button class="staff-btn break">
-      Nghỉ
-    </button>
-
-    <button class="staff-btn off">
-      Tan ca
-    </button>
-
-  </div>
-`;
-
-    staffContainer.appendChild(div);
-
-    div.querySelector('.free')
-      ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'free');
-      });
-
-    div.querySelector('.sale')
-      ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'serving_customer');
-      });
-
-    div.querySelector('.task')
-      ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'doing_task');
-      });
-
-    div.querySelector('.break')
-      ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'break');
-      });
-
-    div.querySelector('.off')
-      ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'off');
-      });
-
-  }
+    staffContainer.appendChild(tr);
+  });
 
   document.getElementById('tongNhanVien').innerText = tongNhanVien;
   document.getElementById('dangPhucVu').innerText = dangBan;
+}
 
-  const sumTotalStaff = document.getElementById('sumTotalStaff');
-  const sumWorkingStaff = document.getElementById('sumWorkingStaff');
-  const sumBusyStaff = document.getElementById('sumBusyStaff');
-  const sumFreeStaff = document.getElementById('sumFreeStaff');
+function buildStaffEventText(item) {
+  const parts = [];
 
-  if (sumTotalStaff) sumTotalStaff.innerText = tongNhanVien;
-  if (sumWorkingStaff) sumWorkingStaff.innerText = trongCa;
-  if (sumBusyStaff) sumBusyStaff.innerText = dangBan + dangNghi;
-  if (sumFreeStaff) sumFreeStaff.innerText = coTheGiao;
+  if (item.last_su_kien) {
+    parts.push(`<span class="event-red">${item.last_su_kien}</span>`);
+  }
+
+  if (item.last_chamcong_at) {
+    parts.push(new Date(item.last_chamcong_at).toLocaleTimeString('vi-VN'));
+  }
+
+  if (item.last_action) {
+    parts.push(`<span class="event-red">${item.last_action}</span>`);
+  }
+
+  return parts.length ? ', ' + parts.join(', ') : '';
 }
 
 function getWorkStateText(state) {
@@ -546,8 +451,8 @@ async function updateStaffStatus(staff, newStatus) {
 async function loadTasks(diadiem) {
   const { startIso, endIso } = getTodayRangeVN();
 
-  const taskMatrixBody = document.getElementById('taskMatrixBody');
-  if (!taskMatrixBody) return;
+  const tbody = document.getElementById('taskMatrixBody');
+  if (!tbody) return;
 
   const { data, error } = await supabase
     .schema('qlnv')
@@ -563,7 +468,7 @@ async function loadTasks(diadiem) {
     return;
   }
 
-  taskMatrixBody.innerHTML = '';
+  tbody.innerHTML = '';
 
   let pendingCount = 0;
   let doingCount = 0;
@@ -593,7 +498,7 @@ async function loadTasks(diadiem) {
       if (task.status === 'done') doneCount++;
       else if (task.status === 'in_progress' && task.paused_at) pausedCount++;
       else if (task.status === 'in_progress') doingCount++;
-      return;
+      continue;
     }
 
     if (task.status === 'pending') {
@@ -626,7 +531,7 @@ async function loadTasks(diadiem) {
       <td>${renderTaskCell(row.done)}</td>
     `;
 
-    taskMatrixBody.appendChild(tr);
+    tbody.appendChild(tr);
   }
 
   document.getElementById('taskChuaXong').innerText =
@@ -638,6 +543,44 @@ async function loadTasks(diadiem) {
   if (menuTaskBadge) {
     menuTaskBadge.innerText = pendingCount + doingCount + pausedCount;
   }
+}
+
+function renderTaskCell(tasks) {
+  if (!tasks || !tasks.length) return '';
+
+  return tasks.map(task => `
+    <div class="task-cell-item">
+      <div>${task.title || ''}</div>
+      <div>${task.assigned_name || task.assigned_to || ''}</div>
+      <div class="task-cell-time">${renderPlainTaskTime(task)}</div>
+    </div>
+  `).join('');
+}
+
+function renderPlainTaskTime(task) {
+  if (!task.started_at) return '';
+
+  const startTime = new Date(task.started_at).getTime();
+  const pausedSeconds = Number(task.paused_seconds || 0);
+
+  let endTime = Date.now();
+
+  if (task.status === 'done' && task.completed_at) {
+    endTime = new Date(task.completed_at).getTime();
+  } else if (task.paused_at) {
+    endTime = new Date(task.paused_at).getTime();
+  }
+
+  const diff = Math.max(
+    0,
+    Math.floor((endTime - startTime) / 1000) - pausedSeconds
+  );
+
+  const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+  const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+  const s = String(diff % 60).padStart(2, '0');
+
+  return `⏱ ${h}:${m}:${s}`;
 }
 
 function renderTaskCell(tasks) {
