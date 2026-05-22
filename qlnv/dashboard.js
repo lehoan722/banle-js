@@ -37,6 +37,9 @@ const logContainer =
 const alertContainer =
   document.getElementById('alertContainer');
 
+  const taskMatrixBody =
+  document.getElementById('taskMatrixBody');
+
 const topAlertBadge =
   document.getElementById('topAlertBadge');
 
@@ -94,8 +97,6 @@ function getTodayRangeVN() {
     endIso: end.toISOString()
   };
 }
-
-const taskMatrixBody = document.getElementById('taskMatrixBody');
 
 function getTaskStatusText(status) {
 
@@ -197,6 +198,7 @@ async function loadDashboard() {
     loadStoreStatus(diadiem),
     loadStaff(diadiem),
     loadTasks(diadiem),
+    loadLogs(diadiem),
     loadAlerts(diadiem)
   ]);
 }
@@ -217,25 +219,12 @@ async function loadStoreStatus(diadiem) {
 }
 
 async function loadStaff(diadiem) {
-  const { startIso, endIso } = getTodayRangeVN();
-
-  const [{ data, error }, { data: logsData }] = await Promise.all([
-    supabase
-      .schema('qlnv')
-      .from('v_staff_today_status')
-      .select('*')
-      .eq('diadiem', diadiem)
-      .order('gio_bat_dau', { ascending: true, nullsFirst: false }),
-
-    supabase
-      .schema('qlnv')
-      .from('logs')
-      .select('*')
-      .eq('diadiem', diadiem)
-      .gte('created_at', startIso)
-      .lt('created_at', endIso)
-      .order('created_at', { ascending: true })
-  ]);
+  const { data, error } = await supabase
+    .schema('qlnv')
+    .from('v_staff_today_status')
+    .select('*')
+    .eq('diadiem', diadiem)
+    .order('gio_bat_dau', { ascending: true, nullsFirst: false });
 
   if (error) {
     console.error('Lỗi loadStaff:', error);
@@ -245,50 +234,63 @@ async function loadStaff(diadiem) {
   staffContainer.innerHTML = '';
 
   let tongNhanVien = 0;
+  let trongCa = 0;
   let dangBan = 0;
+  let coTheGiao = 0;
 
-  (data || []).forEach((item, index) => {
+  for (const [index, item] of (data || []).entries()) {
     tongNhanVien++;
 
     const state = item.work_state || 'KHONG_XAC_DINH';
+
+    if ([
+      'DA_VAO_CA_DANG_RANH',
+      'DANG_PHUC_VU_KHACH',
+      'DANG_LAM_TASK',
+      'DANG_NGHI',
+      'DON_DEP_SAU_BAN'
+    ].includes(state)) {
+      trongCa++;
+    }
+
     if (state === 'DANG_PHUC_VU_KHACH') dangBan++;
+    if (item.can_assign_task) coTheGiao++;
 
     const shiftText = item.gio_bat_dau && item.gio_ket_thuc
       ? `${item.gio_bat_dau} - ${item.gio_ket_thuc}`
       : 'Không có lịch';
 
     const statusText = getWorkStateText(state);
-    const statusClass = state === 'DA_VAO_CA_DANG_RANH'
-      ? 'event-green'
-      : 'event-red';
 
-    const staffLogs = (logsData || []).filter(log =>
-      String(log.manv || '').toUpperCase() === String(item.manv || '').toUpperCase()
-    );
-
-    const eventText = staffLogs.map(log => {
-      const time = new Date(log.created_at).toLocaleTimeString('vi-VN');
-      return `<span class="event-red">${log.action || log.note || ''}</span> ${time}`;
-    }).join(', ');
+    const lastEvent = buildStaffEventText(item);
 
     const tr = document.createElement('tr');
-
     tr.innerHTML = `
       <td>${index + 1}</td>
-      <td>${item.manv || ''}</td>
+      <td><b>${item.manv || ''}</b></td>
       <td>${item.diadiem || ''}</td>
       <td>${shiftText}</td>
       <td>
-        <span class="${statusClass}">${statusText}</span>
-        ${eventText ? ', ' + eventText : ''}
+        <span class="${state === 'DA_VAO_CA_DANG_RANH' ? 'event-green' : 'event-red'}">
+          ${statusText}
+        </span>,
+        ${lastEvent}
       </td>
     `;
 
     staffContainer.appendChild(tr);
-  });
+  }
 
   document.getElementById('tongNhanVien').innerText = tongNhanVien;
   document.getElementById('dangPhucVu').innerText = dangBan;
+
+  const sumTotalStaff = document.getElementById('sumTotalStaff');
+  const sumWorkingStaff = document.getElementById('sumWorkingStaff');
+  const sumFreeStaff = document.getElementById('sumFreeStaff');
+
+  if (sumTotalStaff) sumTotalStaff.innerText = tongNhanVien;
+  if (sumWorkingStaff) sumWorkingStaff.innerText = trongCa;
+  if (sumFreeStaff) sumFreeStaff.innerText = coTheGiao;
 }
 
 function buildStaffEventText(item) {
@@ -299,14 +301,16 @@ function buildStaffEventText(item) {
   }
 
   if (item.last_chamcong_at) {
-    parts.push(new Date(item.last_chamcong_at).toLocaleTimeString('vi-VN'));
+    parts.push(
+      new Date(item.last_chamcong_at).toLocaleTimeString('vi-VN')
+    );
   }
 
   if (item.last_action) {
     parts.push(`<span class="event-red">${item.last_action}</span>`);
   }
 
-  return parts.length ? ', ' + parts.join(', ') : '';
+  return parts.join(', ') || '';
 }
 
 function getWorkStateText(state) {
@@ -456,14 +460,13 @@ async function updateStaffStatus(staff, newStatus) {
 
   await loadStaff(diadiem);
 
+  await loadLogs(diadiem);
+
   await loadAlerts(diadiem);
 }
 
 async function loadTasks(diadiem) {
   const { startIso, endIso } = getTodayRangeVN();
-  const tbody = document.getElementById('taskMatrixBody');
-
-  if (!tbody) return;
 
   const { data, error } = await supabase
     .schema('qlnv')
@@ -479,20 +482,22 @@ async function loadTasks(diadiem) {
     return;
   }
 
-  tbody.innerHTML = '';
+  if (!taskMatrixBody) return;
+
+  taskMatrixBody.innerHTML = '';
 
   let pendingCount = 0;
   let doingCount = 0;
   let pausedCount = 0;
   let doneCount = 0;
 
-  const staffMap = new Map();
+  const map = new Map();
 
   for (const task of data || []) {
     const key = task.assigned_to || 'CHUA_GIAO';
 
-    if (!staffMap.has(key)) {
-      staffMap.set(key, {
+    if (!map.has(key)) {
+      map.set(key, {
         name: task.assigned_name || task.assigned_to || 'Chưa giao',
         pending: [],
         doing: [],
@@ -502,13 +507,11 @@ async function loadTasks(diadiem) {
       });
     }
 
-    const row = staffMap.get(key);
+    const row = map.get(key);
 
     if (task.is_unplanned) {
       row.unplanned.push(task);
       if (task.status === 'done') doneCount++;
-      else if (task.status === 'in_progress' && task.paused_at) pausedCount++;
-      else if (task.status === 'in_progress') doingCount++;
       continue;
     }
 
@@ -529,7 +532,7 @@ async function loadTasks(diadiem) {
 
   let stt = 1;
 
-  for (const [, row] of staffMap.entries()) {
+  for (const [, row] of map.entries()) {
     const tr = document.createElement('tr');
 
     tr.innerHTML = `
@@ -542,7 +545,7 @@ async function loadTasks(diadiem) {
       <td>${renderTaskCell(row.done)}</td>
     `;
 
-    tbody.appendChild(tr);
+    taskMatrixBody.appendChild(tr);
   }
 
   document.getElementById('taskChuaXong').innerText =
@@ -551,40 +554,23 @@ async function loadTasks(diadiem) {
   document.getElementById('taskHoanThanh').innerText = doneCount;
 
   const menuTaskBadge = document.getElementById('menuTaskBadge');
-  if (menuTaskBadge) menuTaskBadge.innerText = pendingCount + doingCount + pausedCount;
-
-  bindTaskMoreButtons();
+  if (menuTaskBadge) {
+    menuTaskBadge.innerText = pendingCount + doingCount + pausedCount;
+  }
 }
 
 function renderTaskCell(tasks) {
   if (!tasks || !tasks.length) return '';
 
-  const needMore = tasks.length > 1;
-
-  const html = tasks.map(task => `
-    <div class="task-cell-item">
-      <div>${task.title || ''}</div>
-      <div>${task.assigned_name || task.assigned_to || ''}</div>
-      <div class="task-cell-time">${renderPlainTaskTime(task)}</div>
-    </div>
-  `).join('');
-
-  return `
-    <div class="task-cell-list">${html}</div>
-    ${needMore ? '<span class="task-more">Xem thêm</span>' : ''}
-  `;
-}
-
-function bindTaskMoreButtons() {
-  document.querySelectorAll('.task-more').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const list = btn.previousElementSibling;
-      list?.classList.toggle('expanded');
-      btn.textContent = list?.classList.contains('expanded')
-        ? 'Thu gọn'
-        : 'Xem thêm';
-    });
-  });
+  return tasks.map(task => {
+    return `
+      <div class="task-cell-item">
+        <div>${task.title || ''}</div>
+        <div>${task.assigned_name || task.assigned_to || ''}</div>
+        <div class="task-cell-time">${renderPlainTaskTime(task)}</div>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderPlainTaskTime(task) {
@@ -780,12 +766,13 @@ async function updateTaskStatus(task, newStatus) {
 
   await loadTasks(diadiem);
 
+  await loadLogs(diadiem);
+
   await loadAlerts(diadiem);
 }
 
 async function loadLogs(diadiem) {
 
-  if (!logContainer) return;
   const { startIso, endIso } =
     getTodayRangeVN();
 
@@ -946,22 +933,17 @@ async function loadAlerts(diadiem) {
   }
 
   for (const item of alerts) {
+  const div = document.createElement('div');
+  div.className = 'ops-alert-row';
 
-    const div = document.createElement('div');
+  div.innerHTML = `
+    <div class="ops-alert-cell">${item.type || ''}</div>
+    <div class="ops-alert-cell">${item.text || ''}</div>
+    <div class="ops-alert-cell">${new Date().toLocaleTimeString('vi-VN')}</div>
+  `;
 
-    div.className =
-      `alert-item ${item.type}`;
-
-    div.innerHTML = `
-      <div class="alert-dot"></div>
-
-      <div class="alert-text">
-        ${item.text}
-      </div>
-    `;
-
-    alertContainer.appendChild(div);
-  }
+  alertContainer.appendChild(div);
+}
 
   document.getElementById('canhBaoCount').innerText =
     alerts.length;
@@ -1016,6 +998,7 @@ function setupRealtimeDashboard() {
         filter: `diadiem=eq.${diadiem}`
       },
       async () => {
+        await loadLogs(diadiem);
       }
     )
 
@@ -1272,6 +1255,8 @@ async function saveTask() {
   taskModal.classList.add('hidden');
 
   await loadTasks(diadiem);
+
+  await loadLogs(diadiem);
 }
 
 taskTemplate?.addEventListener(
