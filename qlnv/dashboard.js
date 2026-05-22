@@ -1303,7 +1303,8 @@ function showDashboardPanel(panel) {
   });
 }
 
-btnToggleSidebar?.addEventListener('click', () => {
+btnToggleSidebar?.addEventListener('click', (e) => {
+  e.stopPropagation();
   dashboardPanelMenu?.classList.toggle('hidden');
 });
 
@@ -1312,6 +1313,14 @@ panelTabs.forEach(btn => {
     showDashboardPanel(btn.dataset.panel);
     dashboardPanelMenu?.classList.add('hidden');
   });
+});
+
+dashboardPanelMenu?.addEventListener('click', (e) => {
+  e.stopPropagation();
+});
+
+document.addEventListener('click', () => {
+  dashboardPanelMenu?.classList.add('hidden');
 });
 
 showDashboardPanel('tasks');
