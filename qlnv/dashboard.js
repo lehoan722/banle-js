@@ -538,13 +538,16 @@ async function updateStaffStatus(staff, newStatus) {
       note: newStatus
     });
 
-  await loadStaff(diadiem);  
+  await loadStaff(diadiem);
 
   await loadAlerts(diadiem);
 }
 
 async function loadTasks(diadiem) {
   const { startIso, endIso } = getTodayRangeVN();
+
+  const taskMatrixBody = document.getElementById('taskMatrixBody');
+  if (!taskMatrixBody) return;
 
   const { data, error } = await supabase
     .schema('qlnv')
@@ -553,115 +556,126 @@ async function loadTasks(diadiem) {
     .eq('diadiem', diadiem)
     .gte('created_at', startIso)
     .lt('created_at', endIso)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: true });
 
   if (error) {
     console.error('Lỗi loadTasks:', error);
     return;
   }
 
-  pendingContainer.innerHTML = '';
-  doingContainer.innerHTML = '';
-  if (pausedContainer) pausedContainer.innerHTML = '';
-  doneContainer.innerHTML = '';
+  taskMatrixBody.innerHTML = '';
 
   let pendingCount = 0;
   let doingCount = 0;
   let pausedCount = 0;
   let doneCount = 0;
 
-  for (const item of data || []) {
-    const status = item.status || 'pending';
+  const staffMap = new Map();
 
-    if (status === 'pending') pendingCount++;
-    if (status === 'in_progress' && item.paused_at) pausedCount++;
-    else if (status === 'in_progress') doingCount++;
-    if (status === 'done') doneCount++;
+  for (const task of data || []) {
+    const key = task.assigned_to || 'CHUA_GIAO';
 
-    const div = document.createElement('div');
-    div.className = `task-card ${getTaskStatusClass(status)}`;
-
-    div.innerHTML = `
-      <div class="task-title">${item.title || ''}</div>
-
-      <div class="task-user">
-        ${item.assigned_name || item.assigned_to || ''}
-      </div>
-
-      <div class="task-footer">
-
-  <span>
-    ${getTaskStatusText(status)}
-  </span>
-
-  ${renderTaskTimer(item)}
-
-</div>
-
-      <div class="task-actions"></div>
-    `;
-
-    const actionBox = div.querySelector('.task-actions');
-
-    if (status === 'pending') {
-      actionBox.innerHTML = `
-        <button class="task-btn start">Bắt đầu</button>
-        <button class="task-btn cancel">Hủy</button>
-      `;
-
-      actionBox.querySelector('.start').addEventListener('click', () => {
-        updateTaskStatus(item, 'in_progress');
+    if (!staffMap.has(key)) {
+      staffMap.set(key, {
+        name: task.assigned_name || task.assigned_to || 'Chưa giao',
+        pending: [],
+        doing: [],
+        paused: [],
+        unplanned: [],
+        done: []
       });
-
-      actionBox.querySelector('.cancel').addEventListener('click', () => {
-        updateTaskStatus(item, 'cancelled');
-      });
-
-      pendingContainer.appendChild(div);
     }
 
-    else if (status === 'in_progress') {
-      actionBox.innerHTML = `
-        <button class="task-btn done">Hoàn thành</button>
-        <button class="task-btn cancel">Hủy</button>
-      `;
+    const row = staffMap.get(key);
 
-      actionBox.querySelector('.done').addEventListener('click', () => {
-        updateTaskStatus(item, 'done');
-      });
-
-      actionBox.querySelector('.cancel').addEventListener('click', () => {
-        updateTaskStatus(item, 'cancelled');
-      });
-
-      if (item.paused_at && pausedContainer) {
-        pausedContainer.appendChild(div);
-      } else {
-        doingContainer.appendChild(div);
-      }
+    if (task.is_unplanned) {
+      row.unplanned.push(task);
+      if (task.status === 'done') doneCount++;
+      else if (task.status === 'in_progress' && task.paused_at) pausedCount++;
+      else if (task.status === 'in_progress') doingCount++;
+      return;
     }
 
-    else if (status === 'done') {
-      actionBox.innerHTML = `<span class="task-done-text">Đã xong</span>`;
-      doneContainer.appendChild(div);
+    if (task.status === 'pending') {
+      pendingCount++;
+      row.pending.push(task);
+    } else if (task.status === 'in_progress' && task.paused_at) {
+      pausedCount++;
+      row.paused.push(task);
+    } else if (task.status === 'in_progress') {
+      doingCount++;
+      row.doing.push(task);
+    } else if (task.status === 'done') {
+      doneCount++;
+      row.done.push(task);
     }
   }
 
-  document.getElementById('taskChuaXong').innerText = pendingCount + doingCount;
+  let stt = 1;
+
+  for (const [, row] of staffMap.entries()) {
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+      <td>${stt++}</td>
+      <td><b>${row.name}</b></td>
+      <td>${renderTaskCell(row.pending)}</td>
+      <td>${renderTaskCell(row.doing)}</td>
+      <td>${renderTaskCell(row.paused)}</td>
+      <td>${renderTaskCell(row.unplanned)}</td>
+      <td>${renderTaskCell(row.done)}</td>
+    `;
+
+    taskMatrixBody.appendChild(tr);
+  }
+
+  document.getElementById('taskChuaXong').innerText =
+    pendingCount + doingCount + pausedCount;
+
   document.getElementById('taskHoanThanh').innerText = doneCount;
 
-  const pendingCountEl = document.getElementById('pendingCount');
-  const doingCountEl = document.getElementById('doingCount');
-  const doneCountEl = document.getElementById('doneCount');
   const menuTaskBadge = document.getElementById('menuTaskBadge');
+  if (menuTaskBadge) {
+    menuTaskBadge.innerText = pendingCount + doingCount + pausedCount;
+  }
+}
 
-  if (pendingCountEl) pendingCountEl.innerText = pendingCount;
-  if (doingCountEl) doingCountEl.innerText = doingCount;
-  const pausedCountEl = document.getElementById('pausedCount');
-  if (pausedCountEl) pausedCountEl.innerText = pausedCount;
-  if (doneCountEl) doneCountEl.innerText = doneCount;
-  if (menuTaskBadge) menuTaskBadge.innerText = pendingCount + doingCount;
-  startRealtimeTaskTimers();
+function renderTaskCell(tasks) {
+  if (!tasks || !tasks.length) return '';
+
+  return tasks.map(task => `
+    <div class="task-cell-item">
+      <div>${task.title || ''}</div>
+      <div>${task.assigned_name || task.assigned_to || ''}</div>
+      <div class="task-cell-time">${renderPlainTaskTime(task)}</div>
+    </div>
+  `).join('');
+}
+
+function renderPlainTaskTime(task) {
+  if (!task.started_at) return '';
+
+  const startTime = new Date(task.started_at).getTime();
+  const pausedSeconds = Number(task.paused_seconds || 0);
+
+  let endTime = Date.now();
+
+  if (task.status === 'done' && task.completed_at) {
+    endTime = new Date(task.completed_at).getTime();
+  } else if (task.paused_at) {
+    endTime = new Date(task.paused_at).getTime();
+  }
+
+  const diff = Math.max(
+    0,
+    Math.floor((endTime - startTime) / 1000) - pausedSeconds
+  );
+
+  const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+  const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+  const s = String(diff % 60).padStart(2, '0');
+
+  return `⏱ ${h}:${m}:${s}`;
 }
 
 function startRealtimeTaskTimers() {
@@ -829,7 +843,7 @@ async function updateTaskStatus(task, newStatus) {
 
   await loadStaff(diadiem);
 
-  await loadTasks(diadiem);  
+  await loadTasks(diadiem);
 
   await loadAlerts(diadiem);
 }
@@ -1066,7 +1080,7 @@ function setupRealtimeDashboard() {
         table: "logs",
         filter: `diadiem=eq.${diadiem}`
       },
-      async () => {       
+      async () => {
       }
     )
 
@@ -1322,7 +1336,7 @@ async function saveTask() {
 
   taskModal.classList.add('hidden');
 
-  await loadTasks(diadiem);  
+  await loadTasks(diadiem);
 }
 
 taskTemplate?.addEventListener(
