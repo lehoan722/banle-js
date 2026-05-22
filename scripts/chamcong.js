@@ -1236,6 +1236,7 @@ function renderMyTask() {
     const box = document.getElementById("my-task-box");
     const btnStart = document.getElementById("btn-my-task-start");
     const btnDone = document.getElementById("btn-my-task-done");
+    const pausedBox = document.getElementById("paused-task-box");
     const btnResume = document.getElementById("btn-my-task-resume");
 
     if (!box) return;
@@ -1245,6 +1246,12 @@ function renderMyTask() {
         if (btnStart) btnStart.disabled = true;
         if (btnDone) btnDone.disabled = true;
         if (btnResume) btnResume.disabled = true;
+
+        if (pausedBox) {
+            pausedBox.style.display = "none";
+            pausedBox.innerHTML = "";
+        }
+
         return;
     }
 
@@ -1257,6 +1264,7 @@ function renderMyTask() {
 `;
 
     startMyTaskTimer();
+    renderPausedNormalTask();
 
     if (btnStart) {
         btnStart.disabled = currentAssignedTask.status !== "pending";
@@ -1272,6 +1280,54 @@ function renderMyTask() {
             currentAssignedTask.paused_at
         );
     }
+}
+
+function renderPausedNormalTask() {
+    const pausedBox = document.getElementById("paused-task-box");
+    if (!pausedBox) return;
+
+    if (
+        !currentUnplannedTask ||
+        !currentNormalTask ||
+        !currentNormalTask.paused_at
+    ) {
+        pausedBox.style.display = "none";
+        pausedBox.innerHTML = "";
+        return;
+    }
+
+    pausedBox.style.display = "block";
+
+    pausedBox.innerHTML = `
+        <b>Task đang tạm dừng</b><br>
+        ${currentNormalTask.title || ""} <b style="color:#e53935;">tạm dừng</b><br>
+        Thời gian làm: <b id="paused-normal-task-timer">00:00:00</b>
+    `;
+
+    renderPausedNormalTaskTimer();
+}
+
+function renderPausedNormalTaskTimer() {
+    const el = document.getElementById("paused-normal-task-timer");
+    if (!el || !currentNormalTask?.started_at) return;
+
+    const startedAt = new Date(currentNormalTask.started_at).getTime();
+    const pausedAt = currentNormalTask.paused_at
+        ? new Date(currentNormalTask.paused_at).getTime()
+        : Date.now();
+
+    const pausedSeconds = Number(currentNormalTask.paused_seconds || 0);
+
+    const diff = Math.max(
+        0,
+        Math.floor((pausedAt - startedAt) / 1000) - pausedSeconds
+    );
+
+    const h = String(Math.floor(diff / 3600)).padStart(2, "0");
+    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+    const s = String(diff % 60).padStart(2, "0");
+
+    el.textContent = `${h}:${m}:${s}`;
 }
 
 let myTaskTimerInterval = null;
@@ -1493,6 +1549,21 @@ async function resumeTaskAndSetDoing() {
     await loadMyCurrentTask({ manv, diadiem });
 }
 
+function openUnplannedModal() {
+    const modal = document.getElementById("unplanned-modal");
+    const noteEl = document.getElementById("unplanned-task-note");
+
+    if (noteEl) noteEl.value = "";
+    if (modal) modal.style.display = "flex";
+
+    setTimeout(() => noteEl?.focus(), 100);
+}
+
+function closeUnplannedModal() {
+    const modal = document.getElementById("unplanned-modal");
+    if (modal) modal.style.display = "none";
+}
+
 async function startUnplannedTask() {
     const sp = await ensureSupabase();
 
@@ -1569,6 +1640,7 @@ async function startUnplannedTask() {
     renderWorkStatusText("doing_task");
 
     noteEl.value = "";
+    closeUnplannedModal();
 
     await loadMyCurrentTask({ manv, diadiem });
 }
@@ -1710,8 +1782,28 @@ function attachChamCongButtons(diadiem) {
 
     btnUnplannedStart?.addEventListener(
         "click",
+        () => {
+            openUnplannedModal();
+        }
+    );
+
+    const btnUnplannedConfirm =
+        document.getElementById("btn-unplanned-confirm");
+
+    const btnUnplannedCancel =
+        document.getElementById("btn-unplanned-cancel");
+
+    btnUnplannedConfirm?.addEventListener(
+        "click",
         async () => {
             await startUnplannedTask();
+        }
+    );
+
+    btnUnplannedCancel?.addEventListener(
+        "click",
+        () => {
+            closeUnplannedModal();
         }
     );
 
