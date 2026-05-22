@@ -25,6 +25,9 @@ const pendingContainer =
 const doingContainer =
   document.getElementById('doingContainer');
 
+const pausedContainer =
+  document.getElementById('pausedContainer');
+
 const doneContainer =
   document.getElementById('doneContainer');
 
@@ -119,15 +122,37 @@ function getTaskStatusClass(status) {
 function renderTaskTimer(task) {
   if (!task.started_at) return '';
 
+  const startTime = new Date(task.started_at).getTime();
+  const pausedSeconds = Number(task.paused_seconds || 0);
+
+  let endTime = Date.now();
+
+  if (task.status === 'done' && task.completed_at) {
+    endTime = new Date(task.completed_at).getTime();
+  } else if (task.paused_at) {
+    endTime = new Date(task.paused_at).getTime();
+  }
+
+  const diff = Math.max(
+    0,
+    Math.floor((endTime - startTime) / 1000) - pausedSeconds
+  );
+
+  const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+  const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+  const s = String(diff % 60).padStart(2, '0');
+
+  if (task.status === 'done') {
+    return `<span class="task-timer done-fixed">⏱ ${h}:${m}:${s}</span>`;
+  }
+
   return `
     <span
       class="task-timer"
-      data-start="${new Date(task.started_at).getTime()}"
+      data-start="${startTime}"
       data-paused-at="${task.paused_at ? new Date(task.paused_at).getTime() : ''}"
-      data-paused-seconds="${Number(task.paused_seconds || 0)}"
-    >
-      ⏱ 00:00:00
-    </span>
+      data-paused-seconds="${pausedSeconds}"
+    >⏱ ${h}:${m}:${s}</span>
     ${task.paused_at ? '<span style="color:#ef4444;font-size:11px;font-weight:700;"> Tạm dừng</span>' : ''}
   `;
 }
@@ -358,15 +383,15 @@ async function loadStaff(diadiem) {
   document.getElementById('tongNhanVien').innerText = tongNhanVien;
   document.getElementById('dangPhucVu').innerText = dangBan;
 
-  const staffTotalEl = document.getElementById('staffTotal');
-  const staffInShiftEl = document.getElementById('staffInShift');
-  const staffBreakEl = document.getElementById('staffBreak');
-  const staffAssignableEl = document.getElementById('staffAssignable');
+  const sumTotalStaff = document.getElementById('sumTotalStaff');
+  const sumWorkingStaff = document.getElementById('sumWorkingStaff');
+  const sumBusyStaff = document.getElementById('sumBusyStaff');
+  const sumFreeStaff = document.getElementById('sumFreeStaff');
 
-  if (staffTotalEl) staffTotalEl.innerText = tongNhanVien;
-  if (staffInShiftEl) staffInShiftEl.innerText = trongCa;
-  if (staffBreakEl) staffBreakEl.innerText = dangNghi;
-  if (staffAssignableEl) staffAssignableEl.innerText = coTheGiao;
+  if (sumTotalStaff) sumTotalStaff.innerText = tongNhanVien;
+  if (sumWorkingStaff) sumWorkingStaff.innerText = trongCa;
+  if (sumBusyStaff) sumBusyStaff.innerText = dangBan + dangNghi;
+  if (sumFreeStaff) sumFreeStaff.innerText = coTheGiao;
 }
 
 function getWorkStateText(state) {
@@ -378,7 +403,8 @@ function getWorkStateText(state) {
     DANG_PHUC_VU_KHACH: 'Đang bán hàng',
     DANG_LAM_TASK: 'Đang làm việc',
     DA_TAN_CA: 'Đã tan ca',
-    KHONG_XAC_DINH: 'Không rõ'
+    KHONG_XAC_DINH: 'Không rõ',
+    DON_DEP_SAU_BAN: 'Dọn dẹp sau bán',
   };
 
   return map[state] || state || 'Không rõ';
@@ -393,7 +419,8 @@ function getWorkStateClass(state) {
     DANG_PHUC_VU_KHACH: 'staff-serving',
     DANG_LAM_TASK: 'staff-task',
     DA_TAN_CA: 'staff-off',
-    KHONG_XAC_DINH: 'staff-muted'
+    KHONG_XAC_DINH: 'staff-muted',
+    DON_DEP_SAU_BAN: 'staff-serving'
   };
 
   return map[state] || 'staff-muted';
@@ -538,17 +565,20 @@ async function loadTasks(diadiem) {
 
   pendingContainer.innerHTML = '';
   doingContainer.innerHTML = '';
+  if (pausedContainer) pausedContainer.innerHTML = '';
   doneContainer.innerHTML = '';
 
   let pendingCount = 0;
   let doingCount = 0;
+  let pausedCount = 0;
   let doneCount = 0;
 
   for (const item of data || []) {
     const status = item.status || 'pending';
 
     if (status === 'pending') pendingCount++;
-    if (status === 'in_progress') doingCount++;
+    if (status === 'in_progress' && item.paused_at) pausedCount++;
+    else if (status === 'in_progress') doingCount++;
     if (status === 'done') doneCount++;
 
     const div = document.createElement('div');
@@ -607,7 +637,11 @@ async function loadTasks(diadiem) {
         updateTaskStatus(item, 'cancelled');
       });
 
-      doingContainer.appendChild(div);
+      if (item.paused_at && pausedContainer) {
+        pausedContainer.appendChild(div);
+      } else {
+        doingContainer.appendChild(div);
+      }
     }
 
     else if (status === 'done') {
@@ -626,6 +660,8 @@ async function loadTasks(diadiem) {
 
   if (pendingCountEl) pendingCountEl.innerText = pendingCount;
   if (doingCountEl) doingCountEl.innerText = doingCount;
+  const pausedCountEl = document.getElementById('pausedCount');
+  if (pausedCountEl) pausedCountEl.innerText = pausedCount;
   if (doneCountEl) doneCountEl.innerText = doneCount;
   if (menuTaskBadge) menuTaskBadge.innerText = pendingCount + doingCount;
   startRealtimeTaskTimers();
@@ -920,14 +956,26 @@ async function loadAlerts(diadiem) {
       });
     }
 
-    if (
-      task.status === 'in_progress'
-    ) {
-
+    if (task.status === 'in_progress' && task.paused_at) {
       alerts.push({
-        type: 'success',
-        text: `Đang thực hiện: ${task.title}`
+        type: 'warning',
+        text: `Task tạm dừng: ${task.title}`
       });
+    }
+
+    if (task.status === 'in_progress' && task.started_at && !task.paused_at) {
+      const minutes = Math.floor(
+        (Date.now() - new Date(task.started_at).getTime()) / 60000
+      );
+
+      const limit = Number(task.estimated_minutes || 10) + 10;
+
+      if (minutes > limit) {
+        alerts.push({
+          type: 'danger',
+          text: `Task quá thời gian: ${task.title}`
+        });
+      }
     }
   }
 
