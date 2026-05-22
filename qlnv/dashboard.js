@@ -292,103 +292,25 @@ async function loadStaff(diadiem) {
       : 'Chưa giao';
 
     const div = document.createElement('div');
-    div.className = `staff-card ${statusClass}`;
+    div.className = `staff-row ${statusClass}`;
 
     div.innerHTML = `
-  <div class="staff-main">
+  <div class="staff-col stt-col">${tongNhanVien}</div>
+  <div class="staff-col code-col">${item.manv || ''}</div>
+  <div class="staff-col name-col">${ten}</div>
+  <div class="staff-col branch-col">${item.diadiem || diadiem}</div>
 
-    <div class="staff-avatar">
-      ${chuCai}
-    </div>
-
-    <div class="staff-info">
-
-      <div class="staff-name">
-        ${ten}
-      </div>
-
-      <div class="staff-code">
-        Mã NV: ${item.manv || ''}
-      </div>
-
-    </div>
-
-    <div class="staff-badge ${statusClass}">
+  <div class="staff-col status-col">
+    <span class="staff-inline-badge ${statusClass}">
       ${statusText}
-    </div>
-
-  </div>
-
-  <div class="staff-meta">
-
-    <div>
-      <span>Ca làm</span>
-      <b>${shiftText}</b>
-    </div>
-
-    <div>
-      <span>Lịch</span>
-      <b>${item.trang_thai_lich || 'Không có'}</b>
-    </div>
-
-    <div>
-      <span>Giao việc</span>
-      <b>${assignText}</b>
-    </div>
-
-  </div>
-
-  <div class="staff-actions">
-
-    <button class="staff-btn free">
-      Rảnh
-    </button>
-
-    <button class="staff-btn sale">
-      Bán hàng
-    </button>
-
-    <button class="staff-btn task">
-      Làm task
-    </button>
-
-    <button class="staff-btn break">
-      Nghỉ
-    </button>
-
-    <button class="staff-btn off">
-      Tan ca
-    </button>
-
+    </span>
+    <span>, Ca ${shiftText}</span>
+    <span>, ${item.trang_thai_lich || 'Không có lịch'}</span>
+    <span>, ${assignText}</span>
   </div>
 `;
 
     staffContainer.appendChild(div);
-
-    div.querySelector('.free')
-      ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'free');
-      });
-
-    div.querySelector('.sale')
-      ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'serving_customer');
-      });
-
-    div.querySelector('.task')
-      ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'doing_task');
-      });
-
-    div.querySelector('.break')
-      ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'break');
-      });
-
-    div.querySelector('.off')
-      ?.addEventListener('click', () => {
-        updateStaffStatus(item, 'off');
-      });
 
   }
 
