@@ -1446,17 +1446,6 @@ body.sidebar-collapsed .menu-item {
   gap: 0;
 }
 
-.staff-list::before {
-  content: "#   Mã NV        Tên NV        Cơ sở        Trạng thái, Sự kiện cuối, Giờ";
-  display: grid;
-  grid-template-columns: 34px 110px 180px 70px 1fr;
-  padding: 8px 10px;
-  background: #f1f5f9;
-  border: 1px solid var(--line);
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .staff-row {
   display: grid;
   grid-template-columns: 34px 110px 180px 70px 1fr;
@@ -1524,5 +1513,19 @@ body.sidebar-collapsed .menu-item {
 
 .mini-summary {
   display: none;
+}
+
+.staff-header-row {
+  display: grid;
+  grid-template-columns: 34px 110px 180px 70px 1fr;
+  padding: 8px 10px;
+  background: #f1f5f9;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.staff-row {
+  grid-template-columns: 34px 110px 180px 70px 1fr;
 }
 
