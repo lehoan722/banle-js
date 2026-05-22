@@ -805,19 +805,12 @@ async function loadLogs(diadiem) {
     div.className = 'log-card';
 
     div.innerHTML = `
-      <div class="log-top">
-        <b>${item.tennv || 'Hệ thống'}</b>
-
-        <span>
-          ${new Date(item.created_at)
-        .toLocaleTimeString('vi-VN')}
-        </span>
-      </div>
-
-      <div class="log-action">
-        ${item.action || ''}
-      </div>
-    `;
+  <div class="log-line">
+    <span class="log-name">${item.tennv || 'Hệ thống'}</span>
+    <span class="log-time">${new Date(item.created_at).toLocaleTimeString('vi-VN')}</span>
+    <span class="log-text">${item.action || ''}</span>
+  </div>
+`;
 
     logContainer.appendChild(div);
   }
