@@ -6,6 +6,8 @@ import { khoiTaoDangNhapDungChung } from './authModule.js';
 // Supabase client sẽ được gán vào window.supabase sau khi đăng nhập
 let supabase = null;
 let currentAssignedTask = null;
+let currentNormalTask = null;
+let currentUnplannedTask = null;
 let qlnvChamCongChannel = null;
 
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
@@ -1197,17 +1199,36 @@ async function loadMyCurrentTask({ manv, diadiem }) {
         .eq("diadiem", diadiem)
         .eq("assigned_to", String(manv).toUpperCase())
         .in("status", ["pending", "in_progress"])
+        .order("is_unplanned", { ascending: false })
         .order("priority", { ascending: true })
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+        .order("created_at", { ascending: true });
 
     if (error) {
         console.error("Lỗi load task nhân viên:", error);
         return;
     }
 
-    currentAssignedTask = data || null;
+    currentAssignedTask = null;
+    currentNormalTask = null;
+    currentUnplannedTask = null;
+
+    (data || []).forEach(t => {
+        if (t.is_unplanned) {
+            if (!currentUnplannedTask) {
+                currentUnplannedTask = t;
+            }
+        } else {
+            if (!currentNormalTask) {
+                currentNormalTask = t;
+            }
+        }
+    });
+
+    currentAssignedTask =
+        currentUnplannedTask ||
+        currentNormalTask ||
+        null;
+
     renderMyTask();
 }
 
@@ -1472,6 +1493,136 @@ async function resumeTaskAndSetDoing() {
     await loadMyCurrentTask({ manv, diadiem });
 }
 
+async function startUnplannedTask() {
+    const sp = await ensureSupabase();
+
+    const manv = localStorage.getItem("manv");
+    const diadiem = getDiaDiemFromPath();
+
+    if (!manv) return;
+
+    const noteEl =
+        document.getElementById("unplanned-task-note");
+
+    const note =
+        String(noteEl?.value || "").trim();
+
+    if (!note) {
+        alert("Vui lòng nhập mô tả nhiệm vụ bất thường.");
+        return;
+    }
+
+    if (
+        currentAssignedTask &&
+        currentAssignedTask.is_unplanned
+    ) {
+        alert("Đang có nhiệm vụ bất thường.");
+        return;
+    }
+
+    if (
+        currentAssignedTask &&
+        currentAssignedTask.status === "in_progress"
+    ) {
+        await pauseCurrentTaskIfDoing();
+    }
+
+    const { data, error } = await sp
+        .schema("qlnv")
+        .from("tasks")
+        .insert({
+            title: "Nhiệm vụ bất thường",
+            description: note,
+            task_type: "bat_thuong",
+            diadiem,
+            assigned_to: String(manv).toUpperCase(),
+            assigned_name:
+                localStorage.getItem("tennv") || manv,
+            priority: 1,
+            status: "in_progress",
+            started_at: new Date().toISOString(),
+            estimated_minutes: 10,
+            created_by: String(manv).toUpperCase(),
+            is_unplanned: true,
+            parent_task_id:
+                currentNormalTask?.id || null
+        })
+        .select()
+        .single();
+
+    if (error) {
+        console.error(error);
+        alert("Không tạo được nhiệm vụ bất thường.");
+        return;
+    }
+
+    currentUnplannedTask = data;
+    currentAssignedTask = data;
+
+    await updateQlnvStaffStatus({
+        manv,
+        diadiem,
+        status: "doing_task",
+        lastAction: "Làm nhiệm vụ bất thường"
+    });
+
+    renderWorkStatusText("doing_task");
+
+    noteEl.value = "";
+
+    await loadMyCurrentTask({ manv, diadiem });
+}
+
+async function finishUnplannedTask() {
+    const sp = await ensureSupabase();
+
+    const manv = localStorage.getItem("manv");
+    const diadiem = getDiaDiemFromPath();
+
+    if (!currentUnplannedTask) {
+        alert("Không có nhiệm vụ bất thường.");
+        return;
+    }
+
+    const { error } = await sp
+        .schema("qlnv")
+        .from("tasks")
+        .update({
+            status: "done",
+            completed_at: new Date().toISOString()
+        })
+        .eq("id", currentUnplannedTask.id);
+
+    if (error) {
+        console.error(error);
+        alert("Không hoàn thành được nhiệm vụ.");
+        return;
+    }
+
+    if (
+        currentNormalTask &&
+        currentNormalTask.status === "in_progress"
+    ) {
+        currentAssignedTask = currentNormalTask;
+
+        await resumeTaskAndSetDoing();
+    } else {
+        await updateQlnvStaffStatus({
+            manv,
+            diadiem,
+            status: "free",
+            lastAction:
+                "Hoàn thành nhiệm vụ bất thường"
+        });
+
+        renderWorkStatusText("free");
+    }
+
+    currentUnplannedTask = null;
+
+    await loadMyCurrentTask({ manv, diadiem });
+}
+
 function attachChamCongButtons(diadiem) {
     const manv = localStorage.getItem("manv");
     if (!manv) return;
@@ -1551,6 +1702,25 @@ function attachChamCongButtons(diadiem) {
     const btnMyTaskStart = document.getElementById("btn-my-task-start");
     const btnMyTaskDone = document.getElementById("btn-my-task-done");
     const btnMyTaskResume = document.getElementById("btn-my-task-resume");
+    const btnUnplannedStart =
+        document.getElementById("btn-unplanned-start");
+
+    const btnUnplannedDone =
+        document.getElementById("btn-unplanned-done");
+
+    btnUnplannedStart?.addEventListener(
+        "click",
+        async () => {
+            await startUnplannedTask();
+        }
+    );
+
+    btnUnplannedDone?.addEventListener(
+        "click",
+        async () => {
+            await finishUnplannedTask();
+        }
+    );
 
     btnMyTaskStart?.addEventListener("click", async () => {
         await updateMyTaskStatus("in_progress");
