@@ -1529,3 +1529,49 @@ body.sidebar-collapsed .menu-item {
   grid-template-columns: 34px 110px 180px 70px 1fr;
 }
 
+.log-list {
+  padding: 8px 12px 12px;
+  display: grid;
+  gap: 0;
+}
+
+.log-card {
+  border-bottom: 1px solid var(--line);
+  padding: 5px 8px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.log-card:nth-child(even) {
+  background: #f8fafc;
+}
+
+.log-line {
+  display: grid;
+  grid-template-columns: 170px 80px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.log-name {
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-time {
+  color: #475569;
+  white-space: nowrap;
+}
+
+.log-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-card:hover .log-text {
+  white-space: normal;
+}
+
