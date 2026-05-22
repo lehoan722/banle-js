@@ -245,6 +245,16 @@ async function loadStaff(diadiem) {
 
   staffContainer.innerHTML = '';
 
+  staffContainer.innerHTML = `
+  <div class="staff-header-row">
+    <div>#</div>
+    <div>Mã NV</div>
+    <div>Tên NV</div>
+    <div>Cơ sở</div>
+    <div>Trạng thái, sự kiện cuối, giờ</div>
+  </div>
+`;
+
   let tongNhanVien = 0;
   let trongCa = 0;
   let dangBan = 0;
