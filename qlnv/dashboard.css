@@ -1669,3 +1669,213 @@ body.sidebar-collapsed .menu-item {
   transform: translateY(-1px);
   border-color: #bfdbfe;
 }
+
+@media (max-width: 768px) {
+
+  .sidebar {
+    display: none;
+  }
+
+  .main-shell {
+    width: 100%;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 8px;
+    padding: 10px;
+    background: white;
+  }
+
+  .topbar-control {
+    min-width: 0;
+    height: 44px;
+  }
+
+  .date-box {
+    grid-column: 1 / -1;
+  }
+
+  .primary-soft,
+  .realtime-badge,
+  #storeModeBadge,
+  .topbar-alert {
+    height: 38px;
+    font-size: 13px;
+  }
+
+  .user-box {
+    display: none;
+  }
+
+  .dashboard-page {
+    padding: 10px 10px 88px;
+    gap: 10px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .kpi-card {
+    min-height: 72px;
+    padding: 8px;
+    border-radius: 14px;
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 6px;
+  }
+
+  .kpi-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+    border-radius: 10px;
+  }
+
+  .kpi-card label {
+    font-size: 10.5px;
+    line-height: 1.2;
+  }
+
+  .kpi-card strong {
+    font-size: 20px;
+    margin: 0;
+  }
+
+  .kpi-card small {
+    display: none;
+  }
+
+  .section-header {
+    padding: 12px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .section-header h2 {
+    font-size: 15px;
+  }
+
+  .section-header p {
+    display: none;
+  }
+
+  .task-board {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 8px;
+    min-height: auto;
+  }
+
+  .task-column {
+    border-radius: 12px;
+  }
+
+  .task-column-title {
+    font-size: 14px;
+    padding: 8px 10px;
+  }
+
+  .task-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    font-size: 14px;
+    padding: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .task-actions {
+    flex-wrap: wrap;
+  }
+
+  .task-btn,
+  .task-done-text {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
+  .staff-list {
+    padding: 8px;
+  }
+
+  .staff-header-row {
+    display: none;
+  }
+
+  .staff-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+
+  .stt-col {
+    display: none;
+  }
+
+  .code-col::before {
+    content: "Mã NV: ";
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .name-col {
+    font-size: 15px;
+    font-weight: 900;
+  }
+
+  .branch-col::before {
+    content: "Cơ sở: ";
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .status-col {
+    margin-top: 4px;
+    white-space: normal;
+  }
+
+  .log-line {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .log-card {
+    padding: 8px;
+  }
+
+  .log-name {
+    font-size: 13px;
+  }
+
+  .log-time {
+    font-size: 12px;
+  }
+
+  .log-text {
+    white-space: normal;
+    font-size: 13px;
+  }
+
+  .dashboard-panel-menu {
+    top: 58px;
+    left: 10px;
+    width: 240px;
+  }
+
+  .mobile-nav {
+    display: grid;
+  }
+}
