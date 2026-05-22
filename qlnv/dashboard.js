@@ -594,27 +594,18 @@ async function loadTasks(diadiem) {
     if (status === 'done') doneCount++;
 
     const div = document.createElement('div');
-    div.className = `task-card ${getTaskStatusClass(status)}`;
+    div.className = `task-row ${getTaskStatusClass(status)}`;
 
     div.innerHTML = `
-      <div class="task-title">${item.title || ''}</div>
+  <div class="task-line">
+    <span class="task-line-title">${item.title || ''}</span>
+    <span>, ${item.assigned_name || item.assigned_to || ''}</span>
+    <span>, ${getTaskStatusText(status)}</span>
+    ${renderTaskTimer(item)}
+  </div>
 
-      <div class="task-user">
-        ${item.assigned_name || item.assigned_to || ''}
-      </div>
-
-      <div class="task-footer">
-
-  <span>
-    ${getTaskStatusText(status)}
-  </span>
-
-  ${renderTaskTimer(item)}
-
-</div>
-
-      <div class="task-actions"></div>
-    `;
+  <div class="task-actions"></div>
+`;
 
     const actionBox = div.querySelector('.task-actions');
 
