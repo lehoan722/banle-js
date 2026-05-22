@@ -1566,3 +1566,62 @@ body.sidebar-collapsed .menu-item {
     min-width: 1000px;
   }
 }
+
+.ops-table {
+  table-layout: auto !important;
+  background: #fff !important;
+}
+
+.ops-table th,
+.ops-table td {
+  background: #fff !important;
+  white-space: normal !important;
+  word-break: break-word;
+}
+
+.ops-staff-table th:nth-child(1),
+.ops-staff-table td:nth-child(1),
+.ops-task-table th:nth-child(1),
+.ops-task-table td:nth-child(1) {
+  width: 42px !important;
+  white-space: nowrap !important;
+}
+
+.ops-staff-table th:nth-child(2),
+.ops-staff-table td:nth-child(2) {
+  width: 95px !important;
+  white-space: nowrap !important;
+}
+
+.ops-staff-table th:nth-child(3),
+.ops-staff-table td:nth-child(3) {
+  width: 55px !important;
+  white-space: nowrap !important;
+}
+
+.ops-staff-table th:nth-child(4),
+.ops-staff-table td:nth-child(4) {
+  width: 145px !important;
+  white-space: nowrap !important;
+}
+
+.ops-task-table th:nth-child(2),
+.ops-task-table td:nth-child(2) {
+  width: 120px !important;
+  white-space: nowrap !important;
+}
+
+.task-cell-list {
+  max-height: 45px;
+  overflow: hidden;
+}
+
+.task-cell-list.expanded {
+  max-height: none;
+}
+
+.task-more {
+  color: red;
+  cursor: pointer;
+  font-weight: 900;
+}
