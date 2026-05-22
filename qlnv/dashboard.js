@@ -311,10 +311,8 @@ async function loadStaff(diadiem) {
   <div class="staff-col branch-col">${item.diadiem || diadiem}</div>
 
   <div class="staff-col status-col">
-    <span class="staff-inline-badge ${statusClass}">
-      ${statusText}
-    </span>
-    <span>, Ca ${shiftText}</span>
+    <span class="staff-inline-badge ${statusClass}">${statusText}</span>
+    <span>, ${shiftText}</span>
     <span>, ${item.trang_thai_lich || 'Không có lịch'}</span>
     <span>, ${assignText}</span>
   </div>
