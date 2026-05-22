@@ -1625,3 +1625,74 @@ body.sidebar-collapsed .menu-item {
   cursor: pointer;
   font-weight: 900;
 }
+
+.kpi-grid {
+  gap: 8px !important;
+}
+
+.kpi-card {
+  min-height: 78px !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+}
+
+.kpi-icon {
+  width: 34px !important;
+  height: 34px !important;
+  font-size: 16px !important;
+  border-radius: 10px !important;
+}
+
+.kpi-card label {
+  font-size: 12px !important;
+}
+
+.kpi-card strong {
+  font-size: 22px !important;
+  margin-bottom: 2px !important;
+}
+
+.kpi-card small {
+  font-size: 11px !important;
+}
+
+.ops-table {
+  font-size: 12px !important;
+}
+
+.ops-table th {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.ops-table td {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  line-height: 1.35;
+}
+
+.ops-table td b {
+  font-weight: 500 !important;
+}
+
+.event-red,
+.event-green {
+  font-weight: 600 !important;
+}
+
+.task-cell-list {
+  max-height: 52px;
+  overflow: hidden;
+}
+
+.task-cell-list.expanded {
+  max-height: none;
+}
+
+.task-more {
+  color: red;
+  cursor: pointer;
+  font-weight: 700;
+  display: inline-block;
+  margin-top: 2px;
+}
