@@ -583,44 +583,6 @@ function renderPlainTaskTime(task) {
   return `⏱ ${h}:${m}:${s}`;
 }
 
-function renderTaskCell(tasks) {
-  if (!tasks || !tasks.length) return '';
-
-  return tasks.map(task => `
-    <div class="task-cell-item">
-      <div>${task.title || ''}</div>
-      <div>${task.assigned_name || task.assigned_to || ''}</div>
-      <div class="task-cell-time">${renderPlainTaskTime(task)}</div>
-    </div>
-  `).join('');
-}
-
-function renderPlainTaskTime(task) {
-  if (!task.started_at) return '';
-
-  const startTime = new Date(task.started_at).getTime();
-  const pausedSeconds = Number(task.paused_seconds || 0);
-
-  let endTime = Date.now();
-
-  if (task.status === 'done' && task.completed_at) {
-    endTime = new Date(task.completed_at).getTime();
-  } else if (task.paused_at) {
-    endTime = new Date(task.paused_at).getTime();
-  }
-
-  const diff = Math.max(
-    0,
-    Math.floor((endTime - startTime) / 1000) - pausedSeconds
-  );
-
-  const h = String(Math.floor(diff / 3600)).padStart(2, '0');
-  const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
-  const s = String(diff % 60).padStart(2, '0');
-
-  return `⏱ ${h}:${m}:${s}`;
-}
-
 function startRealtimeTaskTimers() {
   const timers = document.querySelectorAll('.task-timer');
 
