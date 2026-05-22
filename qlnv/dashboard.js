@@ -195,7 +195,6 @@ async function loadDashboard() {
     loadStoreStatus(diadiem),
     loadStaff(diadiem),
     loadTasks(diadiem),
-    loadLogs(diadiem),
     loadAlerts(diadiem)
   ]);
 }
@@ -841,6 +840,7 @@ async function updateTaskStatus(task, newStatus) {
 
 async function loadLogs(diadiem) {
 
+  if (!logContainer) return;
   const { startIso, endIso } =
     getTodayRangeVN();
 
