@@ -1879,3 +1879,125 @@ body.sidebar-collapsed .menu-item {
     display: grid;
   }
 }
+
+@media (max-width: 768px) {
+
+  .topbar {
+    grid-template-columns: 38px 1fr 1fr;
+    gap: 6px;
+    padding: 8px;
+    align-items: center;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 18px;
+  }
+
+  .topbar-control {
+    height: 36px;
+    border-radius: 10px;
+    padding: 3px 8px;
+  }
+
+  .topbar-control label {
+    font-size: 10px;
+  }
+
+  #selectDiadiem,
+  #todayText {
+    font-size: 13px;
+  }
+
+  .date-box {
+    grid-column: auto;
+  }
+
+  .primary-soft,
+  .realtime-badge,
+  #storeModeBadge,
+  .topbar-alert {
+    height: 30px;
+    min-height: 30px;
+    border-radius: 9px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .primary-soft {
+    grid-column: 1 / 2;
+    width: 100%;
+  }
+
+  .realtime-badge {
+    grid-column: 2 / 4;
+    justify-content: center;
+  }
+
+  #storeModeBadge {
+    width: 70px;
+  }
+
+  .topbar-alert {
+    width: 38px;
+    padding: 0;
+  }
+
+  .topbar-alert b {
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+  }
+
+  .staff-row {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+
+  .code-col {
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .code-col::before {
+    content: "";
+  }
+
+  .name-col {
+    display: none;
+  }
+
+  .branch-col {
+    color: #475569;
+    font-size: 13px;
+  }
+
+  .branch-col::before {
+    content: ", ";
+    color: #475569;
+    font-weight: 400;
+  }
+
+  .staff-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .code-col,
+  .branch-col {
+    display: inline;
+  }
+
+  .status-col {
+    grid-column: 1 / -1;
+    font-size: 13px;
+    line-height: 1.35;
+    margin-top: 0;
+  }
+
+  .staff-inline-badge {
+    font-size: 12px;
+    padding: 2px 6px;
+  }
+}
