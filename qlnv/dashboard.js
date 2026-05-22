@@ -232,27 +232,13 @@ async function loadStaff(diadiem) {
   staffContainer.innerHTML = '';
 
   let tongNhanVien = 0;
-  let trongCa = 0;
   let dangBan = 0;
-  let coTheGiao = 0;
 
   (data || []).forEach((item, index) => {
     tongNhanVien++;
 
     const state = item.work_state || 'KHONG_XAC_DINH';
-
-    if ([
-      'DA_VAO_CA_DANG_RANH',
-      'DANG_PHUC_VU_KHACH',
-      'DANG_LAM_TASK',
-      'DANG_NGHI',
-      'DON_DEP_SAU_BAN'
-    ].includes(state)) {
-      trongCa++;
-    }
-
     if (state === 'DANG_PHUC_VU_KHACH') dangBan++;
-    if (item.can_assign_task) coTheGiao++;
 
     const shiftText = item.gio_bat_dau && item.gio_ket_thuc
       ? `${item.gio_bat_dau} - ${item.gio_ket_thuc}`
@@ -262,14 +248,14 @@ async function loadStaff(diadiem) {
     const statusClass = state === 'DA_VAO_CA_DANG_RANH' ? 'event-green' : 'event-red';
 
     const tr = document.createElement('tr');
+
     tr.innerHTML = `
       <td>${index + 1}</td>
       <td><b>${item.manv || ''}</b></td>
       <td>${item.diadiem || ''}</td>
       <td>${shiftText}</td>
       <td>
-        <span class="${statusClass}">${statusText}</span>
-        ${buildStaffEventText(item)}
+        <span class="${statusClass}">${statusText}</span>${buildStaffEventText(item)}
       </td>
     `;
 
@@ -450,8 +436,8 @@ async function updateStaffStatus(staff, newStatus) {
 
 async function loadTasks(diadiem) {
   const { startIso, endIso } = getTodayRangeVN();
-
   const tbody = document.getElementById('taskMatrixBody');
+
   if (!tbody) return;
 
   const { data, error } = await supabase
@@ -540,21 +526,64 @@ async function loadTasks(diadiem) {
   document.getElementById('taskHoanThanh').innerText = doneCount;
 
   const menuTaskBadge = document.getElementById('menuTaskBadge');
-  if (menuTaskBadge) {
-    menuTaskBadge.innerText = pendingCount + doingCount + pausedCount;
-  }
+  if (menuTaskBadge) menuTaskBadge.innerText = pendingCount + doingCount + pausedCount;
+
+  bindTaskMoreButtons();
 }
 
 function renderTaskCell(tasks) {
   if (!tasks || !tasks.length) return '';
 
-  return tasks.map(task => `
+  const needMore = tasks.length > 2;
+
+  const html = tasks.map(task => `
     <div class="task-cell-item">
       <div>${task.title || ''}</div>
       <div>${task.assigned_name || task.assigned_to || ''}</div>
       <div class="task-cell-time">${renderPlainTaskTime(task)}</div>
     </div>
   `).join('');
+
+  return `
+    <div class="task-cell-list">${html}</div>
+    ${needMore ? '<span class="task-more">...</span>' : ''}
+  `;
+}
+
+function bindTaskMoreButtons() {
+  document.querySelectorAll('.task-more').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const list = btn.previousElementSibling;
+      list?.classList.toggle('expanded');
+      btn.textContent = list?.classList.contains('expanded') ? 'Thu gọn' : '...';
+    });
+  });
+}
+
+function renderPlainTaskTime(task) {
+  if (!task.started_at) return '';
+
+  const startTime = new Date(task.started_at).getTime();
+  const pausedSeconds = Number(task.paused_seconds || 0);
+
+  let endTime = Date.now();
+
+  if (task.status === 'done' && task.completed_at) {
+    endTime = new Date(task.completed_at).getTime();
+  } else if (task.paused_at) {
+    endTime = new Date(task.paused_at).getTime();
+  }
+
+  const diff = Math.max(
+    0,
+    Math.floor((endTime - startTime) / 1000) - pausedSeconds
+  );
+
+  const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+  const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+  const s = String(diff % 60).padStart(2, '0');
+
+  return `⏱ ${h}:${m}:${s}`;
 }
 
 function renderPlainTaskTime(task) {
