@@ -1325,6 +1325,24 @@ document.addEventListener('click', () => {
 
 showDashboardPanel('tasks');
 
+document.getElementById('tongNhanVien')?.closest('.kpi-card')
+  ?.addEventListener('click', () => showDashboardPanel('staff'));
+
+document.getElementById('canhBaoCount')?.closest('.kpi-card')
+  ?.addEventListener('click', () => showDashboardPanel('alerts'));
+
+document.getElementById('messageCount')?.closest('.kpi-card')
+  ?.addEventListener('click', () => showDashboardPanel('messages'));
+
+document.getElementById('dangPhucVu')?.closest('.kpi-card')
+  ?.addEventListener('click', () => showDashboardPanel('tasks'));
+
+document.getElementById('taskChuaXong')?.closest('.kpi-card')
+  ?.addEventListener('click', () => showDashboardPanel('tasks'));
+
+document.getElementById('taskHoanThanh')?.closest('.kpi-card')
+  ?.addEventListener('click', () => showDashboardPanel('tasks'));
+
 selectDiadiem.addEventListener(
   "change",
   async () => {
