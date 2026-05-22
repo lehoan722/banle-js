@@ -43,6 +43,18 @@ const topAlertBadge =
 const btnThemTask =
   document.getElementById('btnThemTask');
 
+const btnToggleSidebar =
+  document.getElementById('btnToggleSidebar');
+
+const contentGrid =
+  document.querySelector('.content-grid');
+
+const dashboardPanelMenu =
+  document.getElementById('dashboardPanelMenu');
+
+const panelTabs =
+  document.querySelectorAll('.panel-tab');
+
 const taskModal =
   document.getElementById('taskModal');
 
@@ -1353,6 +1365,40 @@ btnSaveTask?.addEventListener(
   'click',
   saveTask
 );
+
+function showDashboardPanel(panel) {
+  if (!contentGrid) return;
+
+  contentGrid.classList.remove(
+    'show-tasks',
+    'show-staff',
+    'show-alerts',
+    'show-messages',
+    'show-logs'
+  );
+
+  contentGrid.classList.add(`show-${panel}`);
+
+  panelTabs.forEach(btn => {
+    btn.classList.toggle(
+      'active',
+      btn.dataset.panel === panel
+    );
+  });
+}
+
+btnToggleSidebar?.addEventListener('click', () => {
+  dashboardPanelMenu?.classList.toggle('hidden');
+});
+
+panelTabs.forEach(btn => {
+  btn.addEventListener('click', () => {
+    showDashboardPanel(btn.dataset.panel);
+    dashboardPanelMenu?.classList.add('hidden');
+  });
+});
+
+showDashboardPanel('tasks');
 
 selectDiadiem.addEventListener(
   "change",
