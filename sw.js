@@ -8,11 +8,11 @@ const URLS_TO_CACHE = [
   '/scripts/supabaseClient.js',
   '/style.css',
   '/favicon.ico',
-  '/qlnv/chamcongcs1.html',
-'/scripts/chamcong.js',
-'/manifest.json',
-'/icons/icon-192.png',
-'/icons/icon-512.png',
+  '/chamcongcs1.html',
+  '/scripts/chamcong.js',
+  '/manifest.json',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
   // Thêm file offline nếu có: '/offline.html' 
 ];
 
