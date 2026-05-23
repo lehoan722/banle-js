@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_NAME = 'banle-offline-v2';
+const CACHE_NAME = 'banle-offline-v3';
 const URLS_TO_CACHE = [
   '/',
   '/banlemt1.1.html',
