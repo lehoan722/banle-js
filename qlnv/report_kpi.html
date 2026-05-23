@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Báo cáo KPI nhân viên</title>
+
+  <link rel="stylesheet" href="dashboard.css" />
+
+  <style>
+    .report-filter {
+      display: grid;
+      grid-template-columns: 160px 180px 220px auto;
+      gap: 10px;
+      align-items: end;
+      padding: 14px;
+    }
+
+    .filter-box label {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .filter-box input,
+    .filter-box select {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0 10px;
+      font-weight: 700;
+    }
+
+    .report-summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 0 14px 14px;
+    }
+
+    .summary-box {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .summary-box span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .summary-box b {
+      font-size: 22px;
+    }
+
+    .report-table-wrap {
+      padding: 0 14px 14px;
+      overflow: auto;
+    }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      font-size: 13px;
+    }
+
+    .report-table th,
+    .report-table td {
+      border: 1px solid var(--line);
+      padding: 8px;
+      vertical-align: middle;
+    }
+
+    .report-table th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .num {
+      text-align: right;
+      white-space: nowrap;
+      font-weight: 800;
+    }
+
+    .rate-bar {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .rate-bar i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    }
+
+    @media (max-width: 768px) {
+      .report-filter {
+        grid-template-columns: 1fr;
+      }
+
+      .report-summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .report-table {
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="login-container"></div>
+
+  <div id="app-container" class="qlnv-app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">HT</div>
+        <div>
+          <div class="brand-title">QLNV</div>
+          <div class="brand-subtitle">HOÀN TUYẾT</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a class="menu-item" href="dashboard.html">🏠 <span>Tổng quan</span></a>
+        <a class="menu-item" href="report_timeline.html">🕘 <span>Timeline</span></a>
+        <a class="menu-item active" href="report_kpi.html">📊 <span>KPI nhân viên</span></a>
+        <a class="menu-item" href="viechangngay.html">⚙️ <span>Việc hằng ngày</span></a>
+      </nav>
+    </aside>
+
+    <div class="main-shell">
+      <header class="topbar">
+        <button id="btnToggleSidebar" class="icon-btn" type="button">☰</button>
+
+        <div class="topbar-control">
+          <label>Báo cáo</label>
+          <span id="todayText">KPI nhân viên</span>
+        </div>
+
+        <div class="topbar-spacer"></div>
+
+        <span class="realtime-badge"><i></i> Dữ liệu báo cáo</span>
+        <span id="storeModeBadge">REPORT</span>
+
+        <div class="user-box">
+          <div class="avatar">A</div>
+          <div>
+            <b>admin</b>
+            <span>Quản trị hệ thống</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-page">
+        <section class="card">
+          <div class="section-header">
+            <div>
+              <h2>Báo cáo KPI nhân viên</h2>
+              <p>Tổng hợp task, giờ làm task, giờ rảnh tạm tính theo ngày</p>
+            </div>
+            <button id="btnReloadKpi" type="button">Tải báo cáo</button>
+          </div>
+
+          <div class="report-filter">
+            <div class="filter-box">
+              <label>Cơ sở</label>
+              <select id="filterDiadiem">
+                <option value="cs1">Cơ sở 1</option>
+                <option value="cs2">Cơ sở 2</option>
+              </select>
+            </div>
+
+            <div class="filter-box">
+              <label>Ngày</label>
+              <input id="filterDate" type="date" />
+            </div>
+
+            <div class="filter-box">
+              <label>Nhân viên</label>
+              <select id="filterManv">
+                <option value="">Tất cả nhân viên</option>
+              </select>
+            </div>
+
+            <button id="btnToday" type="button">Hôm nay</button>
+          </div>
+
+          <div class="report-summary">
+            <div class="summary-box">
+              <span>Tổng nhân viên</span>
+              <b id="sumStaff">0</b>
+            </div>
+            <div class="summary-box">
+              <span>Tổng task</span>
+              <b id="sumTasks">0</b>
+            </div>
+            <div class="summary-box">
+              <span>Task hoàn thành</span>
+              <b id="sumDone">0</b>
+            </div>
+            <div class="summary-box">
+              <span>Hiệu suất TB</span>
+              <b id="sumRate">0%</b>
+            </div>
+          </div>
+
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Ngày</th>
+                  <th>Nhân viên</th>
+                  <th>Giờ ca</th>
+                  <th>Giờ task</th>
+                  <th>Giờ rảnh</th>
+                  <th>Tổng task</th>
+                  <th>Hoàn thành</th>
+                  <th>Đang/chưa xong</th>
+                  <th>Bất thường</th>
+                  <th>Tỷ lệ HT</th>
+                  <th>Hiệu suất</th>
+                </tr>
+              </thead>
+              <tbody id="kpiBody">
+                <tr>
+                  <td colspan="11">Đang tải dữ liệu...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <span>© 2026 QLNV Hoàn Tuyết</span>
+        <span class="footer-status"><i></i> Báo cáo KPI</span>
+      </footer>
+    </div>
+  </div>
+
+  <script type="module" src="report_kpi.js"></script>
+</body>
+</html>

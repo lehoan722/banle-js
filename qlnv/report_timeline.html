@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Báo cáo Timeline nhân viên</title>
+  <link rel="stylesheet" href="dashboard.css" />
+
+  <style>
+    .report-filter {
+      display: grid;
+      grid-template-columns: 160px 180px 220px 180px auto;
+      gap: 10px;
+      align-items: end;
+      padding: 14px;
+    }
+
+    .filter-box label {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .filter-box input,
+    .filter-box select {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0 10px;
+      font-weight: 700;
+    }
+
+    .report-summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 0 14px 14px;
+    }
+
+    .summary-box {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .summary-box span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .summary-box b {
+      font-size: 22px;
+    }
+
+    .report-table-wrap {
+      padding: 0 14px 14px;
+      overflow: auto;
+    }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      font-size: 13px;
+    }
+
+    .report-table th,
+    .report-table td {
+      border: 1px solid var(--line);
+      padding: 8px;
+      vertical-align: top;
+    }
+
+    .report-table th {
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .time-col {
+      white-space: nowrap;
+      font-weight: 800;
+    }
+
+    .badge-action {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      background: #dbeafe;
+      color: #1d4ed8;
+      white-space: nowrap;
+    }
+
+    .badge-action.done {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .badge-action.pause {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-action.bad {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    @media (max-width: 768px) {
+      .report-filter {
+        grid-template-columns: 1fr;
+      }
+
+      .report-summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .report-table {
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="login-container"></div>
+
+  <div id="app-container" class="qlnv-app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">HT</div>
+        <div>
+          <div class="brand-title">QLNV</div>
+          <div class="brand-subtitle">HOÀN TUYẾT</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a class="menu-item" href="dashboard.html">🏠 <span>Tổng quan</span></a>
+        <a class="menu-item active" href="report_timeline.html">🕘 <span>Timeline</span></a>
+        <a class="menu-item" href="report_kpi.html">📊 <span>KPI nhân viên</span></a>
+        <a class="menu-item" href="viechangngay.html">⚙️ <span>Việc hằng ngày</span></a>
+      </nav>
+    </aside>
+
+    <div class="main-shell">
+      <header class="topbar">
+        <button id="btnToggleSidebar" class="icon-btn" type="button">☰</button>
+
+        <div class="topbar-control">
+          <label>Báo cáo</label>
+          <span id="todayText">Timeline nhân viên</span>
+        </div>
+
+        <div class="topbar-spacer"></div>
+
+        <span class="realtime-badge"><i></i> Dữ liệu báo cáo</span>
+        <span id="storeModeBadge">REPORT</span>
+
+        <div class="user-box">
+          <div class="avatar">A</div>
+          <div>
+            <b>admin</b>
+            <span>Quản trị hệ thống</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-page">
+        <section class="card">
+          <div class="section-header">
+            <div>
+              <h2>Báo cáo Timeline nhân viên</h2>
+              <p>Theo dõi từng sự kiện task theo thời gian trong ngày</p>
+            </div>
+            <button id="btnReloadTimeline" type="button">Tải báo cáo</button>
+          </div>
+
+          <div class="report-filter">
+            <div class="filter-box">
+              <label>Cơ sở</label>
+              <select id="filterDiadiem">
+                <option value="cs1">Cơ sở 1</option>
+                <option value="cs2">Cơ sở 2</option>
+              </select>
+            </div>
+
+            <div class="filter-box">
+              <label>Ngày</label>
+              <input id="filterDate" type="date" />
+            </div>
+
+            <div class="filter-box">
+              <label>Nhân viên</label>
+              <select id="filterManv">
+                <option value="">Tất cả nhân viên</option>
+              </select>
+            </div>
+
+            <div class="filter-box">
+              <label>Loại task</label>
+              <select id="filterTaskType">
+                <option value="">Tất cả</option>
+                <option value="vesinh">Vệ sinh</option>
+                <option value="kiemhang">Kiểm hàng</option>
+                <option value="bat_thuong">Bất thường</option>
+                <option value="khac">Khác</option>
+              </select>
+            </div>
+
+            <button id="btnToday" type="button">Hôm nay</button>
+          </div>
+
+          <div class="report-summary">
+            <div class="summary-box">
+              <span>Tổng sự kiện</span>
+              <b id="sumEvents">0</b>
+            </div>
+            <div class="summary-box">
+              <span>Task bắt đầu</span>
+              <b id="sumStarted">0</b>
+            </div>
+            <div class="summary-box">
+              <span>Task hoàn thành</span>
+              <b id="sumDone">0</b>
+            </div>
+            <div class="summary-box">
+              <span>Tạm dừng / làm tiếp</span>
+              <b id="sumPauseResume">0</b>
+            </div>
+          </div>
+
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Giờ</th>
+                  <th>Nhân viên</th>
+                  <th>Hành động</th>
+                  <th>Công việc</th>
+                  <th>Loại</th>
+                  <th>Khu vực</th>
+                  <th>Nguồn</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody id="timelineBody">
+                <tr>
+                  <td colspan="8">Đang tải dữ liệu...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <span>© 2026 QLNV Hoàn Tuyết</span>
+        <span class="footer-status"><i></i> Báo cáo Timeline</span>
+      </footer>
+    </div>
+  </div>
+
+  <script type="module" src="report_timeline.js"></script>
+</body>
+</html>
