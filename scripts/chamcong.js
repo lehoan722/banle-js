@@ -159,6 +159,36 @@ async function markNotificationRead(id) {
         .eq("id", id);
 }
 
+async function createChamCongNotification({
+    diadiem,
+    manv,
+    title,
+    body,
+    type = "staff_event",
+    refType = "chamcong"
+}) {
+    const sp = await ensureSupabase();
+    if (!sp) return;
+
+    const { error } = await sp
+        .schema("qlnv")
+        .from("notifications")
+        .insert({
+            diadiem,
+            target_manv: null,
+            target_role: "admin",
+            title,
+            body,
+            type,
+            ref_type: refType,
+            is_read: false
+        });
+
+    if (error) {
+        console.error("Lỗi tạo notification từ chấm công:", error);
+    }
+}
+
 function setupNotificationRealtimeChamCong({ manv, diadiem }) {
     if (!supabase || !manv) return;
 
@@ -2112,6 +2142,22 @@ function attachChamCongButtons(diadiem) {
                     statusMsg.textContent = `Đã ghi: ${su_kien} lúc ${formatTime(now)}`;
                 }
                 renderTodayLog();
+
+                await createChamCongNotification({
+                    diadiem,
+                    manv,
+                    title: "Nhân viên vừa chấm công",
+                    body: `${manv} vừa bấm ${labelSuKien(su_kien)} lúc ${formatTime(now)}`,
+                    type: "chamcong_event",
+                    refType: "chamcong_log"
+                });
+
+                playNotifySound();
+
+                showTaskPopup(
+                    "Đã ghi nhận chấm công",
+                    `${labelSuKien(su_kien)} lúc ${formatTime(now)}`
+                );
 
                 if (su_kien === "VAOCA") {
                     await updateQlnvStaffStatus({
