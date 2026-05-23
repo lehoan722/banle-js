@@ -118,6 +118,39 @@ async function ensureSupabase() {
     return supabase;
 }
 
+async function insertTaskLog({
+    task,
+    action,
+    oldStatus = null,
+    newStatus = null,
+    source = "chamcong",
+    note = null
+}) {
+    const sp = await ensureSupabase();
+    if (!sp || !task) return;
+
+    const { error } = await sp
+        .schema("qlnv")
+        .from("task_logs")
+        .insert({
+            task_id: task.id || null,
+            manv: task.assigned_to || localStorage.getItem("manv") || null,
+            tennv: task.assigned_name || localStorage.getItem("tennv") || null,
+            diadiem: task.diadiem || getDiaDiemFromPath(),
+            action,
+            old_status: oldStatus,
+            new_status: newStatus,
+            task_type: task.task_type || null,
+            area: task.area || null,
+            source,
+            note
+        });
+
+    if (error) {
+        console.error("Lỗi ghi task_logs:", error);
+    }
+}
+
 // ====== BẮT NHẮC BAY MAU TRƯỚC KHI CHẤM CÔNG ======
 
 function getBayMauKeyForToday(manv, diadiem) {
@@ -1410,6 +1443,20 @@ async function updateMyTaskStatus(newStatus) {
         return;
     }
 
+    await insertTaskLog({
+        task: currentAssignedTask,
+        action:
+            newStatus === "in_progress"
+                ? "task_started"
+                : newStatus === "done"
+                    ? "task_done"
+                    : "task_status_changed",
+        oldStatus: currentAssignedTask.status || null,
+        newStatus,
+        source: "chamcong",
+        note: "Nhân viên cập nhật task từ trang chấm công"
+    });
+
     if (newStatus === "in_progress") {
         await updateQlnvStaffStatus({
             manv,
@@ -1490,6 +1537,15 @@ async function pauseCurrentTaskIfDoing() {
         return;
     }
 
+    await insertTaskLog({
+        task: currentAssignedTask,
+        action: "task_paused",
+        oldStatus: "in_progress",
+        newStatus: "in_progress",
+        source: "chamcong",
+        note: "Tạm dừng task do phục vụ khách / dọn dẹp"
+    });
+
     currentAssignedTask.paused_at = new Date().toISOString();
     renderMyTask();
 }
@@ -1519,6 +1575,15 @@ async function resumeCurrentTaskIfPaused() {
         console.error("Lỗi tiếp tục task:", error);
         return;
     }
+
+    await insertTaskLog({
+        task: currentAssignedTask,
+        action: "task_resumed",
+        oldStatus: "in_progress",
+        newStatus: "in_progress",
+        source: "chamcong",
+        note: "Nhân viên quay lại làm tiếp task"
+    });
 
     currentAssignedTask.paused_at = null;
     currentAssignedTask.paused_seconds = oldPausedSeconds + addSeconds;
@@ -1630,6 +1695,15 @@ async function startUnplannedTask() {
     currentUnplannedTask = data;
     currentAssignedTask = data;
 
+    await insertTaskLog({
+        task: data,
+        action: "unplanned_task_started",
+        oldStatus: null,
+        newStatus: "in_progress",
+        source: "chamcong",
+        note: note
+    });
+
     await updateQlnvStaffStatus({
         manv,
         diadiem,
@@ -1670,6 +1744,15 @@ async function finishUnplannedTask() {
         alert("Không hoàn thành được nhiệm vụ.");
         return;
     }
+
+    await insertTaskLog({
+        task: currentUnplannedTask,
+        action: "unplanned_task_done",
+        oldStatus: "in_progress",
+        newStatus: "done",
+        source: "chamcong",
+        note: "Hoàn thành nhiệm vụ bất thường"
+    });
 
     if (
         currentNormalTask &&
