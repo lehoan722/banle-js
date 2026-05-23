@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <title>Chấm công CS1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#007bff">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
   <style>
     body {
       font-family: sans-serif;
@@ -187,5 +192,16 @@
 </div>
 
   <script type="module" src="./scripts/chamcong.js"></script>
+
+  <script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js")
+        .then(() => console.log("Service Worker registered"))
+        .catch(err => console.error("SW error:", err));
+    });
+  }
+</script>
+
 </body>
 </html>
