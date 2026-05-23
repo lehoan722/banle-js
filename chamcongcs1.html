@@ -193,15 +193,7 @@
 
   <script type="module" src="./scripts/chamcong.js"></script>
 
-  <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js")
-        .then(() => console.log("Service Worker registered"))
-        .catch(err => console.error("SW error:", err));
-    });
-  }
-</script>
+  
 
 </body>
 </html>
