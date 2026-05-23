@@ -1370,7 +1370,7 @@ async function saveTask() {
       tpl.task_type || 'khac',
     diadiem,
     area: areaName,
-    assigned_to: manv,
+    assigned_to: String(manv || "").trim().toUpperCase(),
     assigned_name: assignedName,
     priority:
       Number(taskPriority.value || 2),
@@ -1423,7 +1423,7 @@ async function saveTask() {
 
   await createNotification({
     diadiem,
-    target_manv: manv,
+    target_manv: String(manv || "").trim().toUpperCase(),
     target_role: 'staff',
     title: 'Bạn có công việc mới',
     body: finalTitle,
