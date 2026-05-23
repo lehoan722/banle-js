@@ -162,38 +162,55 @@ async function markNotificationRead(id) {
 function setupNotificationRealtimeChamCong({ manv, diadiem }) {
     if (!supabase || !manv) return;
 
+    const myManv = String(manv || "").trim().toUpperCase();
+
     if (qlnvNotificationChannel) {
         supabase.removeChannel(qlnvNotificationChannel);
         qlnvNotificationChannel = null;
     }
 
     qlnvNotificationChannel = supabase
-        .channel(`qlnv-notifications-${diadiem}-${manv}`)
+        .channel(`qlnv-notifications-${diadiem}-${myManv}-${Date.now()}`)
         .on(
             "postgres_changes",
             {
                 event: "INSERT",
                 schema: "qlnv",
-                table: "notifications",
-                filter: `target_manv=eq.${String(manv).toUpperCase()}`
+                table: "notifications"
             },
             async (payload) => {
+                console.log("Đã nhận notification realtime:", payload);
+
                 const n = payload.new;
-                if (!n || n.id === lastChamCongNotificationId) return;
+                if (!n) return;
+
+                const target = String(n.target_manv || "").trim().toUpperCase();
+                const rowDiadiem = String(n.diadiem || "").trim().toLowerCase();
+
+                if (target !== myManv) return;
+                if (rowDiadiem !== String(diadiem).toLowerCase()) return;
+                if (n.id === lastChamCongNotificationId) return;
 
                 lastChamCongNotificationId = n.id;
+
+                console.log("Notification đúng nhân viên:", n);
 
                 playNotifySound();
                 showTaskPopup(n.title, n.body);
                 showBrowserNotification(n.title, n.body);
 
                 await markNotificationRead(n.id);
-                await loadMyCurrentTask({ manv, diadiem });
+                await loadMyCurrentTask({ manv: myManv, diadiem });
             }
         )
         .subscribe((status) => {
             console.log("Notification realtime chấm công:", status);
         });
+
+    window.testQlnvBeep = () => {
+        playNotifySound();
+        showTaskPopup("Test âm báo", "Nếu thấy popup này thì phần popup/beep hoạt động.");
+    };
 }
 
 // Check trước khi chấm công một sự kiện
