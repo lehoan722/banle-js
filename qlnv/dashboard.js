@@ -7,6 +7,38 @@ import {
 
 const supabase = getSupabaseClient();
 
+async function insertTaskLog({
+  task,
+  action,
+  oldStatus = null,
+  newStatus = null,
+  source = 'dashboard',
+  note = null
+}) {
+  if (!task) return;
+
+  const { error } = await supabase
+    .schema('qlnv')
+    .from('task_logs')
+    .insert({
+      task_id: task.id || null,
+      manv: task.assigned_to || null,
+      tennv: task.assigned_name || null,
+      diadiem: task.diadiem || selectDiadiem?.value || null,
+      action,
+      old_status: oldStatus,
+      new_status: newStatus,
+      task_type: task.task_type || null,
+      area: task.area || null,
+      source,
+      note
+    });
+
+  if (error) {
+    console.error('Lỗi ghi task_logs:', error);
+  }
+}
+
 let taskTemplatesCache = [];
 let workAreasCache = [];
 
@@ -702,6 +734,22 @@ async function updateTaskStatus(task, newStatus) {
     return;
   }
 
+  await insertTaskLog({
+    task,
+    action:
+      newStatus === 'in_progress'
+        ? 'task_started'
+        : newStatus === 'done'
+          ? 'task_done'
+          : newStatus === 'cancelled'
+            ? 'task_cancelled'
+            : 'task_status_changed',
+    oldStatus: task.status || null,
+    newStatus,
+    source: 'dashboard',
+    note: `${user.manv || 'ADMIN'} đổi trạng thái task`
+  });
+
   /*
     =========================
     SYNC STAFF STATUS
@@ -1250,6 +1298,15 @@ async function saveTask() {
       note: templateCode,
       created_at: new Date().toISOString()
     });
+
+  await insertTaskLog({
+    task: data,
+    action: 'task_created',
+    oldStatus: null,
+    newStatus: 'pending',
+    source: 'dashboard',
+    note: `Admin giao task từ mẫu ${templateCode}`
+  });
 
   taskModal.classList.add('hidden');
 
