@@ -393,7 +393,7 @@
       }
 
       lastFilter = { tuNgay, denNgay, diadiem, trangThai, soPhieu, nguoiKiem, ghiChu, maspRaw, matchAll };
-      return q;
+      return { q };
     }
 
     async function taiDanhSachPhieu() {
@@ -406,7 +406,10 @@
       tbody.innerHTML = `<tr><td colspan="17">Đang tải dữ liệu...</td></tr>`;
 
       let q;
-      try { q = await buildBaseQuery(true); }
+      try {
+        const built = await buildBaseQuery(true);
+        q = built.q;
+      }
       catch (e) {
         tbody.innerHTML = `<tr><td colspan="17">❌ Lỗi tìm mã sản phẩm: ${e.message}</td></tr>`;
         return;
