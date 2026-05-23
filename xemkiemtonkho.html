@@ -288,16 +288,51 @@
 
     function dinhDangNgay(ngayStr) {
       if (!ngayStr) return '';
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(String(ngayStr))) return ngayStr;
-      const d = new Date(normalizePgTimestamp(ngayStr));
-      return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+
+      const s = String(ngayStr).trim();
+      if (!s || s === 'null' || s === 'undefined') return '';
+
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        const [y, m, d] = s.split('-').map(Number);
+        return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+      }
+
+      const d = new Date(normalizePgTimestamp(s));
+      if (isNaN(d.getTime())) return s;
+
+      return new Intl.DateTimeFormat('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(d);
     }
 
     function dinhDangNgayGio(ngayStr) {
       if (!ngayStr) return '';
-      const d = new Date(normalizePgTimestamp(ngayStr));
-      const datePart = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
-      const timePart = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+
+      const s = String(ngayStr).trim();
+      if (!s || s === 'null' || s === 'undefined') return '';
+
+      const d = new Date(normalizePgTimestamp(s));
+      if (isNaN(d.getTime())) return s;
+
+      const datePart = new Intl.DateTimeFormat('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(d);
+
+      const timePart = new Intl.DateTimeFormat('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(d);
+
       return `${datePart} ${timePart.replace(':', 'h')}`;
     }
 
