@@ -168,25 +168,33 @@ async function createChamCongNotification({
     refType = "chamcong"
 }) {
     const sp = await ensureSupabase();
-    if (!sp) return;
+    if (!sp) return false;
 
-    const { error } = await sp
+    const payload = {
+        diadiem,
+        target_manv: null,
+        target_role: "admin",
+        title,
+        body,
+        type,
+        ref_type: refType,
+        is_read: false
+    };
+
+    const { data, error } = await sp
         .schema("qlnv")
         .from("notifications")
-        .insert({
-            diadiem,
-            target_manv: null,
-            target_role: "admin",
-            title,
-            body,
-            type,
-            ref_type: refType,
-            is_read: false
-        });
+        .insert(payload)
+        .select("id")
+        .single();
 
     if (error) {
-        console.error("Lỗi tạo notification từ chấm công:", error);
+        console.error("Lỗi tạo notification từ chấm công:", error, payload);
+        return false;
     }
+
+    console.log("Đã tạo notification từ chấm công:", data);
+    return true;
 }
 
 function setupNotificationRealtimeChamCong({ manv, diadiem }) {
