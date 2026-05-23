@@ -2225,9 +2225,13 @@ async function initChamCong(diadiem) {
     todayEvents = await loadTodayEvents(manv, diadiem);
     attachChamCongButtons(diadiem);
     setupBeepUnlockOnce(document);
+
     await loadMyCurrentTask({ manv, diadiem });
     setupChamCongRealtime({ manv, diadiem });
+
     await requestBrowserNotificationPermission();
+    setupNotificationRealtimeChamCong({ manv, diadiem });
+
     startAutoResumeAfterCleanup({ manv, diadiem });
 
     // Bắt đầu auto check rời khỏi cửa hàng
