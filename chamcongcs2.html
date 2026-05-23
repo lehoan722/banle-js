@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Chấm công CS2</title>
+  <title>Chấm công cs2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
@@ -91,18 +91,18 @@
 <body>
   <!-- Khung login: authModule.js sẽ tự vẽ form đăng nhập ở đây -->
   <div id="login-container">
-    <h1>Đăng nhập chấm công CS2</h1>
+    <h1>Đăng nhập chấm công cs2</h1>
     <div class="info">
-      Yêu cầu bật GPS và đứng trong cửa hàng CS2 khi đăng nhập và khi chấm VÀO CA / TAN CA.
+      Yêu cầu bật GPS và đứng trong cửa hàng cs2 khi đăng nhập và khi chấm VÀO CA / TAN CA.
     </div>
   </div>
 
   <!-- App chấm công: chỉ hiển thị sau khi login thành công -->
   <div id="app-container" style="display:none;">
-    <h1>Chấm công - Cơ sở 2</h1>
+    <h1>Chấm công - Cơ sở 1</h1>
     <div class="status">
       Nhân viên: <span id="status-manv"></span><br>
-      Địa điểm: CS2<br>
+      Địa điểm: cs2<br>
       <span id="status-msg"></span>
     </div>
 
@@ -114,6 +114,46 @@
       <button id="btn-nchd" class="primary">Nghỉ chiều đến</button>
       <button id="btn-tanca" class="danger">Tan ca</button>
     </div>
+    <div class="log-panel">
+  <h2>Trạng thái làm việc</h2>
+  <div class="log-panel">
+  <h2>Công việc được giao</h2>
+
+  <div id="my-task-box">
+    Chưa có công việc được giao.
+  </div> 
+
+  <div id="paused-task-box" style="display:none;margin-top:10px;padding:8px;border-radius:6px;background:#fff7ed;border:1px solid #fed7aa;">
+</div>
+
+<div class="btn-grid">
+  <button id="btn-unplanned-start" class="warn">
+    Bắt đầu việc bất thường
+  </button>
+
+  <button id="btn-unplanned-done" class="primary">
+    Hoàn thành việc bất thường
+  </button>
+</div>
+
+  <div class="btn-grid">
+  <button id="btn-my-task-start" class="primary">Bắt đầu task</button>
+  <button id="btn-my-task-resume" class="primary">Làm tiếp task</button>
+  <button id="btn-my-task-done" class="primary">Hoàn thành task</button>
+</div>
+</div>
+  <div class="status">
+    Trạng thái hiện tại:
+    <b id="work-status-text">Chưa xác định</b>
+  </div>
+
+  <div class="btn-grid">
+    <button id="btn-work-free" class="primary">Rảnh</button>
+    <button id="btn-work-serving" class="warn">Khách vào</button>
+    <button id="btn-work-cleanup" class="warn">Dọn dẹp sau bán</button>
+    <button id="btn-work-off" class="danger">Ngừng nhận việc</button>
+  </div>
+</div>
 
     <div class="info">
       - Yêu cầu chấm công đúng tại thời điểm, tại cửa hàng.<br>
@@ -128,6 +168,23 @@
       <div id="log-total">Tổng công hôm nay: 0.00 giờ</div>
     </div>
   </div>
+
+  <div id="unplanned-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:white;width:90%;max-width:420px;border-radius:10px;padding:16px;">
+    <h2 style="margin-top:0;font-size:18px;">Nhiệm vụ bất thường</h2>
+
+    <textarea
+      id="unplanned-task-note"
+      placeholder="Mô tả nhiệm vụ bất thường..."
+      style="width:100%;min-height:100px;padding:8px;border-radius:6px;border:1px solid #ccc;"
+    ></textarea>
+
+    <div class="btn-grid">
+      <button id="btn-unplanned-cancel" class="danger" type="button">Hủy</button>
+      <button id="btn-unplanned-confirm" class="primary" type="button">Bắt đầu</button>
+    </div>
+  </div>
+</div>
 
   <script type="module" src="./scripts/chamcong.js"></script>
 </body>
