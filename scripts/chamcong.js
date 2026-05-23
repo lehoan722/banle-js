@@ -17,9 +17,9 @@ let qlnvNotificationChannel = null;
 let lastChamCongNotificationId = 0;
 
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
-const CS1_COORD = { lat: 21.552722, lng: 105.8423559 };
+const CS1_COORD = { lat: 21.552722, lng: 105.842583 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
-const MAX_DISTANCE_M = 17000;                // bán kính cho phép (m)
+const MAX_DISTANCE_M = 5000;                // bán kính cho phép (m)
 const AUTO_CHECK_INTERVAL_MS = 1000000;     // 3 phút
 const BUTTON_LOCK_MS = 5 * 60 * 1000;      // 5 phút khoá nút sau khi bấm
 
@@ -1467,21 +1467,26 @@ let myTaskTimerInterval = null;
 
 function startMyTaskTimer() {
     const el = document.getElementById("my-task-timer");
-    if (!el || !currentAssignedTask?.started_at) return;
 
     if (myTaskTimerInterval) {
         clearInterval(myTaskTimerInterval);
         myTaskTimerInterval = null;
     }
 
+    const task = currentAssignedTask;
+
+    if (!el || !task || !task.started_at) return;
+
     function update() {
-        const startedAt = new Date(currentAssignedTask.started_at).getTime();
-        const pausedSeconds = Number(currentAssignedTask.paused_seconds || 0);
+        if (!task || !task.started_at) return;
+
+        const startedAt = new Date(task.started_at).getTime();
+        const pausedSeconds = Number(task.paused_seconds || 0);
 
         let now = Date.now();
 
-        if (currentAssignedTask.paused_at) {
-            now = new Date(currentAssignedTask.paused_at).getTime();
+        if (task.paused_at) {
+            now = new Date(task.paused_at).getTime();
         }
 
         const diff = Math.max(
@@ -1498,7 +1503,7 @@ function startMyTaskTimer() {
 
     update();
 
-    if (!currentAssignedTask.paused_at) {
+    if (!task.paused_at) {
         myTaskTimerInterval = setInterval(update, 1000);
     }
 }
