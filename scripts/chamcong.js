@@ -197,6 +197,27 @@ async function createChamCongNotification({
     return true;
 }
 
+async function notifyAdminAndLocal({
+    diadiem,
+    manv,
+    title,
+    body,
+    type = "staff_event",
+    refType = "chamcong"
+}) {
+    await createChamCongNotification({
+        diadiem,
+        manv,
+        title,
+        body,
+        type,
+        refType
+    });
+
+    playNotifySound();
+    showTaskPopup(title, body);
+}
+
 function setupNotificationRealtimeChamCong({ manv, diadiem }) {
     if (!supabase || !manv) return;
 
@@ -1619,6 +1640,17 @@ async function updateMyTaskStatus(newStatus) {
         note: "Nhân viên cập nhật task từ trang chấm công"
     });
 
+    await notifyAdminAndLocal({
+        diadiem,
+        manv,
+        title: newStatus === "in_progress"
+            ? "Nhân viên bắt đầu task"
+            : "Nhân viên hoàn thành task",
+        body: `${manv} ${newStatus === "in_progress" ? "bắt đầu" : "hoàn thành"} task: ${currentAssignedTask.title || ""}`,
+        type: newStatus === "in_progress" ? "task_started" : "task_done",
+        refType: "task"
+    });
+
     if (newStatus === "in_progress") {
         await updateQlnvStaffStatus({
             manv,
@@ -1773,6 +1805,17 @@ async function resumeTaskAndSetDoing() {
         );
     }
 
+    if (ok) {
+        await notifyAdminAndLocal({
+            diadiem,
+            manv,
+            title: "Nhân viên làm tiếp task",
+            body: `${manv} vừa bấm Làm tiếp task`,
+            type: "task_resumed",
+            refType: "task"
+        });
+    }
+
     await loadMyCurrentTask({ manv, diadiem });
 }
 
@@ -1875,6 +1918,15 @@ async function startUnplannedTask() {
 
     renderWorkStatusText("doing_task");
 
+    await notifyAdminAndLocal({
+        diadiem,
+        manv,
+        title: "Nhân viên bắt đầu việc bất thường",
+        body: `${manv} bắt đầu việc bất thường: ${note}`,
+        type: "unplanned_task_started",
+        refType: "task"
+    });
+
     noteEl.value = "";
     closeUnplannedModal();
 
@@ -1914,6 +1966,15 @@ async function finishUnplannedTask() {
         newStatus: "done",
         source: "chamcong",
         note: "Hoàn thành nhiệm vụ bất thường"
+    });
+
+    await notifyAdminAndLocal({
+        diadiem,
+        manv,
+        title: "Nhân viên hoàn thành việc bất thường",
+        body: `${manv} vừa hoàn thành việc bất thường`,
+        type: "unplanned_task_done",
+        refType: "task"
     });
 
     if (
@@ -1962,9 +2023,22 @@ function attachChamCongButtons(diadiem) {
         });
 
         if (ok) {
+            const body = currentAssignedTask?.status === "in_progress"
+                ? `${manv} quay lại làm task`
+                : `${manv} báo rảnh / có thể nhận việc`;
+
             renderWorkStatusText(
                 currentAssignedTask?.status === "in_progress" ? "doing_task" : "free"
             );
+
+            await notifyAdminAndLocal({
+                diadiem,
+                manv,
+                title: "Cập nhật trạng thái nhân viên",
+                body,
+                type: "staff_status",
+                refType: "staff_status"
+            });
         }
     });
 
@@ -1978,7 +2052,18 @@ function attachChamCongButtons(diadiem) {
             lastAction: "Nhân viên bắt đầu phục vụ khách"
         });
 
-        if (ok) renderWorkStatusText("serving_customer");
+        if (ok) {
+            renderWorkStatusText("serving_customer");
+
+            await notifyAdminAndLocal({
+                diadiem,
+                manv,
+                title: "Nhân viên đang phục vụ khách",
+                body: `${manv} vừa bấm Khách vào / bắt đầu phục vụ khách`,
+                type: "staff_serving_customer",
+                refType: "staff_status"
+            });
+        }
     });
 
     btnWorkCleanup?.addEventListener("click", async () => {
@@ -1992,7 +2077,18 @@ function attachChamCongButtons(diadiem) {
             cleanupMinutes: 10
         });
 
-        if (ok) renderWorkStatusText("cleanup_after_sale");
+        if (ok) {
+            renderWorkStatusText("cleanup_after_sale");
+
+            await notifyAdminAndLocal({
+                diadiem,
+                manv,
+                title: "Nhân viên dọn dẹp sau bán",
+                body: `${manv} vừa bấm Dọn dẹp sau bán`,
+                type: "staff_cleanup_after_sale",
+                refType: "staff_status"
+            });
+        }
     });
 
     btnWorkOff?.addEventListener("click", async () => {
@@ -2003,7 +2099,18 @@ function attachChamCongButtons(diadiem) {
             lastAction: "Ngừng nhận việc"
         });
 
-        if (ok) renderWorkStatusText("off");
+        if (ok) {
+            renderWorkStatusText("off");
+
+            await notifyAdminAndLocal({
+                diadiem,
+                manv,
+                title: "Nhân viên ngừng nhận việc",
+                body: `${manv} vừa bấm Ngừng nhận việc`,
+                type: "staff_off",
+                refType: "staff_status"
+            });
+        }
     });
 
     const statusManv = document.getElementById("status-manv");
