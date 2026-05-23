@@ -5,6 +5,11 @@ import {
   dangXuatDungChung
 } from "../scripts/authModule.js";
 
+import {
+  playAlertBeep,
+  setupBeepUnlockOnce
+} from "../scripts/soundBeep.js";
+
 const supabase = getSupabaseClient();
 
 async function insertTaskLog({
@@ -68,6 +73,11 @@ const logContainer =
 
 const alertContainer =
   document.getElementById('alertContainer');
+
+const messageContainer = document.getElementById('messageContainer');
+const messageCount = document.getElementById('messageCount');
+let lastNotificationId = 0;
+let qlnvNotificationChannel = null;
 
 const topAlertBadge =
   document.getElementById('topAlertBadge');
@@ -137,6 +147,106 @@ function getTodayRangeVN() {
     startIso: start.toISOString(),
     endIso: end.toISOString()
   };
+}
+
+function playNotifySound() {
+  playAlertBeep();
+}
+
+function showLocalPopup(title, body) {
+  const div = document.createElement('div');
+  div.style.cssText = `
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    background: #111827;
+    color: white;
+    padding: 12px 14px;
+    border-radius: 10px;
+    z-index: 99999;
+    max-width: 320px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    font-size: 14px;
+  `;
+  div.innerHTML = `<b>${title || 'Thông báo'}</b><br>${body || ''}`;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 6000);
+}
+
+async function createNotification(payload) {
+  const { error } = await supabase
+    .schema('qlnv')
+    .from('notifications')
+    .insert(payload);
+
+  if (error) {
+    console.error('Lỗi tạo notification:', error);
+  }
+}
+
+async function loadNotifications(diadiem) {
+  if (!messageContainer) return;
+
+  const { data, error } = await supabase
+    .schema('qlnv')
+    .from('notifications')
+    .select('*')
+    .eq('diadiem', diadiem)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error('Lỗi load notifications:', error);
+    return;
+  }
+
+  const rows = data || [];
+  messageCount.innerText = rows.filter(x => !x.is_read).length;
+
+  if (!rows.length) {
+    messageContainer.innerHTML = `<div class="empty-note">Chưa có thông báo.</div>`;
+    return;
+  }
+
+  messageContainer.innerHTML = rows.map(item => `
+    <div class="message-item" style="padding:8px;border-bottom:1px solid #e5e7eb;">
+      <b>${item.title || ''}</b><br>
+      <span>${item.body || ''}</span><br>
+      <small>${new Date(item.created_at).toLocaleString('vi-VN')}</small>
+    </div>
+  `).join('');
+}
+
+function setupNotificationRealtimeDashboard() {
+  const diadiem = selectDiadiem.value;
+
+  if (qlnvNotificationChannel) {
+    supabase.removeChannel(qlnvNotificationChannel);
+    qlnvNotificationChannel = null;
+  }
+
+  qlnvNotificationChannel = supabase
+    .channel(`qlnv-notifications-dashboard-${diadiem}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'qlnv',
+        table: 'notifications',
+        filter: `diadiem=eq.${diadiem}`
+      },
+      async (payload) => {
+        const n = payload.new;
+        await loadNotifications(diadiem);
+
+        if (n.id && n.id !== lastNotificationId) {
+          lastNotificationId = n.id;
+          playNotifySound();
+          showLocalPopup(n.title, n.body);
+        }
+      }
+    )
+    .subscribe();
 }
 
 function getTaskStatusText(status) {
@@ -224,8 +334,10 @@ khoiTaoDangNhapDungChung({
     }
 
     await loadDashboard();
+    setupBeepUnlockOnce(document);
 
     setupRealtimeDashboard();
+    setupNotificationRealtimeDashboard();
 
     return true;
   }
@@ -240,7 +352,8 @@ async function loadDashboard() {
     loadStaff(diadiem),
     loadTasks(diadiem),
     loadLogs(diadiem),
-    loadAlerts(diadiem)
+    loadAlerts(diadiem),
+    loadNotifications(diadiem)
   ]);
 }
 
@@ -1308,6 +1421,17 @@ async function saveTask() {
     note: `Admin giao task từ mẫu ${templateCode}`
   });
 
+  await createNotification({
+    diadiem,
+    target_manv: manv,
+    target_role: 'staff',
+    title: 'Bạn có công việc mới',
+    body: finalTitle,
+    type: 'task_created',
+    ref_type: 'task',
+    ref_id: data.id
+  });
+
   taskModal.classList.add('hidden');
 
   await loadTasks(diadiem);
@@ -1405,5 +1529,6 @@ selectDiadiem.addEventListener(
     await loadDashboard();
 
     setupRealtimeDashboard();
+    setupNotificationRealtimeDashboard();
   }
 );
