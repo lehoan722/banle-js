@@ -2,6 +2,10 @@
 
 // Dùng chung cơ chế đăng nhập như trang Up ảnh nhanh
 import { khoiTaoDangNhapDungChung } from './authModule.js';
+import {
+    playAlertBeep,
+    setupBeepUnlockOnce
+} from './soundBeep.js';
 
 // Supabase client sẽ được gán vào window.supabase sau khi đăng nhập
 let supabase = null;
@@ -9,6 +13,8 @@ let currentAssignedTask = null;
 let currentNormalTask = null;
 let currentUnplannedTask = null;
 let qlnvChamCongChannel = null;
+let qlnvNotificationChannel = null;
+let lastChamCongNotificationId = 0;
 
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.5525047, lng: 105.8423559 };
@@ -92,6 +98,100 @@ async function checkInStore(diadiem) {
         return false;
     }
     return true;
+}
+
+function playNotifySound() {
+    playAlertBeep();
+}
+
+function showTaskPopup(title, body) {
+    const div = document.createElement("div");
+    div.style.cssText = `
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        top: 12px;
+        background: #111827;
+        color: #fff;
+        padding: 14px;
+        border-radius: 10px;
+        z-index: 99999;
+        font-size: 15px;
+        box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    `;
+    div.innerHTML = `<b>${title || "Thông báo"}</b><br>${body || ""}`;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 8000);
+}
+
+async function requestBrowserNotificationPermission() {
+    if (!("Notification" in window)) return false;
+
+    if (Notification.permission === "granted") return true;
+
+    if (Notification.permission !== "denied") {
+        const p = await Notification.requestPermission();
+        return p === "granted";
+    }
+
+    return false;
+}
+
+function showBrowserNotification(title, body) {
+    if (!("Notification" in window)) return;
+
+    if (Notification.permission === "granted") {
+        new Notification(title || "Thông báo", {
+            body: body || "",
+            icon: "/icons/icon-192.png"
+        });
+    }
+}
+
+async function markNotificationRead(id) {
+    const sp = await ensureSupabase();
+    if (!sp || !id) return;
+
+    await sp
+        .schema("qlnv")
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("id", id);
+}
+
+function setupNotificationRealtimeChamCong({ manv, diadiem }) {
+    if (!supabase || !manv) return;
+
+    if (qlnvNotificationChannel) {
+        supabase.removeChannel(qlnvNotificationChannel);
+        qlnvNotificationChannel = null;
+    }
+
+    qlnvNotificationChannel = supabase
+        .channel(`qlnv-notifications-${diadiem}-${manv}`)
+        .on(
+            "postgres_changes",
+            {
+                event: "INSERT",
+                schema: "qlnv",
+                table: "notifications",
+                filter: `target_manv=eq.${String(manv).toUpperCase()}`
+            },
+            async (payload) => {
+                const n = payload.new;
+                if (!n || n.id === lastChamCongNotificationId) return;
+
+                lastChamCongNotificationId = n.id;
+
+                playNotifySound();
+                showTaskPopup(n.title, n.body);
+                showBrowserNotification(n.title, n.body);
+
+                await markNotificationRead(n.id);
+                await loadMyCurrentTask({ manv, diadiem });
+            }
+        )
+        .subscribe();
 }
 
 // Check trước khi chấm công một sự kiện
@@ -2124,8 +2224,10 @@ async function initChamCong(diadiem) {
     // Tải log hôm nay và hiển thị
     todayEvents = await loadTodayEvents(manv, diadiem);
     attachChamCongButtons(diadiem);
+    setupBeepUnlockOnce(document);
     await loadMyCurrentTask({ manv, diadiem });
     setupChamCongRealtime({ manv, diadiem });
+    await requestBrowserNotificationPermission();
     startAutoResumeAfterCleanup({ manv, diadiem });
 
     // Bắt đầu auto check rời khỏi cửa hàng
