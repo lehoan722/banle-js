@@ -191,7 +191,9 @@ function setupNotificationRealtimeChamCong({ manv, diadiem }) {
                 await loadMyCurrentTask({ manv, diadiem });
             }
         )
-        .subscribe();
+        .subscribe((status) => {
+            console.log("Notification realtime chấm công:", status);
+        });
 }
 
 // Check trước khi chấm công một sự kiện
