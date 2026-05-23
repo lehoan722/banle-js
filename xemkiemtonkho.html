@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Xem phiếu kiểm tồn kho</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background:#fff; }
+    h2 { margin: 0 0 12px; }
+    .filter-bar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:10px; }
+    input, select { padding:6px; border:1px solid #bbb; border-radius:4px; }
+    button { padding:7px 14px; border:none; border-radius:4px; font-weight:600; cursor:pointer; }
+    .loc-btn { background:#2196f3; color:#fff; }
+    .loc-btn:hover { background:#1769aa; }
+    .xoa-btn { background:#ffe066; color:#555; }
+    .xoa-btn:hover { background:#ffe599; }
+    .danger-btn { background:#e53935; color:#fff; }
+    .danger-btn:hover { background:#c62828; }
+    table { border-collapse:collapse; width:100%; margin-top:10px; font-size:13px; }
+    th, td { border:1px solid #ccc; padding:6px 8px; text-align:left; vertical-align:top; }
+    thead th { position:sticky; top:0; background:#f9f9f9; z-index:2; }
+    tr:hover { background:#f1f1f1; cursor:pointer; }
+    .right { text-align:right; }
+    .status-ok { color:#168a16; font-weight:700; }
+    .status-bad { color:#c00; font-weight:700; }
+    #tongHopNhanh { font-size:1.05em; margin:12px 0; color:#0066cc; font-weight:bold; }
+    #pagingBar { margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    #popup {
+      display:none; position:fixed; top:10px; left:10px; width:980px; min-width:520px; min-height:260px; height:430px;
+      background:#fff; border:2px solid #4884ce; overflow:auto; padding:20px; z-index:9999;
+      box-shadow:0 2px 18px rgba(0,0,0,.2); border-radius:7px; resize:both;
+    }
+    #popup .drag-header { cursor:move; background:#f3f7fa; font-weight:bold; padding:8px 10px; margin:-20px -20px 15px -20px; border-bottom:1px solid #4884ce; border-radius:7px 7px 0 0; user-select:none; }
+    .mini { color:#666; font-size:12px; }
+  </style>
+</head>
+<body>
+<div id="app-container">
+  <h2>📋 Tra cứu phiếu kiểm tồn kho</h2>
+
+  <div class="filter-bar">
+    <label>Từ ngày <input type="date" id="tuNgay"></label>
+    <label>Đến ngày <input type="date" id="denNgay"></label>
+    <label>Cơ sở
+      <select id="locDiaDiem">
+        <option value="">Tất cả</option>
+        <option value="cs1">CS1</option>
+        <option value="cs2">CS2</option>
+      </select>
+    </label>
+    <label>Trạng thái
+      <select id="locTrangThai">
+        <option value="">Tất cả</option>
+        <option value="MOI">MOI</option>
+        <option value="DA_KIEM">DA_KIEM</option>
+        <option value="DA_CHOT">DA_CHOT</option>
+      </select>
+    </label>
+    <input type="text" id="locSoPhieu" placeholder="Số phiếu">
+    <input type="text" id="locNguoiKiem" placeholder="Mã người kiểm">
+    <input type="text" id="locGhiChu" placeholder="Ghi chú chứa">
+    <input type="text" id="locMasp" style="min-width:260px" placeholder="Tìm nhiều mã SP, cách nhau dấu phẩy">
+    <label style="user-select:none"><input type="checkbox" id="chkMatchAll"> Phiếu phải chứa tất cả mã</label>
+    <button class="loc-btn" onclick="taiDanhSachPhieu()">🔍 Lọc phiếu</button>
+    <button class="danger-btn" onclick="xoaPhieuDaChon()">❌ Xóa phiếu đã chọn</button>
+    <button id="btnCopyTable" class="xoa-btn">📋 Copy bảng</button>
+  </div>
+
+  <div id="tongHopNhanh">
+    Tổng mã SP: <span id="tongMasp">0</span> |
+    Tổng SL kiểm: <span id="tongSlKiem">0</span> |
+    Tổng SL máy: <span id="tongSlMay">0</span> |
+    Tổng SL lệch: <span id="tongSlLech">0</span> |
+    Thiếu: <span id="tongThieu">0</span> |
+    Thừa: <span id="tongThua">0</span>
+  </div>
+
+  <div id="pagingBar">
+    <label><b>Số dòng/trang:</b></label>
+    <select id="pageSize">
+      <option value="200">200</option>
+      <option value="500" selected>500</option>
+      <option value="1000">1000</option>
+      <option value="2000">2000</option>
+    </select>
+    <button id="btnPrevPage" type="button">← Trang trước</button>
+    <span id="pageInfo">Trang 1/1</span>
+    <button id="btnNextPage" type="button">Trang sau →</button>
+    <span id="dangHienThiInfo" class="mini"></span>
+  </div>
+
+  <table id="tblPhieu">
+    <thead>
+      <tr>
+        <th>STT</th>
+        <th><input type="checkbox" id="chonTatCaPhieu"></th>
+        <th>Số phiếu</th>
+        <th>Ngày CT</th>
+        <th>Thời điểm kiểm</th>
+        <th>Cơ sở</th>
+        <th>Người kiểm</th>
+        <th class="right">Mã SP</th>
+        <th class="right">SL kiểm</th>
+        <th class="right">SL máy</th>
+        <th class="right">SL lệch</th>
+        <th class="right">OK</th>
+        <th class="right">Thiếu</th>
+        <th class="right">Thừa</th>
+        <th class="right">Lệch</th>
+        <th>Đã tạo nhập/xuất kiểm</th>
+        <th>Ghi chú</th>
+      </tr>
+    </thead>
+    <tbody id="dsPhieu"></tbody>
+  </table>
+
+  <div id="popup">
+    <div class="drag-header" id="popupHeader">
+      Chi tiết phiếu kiểm tồn: <span id="soPhieuCT"></span>
+      <span style="float:right;cursor:pointer;color:#999;" onclick="dongPopup()">✖</span>
+    </div>
+    <button id="btnCopyCT" class="loc-btn" style="float:right; margin-bottom:8px;">Copy chi tiết</button>
+    <table>
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Mã SP</th>
+          <th>Tên SP</th>
+          <th>Size kiểm kho</th>
+          <th class="right">SL kiểm kho</th>
+          <th>Size bày mẫu</th>
+          <th class="right">SL bày mẫu</th>
+          <th>Size kiểm tổng</th>
+          <th class="right">Tổng SL kiểm</th>
+          <th>Size tồn máy</th>
+          <th class="right">SL tồn máy</th>
+          <th>Trạng thái</th>
+          <th>Chi tiết lệch</th>
+        </tr>
+      </thead>
+      <tbody id="ctPhieu"></tbody>
+    </table>
+    <button onclick="dongPopup()" class="xoa-btn" style="margin-top:8px;">Đóng</button>
+  </div>
+</div>
+
+<script>
+  let rowDangChon = null;
+  let currentPage = 1;
+  let totalPages = 1;
+  let lastFilter = null;
+  let lastTotalRows = 0;
+
+  function fmtNumber(v) { return Number(v || 0).toLocaleString('vi-VN'); }
+
+  function normalizePgTimestamp(input) {
+    if (!input) return input;
+    let s = String(input).trim();
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) s = s.replace(' ', 'T');
+    s = s.replace(/([+-]\d{2})$/, '$1:00');
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/(Z|[+-]\d{2}:\d{2})$/.test(s)) s += 'Z';
+    return s;
+  }
+
+  function dinhDangNgay(ngayStr) {
+    if (!ngayStr) return '';
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(String(ngayStr))) return ngayStr;
+    const d = new Date(normalizePgTimestamp(ngayStr));
+    return new Intl.DateTimeFormat('vi-VN', { timeZone:'Asia/Ho_Chi_Minh', day:'2-digit', month:'2-digit', year:'numeric' }).format(d);
+  }
+
+  function dinhDangNgayGio(ngayStr) {
+    if (!ngayStr) return '';
+    const d = new Date(normalizePgTimestamp(ngayStr));
+    const datePart = new Intl.DateTimeFormat('vi-VN', { timeZone:'Asia/Ho_Chi_Minh', day:'2-digit', month:'2-digit', year:'numeric' }).format(d);
+    const timePart = new Intl.DateTimeFormat('vi-VN', { timeZone:'Asia/Ho_Chi_Minh', hour:'2-digit', minute:'2-digit', hour12:false }).format(d);
+    return `${datePart} ${timePart.replace(':','h')}`;
+  }
+
+  async function copyText(text) {
+    const t = String(text || '').trim();
+    if (!t) return false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(t);
+        return true;
+      }
+    } catch(e) {}
+    const ta = document.createElement('textarea');
+    ta.value = t;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  async function getSoPhieuByOneMasp(masp, pageSize = 1000) {
+    let from = 0;
+    const set = new Set();
+    while (true) {
+      const { data, error } = await window.supabase
+        .from('ct_kiem_ton_kho')
+        .select('so_phieu, masp')
+        .ilike('masp', `%${masp}%`)
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      data.forEach(r => { if (r.so_phieu) set.add(r.so_phieu); });
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    return set;
+  }
+
+  async function getSoPhieuByMaspList(maspList, matchAll) {
+    if (!maspList.length) return null;
+    const sets = [];
+    for (const m of maspList) sets.push(await getSoPhieuByOneMasp(m));
+    if (sets.length === 1) return sets[0];
+    if (matchAll) {
+      let inter = sets[0];
+      for (let i = 1; i < sets.length; i++) {
+        inter = new Set([...inter].filter(x => sets[i].has(x)));
+        if (inter.size === 0) break;
+      }
+      return inter;
+    }
+    const uni = new Set();
+    sets.forEach(s => s.forEach(x => uni.add(x)));
+    return uni;
+  }
+
+  async function buildBaseQuery(countMode = false) {
+    const tuNgay = document.getElementById('tuNgay').value;
+    const denNgay = document.getElementById('denNgay').value;
+    const diadiem = document.getElementById('locDiaDiem').value;
+    const trangThai = document.getElementById('locTrangThai').value;
+    const soPhieu = document.getElementById('locSoPhieu').value.trim();
+    const nguoiKiem = document.getElementById('locNguoiKiem').value.trim().toUpperCase();
+    const ghiChu = document.getElementById('locGhiChu').value.trim();
+    const maspRaw = document.getElementById('locMasp').value.trim();
+    const matchAll = document.getElementById('chkMatchAll').checked;
+
+    const maspList = maspRaw ? maspRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : [];
+    let soPhieuSet = null;
+    if (maspList.length) soPhieuSet = await getSoPhieuByMaspList(maspList, matchAll);
+
+    let q = window.supabase
+      .from('kiem_ton_kho')
+      .select('*', countMode ? { count:'exact', head:false } : undefined)
+      .order('ngay_ct', { ascending:false })
+      .order('created_at', { ascending:false });
+
+    if (tuNgay) q = q.gte('ngay_ct', tuNgay);
+    if (denNgay) q = q.lte('ngay_ct', denNgay);
+    if (diadiem) q = q.eq('diadiem', diadiem);
+    if (trangThai) q = q.eq('trang_thai', trangThai);
+    if (soPhieu) q = q.ilike('so_phieu', `%${soPhieu}%`);
+    if (nguoiKiem) q = q.ilike('nguoi_kiem', `%${nguoiKiem}%`);
+    if (ghiChu) q = q.ilike('ghi_chu', `%${ghiChu}%`);
+
+    if (soPhieuSet) {
+      const arr = [...soPhieuSet];
+      if (arr.length === 0) q = q.eq('so_phieu', '__KHONG_CO_PHIEU__');
+      else q = q.in('so_phieu', arr);
+    }
+
+    lastFilter = { tuNgay, denNgay, diadiem, trangThai, soPhieu, nguoiKiem, ghiChu, maspRaw, matchAll };
+    return q;
+  }
+
+  async function taiDanhSachPhieu() {
+    currentPage = 1;
+    await loadPage();
+  }
+
+  async function loadPage() {
+    const tbody = document.getElementById('dsPhieu');
+    tbody.innerHTML = `<tr><td colspan="17">Đang tải dữ liệu...</td></tr>`;
+
+    let q;
+    try { q = await buildBaseQuery(true); }
+    catch (e) {
+      tbody.innerHTML = `<tr><td colspan="17">❌ Lỗi tìm mã sản phẩm: ${e.message}</td></tr>`;
+      return;
+    }
+
+    const pageSize = Number(document.getElementById('pageSize').value || 500);
+    const from = (currentPage - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await q.range(from, to);
+    if (error) {
+      tbody.innerHTML = `<tr><td colspan="17">❌ Lỗi tải phiếu: ${error.message}</td></tr>`;
+      return;
+    }
+
+    lastTotalRows = count || 0;
+    totalPages = Math.max(1, Math.ceil(lastTotalRows / pageSize));
+    renderDanhSach(data || [], from);
+    updatePagingInfo(data || []);
+  }
+
+  function renderDanhSach(rows, offset) {
+    const tbody = document.getElementById('dsPhieu');
+    tbody.innerHTML = '';
+
+    let sumMasp = 0, sumKiem = 0, sumMay = 0, sumLech = 0, sumThieu = 0, sumThua = 0;
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="17">Không có dữ liệu.</td></tr>`;
+      updateTongHop(0,0,0,0,0,0);
+      return;
+    }
+
+    rows.forEach((p, idx) => {
+      const lech = Number(p.tong_sl_lech || 0);
+      sumMasp += Number(p.tong_masp || 0);
+      sumKiem += Number(p.tong_sl_kiem || 0);
+      sumMay += Number(p.tong_sl_ton_may || 0);
+      sumLech += lech;
+      sumThieu += Number(p.tong_sl_lech_thieu || p.so_dong_thieu || 0);
+      sumThua += Number(p.tong_sl_lech_thua || p.so_dong_thua || 0);
+
+      const createdNhapXuat = [];
+      if (p.da_tao_nhap_kiem) createdNhapXuat.push(`Nhập: ${p.so_phieu_nhap_kiem || 'đã tạo'}`);
+      if (p.da_tao_xuat_kiem) createdNhapXuat.push(`Xuất: ${p.so_phieu_xuat_kiem || 'đã tạo'}`);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${offset + idx + 1}</td>
+        <td><input type="checkbox" class="chonPhieu" data-so-phieu="${p.so_phieu || ''}"></td>
+        <td style="font-weight:700;text-decoration:underline;">${p.so_phieu || ''}</td>
+        <td>${dinhDangNgay(p.ngay_ct)}</td>
+        <td>${dinhDangNgayGio(p.thoi_diem_kiem || p.created_at)}</td>
+        <td>${p.diadiem || ''}</td>
+        <td>${p.nguoi_kiem || ''}${p.ten_nguoi_kiem ? ' - ' + p.ten_nguoi_kiem : ''}</td>
+        <td class="right">${fmtNumber(p.tong_masp)}</td>
+        <td class="right">${fmtNumber(p.tong_sl_kiem)}</td>
+        <td class="right">${fmtNumber(p.tong_sl_ton_may)}</td>
+        <td class="right ${lech ? 'status-bad' : 'status-ok'}">${fmtNumber(lech)}</td>
+        <td class="right status-ok">${fmtNumber(p.so_dong_ok)}</td>
+        <td class="right status-bad">${fmtNumber(p.so_dong_thieu)}</td>
+        <td class="right status-bad">${fmtNumber(p.so_dong_thua)}</td>
+        <td class="right status-bad">${fmtNumber(p.so_dong_lech)}</td>
+        <td>${createdNhapXuat.join('<br>')}</td>
+        <td>${p.ghi_chu || ''}</td>
+      `;
+
+      tr.addEventListener('click', async (ev) => {
+        if (ev.target && ev.target.matches('input[type="checkbox"]')) return;
+        if (rowDangChon && rowDangChon !== tr) rowDangChon.style.background = '';
+        rowDangChon = tr;
+        tr.style.background = '#ffe08a';
+        await xemChiTiet(p.so_phieu);
+      });
+
+      const chk = tr.querySelector('input.chonPhieu');
+      if (chk) chk.addEventListener('click', e => e.stopPropagation());
+      tbody.appendChild(tr);
+    });
+
+    const trTong = document.createElement('tr');
+    trTong.style.fontWeight = 'bold';
+    trTong.style.background = '#f8f8f8';
+    trTong.innerHTML = `
+      <td colspan="7" style="text-align:right">TỔNG TRANG</td>
+      <td class="right">${fmtNumber(sumMasp)}</td>
+      <td class="right">${fmtNumber(sumKiem)}</td>
+      <td class="right">${fmtNumber(sumMay)}</td>
+      <td class="right">${fmtNumber(sumLech)}</td>
+      <td colspan="6"></td>
+    `;
+    tbody.appendChild(trTong);
+    updateTongHop(sumMasp, sumKiem, sumMay, sumLech, sumThieu, sumThua);
+  }
+
+  function updateTongHop(masp, kiem, may, lech, thieu, thua) {
+    document.getElementById('tongMasp').textContent = fmtNumber(masp);
+    document.getElementById('tongSlKiem').textContent = fmtNumber(kiem);
+    document.getElementById('tongSlMay').textContent = fmtNumber(may);
+    document.getElementById('tongSlLech').textContent = fmtNumber(lech);
+    document.getElementById('tongThieu').textContent = fmtNumber(thieu);
+    document.getElementById('tongThua').textContent = fmtNumber(thua);
+  }
+
+  function updatePagingInfo(rows) {
+    document.getElementById('pageInfo').textContent = `Trang ${currentPage}/${totalPages}`;
+    document.getElementById('dangHienThiInfo').textContent = `Đang hiển thị ${rows.length.toLocaleString('vi-VN')} / ${lastTotalRows.toLocaleString('vi-VN')} phiếu`;
+  }
+
+  async function xemChiTiet(soPhieu) {
+    if (!soPhieu) return;
+    const popupEl = document.getElementById('popup');
+    popupEl.style.display = 'block';
+    popupEl.style.top = '10px';
+    popupEl.style.left = '10px';
+    popupEl.style.right = 'auto';
+    document.getElementById('soPhieuCT').textContent = soPhieu;
+    await copyText(soPhieu);
+
+    const { data, error } = await window.supabase
+      .from('ct_kiem_ton_kho')
+      .select('*')
+      .eq('so_phieu', soPhieu)
+      .order('stt', { ascending:true })
+      .order('id', { ascending:true });
+
+    const tbody = document.getElementById('ctPhieu');
+    tbody.innerHTML = '';
+    if (error) {
+      tbody.innerHTML = `<tr><td colspan="13">❌ Lỗi chi tiết: ${error.message}</td></tr>`;
+      return;
+    }
+
+    (data || []).forEach((row, idx) => {
+      const masp = String(row.masp || '').trim().toUpperCase();
+      const tr = document.createElement('tr');
+      tr.dataset.masp = masp;
+      tr.title = 'Bấm để copy mã SP và xem nhanh tồn kho';
+      tr.innerHTML = `
+        <td>${row.stt || idx + 1}</td>
+        <td style="font-weight:700;text-decoration:underline;">${row.masp || ''}</td>
+        <td>${row.tensp || ''}</td>
+        <td>${row.size_kiem_kho || ''}</td>
+        <td class="right">${fmtNumber(row.tong_sl_kiem_kho)}</td>
+        <td>${row.size_kiem_bay_mau || ''}</td>
+        <td class="right">${fmtNumber(row.tong_sl_kiem_bay_mau)}</td>
+        <td>${row.size_kiem || ''}</td>
+        <td class="right">${fmtNumber(row.tong_sl_kiem)}</td>
+        <td>${row.size_ton_may || ''}</td>
+        <td class="right">${fmtNumber(row.tong_sl_ton_may)}</td>
+        <td class="${row.trang_thai === 'OK' ? 'status-ok' : 'status-bad'}">${row.trang_thai || ''}</td>
+        <td>${row.chi_tiet_chenh_lech || ''}</td>
+      `;
+      tr.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        const m = this.dataset.masp;
+        if (!m) return;
+        await copyText(m);
+        if (typeof window.stockQuickPopup === 'function') window.stockQuickPopup(m);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function dongPopup() { document.getElementById('popup').style.display = 'none'; }
+
+  async function kiemTraAdminTruocKhiXoa(callback) {
+    const ok = confirm('Bạn có chắc muốn XÓA phiếu kiểm tồn đã chọn không?');
+    if (!ok) return;
+    try {
+      const { data: { user } } = await window.supabase.auth.getUser();
+      if (!user) { alert('Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.'); return; }
+      const { data: isAdmin, error } = await window.supabase.rpc('is_admin');
+      if (error || isAdmin !== true) { alert('Bạn không có quyền xóa phiếu kiểm tồn.'); return; }
+      await callback({ user_id:user.id });
+    } catch(e) {
+      alert('Không kiểm tra được quyền xóa: ' + e.message);
+    }
+  }
+
+  async function xoaPhieuDaChon() {
+    const checkboxes = document.querySelectorAll('.chonPhieu:checked');
+    if (!checkboxes.length) { alert('❌ Bạn chưa chọn phiếu nào để xóa.'); return; }
+
+    await kiemTraAdminTruocKhiXoa(async function() {
+      const dsXoa = [...new Set(Array.from(checkboxes).map(cb => cb.getAttribute('data-so-phieu')).filter(Boolean))];
+      const reason = prompt('Nhập lý do xóa phiếu kiểm tồn:', 'Xóa nhầm phiếu kiểm tồn') || '';
+      if (!reason.trim()) { alert('❌ Bạn chưa nhập lý do xóa.'); return; }
+
+      let okCount = 0;
+      const fail = [];
+      for (const soPhieu of dsXoa) {
+        const { error } = await window.supabase.rpc('admin_delete_kiem_ton_kho_hard', {
+          p_so_phieu: soPhieu,
+          p_reason: reason.trim(),
+          p_source: location.pathname
+        });
+        if (error) fail.push(`${soPhieu}: ${error.message}`);
+        else okCount++;
+      }
+
+      if (fail.length) alert(`⚠️ Xóa được ${okCount}/${dsXoa.length} phiếu.\nLỗi:\n- ${fail.join('\n- ')}`);
+      else alert(`✅ Đã xóa thành công ${okCount} phiếu kiểm tồn.`);
+      await taiDanhSachPhieu();
+    });
+  }
+
+  function bindEvents() {
+    document.getElementById('btnPrevPage').addEventListener('click', async () => {
+      if (currentPage <= 1) return;
+      currentPage--;
+      await loadPage();
+    });
+    document.getElementById('btnNextPage').addEventListener('click', async () => {
+      if (currentPage >= totalPages) return;
+      currentPage++;
+      await loadPage();
+    });
+    document.getElementById('pageSize').addEventListener('change', async () => {
+      currentPage = 1;
+      await loadPage();
+    });
+    document.getElementById('chonTatCaPhieu').addEventListener('click', function() {
+      document.querySelectorAll('.chonPhieu').forEach(cb => cb.checked = this.checked);
+    });
+    ['locDiaDiem','locTrangThai'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', taiDanhSachPhieu);
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') dongPopup(); });
+  }
+
+  document.getElementById('btnCopyCT').onclick = function() {
+    const rows = Array.from(document.querySelectorAll('#ctPhieu tr'));
+    if (!rows.length) return alert('Không có dữ liệu chi tiết để copy.');
+    const text = rows.map(tr => Array.from(tr.cells).map(td => (td.innerText || '').replace(/\n/g,' ')).join('\t')).join('\n');
+    navigator.clipboard.writeText(text);
+  };
+
+  document.getElementById('btnCopyTable').onclick = function() {
+    const table = document.getElementById('tblPhieu');
+    const ths = Array.from(table.querySelectorAll('thead th'));
+    const colChon = 1;
+    const headers = ths.map((th,i) => i !== colChon ? th.innerText.replace(/\n/g,' ') : null).filter(Boolean).join('\t');
+    const rows = Array.from(document.querySelectorAll('#dsPhieu tr'));
+    if (!rows.length) return alert('Không có dữ liệu để copy.');
+    const lines = rows.map(tr => Array.from(tr.cells).map((td,i) => i !== colChon ? td.innerText.replace(/\n/g,' ') : null).filter(x => x !== null).join('\t'));
+    navigator.clipboard.writeText([headers].concat(lines).join('\n'));
+  };
+
+  (function dragPopup(){
+    const popup = document.getElementById('popup');
+    const header = document.getElementById('popupHeader');
+    let offsetX, offsetY, isDragging = false;
+    if (!header) return;
+    header.onmousedown = function(e) {
+      isDragging = true;
+      const rect = popup.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      document.onmousemove = function(ev) {
+        if (!isDragging) return;
+        popup.style.left = (ev.clientX - offsetX) + 'px';
+        popup.style.top = (ev.clientY - offsetY) + 'px';
+        popup.style.right = 'auto';
+      };
+      document.onmouseup = function(){ isDragging = false; document.onmousemove = null; };
+    };
+  })();
+
+  async function initFiltersFromUrl() {
+    const params = new URLSearchParams(location.search);
+    const soPhieu = (params.get('so_phieu') || params.get('sophieu') || '').trim();
+    const today = new Date().toISOString().slice(0,10);
+    document.getElementById('tuNgay').value = today;
+    document.getElementById('denNgay').value = today;
+    if (soPhieu) {
+      document.getElementById('locSoPhieu').value = soPhieu;
+      document.getElementById('tuNgay').value = '';
+      document.getElementById('denNgay').value = '';
+    }
+  }
+</script>
+
+<script type="module">
+  import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+
+  khoiTaoDangNhapDungChung({
+    appContainerId: 'app-container',
+    macDinhDiaDiem: '',
+    tuDongKhoaCoSo: false,
+    loginApiPath: (cs) => `/api/login-${cs}`,
+
+    async onLoginSuccess(nv, ctx) {
+      let isAdmin = false;
+      try {
+        const { data, error } = await window.supabase.rpc('is_admin');
+        isAdmin = (!error && data === true);
+      } catch(e) { isAdmin = false; }
+
+      if (!isAdmin) {
+        alert('Bạn không phải ADMIN, không được phép xem/xóa phiếu kiểm tồn.');
+        const app = document.getElementById('app-container') || document.body;
+        app.style.display = '';
+        app.innerHTML = `<h2 style="color:#c00;margin-top:20px;font-weight:bold;">🚫 Bạn không có quyền xem báo cáo này</h2>`;
+        return false;
+      }
+
+      await initFiltersFromUrl();
+      bindEvents();
+
+      try {
+        const { attachMaspPopup } = await import('./scripts/productSearchModule.js');
+        const elMasp = document.getElementById('locMasp');
+        if (elMasp) {
+          attachMaspPopup({
+            supabase: window.supabase,
+            maspInput: elMasp,
+            onPick: (p) => {
+              const cur = (elMasp.value || '').trim();
+              const v = (p?.masp || '').trim();
+              if (!v) return;
+              const set = new Set(cur ? cur.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []);
+              set.add(v.toUpperCase());
+              elMasp.value = Array.from(set).join(',');
+            }
+          });
+        }
+      } catch(e) {}
+
+      await taiDanhSachPhieu();
+      return true;
+    }
+  });
+</script>
+<script src="./scripts/stockQuickPopup.js"></script>
+</body>
+</html>
