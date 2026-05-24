@@ -2066,9 +2066,8 @@ import "./stockQuickPopup.js";
             return false;
         }
 
-        const xuatMap = {};
+        const xuatMapMoi = {};
         const xuatOrder = [];
-
         (data || []).forEach((row) => {
             const masp = normalizeMasp(row.masp);
             const size = normalizeSize(row.size);
@@ -2081,14 +2080,14 @@ import "./stockQuickPopup.js";
             }
 
             const key = makeKey(masp, size);
-            if (!xuatMap[key]) {
-                xuatMap[key] = { masp, size, sl };
+            if (!xuatMapMoi[key]) {
+                xuatMapMoi[key] = { masp, size, sl };
             } else {
-                xuatMap[key].sl = normalizeNumber(xuatMap[key].sl) + sl;
+                xuatMapMoi[key].sl = normalizeNumber(xuatMapMoi[key].sl) + sl;
             }
         });
 
-        state.xuat = xuatMap;
+        state.xuat = xuatMapMoi;
         state.xuatOrder = xuatOrder;
         state.ketQua = {};
         state.daKiemTra = false;
