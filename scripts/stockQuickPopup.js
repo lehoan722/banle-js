@@ -722,6 +722,15 @@
         });
       }
 
+      // --- nhận dữ liệu kiểm tồn trước khi map rows ---
+      const { data: kiemData, error: kiemErr } = kiemRes || {};
+      if (kiemErr) {
+        console.warn("[StockQuickPopup] rpc_stockquick_kiemton error:", kiemErr);
+      }
+      if (kiemData) {
+        kiemton = kiemData;
+      }
+
       // --- A) dữ liệu từ RPC ---
       const { data, error } = snapRes || {};
       if (!error && data && data.length) {
@@ -739,23 +748,17 @@
             ton_cs1: Number(r.ton_cs1 || 0),
             ton_cs2: Number(r.ton_cs2 || 0),
 
-            kiem_cs1:
-              Number(
-                kiemton?.cs1?.sizes?.[
-                String(r.size || "")
-                  .replace(/^size\s+/i, "")
-                  .trim()
-                ]
-              ) || null,
+            kiem_cs1: (() => {
+              const sizeKey = String(r.size || "").replace(/^size\s+/i, "").trim();
+              const v = kiemton?.cs1?.sizes?.[sizeKey];
+              return v === undefined || v === null || Number(v) <= 0 ? null : Number(v);
+            })(),
 
-            kiem_cs2:
-              Number(
-                kiemton?.cs2?.sizes?.[
-                String(r.size || "")
-                  .replace(/^size\s+/i, "")
-                  .trim()
-                ]
-              ) || null,
+            kiem_cs2: (() => {
+              const sizeKey = String(r.size || "").replace(/^size\s+/i, "").trim();
+              const v = kiemton?.cs2?.sizes?.[sizeKey];
+              return v === undefined || v === null || Number(v) <= 0 ? null : Number(v);
+            })(),
             ban_cs1: ban1,
             ban_cs2: ban2,
             tong_ban: ban1 + ban2,
@@ -769,11 +772,7 @@
 
       // --- B) dữ liệu từ dmhanghoa: vị trí + ưu tiên ND từ nhapdau ---
       const { data: hh, error: hhErr } = hhRes || {};
-      const { data: kiemData } = kiemRes || {};
 
-      if (kiemData) {
-        kiemton = kiemData;
-      }
       if (hhErr) {
         console.warn("[StockQuickPopup] Lỗi đọc dmhanghoa:", hhErr);
       } else if (hh) {
@@ -942,6 +941,8 @@
           size: "size " + sizeNum,
           ton_cs1: 0,
           ton_cs2: 0,
+          kiem_cs1: null,
+          kiem_cs2: null,
           ban_cs1: 0,
           ban_cs2: 0,
           tong_ban: 0,        // ✅ THÊM
@@ -966,16 +967,16 @@
         return `
         <tr class="sq-open-similar-row" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
           <td>${sizeLabel}</td>
-          <td class="num sq-col-k1 ${r.kiem_cs1 !== null && r.kiem_cs1 !== r.ton_cs1 ? 'sq-red' : ''}">
+          <td class="num sq-col-k1 ${r.kiem_cs1 !== null && r.kiem_cs1 !== Number(r.ton_cs1 || 0) ? 'sq-red' : ''}">
   ${r.kiem_cs1 === null
-            ? (r.ton_cs1 || "")
-            : `${r.ton_cs1 || 0},${r.kiem_cs1}`
+            ? (Number(r.ton_cs1 || 0) > 0 ? r.ton_cs1 : "")
+            : `${Number(r.ton_cs1 || 0) > 0 ? r.ton_cs1 : 0}/${r.kiem_cs1}`
           }
 </td>
-          <td class="num sq-col-k2 ${r.kiem_cs2 !== null && r.kiem_cs2 !== r.ton_cs2 ? 'sq-red' : ''}">
+          <td class="num sq-col-k2 ${r.kiem_cs2 !== null && r.kiem_cs2 !== Number(r.ton_cs2 || 0) ? 'sq-red' : ''}">
   ${r.kiem_cs2 === null
-            ? (r.ton_cs2 || "")
-            : `${r.ton_cs2 || 0},${r.kiem_cs2}`
+            ? (Number(r.ton_cs2 || 0) > 0 ? r.ton_cs2 : "")
+            : `${Number(r.ton_cs2 || 0) > 0 ? r.ton_cs2 : 0}/${r.kiem_cs2}`
           }
 </td>
           <td class="num sq-col-b1">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
