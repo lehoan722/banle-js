@@ -1907,15 +1907,12 @@ import "./stockQuickPopup.js";
         if (ngayEl) {
             const d = new Date();
             ngayEl.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        }        
+        }
 
         const gioEl = byId("gio");
         if (gioEl) {
-            const rawTime = phieuTong?.thoi_diem_kiem || phieuTong?.created_at || "";
-            const d = new Date(rawTime);
-            if (rawTime && !Number.isNaN(d.getTime())) {
-                gioEl.value = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-            }
+            const d = new Date();
+            gioEl.value = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
         }
 
         const manvEl = byId("manv");
@@ -3586,6 +3583,15 @@ import "./stockQuickPopup.js";
                 };
             });
         });
+
+        const gioEl = byId("gio");
+        if (gioEl) {
+            const rawTime = phieuTong?.thoi_diem_kiem || phieuTong?.created_at || "";
+            const d = new Date(rawTime);
+            if (rawTime && !Number.isNaN(d.getTime())) {
+                gioEl.value = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+            }
+        }
 
         renderBangKetQua();
         kiemTraPhieu();
