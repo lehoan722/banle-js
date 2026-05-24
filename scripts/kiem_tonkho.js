@@ -2027,14 +2027,19 @@ import "./stockQuickPopup.js";
         docLaiNhapTuBangHTML();
 
         const state = getState();
-        const nhapMap = state.nhap || {};
+        const nhapMap = getMapNhapTong();
+        const xuatMap = state.xuat || {};
 
         const dsMasp = Array.from(
-            new Set(
-                Object.values(nhapMap)
+            new Set([
+                ...Object.values(nhapMap)
+                    .map(row => normalizeMasp(row?.masp))
+                    .filter(Boolean),
+
+                ...Object.values(xuatMap)
                     .map(row => normalizeMasp(row?.masp))
                     .filter(Boolean)
-            )
+            ])
         );
 
         if (!dsMasp.length) {
