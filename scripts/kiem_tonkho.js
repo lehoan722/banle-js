@@ -1900,6 +1900,26 @@ import "./stockQuickPopup.js";
         if (slEl) slEl.value = "1";
         if (sohdEl) sohdEl.value = await taoSoPhieuMoi();
         if (ghichuEl) ghichuEl.value = "";
+        const diadiemEl = byId("diadiem");
+        if (diadiemEl) diadiemEl.value = CFG.branch || "";
+
+        const ngayEl = byId("ngay");
+        if (ngayEl) {
+            const d = new Date();
+            ngayEl.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        }
+
+        const gioEl = byId("gio");
+        if (gioEl) {
+            const d = new Date();
+            gioEl.value = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        }
+
+        const manvEl = byId("manv");
+        if (manvEl) manvEl.value = String(localStorage.getItem("manv") || "").trim();
+
+        const tennvEl = byId("tennv");
+        if (tennvEl) tennvEl.value = String(localStorage.getItem("tennv") || "").trim();
 
         const hdState = byId("hd_state");
         if (hdState) {
@@ -3168,6 +3188,11 @@ import "./stockQuickPopup.js";
 
     async function luuPhieuKiemTonKho() {
         try {
+
+            if (isPhieuDangXem()) {
+                alert("Phiếu kiểm tồn cũ chỉ được xem, không được sửa hoặc lưu lại. Hãy bấm Thêm mới để tạo phiếu mới.");
+                return;
+            }
             if (!window.supabase) {
                 alert("Không tìm thấy kết nối Supabase.");
                 return;
@@ -3267,31 +3292,7 @@ import "./stockQuickPopup.js";
             };
 
             if (tonTaiCu) {
-                const okSua = confirm(`Bạn có chắc chắn sửa phiếu cũ này không?\n\nSố phiếu: ${so_phieu}`);
-
-                if (!okSua) {
-                    return;
-                }
-
-                const { error: rpcError } = await window.supabase.rpc("rpc_update_kiem_ton_kho", {
-                    p_so_phieu: so_phieu,
-                    p_row_tong: rowTong,
-                    p_rows_chi_tiet: rowsChiTiet
-                });
-
-                if (rpcError) {
-                    console.error("[KTK] rpc_update_kiem_ton_kho error:", rpcError);
-                    alert("Lỗi khi cập nhật phiếu kiểm tồn cũ.");
-                    return;
-                }
-
-                const hdStateEl = byId("hd_state");
-                if (hdStateEl) {
-                    hdStateEl.value = "xem";
-                    hdStateEl.setAttribute("data-state", "xem");
-                }
-
-                alert(`Đã cập nhật phiếu cũ: ${so_phieu}`);
+                alert(`Số phiếu ${so_phieu} đã tồn tại. Không được ghi đè phiếu kiểm tồn cũ. Hãy bấm Thêm mới để tạo phiếu mới.`);
                 return;
             }
 
@@ -3379,9 +3380,16 @@ import "./stockQuickPopup.js";
 
         const btnSua = byId("sua");
         if (btnSua) {
+            btnSua.textContent = "Xóa";
             btnSua.addEventListener("click", async (e) => {
                 e.preventDefault();
-                suaDongDangChon();
+
+                if (isPhieuDangXem()) {
+                    alert("Phiếu cũ chỉ được xem, không được xóa dòng. Hãy bấm Thêm mới để tạo phiếu mới.");
+                    return;
+                }
+
+                xoaDongDangChon();
             });
         }
 
