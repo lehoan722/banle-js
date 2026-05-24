@@ -1236,9 +1236,9 @@
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
   Mã: ${upper}
-${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
 ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
+${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 </span>
   <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh/copy</button>
 </div>
