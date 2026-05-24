@@ -1907,12 +1907,15 @@ import "./stockQuickPopup.js";
         if (ngayEl) {
             const d = new Date();
             ngayEl.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        }
+        }        
 
         const gioEl = byId("gio");
         if (gioEl) {
-            const d = new Date();
-            gioEl.value = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+            const rawTime = phieuTong?.thoi_diem_kiem || phieuTong?.created_at || "";
+            const d = new Date(rawTime);
+            if (rawTime && !Number.isNaN(d.getTime())) {
+                gioEl.value = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+            }
         }
 
         const manvEl = byId("manv");
@@ -2921,46 +2924,37 @@ import "./stockQuickPopup.js";
             return;
         }
 
-        // const ok = confirm(`Bạn có chắc muốn xóa dòng mã hàng: ${masp} ?`); 
-        // if (!ok) return;
-
         Object.keys(state.nhap || {}).forEach((key) => {
-            const row = state.nhap[key];
-            if (normalizeMasp(row?.masp) === masp) {
-                delete state.nhap[key];
-            }
+            if (normalizeMasp(state.nhap[key]?.masp) === masp) delete state.nhap[key];
         });
 
         Object.keys(state.bayMau || {}).forEach((key) => {
-            const row = state.bayMau[key];
-            if (normalizeMasp(row?.masp) === masp) {
-                delete state.bayMau[key];
-            }
+            if (normalizeMasp(state.bayMau[key]?.masp) === masp) delete state.bayMau[key];
+        });
+
+        Object.keys(state.xuat || {}).forEach((key) => {
+            if (normalizeMasp(state.xuat[key]?.masp) === masp) delete state.xuat[key];
         });
 
         Object.keys(state.ketQua || {}).forEach((key) => {
             const info = splitKey(key);
-            if (normalizeMasp(info.masp) === masp) {
-                delete state.ketQua[key];
-            }
+            if (normalizeMasp(info.masp) === masp) delete state.ketQua[key];
         });
 
+        state.nhapOrder = (state.nhapOrder || []).filter(x => normalizeMasp(x) !== masp);
+        state.xuatOrder = (state.xuatOrder || []).filter(x => normalizeMasp(x) !== masp);
         state.selectedMasp = "";
+
         renderBangKetQua();
+        capNhatThongKeDauTrang();
 
         const maspEl = byId("masp");
         const sizeEl = byId("size");
         const slEl = byId("soluong");
 
         if (maspEl) {
-            maspEl.value = masp;
+            maspEl.value = "";
             maspEl.focus();
-
-            setTimeout(() => {
-                try {
-                    maspEl.select();
-                } catch (err) { }
-            }, 0);
         }
 
         if (sizeEl) sizeEl.value = "";
