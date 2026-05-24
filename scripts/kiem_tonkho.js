@@ -1468,6 +1468,63 @@ import "./stockQuickPopup.js";
         }
     }
 
+    async function layYeuCauKiemTonTuGoogleSheet() {
+        try {
+            docLaiNhapTuBangHTML();
+
+            const state = getState();
+            const sheetMap = await docDanhSachKiemKhoTuGoogleSheet();
+
+            if (!sheetMap.size) {
+                alert("Google Sheet yêu cầu kiểm tồn không có dữ liệu.");
+                return;
+            }
+
+            let soMa = 0;
+
+            // Xóa danh sách tồn máy cũ bên phải
+            state.xuat = {};
+            state.xuatOrder = [];
+
+            for (const [masp] of sheetMap.entries()) {
+                const maspNorm = normalizeMasp(masp);
+                if (!maspNorm) continue;
+
+                soMa++;
+
+                if (!state.xuatOrder.includes(maspNorm)) {
+                    state.xuatOrder.push(maspNorm);
+                }
+
+                const key = makeKey(maspNorm, "0");
+
+                state.xuat[key] = {
+                    masp: maspNorm,
+                    size: "0",
+                    sl: 0
+                };
+            }
+
+            state.selectedMasp = "";
+            state.ketQua = {};
+
+            renderBangKetQua();
+            capNhatThongKeDauTrang();
+
+            const cfgSheet = getKiemKhoSheetConfig();
+
+            alert(
+                `Đã tải yêu cầu kiểm tồn từ Google Sheet (${cfgSheet.sheetName}).\n` +
+                `- Số mã sản phẩm đã lấy: ${soMa}\n\n` +
+                `Dữ liệu đã được đưa vào cột TỒN MÁY / Mã hàng.`
+            );
+        } catch (err) {
+            console.error("[KTK] layYeuCauKiemTonTuGoogleSheet error:", err);
+            const cfgSheet = getKiemKhoSheetConfig();
+            alert(`Lỗi khi tải yêu cầu kiểm tồn từ Google Sheet (${cfgSheet.sheetName}).`);
+        }
+    }
+
     async function layKiemKhoTuGoogleSheet() {
         try {
             docLaiNhapTuBangHTML();
@@ -3343,11 +3400,54 @@ import "./stockQuickPopup.js";
         byId("btnCanDoiSize")?.addEventListener("click", canDoiSizeKiemTon);
 
         byId("btnLayBayMau")?.addEventListener("click", async () => {
+            const cfgSheet = getBayMauSheetConfig();
+
+            const ok = confirm(
+                `Phần mềm sẽ tải dữ liệu bày mẫu từ Google Sheet ${cfgSheet.sheetName}.\n\n` +
+                `Dữ liệu lấy từ:\n` +
+                `- Cột A: mã sản phẩm\n` +
+                `- Cột B: size\n\n` +
+                `Dữ liệu sẽ được đưa vào cột MẪU của bảng kiểm tồn.\n\n` +
+                `Bạn có muốn tiếp tục không?`
+            );
+
+            if (!ok) return;
+
             await layBayMauTuGoogleSheet();
         });
 
         byId("btnLayKiemKho")?.addEventListener("click", async () => {
+            const cfgSheet = getKiemKhoSheetConfig();
+
+            const ok = confirm(
+                `Phần mềm sẽ tải dữ liệu kiểm kho từ Google Sheet ${cfgSheet.sheetName}.\n\n` +
+                `Dữ liệu lấy từ:\n` +
+                `- Cột A: mã sản phẩm\n` +
+                `- Cột B: size\n\n` +
+                `Dữ liệu sẽ được đưa vào cột KHO của bảng kiểm tồn.\n\n` +
+                `Bạn có muốn tiếp tục không?`
+            );
+
+            if (!ok) return;
+
             await layKiemKhoTuGoogleSheet();
+        });
+
+        byId("btnLayYeuCauKiemTon")?.addEventListener("click", async () => {
+            const cfgSheet = getKiemKhoSheetConfig();
+
+            const ok = confirm(
+                `Phần mềm sẽ tải yêu cầu kiểm tồn từ Google Sheet ${cfgSheet.sheetName}.\n\n` +
+                `Dữ liệu lấy từ:\n` +
+                `- Cột A: mã sản phẩm\n\n` +
+                `Phần mềm chỉ lấy mã sản phẩm, không lấy size.\n` +
+                `Dữ liệu sẽ được đưa vào cột TỒN MÁY / Mã hàng của trang kiểm tồn.\n\n` +
+                `Bạn có muốn tiếp tục không?`
+            );
+
+            if (!ok) return;
+
+            await layYeuCauKiemTonTuGoogleSheet();
         });
 
     }
