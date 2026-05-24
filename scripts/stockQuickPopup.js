@@ -157,7 +157,12 @@
   }
 
   .sq-stock-popup td.num {
-    text-align: right;
+    text-align: left;
+  }
+
+  .sq-lech {
+    color: #dc2626;
+    font-weight: 700;
   }
 
     .sq-stock-popup tr.sum-row td {
@@ -748,16 +753,16 @@
             ton_cs1: Number(r.ton_cs1 || 0),
             ton_cs2: Number(r.ton_cs2 || 0),
 
-            kiem_cs1: (() => {
+            lech_cs1: (() => {
               const sizeKey = String(r.size || "").replace(/^size\s+/i, "").trim();
-              const v = kiemton?.cs1?.sizes?.[sizeKey];
-              return v === undefined || v === null || Number(v) <= 0 ? null : Number(v);
+              const v = kiemton?.cs1?.lech?.[sizeKey];
+              return v === undefined || v === null || Number(v) === 0 ? null : Number(v);
             })(),
 
-            kiem_cs2: (() => {
+            lech_cs2: (() => {
               const sizeKey = String(r.size || "").replace(/^size\s+/i, "").trim();
-              const v = kiemton?.cs2?.sizes?.[sizeKey];
-              return v === undefined || v === null || Number(v) <= 0 ? null : Number(v);
+              const v = kiemton?.cs2?.lech?.[sizeKey];
+              return v === undefined || v === null || Number(v) === 0 ? null : Number(v);
             })(),
             ban_cs1: ban1,
             ban_cs2: ban2,
@@ -847,11 +852,17 @@
       ? payload.kiemton
       : {};
 
-    const nguoiKiem =
-      kiemton?.cs1?.nguoi_kiem || "";
+    const kiemParts = [];
 
-    const ngayKiem =
-      kiemton?.cs1?.ngay_kiem || "";
+    if (kiemton?.cs1?.nguoi_kiem) {
+      kiemParts.push(`CS1 ${kiemton.cs1.nguoi_kiem} - ${kiemton.cs1.ngay_kiem || ""}`);
+    }
+
+    if (kiemton?.cs2?.nguoi_kiem) {
+      kiemParts.push(`CS2 ${kiemton.cs2.nguoi_kiem} - ${kiemton.cs2.ngay_kiem || ""}`);
+    }
+
+    const thongTinKiem = kiemParts.length ? kiemParts.join(" / ") : "";
     const isAdmin = getIsAdminLocal();
 
     const nhomhangRow = nhomhang
@@ -903,6 +914,22 @@
       return Number(v).toLocaleString("vi-VN");
     }
 
+    function renderTonLech(tonRaw, lechRaw) {
+      const ton = Number(tonRaw || 0);
+      const lech = lechRaw === null || lechRaw === undefined ? null : Number(lechRaw);
+
+      if ((ton === 0 || !ton) && (lech === null || lech === 0)) return "";
+
+      const tonText = ton !== 0 ? String(ton) : "0";
+
+      if (lech === null || lech === 0) {
+        return ton !== 0 ? tonText : "";
+      }
+
+      const sign = lech > 0 ? "+" : "";
+      return `${tonText}<span class="sq-lech">${sign}${lech}</span>`;
+    }
+
     if (!rows.length && !vitri_cs1 && !vitri_cs2) {
       return `
         <div class="sq-stock-popup" data-masp="${upper}">
@@ -941,8 +968,8 @@
           size: "size " + sizeNum,
           ton_cs1: 0,
           ton_cs2: 0,
-          kiem_cs1: null,
-          kiem_cs2: null,
+          lech_cs1: null,
+          lech_cs2: null,
           ban_cs1: 0,
           ban_cs2: 0,
           tong_ban: 0,        // ✅ THÊM
@@ -967,17 +994,11 @@
         return `
         <tr class="sq-open-similar-row" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
           <td>${sizeLabel}</td>
-          <td class="num sq-col-k1 ${r.kiem_cs1 !== null && r.kiem_cs1 !== Number(r.ton_cs1 || 0) ? 'sq-red' : ''}">
-  ${r.kiem_cs1 === null
-            ? (Number(r.ton_cs1 || 0) > 0 ? r.ton_cs1 : "")
-            : `${Number(r.ton_cs1 || 0) > 0 ? r.ton_cs1 : 0}/${r.kiem_cs1}`
-          }
+          <td class="num sq-col-k1">
+  ${renderTonLech(r.ton_cs1, r.lech_cs1)}
 </td>
-          <td class="num sq-col-k2 ${r.kiem_cs2 !== null && r.kiem_cs2 !== Number(r.ton_cs2 || 0) ? 'sq-red' : ''}">
-  ${r.kiem_cs2 === null
-            ? (Number(r.ton_cs2 || 0) > 0 ? r.ton_cs2 : "")
-            : `${Number(r.ton_cs2 || 0) > 0 ? r.ton_cs2 : 0}/${r.kiem_cs2}`
-          }
+          <td class="num sq-col-k2">
+  ${renderTonLech(r.ton_cs2, r.lech_cs2)}
 </td>
           <td class="num sq-col-b1">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
           <td class="num sq-col-b2">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
@@ -1204,7 +1225,7 @@
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
   Mã: ${upper}
-${nguoiKiem ? ` / Kiểm: ${nguoiKiem} - ${ngayKiem}` : ""}
+${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
 ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
 </span>
@@ -1217,8 +1238,8 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
                             <thead>
                 <tr>
                   <th>Size</th>
-                  <th class="sq-col-k1">K1</th>
-                  <th class="sq-col-k2">K2</th>
+                  <th class="sq-col-k1">tk1</th>
+                  <th class="sq-col-k2">tk2</th>
                   <th class="sq-col-b1">B1</th>
                   <th class="sq-col-b2">B2</th>
                   <th class="sq-blue">Tnhập</th>
