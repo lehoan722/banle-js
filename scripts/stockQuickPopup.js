@@ -668,6 +668,10 @@
     let rows = [];
     let vitri_cs1 = "";
     let vitri_cs2 = "";
+    let kiemton = {
+      cs1: {},
+      cs2: {}
+    };
     let baymau_cs1 = "";
     let baymau_cs2 = "";
     let nhap_dau_ma = "";
@@ -682,7 +686,7 @@
 
     try {
       // 1) Gọi RPC xntnhanh (giữ nguyên) + 2) Đọc dmhanghoa (thêm nhapdau)
-      let [snapRes, hhRes] = await Promise.all([
+      let [snapRes, hhRes, kiemRes] = await Promise.all([
         client.rpc("xntnhanh", {
           p_masps: [masp],
           p_den_ngay: denNgay,
@@ -693,6 +697,11 @@
           .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, giale, nhomhang")
           .eq("masp", masp)
           .maybeSingle(),
+
+        client.rpc("rpc_stockquick_kiemton", {
+          p_masp: masp
+        })
+
       ]);
 
       const firstRows = Array.isArray(snapRes?.data) ? snapRes.data : [];
@@ -729,6 +738,24 @@
             size: normalizeSize(r.size),
             ton_cs1: Number(r.ton_cs1 || 0),
             ton_cs2: Number(r.ton_cs2 || 0),
+
+            kiem_cs1:
+              Number(
+                kiemton?.cs1?.sizes?.[
+                String(r.size || "")
+                  .replace(/^size\s+/i, "")
+                  .trim()
+                ]
+              ) || null,
+
+            kiem_cs2:
+              Number(
+                kiemton?.cs2?.sizes?.[
+                String(r.size || "")
+                  .replace(/^size\s+/i, "")
+                  .trim()
+                ]
+              ) || null,
             ban_cs1: ban1,
             ban_cs2: ban2,
             tong_ban: ban1 + ban2,
@@ -742,6 +769,11 @@
 
       // --- B) dữ liệu từ dmhanghoa: vị trí + ưu tiên ND từ nhapdau ---
       const { data: hh, error: hhErr } = hhRes || {};
+      const { data: kiemData } = kiemRes || {};
+
+      if (kiemData) {
+        kiemton = kiemData;
+      }
       if (hhErr) {
         console.warn("[StockQuickPopup] Lỗi đọc dmhanghoa:", hhErr);
       } else if (hh) {
@@ -780,6 +812,7 @@
     return {
       masp,
       rows,
+      kiemton,
       vitri_cs1,
       vitri_cs2,
       baymau_cs1,
@@ -811,6 +844,15 @@
     const nhap_cuoi_ma = payload && payload.nhap_cuoi_ma ? String(payload.nhap_cuoi_ma).trim() : "";
     const giale = payload && payload.giale ? payload.giale : "";
     const nhomhang = payload && payload.nhomhang ? payload.nhomhang : "";
+    const kiemton = payload && payload.kiemton
+      ? payload.kiemton
+      : {};
+
+    const nguoiKiem =
+      kiemton?.cs1?.nguoi_kiem || "";
+
+    const ngayKiem =
+      kiemton?.cs1?.ngay_kiem || "";
     const isAdmin = getIsAdminLocal();
 
     const nhomhangRow = nhomhang
@@ -924,8 +966,18 @@
         return `
         <tr class="sq-open-similar-row" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
           <td>${sizeLabel}</td>
-          <td class="num sq-col-k1">${r.ton_cs1 ? r.ton_cs1 : ""}</td>
-          <td class="num sq-col-k2">${r.ton_cs2 ? r.ton_cs2 : ""}</td>
+          <td class="num sq-col-k1 ${r.kiem_cs1 !== null && r.kiem_cs1 !== r.ton_cs1 ? 'sq-red' : ''}">
+  ${r.kiem_cs1 === null
+            ? (r.ton_cs1 || "")
+            : `${r.ton_cs1 || 0},${r.kiem_cs1}`
+          }
+</td>
+          <td class="num sq-col-k2 ${r.kiem_cs2 !== null && r.kiem_cs2 !== r.ton_cs2 ? 'sq-red' : ''}">
+  ${r.kiem_cs2 === null
+            ? (r.ton_cs2 || "")
+            : `${r.ton_cs2 || 0},${r.kiem_cs2}`
+          }
+</td>
           <td class="num sq-col-b1">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
           <td class="num sq-col-b2">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
           <td class="num sq-blue">${r.tong_nhap ? r.tong_nhap : ""}</td>
@@ -1151,6 +1203,7 @@
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
   Mã: ${upper}
+${nguoiKiem ? ` / Kiểm: ${nguoiKiem} - ${ngayKiem}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
 ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
 </span>
