@@ -157,7 +157,12 @@
   }
 
   .sq-stock-popup td.num {
-    text-align: right;
+    text-align: left;
+  }
+
+  .sq-lech {
+    color: #dc2626;
+    font-weight: 700;
   }
 
     .sq-stock-popup tr.sum-row td {
@@ -668,6 +673,10 @@
     let rows = [];
     let vitri_cs1 = "";
     let vitri_cs2 = "";
+    let kiemton = {
+      cs1: {},
+      cs2: {}
+    };
     let baymau_cs1 = "";
     let baymau_cs2 = "";
     let nhap_dau_ma = "";
@@ -682,7 +691,7 @@
 
     try {
       // 1) Gọi RPC xntnhanh (giữ nguyên) + 2) Đọc dmhanghoa (thêm nhapdau)
-      let [snapRes, hhRes] = await Promise.all([
+      let [snapRes, hhRes, kiemRes] = await Promise.all([
         client.rpc("xntnhanh", {
           p_masps: [masp],
           p_den_ngay: denNgay,
@@ -693,6 +702,11 @@
           .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, giale, nhomhang")
           .eq("masp", masp)
           .maybeSingle(),
+
+        client.rpc("rpc_stockquick_kiemton", {
+          p_masp: masp
+        })
+
       ]);
 
       const firstRows = Array.isArray(snapRes?.data) ? snapRes.data : [];
@@ -713,6 +727,15 @@
         });
       }
 
+      // --- nhận dữ liệu kiểm tồn trước khi map rows ---
+      const { data: kiemData, error: kiemErr } = kiemRes || {};
+      if (kiemErr) {
+        console.warn("[StockQuickPopup] rpc_stockquick_kiemton error:", kiemErr);
+      }
+      if (kiemData) {
+        kiemton = kiemData;
+      }
+
       // --- A) dữ liệu từ RPC ---
       const { data, error } = snapRes || {};
       if (!error && data && data.length) {
@@ -729,6 +752,18 @@
             size: normalizeSize(r.size),
             ton_cs1: Number(r.ton_cs1 || 0),
             ton_cs2: Number(r.ton_cs2 || 0),
+
+            lech_cs1: (() => {
+              const sizeKey = String(r.size || "").replace(/^size\s+/i, "").trim();
+              const v = kiemton?.cs1?.lech?.[sizeKey];
+              return v === undefined || v === null || Number(v) === 0 ? null : Number(v);
+            })(),
+
+            lech_cs2: (() => {
+              const sizeKey = String(r.size || "").replace(/^size\s+/i, "").trim();
+              const v = kiemton?.cs2?.lech?.[sizeKey];
+              return v === undefined || v === null || Number(v) === 0 ? null : Number(v);
+            })(),
             ban_cs1: ban1,
             ban_cs2: ban2,
             tong_ban: ban1 + ban2,
@@ -742,6 +777,7 @@
 
       // --- B) dữ liệu từ dmhanghoa: vị trí + ưu tiên ND từ nhapdau ---
       const { data: hh, error: hhErr } = hhRes || {};
+
       if (hhErr) {
         console.warn("[StockQuickPopup] Lỗi đọc dmhanghoa:", hhErr);
       } else if (hh) {
@@ -780,6 +816,7 @@
     return {
       masp,
       rows,
+      kiemton,
       vitri_cs1,
       vitri_cs2,
       baymau_cs1,
@@ -811,6 +848,25 @@
     const nhap_cuoi_ma = payload && payload.nhap_cuoi_ma ? String(payload.nhap_cuoi_ma).trim() : "";
     const giale = payload && payload.giale ? payload.giale : "";
     const nhomhang = payload && payload.nhomhang ? payload.nhomhang : "";
+    const kiemton = payload && payload.kiemton
+      ? payload.kiemton
+      : {};
+
+    const kiemParts = [];
+
+    if (kiemton?.cs1?.nguoi_kiem) {
+      kiemParts.push(`CS1 ${kiemton.cs1.nguoi_kiem} - ${kiemton.cs1.ngay_kiem || ""}`);
+    }
+
+    if (kiemton?.cs2?.nguoi_kiem) {
+      kiemParts.push(`CS2 ${kiemton.cs2.nguoi_kiem} - ${kiemton.cs2.ngay_kiem || ""}`);
+    }
+
+    const thongTinKiem = kiemParts.length ? kiemParts.join(" / ") : "";
+    function getLechTheoSize(coso, sizeNum) {
+      const v = kiemton?.[coso]?.lech?.[String(sizeNum)];
+      return v === undefined || v === null || Number(v) === 0 ? null : Number(v);
+    }
     const isAdmin = getIsAdminLocal();
 
     const nhomhangRow = nhomhang
@@ -862,6 +918,22 @@
       return Number(v).toLocaleString("vi-VN");
     }
 
+    function renderTonLech(tonRaw, lechRaw) {
+      const ton = Number(tonRaw || 0);
+      const lech = lechRaw === null || lechRaw === undefined ? null : Number(lechRaw);
+
+      if ((ton === 0 || !ton) && (lech === null || lech === 0)) return "";
+
+      const tonText = ton !== 0 ? String(ton) : "0";
+
+      if (lech === null || lech === 0) {
+        return ton !== 0 ? tonText : "";
+      }
+
+      const sign = lech > 0 ? "+" : "";
+      return `${tonText}<span class="sq-lech">${sign}${lech}</span>`;
+    }
+
     if (!rows.length && !vitri_cs1 && !vitri_cs2) {
       return `
         <div class="sq-stock-popup" data-masp="${upper}">
@@ -900,12 +972,21 @@
           size: "size " + sizeNum,
           ton_cs1: 0,
           ton_cs2: 0,
+          lech_cs1: getLechTheoSize("cs1", sizeNum),
+          lech_cs2: getLechTheoSize("cs2", sizeNum),
           ban_cs1: 0,
           ban_cs2: 0,
           tong_ban: 0,        // ✅ THÊM
           tong_nhap: 0,
           tong_ton: 0,
         };
+
+        if (r.lech_cs1 === undefined || r.lech_cs1 === null) {
+          r.lech_cs1 = getLechTheoSize("cs1", sizeNum);
+        }
+        if (r.lech_cs2 === undefined || r.lech_cs2 === null) {
+          r.lech_cs2 = getLechTheoSize("cs2", sizeNum);
+        }
 
         const sizeLabel = displaySizeLabel(r.size);
 
@@ -924,8 +1005,12 @@
         return `
         <tr class="sq-open-similar-row" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
           <td>${sizeLabel}</td>
-          <td class="num sq-col-k1">${r.ton_cs1 ? r.ton_cs1 : ""}</td>
-          <td class="num sq-col-k2">${r.ton_cs2 ? r.ton_cs2 : ""}</td>
+          <td class="num sq-col-k1">
+  ${renderTonLech(r.ton_cs1, r.lech_cs1)}
+</td>
+          <td class="num sq-col-k2">
+  ${renderTonLech(r.ton_cs2, r.lech_cs2)}
+</td>
           <td class="num sq-col-b1">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
           <td class="num sq-col-b2">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
           <td class="num sq-blue">${r.tong_nhap ? r.tong_nhap : ""}</td>
@@ -1151,6 +1236,7 @@
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
   Mã: ${upper}
+${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
 ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
 </span>
@@ -1163,8 +1249,8 @@ ${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} -
                             <thead>
                 <tr>
                   <th>Size</th>
-                  <th class="sq-col-k1">K1</th>
-                  <th class="sq-col-k2">K2</th>
+                  <th class="sq-col-k1">tk1</th>
+                  <th class="sq-col-k2">tk2</th>
                   <th class="sq-col-b1">B1</th>
                   <th class="sq-col-b2">B2</th>
                   <th class="sq-blue">Tnhập</th>
