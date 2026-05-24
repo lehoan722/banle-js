@@ -863,6 +863,10 @@
     }
 
     const thongTinKiem = kiemParts.length ? kiemParts.join(" / ") : "";
+    function getLechTheoSize(coso, sizeNum) {
+      const v = kiemton?.[coso]?.lech?.[String(sizeNum)];
+      return v === undefined || v === null || Number(v) === 0 ? null : Number(v);
+    }
     const isAdmin = getIsAdminLocal();
 
     const nhomhangRow = nhomhang
@@ -968,14 +972,21 @@
           size: "size " + sizeNum,
           ton_cs1: 0,
           ton_cs2: 0,
-          lech_cs1: null,
-          lech_cs2: null,
+          lech_cs1: getLechTheoSize("cs1", sizeNum),
+          lech_cs2: getLechTheoSize("cs2", sizeNum),
           ban_cs1: 0,
           ban_cs2: 0,
           tong_ban: 0,        // ✅ THÊM
           tong_nhap: 0,
           tong_ton: 0,
         };
+
+        if (r.lech_cs1 === undefined || r.lech_cs1 === null) {
+          r.lech_cs1 = getLechTheoSize("cs1", sizeNum);
+        }
+        if (r.lech_cs2 === undefined || r.lech_cs2 === null) {
+          r.lech_cs2 = getLechTheoSize("cs2", sizeNum);
+        }
 
         const sizeLabel = displaySizeLabel(r.size);
 
