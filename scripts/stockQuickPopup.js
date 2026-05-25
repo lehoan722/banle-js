@@ -1400,7 +1400,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     });
   }
 
-  let globalCloseBound = false;
+  let lastStockQuickOpenAt = 0;
 
 
   // ===== Auto-fit độ rộng cột theo nội dung (giống Excel) =====
@@ -1524,7 +1524,14 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     document.addEventListener("click", (e) => {
       const popup = document.querySelector(".sq-stock-popup.show");
       if (!popup) return;
+
+      // Chống lỗi popup vừa mở xong bị click kế tiếp đóng ngay
+      if (Date.now() - lastStockQuickOpenAt < 350) {
+        return;
+      }
+
       if (e.target.closest(".sq-stock-popup")) return;
+
       hideAllPopups();
     });
   }
@@ -1809,6 +1816,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
     bindGlobalCloseHandlers();
     hideAllPopups();
+
+    lastStockQuickOpenAt = Date.now();
+
     popup.classList.add("show");
   }
 
