@@ -9,6 +9,125 @@ let currentPage = 1;
 let onlyOneProduct = false; // <== thêm biến toàn cục để xác định 
 let isCompactMode = false;
 
+// popup chọn loại hóa đơn
+let bindLoaihdPopupDone = false;
+
+function renderLoaihdPopup() {
+    const select = document.getElementById('loaihdSelect');
+    const popupList = document.getElementById('loaihdPopupList');
+    if (!select || !popupList) return;
+
+    let html = `
+        <div class="loaihd-actions">
+            <button type="button" id="btnSelectAllLoaihd">✔ Chọn tất cả</button>
+            <button type="button" id="btnUnselectAllLoaihd">✖ Bỏ chọn</button>
+        </div>
+    `;
+
+    Array.from(select.options).forEach(opt => {
+        html += `
+            <div class="loaihd-row" data-value="${opt.value}">
+                <div class="loaihd-label">${opt.text}</div>
+                <input type="checkbox" class="loaihd-check" value="${opt.value}" ${opt.selected ? 'checked' : ''}>
+            </div>
+        `;
+    });
+
+    popupList.innerHTML = html;
+    updateLoaihdDisplay();
+}
+
+function updateLoaihdDisplay() {
+    const select = document.getElementById('loaihdSelect');
+    const display = document.getElementById('loaihdDisplay');
+    if (!select || !display) return;
+
+    const selectedTexts = Array.from(select.selectedOptions).map(o => o.text.trim());
+    display.value = selectedTexts.join(', ');
+}
+
+function syncLoaihdSelectFromPopup() {
+    const select = document.getElementById('loaihdSelect');
+    if (!select) return;
+
+    const checkedValues = new Set(
+        Array.from(document.querySelectorAll('.loaihd-check:checked')).map(chk => chk.value)
+    );
+
+    Array.from(select.options).forEach(opt => {
+        opt.selected = checkedValues.has(opt.value);
+    });
+
+    updateLoaihdDisplay();
+}
+
+function openLoaihdPopup() {
+    const popup = document.getElementById('loaihdPopup');
+    if (!popup) return;
+    popup.style.display = 'block';
+}
+
+function closeLoaihdPopup() {
+    const popup = document.getElementById('loaihdPopup');
+    if (!popup) return;
+    popup.style.display = 'none';
+}
+
+function bindLoaihdPopupEvents() {
+    if (bindLoaihdPopupDone) return;
+    bindLoaihdPopupDone = true;
+
+    const wrap = document.getElementById('loaihdWrap');
+    const popupList = document.getElementById('loaihdPopupList');
+    const toggleBtn = document.getElementById('toggleLoaihdPopup');
+    const display = document.getElementById('loaihdDisplay');
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const popup = document.getElementById('loaihdPopup');
+            if (!popup) return;
+            popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
+        });
+    }
+
+    if (display) {
+        display.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const popup = document.getElementById('loaihdPopup');
+            if (!popup) return;
+            popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
+        });
+    }
+
+    if (popupList) {
+        popupList.addEventListener('change', function (e) {
+            if (e.target.classList.contains('loaihd-check')) {
+                syncLoaihdSelectFromPopup();
+            }
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (e.target.id === 'btnSelectAllLoaihd') {
+            document.querySelectorAll('.loaihd-check').forEach(chk => chk.checked = true);
+            syncLoaihdSelectFromPopup();
+        }
+
+        if (e.target.id === 'btnUnselectAllLoaihd') {
+            document.querySelectorAll('.loaihd-check').forEach(chk => chk.checked = false);
+            syncLoaihdSelectFromPopup();
+        }
+    });
+
+    document.addEventListener('mousedown', function (e) {
+        if (!wrap?.contains(e.target)) {
+            closeLoaihdPopup();
+        }
+    });
+}
 
 
 // ⚠️ PostgREST thường giới hạn ~1000 dòng trả về cho mỗi request RPC qua REST.
@@ -46,6 +165,7 @@ function getFiltersFromUI() {
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
     const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
+    updateLoaihdDisplay();
     const diadiem = document.getElementById("diadiemSelect").value || null;
     const khachhang = document.getElementById("khachhangInput").value.trim() || null;
     const nhanvien = document.getElementById("nhanvienInput").value.trim() || null;
@@ -60,6 +180,8 @@ function getFiltersFromUI() {
     const tuGia = document.getElementById("tuGia").value ? Number(document.getElementById("tuGia").value) : null;
     const denGia = document.getElementById("denGia").value ? Number(document.getElementById("denGia").value) : null;
 
+    const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
+
     return {
         tu_ngay: tuNgay,
         den_ngay: denNgay,
@@ -67,12 +189,13 @@ function getFiltersFromUI() {
         p_diadiem: diadiem,
         p_khachhang: khachhang,
         p_nhanvien: nhanvien,
-        p_sohd: sohd,               // <== THÊM DÒNG NÀY
+        p_sohd: sohd,
         p_masp_list: finalMaspList,
         p_tensp: tensp,
         p_size: size,
         p_tu_gia: tuGia,
-        p_den_gia: denGia
+        p_den_gia: denGia,
+        p_tonghop_size: tongHopSize
     };
 }
 
@@ -96,6 +219,7 @@ window.taiBaoCaoChiTiet = async function () {
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
     const loaihdArr = Array.from(document.getElementById("loaihdSelect").selectedOptions).map(o => o.value);
+    updateLoaihdDisplay();
     const diadiem = document.getElementById("diadiemSelect").value || null;
     const khachhang = (document.getElementById("khachhangInput").value || "").trim() || null;
     const nhanvien = (document.getElementById("nhanvienInput").value || "").trim() || null;
@@ -105,6 +229,7 @@ window.taiBaoCaoChiTiet = async function () {
     const size = (document.getElementById("sizeInput").value || "").trim() || null;
     const tuGia = document.getElementById("tuGia").value ? Number(document.getElementById("tuGia").value) : null;
     const denGia = document.getElementById("denGia").value ? Number(document.getElementById("denGia").value) : null;
+    const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
 
     const maspListRaw = document.getElementById("maspList").value || "";
     let maspListArr = maspListRaw
@@ -134,15 +259,15 @@ window.taiBaoCaoChiTiet = async function () {
         p_diadiem: diadiem,
         p_khachhang: khachhang,
         p_nhanvien: nhanvien,
-        p_sohd: sohd,                 // <== THÊM DÒNG NÀY
+        p_sohd: sohd,
         p_masp_list: finalMaspList,
         p_tensp: tensp,
         p_size: size,
         p_tu_gia: tuGia,
         p_den_gia: denGia,
-        p_tinh_ton: onlyOneProduct   // <== truyền thêm tham số
+        p_tinh_ton: onlyOneProduct && !tongHopSize,
+        p_tonghop_size: tongHopSize
     };
-
 
     currentFilters = f;
     pageSize = Number(document.getElementById("pageSize").value) || 1000;
@@ -259,7 +384,9 @@ function renderTable(hotData) {
         { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell }
     ];
 
-    if (onlyOneProduct) {
+    const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
+
+    if (onlyOneProduct && !tongHopSize) {
         columns.push({
             data: "ton_tichluy",
             title: "Tổng tồn kho",
@@ -419,15 +546,15 @@ window.xuatExcelToanBo = async function () {
     }
 
     const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền"];
-    if (onlyOneProduct) headers.push("Tổng tồn kho");
-
+    const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
+    if (onlyOneProduct && !tongHopSize) headers.push("Tổng tồn kho");
     const aoa = [headers];
     allRows.forEach(r => {
         const row = [
             r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
             r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien
         ];
-        if (onlyOneProduct) row.push(r.ton_tichluy);
+        if (onlyOneProduct && !tongHopSize) row.push(r.ton_tichluy);
         aoa.push(row);
     });
 
@@ -518,106 +645,109 @@ window.selectPopupValue = function (type, value, el) {
 
 // ========== AUTO FILL NGÀY MẶC ĐỊNH ==========
 window.onload = function () {
-  const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
 
-  // Từ ngày cố định: 01/05/2025
-  document.getElementById('tuNgay').value = '2025-05-01';
+    // Từ ngày cố định: 01/05/2025
+    document.getElementById('tuNgay').value = '2025-05-01';
 
-  // Đến ngày là hôm nay
-  document.getElementById('denNgay').value = today;
+    // Đến ngày là hôm nay
+    document.getElementById('denNgay').value = today;
 
-  // === NHẬN MÃ SP TỪ URL & AUTO CHẠY ===
-  try {
-    const params = new URLSearchParams(window.location.search);
+    renderLoaihdPopup();
+    bindLoaihdPopupEvents();
 
-    // hỗ trợ 2 kiểu: ?masp=ABC hoặc ?maspList=ABC,DEF
-    const masp = params.get("masp");
-    const maspList = params.get("maspList");
+    // === NHẬN MÃ SP TỪ URL & AUTO CHẠY ===
+    try {
+        const params = new URLSearchParams(window.location.search);
 
-    let listText = "";
-    if (masp) {
-      listText = String(masp).trim();
-    } else if (maspList) {
-      listText = String(maspList)
-        .split(",")
-        .map(s => s.trim())
-        .filter(Boolean)
-        .join("\n");
-    }
+        // hỗ trợ 2 kiểu: ?masp=ABC hoặc ?maspList=ABC,DEF
+        const masp = params.get("masp");
+        const maspList = params.get("maspList");
 
-    if (listText) {
-      // chuẩn hóa IN HOA
-      listText = listText
-        .split("\n")
-        .map(s => s.trim().toUpperCase())
-        .filter(Boolean)
-        .join("\n");
-
-      const ta = document.getElementById("maspList");
-      if (ta) ta.value = listText;
-
-      const inp = document.getElementById("maspInput");
-      if (inp) inp.value = listText.split("\n")[0];
-
-      // auto chạy báo cáo luôn
-      setTimeout(() => {
-        if (typeof window.taiBaoCaoChiTiet === "function") {
-          window.taiBaoCaoChiTiet();
+        let listText = "";
+        if (masp) {
+            listText = String(masp).trim();
+        } else if (maspList) {
+            listText = String(maspList)
+                .split(",")
+                .map(s => s.trim())
+                .filter(Boolean)
+                .join("\n");
         }
-      }, 0);
+
+        if (listText) {
+            // chuẩn hóa IN HOA
+            listText = listText
+                .split("\n")
+                .map(s => s.trim().toUpperCase())
+                .filter(Boolean)
+                .join("\n");
+
+            const ta = document.getElementById("maspList");
+            if (ta) ta.value = listText;
+
+            const inp = document.getElementById("maspInput");
+            if (inp) inp.value = listText.split("\n")[0];
+
+            // auto chạy báo cáo luôn
+            setTimeout(() => {
+                if (typeof window.taiBaoCaoChiTiet === "function") {
+                    window.taiBaoCaoChiTiet();
+                }
+            }, 0);
+        }
+    } catch (err) {
+        console.warn("Auto nhận masp từ URL bị lỗi:", err);
     }
-  } catch (err) {
-    console.warn("Auto nhận masp từ URL bị lỗi:", err);
-  }
 };
 
 
 window.searchPopup = async function (keyword) {
-  const type = window.currentPopupType;
-  let table = '', field = '', extraFields = '';
-  if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
-  else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
-  else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
-  else return;
+    const type = window.currentPopupType;
+    let table = '', field = '', extraFields = '';
+    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extraFields = ', tenkh'; }
+    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extraFields = ', tensp'; }
+    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extraFields = ', tennv'; }
+    else return;
 
-  const myReqId = ++popupReqId;
-  const listEl = document.getElementById('popupSearchList');
-  listEl.innerHTML = '<i>Đang tải...</i>';
+    const myReqId = ++popupReqId;
+    const listEl = document.getElementById('popupSearchList');
+    listEl.innerHTML = '<i>Đang tải...</i>';
 
-  try {
-    const { data, error } = await supabase
-      .from(table)
-      .select(`${field}${extraFields}`)
-      .ilike(field, keyword ? `%${keyword}%` : "%")
-      .limit(100);
+    try {
+        const { data, error } = await supabase
+            .from(table)
+            .select(`${field}${extraFields}`)
+            .ilike(field, keyword ? `%${keyword}%` : "%")
+            .limit(100);
 
-    if (myReqId !== popupReqId) return;
+        if (myReqId !== popupReqId) return;
 
-    if (error || !data || data.length === 0) {
-      listEl.innerHTML = error ? `<i>Lỗi tải dữ liệu (${error.message || error})</i>` : '<i>Không tìm thấy dữ liệu</i>';
-      return;
-    }
+        if (error || !data || data.length === 0) {
+            listEl.innerHTML = error ? `<i>Lỗi tải dữ liệu (${error.message || error})</i>` : '<i>Không tìm thấy dữ liệu</i>';
+            return;
+        }
 
-    listEl.innerHTML = data.map(row => {
-      const code = String(row[field] ?? '');
-      const safe = code.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      const label =
-        code
-        + (row.tensp ? " - " + row.tensp : "")
-        + (row.tenkh ? " - " + row.tenkh : "")
-        + (row.tennv ? " - " + row.tennv : "");
-      return `
+        listEl.innerHTML = data.map(row => {
+            const code = String(row[field] ?? '');
+            const safe = code.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const label =
+                code
+                + (row.tensp ? " - " + row.tensp : "")
+                + (row.tenkh ? " - " + row.tenkh : "")
+                + (row.tennv ? " - " + row.tennv : "");
+            return `
         <div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid #eee;"
              onclick="selectPopupValue('${type}', '${safe}', this)">
           ${label}
         </div>
       `;
-    }).join('');
+        }).join('');
 
-  } catch (e) {
-    if (myReqId !== popupReqId) return;
-    console.error(e);
-    listEl.innerHTML = `<i>Lỗi: ${e?.message || e}</i>`;
-  }
+    } catch (e) {
+        if (myReqId !== popupReqId) return;
+        console.error(e);
+        listEl.innerHTML = `<i>Lỗi: ${e?.message || e}</i>`;
+    }
 };
 
