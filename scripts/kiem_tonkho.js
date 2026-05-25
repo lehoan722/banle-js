@@ -2225,8 +2225,8 @@ import "./stockQuickPopup.js";
                 hdStateEl?.value || hdStateEl?.getAttribute("data-state") || ""
             ).trim().toLowerCase();
 
-            if (hdStateValue !== "moi") {
-                alert("Chỉ được cân đối size khi đang tạo phiếu kiểm tồn mới chưa lưu. Phiếu cũ chỉ được xem.");
+            if (hdStateValue !== "xem") {
+                alert("Chỉ được cân đối size khi đang mở phiếu kiểm tồn cũ.");
                 return;
             }
 
@@ -4118,8 +4118,8 @@ import "./stockQuickPopup.js";
                 hdStateEl?.value || hdStateEl?.getAttribute("data-state") || ""
             ).trim().toLowerCase();
 
-            if (hdStateValue !== "moi") {
-                alert("Chỉ được tạo phiếu nhập/xuất kiểm khi đang tạo phiếu kiểm tồn mới chưa lưu. Phiếu cũ chỉ được xem.");
+            if (hdStateValue !== "xem") {
+                alert("Chỉ được tạo phiếu điều chỉnh khi đang mở phiếu kiểm tồn cũ.");
                 return;
             }
 
