@@ -936,6 +936,61 @@
         });
     </script>
 
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        function precheckXuatKiemCs2BeforeSave() {
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            const bang = window.bangKetQua || {};
+            if (!Object.keys(bang).length) {
+                alert("⚠️ Phiếu xuất kiểm CS2 chưa có dữ liệu.");
+                return false;
+            }
+
+            const sohd = String(document.getElementById("sohd")?.value || "").trim().toLowerCase();
+            if (!sohd.startsWith("xuatkiemcs2_")) {
+                alert("⚠️ Số hóa đơn xuất kiểm CS2 phải bắt đầu bằng xuatkiemcs2_.");
+                return false;
+            }
+
+            return true;
+        }
+
+        async function luuXuatKiemCs2(source = "BTN-LUU-XUATKIEM-CS2") {
+            if (!precheckXuatKiemCs2BeforeSave()) {
+                return { ok: false, reason: "INVALID_XUATKIEM_CS2" };
+            }
+
+            return await saveBanLe111(source);
+        }
+
+        window.LUU_HOADON_F2 = async () => {
+            return await luuXuatKiemCs2("F2-XUATKIEM-CS2");
+        };
+
+        document.getElementById("btn-luu")?.addEventListener("click", async function (e) {
+            e.preventDefault();
+
+            if (window.dangLuu) return;
+
+            window.dangLuu = true;
+            this.disabled = true;
+            const oldText = this.innerText;
+            this.innerText = "Đang lưu...";
+
+            try {
+                await luuXuatKiemCs2("BTN-XUATKIEM-CS2");
+            } finally {
+                window.dangLuu = false;
+                this.disabled = false;
+                this.innerText = oldText || "💾 Lưu";
+            }
+        });
+    </script>
+
     <script>  //<!-- banlemobile -->
 
         // goi phím F2
@@ -950,12 +1005,7 @@
             const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
-                
-        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
-        document.getElementById('btn-luu')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F2', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
+
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
