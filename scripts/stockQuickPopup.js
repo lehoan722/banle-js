@@ -499,47 +499,6 @@
 
   const IMG_BASE =
     "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
-  const SQ_COLOR_CACHE = {};
-
-  function getMaspBaseAndColor(maspRaw) {
-    const masp = String(maspRaw || "").trim().toUpperCase();
-    const idx = masp.lastIndexOf(".");
-    if (idx <= 0 || idx >= masp.length - 1) {
-      return { base: masp, color: "" };
-    }
-    return {
-      base: masp.slice(0, idx),
-      color: masp.slice(idx + 1)
-    };
-  }
-
-  function normalizeColorName(colorRaw) {
-    return String(colorRaw || "").trim().toLowerCase();
-  }
-
-  function formatShortPrice(v) {
-    const n = Number(v || 0);
-    if (!n) return "";
-    if (n % 1000 === 0) {
-      return String(Math.round(n / 1000)) + ".";
-    }
-    return n.toLocaleString("vi-VN");
-  }
-
-  function buildOtherColorLinksHtml(currentMasp, mauKhacText) {
-    const { base } = getMaspBaseAndColor(currentMasp);
-    const colors = String(mauKhacText || "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    if (!base || !colors.length) return "";
-
-    return colors.map(color => {
-      const targetMasp = `${base}.${color}`.toUpperCase();
-      return `<span class="sq-color-link" data-color-masp="${targetMasp}">${color}</span>`;
-    }).join(", ");
-  }
 
   // ===== Helpers =====
   function normalizeSize(v) {
@@ -745,15 +704,25 @@
     try {
       // 1) Gọi RPC xntnhanh (giữ nguyên) + 2) Đọc dmhanghoa (thêm nhapdau)
       const colorInfo = getMaspBaseAndColor(masp);
-      let colorResPromise = Promise.resolve({ data: [], error: null });
+
+      let colorResPromise = Promise.resolve({
+        data: [],
+        error: null
+      });
 
       if (colorInfo.base && colorInfo.color) {
+
         if (SQ_COLOR_CACHE[colorInfo.base]) {
+
           colorResPromise = Promise.resolve({
-            data: SQ_COLOR_CACHE[colorInfo.base].map(m => ({ masp: m })),
+            data: SQ_COLOR_CACHE[colorInfo.base].map(m => ({
+              masp: m
+            })),
             error: null
           });
+
         } else {
+
           colorResPromise = client
             .from("dmhanghoa")
             .select("masp")
@@ -873,6 +842,7 @@
       // 4) Chuẩn hoá lại lần cuối (phòng khi RPC trả rỗng hoặc dữ liệu lạ)
       if (nhap_dau_ma) nhap_dau_ma = String(nhap_dau_ma).trim();
       if (nhap_cuoi_ma) nhap_cuoi_ma = String(nhap_cuoi_ma).trim();
+
       if (colorRes && !colorRes.error && Array.isArray(colorRes.data)) {
         const allMasps = colorRes.data
           .map(r => String(r.masp || "").trim().toUpperCase())
@@ -1005,6 +975,65 @@
       <span class="sq-vitri-msg"></span>
     </div>
   `;
+
+    const SQ_COLOR_CACHE = {};
+
+    function getMaspBaseAndColor(maspRaw) {
+      const masp = String(maspRaw || "").trim().toUpperCase();
+      const idx = masp.lastIndexOf(".");
+
+      if (idx <= 0 || idx >= masp.length - 1) {
+        return {
+          base: masp,
+          color: ""
+        };
+      }
+
+      return {
+        base: masp.slice(0, idx),
+        color: masp.slice(idx + 1)
+      };
+    }
+
+    function normalizeColorName(colorRaw) {
+      return String(colorRaw || "")
+        .trim()
+        .toLowerCase();
+    }
+
+    function formatShortPrice(v) {
+      const n = Number(v || 0);
+
+      if (!n) return "";
+
+      if (n % 1000 === 0) {
+        return String(Math.round(n / 1000)) + ".";
+      }
+
+      return n.toLocaleString("vi-VN");
+    }
+
+    function buildOtherColorLinksHtml(currentMasp, mauKhacText) {
+      const { base } = getMaspBaseAndColor(currentMasp);
+
+      const colors = String(mauKhacText || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      if (!base || !colors.length) return "";
+
+      return colors.map(color => {
+        const targetMasp = `${base}.${color}`.toUpperCase();
+
+        return `
+      <span
+        class="sq-color-link"
+        data-color-masp="${targetMasp}"
+      >${color}</span>
+    `;
+      }).join(", ");
+    }
 
     function formatPrice(v) {
       if (!v) return "";
@@ -1328,10 +1357,10 @@
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
-${upper}
-${mau_khac ? ` / ${buildOtherColorLinksHtml(upper, mau_khac)}` : ""}
+  ${upper}
+${mau_khac ? ` / ${mau_khac}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
-${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""}
+${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
 ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 </span>
   <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh/copy</button>
@@ -1367,35 +1396,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
   function hideAllPopups() {
     document.querySelectorAll(".sq-stock-popup.show").forEach((p) => {
       p.classList.remove("show");
-    });
-  }
-
-  function bindColorImageLinks(popup) {
-    if (!popup) return;
-
-    popup.querySelectorAll(".sq-color-link[data-color-masp]").forEach(link => {
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const targetMasp = String(link.dataset.colorMasp || "").trim().toUpperCase();
-        if (!targetMasp) return;
-
-        const imgWrap = popup.querySelector(".sq-img-wrapper");
-        const img = popup.querySelector(".sq-img-wrapper img");
-
-        if (!imgWrap || !img) return;
-
-        imgWrap.style.display = "";
-        img.src = IMG_BASE + targetMasp + ".JPG";
-        img.alt = targetMasp;
-        imgWrap.dataset.masp = targetMasp;
-
-        popup.querySelectorAll(".sq-color-link").forEach(x => {
-          x.style.color = "#2563eb";
-        });
-        link.style.color = "#dc2626";
-      });
     });
   }
 
@@ -1474,7 +1474,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       <span class="sq-vitri-msg ok">${rs.message || "Đã lưu"}</span>
     `;
             bindVitriActions(popup);
-            bindColorImageLinks(popup);
             return;
           }
 
@@ -1524,7 +1523,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     });
   }
 
-  let globalCloseBound = false;
   let lastStockQuickOpenAt = 0;
 
 
