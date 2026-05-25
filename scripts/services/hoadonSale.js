@@ -36,6 +36,39 @@ function getInput(id) {
   return document.getElementById(id);
 }
 
+async function markKiemTonLoiThoiSauNhapXuat(sohd, bangKetQua) {
+  try {
+
+    const dsMasp = Array.from(
+      new Set(
+        Object.values(bangKetQua || {})
+          .map(x => String(x.masp || "").trim().toUpperCase())
+          .filter(Boolean)
+      )
+    );
+
+    if (!dsMasp.length) return;
+
+    const { error } = await supabase.rpc(
+      "rpc_mark_ct_kiem_ton_loi_thoi",
+      {
+        p_so_phieu: sohd,
+        p_ds_masp: dsMasp,
+        p_ly_do: "NHAP_XUAT_KIEM"
+      }
+    );
+
+    if (error) {
+      console.error("❌ mark lỗi thời nhập/xuất kiểm:", error);
+    } else {
+      console.log("✅ Đã đánh dấu lỗi thời kiểm tồn:", dsMasp);
+    }
+
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 function getText(id) {
   return getInput(id)?.value?.trim?.() || "";
 }
@@ -316,6 +349,34 @@ async function saveNewBanLe() {
   const existed = await hoaDonDaTonTaiAny(sohdNhap);
 
   if (!existed && await handleSpecialSoHoaDon(supabase, sohdNhap)) {
+
+    // ========================================
+    // ĐÁNH DẤU KIỂM TỒN LỖI THỜI
+    // ========================================
+
+    try {
+
+      const sohdLower = String(sohdThucTe || "").toLowerCase();
+
+      const laNhapXuatKiem =
+        sohdLower.startsWith("nk") ||
+        sohdLower.startsWith("xk") ||
+        sohdLower.includes("nhapkiem") ||
+        sohdLower.includes("xuatkiem");
+
+      if (laNhapXuatKiem) {
+
+        await markKiemTonLoiThoiSauNhapXuat(
+          sohdThucTe,
+          bangKetQua
+        );
+
+      }
+
+    } catch (e) {
+      console.error("❌ lỗi mark kiểm tồn:", e);
+    }
+
     return { ok: true, mode: "SPECIAL" };
   }
 
