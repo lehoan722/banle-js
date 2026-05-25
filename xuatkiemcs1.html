@@ -602,7 +602,7 @@
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
-             <button id="btn-kiemtra">Kiểm tra</button>
+            <button id="btn-kiemtra">Kiểm tra</button>
 
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
@@ -935,6 +935,61 @@
             cs,
             manv,
             cacheTtlMin: 30 // TTL cache 30 phút
+        });
+    </script>
+
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        function precheckXuatKiemCs1BeforeSave() {
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            const bang = window.bangKetQua || {};
+            if (!Object.keys(bang).length) {
+                alert("⚠️ Phiếu xuất kiểm CS1 chưa có dữ liệu.");
+                return false;
+            }
+
+            const sohd = String(document.getElementById("sohd")?.value || "").trim().toLowerCase();
+            if (!sohd.startsWith("xuatkiemcs1_")) {
+                alert("⚠️ Số hóa đơn xuất kiểm CS1 phải bắt đầu bằng xuatkiemcs1_.");
+                return false;
+            }
+
+            return true;
+        }
+
+        async function luuXuatKiemCs1(source = "BTN-LUU-XUATKIEM-CS1") {
+            if (!precheckXuatKiemCs1BeforeSave()) {
+                return { ok: false, reason: "INVALID_XUATKIEM_CS1" };
+            }
+
+            return await saveBanLe111(source);
+        }
+
+        window.LUU_HOADON_F2 = async () => {
+            return await luuXuatKiemCs1("F2-XUATKIEM-CS1");
+        };
+
+        document.getElementById("btn-luu")?.addEventListener("click", async function (e) {
+            e.preventDefault();
+
+            if (window.dangLuu) return;
+
+            window.dangLuu = true;
+            this.disabled = true;
+            const oldText = this.innerText;
+            this.innerText = "Đang lưu...";
+
+            try {
+                await luuXuatKiemCs1("BTN-XUATKIEM-CS1");
+            } finally {
+                window.dangLuu = false;
+                this.disabled = false;
+                this.innerText = oldText || "💾 Lưu";
+            }
         });
     </script>
 
@@ -1660,14 +1715,15 @@
 
     <script type="module" src="./scripts/nhaptamAutoSync.js"></script>
 
-   // <script type="module">
-       // import { attachRequireImageBeforeSave } from "./scripts/guardAnhSanPham.js";
+    //
+    <script type="module">
+        // import { attachRequireImageBeforeSave } from "./scripts/guardAnhSanPham.js";
 
-       // attachRequireImageBeforeSave({
-       //     saveButtonId: "btn-luu",
-       //     dispatchTarget: (document.body || document.documentElement)
-       // });
-   // </script>
+        // attachRequireImageBeforeSave({
+        //     saveButtonId: "btn-luu",
+        //     dispatchTarget: (document.body || document.documentElement)
+        // });
+        // </script>
 
 </body>
 
