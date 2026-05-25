@@ -1400,6 +1400,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     });
   }
 
+  let globalCloseBound = false;
   let lastStockQuickOpenAt = 0;
 
 
