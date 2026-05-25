@@ -94,8 +94,11 @@
 .sq-color-link {
   color: #2563eb;
   font-weight: 700;
-  cursor: pointer;
+  cursor: pointer !important;
   text-decoration: underline;
+  user-select: none;
+  position: relative;
+  z-index: 3;
 }
 
 .sq-color-link:hover {
@@ -1411,6 +1414,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation();
 
           const targetMasp = String(
             link.dataset.colorMasp || ""
@@ -1698,6 +1702,10 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       e.touches && e.touches[0] ? e.touches[0] : e;
 
     const onDown = (e) => {
+
+      if (e.target.closest(".sq-color-link")) return;
+      if (e.target.closest(".sq-photo-btn")) return;
+      if (e.target.closest(".sq-close")) return;
       const p = getPoint(e);
       dragging = true;
       startX = p.clientX;
