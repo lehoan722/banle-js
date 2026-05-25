@@ -1,5 +1,6 @@
 // baocaochitiet.js
 import { supabase } from "./supabaseClient.js";
+window.supabase = supabase;
 import { openInvoiceFromRow } from "./invoiceNavigator.js";
 let hotInstance = null;
 let currentFilters = null;
@@ -374,7 +375,19 @@ function renderTable(hotData) {
         { data: "diadiem", title: "Địa điểm", readOnly: true, width: 90 },
         { data: "khachhang", title: "Khách hàng", readOnly: true, width: 140 },
         { data: "nhanvien", title: "Nhân viên", readOnly: true, width: 110 },
-        { data: "masp", title: "Mã SP", readOnly: true, width: 100 },
+        {
+            data: "masp",
+            title: "Mã SP",
+            readOnly: true,
+            width: 100,
+            renderer: function (instance, td, row, col, prop, value, cellProperties) {
+                Handsontable.renderers.TextRenderer.apply(this, arguments);
+                td.style.color = "#1976d2";
+                td.style.fontWeight = "600";
+                td.style.cursor = "pointer";
+                td.style.textDecoration = "underline";
+            }
+        },
         { data: "tensp", title: "Tên SP", readOnly: true, width: 160 },
         { data: "size", title: "Size", readOnly: true, width: 60 },
         { data: "soluong", title: "SL", readOnly: true, width: 65, type: 'numeric' },
@@ -422,20 +435,36 @@ function renderTable(hotData) {
 
         // Dùng afterOnCellMouseDown + event.detail để bắt DOUBLE CLICK
         afterOnCellMouseDown(event, coords, TD) {
-            // chỉ xử lý khi double-click
-            if (!event || event.detail !== 2) return;
-
-            // bỏ qua header
-            if (coords.row < 0) return;
+            if (!event || coords.row < 0) return;
 
             const prop = this.colToProp(coords.col);
-            if (prop !== "sohd") return;  // chỉ cột Số HĐ
-
             const rowData = this.getSourceDataAtRow(coords.row);
-            if (!rowData || !rowData.sohd) return;
+            if (!rowData) return;
 
-            // Mở hóa đơn tương ứng
-            openInvoiceFromRow(rowData);
+            // Click vào Mã SP => mở popup tồn kho nhanh
+            if (prop === "masp") {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const masp = String(rowData.masp || "").trim().toUpperCase();
+                if (!masp) return;
+
+                if (window.StockQuick && typeof window.StockQuick.showFor === "function") {
+                    window.StockQuick.showFor(TD, masp);
+                } else if (typeof window.stockQuickPopup === "function") {
+                    window.stockQuickPopup(masp);
+                } else {
+                    alert("Chưa tải được stockQuickPopup.js");
+                }
+
+                return;
+            }
+
+            // Double click vào Số HĐ => mở hóa đơn
+            if (event.detail === 2 && prop === "sohd") {
+                if (!rowData.sohd) return;
+                openInvoiceFromRow(rowData);
+            }
         }
     });
 
