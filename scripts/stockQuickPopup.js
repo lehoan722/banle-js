@@ -501,6 +501,66 @@
     "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 
   // ===== Helpers =====
+
+  const SQ_COLOR_CACHE = {};
+
+  function getMaspBaseAndColor(maspRaw) {
+    const masp = String(maspRaw || "").trim().toUpperCase();
+    const idx = masp.lastIndexOf(".");
+
+    if (idx <= 0 || idx >= masp.length - 1) {
+      return {
+        base: masp,
+        color: ""
+      };
+    }
+
+    return {
+      base: masp.slice(0, idx),
+      color: masp.slice(idx + 1)
+    };
+  }
+
+  function normalizeColorName(colorRaw) {
+    return String(colorRaw || "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function formatShortPrice(v) {
+    const n = Number(v || 0);
+
+    if (!n) return "";
+
+    if (n % 1000 === 0) {
+      return String(Math.round(n / 1000)) + ".";
+    }
+
+    return n.toLocaleString("vi-VN");
+  }
+
+  function buildOtherColorLinksHtml(currentMasp, mauKhacText) {
+    const { base } = getMaspBaseAndColor(currentMasp);
+
+    const colors = String(mauKhacText || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (!base || !colors.length) return "";
+
+    return colors.map(color => {
+      const targetMasp = `${base}.${color}`.toUpperCase();
+
+      return `
+<span
+class="sq-color-link"
+data-color-masp="${targetMasp}"
+>${color}</span>
+`;
+    }).join(", ");
+  }
+
   function normalizeSize(v) {
     const s = String(v ?? "").trim().toLowerCase();
     if (!s) return "";
@@ -976,65 +1036,6 @@
     </div>
   `;
 
-    const SQ_COLOR_CACHE = {};
-
-    function getMaspBaseAndColor(maspRaw) {
-      const masp = String(maspRaw || "").trim().toUpperCase();
-      const idx = masp.lastIndexOf(".");
-
-      if (idx <= 0 || idx >= masp.length - 1) {
-        return {
-          base: masp,
-          color: ""
-        };
-      }
-
-      return {
-        base: masp.slice(0, idx),
-        color: masp.slice(idx + 1)
-      };
-    }
-
-    function normalizeColorName(colorRaw) {
-      return String(colorRaw || "")
-        .trim()
-        .toLowerCase();
-    }
-
-    function formatShortPrice(v) {
-      const n = Number(v || 0);
-
-      if (!n) return "";
-
-      if (n % 1000 === 0) {
-        return String(Math.round(n / 1000)) + ".";
-      }
-
-      return n.toLocaleString("vi-VN");
-    }
-
-    function buildOtherColorLinksHtml(currentMasp, mauKhacText) {
-      const { base } = getMaspBaseAndColor(currentMasp);
-
-      const colors = String(mauKhacText || "")
-        .split(",")
-        .map(s => s.trim())
-        .filter(Boolean);
-
-      if (!base || !colors.length) return "";
-
-      return colors.map(color => {
-        const targetMasp = `${base}.${color}`.toUpperCase();
-
-        return `
-      <span
-        class="sq-color-link"
-        data-color-masp="${targetMasp}"
-      >${color}</span>
-    `;
-      }).join(", ");
-    }
-
     function formatPrice(v) {
       if (!v) return "";
       return Number(v).toLocaleString("vi-VN");
@@ -1399,6 +1400,29 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     });
   }
 
+  function bindColorLinks(popup) {
+
+    if (!popup) return;
+
+    popup.querySelectorAll(".sq-color-link[data-color-masp]")
+      .forEach(link => {
+
+        link.addEventListener("click", async (e) => {
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          const targetMasp = String(
+            link.dataset.colorMasp || ""
+          ).trim().toUpperCase();
+
+          if (!targetMasp) return;
+
+          await ensurePopup(document.body, targetMasp);
+        });
+      });
+  }
+
   function bindVitriActions(popup) {
     if (!popup) return;
 
@@ -1474,6 +1498,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       <span class="sq-vitri-msg ok">${rs.message || "Đã lưu"}</span>
     `;
             bindVitriActions(popup);
+            bindColorLinks(popup);
             return;
           }
 
@@ -1730,6 +1755,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
   }
 
   let globalHost = null;
+  let globalCloseBound = false;
 
   function bindOpenSimilarRows(popup) {
     if (!popup) return;
