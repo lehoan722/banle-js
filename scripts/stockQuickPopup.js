@@ -488,6 +488,32 @@
 
   const IMG_BASE =
     "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
+  const SQ_COLOR_CACHE = {};
+
+  function getMaspBaseAndColor(maspRaw) {
+    const masp = String(maspRaw || "").trim().toUpperCase();
+    const idx = masp.lastIndexOf(".");
+    if (idx <= 0 || idx >= masp.length - 1) {
+      return { base: masp, color: "" };
+    }
+    return {
+      base: masp.slice(0, idx),
+      color: masp.slice(idx + 1)
+    };
+  }
+
+  function normalizeColorName(colorRaw) {
+    return String(colorRaw || "").trim().toLowerCase();
+  }
+
+  function formatShortPrice(v) {
+    const n = Number(v || 0);
+    if (!n) return "";
+    if (n % 1000 === 0) {
+      return String(Math.round(n / 1000)) + ".";
+    }
+    return n.toLocaleString("vi-VN");
+  }
 
   // ===== Helpers =====
   function normalizeSize(v) {
@@ -683,6 +709,7 @@
     let nhap_cuoi_ma = "";
     let giale = "";
     let nhomhang = "";
+    let mau_khac = "";
 
     const client = await waitForSupabaseReady(1000);
     if (!client) {
@@ -691,12 +718,30 @@
 
     try {
       // 1) Gọi RPC xntnhanh (giữ nguyên) + 2) Đọc dmhanghoa (thêm nhapdau)
-      let [snapRes, hhRes, kiemRes] = await Promise.all([
+      const colorInfo = getMaspBaseAndColor(masp);
+      let colorResPromise = Promise.resolve({ data: [], error: null });
+
+      if (colorInfo.base && colorInfo.color) {
+        if (SQ_COLOR_CACHE[colorInfo.base]) {
+          colorResPromise = Promise.resolve({
+            data: SQ_COLOR_CACHE[colorInfo.base].map(m => ({ masp: m })),
+            error: null
+          });
+        } else {
+          colorResPromise = client
+            .from("dmhanghoa")
+            .select("masp")
+            .ilike("masp", colorInfo.base + ".%");
+        }
+      }
+
+      let [snapRes, hhRes, kiemRes, colorRes] = await Promise.all([
         client.rpc("xntnhanh", {
           p_masps: [masp],
           p_den_ngay: denNgay,
           p_tonghop_size: false,
         }),
+
         client
           .from("dmhanghoa")
           .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, giale, nhomhang")
@@ -705,8 +750,9 @@
 
         client.rpc("rpc_stockquick_kiemton", {
           p_masp: masp
-        })
+        }),
 
+        colorResPromise
       ]);
 
       const firstRows = Array.isArray(snapRes?.data) ? snapRes.data : [];
@@ -801,6 +847,24 @@
       // 4) Chuẩn hoá lại lần cuối (phòng khi RPC trả rỗng hoặc dữ liệu lạ)
       if (nhap_dau_ma) nhap_dau_ma = String(nhap_dau_ma).trim();
       if (nhap_cuoi_ma) nhap_cuoi_ma = String(nhap_cuoi_ma).trim();
+      if (colorRes && !colorRes.error && Array.isArray(colorRes.data)) {
+        const allMasps = colorRes.data
+          .map(r => String(r.masp || "").trim().toUpperCase())
+          .filter(Boolean);
+
+        if (colorInfo.base && allMasps.length) {
+          SQ_COLOR_CACHE[colorInfo.base] = allMasps;
+        }
+
+        const currentColor = normalizeColorName(colorInfo.color);
+
+        const otherColors = allMasps
+          .map(code => getMaspBaseAndColor(code).color)
+          .map(normalizeColorName)
+          .filter(c => c && c !== currentColor);
+
+        mau_khac = Array.from(new Set(otherColors)).join(", ");
+      }
     } catch (e) {
       console.warn("[StockQuickPopup] Exception trong fetchTonBanByMasp:", e);
     }
@@ -810,7 +874,8 @@
     window.__SQ_DATA[masp] = {
       rows,
       nhomhang,
-      giale
+      giale,
+      mau_khac
     };
 
     return {
@@ -824,7 +889,8 @@
       nhap_dau_ma,
       nhap_cuoi_ma,
       giale,
-      nhomhang
+      nhomhang,
+      mau_khac
     };
 
   }
@@ -848,6 +914,7 @@
     const nhap_cuoi_ma = payload && payload.nhap_cuoi_ma ? String(payload.nhap_cuoi_ma).trim() : "";
     const giale = payload && payload.giale ? payload.giale : "";
     const nhomhang = payload && payload.nhomhang ? payload.nhomhang : "";
+    const mau_khac = payload && payload.mau_khac ? payload.mau_khac : "";
     const kiemton = payload && payload.kiemton
       ? payload.kiemton
       : {};
@@ -1235,9 +1302,10 @@
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
-  Mã: ${upper}
+  ${upper}
+${mau_khac ? ` / ${mau_khac}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
-${giale ? ` / <span class="sq-title-price">${formatPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
+${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
 ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 </span>
   <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh/copy</button>
