@@ -3298,9 +3298,37 @@ import "./stockQuickPopup.js";
             }
 
             if (rowsChiTiet.length > 0) {
+                const dsMaspMoi = Array.from(
+                    new Set(rowsChiTiet.map(r => normalizeMasp(r.masp)).filter(Boolean))
+                );
+
+                const { error: errMarkOld } = await window.supabase
+                    .from("ct_kiem_ton_kho")
+                    .update({
+                        da_loi_thoi: true,
+                        loi_thoi_boi_so_phieu: so_phieu,
+                        loi_thoi_luc: new Date().toISOString()
+                    })
+                    .eq("diadiem", diadiem)
+                    .in("masp", dsMaspMoi)
+                    .neq("so_phieu", so_phieu);
+
+                if (errMarkOld) {
+                    console.error("[ct_kiem_ton_kho] mark old error:", errMarkOld);
+                    alert("Lỗi khi đánh dấu dữ liệu kiểm tồn cũ là lỗi thời: " + (errMarkOld.message || ""));
+                    return;
+                }
+
+                const rowsChiTietMoi = rowsChiTiet.map(r => ({
+                    ...r,
+                    da_loi_thoi: false,
+                    loi_thoi_boi_so_phieu: null,
+                    loi_thoi_luc: null
+                }));
+
                 const { error: errCt } = await window.supabase
                     .from("ct_kiem_ton_kho")
-                    .insert(rowsChiTiet);
+                    .insert(rowsChiTietMoi);
 
                 if (errCt) {
                     console.error("[ct_kiem_ton_kho] insert error:", errCt);
