@@ -803,86 +803,86 @@
 
         // Dán từ clipboard (Excel) vào bảng web
 
-       
-  // Dán từ Excel/Sheet → cập nhật window.bangKetQua → vẽ bảng
-  document.getElementById('bangketqua').addEventListener('paste', function (e) {
-    e.preventDefault();
 
-    const text = (e.clipboardData || window.clipboardData).getData('text/plain') || '';
-    const rows = text.trim().split(/\r?\n/)
-      .map(r => r.split('\t'))
-      .filter(r => r.length && r.some(c => String(c).trim() !== ''));
+        // Dán từ Excel/Sheet → cập nhật window.bangKetQua → vẽ bảng
+        document.getElementById('bangketqua').addEventListener('paste', function (e) {
+            e.preventDefault();
 
-    // (tùy chọn) nếu bạn có sửa tay trên ô trước đó:
-    if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-      window.capNhatBangKetQuaTuDOM();
-    }
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain') || '';
+            const rows = text.trim().split(/\r?\n/)
+                .map(r => r.split('\t'))
+                .filter(r => r.length && r.some(c => String(c).trim() !== ''));
 
-    const bang = window.bangKetQua || {};
-    const toInt = v => {
-      if (v == null) return 0;
-      const s = String(v).replace(/[^\d-]/g, '');
-      const n = parseInt(s, 10);
-      return isNaN(n) ? 0 : n;
-    };
+            // (tùy chọn) nếu bạn có sửa tay trên ô trước đó:
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
 
-    for (const r of rows) {
-      // MASP | Tên | Size | SL | DVT? | Giá? | KM?
-      const masp = String(r[0] || '').toUpperCase().trim();
-      if (!masp) continue;
+            const bang = window.bangKetQua || {};
+            const toInt = v => {
+                if (v == null) return 0;
+                const s = String(v).replace(/[^\d-]/g, '');
+                const n = parseInt(s, 10);
+                return isNaN(n) ? 0 : n;
+            };
 
-      const tensp = String(r[1] || '').trim();
-      const size  = String((r[2] ?? '0')).trim();
-      const sl    = toInt(r[3] ?? 1);
+            for (const r of rows) {
+                // MASP | Tên | Size | SL | DVT? | Giá? | KM?
+                const masp = String(r[0] || '').toUpperCase().trim();
+                if (!masp) continue;
 
-      const dvt   = String(r[4] || (bang[masp]?.dvt ?? 'sp')).trim();
-      const gia   = toInt(r[5] ?? (bang[masp]?.gia ?? 0));
-      const km    = toInt(r[6] ?? (bang[masp]?.km  ?? 0));
+                const tensp = String(r[1] || '').trim();
+                const size = String((r[2] ?? '0')).trim();
+                const sl = toInt(r[3] ?? 1);
 
-      if (!bang[masp]) {
-        bang[masp] = { masp, tensp, dvt, gia, km, sizes: [], soluongs: [], tong: 0 };
-      } else {
-        if (!bang[masp].tensp) bang[masp].tensp = tensp;
-        if (!bang[masp].dvt)   bang[masp].dvt   = dvt;
-        if (!bang[masp].gia)   bang[masp].gia   = gia;
-        if (!bang[masp].km)    bang[masp].km    = km;
-      }
+                const dvt = String(r[4] || (bang[masp]?.dvt ?? 'sp')).trim();
+                const gia = toInt(r[5] ?? (bang[masp]?.gia ?? 0));
+                const km = toInt(r[6] ?? (bang[masp]?.km ?? 0));
 
-      const i = bang[masp].sizes.findIndex(s => String(s).trim() === size);
-      if (i >= 0) bang[masp].soluongs[i] = sl;
-      else { bang[masp].sizes.push(size); bang[masp].soluongs.push(sl); }
+                if (!bang[masp]) {
+                    bang[masp] = { masp, tensp, dvt, gia, km, sizes: [], soluongs: [], tong: 0 };
+                } else {
+                    if (!bang[masp].tensp) bang[masp].tensp = tensp;
+                    if (!bang[masp].dvt) bang[masp].dvt = dvt;
+                    if (!bang[masp].gia) bang[masp].gia = gia;
+                    if (!bang[masp].km) bang[masp].km = km;
+                }
 
-      bang[masp].tong = (bang[masp].soluongs || []).reduce((a,b)=>a+(Number(b)||0),0);
-    }
+                const i = bang[masp].sizes.findIndex(s => String(s).trim() === size);
+                if (i >= 0) bang[masp].soluongs[i] = sl;
+                else { bang[masp].sizes.push(size); bang[masp].soluongs.push(sl); }
 
-    window.bangKetQua = bang;
+                bang[masp].tong = (bang[masp].soluongs || []).reduce((a, b) => a + (Number(b) || 0), 0);
+            }
 
-    // --- VẼ BẢNG ---
-    const tbody = document.querySelector('#bangketqua tbody');
-    const before = tbody ? tbody.children.length : 0;
+            window.bangKetQua = bang;
 
-    if (typeof window.capNhatBangHTML === 'function') {
-      window.capNhatBangHTML(window.bangKetQua, null);
-    }
-    if (typeof window.capNhatThongTinTong === 'function') {
-      window.capNhatThongTinTong(window.bangKetQua);
-    }
+            // --- VẼ BẢNG ---
+            const tbody = document.querySelector('#bangketqua tbody');
+            const before = tbody ? tbody.children.length : 0;
 
-    // Fallback: nếu chưa có dòng nào → tự render
-    setTimeout(() => {
-      const after = tbody ? tbody.children.length : 0;
-      if (after === before) {
-        if (typeof window.renderBangKetQua === 'function') {
-          window.renderBangKetQua(window.bangKetQua);
-        }
-        if (typeof window.capNhatTongTien === 'function') {
-          window.capNhatTongTien(window.bangKetQua);
-        }
-      }
-    }, 30);
+            if (typeof window.capNhatBangHTML === 'function') {
+                window.capNhatBangHTML(window.bangKetQua, null);
+            }
+            if (typeof window.capNhatThongTinTong === 'function') {
+                window.capNhatThongTinTong(window.bangKetQua);
+            }
 
-    console.log('[PASTE] merged → window.bangKetQua =', window.bangKetQua);
-  });
+            // Fallback: nếu chưa có dòng nào → tự render
+            setTimeout(() => {
+                const after = tbody ? tbody.children.length : 0;
+                if (after === before) {
+                    if (typeof window.renderBangKetQua === 'function') {
+                        window.renderBangKetQua(window.bangKetQua);
+                    }
+                    if (typeof window.capNhatTongTien === 'function') {
+                        window.capNhatTongTien(window.bangKetQua);
+                    }
+                }
+            }, 30);
+
+            console.log('[PASTE] merged → window.bangKetQua =', window.bangKetQua);
+        });
 
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
@@ -982,6 +982,61 @@
             cs,
             manv,
             cacheTtlMin: 30 // TTL cache 30 phút
+        });
+    </script>
+
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        function precheckNhapKiemCs1BeforeSave() {
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            const bang = window.bangKetQua || {};
+            if (!Object.keys(bang).length) {
+                alert("⚠️ Phiếu nhập kiểm chưa có dữ liệu.");
+                return false;
+            }
+
+            const sohd = String(document.getElementById("sohd")?.value || "").trim().toLowerCase();
+            if (!sohd.startsWith("nhapkiemcs1_")) {
+                alert("⚠️ Số hóa đơn nhập kiểm CS1 phải bắt đầu bằng nhapkiemcs1_.");
+                return false;
+            }
+
+            return true;
+        }
+
+        async function luuNhapKiemCs1(source = "BTN-LUU-NHAPKiem-CS1") {
+            if (!precheckNhapKiemCs1BeforeSave()) {
+                return { ok: false, reason: "INVALID_NHAPKIEM_CS1" };
+            }
+
+            return await saveBanLe111(source);
+        }
+
+        window.LUU_HOADON_F2 = async () => {
+            return await luuNhapKiemCs1("F2-NHAPKIEM-CS1");
+        };
+
+        document.getElementById("btn-luu")?.addEventListener("click", async function (e) {
+            e.preventDefault();
+
+            if (window.dangLuu) return;
+
+            window.dangLuu = true;
+            this.disabled = true;
+            const oldText = this.innerText;
+            this.innerText = "Đang lưu...";
+
+            try {
+                await luuNhapKiemCs1("BTN-NHAPKIEM-CS1");
+            } finally {
+                window.dangLuu = false;
+                this.disabled = false;
+                this.innerText = oldText || "💾 Lưu";
+            }
         });
     </script>
 
@@ -1572,8 +1627,8 @@
             });
         });
     </script>
-    
-    
+
+
     <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
     <script src="./scripts/ccnBangKetQuaAdapter.js"></script>
     <script>
@@ -1591,7 +1646,7 @@
             max-width: 40px;
             white-space: normal;
             /* cho phép xuống dòng */
-           
+
             /* nếu cần thì bẻ từ */
             text-align: left;
             /* tùy, thích center thì bỏ dòng này */
