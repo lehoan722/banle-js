@@ -84,6 +84,7 @@
 
 .sq-title-text {
   font-weight: 600;
+  cursor: default;
 }
 
 .sq-title-price {
@@ -221,7 +222,7 @@
     font-weight: 600;
     margin-bottom: 4px;
     text-align: left;
-    cursor: move;
+    cursor: default;
     user-select: none;
 
     /* NEW: cho tiêu đề + nút nằm chung 1 hàng */
@@ -1362,7 +1363,7 @@ data-color-masp="${targetMasp}"
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
   ${upper}
-${mau_khac ? ` / ${mau_khac}` : ""}
+${mau_khac ? ` / ${buildOtherColorLinksHtml(upper, mau_khac)}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
 ${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
 ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
@@ -1743,7 +1744,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       if (left < 0) left = 0;
       if (top < 0) top = 0;
       if (left + w > vw) left = vw - w;
-      if (top + h > vh) left = vw - w;
+      if (top + h > vh) top = vh - h;
 
       popup.style.left = left + "px";
       popup.style.top = top + "px";
