@@ -91,6 +91,17 @@
   font-weight: 700;
 }
 
+.sq-color-link {
+  color: #2563eb;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.sq-color-link:hover {
+  color: #dc2626;
+}
+
   .sq-stock-popup.show {
     display: block;
   }
@@ -513,6 +524,21 @@
       return String(Math.round(n / 1000)) + ".";
     }
     return n.toLocaleString("vi-VN");
+  }
+
+  function buildOtherColorLinksHtml(currentMasp, mauKhacText) {
+    const { base } = getMaspBaseAndColor(currentMasp);
+    const colors = String(mauKhacText || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (!base || !colors.length) return "";
+
+    return colors.map(color => {
+      const targetMasp = `${base}.${color}`.toUpperCase();
+      return `<span class="sq-color-link" data-color-masp="${targetMasp}">${color}</span>`;
+    }).join(", ");
   }
 
   // ===== Helpers =====
@@ -1302,10 +1328,10 @@
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
-  ${upper}
-${mau_khac ? ` / ${mau_khac}` : ""}
+${upper}
+${mau_khac ? ` / ${buildOtherColorLinksHtml(upper, mau_khac)}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
-${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
+${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""}
 ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 </span>
   <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh/copy</button>
@@ -1341,6 +1367,35 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
   function hideAllPopups() {
     document.querySelectorAll(".sq-stock-popup.show").forEach((p) => {
       p.classList.remove("show");
+    });
+  }
+
+  function bindColorImageLinks(popup) {
+    if (!popup) return;
+
+    popup.querySelectorAll(".sq-color-link[data-color-masp]").forEach(link => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const targetMasp = String(link.dataset.colorMasp || "").trim().toUpperCase();
+        if (!targetMasp) return;
+
+        const imgWrap = popup.querySelector(".sq-img-wrapper");
+        const img = popup.querySelector(".sq-img-wrapper img");
+
+        if (!imgWrap || !img) return;
+
+        imgWrap.style.display = "";
+        img.src = IMG_BASE + targetMasp + ".JPG";
+        img.alt = targetMasp;
+        imgWrap.dataset.masp = targetMasp;
+
+        popup.querySelectorAll(".sq-color-link").forEach(x => {
+          x.style.color = "#2563eb";
+        });
+        link.style.color = "#dc2626";
+      });
     });
   }
 
@@ -1419,6 +1474,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       <span class="sq-vitri-msg ok">${rs.message || "Đã lưu"}</span>
     `;
             bindVitriActions(popup);
+            bindColorImageLinks(popup);
             return;
           }
 
