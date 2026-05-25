@@ -1061,6 +1061,19 @@ data-color-masp="${targetMasp}"
       return `${tonText}<span class="sq-lech">${sign}${lech}</span>`;
     }
 
+    function renderSumTonLech(tonRaw, lechRaw) {
+      const ton = Number(tonRaw || 0);
+      const lech = Number(lechRaw || 0);
+
+      if (!ton && !lech) return "";
+
+      const tonText = ton ? String(ton) : "0";
+      if (!lech) return tonText;
+
+      const sign = lech > 0 ? "+" : "";
+      return `${tonText}<span class="sq-lech">${sign}${lech}</span>`;
+    }
+
     if (!rows.length && !vitri_cs1 && !vitri_cs2) {
       return `
         <div class="sq-stock-popup" data-masp="${upper}">
@@ -1072,6 +1085,8 @@ data-color-masp="${targetMasp}"
 
     let sum1 = 0,
       sum2 = 0,
+      sumLech1 = 0,
+      sumLech2 = 0,
       sumBan1 = 0,
       sumBan2 = 0,
       sumNhap = 0,
@@ -1120,6 +1135,8 @@ data-color-masp="${targetMasp}"
         // cộng tổng (dòng thiếu dữ liệu sẽ là 0)
         sum1 += Number(r.ton_cs1 || 0);
         sum2 += Number(r.ton_cs2 || 0);
+        sumLech1 += Number(r.lech_cs1 || 0);
+        sumLech2 += Number(r.lech_cs2 || 0);
         sumBan1 += Number(r.ban_cs1 || 0);
         sumBan2 += Number(r.ban_cs2 || 0);
         sumNhap += Number(r.tong_nhap || 0);
@@ -1153,8 +1170,8 @@ data-color-masp="${targetMasp}"
       ? `
         <tr class="sum-row sq-hide-row" title="Bấm để đóng popup">
     <td>Tổng / Ẩn</td>
-    <td class="num sq-col-k1">${sum1 || ""}</td>
-    <td class="num sq-col-k2">${sum2 || ""}</td>
+    <td class="num sq-col-k1">${renderSumTonLech(sum1, sumLech1)}</td>
+<td class="num sq-col-k2">${renderSumTonLech(sum2, sumLech2)}</td>
     <td class="num sq-col-b1">${sumBan1 || ""}</td>
     <td class="num sq-col-b2">${sumBan2 || ""}</td>
     <td class="num sq-blue">${sumNhap || ""}</td>
