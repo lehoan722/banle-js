@@ -1909,6 +1909,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     // bind lưu vị trí kho nhanh cho CS1 / CS2
     bindVitriActions(popup);
 
+    // bind click màu khác để mở lại toàn bộ popup theo mã màu đó
+    bindColorLinks(popup);
+
     // bind click dòng size mở sản phẩm cùng nhóm
     bindOpenSimilarRows(popup);
 
