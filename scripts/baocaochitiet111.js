@@ -381,7 +381,10 @@ function renderTable(hotData) {
         { data: "dvt", title: "ĐVT", readOnly: true, width: 60 },
         { data: "gia", title: "Giá", readOnly: true, width: 100, type: 'numeric', renderer: formatNumberCell },
         { data: "km", title: "KM", readOnly: true, width: 70, type: 'numeric', renderer: formatNumberCell },
-        { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell }
+        { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell },
+        { data: "ket_qua", title: "Kết quả", readOnly: true, width: 90 },
+        { data: "baymau_by", title: "Bày mẫu bởi", readOnly: true, width: 120 },
+        { data: "baymau_note", title: "Ghi chú bày mẫu", readOnly: true, width: 130 }
     ];
 
     const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
@@ -545,14 +548,15 @@ window.xuatExcelToanBo = async function () {
         }));
     }
 
-    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền"];
+    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền", "Kết quả", "Bày mẫu bởi", "Ghi chú bày mẫu"];
     const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
     if (onlyOneProduct && !tongHopSize) headers.push("Tổng tồn kho");
     const aoa = [headers];
     allRows.forEach(r => {
         const row = [
             r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
-            r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien
+            r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien,
+            r.ket_qua, r.baymau_by, r.baymau_note
         ];
         if (onlyOneProduct && !tongHopSize) row.push(r.ton_tichluy);
         aoa.push(row);
