@@ -250,6 +250,24 @@ import "./stockQuickPopup.js";
     // ========================= 
     // HELPERS
     // =========================
+
+    async function danhDauKiemTonLoiThoiTheoMasp(soPhieu, dsMasp, lyDo) {
+        const arr = Array.from(new Set((dsMasp || []).map(normalizeMasp).filter(Boolean)));
+
+        if (!soPhieu || !arr.length) return;
+
+        const { error } = await window.supabase.rpc("rpc_mark_ct_kiem_ton_loi_thoi", {
+            p_so_phieu: soPhieu,
+            p_ds_masp: arr,
+            p_ly_do: lyDo || ""
+        });
+
+        if (error) {
+            console.error("[KTK] mark lỗi thời error:", error);
+            alert("Cảnh báo: đã xử lý nghiệp vụ nhưng chưa đánh dấu lỗi thời kiểm tồn.");
+        }
+    }
+
     function byId(id) {
         return document.getElementById(id);
     }
@@ -2287,6 +2305,19 @@ import "./stockQuickPopup.js";
                 alert("Lỗi cân đối size: " + (error.message || error));
                 return;
             }
+
+            const dsMaspDaXuLy = Array.isArray(data?.logs)
+                ? data.logs
+                    .filter(x => x && !["skip", "warning"].includes(String(x.status || "").toLowerCase()))
+                    .map(x => x.masp)
+                    .filter(Boolean)
+                : [];
+
+            await danhDauKiemTonLoiThoiTheoMasp(
+                soPhieu,
+                dsMaspDaXuLy,
+                isCanDoiHetHang ? "CAN_DOI_HET_HANG" : "CAN_DOI_SIZE"
+            );
 
             console.log("[KTK] rpc_can_doi_size_kiem_ton result:", data);
 
