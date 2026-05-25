@@ -36,32 +36,8 @@ function getInput(id) {
   return document.getElementById(id);
 }
 
-function laTrangNhapXuatKiem(loai, sohd) {
-  const path = String(window.location.pathname || "").toLowerCase();
-  const l = String(loai || "").toLowerCase();
-  const s = String(sohd || "").toLowerCase();
-
-  return (
-    path.includes("nhapkiemcs1") ||
-    path.includes("nhapkiemcs2") ||
-    path.includes("xuatkiemcs1") ||
-    path.includes("xuatkiemcs2") ||
-
-    l.startsWith("nhapkiemcs1") ||
-    l.startsWith("nhapkiemcs2") ||
-    l.startsWith("xuatkiemcs1") ||
-    l.startsWith("xuatkiemcs2") ||
-
-    s.startsWith("nhapkiemcs1_") ||
-    s.startsWith("nhapkiemcs2_") ||
-    s.startsWith("xuatkiemcs1_") ||
-    s.startsWith("xuatkiemcs2_")
-  );
-}
-
-async function markKiemTonLoiThoiSauNhapXuat(sohd, loai, diadiem, bangKetQua) {
+async function markKiemTonLoiThoiSauNhapXuat(sohd, bangKetQua) {
   try {
-    if (!laTrangNhapXuatKiem(loai, sohd)) return;
 
     const dsMasp = Array.from(
       new Set(
@@ -73,22 +49,23 @@ async function markKiemTonLoiThoiSauNhapXuat(sohd, loai, diadiem, bangKetQua) {
 
     if (!dsMasp.length) return;
 
-    const { data, error } = await supabase.rpc(
-      "rpc_mark_ct_kiem_ton_loi_thoi_by_masp",
+    const { error } = await supabase.rpc(
+      "rpc_mark_ct_kiem_ton_loi_thoi",
       {
-        p_diadiem: diadiem,
+        p_so_phieu: sohd,
         p_ds_masp: dsMasp,
-        p_nguon: sohd
+        p_ly_do: "NHAP_XUAT_KIEM"
       }
     );
 
     if (error) {
       console.error("❌ mark lỗi thời nhập/xuất kiểm:", error);
     } else {
-      console.log("✅ Đã đánh dấu lỗi thời kiểm tồn:", data);
+      console.log("✅ Đã đánh dấu lỗi thời kiểm tồn:", dsMasp);
     }
+
   } catch (e) {
-    console.error("❌ lỗi mark kiểm tồn:", e);
+    console.error(e);
   }
 }
 
@@ -377,7 +354,28 @@ async function saveNewBanLe() {
     // ĐÁNH DẤU KIỂM TỒN LỖI THỜI
     // ========================================
 
+    try {
 
+      const sohdLower = String(sohdThucTe || "").toLowerCase();
+
+      const laNhapXuatKiem =
+        sohdLower.startsWith("nk") ||
+        sohdLower.startsWith("xk") ||
+        sohdLower.includes("nhapkiem") ||
+        sohdLower.includes("xuatkiem");
+
+      if (laNhapXuatKiem) {
+
+        await markKiemTonLoiThoiSauNhapXuat(
+          sohdThucTe,
+          bangKetQua
+        );
+
+      }
+
+    } catch (e) {
+      console.error("❌ lỗi mark kiểm tồn:", e);
+    }
 
     return { ok: true, mode: "SPECIAL" };
   }
@@ -454,12 +452,6 @@ async function saveNewBanLe() {
   }
 
   await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
-  await markKiemTonLoiThoiSauNhapXuat(
-    sohdThucTe,
-    loai,
-    diadiemTrang,
-    bangKetQua
-  );
 
   // ✅ Xử lý điểm khách hàng sau khi hóa đơn đã lưu thành công
   // 🔥 CHỈ tích điểm cho hóa đơn bán tại quầy (bancs)
