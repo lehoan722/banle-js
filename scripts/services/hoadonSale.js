@@ -42,14 +42,20 @@ function laTrangNhapXuatKiem(loai, sohd) {
   const s = String(sohd || "").toLowerCase();
 
   return (
-    path.includes("nhapkiem") ||
-    path.includes("xuatkiem") ||
-    l.includes("nhapkiem") ||
-    l.includes("xuatkiem") ||
-    l.startsWith("nk") ||
-    l.startsWith("xk") ||
-    s.startsWith("nk") ||
-    s.startsWith("xk")
+    path.includes("nhapkiemcs1") ||
+    path.includes("nhapkiemcs2") ||
+    path.includes("xuatkiemcs1") ||
+    path.includes("xuatkiemcs2") ||
+
+    l.startsWith("nhapkiemcs1") ||
+    l.startsWith("nhapkiemcs2") ||
+    l.startsWith("xuatkiemcs1") ||
+    l.startsWith("xuatkiemcs2") ||
+
+    s.startsWith("nhapkiemcs1_") ||
+    s.startsWith("nhapkiemcs2_") ||
+    s.startsWith("xuatkiemcs1_") ||
+    s.startsWith("xuatkiemcs2_")
   );
 }
 
