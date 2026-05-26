@@ -32,10 +32,20 @@
 
         .top-inputs {
             display: flex;
+            flex-wrap: wrap;
             padding: 5px;
             gap: 5px;
             background: #f4f4f4;
             align-items: center;
+        }
+
+        .top-inputs .action-row-break {
+            flex-basis: 100%;
+            height: 0;
+        }
+
+        .top-inputs .action-btn-small {
+            height: 34px;
         }
 
         .tennv {
@@ -632,21 +642,32 @@
             <input id="thanhtien" placeholder="Thành tiền" />
             <input id="sohd" placeholder="Số HĐ" />
             <input id="vitri" placeholder="vi tri" readonly />
-            <button id="xemtonkho">🔍</button>
 
-            <button id="btnMoiZalo" type="button" style="
-    background:#0068ff;
-    color:white;
-    font-weight:bold;
-    border:none;
-    border-radius:8px;
-    padding:0 12px;
-    font-size:18px;
-">
+            <span class="action-row-break"></span>
+
+            <button id="xemtonkho" class="action-btn-small">🔍</button>
+
+            <button id="btnQLMK" type="button"
+                style="background:#ff9800;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
+                QLMK
+            </button>
+
+            <button id="btnQRZalo" type="button"
+                style="background:#00c853;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
+                📱 QR
+            </button>
+
+            <button id="btnMoiZalo" type="button"
+                style="background:#0068ff;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
                 💬 Zalo
             </button>
 
             <button id="ghivitri">✏️</button>
+
+            <button id="btnQrOA" type="button"
+                style="background:#10c95a;color:white;font-weight:bold;border:none;border-radius:6px;padding:5px 10px;font-size:16px;">
+                📱 QR OA
+            </button>
         </div>
 
 
@@ -998,6 +1019,158 @@
 
             setInterval(checkSohdVaNapKhach, 500);
         });
+
+    </script>
+
+    <script>
+        let dsQLMK = [];
+        let indexQLMK = -1;
+
+        function resetQLMK() {
+            dsQLMK = [];
+            indexQLMK = -1;
+            console.log("✅ Đã reset QLMK.");
+        }
+
+        window.resetQLMK = resetQLMK;
+
+        function layPrefixBanLeTheoTrang() {
+            const path = String(location.pathname || "").toLowerCase();
+            if (path.includes("cs2")) return "bancs2_";
+            return "bancs2_";
+        }
+
+        async function napDanhSachQLMK() {
+            if (!window.supabase) {
+                alert("Chưa kết nối Supabase.");
+                return [];
+            }
+
+            const prefix = layPrefixBanLeTheoTrang();
+
+            const { data, error } = await window.supabase
+                .from("hoadon_banle")
+                .select("sohd, ngay, created_at, makh, khachhang, diadiem")
+                .like("sohd", `${prefix}%`)
+                .not("makh", "is", null)
+                .neq("makh", "")
+                .order("created_at", { ascending: false })
+                .limit(50);
+
+            if (error) {
+                console.error("❌ Lỗi tải danh sách QLMK:", error);
+                alert("Không tải được danh sách khách gần đây.");
+                return [];
+            }
+
+            const seen = new Set();
+            const ds = [];
+
+            (data || []).forEach(row => {
+                const makh = String(row.makh || "").trim();
+                if (!makh || seen.has(makh)) return;
+                seen.add(makh);
+                ds.push(row);
+            });
+
+            return ds;
+        }
+
+        async function napChiTietKhachChoQLMK(makh, tenFallback = "") {
+            const makhEl = document.getElementById("makh");
+            const tenEl = document.getElementById("khachhang");
+            const diemEl = document.getElementById("diem_hientai");
+            const hangEl = document.getElementById("hang_khach");
+            const diemTruEl = document.getElementById("diem_tru");
+            const tienDoiDiemEl = document.getElementById("tien_doi_diem");
+
+            if (makhEl) makhEl.value = makh || "";
+            if (tenEl) tenEl.value = tenFallback || "";
+            if (diemTruEl) diemTruEl.value = "0";
+            if (tienDoiDiemEl) tienDoiDiemEl.value = "0";
+
+            if (!makh) return;
+
+            const { data: kh, error } = await window.supabase
+                .from("dmkhachhang")
+                .select("makh, tenkh, diem_hientai, hang_khach, created_by_manv")
+                .eq("makh", makh)
+                .maybeSingle();
+
+            if (error) {
+                console.warn("⚠️ Không đọc được chi tiết khách:", error);
+                return;
+            }
+
+            if (kh) {
+                if (tenEl) tenEl.value = kh.tenkh || tenFallback || "";
+                if (diemEl) diemEl.value = kh.diem_hientai ?? 0;
+
+                const nvTao = kh.created_by_manv ? "/" + kh.created_by_manv : "";
+                if (hangEl) hangEl.value = (kh.hang_khach || "THUONG") + nvTao;
+
+                await window.napTrangThaiZaloKhach?.(makh);
+            }
+
+            localStorage.setItem("pending_makh_banle", makh || "");
+            localStorage.setItem("pending_tenkh_banle", tenEl?.value || "");
+
+            setTimeout(() => {
+                const maspEl = document.getElementById("masp");
+                if (maspEl) {
+                    maspEl.focus();
+                    maspEl.select?.();
+                }
+            }, 50);
+        }
+
+        async function quayLaiMaKhach() {
+            window.__chanTuDongMoQrZalo = true;
+
+            const btn = document.getElementById("btnQLMK");
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "Đang...";
+            }
+
+            try {
+                if (!dsQLMK.length) {
+                    dsQLMK = await napDanhSachQLMK();
+                    indexQLMK = -1;
+                }
+
+                if (!dsQLMK.length) {
+                    alert("Chưa có khách hàng gần đây để quay lại.");
+                    return;
+                }
+
+                indexQLMK++;
+                if (indexQLMK >= dsQLMK.length) indexQLMK = 0;
+
+                const kh = dsQLMK[indexQLMK];
+
+                await napChiTietKhachChoQLMK(
+                    String(kh.makh || "").trim(),
+                    String(kh.khachhang || "").trim()
+                );
+
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = "QLMK";
+                }
+
+                setTimeout(() => {
+                    window.__chanTuDongMoQrZalo = false;
+                }, 1500);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("btnQLMK")?.addEventListener("click", quayLaiMaKhach);
+            document.getElementById("them")?.addEventListener("click", resetQLMK);
+            document.getElementById("btnThemMoiCo")?.addEventListener("click", resetQLMK);
+        });
     </script>
 
     <!-- Khung đăng nhập dùng module dùng chung -->
@@ -1312,7 +1485,7 @@
     </script>
 
     <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+        import { saveBanLe111 } from "./scripts/services/banlemtcs211SaveEntry.js";
 
         // Mở popup xác thực + focus ngay vào #xacmanv
         window.moPopupXacThucSua = function () {
@@ -1330,7 +1503,7 @@
             }, 0);
         };
 
-        // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs111 
+        // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs211 
         window.xacNhanSuaHoaDon1 = async function () {
             const popup = document.getElementById("popupXacThucSua");
             const closePopup = () => {
@@ -1419,7 +1592,7 @@
 
 
     <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+        import { saveBanLe111 } from "./scripts/services/banlemtcs211SaveEntry.js";
 
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
@@ -1432,7 +1605,7 @@
                 const result = await saveBanLe111("BTN-LUU");
 
                 if (result?.ok) {
-                    // alert("✅ Lưu thành công (banlemtcs111)");
+                    // alert("✅ Lưu thành công (banlemtcs211)");
                 } else {
                     console.warn("saveBanLe111 không trả về ok=true:", result);
                 }
@@ -2200,6 +2373,147 @@ Shop chân thành cảm ơn!`;
         });
     </script>
 
+    <!-- Popup QR Zalo -->
+    <div id="popupQRZalo"
+        style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:20000;align-items:center;justify-content:center;">
+        <div
+            style="width:92%;max-width:420px;background:white;border-radius:14px;padding:20px;text-align:center;box-shadow:0 0 20px rgba(0,0,0,0.3);">
+            <div style="font-size:28px;font-weight:bold;color:#00a1ff;margin-bottom:10px;">🎉 NHẬN ƯU ĐÃI 🎉</div>
+            <div style="font-size:18px;margin-bottom:12px;color:#333;">Quét mã để tham gia nhóm Zalo</div>
+
+            <img src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/QR_NHOM_ZALO.JPG"
+                style="width:260px;max-width:90%;border:1px solid #ddd;border-radius:10px;">
+
+            <div style="margin-top:18px;font-size:16px;color:#666;">SĐT tích điểm</div>
+            <div id="qrSdtKhach"
+                style="font-size:34px;font-weight:bold;color:#e53935;margin-top:6px;letter-spacing:1px;"></div>
+
+            <button id="btnDongQR"
+                style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:10px;background:#0088cc;color:white;font-size:18px;font-weight:bold;">
+                Đóng
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const btnQR = document.getElementById("btnQRZalo");
+            const popup = document.getElementById("popupQRZalo");
+            const btnDong = document.getElementById("btnDongQR");
+            const qrSdt = document.getElementById("qrSdtKhach");
+
+            btnQR?.addEventListener("click", () => {
+                const makh = document.getElementById("makh")?.value?.trim() || "";
+
+                if (!makh) {
+                    alert("Vui lòng nhập số điện thoại khách hàng trước.");
+                    return;
+                }
+
+                qrSdt.textContent = makh;
+
+                window.supabase?.from("zalo_customer_status").upsert({
+                    makh,
+                    tenkh: document.getElementById("khachhang")?.value || "",
+                    dienthoai: makh,
+                    da_gui_loi_moi: true,
+                    lan_gui_cuoi: new Date().toISOString(),
+                    updated_by_manv: localStorage.getItem("manv") || "",
+                    updated_by_tennv: localStorage.getItem("tennv") || "",
+                    updated_at: new Date().toISOString()
+                }, { onConflict: "makh" });
+
+                popup.style.display = "flex";
+            });
+
+            btnDong?.addEventListener("click", () => {
+                popup.style.display = "none";
+            });
+
+            popup?.addEventListener("click", e => {
+                if (e.target === popup) popup.style.display = "none";
+            });
+        });
+    </script>
+
+    <!-- Popup QR OA -->
+    <div id="popupQrOA"
+        style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999999;align-items:center;justify-content:center;">
+        <div
+            style="width:92%;max-width:430px;background:#fff;border-radius:22px;padding:22px;text-align:center;box-shadow:0 10px 35px #0007;">
+            <div style="font-size:30px;font-weight:900;color:#078bd3;margin-bottom:8px;">🎉 THÀNH VIÊN 🎉</div>
+            <div style="font-size:18px;margin-bottom:14px;color:#333;">Khách quét mã để kích hoạt tích điểm</div>
+
+            <img id="qrOAImg" src="" alt="QR OA"
+                style="width:260px;height:260px;border:1px solid #ddd;border-radius:16px;padding:8px;background:white;">
+
+            <div style="margin-top:14px;color:#777;font-size:17px;">SĐT tích điểm</div>
+            <div id="qrOAPhone"
+                style="font-size:42px;font-weight:900;color:#e53935;letter-spacing:1px;margin:5px 0 12px;">---</div>
+
+            <button id="btnCloseQrOA"
+                style="width:100%;border:none;border-radius:14px;background:#078bd3;color:white;font-size:22px;font-weight:bold;padding:14px;">
+                Đóng
+            </button>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const LANDING_URL = "https://app.hoantuyet.vn/thamgia.html";
+
+            function onlyDigits(s) {
+                return String(s || "").replace(/\D/g, "");
+            }
+
+            function formatPhone(s) {
+                const d = onlyDigits(s);
+                if (d.length === 10) return d.slice(0, 4) + " " + d.slice(4, 7) + " " + d.slice(7);
+                return d || "---";
+            }
+
+            function getVal(id) {
+                return String(document.getElementById(id)?.value || "").trim();
+            }
+
+            function moPopupQrOA() {
+                const phone = onlyDigits(getVal("makh"));
+
+                if (!phone || phone.length !== 10) {
+                    alert("❌ Vui lòng nhập mã khách là số điện thoại 10 số trước khi tạo QR OA.");
+                    document.getElementById("makh")?.focus();
+                    return;
+                }
+
+                const landing = new URL(LANDING_URL);
+                landing.searchParams.set("sdt", phone);
+                landing.searchParams.set("makh", phone);
+                landing.searchParams.set("manv", getVal("manv") || localStorage.getItem("manv") || "");
+                landing.searchParams.set("tennv", getVal("tennv") || localStorage.getItem("tennv") || "");
+                landing.searchParams.set("cs", getVal("diadiem") || localStorage.getItem("diadiem") || "");
+                landing.searchParams.set("tenkh", getVal("khachhang") || "");
+                landing.searchParams.set("sohd", getVal("sohd") || "");
+
+                const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(landing.toString());
+
+                document.getElementById("qrOAImg").src = qrUrl;
+                document.getElementById("qrOAPhone").textContent = formatPhone(phone);
+                document.getElementById("popupQrOA").style.display = "flex";
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                document.getElementById("btnQrOA")?.addEventListener("click", moPopupQrOA);
+
+                document.getElementById("btnCloseQrOA")?.addEventListener("click", function () {
+                    document.getElementById("popupQrOA").style.display = "none";
+                });
+
+                document.getElementById("popupQrOA")?.addEventListener("click", function (e) {
+                    if (e.target.id === "popupQrOA") e.currentTarget.style.display = "none";
+                });
+            });
+        })();
+    </script>
 
     <script type="module" src="scripts/feedback.js"></script>
     <script type="module" src="scripts/scanner.js"></script>
