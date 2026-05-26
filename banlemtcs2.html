@@ -1485,7 +1485,7 @@
     </script>
 
     <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs211SaveEntry.js";
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
         // Mở popup xác thực + focus ngay vào #xacmanv
         window.moPopupXacThucSua = function () {
@@ -1503,7 +1503,7 @@
             }, 0);
         };
 
-        // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs211 
+        // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs111 
         window.xacNhanSuaHoaDon1 = async function () {
             const popup = document.getElementById("popupXacThucSua");
             const closePopup = () => {
@@ -1592,7 +1592,7 @@
 
 
     <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs211SaveEntry.js";
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
@@ -1605,7 +1605,7 @@
                 const result = await saveBanLe111("BTN-LUU");
 
                 if (result?.ok) {
-                    // alert("✅ Lưu thành công (banlemtcs211)");
+                    // alert("✅ Lưu thành công (banlemtcs111)");
                 } else {
                     console.warn("saveBanLe111 không trả về ok=true:", result);
                 }
