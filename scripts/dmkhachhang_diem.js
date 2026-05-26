@@ -626,6 +626,7 @@ export function mountKhachHangSuggest(options = {}) {
       <div style="margin-bottom:12px;">
         <label>Mã KH *</label>
         <input id="popup_makh" style="width:100%;padding:9px;font-size:16px;background:#fffbe6;" maxlength="10" inputmode="numeric" placeholder="Nhập SĐT 10 số">
+<div id="popup_makh_suggest" style="display:none;max-height:160px;overflow:auto;border:1px solid #aaa;background:white;margin-top:4px;font-size:14px;box-shadow:0 3px 8px #999;"></div>
       </div>
 
       <div style="margin-bottom:12px;">
@@ -668,16 +669,61 @@ export function mountKhachHangSuggest(options = {}) {
     const popupMakhEl = document.getElementById("popup_makh");
     const popupDienThoaiEl = document.getElementById("popup_dienthoai");
 
+    async function timKhachHangTrongPopup(keyword) {
+      const kw = String(keyword || "").trim();
+      const box = document.getElementById("popup_makh_suggest");
+
+      if (!box) return;
+
+      if (!kw || kw.length < 3) {
+        box.style.display = "none";
+        box.innerHTML = "";
+        return;
+      }
+
+      const { data, error } = await window.supabase
+        .from("dmkhachhang")
+        .select("makh, tenkh, dienthoai, diem_hientai, hang_khach, created_by_manv")
+        .or(`makh.ilike.%${kw}%,tenkh.ilike.%${kw}%,dienthoai.ilike.%${kw}%`)
+        .order("makh", { ascending: true })
+        .limit(10);
+
+      if (error) {
+        box.innerHTML = `<div style="padding:7px;color:red;">Lỗi tìm khách hàng</div>`;
+        box.style.display = "block";
+        return;
+      }
+
+      if (!data || !data.length) {
+        box.innerHTML = `<div style="padding:7px;color:#777;">Chưa có khách này. Nhập đủ 10 số rồi Enter để thêm mới.</div>`;
+        box.style.display = "block";
+        return;
+      }
+
+      box.innerHTML = data.map((kh, i) => `
+    <div class="popup-kh-item" data-idx="${i}" style="padding:7px 8px;cursor:pointer;border-bottom:1px solid #eee;">
+      <b>${kh.makh || ""}</b> - ${kh.tenkh || ""}
+      <div style="font-size:12px;color:#666;">Điểm: ${kh.diem_hientai || 0} | Hạng: ${kh.hang_khach || "THUONG"}</div>
+    </div>
+  `).join("");
+
+      box.style.display = "block";
+
+      box.querySelectorAll(".popup-kh-item").forEach((item, idx) => {
+        item.addEventListener("mousedown", async (e) => {
+          e.preventDefault();
+          await suDungKhachHangChoHoaDon(data[idx]);
+        });
+      });
+    }
+
     popupMakhEl?.addEventListener("input", async () => {
       const ma = String(popupMakhEl.value || "").replace(/\D/g, "").slice(0, 10);
       popupMakhEl.value = ma;
       if (popupDienThoaiEl) popupDienThoaiEl.value = ma;
       makhMoiTam = ma;
 
-      if (ma.length >= 3) {
-        makhInput.value = ma;
-        await timKhachHang(ma);
-      }
+      await timKhachHangTrongPopup(ma);
 
       if (ma.length === 10) {
         const kh = await timKhachHangChinhXacTheoMakh(ma);
@@ -708,6 +754,7 @@ export function mountKhachHangSuggest(options = {}) {
         return;
       }
 
+      document.getElementById("popup_makh_suggest").style.display = "none";
       document.getElementById("popup_tenkh")?.focus();
     });
 
