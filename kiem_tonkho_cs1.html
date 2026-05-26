@@ -580,7 +580,7 @@
             }
 
             #mobileTopSheet.expanded {
-                max-height: 260px;
+                max-height: 210px;
             }
 
             #mobileTopSheet.collapsed {
@@ -600,7 +600,6 @@
                 user-select: none;
             }
 
-            #mobileTopSheet.collapsed .menu-bar,
             #mobileTopSheet.collapsed .top-inputs {
                 display: none !important;
             }
@@ -694,35 +693,36 @@
         }
     </style>
 
-    <div id="mobileTopSheet" class="top-sheet expanded">
-        <div id="mobileTopHandle">⌃ Kéo lên để ẩn phần đầu</div>
 
-        <div class="menu-bar">
-            <div class="tennv">
+    <div class="menu-bar">
+        <div class="tennv">
 
-                <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
-                <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
-                <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
-                    style="width:55px; text-align:center; font-weight:bold;" />
-                <input id="ngay" type="date" readonly />
+            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
+            <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
+                style="width:55px; text-align:center; font-weight:bold;" />
+            <input id="ngay" type="date" readonly />
 
-                <input id="gio" type="text" readonly style="width:70px" />
+            <input id="gio" type="text" readonly style="width:70px" />
 
-                <input id="manv" type="hidden" />
-                <input id="tennv" placeholder="Tên NV" readonly />
-                <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-
-            </div>
-
-            <div id="app-menu" class="menu-item"></div>
-
-            <!--
-        <label>Giờ <input id="gio" /></label> -->
-
+            <input id="manv" type="hidden" />
+            <input id="tennv" placeholder="Tên NV" readonly />
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
         </div>
 
-        <div id="app-container" style="display:none;">
+        <div id="app-menu" class="menu-item"></div>
+
+        <!--
+        <label>Giờ <input id="gio" /></label> -->
+
+
+    </div>
+
+    <div id="app-container" style="display:none;">
+
+        <div id="mobileTopSheet" class="top-sheet expanded">
+            <div id="mobileTopHandle">⌃ Kéo lên để ẩn phần đầu</div>
 
             <div class="top-inputs">
                 <div style="position: relative;">
@@ -757,6 +757,7 @@
             </div>
 
         </div>
+
 
         <div class="main">
             <div class="table-area" style="width:100%;">
