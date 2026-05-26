@@ -570,6 +570,40 @@
                 background: #0b57d0 !important;
                 color: #fff !important;
             }
+
+            #mobileTopSheet {
+                flex-shrink: 0;
+                background: #f4f4f4;
+                transition: max-height .22s ease, overflow .22s ease;
+                overflow: hidden;
+                border-bottom: 1px solid #ccc;
+            }
+
+            #mobileTopSheet.expanded {
+                max-height: 260px;
+            }
+
+            #mobileTopSheet.collapsed {
+                max-height: 34px;
+            }
+
+            #mobileTopHandle {
+                height: 34px;
+                line-height: 34px;
+                text-align: center;
+                font-size: 15px;
+                font-weight: 700;
+                color: #0b57d0;
+                background: #eef6ff;
+                border-bottom: 1px solid #b7cee8;
+                touch-action: none;
+                user-select: none;
+            }
+
+            #mobileTopSheet.collapsed .menu-bar,
+            #mobileTopSheet.collapsed .top-inputs {
+                display: none !important;
+            }
         }
     </style>
 
@@ -660,63 +694,68 @@
         }
     </style>
 
-    <div class="menu-bar">
-        <div class="tennv">
+    <div id="mobileTopSheet" class="top-sheet expanded">
+        <div id="mobileTopHandle">⌃ Kéo lên để ẩn phần đầu</div>
 
-            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
-            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
-            <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
-                style="width:55px; text-align:center; font-weight:bold;" />
-            <input id="ngay" type="date" readonly />
+        <div class="menu-bar">
+            <div class="tennv">
 
-            <input id="gio" type="text" readonly style="width:70px" />
+                <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+                <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
+                <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
+                    style="width:55px; text-align:center; font-weight:bold;" />
+                <input id="ngay" type="date" readonly />
 
-            <input id="manv" type="hidden" />
-            <input id="tennv" placeholder="Tên NV" readonly />
-            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
+                <input id="gio" type="text" readonly style="width:70px" />
 
-        </div>
+                <input id="manv" type="hidden" />
+                <input id="tennv" placeholder="Tên NV" readonly />
+                <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
 
-        <div id="app-menu" class="menu-item"></div>
+            </div>
 
-        <!--
+            <div id="app-menu" class="menu-item"></div>
+
+            <!--
         <label>Giờ <input id="gio" /></label> -->
 
 
-    </div>
+        </div>
 
-    <div id="app-container" style="display:none;">
+        <div id="app-container" style="display:none;">
 
-        <div class="top-inputs">
-            <div style="position: relative;">
-                <input id="masp" placeholder="Mã SP" autocomplete="off" />
-                <div id="popup_masp"
-                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+            <div class="top-inputs">
+                <div style="position: relative;">
+                    <input id="masp" placeholder="Mã SP" autocomplete="off" />
+                    <div id="popup_masp"
+                        style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+                    </div>
+                </div>
+
+                <input id="soluong" value="1" placeholder="SL" />
+                <input id="size" placeholder="SIZE" />
+                <label style="display:flex; align-items:center; gap:4px; font-size:16px; white-space:nowrap;">
+                    <input type="checkbox" id="chkNhapNhanh" />
+                    Nhập nhanh
+                </label>
+
+                <label id="lblKiemMau"
+                    style="display:flex; align-items:center; gap:4px; font-size:16px; white-space:nowrap; padding:2px 8px; border:1px solid #999; background:#fff;">
+                    <input type="checkbox" id="chkKiemMau" />
+                    Kiểm mẫu
+                </label>
+
+                <input type="checkbox" id="nhapsize" hidden />
+
+                <input id="sohd" placeholder="Số phiếu kiểm tồn" />
+                <input id="ghichu_top" placeholder="Ghi chú kiểm tồn" style="width:260px;" />
+
+                <div id="thongke_dautrang"
+                    style="min-width:300px; padding:6px 10px; border:1px solid #999; background:#fffbe6; font-weight:bold; white-space:nowrap; color:#003366;">
+                    Nhập: 0/0 , Xuất: 0/0
                 </div>
             </div>
 
-            <input id="soluong" value="1" placeholder="SL" />
-            <input id="size" placeholder="SIZE" />
-            <label style="display:flex; align-items:center; gap:4px; font-size:16px; white-space:nowrap;">
-                <input type="checkbox" id="chkNhapNhanh" />
-                Nhập nhanh
-            </label>
-
-            <label id="lblKiemMau"
-                style="display:flex; align-items:center; gap:4px; font-size:16px; white-space:nowrap; padding:2px 8px; border:1px solid #999; background:#fff;">
-                <input type="checkbox" id="chkKiemMau" />
-                Kiểm mẫu
-            </label>
-
-            <input type="checkbox" id="nhapsize" hidden />
-
-            <input id="sohd" placeholder="Số phiếu kiểm tồn" />
-            <input id="ghichu_top" placeholder="Ghi chú kiểm tồn" style="width:260px;" />
-
-            <div id="thongke_dautrang"
-                style="min-width:300px; padding:6px 10px; border:1px solid #999; background:#fffbe6; font-weight:bold; white-space:nowrap; color:#003366;">
-                Nhập: 0/0 , Xuất: 0/0
-            </div>
         </div>
 
         <div class="main">
@@ -1938,6 +1977,42 @@
             }, { passive: true });
 
             setExpanded(false);
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const topSheet = document.getElementById("mobileTopSheet");
+            const topHandle = document.getElementById("mobileTopHandle");
+            if (!topSheet || !topHandle) return;
+
+            function setTopExpanded(expanded) {
+                topSheet.classList.toggle("expanded", expanded);
+                topSheet.classList.toggle("collapsed", !expanded);
+                topHandle.textContent = expanded
+                    ? "⌃ Kéo lên để ẩn phần đầu"
+                    : "⌄ Kéo xuống để hiện phần đầu";
+            }
+
+            topHandle.addEventListener("click", () => {
+                setTopExpanded(!topSheet.classList.contains("expanded"));
+            });
+
+            let startY = 0;
+
+            topHandle.addEventListener("touchstart", (e) => {
+                startY = e.touches[0].clientY;
+            }, { passive: true });
+
+            topHandle.addEventListener("touchend", (e) => {
+                const endY = e.changedTouches[0].clientY;
+                const diff = endY - startY;
+
+                if (diff < -25) setTopExpanded(false);
+                if (diff > 25) setTopExpanded(true);
+            }, { passive: true });
+
+            setTopExpanded(true);
         });
     </script>
 
