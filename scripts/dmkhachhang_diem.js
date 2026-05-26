@@ -512,29 +512,55 @@ export function mountKhachHangSuggest(options = {}) {
     const s = String(raw || "").trim();
     if (!s) return { thangsinh: null, namsinh: null };
 
-    // Cho phép nhập: 4/1998, 04/1998, 4-1998, 04-1998
-    const m = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
-
-    if (!m) {
-      alert("❌ Vui lòng nhập tháng/năm sinh, ví dụ: 4/1998 hoặc 11/2001.");
-      return false;
-    }
-
-    const thangsinh = Number(m[1]);
-    const namsinh = Number(m[2]);
     const namHienTai = new Date().getFullYear();
 
-    if (thangsinh < 1 || thangsinh > 12) {
-      alert("❌ Tháng sinh không hợp lệ. Chỉ nhập từ 1 đến 12.");
-      return false;
+    function chuanHoaNam(namRaw) {
+      let n = Number(namRaw);
+      if (!Number.isFinite(n)) return null;
+
+      // 70 => 1970, 05 => 2005
+      if (String(namRaw).length <= 2) {
+        n = n >= 30 ? 1900 + n : 2000 + n;
+      }
+
+      return n;
     }
 
-    if (namsinh < 1900 || namsinh > namHienTai) {
-      alert("❌ Năm sinh không hợp lệ.");
-      return false;
+    // Dạng: 3/70, 3-70, 3/1970, 03-1970
+    let m = s.match(/^(\d{1,2})[\/\-](\d{2}|\d{4})$/);
+    if (m) {
+      const thangsinh = Number(m[1]);
+      const namsinh = chuanHoaNam(m[2]);
+
+      if (thangsinh < 1 || thangsinh > 12) {
+        alert("❌ Tháng sinh không hợp lệ. Chỉ nhập từ 1 đến 12.");
+        return false;
+      }
+
+      if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
+        alert("❌ Năm sinh không hợp lệ.");
+        return false;
+      }
+
+      return { thangsinh, namsinh };
     }
 
-    return { thangsinh, namsinh };
+    // Dạng chỉ nhập năm: 70 hoặc 1970
+    m = s.match(/^(\d{2}|\d{4})$/);
+    if (m) {
+      const namsinh = chuanHoaNam(m[1]);
+
+      if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
+        alert("❌ Năm sinh không hợp lệ.");
+        return false;
+      }
+
+      // Không biết tháng sinh => thangsinh null, không được KM sinh nhật
+      return { thangsinh: null, namsinh };
+    }
+
+    alert("❌ Ngày sinh không hợp lệ. Ví dụ: 3/70, 3-1970 hoặc chỉ nhập 70.");
+    return false;
   }
 
   function damBaoPopupKhachMoi() {
@@ -555,7 +581,7 @@ export function mountKhachHangSuggest(options = {}) {
 
       <div style="margin-bottom:12px;">
         <label>Mã KH *</label>
-        <input id="popup_makh" readonly style="width:100%;padding:9px;font-size:16px;">
+        <input id="popup_makh" style="width:100%;padding:9px;font-size:16px;background:#fffbe6;" maxlength="10" inputmode="numeric" placeholder="Nhập SĐT 10 số">
       </div>
 
       <div style="margin-bottom:12px;">
@@ -565,12 +591,12 @@ export function mountKhachHangSuggest(options = {}) {
 
       <div style="margin-bottom:12px;">
         <label>Số điện thoại *</label>
-        <input id="popup_dienthoai" readonly style="width:100%;padding:9px;font-size:16px;">
+        <input id="popup_dienthoai" readonly style="width:100%;padding:9px;font-size:16px;background:#f3f4f6;">
       </div>
 
       <div style="margin-bottom:16px;">
         <label>Tháng/Năm sinh</label>
-<input id="popup_thangsinh" style="width:100%;padding:9px;font-size:16px;" placeholder="Ví dụ: 4/1998 hoặc 11/2001">
+<input id="popup_thangsinh" style="width:100%;padding:9px;font-size:16px;" placeholder="Ví dụ: 3/70, 3-1970 hoặc 70">
       </div>
 
       <div style="display:flex;gap:12px;justify-content:center;">
@@ -595,6 +621,16 @@ export function mountKhachHangSuggest(options = {}) {
       await luuNhanhKhachMoiTaiBanLe();
     };
 
+    const popupMakhEl = document.getElementById("popup_makh");
+    const popupDienThoaiEl = document.getElementById("popup_dienthoai");
+
+    popupMakhEl?.addEventListener("input", () => {
+      const ma = String(popupMakhEl.value || "").replace(/\D/g, "").slice(0, 10);
+      popupMakhEl.value = ma;
+      if (popupDienThoaiEl) popupDienThoaiEl.value = ma;
+      makhMoiTam = ma;
+    });
+
     ["popup_tenkh", "popup_thangsinh"].forEach(id => {
       document.getElementById(id)?.addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
@@ -610,22 +646,12 @@ export function mountKhachHangSuggest(options = {}) {
   }
 
   function batDauTaoKhachMoiTaiBanLe() {
-    const makh = String(makhInput.value || "").trim();
-
-    if (!makh) return;
-
-    if (!laSoDienThoaiHopLe(makh)) {
-      alert("❌ Mã khách mới phải là số điện thoại 10 số.");
-      makhInput.focus();
-      makhInput.select?.();
-      return;
-    }
+    const makh = chuanHoaMakhNhap(makhInput.value);
 
     dangTaoKhachMoi = true;
-    makhMoiTam = makh;
+    makhMoiTam = makh || "";
 
     suggestBox.style.display = "none";
-
     damBaoPopupKhachMoi();
 
     setVal(diemInputId, "0");
@@ -633,8 +659,11 @@ export function mountKhachHangSuggest(options = {}) {
     setVal(diemTruInputId, "0");
     setVal(tienDoiDiemInputId, "0");
 
-    document.getElementById("popup_makh").value = makh;
-    document.getElementById("popup_dienthoai").value = makh;
+    const popupMakh = document.getElementById("popup_makh");
+    const popupDienThoai = document.getElementById("popup_dienthoai");
+
+    popupMakh.value = makh || "";
+    popupDienThoai.value = makh || "";
     document.getElementById("popup_tenkh").value = "";
     document.getElementById("popup_thangsinh").value = "";
 
@@ -642,12 +671,13 @@ export function mountKhachHangSuggest(options = {}) {
     popup.style.display = "flex";
 
     setTimeout(() => {
-      document.getElementById("popup_tenkh")?.focus();
+      popupMakh.focus();
+      popupMakh.select?.();
     }, 80);
   }
 
   async function luuNhanhKhachMoiTaiBanLe() {
-    const makh = String(makhMoiTam || makhInput.value || "").trim();
+    const makh = chuanHoaMakhNhap(document.getElementById("popup_makh")?.value || makhMoiTam || makhInput.value);
     const tenkh = String(document.getElementById("popup_tenkh")?.value || "").trim();
     const thangsinhRaw = String(document.getElementById("popup_thangsinh")?.value || "").trim();
 
@@ -655,6 +685,23 @@ export function mountKhachHangSuggest(options = {}) {
       alert("❌ Mã khách/SĐT không hợp lệ. Phải đủ 10 số.");
       makhInput.focus();
       makhInput.select?.();
+      return;
+    }
+
+    const khTrung = await timKhachHangChinhXacTheoMakh(makh);
+    if (khTrung) {
+      document.getElementById("popupKhachMoiBanLe").style.display = "none";
+
+      makhInput.value = chiLaySo(khTrung.makh || "");
+      setVal(tenInputId, khTrung.tenkh || "");
+      await napThongTinDiemKhach(khTrung.makh);
+      await napTrangThaiZaloKhach(khTrung.makh);
+      capNhatTrangThaiDiemTheoKhach();
+
+      localStorage.setItem("pending_makh_banle", khTrung.makh || "");
+      localStorage.setItem("pending_tenkh_banle", khTrung.tenkh || "");
+
+      alert("✅ Mã khách này đã tồn tại. Đã nạp thông tin khách lên hóa đơn.");
       return;
     }
 
@@ -982,18 +1029,11 @@ export function mountKhachHangSuggest(options = {}) {
       const makh = chuanHoaMakhNhap(makhInput.value);
       if (makh === "KL") return;
 
-      // Chưa nhập gì thì thôi
-      if (!makh) {
+      // Ô trống hoặc chưa đủ 10 số: vẫn mở popup thêm nhanh
+      if (!makh || makh.length < 10) {
         clearThongTinKhachHang();
         suggestBox.style.display = "none";
-        return;
-      }
-
-      // Chưa đủ 10 số thì KHÔNG báo lỗi, KHÔNG chọn khách, chỉ xóa thông tin khách
-      if (makh.length < 10) {
-        makhInput.value = "";
-        clearThongTinKhachHang();
-        suggestBox.style.display = "none";
+        batDauTaoKhachMoiTaiBanLe();
         return;
       }
 
