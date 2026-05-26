@@ -1143,8 +1143,15 @@ export function mountKhachHangSuggest(options = {}) {
       const makh = chuanHoaMakhNhap(makhInput.value);
       if (makh === "KL") return;
 
-      // Ô trống hoặc chưa đủ 10 số: vẫn mở popup thêm nhanh
-      if (!makh || makh.length < 10) {
+      // Ô mã khách trống: không làm gì, không mở popup
+      if (!makh) {
+        clearThongTinKhachHang();
+        suggestBox.style.display = "none";
+        return;
+      }
+
+      // Có nhập nhưng chưa đủ 10 số: mới mở popup thêm nhanh để sửa
+      if (makh.length < 10) {
         clearThongTinKhachHang();
         suggestBox.style.display = "none";
         batDauTaoKhachMoiTaiBanLe();
