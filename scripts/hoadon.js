@@ -137,8 +137,24 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
         if (!validRows.length) return null;
 
         // Nếu có từ 2 dòng trở lên (kể cả trùng size) → không gợi ý gì
+        // Nếu có nhiều dòng:
+        // - không tự động gợi ý ngay
+        // - nhưng cache lại để chờ người dùng nhập size
         if (validRows.length > 1) {
-            return null;
+
+            window.pendingMTSuggest = validRows.map(r => {
+                const hd = r.hoadon_banle || {};
+
+                return {
+                    size: String(r.size || "").trim(),
+                    makh: String(hd.makh || "").trim(),
+                    tenkh: String(hd.khachhang || "").trim()
+                };
+            });
+
+            return {
+                multiple: true
+            };
         }
 
         // Ưu tiên dòng có khách hàng. Nếu không có thì vẫn lấy dòng size như cũ.
@@ -167,6 +183,8 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
 }
 
 export let bangKetQua = {};
+// Cache gợi ý khách hàng theo size từ bán nhân viên
+window.pendingMTSuggest = null;
 
 // Trong hoadon.js
 let maspDangChon = null;
@@ -357,6 +375,11 @@ function autoGoiYSizeNeuOTrong(maspBaseNow) {
         .then((sizeGoiY) => {
             if (!sizeGoiY) return;
 
+            // Nếu nhiều size → chỉ cache, chưa tự gợi ý
+            if (sizeGoiY.multiple) {
+                return;
+            }
+
             const sizeInput = document.getElementById("size");
             const maspInput = document.getElementById("masp");
             if (!sizeInput || !maspInput) return;
@@ -447,6 +470,47 @@ export async function chuyenFocus(e) {
         const maspInput = document.getElementById("masp");
         const raw = String(sizeInput.value || "").trim();
         const val = raw.toUpperCase();
+
+        // ================================
+        // Auto match khách theo size
+        // ================================
+        try {
+
+            const pending = window.pendingMTSuggest;
+
+            if (Array.isArray(pending) && pending.length) {
+
+                const matched = pending.filter(x =>
+                    String(x.size || "").trim().toUpperCase() === val
+                );
+
+                // Chỉ khi match đúng 1 khách mới tự gán
+                if (matched.length === 1) {
+
+                    const kh = matched[0];
+
+                    const makhEl = document.getElementById("makh");
+                    const tenEl = document.getElementById("khachhang");
+
+                    if (makhEl && kh.makh) {
+
+                        makhEl.value = kh.makh || "";
+                        tenEl.value = kh.tenkh || "";
+
+                        // Trigger toàn bộ logic load điểm hiện tại
+                        makhEl.dispatchEvent(
+                            new Event("change", { bubbles: true })
+                        );
+                    }
+                }
+
+                // dùng xong xóa cache
+                window.pendingMTSuggest = null;
+            }
+
+        } catch (err) {
+            console.error("Auto match khách theo size lỗi:", err);
+        }
 
         // Danh mục size hợp lệ
         const dsSize = Array.isArray(window.danhMucSize)
