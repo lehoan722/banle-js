@@ -378,6 +378,179 @@
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="kiem_nhapmobile.css">
 
+    <style>
+        @media (max-width: 768px) {
+            body {
+                overflow: hidden;
+            }
+
+            .menu-bar {
+                padding: 4px 6px !important;
+                gap: 4px !important;
+            }
+
+            .tennv {
+                width: 100%;
+                display: flex !important;
+                flex-wrap: nowrap;
+                gap: 4px;
+                padding: 4px !important;
+            }
+
+            .tennv input {
+                font-size: 14px !important;
+                height: 30px !important;
+                padding: 2px 4px !important;
+            }
+
+            #ngay {
+                width: 74px !important;
+            }
+
+            #gio {
+                width: 54px !important;
+            }
+
+            #tennv {
+                width: 90px !important;
+            }
+
+            #btnReloadSP,
+            #app-menu {
+                display: none !important;
+            }
+
+            #app-container {
+                height: calc(100dvh - 44px) !important;
+                min-height: 0 !important;
+                overflow: hidden !important;
+            }
+
+            .top-inputs {
+                flex-wrap: wrap !important;
+                gap: 5px !important;
+                padding: 4px !important;
+                flex-shrink: 0;
+            }
+
+            .top-inputs:last-of-type {
+                display: none !important;
+            }
+
+            #masp {
+                width: 190px !important;
+                height: 42px !important;
+                font-size: 24px !important;
+            }
+
+            #soluong {
+                width: 55px !important;
+                height: 42px !important;
+                font-size: 24px !important;
+            }
+
+            #size {
+                width: 82px !important;
+                height: 42px !important;
+                font-size: 24px !important;
+            }
+
+            #sohd {
+                width: 145px !important;
+                height: 38px !important;
+                font-size: 20px !important;
+            }
+
+            #ghichu_top {
+                width: 250px !important;
+                height: 34px !important;
+                font-size: 20px !important;
+            }
+
+            #thongke_dautrang {
+                width: 100% !important;
+                min-width: 0 !important;
+                font-size: 18px !important;
+                padding: 5px 8px !important;
+            }
+
+            .main {
+                flex: 1 1 auto !important;
+                min-height: 0 !important;
+                height: auto !important;
+                padding-bottom: 48px !important;
+            }
+
+            .table-area {
+                height: 100% !important;
+                max-height: none !important;
+                overflow: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #bangketqua th,
+            #bangketqua td {
+                font-size: 16px !important;
+                padding: 5px 4px !important;
+            }
+
+            #mobileButtonSheet.footer-buttons {
+                position: fixed !important;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100% !important;
+                max-height: 58vh;
+                overflow-y: auto;
+                background: #dce9f9;
+                z-index: 9998;
+                padding: 34px 8px 12px 8px !important;
+                box-sizing: border-box;
+                border-radius: 18px 18px 0 0;
+                box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.22);
+                transition: transform .22s ease;
+                justify-content: flex-start;
+            }
+
+            #mobileButtonSheet.collapsed {
+                transform: translateY(calc(100% - 42px));
+            }
+
+            #mobileButtonSheet.expanded {
+                transform: translateY(0);
+            }
+
+            #mobileSheetHandle {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 34px;
+                line-height: 34px;
+                text-align: center;
+                font-size: 16px;
+                font-weight: 700;
+                color: #0b57d0;
+                background: #eef6ff;
+                border-bottom: 1px solid #b7cee8;
+                border-radius: 18px 18px 0 0;
+                touch-action: none;
+                user-select: none;
+            }
+
+            #mobileButtonSheet button {
+                width: calc(25% - 8px) !important;
+                min-width: 0 !important;
+                height: 56px !important;
+                font-size: 18px !important;
+                padding: 4px !important;
+                margin: 0 !important;
+                border-radius: 16px;
+                font-weight: 700;
+            }
+        }
+    </style>
+
 </head>
 
 <body class="popupnhanh">
@@ -551,7 +724,8 @@
             </div>
         </div>
 
-        <div class="footer-buttons">
+        <div id="mobileButtonSheet" class="footer-buttons collapsed">
+            <div id="mobileSheetHandle">⌃ Kéo nút chức năng</div>
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
             <button id="btn-copy-nhap" type="button">Copy</button>
@@ -1709,6 +1883,40 @@
             }
 
         }, true);
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const sheet = document.getElementById("mobileButtonSheet");
+            const handle = document.getElementById("mobileSheetHandle");
+            if (!sheet || !handle) return;
+
+            function setExpanded(expanded) {
+                sheet.classList.toggle("expanded", expanded);
+                sheet.classList.toggle("collapsed", !expanded);
+                handle.textContent = expanded ? "⌄ Kéo xuống để ẩn nút" : "⌃ Kéo nút chức năng";
+            }
+
+            handle.addEventListener("click", () => {
+                setExpanded(!sheet.classList.contains("expanded"));
+            });
+
+            let startY = 0;
+
+            handle.addEventListener("touchstart", (e) => {
+                startY = e.touches[0].clientY;
+            }, { passive: true });
+
+            handle.addEventListener("touchend", (e) => {
+                const endY = e.changedTouches[0].clientY;
+                const diff = endY - startY;
+
+                if (diff < -25) setExpanded(true);
+                if (diff > 25) setExpanded(false);
+            }, { passive: true });
+
+            setExpanded(false);
+        });
     </script>
 
 </body>
