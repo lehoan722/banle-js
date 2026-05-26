@@ -553,7 +553,7 @@ export function mountKhachHangSuggest(options = {}) {
   }
 
   function chuanHoaThangNamSinh(raw) {
-    const s = String(raw || "").trim();
+    let s = String(raw || "").trim().toLowerCase();
     if (!s) return { thangsinh: null, namsinh: null };
 
     const namHienTai = new Date().getFullYear();
@@ -562,12 +562,25 @@ export function mountKhachHangSuggest(options = {}) {
       let n = Number(namRaw);
       if (!Number.isFinite(n)) return null;
 
-      // 70 => 1970, 05 => 2005
       if (String(namRaw).length <= 2) {
         n = n >= 30 ? 1900 + n : 2000 + n;
       }
 
       return n;
+    }
+
+    // Nhập tuổi ước tính: 30t, t30, t 30, 30 t
+    let tuoiMatch = s.match(/^(?:t\s*(\d{2})|(\d{2})\s*t)$/);
+    if (tuoiMatch) {
+      const tuoi = Number(tuoiMatch[1] || tuoiMatch[2]);
+
+      if (tuoi < 10 || tuoi > 90) {
+        alert("❌ Tuổi ước tính chỉ nhận từ 10 đến 90.");
+        return false;
+      }
+
+      const namsinh = namHienTai - tuoi;
+      return { thangsinh: null, namsinh };
     }
 
     // Dạng: 3/70, 3-70, 3/1970, 03-1970
@@ -599,11 +612,10 @@ export function mountKhachHangSuggest(options = {}) {
         return false;
       }
 
-      // Không biết tháng sinh => thangsinh null, không được KM sinh nhật
       return { thangsinh: null, namsinh };
     }
 
-    alert("❌ Ngày sinh không hợp lệ. Ví dụ: 3/70, 3-1970 hoặc chỉ nhập 70.");
+    alert("❌ Dữ liệu sinh không hợp lệ. Ví dụ: 3/70, 1970 hoặc 30t.");
     return false;
   }
 
