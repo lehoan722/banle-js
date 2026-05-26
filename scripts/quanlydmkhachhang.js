@@ -148,10 +148,20 @@ function vnDateTimeRenderer(instance, td, row, col, prop, value, cellProperties)
   td.textContent = formatDateTimeVN(value);
 }
 
+function getRowDataByVisualRow(instance, visualRow) {
+  if (!instance || visualRow == null || visualRow < 0) return null;
+
+  const physicalRow = typeof instance.toPhysicalRow === "function"
+    ? instance.toPhysicalRow(visualRow)
+    : visualRow;
+
+  return instance.getSourceDataAtRow(physicalRow);
+}
+
 function zaloActionRenderer(instance, td, row, col, prop, value, cellProperties) {
   Handsontable.dom.empty(td);
 
-  const rowData = instance.getSourceDataAtRow(row);
+  const rowData = getRowDataByVisualRow(instance, row);
 
   const phone = String(rowData?.dienthoai || "").trim();
 
@@ -396,7 +406,7 @@ function createHot(data) {
 
     cells(row, col) {
       const props = {};
-      const rowData = hot?.getSourceDataAtRow(row);
+      const rowData = getRowDataByVisualRow(hot, row);
       const field = currentColumns[col]?.data;
 
       if (!rowData) return props;
@@ -433,7 +443,7 @@ function createHot(data) {
       changes.forEach(([rowIndex, prop, oldValue, newValue]) => {
         if (oldValue === newValue) return;
         if (prop === "da_tham_gia_congdong") {
-          const row = hot.getSourceDataAtRow(rowIndex);
+          const row = getRowDataByVisualRow(hot, rowIndex);
 
           saveZaloStatus(row, {
             da_tham_gia_congdong: !!newValue
@@ -446,7 +456,7 @@ function createHot(data) {
           return;
         }
 
-        const row = hot.getSourceDataAtRow(rowIndex);
+        const row = getRowDataByVisualRow(hot, rowIndex);
         if (!row) return;
 
         if (!editableFields.includes(prop) && prop !== "makh") {
@@ -636,7 +646,7 @@ function getSelectedMakhs() {
 
   const makhs = [];
   for (let r = from; r <= to; r++) {
-    const row = hot.getSourceDataAtRow(r);
+    const row = getRowDataByVisualRow(hot, r);
     if (row?.makh) makhs.push(row.makh);
   }
 
