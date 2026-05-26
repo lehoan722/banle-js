@@ -67,13 +67,6 @@ export function mountKhachHangSuggest(options = {}) {
       makhInput.value = "KL";
       khoaDiemKhachLe();
       suggestBox.style.display = "none";
-
-      const maspEl = getEl("masp");
-      setTimeout(() => {
-        maspEl?.focus();
-        maspEl?.select?.();
-      }, 50);
-
       return;
     }
 
