@@ -30,6 +30,7 @@ const editableFields = [
   "marketing_opt_in",
   "zalo_sms_opt_in",
   "da_tham_gia_congdong",
+  "da_gui_loi_moi",
   "nguon_dangky"
 ];
 
@@ -54,8 +55,7 @@ const columns = [
   {
     data: "da_gui_loi_moi",
     title: "Đã gửi lời mời",
-    type: "checkbox",
-    readOnly: true
+    type: "checkbox"
   },
   {
     data: "lan_gui_zalo_cuoi",
@@ -442,6 +442,23 @@ function createHot(data) {
 
       changes.forEach(([rowIndex, prop, oldValue, newValue]) => {
         if (oldValue === newValue) return;
+        if (prop === "da_gui_loi_moi") {
+          const row = getRowDataByVisualRow(hot, rowIndex);
+
+          saveZaloStatus(row, {
+            da_gui_loi_moi: !!newValue,
+            lan_gui_cuoi: !!newValue ? new Date().toISOString() : null
+          }).then(ok => {
+            if (ok) {
+              row.da_gui_loi_moi = !!newValue;
+              row.lan_gui_zalo_cuoi = !!newValue ? new Date().toISOString() : null;
+              setStatus(`${row.tenkh || row.makh} đã cập nhật trạng thái đã gửi lời mời.`);
+              hot.render();
+            }
+          });
+
+          return;
+        }
         if (prop === "da_tham_gia_congdong") {
           const row = getRowDataByVisualRow(hot, rowIndex);
 
