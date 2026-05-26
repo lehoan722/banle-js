@@ -503,6 +503,50 @@ export function mountKhachHangSuggest(options = {}) {
     }, 50);
   }
 
+  async function timKhachHangChinhXacTheoMakh(makh) {
+    makh = chuanHoaMakhNhap(makh);
+
+    if (!makh || makh.length !== 10) return null;
+
+    const { data, error } = await window.supabase
+      .from("dmkhachhang")
+      .select("makh, tenkh, dienthoai, diem_hientai, hang_khach, created_by_manv")
+      .eq("makh", makh)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Lỗi tìm chính xác khách hàng:", error);
+      return null;
+    }
+
+    return data || null;
+  }
+
+  async function suDungKhachHangChoHoaDon(kh) {
+    if (!kh) return;
+
+    document.getElementById("popupKhachMoiBanLe").style.display = "none";
+
+    makhInput.value = chiLaySo(kh.makh || "");
+    setVal(tenInputId, kh.tenkh || "");
+
+    await napThongTinDiemKhach(kh.makh);
+    await napTrangThaiZaloKhach(kh.makh);
+    capNhatTrangThaiDiemTheoKhach();
+
+    localStorage.setItem("pending_makh_banle", kh.makh || "");
+    localStorage.setItem("pending_tenkh_banle", kh.tenkh || "");
+
+    dangTaoKhachMoi = false;
+    makhMoiTam = "";
+
+    setTimeout(() => {
+      const diemTruEl = getEl(diemTruInputId);
+      diemTruEl?.focus();
+      diemTruEl?.select?.();
+    }, 50);
+  }
+
   function laSoDienThoaiHopLe(makh) {
     const digits = String(makh || "").replace(/[^\d]/g, "");
     return /^\d{10}$/.test(digits);
@@ -624,11 +668,47 @@ export function mountKhachHangSuggest(options = {}) {
     const popupMakhEl = document.getElementById("popup_makh");
     const popupDienThoaiEl = document.getElementById("popup_dienthoai");
 
-    popupMakhEl?.addEventListener("input", () => {
+    popupMakhEl?.addEventListener("input", async () => {
       const ma = String(popupMakhEl.value || "").replace(/\D/g, "").slice(0, 10);
       popupMakhEl.value = ma;
       if (popupDienThoaiEl) popupDienThoaiEl.value = ma;
       makhMoiTam = ma;
+
+      if (ma.length >= 3) {
+        makhInput.value = ma;
+        await timKhachHang(ma);
+      }
+
+      if (ma.length === 10) {
+        const kh = await timKhachHangChinhXacTheoMakh(ma);
+        if (kh) {
+          await suDungKhachHangChoHoaDon(kh);
+        }
+      }
+    });
+
+    popupMakhEl?.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter") return;
+
+      e.preventDefault();
+
+      const ma = chuanHoaMakhNhap(popupMakhEl.value);
+
+      if (ma.length !== 10) {
+        alert("❌ Mã khách phải đủ 10 số.");
+        popupMakhEl.focus();
+        popupMakhEl.select?.();
+        return;
+      }
+
+      const kh = await timKhachHangChinhXacTheoMakh(ma);
+
+      if (kh) {
+        await suDungKhachHangChoHoaDon(kh);
+        return;
+      }
+
+      document.getElementById("popup_tenkh")?.focus();
     });
 
     ["popup_tenkh", "popup_thangsinh"].forEach(id => {
@@ -690,18 +770,7 @@ export function mountKhachHangSuggest(options = {}) {
 
     const khTrung = await timKhachHangChinhXacTheoMakh(makh);
     if (khTrung) {
-      document.getElementById("popupKhachMoiBanLe").style.display = "none";
-
-      makhInput.value = chiLaySo(khTrung.makh || "");
-      setVal(tenInputId, khTrung.tenkh || "");
-      await napThongTinDiemKhach(khTrung.makh);
-      await napTrangThaiZaloKhach(khTrung.makh);
-      capNhatTrangThaiDiemTheoKhach();
-
-      localStorage.setItem("pending_makh_banle", khTrung.makh || "");
-      localStorage.setItem("pending_tenkh_banle", khTrung.tenkh || "");
-
-      alert("✅ Mã khách này đã tồn tại. Đã nạp thông tin khách lên hóa đơn.");
+      await suDungKhachHangChoHoaDon(khTrung);
       return;
     }
 
@@ -1008,20 +1077,6 @@ export function mountKhachHangSuggest(options = {}) {
 
     let dangXuLyMakhBlur = false;
 
-    async function timKhachHangChinhXacTheoMakh(makh) {
-      const { data, error } = await window.supabase
-        .from("dmkhachhang")
-        .select("makh, tenkh, dienthoai, diem_hientai, hang_khach, created_by_manv")
-        .eq("makh", makh)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Lỗi tìm chính xác khách hàng:", error);
-        return null;
-      }
-
-      return data || null;
-    }
 
     async function xuLyMakhNhuEnter() {
       if (dangXuLyMakhBlur) return;
