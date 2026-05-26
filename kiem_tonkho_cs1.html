@@ -538,15 +538,37 @@
                 user-select: none;
             }
 
+            #mobileButtonSheet.footer-buttons {
+                display: grid !important;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px !important;
+                align-content: start;
+            }
+
+            #mobileSheetHandle {
+                grid-column: 1 / -1;
+            }
+
             #mobileButtonSheet button {
-                width: calc(25% - 8px) !important;
+                width: 100% !important;
                 min-width: 0 !important;
-                height: 56px !important;
-                font-size: 18px !important;
-                padding: 4px !important;
+                height: 58px !important;
                 margin: 0 !important;
-                border-radius: 16px;
-                font-weight: 700;
+                padding: 4px 2px !important;
+                font-size: 17px !important;
+                line-height: 1.15 !important;
+                border-radius: 14px !important;
+                font-weight: 700 !important;
+                background: #ffffff;
+                color: #0b57d0;
+                border: 1px solid #d0d0d0;
+                box-sizing: border-box;
+                white-space: normal;
+            }
+
+            #btnCanDoiSize {
+                background: #0b57d0 !important;
+                color: #fff !important;
             }
         }
     </style>
