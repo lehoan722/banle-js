@@ -51,6 +51,18 @@ const columns = [
     title: "Đã vào nhóm",
     type: "checkbox"
   },
+  {
+    data: "da_gui_loi_moi",
+    title: "Đã gửi lời mời",
+    type: "checkbox",
+    readOnly: true
+  },
+  {
+    data: "lan_gui_zalo_cuoi",
+    title: "Lần gửi Zalo cuối",
+    readOnly: true,
+    renderer: vnDateTimeRenderer
+  },
   { data: "diachi", title: "Địa chỉ" },
   { data: "email", title: "Email" },
   { data: "taikhoan", title: "Tài khoản" },
@@ -93,8 +105,11 @@ const compactFields = [
 
 const zaloFields = [
   "makh",
-  "tenkh",  
+  "tenkh",
+  "dienthoai",
   "zalo_action",
+  "da_gui_loi_moi",
+  "lan_gui_zalo_cuoi",
   "da_tham_gia_congdong",
   "diem_hientai",
   "created_by_manv"
@@ -161,6 +176,16 @@ function zaloActionRenderer(instance, td, row, col, prop, value, cellProperties)
     const message = taoNoiDungMoiThamGia(rowData);
 
     await saveZaloLog(rowData, message);
+    const nowIso = new Date().toISOString();
+
+    await saveZaloStatus(rowData, {
+      da_gui_loi_moi: true,
+      lan_gui_cuoi: nowIso
+    });
+
+    rowData.da_gui_loi_moi = true;
+    rowData.lan_gui_zalo_cuoi = nowIso;
+    instance.render();
 
     navigator.clipboard.writeText(message);
 
@@ -869,10 +894,16 @@ function renderZaloAssistant() {
 
     await navigator.clipboard.writeText(currentMsg);
     await saveZaloLog(row, currentMsg);
+    const nowIso = new Date().toISOString();
+
     await saveZaloStatus(row, {
       da_gui_loi_moi: true,
-      lan_gui_cuoi: new Date().toISOString()
+      lan_gui_cuoi: nowIso
     });
+
+    row.da_gui_loi_moi = true;
+    row.lan_gui_zalo_cuoi = nowIso;
+    hot.render();
 
     window.open(`https://zalo.me/${row.dienthoai}`, "_blank");
     setStatus(`Đã copy nội dung và mở Zalo cho ${row.tenkh || row.dienthoai}`);
