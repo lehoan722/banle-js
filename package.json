@@ -8,10 +8,9 @@
     "dev": "vercel dev",
     "start": "node index.js"
   },
-
-    "dependencies": {
+  "dependencies": {
     "node-fetch": "^3.3.2",
-    "@supabase/supabase-js": "^2.48.0"
+    "@supabase/supabase-js": "^2.48.0",
+    "web-push": "^3.6.7"
   }
-  
 }
