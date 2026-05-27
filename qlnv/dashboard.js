@@ -10,6 +10,8 @@ import {
   setupBeepUnlockOnce
 } from "../scripts/soundBeep.js";
 
+import { registerPushNotifications } from "../scripts/pushClient.js";
+
 const supabase = getSupabaseClient();
 
 async function insertTaskLog({
@@ -335,6 +337,12 @@ khoiTaoDangNhapDungChung({
 
     await loadDashboard();
     setupBeepUnlockOnce(document);
+    
+    await registerPushNotifications({
+  manv: user.manv || "ADMIN",
+  diadiem: selectDiadiem.value,
+  role: "admin"
+});
 
     setupRealtimeDashboard();
     setupNotificationRealtimeDashboard();
