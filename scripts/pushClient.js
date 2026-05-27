@@ -51,6 +51,7 @@ export async function registerPushNotifications({
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
+                action: 'save',
                 manv,
                 diadiem,
                 role,
