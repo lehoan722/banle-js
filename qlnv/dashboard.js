@@ -458,7 +458,7 @@ async function loadStaff(diadiem) {
 
     const assignText = item.can_assign_task
       ? 'Có thể giao'
-      : 'Chưa giao';
+      : 'Đang bận / chưa thể giao';
 
     const div = document.createElement('div');
     div.className = `staff-row ${statusClass}`;
@@ -1230,11 +1230,44 @@ async function loadAssignableStaff(diadiem) {
     return;
   }
 
-  const rows = (data || []).filter(item => {
-    return (
-      item.can_assign_task === true ||
-      item.work_state === 'DA_VAO_CA_DANG_RANH'
+  const manvList = (data || [])
+    .map(x => String(x.manv || '').trim().toUpperCase())
+    .filter(Boolean);
+
+  let activeTaskMap = new Set();
+
+  if (manvList.length) {
+    const { data: activeTasks, error: taskErr } = await supabase
+      .schema('qlnv')
+      .from('tasks')
+      .select('assigned_to,status')
+      .eq('diadiem', diadiem)
+      .in('assigned_to', manvList)
+      .in('status', ['pending', 'in_progress']);
+
+    if (taskErr) {
+      console.error('Lỗi kiểm tra task đang mở:', taskErr);
+    }
+
+    activeTaskMap = new Set(
+      (activeTasks || []).map(t =>
+        String(t.assigned_to || '').trim().toUpperCase()
+      )
     );
+  }
+
+  const rows = (data || []).filter(item => {
+    const manv = String(item.manv || '').trim().toUpperCase();
+    const state = item.work_state;
+
+    const dangTrongCa = [
+      'DA_VAO_CA_DANG_RANH',
+      'DANG_LAM_TASK'
+    ].includes(state);
+
+    const khongCoTaskDangMo = !activeTaskMap.has(manv);
+
+    return dangTrongCa && khongCoTaskDangMo;
   });
 
   if (!rows.length) {
