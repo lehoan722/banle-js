@@ -337,12 +337,12 @@ khoiTaoDangNhapDungChung({
 
     await loadDashboard();
     setupBeepUnlockOnce(document);
-    
+
     await registerPushNotifications({
-  manv: user.manv || "ADMIN",
-  diadiem: selectDiadiem.value,
-  role: "admin"
-});
+      manv: user.manv || "ADMIN",
+      diadiem: selectDiadiem.value,
+      role: "admin"
+    });
 
     setupRealtimeDashboard();
     setupNotificationRealtimeDashboard();
@@ -1211,23 +1211,39 @@ async function openTaskModal() {
 }
 
 async function loadAssignableStaff(diadiem) {
-
-  const { data } = await supabase
+  const { data, error } = await supabase
     .schema('qlnv')
     .from('v_staff_today_status')
-    .select('manv,tennv')
+    .select('manv,tennv,work_state,can_assign_task,diadiem')
     .eq('diadiem', diadiem)
-    .eq('can_assign_task', true)
     .order('tennv');
 
-  taskAssignedTo.innerHTML =
-    (data || []).map(item => `
-      <option
-        value="${item.manv}"
-        data-name="${item.tennv || item.manv}">
-        ${item.tennv || item.manv}
-      </option>
-    `).join('');
+  if (error) {
+    console.error('Lỗi loadAssignableStaff:', error);
+    taskAssignedTo.innerHTML = `<option value="">Lỗi tải nhân viên</option>`;
+    return;
+  }
+
+  const rows = (data || []).filter(item => {
+    return (
+      item.can_assign_task === true ||
+      item.work_state === 'DA_VAO_CA_DANG_RANH'
+    );
+  });
+
+  if (!rows.length) {
+    taskAssignedTo.innerHTML = `<option value="">Không có nhân viên rảnh</option>`;
+    console.warn('Không có nhân viên có thể giao việc:', data);
+    return;
+  }
+
+  taskAssignedTo.innerHTML = rows.map(item => `
+    <option
+      value="${String(item.manv || '').trim().toUpperCase()}"
+      data-name="${item.tennv || item.manv}">
+      ${item.tennv || item.manv} - ${item.manv}
+    </option>
+  `).join('');
 }
 
 async function loadTaskTemplates() {
