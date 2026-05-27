@@ -1,4 +1,4 @@
-import webpush from 'web-push'; 
+import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
