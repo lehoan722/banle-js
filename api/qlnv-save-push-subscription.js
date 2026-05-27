@@ -54,6 +54,7 @@ async function saveSubscription(req, res) {
     }
 
     const { data, error } = await supabase
+        .schema('qlnv')
         .from('push_subscriptions')
         .upsert({
             manv,
