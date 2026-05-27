@@ -1373,7 +1373,7 @@ async function updateQlnvStaffStatus({
         .schema("qlnv")
         .from("staff_status")
         .upsert(payload, {
-            onConflict: "manv"
+            onConflict: "manv,diadiem"
         });
 
     if (error) {
