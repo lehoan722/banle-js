@@ -2429,6 +2429,14 @@ async function initChamCong(diadiem) {
 
     // Bắt đầu auto check rời khỏi cửa hàng
     startAutoCheckLeave(manv, diadiem);
+
+    setInterval(async () => {
+        const manv = localStorage.getItem("manv");
+        if (!manv) return;
+
+        await loadMyCurrentTask({ manv, diadiem });
+    }, 15000);
+
 }
 
 // ================== KHỞI ĐỘNG ==================
