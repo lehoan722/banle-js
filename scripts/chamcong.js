@@ -14,11 +14,6 @@ let supabase = null;
 let currentAssignedTask = null;
 let currentNormalTask = null;
 let currentUnplannedTask = null;
-let currentMainState = "free";
-let previousMainStateBeforeServing = null;
-
-let normalTaskStartedAt = null;
-let unplannedTaskStartedAt = null;
 let qlnvChamCongChannel = null;
 let qlnvNotificationChannel = null;
 let lastChamCongNotificationId = 0;
@@ -424,15 +419,6 @@ async function compressImageForBayMau(file, maxWidth = 900, quality = 0.72) {
 
         img.src = url;
     });
-}
-
-function passedMinSeconds(startAt, sec = 60) {
-    if (!startAt) return false;
-
-    const start = new Date(startAt).getTime();
-    const now = Date.now();
-
-    return (now - start) >= sec * 1000;
 }
 
 function formatBayMauTime(d = new Date()) {
@@ -1399,7 +1385,7 @@ async function updateQlnvStaffStatus({
     }
 
     currentWorkStatus = status;
-    syncStateButtonsUI();
+    syncWorkButtonsUI();
     return true;
 }
 
@@ -1549,118 +1535,6 @@ function syncWorkButtonsUI() {
     }
 }
 
-function getRemainingSeconds(startAt, sec = 60) {
-    if (!startAt) return sec;
-
-    const diff = Math.floor((Date.now() - new Date(startAt).getTime()) / 1000);
-    return Math.max(0, sec - diff);
-}
-
-function syncStateButtonsUI() {
-    const btnTaskStart = document.getElementById("btn-my-task-start");
-    const btnTaskDone = document.getElementById("btn-my-task-done");
-
-    const btnUnplannedStart = document.getElementById("btn-unplanned-start");
-    const btnUnplannedDone = document.getElementById("btn-unplanned-done");
-
-    const btnFree = document.getElementById("btn-work-free");
-    const btnServing = document.getElementById("btn-work-serving");
-    const btnCleanup = document.getElementById("btn-work-cleanup");
-    const btnOff = document.getElementById("btn-work-off");
-    const btnResume = document.getElementById("btn-my-task-resume");
-
-    if (btnTaskStart) btnTaskStart.textContent = "Bắt đầu VDG";
-    if (btnTaskDone) btnTaskDone.textContent = "Hoàn thành VDG";
-    if (btnCleanup) btnCleanup.textContent = "Kết thúc bán";
-    if (btnResume) btnResume.style.display = "none";
-
-    [
-        btnTaskStart,
-        btnTaskDone,
-        btnUnplannedStart,
-        btnUnplannedDone,
-        btnFree,
-        btnServing,
-        btnCleanup,
-        btnOff
-    ].forEach(btn => {
-        if (!btn) return;
-        btn.style.display = "";
-        btn.disabled = false;
-        btn.style.opacity = "1";
-    });
-
-    if (currentMainState === "serving") {
-        if (btnServing) btnServing.style.display = "none";
-        if (btnTaskStart) btnTaskStart.style.display = "none";
-        if (btnTaskDone) btnTaskDone.style.display = "none";
-        if (btnUnplannedStart) btnUnplannedStart.style.display = "none";
-        if (btnUnplannedDone) btnUnplannedDone.style.display = "none";
-        if (btnFree) btnFree.style.display = "none";
-        if (btnOff) btnOff.style.display = "none";
-        return;
-    }
-
-    if (currentMainState === "unplanned") {
-        if (btnTaskStart) btnTaskStart.style.display = "none";
-        if (btnTaskDone) btnTaskDone.style.display = "none";
-        if (btnUnplannedStart) btnUnplannedStart.style.display = "none";
-        if (btnFree) btnFree.style.display = "none";
-        if (btnOff) btnOff.style.display = "none";
-        if (btnCleanup) btnCleanup.disabled = true;
-
-        const remain = getRemainingSeconds(unplannedTaskStartedAt, 60);
-        if (remain > 0) {
-            btnUnplannedDone.disabled = true;
-            btnUnplannedDone.style.opacity = "0.4";
-            btnUnplannedDone.textContent = `Hoàn thành bất thường (${remain}s)`;
-            setTimeout(syncStateButtonsUI, 1000);
-        } else {
-            btnUnplannedDone.textContent = "Hoàn thành bất thường";
-        }
-
-        return;
-    }
-
-    if (currentMainState === "task") {
-        if (btnTaskStart) btnTaskStart.style.display = "none";
-        if (btnFree) btnFree.style.display = "none";
-        if (btnOff) btnOff.style.display = "none";
-        if (btnCleanup) btnCleanup.disabled = true;
-
-        const remain = getRemainingSeconds(normalTaskStartedAt, 60);
-        if (remain > 0) {
-            btnTaskDone.disabled = true;
-            btnTaskDone.style.opacity = "0.4";
-            btnTaskDone.textContent = `Hoàn thành VDG (${remain}s)`;
-            setTimeout(syncStateButtonsUI, 1000);
-        } else {
-            btnTaskDone.textContent = "Hoàn thành VDG";
-        }
-
-        return;
-    }
-
-    if (currentMainState === "free") {
-        if (btnCleanup) btnCleanup.disabled = true;
-
-        if (!currentNormalTask || currentNormalTask.status !== "pending") {
-            if (btnTaskStart) btnTaskStart.disabled = true;
-            if (btnTaskStart) btnTaskStart.style.opacity = "0.4";
-        }
-
-        if (btnTaskDone) {
-            btnTaskDone.disabled = true;
-            btnTaskDone.style.opacity = "0.4";
-        }
-
-        if (btnUnplannedDone) {
-            btnUnplannedDone.disabled = true;
-            btnUnplannedDone.style.opacity = "0.4";
-        }
-    }
-}
-
 function renderMyTask() {
     const box = document.getElementById("my-task-box");
     const btnStart = document.getElementById("btn-my-task-start");
@@ -1710,7 +1584,7 @@ function renderMyTask() {
         );
     }
 
-    syncStateButtonsUI();
+    syncWorkButtonsUI();
 }
 
 function renderPausedNormalTask() {
@@ -2120,10 +1994,6 @@ async function startUnplannedTask() {
     currentUnplannedTask = data;
     currentAssignedTask = data;
 
-    currentMainState = "unplanned";
-    unplannedTaskStartedAt = new Date().toISOString();
-    syncStateButtonsUI();
-
     await insertTaskLog({
         task: data,
         action: "unplanned_task_started",
@@ -2165,11 +2035,6 @@ async function finishUnplannedTask() {
 
     if (!currentUnplannedTask) {
         alert("Không có nhiệm vụ bất thường.");
-        return;
-    }
-
-    if (!passedMinSeconds(unplannedTaskStartedAt, 60)) {
-        alert("Việc bất thường vừa bắt đầu, vui lòng làm ít nhất 1 phút trước khi hoàn thành.");
         return;
     }
 
@@ -2226,15 +2091,6 @@ async function finishUnplannedTask() {
     }
 
     currentUnplannedTask = null;
-    unplannedTaskStartedAt = null;
-
-    if (currentNormalTask && currentNormalTask.status === "in_progress") {
-        currentMainState = "task";
-    } else {
-        currentMainState = "free";
-    }
-
-    syncStateButtonsUI();
 
     await loadMyCurrentTask({ manv, diadiem });
 }
@@ -2271,92 +2127,84 @@ function attachChamCongButtons(diadiem) {
     });
 
     btnWorkServing?.addEventListener("click", async () => {
-
-        previousMainStateBeforeServing = currentMainState;
+        previousWorkStatusBeforeServing = currentWorkStatus;
 
         await pauseCurrentTaskIfDoing();
-
-        currentMainState = "serving";
-
-        syncStateButtonsUI();
 
         const ok = await updateQlnvStaffStatus({
             manv,
             diadiem,
             status: "serving_customer",
-            lastAction: "Khách vào"
+            lastAction: "Khách vào / bắt đầu bán hàng"
         });
 
         if (ok) {
-
             renderWorkStatusText("serving_customer");
 
             await notifyAdminAndLocal({
                 diadiem,
                 manv,
-                title: "Khách vào",
-                body: `${manv} bắt đầu bán hàng`,
+                title: "Nhân viên đang bán hàng",
+                body: `${manv} vừa bấm Khách vào`,
                 type: "staff_serving_customer",
                 refType: "staff_status"
             });
-
         }
-
     });
 
     btnWorkCleanup?.addEventListener("click", async () => {
+        await loadMyCurrentTask({ manv, diadiem });
 
-        if (previousMainStateBeforeServing === "unplanned") {
-
-            currentMainState = "unplanned";
-
+        if (currentUnplannedTask && currentUnplannedTask.paused_at) {
+            currentAssignedTask = currentUnplannedTask;
             await resumeCurrentTaskIfPaused();
-
-            renderWorkStatusText("doing_task");
 
             await updateQlnvStaffStatus({
                 manv,
                 diadiem,
                 status: "doing_task",
-                lastAction: "Quay lại việc bất thường"
+                lastAction: "Kết thúc bán hàng, quay lại việc bất thường"
             });
 
+            renderWorkStatusText("doing_task");
         }
 
-        else if (previousMainStateBeforeServing === "task") {
-
-            currentMainState = "task";
-
+        else if (currentNormalTask && currentNormalTask.paused_at) {
+            currentAssignedTask = currentNormalTask;
             await resumeCurrentTaskIfPaused();
-
-            renderWorkStatusText("doing_task");
 
             await updateQlnvStaffStatus({
                 manv,
                 diadiem,
                 status: "doing_task",
-                lastAction: "Quay lại VDG"
+                lastAction: "Kết thúc bán hàng, quay lại việc được giao"
             });
 
+            renderWorkStatusText("doing_task");
         }
 
         else {
-
-            currentMainState = "free";
-
-            renderWorkStatusText("free");
-
             await updateQlnvStaffStatus({
                 manv,
                 diadiem,
                 status: "free",
-                lastAction: "Kết thúc bán"
+                lastAction: "Kết thúc bán hàng"
             });
 
+            renderWorkStatusText("free");
         }
 
-        syncStateButtonsUI();
+        await notifyAdminAndLocal({
+            diadiem,
+            manv,
+            title: "Nhân viên kết thúc bán hàng",
+            body: `${manv} vừa bấm Kết thúc bán`,
+            type: "staff_finish_selling",
+            refType: "staff_status"
+        });
 
+        previousWorkStatusBeforeServing = null;
+        await loadMyCurrentTask({ manv, diadiem });
     });
 
     btnWorkOff?.addEventListener("click", async () => {
@@ -2436,25 +2284,10 @@ function attachChamCongButtons(diadiem) {
 
     btnMyTaskStart?.addEventListener("click", async () => {
         await updateMyTaskStatus("in_progress");
-
-        currentMainState = "task";
-        normalTaskStartedAt = new Date().toISOString();
-
-        syncStateButtonsUI();
     });
 
     btnMyTaskDone?.addEventListener("click", async () => {
-        if (!passedMinSeconds(normalTaskStartedAt, 60)) {
-            alert("Việc được giao vừa bắt đầu, vui lòng làm ít nhất 1 phút trước khi hoàn thành.");
-            return;
-        }
-
         await updateMyTaskStatus("done");
-
-        currentMainState = "free";
-        normalTaskStartedAt = null;
-
-        syncStateButtonsUI();
     });
 
     btnMyTaskResume?.addEventListener("click", async () => {
