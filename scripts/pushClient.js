@@ -32,7 +32,7 @@ export async function registerPushNotifications({
 
         const reg = await navigator.serviceWorker.ready;
 
-        const publicKey = 'BF5J4YmZ7Q4cZsqM2o7D - BF5J4YmZ7Q4cZsqM2o7D - 1xyrLA9t3eAxYri2hts9huaE7Yk1ZOAhuDKoVYViBYCBdXf1Iuh93IfIDQEv3hNGEc';
+        const publicKey = 'BFugmF_vqhZV1eo00YpF2ze-fgbyxw6RJQBcAdffW75GVGYBQ149D2BZJqA4t4k_zQb6jNk5PinAmX8MtCaNyl4';
 
         let sub = await reg.pushManager.getSubscription();
 
