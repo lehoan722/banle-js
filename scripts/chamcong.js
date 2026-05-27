@@ -7,6 +7,8 @@ import {
     setupBeepUnlockOnce
 } from './soundBeep.js';
 
+import { registerPushNotifications } from './pushClient.js';
+
 // Supabase client sẽ được gán vào window.supabase sau khi đăng nhập
 let supabase = null;
 let currentAssignedTask = null;
@@ -2410,6 +2412,12 @@ async function initChamCong(diadiem) {
     todayEvents = await loadTodayEvents(manv, diadiem);
     attachChamCongButtons(diadiem);
     setupBeepUnlockOnce(document);
+
+    await registerPushNotifications({
+        manv,
+        diadiem,
+        role: 'staff'
+    });
 
     await loadMyCurrentTask({ manv, diadiem });
     setupChamCongRealtime({ manv, diadiem });
