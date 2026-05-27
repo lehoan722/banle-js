@@ -336,7 +336,13 @@ khoiTaoDangNhapDungChung({
     }
 
     await loadDashboard();
-    setupBeepUnlockOnce(document);
+    document.addEventListener(
+      'click',
+      () => {
+        setupBeepUnlockOnce(document);
+      },
+      { once: true }
+    );
 
     await registerPushNotifications({
       manv: user.manv || "ADMIN",
