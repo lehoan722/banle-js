@@ -1551,27 +1551,25 @@ function syncStateButtonsUI() {
         btn.style.display = "";
         btn.disabled = false;
         btn.style.opacity = "1";
+        btn.style.pointerEvents = "auto";
     });
 
+    // QUAN TRỌNG: nút Kết thúc bán không bao giờ bị khóa
+    if (btnCleanup) {
+        btnCleanup.disabled = false;
+        btnCleanup.style.opacity = "1";
+        btnCleanup.style.pointerEvents = "auto";
+        btnCleanup.textContent = "Kết thúc bán";
+    }
+
     if (currentMainState === "serving") {
-
         if (btnServing) btnServing.style.display = "none";
-
         if (btnTaskStart) btnTaskStart.style.display = "none";
         if (btnTaskDone) btnTaskDone.style.display = "none";
-
         if (btnUnplannedStart) btnUnplannedStart.style.display = "none";
         if (btnUnplannedDone) btnUnplannedDone.style.display = "none";
-
         if (btnFree) btnFree.style.display = "none";
         if (btnOff) btnOff.style.display = "none";
-
-        if (btnCleanup) {
-            btnCleanup.style.display = "";
-            btnCleanup.disabled = false;
-            btnCleanup.style.opacity = "1";
-            btnCleanup.textContent = "Kết thúc bán";
-        }
 
         return;
     }
@@ -1582,7 +1580,6 @@ function syncStateButtonsUI() {
         if (btnUnplannedStart) btnUnplannedStart.style.display = "none";
         if (btnFree) btnFree.style.display = "none";
         if (btnOff) btnOff.style.display = "none";
-        if (btnCleanup) btnCleanup.disabled = true;
 
         const remain = getRemainingSeconds(unplannedTaskStartedAt, 60);
         if (remain > 0) {
@@ -1601,7 +1598,6 @@ function syncStateButtonsUI() {
         if (btnTaskStart) btnTaskStart.style.display = "none";
         if (btnFree) btnFree.style.display = "none";
         if (btnOff) btnOff.style.display = "none";
-        if (btnCleanup) btnCleanup.disabled = true;
 
         const remain = getRemainingSeconds(normalTaskStartedAt, 60);
         if (remain > 0) {
@@ -1617,8 +1613,6 @@ function syncStateButtonsUI() {
     }
 
     if (currentMainState === "free") {
-        if (btnCleanup) btnCleanup.disabled = true;
-
         if (!currentNormalTask || currentNormalTask.status !== "pending") {
             if (btnTaskStart) btnTaskStart.disabled = true;
             if (btnTaskStart) btnTaskStart.style.opacity = "0.4";
@@ -1633,6 +1627,13 @@ function syncStateButtonsUI() {
             btnUnplannedDone.disabled = true;
             btnUnplannedDone.style.opacity = "0.4";
         }
+    }
+
+    // Chốt cuối: dù nhánh nào chạy xong, Kết thúc bán vẫn luôn bấm được
+    if (btnCleanup) {
+        btnCleanup.disabled = false;
+        btnCleanup.style.opacity = "1";
+        btnCleanup.style.pointerEvents = "auto";
     }
 }
 
