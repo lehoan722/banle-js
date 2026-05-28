@@ -1486,6 +1486,35 @@ function stopServingTimer() {
     servingStartedAt = null;
 }
 
+async function loadMyStaffStatus({ manv, diadiem }) {
+    const sp = await ensureSupabase();
+    if (!sp || !manv) return;
+
+    const { data, error } = await sp
+        .schema("qlnv")
+        .from("staff_status")
+        .select("current_status,status_started_at,current_task_id,last_action")
+        .eq("manv", String(manv).trim().toUpperCase())
+        .eq("diadiem", diadiem)
+        .maybeSingle();
+
+    if (error) {
+        console.error("Lỗi load staff_status:", error);
+        return;
+    }
+
+    if (!data) return;
+
+    currentWorkStatus = data.current_status || "unknown";
+
+    if (currentWorkStatus === "serving_customer") {
+        currentMainState = "serving";
+        servingStartedAt = data.status_started_at || new Date().toISOString();
+        renderWorkStatusText("serving_customer");
+        syncStateButtonsUI();
+    }
+}
+
 async function loadMyCurrentTask({ manv, diadiem }) {
     const sp = await ensureSupabase();
     if (!sp || !manv) return;
@@ -1975,6 +2004,7 @@ function setupChamCongRealtime({ manv, diadiem }) {
                 filter: `assigned_to=eq.${String(manv).toUpperCase()}`
             },
             async () => {
+                await loadMyStaffStatus({ manv, diadiem });
                 await loadMyCurrentTask({ manv, diadiem });
             }
         )
@@ -2779,8 +2809,10 @@ async function initChamCong(diadiem) {
     /* Ép giao diện về tên nút mới ngay lập tức, không chờ push/realtime */
     syncStateButtonsUI();
 
+    await loadMyStaffStatus({ manv, diadiem });
     await loadMyCurrentTask({ manv, diadiem });
     setupChamCongRealtime({ manv, diadiem });
+    renderWorkStatusText(currentWorkStatus);
     syncStateButtonsUI();
 
     await registerPushNotifications({
