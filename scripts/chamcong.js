@@ -426,7 +426,7 @@ async function compressImageForBayMau(file, maxWidth = 900, quality = 0.72) {
     });
 }
 
-function passedMinSeconds(startAt, sec = 10) {
+function passedMinSeconds(startAt, sec = 60) {
     if (!startAt) return false;
 
     const start = new Date(startAt).getTime();
@@ -1354,7 +1354,8 @@ async function updateQlnvStaffStatus({
     diadiem,
     status,
     lastAction = null,
-    cleanupMinutes = null
+    cleanupMinutes = null,
+    currentTaskId = null
 }) {
     const sp = await ensureSupabase();
     if (!sp || !manv) return false;
@@ -1383,6 +1384,10 @@ async function updateQlnvStaffStatus({
     if (status === "free" || status === "off" || status === "break") {
         payload.current_task_id = null;
         payload.current_invoice = null;
+    }
+
+    if (status === "doing_task" && currentTaskId) {
+        payload.current_task_id = currentTaskId;
     }
 
     let { data: updatedRows, error: updateError } = await sp
@@ -1856,7 +1861,8 @@ async function updateMyTaskStatus(newStatus) {
             manv,
             diadiem,
             status: "doing_task",
-            lastAction: "Nhân viên bắt đầu task"
+            lastAction: "Nhân viên bắt đầu task",
+            currentTaskId: currentAssignedTask.id
         });
         renderWorkStatusText("doing_task");
     }
@@ -2117,7 +2123,8 @@ async function startUnplannedTask() {
         manv,
         diadiem,
         status: "doing_task",
-        lastAction: "Làm nhiệm vụ bất thường"
+        lastAction: "Làm nhiệm vụ bất thường",
+        currentTaskId: data.id
     });
 
     renderWorkStatusText("doing_task");
