@@ -661,25 +661,36 @@ async function updateStaffStatus(staff, newStatus) {
 async function renderServingStaffAsDoing(diadiem) {
   const { data, error } = await supabase
     .schema('qlnv')
-    .from('v_staff_today_status')
-    .select('manv, tennv, work_state, diadiem')
+    .from('staff_status')
+    .select('manv, diadiem, current_status, status_started_at')
     .eq('diadiem', diadiem)
-    .eq('work_state', 'DANG_PHUC_VU_KHACH');
+    .eq('current_status', 'serving_customer');
 
   if (error) {
     console.error('Lỗi load nhân viên đang phục vụ khách:', error);
     return;
   }
 
+  const seen = new Set();
+
   for (const item of data || []) {
+    const manv = String(item.manv || '').trim().toUpperCase();
+    if (!manv || seen.has(manv)) continue;
+    seen.add(manv);
+
+    const started = item.status_started_at
+      ? new Date(item.status_started_at).getTime()
+      : Date.now();
+
     const div = document.createElement('div');
     div.className = 'task-row task-progress';
 
     div.innerHTML = `
       <div class="task-line">
         <span class="task-line-title">Đang phục vụ khách</span>
-        <span>, ${item.tennv || item.manv || ''}</span>
+        <span>, ${manv}</span>
         <span>, Đang bán hàng</span>
+        <span class="task-timer" data-start="${started}" data-paused-at="" data-paused-seconds="0">⏱ 00:00:00</span>
       </div>
 
       <div class="task-actions">
@@ -1194,6 +1205,8 @@ function setupRealtimeDashboard() {
       },
       async () => {
         await loadStaff(diadiem);
+        await loadTasks(diadiem);
+        await loadAlerts(diadiem);
       }
     )
 
