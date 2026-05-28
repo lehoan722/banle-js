@@ -2722,15 +2722,18 @@ async function initChamCong(diadiem) {
     attachChamCongButtons(diadiem);
     setupBeepUnlockOnce(document);
 
+    /* Ép giao diện về tên nút mới ngay lập tức, không chờ push/realtime */
+    syncStateButtonsUI();
+
+    await loadMyCurrentTask({ manv, diadiem });
+    setupChamCongRealtime({ manv, diadiem });
+    syncStateButtonsUI();
+
     await registerPushNotifications({
         manv,
         diadiem,
         role: 'staff'
     });
-
-    await loadMyCurrentTask({ manv, diadiem });
-    setupChamCongRealtime({ manv, diadiem });
-    syncStateButtonsUI();
 
     await requestBrowserNotificationPermission();
     setupNotificationRealtimeChamCong({ manv, diadiem });
