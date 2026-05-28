@@ -546,70 +546,68 @@ export function mountKhachHangSuggest(options = {}) {
   }
 
   function chuanHoaThangNamSinh(raw) {
-    let s = String(raw || "").trim().toLowerCase();
-    if (!s) return { thangsinh: null, namsinh: null };
+  let s = String(raw || "").trim().toLowerCase();
+  if (!s) return { thangsinh: null, namsinh: null };
 
-    const namHienTai = new Date().getFullYear();
+  const namHienTai = new Date().getFullYear();
 
-    // Cách 1: nhập 2 chữ số = tuổi
-    // Ví dụ: 30 => năm sinh = năm hiện tại - 30
-    let m = s.match(/^(\d{2})$/);
-    if (m) {
-      const tuoi = Number(m[1]);      
+  // Cách 1: nhập 2 chữ số = tuổi
+  // Ví dụ: 30 => năm sinh = năm hiện tại - 30
+  let m = s.match(/^(\d{2})$/);
+  if (m) {
+    const tuoi = Number(m[1]);
 
-      const tuoiHopLe = [20, 25, 30, 35, 40, 45, 50, 55,60, 65, 70];
-
-      if (!tuoiHopLe.includes(tuoi)) {
-        alert("❌ Chỉ nhập số tuổi là 20, 25, 30,... đến 70.");
-        return false;
-      }
-
-      return {
-        thangsinh: null,
-        namsinh: namHienTai - tuoi
-      };
+    if (tuoi < 10 || tuoi > 90) {
+      alert("❌ Tuổi chỉ nhận từ 10 đến 90.");
+      return false;
     }
 
-    // Cách 2: nhập tháng/năm sinh đầy đủ
-    // Ví dụ: 3/1979, 05-2002
-    m = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
-    if (m) {
-      const thangsinh = Number(m[1]);
-      const namsinh = Number(m[2]);
-
-      if (thangsinh < 1 || thangsinh > 12) {
-        alert("❌ Tháng sinh không hợp lệ. Chỉ nhập từ 1 đến 12.");
-        return false;
-      }
-
-      if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
-        alert("❌ Năm sinh không hợp lệ.");
-        return false;
-      }
-
-      return { thangsinh, namsinh };
-    }
-
-    // Cách 3: nhập năm sinh đầy đủ 4 chữ số
-    // Ví dụ: 1974, 2000
-    m = s.match(/^(\d{4})$/);
-    if (m) {
-      const namsinh = Number(m[1]);
-
-      if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
-        alert("❌ Năm sinh không hợp lệ.");
-        return false;
-      }
-
-      return {
-        thangsinh: null,
-        namsinh
-      };
-    }
-
-    alert("❌ Dữ liệu sinh không hợp lệ. Chỉ nhập tuổi 2 số, ví dụ 30; hoặc tháng/năm như 3/1979; hoặc năm sinh như 1974.");
-    return false;
+    return {
+      thangsinh: null,
+      namsinh: namHienTai - tuoi
+    };
   }
+
+  // Cách 2: nhập tháng/năm sinh đầy đủ
+  // Ví dụ: 3/1979, 05-2002
+  m = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
+  if (m) {
+    const thangsinh = Number(m[1]);
+    const namsinh = Number(m[2]);
+
+    if (thangsinh < 1 || thangsinh > 12) {
+      alert("❌ Tháng sinh không hợp lệ. Chỉ nhập từ 1 đến 12.");
+      return false;
+    }
+
+    if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
+      alert("❌ Năm sinh không hợp lệ.");
+      return false;
+    }
+
+    return { thangsinh, namsinh };
+  }
+
+  // Cách 3: nhập năm sinh đầy đủ 4 chữ số
+  // Ví dụ: 1974, 2000
+  m = s.match(/^(\d{4})$/);
+  if (m) {
+    const namsinh = Number(m[1]);
+
+    if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
+      alert("❌ Năm sinh không hợp lệ.");
+      return false;
+    }
+
+    return {
+      thangsinh: null,
+      namsinh
+    };
+  }
+
+  alert("❌ Dữ liệu sinh không hợp lệ. Chỉ nhập tuổi 2 số, ví dụ 30; hoặc tháng/năm như 3/1979; hoặc năm sinh như 1974.");
+  return false;
+}
 
   function damBaoPopupKhachMoi() {
     if (document.getElementById("popupKhachMoiBanLe")) return;
@@ -645,7 +643,7 @@ export function mountKhachHangSuggest(options = {}) {
 
       <div style="margin-bottom:16px;">
         <label>Tháng/Năm sinh</label>
-<input id="popup_thangsinh" style="width:100%;padding:9px;font-size:12px;" placeholder="Ví dụ:20, 25, 30,... đến 70, 3/1979, 5-2002 hoặc 1974">
+<input id="popup_thangsinh" style="width:100%;padding:9px;font-size:16px;" placeholder="Ví dụ: 30, 3/1979, 5-2002 hoặc 1974">
       </div>
 
       <div style="display:flex;gap:12px;justify-content:center;">
