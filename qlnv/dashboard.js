@@ -246,6 +246,17 @@ function setupNotificationRealtimeDashboard() {
           playNotifySound();
           showLocalPopup(n.title, n.body);
         }
+
+        if (
+          n.ref_type === 'task' ||
+          String(n.type || '').includes('task') ||
+          String(n.type || '').includes('staff')
+        ) {
+          await loadTasks(diadiem);
+          await loadStaff(diadiem);
+          await loadAlerts(diadiem);
+          await loadLogs(diadiem);
+        }
       }
     )
     .subscribe();
