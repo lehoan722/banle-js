@@ -1474,9 +1474,38 @@ async function loadMyCurrentTask({ manv, diadiem }) {
         currentNormalTask ||
         null;
 
+    syncMainStateFromLoadedTasks();
     renderMyTask();
 }
 
+function syncMainStateFromLoadedTasks() {
+    if (currentUnplannedTask && currentUnplannedTask.status === "in_progress") {
+        currentMainState = "unplanned";
+        unplannedTaskStartedAt =
+            currentUnplannedTask.started_at ||
+            unplannedTaskStartedAt ||
+            new Date().toISOString();
+        return;
+    }
+
+    if (currentNormalTask && currentNormalTask.status === "in_progress") {
+        currentMainState = "task";
+        normalTaskStartedAt =
+            currentNormalTask.started_at ||
+            normalTaskStartedAt ||
+            new Date().toISOString();
+        return;
+    }
+
+    if (currentWorkStatus === "serving_customer") {
+        currentMainState = "serving";
+        return;
+    }
+
+    currentMainState = "free";
+    normalTaskStartedAt = null;
+    unplannedTaskStartedAt = null;
+}
 
 function getRemainingSeconds(startAt, sec = 60) {
     if (!startAt) return sec;
@@ -2306,6 +2335,7 @@ function attachChamCongButtons(diadiem) {
 
         }
 
+        await loadMyCurrentTask({ manv, diadiem });
         syncStateButtonsUI();
 
     });
