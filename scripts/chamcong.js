@@ -1563,13 +1563,31 @@ function syncStateButtonsUI() {
     }
 
     if (currentMainState === "serving") {
-        if (btnServing) btnServing.style.display = "none";
+        // Ưu tiên bán hàng: ẩn toàn bộ nút công việc
         if (btnTaskStart) btnTaskStart.style.display = "none";
         if (btnTaskDone) btnTaskDone.style.display = "none";
         if (btnUnplannedStart) btnUnplannedStart.style.display = "none";
         if (btnUnplannedDone) btnUnplannedDone.style.display = "none";
         if (btnFree) btnFree.style.display = "none";
         if (btnOff) btnOff.style.display = "none";
+        if (btnResume) btnResume.style.display = "none";
+
+        // Chỉ giữ 2 nút bán hàng
+        if (btnServing) {
+            btnServing.style.display = "";
+            btnServing.disabled = false;
+            btnServing.style.opacity = "1";
+            btnServing.style.pointerEvents = "auto";
+            btnServing.textContent = "Khách vào";
+        }
+
+        if (btnCleanup) {
+            btnCleanup.style.display = "";
+            btnCleanup.disabled = false;
+            btnCleanup.style.opacity = "1";
+            btnCleanup.style.pointerEvents = "auto";
+            btnCleanup.textContent = "Kết thúc bán";
+        }
 
         return;
     }
