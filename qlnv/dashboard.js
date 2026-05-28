@@ -3,7 +3,7 @@ import {
   getSupabaseClient,
   getCurrentUserInfo,
   dangXuatDungChung
-} from "../scripts/authModule.js"; 
+} from "../scripts/authModule.js";
 
 import {
   playAlertBeep,
@@ -658,6 +658,41 @@ async function updateStaffStatus(staff, newStatus) {
   await loadAlerts(diadiem);
 }
 
+async function renderServingStaffAsDoing(diadiem) {
+  const { data, error } = await supabase
+    .schema('qlnv')
+    .from('v_staff_today_status')
+    .select('manv, tennv, work_state, diadiem')
+    .eq('diadiem', diadiem)
+    .eq('work_state', 'DANG_PHUC_VU_KHACH');
+
+  if (error) {
+    console.error('Lỗi load nhân viên đang phục vụ khách:', error);
+    return;
+  }
+
+  for (const item of data || []) {
+    const div = document.createElement('div');
+    div.className = 'task-row task-progress';
+
+    div.innerHTML = `
+      <div class="task-line">
+        <span class="task-line-title">Đang phục vụ khách</span>
+        <span>, ${item.tennv || item.manv || ''}</span>
+        <span>, Đang bán hàng</span>
+      </div>
+
+      <div class="task-actions">
+        <span class="task-done-text" style="background:#fff3cd;color:#92400e;">
+          Khách vào
+        </span>
+      </div>
+    `;
+
+    doingContainer.appendChild(div);
+  }
+}
+
 async function loadTasks(diadiem) {
   const { startIso, endIso } = getTodayRangeVN();
 
@@ -679,9 +714,10 @@ async function loadTasks(diadiem) {
   doingContainer.innerHTML = '';
   if (pausedContainer) pausedContainer.innerHTML = '';
   doneContainer.innerHTML = '';
+  await renderServingStaffAsDoing(diadiem);
 
   let pendingCount = 0;
-  let doingCount = 0;
+  let doingCount = doingContainer.children.length;
   let pausedCount = 0;
   let doneCount = 0;
 
