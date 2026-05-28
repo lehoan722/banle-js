@@ -426,7 +426,7 @@ async function compressImageForBayMau(file, maxWidth = 900, quality = 0.72) {
     });
 }
 
-function passedMinSeconds(startAt, sec = 60) {
+function passedMinSeconds(startAt, sec = 10) {
     if (!startAt) return false;
 
     const start = new Date(startAt).getTime();
