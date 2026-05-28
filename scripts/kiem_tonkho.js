@@ -1399,7 +1399,7 @@ import "./stockQuickPopup.js";
             const vitriInfo = layThongTinViTriTheoMaspTuCache(masp);
 
             const maspHtml = `
-    <div>${maspHtml}</div>
+    <div>${escapeHtml(masp)}</div>
     <div style="margin-top:4px; color:#d00000; font-size:14px; font-weight:500; text-decoration:none; line-height:1.25;">
         ${escapeHtml(vitriInfo.text)}
     </div>
@@ -1424,9 +1424,9 @@ import "./stockQuickPopup.js";
   <td data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapTongGroup?.items || []) || ""}</td>
 
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
-      style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
-    ${escapeHtml(masp)}
-  </td>
+    style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
+  ${maspHtml}
+</td>
 
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(xuatText)}</td>
   <td>${tongSoLuong(xuatGroup?.items || []) || ""}</td>
