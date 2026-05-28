@@ -555,10 +555,12 @@ export function mountKhachHangSuggest(options = {}) {
     // Ví dụ: 30 => năm sinh = năm hiện tại - 30
     let m = s.match(/^(\d{2})$/);
     if (m) {
-      const tuoi = Number(m[1]);
+      const tuoi = Number(m[1]);      
 
-      if (tuoi < 10 || tuoi > 90) {
-        alert("❌ Tuổi chỉ nhận từ 10 đến 90.");
+      const tuoiHopLe = [20, 25, 30, 35, 40, 45, 50, 55,60, 65, 70];
+
+      if (!tuoiHopLe.includes(tuoi)) {
+        alert("❌ Chỉ nhập số tuổi là 20, 25, 30,... đến 70.");
         return false;
       }
 
@@ -643,7 +645,7 @@ export function mountKhachHangSuggest(options = {}) {
 
       <div style="margin-bottom:16px;">
         <label>Tháng/Năm sinh</label>
-<input id="popup_thangsinh" style="width:100%;padding:9px;font-size:16px;" placeholder="Ví dụ: 30, 3/1979, 5-2002 hoặc 1974">
+<input id="popup_thangsinh" style="width:100%;padding:9px;font-size:12px;" placeholder="Ví dụ:20, 25, 30,... đến 70, 3/1979, 5-2002 hoặc 1974">
       </div>
 
       <div style="display:flex;gap:12px;justify-content:center;">
