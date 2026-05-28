@@ -80,6 +80,7 @@ const messageContainer = document.getElementById('messageContainer');
 const messageCount = document.getElementById('messageCount');
 let lastNotificationId = 0;
 let qlnvNotificationChannel = null;
+let loadTasksRunId = 0;
 
 const topAlertBadge =
   document.getElementById('topAlertBadge');
@@ -658,7 +659,7 @@ async function updateStaffStatus(staff, newStatus) {
   await loadAlerts(diadiem);
 }
 
-async function renderServingStaffAsDoing(diadiem) {
+async function renderServingStaffAsDoing(diadiem, runId) {
   const { data, error } = await supabase
     .schema('qlnv')
     .from('staff_status')
@@ -700,11 +701,20 @@ async function renderServingStaffAsDoing(diadiem) {
       </div>
     `;
 
+    if (runId !== loadTasksRunId) return;
+
+    if (doingContainer.querySelector(`[data-serving-manv="${manv}"]`)) {
+      continue;
+    }
+
+    div.dataset.servingManv = manv;
+
     doingContainer.appendChild(div);
   }
 }
 
 async function loadTasks(diadiem) {
+  const runId = ++loadTasksRunId;
   const { startIso, endIso } = getTodayRangeVN();
 
   const { data, error } = await supabase
@@ -725,7 +735,8 @@ async function loadTasks(diadiem) {
   doingContainer.innerHTML = '';
   if (pausedContainer) pausedContainer.innerHTML = '';
   doneContainer.innerHTML = '';
-  await renderServingStaffAsDoing(diadiem);
+  await renderServingStaffAsDoing(diadiem, runId);
+  if (runId !== loadTasksRunId) return;
 
   let pendingCount = 0;
   let doingCount = doingContainer.children.length;
