@@ -53,7 +53,11 @@ import "./stockQuickPopup.js";
         selectedMasp: "",
         dmMaspCache: new Map(),
         daKiemTra: false,
-        thoiDiemChotTon: null
+        thoiDiemChotTon: null,
+
+        // cache vị trí kho / bày mẫu theo mã
+        vitriCache: new Map(),
+        vitriDangTai: new Set()
     };
 
     let dangChonSizeTrongPopup = false;
@@ -677,6 +681,110 @@ import "./stockQuickPopup.js";
         return window.kiemTonState;
     }
 
+    function getPlaceholderVitriInfo() {
+        return {
+            kho: "-",
+            baymau: "-",
+            text: "- / -"
+        };
+    }
+
+    function chonThongTinVitriTheoCoSo(row) {
+        const branch = String(CFG.branch || "").trim().toLowerCase();
+
+        let kho = "";
+        let baymau = "";
+
+        if (branch === "cs1") {
+            kho = String(row?.vitrikho1 || "").trim();
+            baymau = String(row?.treomaucs1 || "").trim();
+        } else {
+            kho = String(row?.vitrikho2 || "").trim();
+            baymau = String(row?.treomaucs2 || "").trim();
+        }
+
+        if (!kho) kho = "-";
+        if (!baymau) baymau = "-";
+
+        return {
+            kho,
+            baymau,
+            text: `${kho} / ${baymau}`
+        };
+    }
+
+    async function napThongTinViTriTheoMasp(masp) {
+        const state = getState();
+        const m = normalizeMasp(masp);
+
+        if (!m) return getPlaceholderVitriInfo();
+
+        if (state.vitriCache instanceof Map && state.vitriCache.has(m)) {
+            return state.vitriCache.get(m);
+        }
+
+        if (state.vitriDangTai instanceof Set && state.vitriDangTai.has(m)) {
+            return getPlaceholderVitriInfo();
+        }
+
+        if (!window.supabase) {
+            return getPlaceholderVitriInfo();
+        }
+
+        state.vitriDangTai.add(m);
+
+        try {
+            const { data, error } = await window.supabase
+                .from("dmhanghoa")
+                .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2")
+                .eq("masp", m)
+                .maybeSingle();
+
+            if (error) {
+                console.error("[KTK] Lỗi lấy vị trí:", m, error);
+                const fallback = getPlaceholderVitriInfo();
+                state.vitriCache.set(m, fallback);
+                return fallback;
+            }
+
+            const info = chonThongTinVitriTheoCoSo(data || {});
+            state.vitriCache.set(m, info);
+            return info;
+        } catch (err) {
+            console.error("[KTK] Exception lấy vị trí:", m, err);
+            const fallback = getPlaceholderVitriInfo();
+            state.vitriCache.set(m, fallback);
+            return fallback;
+        } finally {
+            state.vitriDangTai.delete(m);
+
+            setTimeout(() => {
+                try {
+                    renderBangKetQua();
+                } catch (e) {
+                    console.error("[KTK] renderBangKetQua sau khi nạp vị trí lỗi:", e);
+                }
+            }, 0);
+        }
+    }
+
+    function layThongTinViTriTheoMaspTuCache(masp) {
+        const state = getState();
+        const m = normalizeMasp(masp);
+
+        if (!m) return getPlaceholderVitriInfo();
+
+        if (state.vitriCache instanceof Map && state.vitriCache.has(m)) {
+            return state.vitriCache.get(m);
+        }
+
+        napThongTinViTriTheoMasp(m).catch(err => {
+            console.error("[KTK] napThongTinViTriTheoMasp lỗi:", err);
+        });
+
+        return getPlaceholderVitriInfo();
+    }
+
     function isKiemMauMode() {
         return !!document.getElementById("chkKiemMau")?.checked;
     }
@@ -1288,10 +1396,19 @@ import "./stockQuickPopup.js";
                 tr.style.background = "#fcefdc"; // vàng cam nhạt
             }
 
+            const vitriInfo = layThongTinViTriTheoMaspTuCache(masp);
+
+            const maspHtml = `
+    <div>${maspHtml}</div>
+    <div style="margin-top:4px; color:#d00000; font-size:14px; font-weight:500; text-decoration:none; line-height:1.25;">
+        ${escapeHtml(vitriInfo.text)}
+    </div>
+`;
+
             tr.innerHTML = `
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
       style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
-    ${escapeHtml(masp)}
+    ${maspHtml}
   </td>
 
   <td contenteditable="true"
@@ -1897,7 +2014,11 @@ import "./stockQuickPopup.js";
             selectedMasp: "",
             dmMaspCache: oldState?.dmMaspCache instanceof Map ? oldState.dmMaspCache : new Map(),
             daKiemTra: false,
-            thoiDiemChotTon: null
+            thoiDiemChotTon: null,
+
+            // cache vị trí kho / bày mẫu theo mã
+            vitriCache: new Map(),
+            vitriDangTai: new Set()
         };
 
         dangChonSizeTrongPopup = false;
