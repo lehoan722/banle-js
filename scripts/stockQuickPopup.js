@@ -156,6 +156,16 @@
     font-weight: 600;
   }
 
+  .sq-stock-popup th.sq-ktk-open {
+  cursor: pointer;
+  text-decoration: underline;
+  color: #0b57d0;
+}
+
+.sq-stock-popup th.sq-ktk-open:hover {
+  background: #dbeafe !important;
+}
+
     /* Màu nền phân biệt tồn/bán theo từng cơ sở */
   .sq-stock-popup th.sq-col-k1,
   .sq-stock-popup td.sq-col-k1,
@@ -1394,8 +1404,8 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
                             <thead>
                 <tr>
                   <th>Size</th>
-                  <th class="sq-col-k1">tk1</th>
-                  <th class="sq-col-k2">tk2</th>
+                  <th class="sq-col-k1 sq-ktk-open" data-ktk-coso="cs1" title="Bấm để kiểm tồn nhanh CS1">tk1</th>
+<th class="sq-col-k2 sq-ktk-open" data-ktk-coso="cs2" title="Bấm để kiểm tồn nhanh CS2">tk2</th>
                   <th class="sq-col-b1">B1</th>
                   <th class="sq-col-b2">B2</th>
                   <th class="sq-blue">Tnhập</th>
@@ -1420,6 +1430,44 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       p.classList.remove("show");
     });
   }
+
+  function openKiemTonNhanhFromPopup(maspRaw, cosoRaw) {
+  const masp = String(maspRaw || "").trim().toUpperCase();
+  const coso = String(cosoRaw || "").trim().toLowerCase();
+
+  if (!masp) return;
+
+  const page =
+    coso === "cs2"
+      ? "kiem_tonkho_cs2.html"
+      : "kiem_tonkho_cs1.html";
+
+  const url =
+    "https://app.hoantuyet.vn/" +
+    page +
+    "?masp=" +
+    encodeURIComponent(masp) +
+    "&from=stockquick";
+
+  window.open(url, "_blank");
+}
+
+function bindKiemTonHeaderActions(popup) {
+  if (!popup) return;
+
+  popup.querySelectorAll(".sq-ktk-open[data-ktk-coso]").forEach((th) => {
+    th.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      const masp = String(popup.dataset.masp || "").trim().toUpperCase();
+      const coso = String(th.dataset.ktkCoso || "").trim().toLowerCase();
+
+      openKiemTonNhanhFromPopup(masp, coso);
+    });
+  });
+}
 
   function bindColorLinks(popup) {
 
@@ -1928,6 +1976,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
     // bind click màu khác để mở lại toàn bộ popup theo mã màu đó
     bindColorLinks(popup);
+    bindKiemTonHeaderActions(popup);
 
     // bind click dòng size mở sản phẩm cùng nhóm
     bindOpenSimilarRows(popup);
