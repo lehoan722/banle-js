@@ -28,7 +28,7 @@ let previousWorkStatusBeforeServing = null;
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.552722, lng: 105.842583 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
-const MAX_DISTANCE_M = 170000;                // bán kính cho phép (m)
+const MAX_DISTANCE_M = 1700000;                // bán kính cho phép (m)
 const AUTO_CHECK_INTERVAL_MS = 1000000;     // 3 phút
 const BUTTON_LOCK_MS = 5 * 60 * 1000;      // 5 phút khoá nút sau khi bấm
 
@@ -1463,91 +1463,6 @@ async function loadMyCurrentTask({ manv, diadiem }) {
     renderMyTask();
 }
 
-function setBtnVisible(btn, visible) {
-    if (!btn) return;
-    btn.style.display = visible ? "" : "none";
-}
-
-function setBtnDisabled(btn, disabled) {
-    if (!btn) return;
-    btn.disabled = !!disabled;
-    btn.style.opacity = disabled ? "0.45" : "1";
-}
-
-function isServingNow() {
-    return currentWorkStatus === "serving_customer";
-}
-
-function isOffNow() {
-    return currentWorkStatus === "off" || currentWorkStatus === "break";
-}
-
-function hasNormalTaskRunning() {
-    return currentNormalTask && currentNormalTask.status === "in_progress";
-}
-
-function hasUnplannedTaskRunning() {
-    return currentUnplannedTask && currentUnplannedTask.status === "in_progress";
-}
-
-function syncWorkButtonsUI() {
-    const btnWorkFree = document.getElementById("btn-work-free");
-    const btnWorkServing = document.getElementById("btn-work-serving");
-    const btnWorkCleanup = document.getElementById("btn-work-cleanup");
-    const btnWorkOff = document.getElementById("btn-work-off");
-
-    const btnMyTaskStart = document.getElementById("btn-my-task-start");
-    const btnMyTaskDone = document.getElementById("btn-my-task-done");
-    const btnMyTaskResume = document.getElementById("btn-my-task-resume");
-
-    const btnUnplannedStart = document.getElementById("btn-unplanned-start");
-    const btnUnplannedDone = document.getElementById("btn-unplanned-done");
-
-    if (btnWorkCleanup) btnWorkCleanup.textContent = "Kết thúc bán";
-    if (btnMyTaskStart) btnMyTaskStart.textContent = "Bắt đầu VDG";
-    if (btnMyTaskDone) btnMyTaskDone.textContent = "Hoàn thành VDG";
-    if (btnMyTaskResume) btnMyTaskResume.style.display = "none";
-
-    // Sắp xếp nút trạng thái
-    if (btnWorkServing) btnWorkServing.style.order = "1";
-    if (btnWorkCleanup) btnWorkCleanup.style.order = "2";
-    if (btnWorkFree) btnWorkFree.style.order = "3";
-    if (btnWorkOff) btnWorkOff.style.order = "4";
-
-    const serving = isServingNow();
-
-    // Khi đang bán: ẩn toàn bộ nút task
-    setBtnVisible(btnMyTaskStart, !serving);
-    setBtnVisible(btnMyTaskDone, !serving);
-    setBtnVisible(btnUnplannedStart, !serving);
-    setBtnVisible(btnUnplannedDone, !serving);
-
-    // Nút kết thúc bán chỉ hiện khi đang bán
-    setBtnDisabled(btnWorkCleanup, !serving);
-
-    // Nút khách vào chỉ bấm khi chưa bán
-    setBtnDisabled(btnWorkServing, serving || isOffNow());
-
-    // Việc bất thường
-    setBtnDisabled(btnUnplannedStart, serving || hasUnplannedTaskRunning());
-    setBtnDisabled(btnUnplannedDone, serving || !hasUnplannedTaskRunning());
-
-    // Việc được giao
-    if (!currentNormalTask) {
-        setBtnDisabled(btnMyTaskStart, true);
-        setBtnDisabled(btnMyTaskDone, true);
-    } else {
-        setBtnDisabled(
-            btnMyTaskStart,
-            serving || currentNormalTask.status !== "pending"
-        );
-
-        setBtnDisabled(
-            btnMyTaskDone,
-            serving || currentNormalTask.status !== "in_progress"
-        );
-    }
-}
 
 function getRemainingSeconds(startAt, sec = 60) {
     if (!startAt) return sec;
@@ -1591,13 +1506,19 @@ function syncStateButtonsUI() {
     });
 
     if (currentMainState === "serving") {
+
         if (btnServing) btnServing.style.display = "none";
+
         if (btnTaskStart) btnTaskStart.style.display = "none";
         if (btnTaskDone) btnTaskDone.style.display = "none";
+
         if (btnUnplannedStart) btnUnplannedStart.style.display = "none";
         if (btnUnplannedDone) btnUnplannedDone.style.display = "none";
+
         if (btnFree) btnFree.style.display = "none";
+
         if (btnOff) btnOff.style.display = "none";
+
         return;
     }
 
