@@ -24,6 +24,8 @@ let qlnvNotificationChannel = null;
 let lastChamCongNotificationId = 0;
 let currentWorkStatus = "unknown";
 let previousWorkStatusBeforeServing = null;
+let servingStartedAt = null;
+let servingTimerInterval = null;
 
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.552722, lng: 105.842583 };
@@ -1435,7 +1437,53 @@ function renderWorkStatusText(status) {
         off: "Đã tan ca / không nhận việc"
     };
 
-    el.textContent = map[status] || status || "Chưa xác định";
+    el.innerHTML = `
+        ${map[status] || status || "Chưa xác định"}
+        ${status === "serving_customer" ? ` - <span id="serving-timer">00:00:00</span>` : ""}
+    `;
+
+    if (status === "serving_customer") {
+        startServingTimer();
+    } else {
+        stopServingTimer();
+    }
+}
+
+function startServingTimer() {
+    const el = document.getElementById("serving-timer");
+    if (!el) return;
+
+    if (!servingStartedAt) {
+        servingStartedAt = new Date().toISOString();
+    }
+
+    if (servingTimerInterval) {
+        clearInterval(servingTimerInterval);
+    }
+
+    function update() {
+        const diff = Math.max(
+            0,
+            Math.floor((Date.now() - new Date(servingStartedAt).getTime()) / 1000)
+        );
+
+        const h = String(Math.floor(diff / 3600)).padStart(2, "0");
+        const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+        const s = String(diff % 60).padStart(2, "0");
+
+        el.textContent = `${h}:${m}:${s}`;
+    }
+
+    update();
+    servingTimerInterval = setInterval(update, 1000);
+}
+
+function stopServingTimer() {
+    if (servingTimerInterval) {
+        clearInterval(servingTimerInterval);
+        servingTimerInterval = null;
+    }
+    servingStartedAt = null;
 }
 
 async function loadMyCurrentTask({ manv, diadiem }) {
@@ -2293,6 +2341,7 @@ function attachChamCongButtons(diadiem) {
 
         currentMainState = "serving";
         currentWorkStatus = "serving_customer";
+        servingStartedAt = new Date().toISOString();
 
         syncStateButtonsUI();
 
@@ -2322,6 +2371,7 @@ function attachChamCongButtons(diadiem) {
 
     btnWorkCleanup?.addEventListener("click", async () => {
         currentWorkStatus = "free";
+        stopServingTimer();
         await loadMyCurrentTask({ manv, diadiem });
 
         let taskToResume = null;
