@@ -1424,9 +1424,9 @@ import "./stockQuickPopup.js";
   <td data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapTongGroup?.items || []) || ""}</td>
 
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
-    style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
-  ${maspHtml}
-</td>
+      style="cursor:pointer; color:#0b57d0; font-weight:600; text-decoration:underline;">
+    ${escapeHtml(masp)}
+  </td>
 
   <td style="white-space: pre-line; text-align:left;">${escapeHtml(xuatText)}</td>
   <td>${tongSoLuong(xuatGroup?.items || []) || ""}</td>
@@ -1482,7 +1482,7 @@ import "./stockQuickPopup.js";
             const tdKho = tr.querySelector(".cell-nhap-sizesl");
             const tdBayMau = tr.querySelector(".cell-baymau-sizesl");
 
-            const masp = normalizeMasp(tdMasp?.innerText || "");
+            const masp = normalizeMasp(tdMasp?.dataset?.masp || "");
             if (!masp) return;
 
             if (!nhapOrderMoi.includes(masp)) {
