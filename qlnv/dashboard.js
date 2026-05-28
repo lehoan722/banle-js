@@ -3,7 +3,7 @@ import {
   getSupabaseClient,
   getCurrentUserInfo,
   dangXuatDungChung
-} from "../scripts/authModule.js";
+} from "../scripts/authModule.js"; 
 
 import {
   playAlertBeep,
