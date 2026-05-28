@@ -3993,6 +3993,46 @@ import "./stockQuickPopup.js";
     // =========================
     // INIT
     // =========================
+
+    function getMaspTuStockQuickUrl() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            return normalizeMasp(params.get("masp") || "");
+        } catch (e) {
+            return "";
+        }
+    }
+
+    function apDungMaspTuStockQuickUrl() {
+        const masp = getMaspTuStockQuickUrl();
+        if (!masp) return;
+
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
+
+        if (maspEl) {
+            maspEl.value = masp;
+        }
+
+        if (slEl && !normalizeNumber(slEl.value)) {
+            slEl.value = "1";
+        }
+
+        if (sizeEl) {
+            sizeEl.value = "";
+        }
+
+        setTimeout(() => {
+            if (maspEl) {
+                maspEl.focus();
+                try {
+                    maspEl.select();
+                } catch (e) { }
+            }
+        }, 200);
+    }
+
     async function init() {
         updateTitle();
         setDefaultBranchInfo();
@@ -4004,7 +4044,12 @@ import "./stockQuickPopup.js";
         setupBeepUnlockOnce(document);
 
         await resetPhieu();
-        focusNhapMasp(true);
+
+        apDungMaspTuStockQuickUrl();
+
+        if (!getMaspTuStockQuickUrl()) {
+            focusNhapMasp(true);
+        }
 
         console.log("[nhapkiemkho] init OK", CFG);
     }
