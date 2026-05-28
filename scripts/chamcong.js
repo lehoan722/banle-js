@@ -2333,6 +2333,14 @@ function attachChamCongButtons(diadiem) {
             });
 
             renderWorkStatusText("doing_task");
+            await notifyAdminAndLocal({
+                diadiem,
+                manv,
+                title: "Kết thúc bán",
+                body: `${manv} kết thúc bán và quay lại ${nextState === "unplanned" ? "việc bất thường" : "việc được giao"}`,
+                type: "staff_end_sale_resume_task",
+                refType: "staff_status"
+            });
         } else {
             currentMainState = "free";
 
@@ -2344,6 +2352,14 @@ function attachChamCongButtons(diadiem) {
             });
 
             renderWorkStatusText("free");
+            await notifyAdminAndLocal({
+                diadiem,
+                manv,
+                title: "Kết thúc bán",
+                body: `${manv} kết thúc bán và chuyển về trạng thái rảnh`,
+                type: "staff_end_sale_free",
+                refType: "staff_status"
+            });
         }
 
         previousMainStateBeforeServing = null;
