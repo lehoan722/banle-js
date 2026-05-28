@@ -1564,8 +1564,14 @@ function syncStateButtonsUI() {
         if (btnUnplannedDone) btnUnplannedDone.style.display = "none";
 
         if (btnFree) btnFree.style.display = "none";
-
         if (btnOff) btnOff.style.display = "none";
+
+        if (btnCleanup) {
+            btnCleanup.style.display = "";
+            btnCleanup.disabled = false;
+            btnCleanup.style.opacity = "1";
+            btnCleanup.textContent = "Kết thúc bán";
+        }
 
         return;
     }
