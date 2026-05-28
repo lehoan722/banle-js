@@ -1484,6 +1484,14 @@ async function loadMyCurrentTask({ manv, diadiem }) {
 }
 
 function syncMainStateFromLoadedTasks() {
+    // ƯU TIÊN CAO NHẤT: đang phục vụ khách
+    // Khi đã bấm Khách vào thì mọi task phải ẩn,
+    // chỉ còn Khách vào + Kết thúc bán.
+    if (currentWorkStatus === "serving_customer") {
+        currentMainState = "serving";
+        return;
+    }
+
     if (currentUnplannedTask && currentUnplannedTask.status === "in_progress") {
         currentMainState = "unplanned";
         unplannedTaskStartedAt =
@@ -1499,11 +1507,6 @@ function syncMainStateFromLoadedTasks() {
             currentNormalTask.started_at ||
             normalTaskStartedAt ||
             new Date().toISOString();
-        return;
-    }
-
-    if (currentWorkStatus === "serving_customer") {
-        currentMainState = "serving";
         return;
     }
 
@@ -2289,6 +2292,7 @@ function attachChamCongButtons(diadiem) {
         await pauseCurrentTaskIfDoing();
 
         currentMainState = "serving";
+        currentWorkStatus = "serving_customer";
 
         syncStateButtonsUI();
 
@@ -2317,7 +2321,7 @@ function attachChamCongButtons(diadiem) {
     });
 
     btnWorkCleanup?.addEventListener("click", async () => {
-
+        currentWorkStatus = "free";
         await loadMyCurrentTask({ manv, diadiem });
 
         let taskToResume = null;
