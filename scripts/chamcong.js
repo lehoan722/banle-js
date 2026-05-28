@@ -2300,45 +2300,41 @@ function attachChamCongButtons(diadiem) {
 
     btnWorkCleanup?.addEventListener("click", async () => {
 
-        if (previousMainStateBeforeServing === "unplanned") {
+        await loadMyCurrentTask({ manv, diadiem });
 
-            currentMainState = "unplanned";
+        let taskToResume = null;
+        let nextState = "free";
+        let lastAction = "Kết thúc bán";
 
-            await resumeCurrentTaskIfPaused();
+        if (currentUnplannedTask && currentUnplannedTask.status === "in_progress") {
+            taskToResume = currentUnplannedTask;
+            nextState = "unplanned";
+            lastAction = "Quay lại việc bất thường";
+        } else if (currentNormalTask && currentNormalTask.status === "in_progress") {
+            taskToResume = currentNormalTask;
+            nextState = "task";
+            lastAction = "Quay lại VDG";
+        }
 
-            renderWorkStatusText("doing_task");
+        if (taskToResume) {
+            currentAssignedTask = taskToResume;
+            currentMainState = nextState;
+
+            if (taskToResume.paused_at) {
+                await resumeCurrentTaskIfPaused();
+            }
 
             await updateQlnvStaffStatus({
                 manv,
                 diadiem,
                 status: "doing_task",
-                lastAction: "Quay lại việc bất thường"
+                lastAction,
+                currentTaskId: taskToResume.id
             });
-
-        }
-
-        else if (previousMainStateBeforeServing === "task") {
-
-            currentMainState = "task";
-
-            await resumeCurrentTaskIfPaused();
 
             renderWorkStatusText("doing_task");
-
-            await updateQlnvStaffStatus({
-                manv,
-                diadiem,
-                status: "doing_task",
-                lastAction: "Quay lại VDG"
-            });
-
-        }
-
-        else {
-
+        } else {
             currentMainState = "free";
-
-            renderWorkStatusText("free");
 
             await updateQlnvStaffStatus({
                 manv,
@@ -2347,7 +2343,10 @@ function attachChamCongButtons(diadiem) {
                 lastAction: "Kết thúc bán"
             });
 
+            renderWorkStatusText("free");
         }
+
+        previousMainStateBeforeServing = null;
 
         await loadMyCurrentTask({ manv, diadiem });
         syncStateButtonsUI();
