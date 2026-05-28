@@ -161,9 +161,11 @@
         </div>
 
         <div class="btn-grid">
-          <button id="btn-my-task-start" class="primary">Bắt đầu task</button>
-          <button id="btn-my-task-resume" class="primary">Làm tiếp task</button>
-          <button id="btn-my-task-done" class="primary">Hoàn thành task</button>
+          <div class="btn-grid">
+            <button id="btn-my-task-start" class="primary">Bắt đầu VDG</button>
+            <button id="btn-my-task-done" class="primary">Hoàn thành VDG</button>
+            <button id="btn-my-task-resume" class="primary" style="display:none;">Làm tiếp task</button>
+          </div>
         </div>
       </div>
       <div class="status">
@@ -172,10 +174,12 @@
       </div>
 
       <div class="btn-grid">
-        <button id="btn-work-free" class="primary">Rảnh</button>
-        <button id="btn-work-serving" class="warn">Khách vào</button>
-        <button id="btn-work-cleanup" class="warn">Dọn dẹp sau bán</button>
-        <button id="btn-work-off" class="danger">Ngừng nhận việc</button>
+        <div class="btn-grid">
+          <button id="btn-work-serving" class="warn">Khách vào</button>
+          <button id="btn-work-cleanup" class="warn">Kết thúc bán</button>
+          <button id="btn-work-free" class="primary">Rảnh</button>
+          <button id="btn-work-off" class="danger">Ngừng nhận việc</button>
+        </div>
       </div>
     </div>
 
@@ -208,7 +212,7 @@
     </div>
   </div>
 
-  <script type="module" src="/scripts/chamcong.js?v=20260523_02"></script>
+  <script type="module" src="/scripts/chamcong.js?v=20260528_01"></script>
 
   <script>
     if ("serviceWorker" in navigator) {
