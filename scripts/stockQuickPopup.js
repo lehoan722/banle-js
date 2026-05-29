@@ -1012,7 +1012,7 @@ data-color-masp="${targetMasp}"
           ? `
     <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
       <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm</button>
-      <span class="sq-vitri-label">Nhóm hàng:</span>
+      <span class="sq-vitri-label"></span>
       <input
         type="text"
         class="sq-vitri-input"
