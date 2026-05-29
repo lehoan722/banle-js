@@ -438,15 +438,23 @@ function renderTable(hotData) {
             if (!event || coords.row < 0) return;
 
             const prop = this.colToProp(coords.col);
-            const rowData = this.getSourceDataAtRow(coords.row);
+
+            // Lấy dữ liệu theo dòng ĐANG HIỂN THỊ sau khi sort/filter
+            const rowData = this.getDataAtRow(coords.row);
             if (!rowData) return;
+
+            // Hàm lấy giá trị theo tên cột từ dòng đang hiển thị
+            const getValueByProp = (propName) => {
+                const colIndex = this.propToCol(propName);
+                return colIndex >= 0 ? rowData[colIndex] : "";
+            };
 
             // Click vào Mã SP => mở popup tồn kho nhanh
             if (prop === "masp") {
                 event.preventDefault();
                 event.stopPropagation();
 
-                const masp = String(rowData.masp || "").trim().toUpperCase();
+                const masp = String(getValueByProp("masp") || "").trim().toUpperCase();
                 if (!masp) return;
 
                 if (window.StockQuick && typeof window.StockQuick.showFor === "function") {
@@ -462,8 +470,9 @@ function renderTable(hotData) {
 
             // Double click vào Số HĐ => mở hóa đơn
             if (event.detail === 2 && prop === "sohd") {
-                if (!rowData.sohd) return;
-                openInvoiceFromRow(rowData);
+                const sourceRow = this.getSourceDataAtRow(this.toPhysicalRow(coords.row));
+                if (!sourceRow?.sohd) return;
+                openInvoiceFromRow(sourceRow);
             }
         }
     });
