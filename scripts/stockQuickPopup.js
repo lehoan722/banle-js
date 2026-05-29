@@ -1563,14 +1563,21 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     `;
 
     overlay.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
       if (
         e.target.classList.contains("sq-image-fullscreen") ||
         e.target.classList.contains("sq-image-fullscreen-close") ||
         e.target.tagName === "IMG"
       ) {
         overlay.remove();
+
+        // chống click đóng ảnh làm đóng luôn popup tồn kho
+        lastStockQuickOpenAt = Date.now();
       }
-    });
+    }, true);
 
     document.body.appendChild(overlay);
   }
