@@ -102,7 +102,7 @@
     position: fixed;
     min-width: 260px;
     max-width: 900px;              /* PC: đủ chỗ cho bảng + ảnh */
-    max-height: 600px;
+    max-height: 88vh;
     background: rgba(255,255,255,0.98);
     border-radius: 8px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);
@@ -112,7 +112,8 @@
     line-height: 1.35;
     z-index: 9999;
     display: none;
-    overflow: visible;
+    overflow-y: auto;
+    overflow-x: hidden;
     top: 8px;
     right: 8px;
     left: auto;
@@ -321,10 +322,10 @@
   .sq-vitri-action-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
-    margin: 6px 0;
-    font-size: 16px;
+    margin: 4px 0;
+    font-size: 15px;
     color: #111827;
   }
 
@@ -365,8 +366,8 @@
   .sq-vitri-input {
     min-width: 150px;
     max-width: 220px;
-    padding: 4px 8px;
-    font-size: 16px;
+    padding: 3px 7px;
+    font-size: 15px;
     border: 1px solid #d1d5db;
     border-radius: 6px;
     outline: none;
@@ -428,10 +429,11 @@
   .sq-baymau-info-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: -2px 0 4px 38px;
-  font-size: 16px;
+  gap: 6px;
+  margin: -3px 0 2px 42px;
+  font-size: 15px;
   color: #111827;
+  line-height: 1.15;
 }
 
 .sq-baymau-check {
