@@ -2541,6 +2541,32 @@ Shop chân thành cảm ơn!`;
         }
     </script>
 
+    <script>
+        // bôi đèn dữ liệu ô mã sản phẩm
+        document.addEventListener("DOMContentLoaded", () => {
+            const maspEl = document.getElementById("masp");
+            if (!maspEl) return;
+
+            maspEl.addEventListener("focus", () => {
+                setTimeout(() => {
+                    maspEl.select();
+                }, 0);
+            });
+
+            maspEl.addEventListener("click", () => {
+                setTimeout(() => {
+                    maspEl.select();
+                }, 0);
+            });
+
+            maspEl.addEventListener("touchend", () => {
+                setTimeout(() => {
+                    maspEl.select();
+                }, 80);
+            });
+        });
+    </script>
+
 </body>
 
 </html>
