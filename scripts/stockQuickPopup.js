@@ -4,6 +4,46 @@
 
 (function () {
   // ===== HÀM LẤY SUPABASE GLOBAL AN TOÀN =====
+
+  // ===== TỰ ĐỘNG LOAD MODULE PHỤ BÀY MẪU =====
+  let stockQuickBayMauLoadPromise = null;
+
+  function loadStockQuickBayMauModule() {
+    if (window.StockQuickBayMau) return Promise.resolve(true);
+    if (stockQuickBayMauLoadPromise) return stockQuickBayMauLoadPromise;
+
+    stockQuickBayMauLoadPromise = new Promise((resolve) => {
+      const existed = document.querySelector('script[data-stockquick-baymau="1"]');
+      if (existed) {
+        setTimeout(() => resolve(!!window.StockQuickBayMau), 500);
+        return;
+      }
+
+      const s = document.createElement("script");
+      s.src = "scripts/stockQuickPopupbaymau.js?v=1";
+      s.dataset.stockquickBaymau = "1";
+      s.onload = () => resolve(true);
+      s.onerror = () => {
+        console.warn("[StockQuickPopup] Không tải được stockQuickPopupbaymau.js");
+        resolve(false);
+      };
+      document.head.appendChild(s);
+    });
+
+    return stockQuickBayMauLoadPromise;
+  }
+
+  async function attachStockQuickBayMau(popup) {
+    try {
+      await loadStockQuickBayMauModule();
+      if (window.StockQuickBayMau?.attach) {
+        window.StockQuickBayMau.attach(popup);
+      }
+    } catch (err) {
+      console.warn("[StockQuickPopup] Lỗi gọi StockQuickBayMau:", err);
+    }
+  }
+
   function getSupabaseClient() {
     if (typeof window === "undefined") return null;
     const client = window.supabase;
@@ -384,6 +424,26 @@
     object-fit: contain;
     display: block;
   }
+
+  .sq-baymau-info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 0 4px 38px;
+  font-size: 16px;
+  color: #111827;
+}
+
+.sq-baymau-check {
+  width: 18px;
+  height: 18px;
+}
+
+.sq-baymau-msg {
+  font-size: 13px;
+  color: #15803d;
+  font-weight: 700;
+}
 
   /* ===== Layout cho ĐIỆN THOẠI DỌC ===== */
    @media (max-width: 800px) and (orientation: portrait) {
@@ -1977,6 +2037,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     // bind click màu khác để mở lại toàn bộ popup theo mã màu đó
     bindColorLinks(popup);
     bindKiemTonHeaderActions(popup);
+
+    // tự động gọi module phụ bày mẫu
+    attachStockQuickBayMau(popup);
 
     // bind click dòng size mở sản phẩm cùng nhóm
     bindOpenSimilarRows(popup);
