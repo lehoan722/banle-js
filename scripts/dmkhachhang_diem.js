@@ -130,6 +130,8 @@ export function mountKhachHangSuggest(options = {}) {
       text.style.color = checked ? "#16a34a" : "#666";
       text.style.fontWeight = checked ? "bold" : "normal";
     }
+
+    capNhatTrangThaiDiemTheoKhach();
   }
 
   function setZaloInvitedUI(checked, readonly = false) {
@@ -276,6 +278,35 @@ export function mountKhachHangSuggest(options = {}) {
     suggestBox.style.display = "none";
   }
 
+  function daVaoNhomZalo() {
+    return !!getEl("zalo_da_vao_nhom")?.checked;
+  }
+
+  function khoaDiemChuaVaoNhomZalo() {
+    const diemTruEl = getEl(diemTruInputId);
+    const tienGiamEl = getEl(tienDoiDiemInputId);
+
+    setVal(diemTruInputId, "0");
+    setVal(tienDoiDiemInputId, "0");
+    setVal("km_diem_hienthi", "0");
+
+    if (diemTruEl) {
+      diemTruEl.value = "0";
+      diemTruEl.readOnly = true;
+      diemTruEl.disabled = false;
+      diemTruEl.style.background = "#e5e5e5";
+      diemTruEl.title = "Khách chưa vào nhóm khuyến mãi Zalo nên chưa được sử dụng điểm";
+    }
+
+    if (tienGiamEl) {
+      tienGiamEl.value = "0";
+      tienGiamEl.readOnly = true;
+      tienGiamEl.disabled = false;
+      tienGiamEl.style.background = "#e5e5e5";
+      tienGiamEl.title = "Khách chưa vào nhóm khuyến mãi Zalo nên chưa được sử dụng điểm";
+    }
+  }
+
   function moKhoaDiemKhachThuong() {
     const diemTruEl = getEl(diemTruInputId);
     const tienGiamEl = getEl(tienDoiDiemInputId);
@@ -303,9 +334,15 @@ export function mountKhachHangSuggest(options = {}) {
   function capNhatTrangThaiDiemTheoKhach() {
     if (laKhachLe()) {
       khoaDiemKhachLe();
-    } else {
-      moKhoaDiemKhachThuong();
+      return;
     }
+
+    if (!daVaoNhomZalo()) {
+      khoaDiemChuaVaoNhomZalo();
+      return;
+    }
+
+    moKhoaDiemKhachThuong();
   }
 
   function parseMoneyValue(val) {
@@ -546,68 +583,68 @@ export function mountKhachHangSuggest(options = {}) {
   }
 
   function chuanHoaThangNamSinh(raw) {
-  let s = String(raw || "").trim().toLowerCase();
-  if (!s) return { thangsinh: null, namsinh: null };
+    let s = String(raw || "").trim().toLowerCase();
+    if (!s) return { thangsinh: null, namsinh: null };
 
-  const namHienTai = new Date().getFullYear();
+    const namHienTai = new Date().getFullYear();
 
-  // Cách 1: nhập 2 chữ số = tuổi
-  // Ví dụ: 30 => năm sinh = năm hiện tại - 30
-  let m = s.match(/^(\d{2})$/);
-  if (m) {
-    const tuoi = Number(m[1]);
+    // Cách 1: nhập 2 chữ số = tuổi
+    // Ví dụ: 30 => năm sinh = năm hiện tại - 30
+    let m = s.match(/^(\d{2})$/);
+    if (m) {
+      const tuoi = Number(m[1]);
 
-    if (tuoi < 10 || tuoi > 90) {
-      alert("❌ Tuổi chỉ nhận từ 10 đến 90.");
-      return false;
+      if (tuoi < 10 || tuoi > 90) {
+        alert("❌ Tuổi chỉ nhận từ 10 đến 90.");
+        return false;
+      }
+
+      return {
+        thangsinh: null,
+        namsinh: namHienTai - tuoi
+      };
     }
 
-    return {
-      thangsinh: null,
-      namsinh: namHienTai - tuoi
-    };
+    // Cách 2: nhập tháng/năm sinh đầy đủ
+    // Ví dụ: 3/1979, 05-2002
+    m = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
+    if (m) {
+      const thangsinh = Number(m[1]);
+      const namsinh = Number(m[2]);
+
+      if (thangsinh < 1 || thangsinh > 12) {
+        alert("❌ Tháng sinh không hợp lệ. Chỉ nhập từ 1 đến 12.");
+        return false;
+      }
+
+      if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
+        alert("❌ Năm sinh không hợp lệ.");
+        return false;
+      }
+
+      return { thangsinh, namsinh };
+    }
+
+    // Cách 3: nhập năm sinh đầy đủ 4 chữ số
+    // Ví dụ: 1974, 2000
+    m = s.match(/^(\d{4})$/);
+    if (m) {
+      const namsinh = Number(m[1]);
+
+      if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
+        alert("❌ Năm sinh không hợp lệ.");
+        return false;
+      }
+
+      return {
+        thangsinh: null,
+        namsinh
+      };
+    }
+
+    alert("❌ Dữ liệu sinh không hợp lệ. Chỉ nhập tuổi 2 số, ví dụ 30; hoặc tháng/năm như 3/1979; hoặc năm sinh như 1974.");
+    return false;
   }
-
-  // Cách 2: nhập tháng/năm sinh đầy đủ
-  // Ví dụ: 3/1979, 05-2002
-  m = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
-  if (m) {
-    const thangsinh = Number(m[1]);
-    const namsinh = Number(m[2]);
-
-    if (thangsinh < 1 || thangsinh > 12) {
-      alert("❌ Tháng sinh không hợp lệ. Chỉ nhập từ 1 đến 12.");
-      return false;
-    }
-
-    if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
-      alert("❌ Năm sinh không hợp lệ.");
-      return false;
-    }
-
-    return { thangsinh, namsinh };
-  }
-
-  // Cách 3: nhập năm sinh đầy đủ 4 chữ số
-  // Ví dụ: 1974, 2000
-  m = s.match(/^(\d{4})$/);
-  if (m) {
-    const namsinh = Number(m[1]);
-
-    if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
-      alert("❌ Năm sinh không hợp lệ.");
-      return false;
-    }
-
-    return {
-      thangsinh: null,
-      namsinh
-    };
-  }
-
-  alert("❌ Dữ liệu sinh không hợp lệ. Chỉ nhập tuổi 2 số, ví dụ 30; hoặc tháng/năm như 3/1979; hoặc năm sinh như 1974.");
-  return false;
-}
 
   function damBaoPopupKhachMoi() {
     if (document.getElementById("popupKhachMoiBanLe")) return;
@@ -967,6 +1004,11 @@ export function mountKhachHangSuggest(options = {}) {
         khoaDiemKhachLe();
         return;
       }
+
+      if (!daVaoNhomZalo()) {
+        khoaDiemChuaVaoNhomZalo();
+        return;
+      }
       let raw = String(diemTruEl.value || "").trim();
 
       if (raw === "") {
@@ -1070,10 +1112,14 @@ export function mountKhachHangSuggest(options = {}) {
     zaloCb?.addEventListener("change", async () => {
       const makh = chuanHoaMakhNhap(makhInput.value);
 
-      await luuTrangThaiZaloDaVaoNhom(
+      const ok = await luuTrangThaiZaloDaVaoNhom(
         makh,
         zaloCb.checked
       );
+
+      if (ok) {
+        capNhatTrangThaiDiemTheoKhach();
+      }
     });
     makhInput.addEventListener("input", () => {
       const maMoi = chuanHoaMakhNhap(makhInput.value);
