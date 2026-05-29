@@ -6,6 +6,15 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>BAN LE cs1</title>
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0078d7">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Bán lẻ CS1">
+
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -2521,6 +2530,16 @@ Shop chân thành cảm ơn!`;
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
     <script src="scripts/stockQuickSimilar.js"></script>
+
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => {
+                navigator.serviceWorker.register("/sw.js")
+                    .then(() => console.log("Service Worker registered for banlemtcs1"))
+                    .catch(err => console.error("SW error:", err));
+            });
+        }
+    </script>
 
 </body>
 
