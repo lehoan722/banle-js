@@ -128,6 +128,38 @@
   cursor: default;
 }
 
+.sq-img-wrapper img {
+  cursor: zoom-in;
+}
+
+.sq-image-fullscreen {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.sq-image-fullscreen img {
+  max-width: 96vw;
+  max-height: 96vh;
+  object-fit: contain;
+  cursor: zoom-out;
+}
+
+.sq-image-fullscreen-close {
+  position: fixed;
+  top: 12px;
+  right: 18px;
+  color: #fff;
+  font-size: 34px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .sq-title-price {
   color: #dc2626;
   font-weight: 700;
@@ -1518,6 +1550,31 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       </div>`;
   }
 
+  function openFullSizeImage(imgSrc, altText = "") {
+    if (!imgSrc) return;
+
+    document.querySelectorAll(".sq-image-fullscreen").forEach(el => el.remove());
+
+    const overlay = document.createElement("div");
+    overlay.className = "sq-image-fullscreen";
+    overlay.innerHTML = `
+      <span class="sq-image-fullscreen-close">×</span>
+      <img src="${imgSrc}" alt="${altText}">
+    `;
+
+    overlay.addEventListener("click", function (e) {
+      if (
+        e.target.classList.contains("sq-image-fullscreen") ||
+        e.target.classList.contains("sq-image-fullscreen-close") ||
+        e.target.tagName === "IMG"
+      ) {
+        overlay.remove();
+      }
+    });
+
+    document.body.appendChild(overlay);
+  }
+
   function hideAllPopups() {
     document.querySelectorAll(".sq-stock-popup.show").forEach((p) => {
       p.classList.remove("show");
@@ -2115,6 +2172,16 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
         const masp = titleMaspEl.dataset.masp || popup.dataset.masp || "";
         await openCcnPageFromTitleMasp(masp);
+      });
+    }
+
+    const productImg = popup.querySelector(".sq-img-wrapper img");
+    if (productImg) {
+      productImg.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        openFullSizeImage(productImg.src, productImg.alt || popup.dataset.masp || "");
       });
     }
 
