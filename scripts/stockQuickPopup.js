@@ -447,6 +447,17 @@
   font-weight: 700;
 }
 
+.sq-title-masp {
+  cursor: pointer;
+  color: #111827;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.sq-title-masp:hover {
+  color: #dc2626;
+}
+
   /* ===== Layout cho ĐIỆN THOẠI DỌC ===== */
    @media (max-width: 800px) and (orientation: portrait) {
     .sq-stock-popup {
@@ -715,6 +726,26 @@ data-color-masp="${targetMasp}"
     } catch (e) {
       return false;
     }
+  }
+
+  async function openCcnPageFromTitleMasp(maspRaw) {
+    const masp = String(maspRaw || "").trim().toUpperCase();
+    if (!masp) return;
+
+    await copyTextToClipboard(masp);
+
+    const coso = String(
+      sessionStorage.getItem("diadiem") ||
+      localStorage.getItem("diadiem") ||
+      window.diadiem ||
+      ""
+    ).trim().toLowerCase();
+
+    const url = coso === "cs2"
+      ? "https://app.hoantuyet.vn/ccn2v1cs2.html"
+      : "https://app.hoantuyet.vn/ccn1v2cs1.html";
+
+    window.open(url, "_blank");
   }
 
 
@@ -1451,7 +1482,7 @@ data-color-masp="${targetMasp}"
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
-  ${upper}
+  <span class="sq-title-masp" data-masp="${upper}" title="Bấm để copy mã và mở chuyển chi nhánh">${upper}</span>
 ${mau_khac ? ` / ${buildOtherColorLinksHtml(upper, mau_khac)}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
 ${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
@@ -2073,6 +2104,18 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
       };
 
+    }
+
+    const titleMaspEl = popup.querySelector(".sq-title-masp[data-masp]");
+    if (titleMaspEl) {
+      titleMaspEl.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        const masp = titleMaspEl.dataset.masp || popup.dataset.masp || "";
+        await openCcnPageFromTitleMasp(masp);
+      });
     }
 
     const closeBtn = popup.querySelector(".sq-close");
