@@ -1011,7 +1011,7 @@ data-color-masp="${targetMasp}"
         isAdmin
           ? `
     <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
-      <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm hàng</button>
+      <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm</button>
       <span class="sq-vitri-label">Nhóm hàng:</span>
       <input
         type="text"
@@ -1027,7 +1027,7 @@ data-color-masp="${targetMasp}"
   `
           : `
     <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
-      <button type="button" class="sq-vitri-save-btn" disabled>Lưu nhóm hàng</button>
+      <button type="button" class="sq-vitri-save-btn" disabled>Lưu nhóm</button>
       <span class="sq-vitri-label">Nhóm hàng:</span>
       <span class="sq-vitri-value-readonly">${nhomhang}</span>
       <span class="sq-vitri-msg"></span>
@@ -1036,7 +1036,7 @@ data-color-masp="${targetMasp}"
       )
       : `
     <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
-      <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm hàng</button>
+      <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm</button>
       <span class="sq-vitri-label">Nhóm hàng:</span>
       <input
         type="text"
@@ -1195,7 +1195,7 @@ data-color-masp="${targetMasp}"
         isAdmin
           ? `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="kho">Lưu vị trí</button>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="kho">Lưu kho</button>
           <span class="sq-vitri-coso">CS1:</span>
           <input
             type="text"
@@ -1211,7 +1211,7 @@ data-color-masp="${targetMasp}"
       `
           : `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" disabled>Lưu vị trí</button>
+          <button type="button" class="sq-vitri-save-btn" disabled>Lưu kho</button>
           <span class="sq-vitri-coso">CS1:</span>
           <span class="sq-vitri-value-readonly">${vitri_cs1}</span>
           <span class="sq-vitri-msg"></span>
@@ -1220,7 +1220,7 @@ data-color-masp="${targetMasp}"
       )
       : `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="kho">Lưu vị trí</button>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="kho">Lưu kho</button>
           <span class="sq-vitri-coso">CS1:</span>
           <input
             type="text"
@@ -1239,7 +1239,7 @@ data-color-masp="${targetMasp}"
         isAdmin
           ? `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="kho">Lưu vị trí</button>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="kho">Lưu kho</button>
           <span class="sq-vitri-coso">CS2:</span>
           <input
             type="text"
@@ -1255,7 +1255,7 @@ data-color-masp="${targetMasp}"
       `
           : `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" disabled>Lưu vị trí</button>
+          <button type="button" class="sq-vitri-save-btn" disabled>Lưu kho</button>
           <span class="sq-vitri-coso">CS2:</span>
           <span class="sq-vitri-value-readonly">${vitri_cs2}</span>
           <span class="sq-vitri-msg"></span>
@@ -1264,7 +1264,7 @@ data-color-masp="${targetMasp}"
       )
       : `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="kho">Lưu vị trí</button>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="kho">Lưu kho</button>
           <span class="sq-vitri-coso">CS2:</span>
           <input
             type="text"
@@ -1283,7 +1283,7 @@ data-color-masp="${targetMasp}"
         isAdmin
           ? `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Lưu bày mẫu</button>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Lưu mẫu</button>
           <span class="sq-vitri-coso">CS1:</span>
           <input
             type="text"
@@ -1299,7 +1299,7 @@ data-color-masp="${targetMasp}"
       `
           : `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" disabled>Lưu bày mẫu</button>
+          <button type="button" class="sq-vitri-save-btn" disabled>Lưu mẫu</button>
           <span class="sq-vitri-coso">CS1:</span>
           <span class="sq-vitri-value-readonly">${baymau_cs1}</span>
           <span class="sq-vitri-msg"></span>
@@ -1308,7 +1308,7 @@ data-color-masp="${targetMasp}"
       )
       : `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Lưu bày mẫu</button>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Lưu mẫu</button>
           <span class="sq-vitri-coso">CS1:</span>
           <input
             type="text"
@@ -1327,7 +1327,7 @@ data-color-masp="${targetMasp}"
         isAdmin
           ? `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Lưu bày mẫu</button>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Lưu mẫu</button>
           <span class="sq-vitri-coso">CS2:</span>
           <input
             type="text"
@@ -1343,7 +1343,7 @@ data-color-masp="${targetMasp}"
       `
           : `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" disabled>Lưu bày mẫu</button>
+          <button type="button" class="sq-vitri-save-btn" disabled>Lưu mẫu</button>
           <span class="sq-vitri-coso">CS2:</span>
           <span class="sq-vitri-value-readonly">${baymau_cs2}</span>
           <span class="sq-vitri-msg"></span>
@@ -1352,7 +1352,7 @@ data-color-masp="${targetMasp}"
       )
       : `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Lưu bày mẫu</button>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Lưu mẫu</button>
           <span class="sq-vitri-coso">CS2:</span>
           <input
             type="text"
@@ -1432,42 +1432,42 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
   }
 
   function openKiemTonNhanhFromPopup(maspRaw, cosoRaw) {
-  const masp = String(maspRaw || "").trim().toUpperCase();
-  const coso = String(cosoRaw || "").trim().toLowerCase();
+    const masp = String(maspRaw || "").trim().toUpperCase();
+    const coso = String(cosoRaw || "").trim().toLowerCase();
 
-  if (!masp) return;
+    if (!masp) return;
 
-  const page =
-    coso === "cs2"
-      ? "kiem_tonkho_cs2.html"
-      : "kiem_tonkho_cs1.html";
+    const page =
+      coso === "cs2"
+        ? "kiem_tonkho_cs2.html"
+        : "kiem_tonkho_cs1.html";
 
-  const url =
-    "https://app.hoantuyet.vn/" +
-    page +
-    "?masp=" +
-    encodeURIComponent(masp) +
-    "&from=stockquick";
+    const url =
+      "https://app.hoantuyet.vn/" +
+      page +
+      "?masp=" +
+      encodeURIComponent(masp) +
+      "&from=stockquick";
 
-  window.open(url, "_blank");
-}
+    window.open(url, "_blank");
+  }
 
-function bindKiemTonHeaderActions(popup) {
-  if (!popup) return;
+  function bindKiemTonHeaderActions(popup) {
+    if (!popup) return;
 
-  popup.querySelectorAll(".sq-ktk-open[data-ktk-coso]").forEach((th) => {
-    th.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+    popup.querySelectorAll(".sq-ktk-open[data-ktk-coso]").forEach((th) => {
+      th.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
 
-      const masp = String(popup.dataset.masp || "").trim().toUpperCase();
-      const coso = String(th.dataset.ktkCoso || "").trim().toLowerCase();
+        const masp = String(popup.dataset.masp || "").trim().toUpperCase();
+        const coso = String(th.dataset.ktkCoso || "").trim().toLowerCase();
 
-      openKiemTonNhanhFromPopup(masp, coso);
+        openKiemTonNhanhFromPopup(masp, coso);
+      });
     });
-  });
-}
+  }
 
   function bindColorLinks(popup) {
 
@@ -1548,10 +1548,10 @@ function bindKiemTonHeaderActions(popup) {
           const isAdminNow = getIsAdminLocal();
           const btnLabel =
             loai === "baymau"
-              ? "Lưu bày mẫu"
+              ? "Lưu mẫu"
               : loai === "nhomhang"
-                ? "Lưu nhóm hàng"
-                : "Lưu vị trí";
+                ? "Lưu nhóm"
+                : "Lưu kho";
 
           if (isAdminNow) {
             row.innerHTML = `
@@ -1591,10 +1591,10 @@ function bindKiemTonHeaderActions(popup) {
             (rs && rs.message)
               ? rs.message
               : (loai === "baymau"
-                ? "Lưu vị trí bày mẫu thất bại"
+                ? "Lưu kho bày mẫu thất bại"
                 : loai === "nhomhang"
-                  ? "Lưu nhóm hàng thất bại"
-                  : "Lưu vị trí thất bại");
+                  ? "Lưu nhóm thất bại"
+                  : "Lưu kho thất bại");
           msgEl.className = "sq-vitri-msg err";
         }
 
@@ -1971,7 +1971,7 @@ function bindKiemTonHeaderActions(popup) {
     // auto-fit độ rộng cột theo nội dung
     applyAutoFitInPopup(popup);
 
-    // bind lưu vị trí kho nhanh cho CS1 / CS2
+    // bind Lưu kho kho nhanh cho CS1 / CS2
     bindVitriActions(popup);
 
     // bind click màu khác để mở lại toàn bộ popup theo mã màu đó
