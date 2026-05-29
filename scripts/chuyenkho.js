@@ -90,6 +90,46 @@ function uniq(arr) {
   return [...new Set(arr)];
 }
 
+function dedupeRowsByMaspSize(rows) {
+  const map = new Map();
+
+  (rows || []).forEach((r) => {
+    const masp = normalizeMasp(r.masp);
+    const size = normalizeSize(r.size);
+    const key = `${masp}__${size}`;
+
+    if (!masp || !size) return;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        ...r,
+        masp,
+        size,
+      });
+    } else {
+      const old = map.get(key);
+
+      map.set(key, {
+        ...old,
+        selected: old.selected || r.selected,
+        done: old.done || r.done,
+        sl_goiy: Math.max(toNumber(old.sl_goiy), toNumber(r.sl_goiy)),
+        sl_duyet: Math.max(toNumber(old.sl_duyet), toNumber(r.sl_duyet)),
+        sl_thuc: Math.max(toNumber(old.sl_thuc), toNumber(r.sl_thuc)),
+        trang_thai_dong:
+          old.trang_thai_dong === "dang_chuyen" || r.trang_thai_dong === "dang_chuyen"
+            ? "dang_chuyen"
+            : (old.trang_thai_dong || r.trang_thai_dong || "de_xuat"),
+        ghi_chu: old.ghi_chu || r.ghi_chu || "",
+        manv_phutrach: old.manv_phutrach || r.manv_phutrach || "",
+        tennv_phutrach: old.tennv_phutrach || r.tennv_phutrach || "",
+      });
+    }
+  });
+
+  return Array.from(map.values());
+}
+
 function getPrevVoucherNo(soCt) {
   const s = String(soCt || "").trim();
   const m = s.match(/^([a-z0-9_]+)_(\d{5})$/i);
@@ -673,7 +713,7 @@ async function layGoiY() {
     STATE.chungLoaiMap = dmhhInfo.chungLoaiMap || new Map();
     STATE.allChungLoaiSet = dmhhInfo.allChungLoaiSet || new Set();
 
-    STATE.rows = buildSuggestionRows({ xntRows });
+    STATE.rows = dedupeRowsByMaspSize(buildSuggestionRows({ xntRows }));
 
     renderBang();
     capNhatTong();
@@ -1171,7 +1211,7 @@ async function luuPhieu() {
     const header = getHeaderPayload();
 
     // Chỉ giữ lại các dòng đã chọn
-    STATE.rows = STATE.rows.filter(r => !!r.selected);
+    STATE.rows = dedupeRowsByMaspSize(STATE.rows.filter(r => !!r.selected));
     STATE.selectedIndex = STATE.rows.length ? 0 : -1;
 
     if (!STATE.rows.length) {
@@ -1293,13 +1333,12 @@ async function napPhieu(soCtParam = "") {
     STATE.oldHeader = deepClone(hd);
     STATE.oldRowsMap = new Map();
 
-    STATE.rows = (ct || []).map((r) => {
+    const loadedRows = (ct || []).map((r) => {
       const row = {
         selected: true,
         done: !!r.done,
-        needReview: false, // ✅ thêm dòng này
+        needReview: false,
         masp: normalizeMasp(r.masp),
-
         size: normalizeSize(r.size),
         ton_nguon: toNumber(r.ton_nguon),
         ton_dich: toNumber(r.ton_dich),
@@ -1308,15 +1347,15 @@ async function napPhieu(soCtParam = "") {
         sl_duyet: toNumber(r.sl_duyet),
         sl_thuc: toNumber(r.sl_thuc),
         manv_phutrach: r.manv_phutrach || "",
-
+        tennv_phutrach: r.tennv_phutrach || "",
         trang_thai_dong: r.trang_thai_dong || "de_xuat",
         ghi_chu: r.ghi_chu || "",
       };
+
       STATE.oldRowsMap.set(`${row.masp}__${row.size}`, deepClone({
         so_ct: soCt,
         stt: r.stt,
         masp: row.masp,
-
         size: row.size,
         ton_nguon: row.ton_nguon,
         ton_dich: row.ton_dich,
@@ -1330,8 +1369,11 @@ async function napPhieu(soCtParam = "") {
         trang_thai_dong: row.trang_thai_dong,
         ghi_chu: row.ghi_chu,
       }));
+
       return row;
     });
+
+    STATE.rows = dedupeRowsByMaspSize(loadedRows);
 
     renderBang();
     capNhatTong();
