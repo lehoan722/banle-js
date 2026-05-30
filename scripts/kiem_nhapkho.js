@@ -825,12 +825,34 @@ function patchAlertWithBeep() {
   }
 
   function layInfoDaKiemTuHoaDon(hd) {
-    const parsed = phanTichTrangThaiKiemNhapKho(hd?.kiem_nhapkho);
+    const parsedKiemNhap = phanTichTrangThaiKiemNhapKho(hd?.kiem_nhapkho);
+
+    const ghichu = String(hd?.ghichu || "").trim();
+    const ghichuCoDK = /\bdk\b/i.test(ghichu);
+
+    if (parsedKiemNhap.daKiem) {
+      return {
+        daKiem: true,
+        nhanvienkiem: parsedKiemNhap.nhanvienkiem,
+        noiDung: parsedKiemNhap.noiDung,
+        nguonDaKiem: "kiem_nhapkho"
+      };
+    }
+
+    if (ghichuCoDK) {
+      return {
+        daKiem: true,
+        nhanvienkiem: "",
+        noiDung: ghichu,
+        nguonDaKiem: "ghichu"
+      };
+    }
 
     return {
-      daKiem: parsed.daKiem,
-      nhanvienkiem: parsed.nhanvienkiem,
-      noiDung: parsed.noiDung
+      daKiem: false,
+      nhanvienkiem: "",
+      noiDung: parsedKiemNhap.noiDung || ghichu,
+      nguonDaKiem: ""
     };
   }
 
@@ -2162,7 +2184,7 @@ function patchAlertWithBeep() {
     // Lấy cả hóa đơn CHƯA KIỂM và ĐÃ KIỂM
     const { data: dsHd, error: errHd } = await window.supabase
       .from("hoadon_banle")
-      .select("sohd, ngay, created_at, diadiem, tennv, manv, kiem_nhapkho")
+      .select("sohd, ngay, created_at, diadiem, tennv, manv, kiem_nhapkho, ghichu")
       .ilike("sohd", `${prefixNguon}%`)
       .gte("created_at", toIsoLocal(start))
       .lte("created_at", toIsoLocal(end))
@@ -2534,7 +2556,7 @@ function patchAlertWithBeep() {
 
       const { data: dsHd, error: errHd } = await window.supabase
         .from("hoadon_banle")
-        .select("sohd, ngay, created_at, diadiem, tennv, manv, kiem_nhapkho")
+        .select("sohd, ngay, created_at, diadiem, tennv, manv, kiem_nhapkho, ghichu")
         .ilike("sohd", `${prefixNguon}%`)
         .gte("created_at", toIsoLocal(start))
         .lte("created_at", toIsoLocal(end))
