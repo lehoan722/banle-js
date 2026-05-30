@@ -1,5 +1,6 @@
 // baocaochitiet.js
 import { supabase } from "./supabaseClient.js";
+window.supabase = supabase;
 import { openInvoiceFromRow } from "./invoiceNavigator.js";
 let hotInstance = null;
 let currentFilters = null;
@@ -374,14 +375,29 @@ function renderTable(hotData) {
         { data: "diadiem", title: "Địa điểm", readOnly: true, width: 90 },
         { data: "khachhang", title: "Khách hàng", readOnly: true, width: 140 },
         { data: "nhanvien", title: "Nhân viên", readOnly: true, width: 110 },
-        { data: "masp", title: "Mã SP", readOnly: true, width: 100 },
+        {
+            data: "masp",
+            title: "Mã SP",
+            readOnly: true,
+            width: 100,
+            renderer: function (instance, td, row, col, prop, value, cellProperties) {
+                Handsontable.renderers.TextRenderer.apply(this, arguments);
+                td.style.color = "#1976d2";
+                td.style.fontWeight = "600";
+                td.style.cursor = "pointer";
+                td.style.textDecoration = "underline";
+            }
+        },
         { data: "tensp", title: "Tên SP", readOnly: true, width: 160 },
         { data: "size", title: "Size", readOnly: true, width: 60 },
         { data: "soluong", title: "SL", readOnly: true, width: 65, type: 'numeric' },
         { data: "dvt", title: "ĐVT", readOnly: true, width: 60 },
         { data: "gia", title: "Giá", readOnly: true, width: 100, type: 'numeric', renderer: formatNumberCell },
         { data: "km", title: "KM", readOnly: true, width: 70, type: 'numeric', renderer: formatNumberCell },
-        { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell }
+        { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell },
+        { data: "ket_qua", title: "Kết quả", readOnly: true, width: 90 },
+        { data: "baymau_by", title: "Bày mẫu bởi", readOnly: true, width: 120 },
+        { data: "baymau_note", title: "Ghi chú bày mẫu", readOnly: true, width: 130 }
     ];
 
     const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
@@ -419,20 +435,45 @@ function renderTable(hotData) {
 
         // Dùng afterOnCellMouseDown + event.detail để bắt DOUBLE CLICK
         afterOnCellMouseDown(event, coords, TD) {
-            // chỉ xử lý khi double-click
-            if (!event || event.detail !== 2) return;
-
-            // bỏ qua header
-            if (coords.row < 0) return;
+            if (!event || coords.row < 0) return;
 
             const prop = this.colToProp(coords.col);
-            if (prop !== "sohd") return;  // chỉ cột Số HĐ
 
-            const rowData = this.getSourceDataAtRow(coords.row);
-            if (!rowData || !rowData.sohd) return;
+            // Lấy dữ liệu theo dòng ĐANG HIỂN THỊ sau khi sort/filter
+            const rowData = this.getDataAtRow(coords.row);
+            if (!rowData) return;
 
-            // Mở hóa đơn tương ứng
-            openInvoiceFromRow(rowData);
+            // Hàm lấy giá trị theo tên cột từ dòng đang hiển thị
+            const getValueByProp = (propName) => {
+                const colIndex = this.propToCol(propName);
+                return colIndex >= 0 ? rowData[colIndex] : "";
+            };
+
+            // Click vào Mã SP => mở popup tồn kho nhanh
+            if (prop === "masp") {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const masp = String(getValueByProp("masp") || "").trim().toUpperCase();
+                if (!masp) return;
+
+                if (window.StockQuick && typeof window.StockQuick.showFor === "function") {
+                    window.StockQuick.showFor(TD, masp);
+                } else if (typeof window.stockQuickPopup === "function") {
+                    window.stockQuickPopup(masp);
+                } else {
+                    alert("Chưa tải được stockQuickPopup.js");
+                }
+
+                return;
+            }
+
+            // Double click vào Số HĐ => mở hóa đơn
+            if (event.detail === 2 && prop === "sohd") {
+                const sourceRow = this.getSourceDataAtRow(this.toPhysicalRow(coords.row));
+                if (!sourceRow?.sohd) return;
+                openInvoiceFromRow(sourceRow);
+            }
         }
     });
 
@@ -545,14 +586,15 @@ window.xuatExcelToanBo = async function () {
         }));
     }
 
-    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền"];
+    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền", "Kết quả", "Bày mẫu bởi", "Ghi chú bày mẫu"];
     const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
     if (onlyOneProduct && !tongHopSize) headers.push("Tổng tồn kho");
     const aoa = [headers];
     allRows.forEach(r => {
         const row = [
             r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
-            r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien
+            r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien,
+            r.ket_qua, r.baymau_by, r.baymau_note
         ];
         if (onlyOneProduct && !tongHopSize) row.push(r.ton_tichluy);
         aoa.push(row);
@@ -644,23 +686,51 @@ window.selectPopupValue = function (type, value, el) {
 
 
 // ========== AUTO FILL NGÀY MẶC ĐỊNH ==========
+// ========== AUTO FILL NGÀY MẶC ĐỊNH + AUTO LỌC ==========
 window.onload = function () {
-    const today = new Date().toISOString().slice(0, 10);
+    const todayObj = new Date();
+    const yesterdayObj = new Date();
+    yesterdayObj.setDate(todayObj.getDate() - 1);
 
-    // Từ ngày cố định: 01/05/2025
-    document.getElementById('tuNgay').value = '2025-05-01';
+    const toDateInput = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    };
 
-    // Đến ngày là hôm nay
-    document.getElementById('denNgay').value = today;
+    // Từ ngày = hôm qua
+    document.getElementById("tuNgay").value = toDateInput(yesterdayObj);
+
+    // Đến ngày = hôm nay
+    document.getElementById("denNgay").value = toDateInput(todayObj);
+
+    // Tự chọn loại hóa đơn: bán cơ sở 2
+    const loaihdSelect = document.getElementById("loaihdSelect");
+    if (loaihdSelect) {
+        Array.from(loaihdSelect.options).forEach(opt => {
+            opt.selected = opt.value === "bancs2";
+        });
+    }
+
+    // Nếu muốn lọc chặt thêm theo địa điểm cơ sở 2
+    const diadiemSelect = document.getElementById("diadiemSelect");
+    if (diadiemSelect) {
+        diadiemSelect.value = "cs2";
+    }
+
+    // Mặc định bật dạng rút gọn
+    isCompactMode = true;
+    const btnCompact = document.getElementById("btnCompact");
+    if (btnCompact) btnCompact.textContent = "Đầy đủ";
 
     renderLoaihdPopup();
     bindLoaihdPopupEvents();
+    updateLoaihdDisplay();
 
-    // === NHẬN MÃ SP TỪ URL & AUTO CHẠY ===
+    // Nhận mã SP từ URL nếu có
     try {
         const params = new URLSearchParams(window.location.search);
-
-        // hỗ trợ 2 kiểu: ?masp=ABC hoặc ?maspList=ABC,DEF
         const masp = params.get("masp");
         const maspList = params.get("maspList");
 
@@ -676,7 +746,6 @@ window.onload = function () {
         }
 
         if (listText) {
-            // chuẩn hóa IN HOA
             listText = listText
                 .split("\n")
                 .map(s => s.trim().toUpperCase())
@@ -688,17 +757,17 @@ window.onload = function () {
 
             const inp = document.getElementById("maspInput");
             if (inp) inp.value = listText.split("\n")[0];
-
-            // auto chạy báo cáo luôn
-            setTimeout(() => {
-                if (typeof window.taiBaoCaoChiTiet === "function") {
-                    window.taiBaoCaoChiTiet();
-                }
-            }, 0);
         }
     } catch (err) {
         console.warn("Auto nhận masp từ URL bị lỗi:", err);
     }
+
+    // Tự động chạy báo cáo sau khi set đủ điều kiện lọc
+    setTimeout(() => {
+        if (typeof window.taiBaoCaoChiTiet === "function") {
+            window.taiBaoCaoChiTiet();
+        }
+    }, 0);
 };
 
 
