@@ -9,6 +9,8 @@ let pageSize = 1000;
 let currentPage = 1;
 let onlyOneProduct = false; // <== thêm biến toàn cục để xác định 
 let isCompactMode = false;
+const GOOGLE_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwcP51fSJlOLAWAhuoBius7YwFoOzzEE4a3eRBk1FVpFXLfemxNdaDulx_YkiN2AhTV/exec";
+let daDongBoBayMauDangChay = false;
 
 // popup chọn loại hóa đơn
 let bindLoaihdPopupDone = false;
@@ -216,6 +218,58 @@ function safeDestroyHot() {
 }
 
 // ========== HÀM CHÍNH LẤY BÁO CÁO =============
+
+function isEmptyBayMau(value) {
+    return value === null || value === undefined || String(value).trim() === "";
+}
+
+async function dongBoMaChuaBayMauLenGoogleSheet() {
+    if (!currentFilters || !GOOGLE_SHEET_WEBAPP_URL || GOOGLE_SHEET_WEBAPP_URL.includes("DÁN_LINK")) {
+        console.warn("Chưa cấu hình GOOGLE_SHEET_WEBAPP_URL");
+        return;
+    }
+
+    if (daDongBoBayMauDangChay) return;
+    daDongBoBayMauDangChay = true;
+
+    try {
+        const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+        const maspSet = new Set();
+
+        for (let p = 1; p <= totalPages; p++) {
+            const offset = (p - 1) * pageSize;
+            const rows = await rpc_baocao_page_chunked(currentFilters, pageSize, offset);
+
+            (rows || []).forEach(r => {
+                const masp = String(r.masp || "").trim().toUpperCase();
+                const gia = Number(r.gia || 0);
+                const baymauBy = r.baymau_by;
+
+                if (masp && isEmptyBayMau(baymauBy) && gia >= 150000) {
+                    maspSet.add(masp);
+                }
+            });
+        }
+
+        const maspList = Array.from(maspSet).sort();
+
+        await fetch(GOOGLE_SHEET_WEBAPP_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ maspList })
+        });
+
+        console.log(`Đã gửi ${maspList.length} mã chưa bày mẫu lên Google Sheet`);
+    } catch (err) {
+        console.error("Lỗi đồng bộ mã chưa bày mẫu:", err);
+    } finally {
+        daDongBoBayMauDangChay = false;
+    }
+}
+
 window.taiBaoCaoChiTiet = async function () {
     const tuNgay = document.getElementById("tuNgay").value;
     const denNgay = document.getElementById("denNgay").value;
@@ -283,6 +337,9 @@ window.taiBaoCaoChiTiet = async function () {
     totalRows = Number(cnt || 0);
 
     await taiTrang(currentPage);
+
+    // Sau khi tải báo cáo xong, tự lấy toàn bộ mã chưa bày mẫu và ghi lên Google Sheet
+    dongBoMaChuaBayMauLenGoogleSheet();
 };
 
 async function taiTrang(page) {
