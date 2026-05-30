@@ -342,6 +342,30 @@ window.taiBaoCaoChiTiet = async function () {
     dongBoMaChuaBayMauLenGoogleSheet();
 };
 
+function sapXepBayMauTrongLenDau(data) {
+    return [...(data || [])].sort((a, b) => {
+        const aBayMau = String(a.baymau_by || "").trim();
+        const bBayMau = String(b.baymau_by || "").trim();
+
+        const aTrong = aBayMau === "";
+        const bTrong = bBayMau === "";
+
+        // Bày mẫu bởi trống lên đầu
+        if (aTrong && !bTrong) return -1;
+        if (!aTrong && bTrong) return 1;
+
+        // Nếu cùng trống thì sắp xếp giá từ lớn đến nhỏ
+        if (aTrong && bTrong) {
+            const giaA = Number(a.gia || a.giale || 0);
+            const giaB = Number(b.gia || b.giale || 0);
+            return giaB - giaA;
+        }
+
+        // Các dòng đã có người bày mẫu giữ nguyên tương đối
+        return 0;
+    });
+}
+
 async function taiTrang(page) {
     const container = document.getElementById("hot");
     safeDestroyHot();
@@ -362,6 +386,8 @@ async function taiTrang(page) {
         alert("Lỗi tải dữ liệu trang!");
         return;
     }
+
+    data = sapXepBayMauTrongLenDau(data);
 
     const startIndex = offset + 1;
     const hotData = (data || []).map((r, idx) => ({
