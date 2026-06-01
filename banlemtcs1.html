@@ -412,43 +412,48 @@
             border: 0;
         }
 
-        /* ===== BỐ CỤC MỚI: thông tin hóa đơn + ảnh chiếm toàn bộ cột phải ===== */
+        /* ===== Layout mới: bên trái bán hàng, bên phải thông tin hóa đơn + ảnh ===== */
 
-        .main {
+        .sales-layout {
             flex: 1 1 auto;
             display: flex;
             min-height: 0;
-            height: 1px;
             overflow: hidden;
         }
 
-        .table-area {
+        .sales-left {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .sales-left .main {
+            flex: 1 1 auto;
+            min-height: 0;
+            height: auto !important;
+        }
+
+        .sales-left .table-area {
             flex: 1 1 auto;
             overflow: auto;
-            min-height: 0;
-            max-height: 100%;
-            background: #fff;
         }
 
         .sidebar {
-            width: 430px;
-            min-width: 430px;
-            border-left: 1px solid #ccc;
+            width: 390px;
+            min-width: 390px;
+            height: 100%;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
-            min-height: 0;
-            background: #fff;
-        }
-
-        .tabs {
-            flex-shrink: 0;
+            border-left: 1px solid #ccc;
+            background: white;
+            overflow: hidden;
         }
 
         .tab-content {
-            flex-shrink: 0;
+            flex: 0 0 auto !important;
             padding: 8px 10px;
-            font-size: 13px;
         }
 
         .btn-big {
@@ -462,13 +467,16 @@
             width: calc(100% - 20px) !important;
             height: auto !important;
             min-height: 0;
-            max-height: none !important;
             object-fit: contain;
             object-position: top center;
-            background: #f5f5f5;
-            border: 1px solid #ccc;
             margin: 5px 10px 10px 10px;
-            display: block;
+        }
+
+        .footer-userinfo,
+        .khach-footer-info,
+        .footer-buttons,
+        #khCanhBaoMuaNhieu {
+            width: 100% !important;
         }
     </style>
     <style>
@@ -695,74 +703,78 @@
 
     <div id="app-container" style="display:none;">
 
-        <div class="top-inputs">
-            <div style="position: relative;">
-                <input id="masp" placeholder="Mã SP" autocomplete="off" />
-                <div id="popup_masp"
-                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+        <div class="sales-layout">
+            <div class="sales-left">
+
+                <div class="top-inputs">
+                    <div style="position: relative;">
+                        <input id="masp" placeholder="Mã SP" autocomplete="off" />
+                        <div id="popup_masp"
+                            style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+                        </div>
+                    </div>
+                    <input id="soluong" value="1" />
+                    <input id="dvt" placeholder="DVT" />
+                    <input id="size" placeholder="SIZE" />
+                    <input id="gia" placeholder="Giá SP" />
+                    <input id="khuyenmai" placeholder="khuyen mai" />
+                    <input id="thanhtien" placeholder="Thành tiền" />
+                    <input id="sohd" placeholder="Số HĐ" />
+
+                    <span class="action-row-break"></span>
+
+                    <button id="xemtonkho" class="action-btn-small">🔍</button>
+
+                    <button id="btnQLMK" type="button"
+                        style="background:#ff9800;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
+                        QLMK
+                    </button>
+
+                    <button id="btnQRZalo" type="button"
+                        style="background:#00c853;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
+                        📱 QR
+                    </button>
+
+                    <button id="btnMoiZalo" type="button"
+                        style="background:#0068ff;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
+                        💬 Zalo
+                    </button>
+
+                    <button id="ghivitri">✏️</button>
+
+                    <button id="btnQrOA" type="button"
+                        style="background:#10c95a;color:white;font-weight:bold;border:none;border-radius:6px;padding:5px 10px;font-size:16px;">
+                        📱 QR OA
+                    </button>
                 </div>
-            </div>
-            <input id="soluong" value="1" />
-            <input id="dvt" placeholder="DVT" />
-            <input id="size" placeholder="SIZE" />
-            <input id="gia" placeholder="Giá SP" />
-            <input id="khuyenmai" placeholder="khuyen mai" />
-            <input id="thanhtien" placeholder="Thành tiền" />
-            <input id="sohd" placeholder="Số HĐ" />
-
-            <span class="action-row-break"></span>
-
-            <button id="xemtonkho" class="action-btn-small">🔍</button>
-
-            <button id="btnQLMK" type="button"
-                style="background:#ff9800;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
-                QLMK
-            </button>
-
-            <button id="btnQRZalo" type="button"
-                style="background:#00c853;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
-                📱 QR
-            </button>
-
-            <button id="btnMoiZalo" type="button"
-                style="background:#0068ff;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
-                💬 Zalo
-            </button>
-
-            <button id="ghivitri">✏️</button>
-
-            <button id="btnQrOA" type="button"
-                style="background:#10c95a;color:white;font-weight:bold;border:none;border-radius:6px;padding:5px 10px;font-size:16px;">
-                📱 QR OA
-            </button>
-        </div>
 
 
-        <div class="main">
-            <div class="table-area">
+                <div class="main">
+                    <div class="table-area">
 
-                <table id="bangketqua">
-                    <thead>
-                        <tr>
-                            <th>Mã hàng</th>
-                            <th>Tên hàng</th>
-                            <th>Kích cỡ</th>
-                            <th>S.lượng</th>
-                            <th>ĐVT</th>
-                            <th>Đơn giá</th>
-                            <th>Khuyến mại</th>
-                            <th>Thành tiền</th>
-                            <th>Vị trí</th> <!-- (giữ nguyên) -->
-                            <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
-                            <th>T1</th>
-                            <th>T2</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                        <table id="bangketqua">
+                            <thead>
+                                <tr>
+                                    <th>Mã hàng</th>
+                                    <th>Tên hàng</th>
+                                    <th>Kích cỡ</th>
+                                    <th>S.lượng</th>
+                                    <th>ĐVT</th>
+                                    <th>Đơn giá</th>
+                                    <th>Khuyến mại</th>
+                                    <th>Thành tiền</th>
+                                    <th>Vị trí</th> <!-- (giữ nguyên) -->
+                                    <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
+                                    <th>T1</th>
+                                    <th>T2</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
 
-            </div>
-            <div class="sidebar">
+                    </div>
+                </div> <!-- đóng sales-left -->
+
                 <div class="tabs">
                     <button id="btn_thongtin" onclick="switchTab('thongtin')">Thông tin hóa đơn</button>
                     <button id="btn_tacvu" onclick="switchTab('tacvu')">Thao tác nhanh</button>
@@ -829,7 +841,8 @@
 
                 <img alt="Ảnh sản phẩm" class="product-image"
                     src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
-            </div>
+
+            </div> <!-- đóng sales-layout -->
         </div>
 
         <div id="khCanhBaoMuaNhieu"
