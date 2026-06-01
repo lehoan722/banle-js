@@ -4035,3 +4035,26 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+// =========================
+// CTRL + F => MỞ TRANG XEM KIỂM NHẬP KHO
+// =========================
+document.addEventListener("keydown", function (e) {
+  if (
+    e.ctrlKey &&
+    !e.shiftKey &&
+    !e.altKey &&
+    e.key.toLowerCase() === "f"
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const w = window.open(
+      "https://app.hoantuyet.vn/xemkiemnhapkho111.html",
+      "_blank"
+    );
+
+    if (w) w.focus();
+
+    return false;
+  }
+}, true);
