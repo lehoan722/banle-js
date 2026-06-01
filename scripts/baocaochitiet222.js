@@ -12,7 +12,7 @@ let isCompactMode = false;
 
 const GOOGLE_SHEET_WEBAPP_URL_CS2 = "https://script.google.com/macros/s/AKfycbwcP51fSJlOLAWAhuoBius7YwFoOzzEE4a3eRBk1FVpFXLfemxNdaDulx_YkiN2AhTV/exec";
 
-const GOOGLE_SHEET_WEBAPP_URL_CS1 = "https://script.google.com/macros/s/AKfycby7qhQv_6SupRzhHoKyirqZz3jnnRae-4fbXV0RLOFYOdJFDd7wZqx3-PeClUGanZy4/exec";
+const GOOGLE_SHEET_WEBAPP_URL_CS1 = "https://script.google.com/macros/s/AKfycbx-xN15BaeCIx-SSeAvV8exjcpe0FPRneG8Gc5_yIppVH-i0kpQgm4ZWXNfdnwcVy2a/exec";
 
 function getCurrentCs() {
     const params = new URLSearchParams(window.location.search);
