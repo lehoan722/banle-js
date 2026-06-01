@@ -79,7 +79,7 @@
         }
 
         #masp {
-            width: 220px;
+            width: 250px;
             background: cyan;
         }
 
@@ -592,19 +592,32 @@
 
         .banle-right .product-image {
             flex: 1 1 auto;
-            width: calc(100% - 20px) !important;
-            height: auto !important;
+            width: calc(100% - 12px) !important;
+            height: 100% !important;
             min-height: 0;
             object-fit: contain;
             object-position: top center;
-            margin: 5px 10px 10px 10px !important;
+            margin: 4px 6px 6px 6px !important;
             background: #f5f5f5;
         }
 
-        .khach-footer-info,
-        .footer-buttons,
+        /* Footer bên trái co đúng theo nội dung, không tràn sang cột ảnh */
+        .khach-footer-info {
+            width: fit-content !important;
+            max-width: 100%;
+            flex-shrink: 0;
+        }
+
+        .footer-buttons {
+            width: fit-content !important;
+            max-width: 100%;
+            flex-shrink: 0;
+            padding-right: 8px !important;
+        }
+
         #khCanhBaoMuaNhieu {
-            width: 100% !important;
+            width: fit-content !important;
+            max-width: 100%;
         }
     </style>
 
@@ -866,64 +879,64 @@
                         src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
                 </div> <!-- đóng sidebar -->
             </div> <!-- đóng banle-right -->
-        </div> <!-- đóng banle-layout-moi -->
 
-        <div id="khCanhBaoMuaNhieu"
-            style="display:none;width:75%;padding:3px 8px;font-size:14px;font-weight:bold;background:#fff7d6;border-top:1px solid #ddd;box-sizing:border-box;">
-        </div>
+            <div id="khCanhBaoMuaNhieu"
+                style="display:none;width:75%;padding:3px 8px;font-size:14px;font-weight:bold;background:#fff7d6;border-top:1px solid #ddd;box-sizing:border-box;">
+            </div>
 
-        <div class="khach-footer-info">
-            <div id="khBox" style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                <input id="makh" placeholder="mã khách" style="width:100%;padding-right:32px;box-sizing:border-box;"
-                    autocomplete="off">
-                <button id="btnPopupKH" type="button"
-                    style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                    🔍
-                </button>
+            <div class="khach-footer-info">
+                <div id="khBox"
+                    style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
+                    <input id="makh" placeholder="mã khách" style="width:100%;padding-right:32px;box-sizing:border-box;"
+                        autocomplete="off">
+                    <button id="btnPopupKH" type="button"
+                        style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                        🔍
+                    </button>
 
-                <div id="khSuggestList"
-                    style="display:none; position:absolute; bottom:100%; left:0; width:360px; max-height:240px; overflow:auto; background:#fff; border:1px solid #888; z-index:99999; box-shadow:0 -3px 12px #999;">
+                    <div id="khSuggestList"
+                        style="display:none; position:absolute; bottom:100%; left:0; width:360px; max-height:240px; overflow:auto; background:#fff; border:1px solid #888; z-index:99999; box-shadow:0 -3px 12px #999;">
+                    </div>
                 </div>
+                <label>Khách hàng <input id="khachhang" readonly="" /></label>
+
+                <label>Điểm KH <input id="diem_hientai" readonly /></label>
+
+                <div class="zalo-status-wrap">
+                    <label class="zalo-invited-label">
+                        Mời
+                        <input id="zalo_da_moi" type="checkbox" />
+                    </label>
+
+                    <label class="zalo-joined-label">
+                        Vào
+                        <input id="zalo_da_vao_nhom" type="checkbox" />
+                    </label>
+                </div>
+
+                <label>Hạng KH <input id="hang_khach" readonly /></label>
+                <label>Điểm dùng <input id="diem_tru" value="0" /></label>
+                <label>Tiền giảm <input id="tien_doi_diem" readonly /></label>
+
             </div>
-            <label>Khách hàng <input id="khachhang" readonly="" /></label>
 
-            <label>Điểm KH <input id="diem_hientai" readonly /></label>
+            <div class="footer-buttons">
+                <button id="them">Thêm mới</button>
+                <button id="btn-luu">💾 Lưu</button>
 
-            <div class="zalo-status-wrap">
-                <label class="zalo-invited-label">
-                    Mời
-                    <input id="zalo_da_moi" type="checkbox" />
-                </label>
+                <button id="sua" class="btn edit" type="button">SỬA</button>
 
-                <label class="zalo-joined-label">
-                    Vào
-                    <input id="zalo_da_vao_nhom" type="checkbox" />
-                </label>
-            </div>
-
-            <label>Hạng KH <input id="hang_khach" readonly /></label>
-            <label>Điểm dùng <input id="diem_tru" value="0" /></label>
-            <label>Tiền giảm <input id="tien_doi_diem" readonly /></label>
-
-        </div>
-
-        <div class="footer-buttons">
-            <button id="them">Thêm mới</button>
-            <button id="btn-luu">💾 Lưu</button>
-
-            <button id="sua" class="btn edit" type="button">SỬA</button>
-
-            <button id="quaylai">Quay lại</button>
-            <button id="tieptuc">Tiếp tục</button>
-            <button id="xemin">Xem in</button>
-            <button id="btnCopy">Copy</button>
-            <button id="xuatexcel">Xuất Excel</button>
-            <button id="btn-logout">THOAT PM</button>
-            <button id="btnOpenInTem">In mã vạch</button>
-            <button id="btnCCN">CCN</button>
+                <button id="quaylai">Quay lại</button>
+                <button id="tieptuc">Tiếp tục</button>
+                <button id="xemin">Xem in</button>
+                <button id="btnCopy">Copy</button>
+                <button id="xuatexcel">Xuất Excel</button>
+                <button id="btn-logout">THOAT PM</button>
+                <button id="btnOpenInTem">In mã vạch</button>
+                <button id="btnCCN">CCN</button>
 
 
-            <!-- Popup tìm khách hàng
+                <!-- Popup tìm khách hàng
              
              <button id="xuatexcel">Xuất Excel</button>
              <button id="timkiem">Tìm kiếm</button>
@@ -932,39 +945,44 @@
             
             -->
 
-        </div>
-
-
-        <div class="top-inputs">
-            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tiếp tục,
-            F8: xem tồn kho nhanh, F9: nhập vị trí kho
-        </div>
-        <div class="top-inputs">
-            ----------------------------------------------------------
-        </div>
-
-        <!-- ✅ Popup xác thực sửa hóa đơn -->
-        <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
-     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
-            <h3>Xác thực sửa hóa đơn</h3>
-            <input id="xacmanv" placeholder="Mã nhân viên" type="password"
-                style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
-            <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
-                style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
-            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon1()">Xác nhận</button>
-
-            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủyhh</button>
-        </div>
-
-        <!-- Popup xác nhận thêm mới -->
-        <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
-     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
-            <h3>Bạn có thực sự muốn thêm mới?</h3>
-            <div style="text-align:center; margin-top:10px;">
-                <button id="btnThemMoiCo">✅ Có</button>
-                <button id="btnThemMoiKhong" type="button">❌ Không</button>
             </div>
+
+
         </div>
+
+    </div> <!-- đóng banle-left -->
+    </div> <!-- đóng banle-layout-moi -->
+
+    <div class="top-inputs">
+        F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: Quay lại, F6: Xem in, F7 Tiếp tục,
+        F8: xem tồn kho nhanh, F9: nhập vị trí kho
+    </div>
+    <div class="top-inputs">
+        ----------------------------------------------------------
+    </div>
+
+    <!-- ✅ Popup xác thực sửa hóa đơn -->
+    <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
+     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
+        <h3>Xác thực sửa hóa đơn</h3>
+        <input id="xacmanv" placeholder="Mã nhân viên" type="password"
+            style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
+        <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
+            style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
+        <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon1()">Xác nhận</button>
+
+        <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủyhh</button>
+    </div>
+
+    <!-- Popup xác nhận thêm mới -->
+    <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
+     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
+        <h3>Bạn có thực sự muốn thêm mới?</h3>
+        <div style="text-align:center; margin-top:10px;">
+            <button id="btnThemMoiCo">✅ Có</button>
+            <button id="btnThemMoiKhong" type="button">❌ Không</button>
+        </div>
+    </div>
 
     </div>
 
