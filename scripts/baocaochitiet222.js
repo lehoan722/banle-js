@@ -9,7 +9,27 @@ let pageSize = 1000;
 let currentPage = 1;
 let onlyOneProduct = false; // <== thêm biến toàn cục để xác định 
 let isCompactMode = false;
-const GOOGLE_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwcP51fSJlOLAWAhuoBius7YwFoOzzEE4a3eRBk1FVpFXLfemxNdaDulx_YkiN2AhTV/exec";
+
+const GOOGLE_SHEET_WEBAPP_URL_CS2 = "https://script.google.com/macros/s/AKfycbwcP51fSJlOLAWAhuoBius7YwFoOzzEE4a3eRBk1FVpFXLfemxNdaDulx_YkiN2AhTV/exec";
+
+const GOOGLE_SHEET_WEBAPP_URL_CS1 = "https://script.google.com/macros/s/AKfycby7qhQv_6SupRzhHoKyirqZz3jnnRae-4fbXV0RLOFYOdJFDd7wZqx3-PeClUGanZy4/exec";
+
+function getCurrentCs() {
+    const params = new URLSearchParams(window.location.search);
+    const cs = (params.get("cs") || "").toLowerCase();
+
+    if (cs === "cs1" || cs === "1") return "cs1";
+    if (cs === "cs2" || cs === "2") return "cs2";
+
+    // Không có tham số thì giữ mặc định cũ là cơ sở 2
+    return "cs2";
+}
+
+function getGoogleSheetWebAppUrl() {
+    const cs = getCurrentCs();
+    return cs === "cs1" ? GOOGLE_SHEET_WEBAPP_URL_CS1 : GOOGLE_SHEET_WEBAPP_URL_CS2;
+}
+
 let daDongBoBayMauDangChay = false;
 
 // popup chọn loại hóa đơn
@@ -224,8 +244,10 @@ function isEmptyBayMau(value) {
 }
 
 async function dongBoMaChuaBayMauLenGoogleSheet() {
-    if (!currentFilters || !GOOGLE_SHEET_WEBAPP_URL || GOOGLE_SHEET_WEBAPP_URL.includes("DÁN_LINK")) {
-        console.warn("Chưa cấu hình GOOGLE_SHEET_WEBAPP_URL");
+    const webAppUrl = getGoogleSheetWebAppUrl();
+
+    if (!currentFilters || !webAppUrl || webAppUrl.includes("DÁN_LINK")) {
+        console.warn("Chưa cấu hình Google Sheet Web App URL");
         return;
     }
 
@@ -253,7 +275,7 @@ async function dongBoMaChuaBayMauLenGoogleSheet() {
 
         const maspList = Array.from(maspSet).sort();
 
-        await fetch(GOOGLE_SHEET_WEBAPP_URL, {
+        await fetch(webAppUrl, {
             method: "POST",
             mode: "no-cors",
             headers: {
@@ -788,18 +810,22 @@ window.onload = function () {
     // Đến ngày = hôm nay
     document.getElementById("denNgay").value = toDateInput(todayObj);
 
-    // Tự chọn loại hóa đơn: bán cơ sở 2
+    // Tự chọn loại hóa đơn: bán cơ sở 2 , cs1
+    const currentCs = getCurrentCs();
+    const defaultLoaihd = currentCs === "cs1" ? "bancs1" : "bancs2";
+
+    // Tự chọn loại hóa đơn theo cơ sở gọi vào trang
     const loaihdSelect = document.getElementById("loaihdSelect");
     if (loaihdSelect) {
         Array.from(loaihdSelect.options).forEach(opt => {
-            opt.selected = opt.value === "bancs2";
+            opt.selected = opt.value === defaultLoaihd;
         });
     }
 
-    // Nếu muốn lọc chặt thêm theo địa điểm cơ sở 2
+    // Lọc chặt theo địa điểm tương ứng
     const diadiemSelect = document.getElementById("diadiemSelect");
     if (diadiemSelect) {
-        diadiemSelect.value = "cs2";
+        diadiemSelect.value = currentCs;
     }
 
     // Mặc định bật dạng rút gọn
