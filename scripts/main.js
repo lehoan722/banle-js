@@ -477,37 +477,6 @@ export async function khoiTaoUngDung() {
     ganSuKienNutLenh();
     khoaOsoHoaDonVaTaoPopupDungChung();
 
-    // =========================
-    // CTRL + F => XEM HÓA ĐƠN
-    // DÙNG CHUNG CHO MỌI TRANG GỌI MAIN.JS
-    // =========================
-    if (!window.__ctrlFViewInvoiceBound) {
-      window.__ctrlFViewInvoiceBound = true;
-
-      document.addEventListener("keydown", function (e) {
-
-        if (
-          e.ctrlKey &&
-          !e.shiftKey &&
-          !e.altKey &&
-          e.key.toLowerCase() === "f"
-        ) {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const w = window.open(
-            "https://app.hoantuyet.vn/xemhoadon111.html",
-            "_blank"
-          );
-
-          if (w) w.focus();
-
-          return false;
-        }
-
-      }, true);
-    }
-
     ["masp", "soluong", "size"].forEach(id => {
       const input = document.getElementById(id);
       if (input) input.addEventListener("keydown", chuyenFocus);
