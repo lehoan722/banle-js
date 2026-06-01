@@ -4096,8 +4096,18 @@ import "./stockQuickPopup.js";
         // Ctrl + F: mở trang xem kiểm tồn kho
         if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
             e.preventDefault();
-            window.location.href = "https://app.hoantuyet.vn/xemkiemtonkho.html";
-            return;
+            e.stopPropagation();
+
+            const w = window.open(
+                "https://app.hoantuyet.vn/xemkiemtonkho.html",
+                "_blank"
+            );
+
+            if (w) {
+                w.focus();
+            }
+
+            return false;
         }
 
         if (e.key === "F11") {
