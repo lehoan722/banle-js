@@ -4093,6 +4093,13 @@ import "./stockQuickPopup.js";
             tag === "SELECT" ||
             document.activeElement?.isContentEditable;
 
+        // Ctrl + F: mở trang xem kiểm tồn kho
+        if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
+            e.preventDefault();
+            window.location.href = "https://app.hoantuyet.vn/xemkiemtonkho.html";
+            return;
+        }
+
         if (e.key === "F11") {
             e.preventDefault();
             moPopupChonPhieuCu();
