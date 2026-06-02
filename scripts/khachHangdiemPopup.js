@@ -20,10 +20,24 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
     return Number(v || 0).toLocaleString("vi-VN");
   }
 
-  function fmtDate(v) {
-    if (!v) return "";
+  function parseNgayVN(v) {
+    if (!v) return null;
 
-    return new Date(v).toLocaleString("vi-VN", {
+    const s = String(v);
+
+    // Nếu Supabase trả về dạng không có Z, coi nó là giờ UTC rồi cộng sang VN
+    if (/^\d{4}-\d{2}-\d{2}T/.test(s) && !/[zZ]|[+-]\d{2}:\d{2}$/.test(s)) {
+      return new Date(s + "Z");
+    }
+
+    return new Date(s);
+  }
+
+  function fmtDate(v) {
+    const d = parseNgayVN(v);
+    if (!d || isNaN(d.getTime())) return "";
+
+    return d.toLocaleString("vi-VN", {
       timeZone: "Asia/Ho_Chi_Minh",
       hour12: false
     });
@@ -243,9 +257,29 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
       return;
     }
 
+    const sohdList = [...new Set((rawLogs || []).map(r => r.sohd).filter(Boolean))];
+
+    let sohdHopLeSet = new Set();
+
+    if (sohdList.length) {
+      const { data: hoaDonHopLe, error: hdErr } = await window.supabase
+        .from("hoadon_banle")
+        .select("sohd, makh")
+        .in("sohd", sohdList)
+        .eq("makh", khach.makh);
+
+      if (hdErr) {
+        console.error("❌ Lỗi kiểm tra hóa đơn hiện tại:", hdErr);
+      }
+
+      sohdHopLeSet = new Set((hoaDonHopLe || []).map(h => h.sohd));
+    }
+
+    const rawLogsHopLe = (rawLogs || []).filter(r => sohdHopLeSet.has(r.sohd));
+
     const mapHoaDon = new Map();
 
-    (rawLogs || []).forEach(r => {
+    rawLogsHopLe.forEach(r => {
       const sohd = r.sohd || "";
       if (!sohd) return;
 
@@ -257,7 +291,7 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
     });
 
     const logs = Array.from(mapHoaDon.entries()).map(([sohd, arr]) => {
-      arr.sort((a, b) => new Date(a.ngay) - new Date(b.ngay));
+      arr.sort((a, b) => parseNgayVN(a.ngay) - parseNgayVN(b.ngay));
 
       const first = arr[0];
       const last = arr[arr.length - 1];
@@ -287,8 +321,8 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
         diem_con_lai: diemConLai
       };
     })
-      .sort((a, b) => new Date(b.ngay) - new Date(a.ngay))
-      .slice(0, limit);    
+      .sort((a, b) => parseNgayVN(b.ngay) - parseNgayVN(a.ngay))
+      .slice(0, limit);
 
     renderData(popup, khach, logs);
   }
