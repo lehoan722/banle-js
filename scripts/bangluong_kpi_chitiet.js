@@ -12,6 +12,7 @@ const khoanDtGioInput = document.getElementById("khoan_dt_gio");
 const pctThuongInput = document.getElementById("pct_thuong");
 
 const btnTai = document.getElementById("btn-tai");
+const btnCopy = document.getElementById("btn-copy");
 const statusEl = document.getElementById("status");
 const hotContainer = document.getElementById("hotLuongKpi");
 
@@ -335,6 +336,26 @@ function initPage() {
   if (btnTai) {
     btnTai.addEventListener("click", taiBangLuongKpi);
   }
+
+  if (btnCopy) {
+    btnCopy.addEventListener("click", () => {
+      if (!hot) {
+        alert("Chưa có dữ liệu để copy.");
+        return;
+      }
+
+      const data = hot.getData();
+      const headers = hot.getColHeader();
+      const text = [headers, ...data]
+        .map(row => row.join("\t"))
+        .join("\n");
+
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Đã copy bảng lương KPI.");
+      });
+    });
+  }
+
 }
 
 initPage();
