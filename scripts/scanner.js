@@ -1,7 +1,10 @@
 // scripts/scanner.js
+// Bản tối ưu QR: ưu tiên QR-only, camera sau/siêu rộng iPhone, chống quét lặp
+
 const ZXING_URL = 'https://esm.sh/@zxing/browser@0.0.10';
 
 let ZX = null;
+
 async function ensureZX() {
   if (!ZX) ZX = await import(ZXING_URL);
   return ZX;
@@ -12,80 +15,214 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
   let controls = null;
   let currentTrack = null;
   let currentDeviceId = null;
+  let lastScanText = '';
+  let lastScanTime = 0;
+  let isStarting = false;
 
-  function setStatus(msg) { if (statusEl) statusEl.textContent = msg || ''; }
+  function setStatus(msg) {
+    if (statusEl) statusEl.textContent = msg || '';
+  }
 
   async function enumerateCameras() {
-    // iOS cần gọi gUM trước để có label
-    await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => {});
-    return (await navigator.mediaDevices.enumerateDevices())
-      .filter(d => d.kind === 'videoinput');
+    try {
+      await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+    } catch (_) {}
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter(d => d.kind === 'videoinput');
   }
 
-  // Ưu tiên “cực rộng/ultra/0.5x” + “mặt sau/back/rear”
+  function scoreCamera(label = '') {
+    const s = String(label || '').toLowerCase();
+    let p = 0;
+
+    // Ưu tiên siêu rộng iPhone
+    if (s.includes('ultra wide')) p += 200;
+    if (s.includes('ultrawide')) p += 200;
+    if (s.includes('cực rộng')) p += 200;
+    if (s.includes('0.5')) p += 180;
+    if (s.includes('0,5')) p += 180;
+
+    // Ưu tiên camera sau
+    if (s.includes('back')) p += 100;
+    if (s.includes('rear')) p += 100;
+    if (s.includes('environment')) p += 80;
+    if (s.includes('mặt sau')) p += 100;
+    if (s.includes('sau')) p += 60;
+
+    // Tránh camera trước
+    if (s.includes('front')) p -= 100;
+    if (s.includes('facetime')) p -= 100;
+    if (s.includes('trước')) p -= 100;
+
+    return p;
+  }
+
   function pickDefaultDeviceId(devices) {
-    if (!devices?.length) return null;
-    const score = (label = '') => {
-      const s = label.toLowerCase();
-      let p = 0;
-      if (s.includes('cực rộng') || s.includes('ultra') || s.includes('0.5')) p += 100;
-      if (s.includes('mặt sau') || s.includes('back') || s.includes('rear') || s.includes('environment')) p += 20;
-      return p;
-    };
+    if (!devices || !devices.length) return null;
+
     return devices
-      .map(d => ({ d, p: score(d.label) }))
-      .sort((a,b) => b.p - a.p)[0].d.deviceId;
+      .map(d => ({ d, p: scoreCamera(d.label) }))
+      .sort((a, b) => b.p - a.p)[0].d.deviceId;
   }
 
-  const onScan = (result, err) => {
-    if (result) {
-      const text = result.getText ? result.getText() : (result.rawValue || '');
-      if (text) onResult?.(text);
-    }
-  };
+  function fillCameraSelect(devices, selectedId) {
+    if (!selectEl) return;
 
-  async function startScan(deviceId = null) {
-    setStatus('Đang mở camera...');
-    const { BrowserMultiFormatReader } = await ensureZX();
-    reader = new BrowserMultiFormatReader();
+    selectEl.innerHTML = devices.map((d, index) => {
+      const name = d.label || `Camera ${index + 1}`;
+      return `<option value="${d.deviceId}">${name}</option>`;
+    }).join('');
+
+    if (selectedId) selectEl.value = selectedId;
+  }
+
+  function getFastConstraints(deviceId = null) {
+    if (deviceId) {
+      return {
+        video: {
+          deviceId: { exact: deviceId },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30, max: 60 }
+        },
+        audio: false
+      };
+    }
+
+    return {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30, max: 60 }
+      },
+      audio: false
+    };
+  }
+
+  async function applyCameraOptimizations() {
+    const stream = videoEl?.srcObject;
+    currentTrack = stream?.getVideoTracks?.()[0] || null;
+    if (!currentTrack) return;
 
     try {
+      const caps = currentTrack.getCapabilities?.() || {};
+      const advanced = [];
+
+      if ('focusMode' in caps && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+        advanced.push({ focusMode: 'continuous' });
+      }
+
+      if ('exposureMode' in caps && Array.isArray(caps.exposureMode) && caps.exposureMode.includes('continuous')) {
+        advanced.push({ exposureMode: 'continuous' });
+      }
+
+      if (advanced.length) {
+        await currentTrack.applyConstraints({ advanced });
+      }
+    } catch (_) {
+      // iPhone/Safari có thể không hỗ trợ, bỏ qua
+    }
+  }
+
+  function handleScan(result) {
+    if (!result) return;
+
+    const text = result.getText ? result.getText() : (result.rawValue || '');
+    if (!text) return;
+
+    const now = Date.now();
+
+    // Chống quét lặp liên tục cùng một mã
+    if (text === lastScanText && now - lastScanTime < 900) return;
+
+    lastScanText = text;
+    lastScanTime = now;
+
+    onResult?.(text);
+  }
+
+  async function startScan(deviceId = null) {
+    if (isStarting) return;
+    isStarting = true;
+
+    try {
+      stopScan();
+
+      setStatus('Đang mở camera...');
+
+      const { BrowserQRCodeReader } = await ensureZX();
+
+      reader = new BrowserQRCodeReader();
+
       if (!deviceId) {
         const devices = await enumerateCameras();
-        // bơm danh sách vào dropdown nếu có
-        if (selectEl) {
-          selectEl.innerHTML = devices.map(d =>
-            `<option value="${d.deviceId}">${d.label || 'Camera'}</option>`
-          ).join('');
-        }
         deviceId = pickDefaultDeviceId(devices) || devices?.[0]?.deviceId || null;
-        if (selectEl && deviceId) selectEl.value = deviceId;
+        fillCameraSelect(devices, deviceId);
       }
 
       currentDeviceId = deviceId;
 
-      controls = deviceId
-        ? await reader.decodeFromVideoDevice(deviceId, videoEl, onScan)
-        : await reader.decodeFromConstraints({ video: { facingMode: { ideal: 'environment' } } }, videoEl, onScan);
+      const constraints = getFastConstraints(deviceId);
 
-      // lưu track để điều khiển torch (nếu máy hỗ trợ)
-      const stream = videoEl.srcObject;
-      currentTrack = stream?.getVideoTracks?.()[0] || null;
+      controls = await reader.decodeFromConstraints(
+        constraints,
+        videoEl,
+        (result, err) => {
+          if (result) handleScan(result);
+        }
+      );
 
-      setStatus('Đang quét... đưa mã vào khung');
+      await applyCameraOptimizations();
+
+      setStatus('Đang quét QR... đưa mã vào giữa khung');
     } catch (e) {
       console.error('startScan error:', e);
-      setStatus('Không mở được camera');
+
+      // Fallback nếu exact deviceId lỗi
+      try {
+        const { BrowserQRCodeReader } = await ensureZX();
+        reader = new BrowserQRCodeReader();
+
+        controls = await reader.decodeFromConstraints(
+          getFastConstraints(null),
+          videoEl,
+          (result) => {
+            if (result) handleScan(result);
+          }
+        );
+
+        await applyCameraOptimizations();
+
+        setStatus('Đang quét QR bằng camera sau...');
+      } catch (e2) {
+        console.error('fallback scan error:', e2);
+        setStatus('Không mở được camera');
+      }
+    } finally {
+      isStarting = false;
     }
   }
 
   function stopScan() {
-    try { controls?.stop(); } catch {}
-    try { reader?.reset(); } catch {}
+    try { controls?.stop(); } catch (_) {}
+    try { reader?.reset?.(); } catch (_) {}
+
     try {
-      const s = videoEl?.srcObject;
-      if (s) { s.getTracks().forEach(t => t.stop()); videoEl.srcObject = null; }
-    } catch {}
+      const stream = videoEl?.srcObject;
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        videoEl.srcObject = null;
+      }
+    } catch (_) {}
+
+    controls = null;
+    reader = null;
+    currentTrack = null;
     setStatus('');
   }
 
@@ -97,29 +234,45 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
 
   async function toggleTorch() {
     if (!currentTrack) return false;
+
     try {
       const caps = currentTrack.getCapabilities?.() || {};
       if (!('torch' in caps)) return false;
-      const cur = currentTrack.getSettings?.().torch;
-      await currentTrack.applyConstraints({ advanced: [{ torch: !cur }] });
+
+      const cur = currentTrack.getSettings?.().torch || false;
+      await currentTrack.applyConstraints({
+        advanced: [{ torch: !cur }]
+      });
+
       return !cur;
-    } catch {
+    } catch (_) {
       return false;
     }
   }
 
-  // (Tuỳ chọn) decode từ ảnh có sẵn:
   async function decodeFromFile(file) {
     if (!file) return;
+
     const url = URL.createObjectURL(file);
+
     try {
-      const { BrowserMultiFormatReader } = await ensureZX();
-      const r = new BrowserMultiFormatReader();
+      const { BrowserQRCodeReader } = await ensureZX();
+      const r = new BrowserQRCodeReader();
+
       const res = await r.decodeFromImageUrl(url);
       const text = res.getText ? res.getText() : (res.rawValue || '');
+
       if (text) onResult?.(text);
-    } finally { URL.revokeObjectURL(url); }
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
-  return { startScan, stopScan, changeCamera, toggleTorch, decodeFromFile };
+  return {
+    startScan,
+    stopScan,
+    changeCamera,
+    toggleTorch,
+    decodeFromFile
+  };
 }
