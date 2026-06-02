@@ -1301,44 +1301,8 @@ async function loadAssignableStaff(diadiem) {
     return;
   }
 
-  const manvList = (data || [])
-    .map(x => String(x.manv || '').trim().toUpperCase())
-    .filter(Boolean);
-
-  let activeTaskMap = new Set();
-
-  if (manvList.length) {
-    const { data: activeTasks, error: taskErr } = await supabase
-      .schema('qlnv')
-      .from('tasks')
-      .select('assigned_to,status')
-      .eq('diadiem', diadiem)
-      .in('assigned_to', manvList)
-      .in('status', ['pending', 'in_progress']);
-
-    if (taskErr) {
-      console.error('Lỗi kiểm tra task đang mở:', taskErr);
-    }
-
-    activeTaskMap = new Set(
-      (activeTasks || []).map(t =>
-        String(t.assigned_to || '').trim().toUpperCase()
-      )
-    );
-  }
-
   const rows = (data || []).filter(item => {
-    const manv = String(item.manv || '').trim().toUpperCase();
-    const state = item.work_state;
-
-    const dangTrongCa = [
-      'DA_VAO_CA_DANG_RANH',
-      'DANG_LAM_TASK'
-    ].includes(state);
-
-    const khongCoTaskDangMo = !activeTaskMap.has(manv);
-
-    return dangTrongCa && khongCoTaskDangMo;
+    return item.can_assign_task === true;
   });
 
   if (!rows.length) {
@@ -1347,13 +1311,16 @@ async function loadAssignableStaff(diadiem) {
     return;
   }
 
-  taskAssignedTo.innerHTML = rows.map(item => `
-    <option
-      value="${String(item.manv || '').trim().toUpperCase()}"
-      data-name="${item.tennv || item.manv}">
-      ${item.tennv || item.manv} - ${item.manv}
-    </option>
-  `).join('');
+  taskAssignedTo.innerHTML = rows.map(item => {
+    const manv = String(item.manv || '').trim().toUpperCase();
+    const ten = item.tennv || manv;
+
+    return `
+      <option value="${manv}" data-name="${ten}">
+        ${ten} - ${manv}
+      </option>
+    `;
+  }).join('');
 }
 
 async function loadTaskTemplates() {
