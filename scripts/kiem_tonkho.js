@@ -2928,7 +2928,11 @@ import "./stockQuickPopup.js";
             }
 
             const lines = rows.map((tr) => {
-                const col1 = String(tr.children[0]?.innerText || "").trim(); // mã hàng
+                const col1 = normalizeMasp(
+                    tr.dataset.masp ||
+                    tr.children[0]?.dataset?.masp ||
+                    ""
+                );
 
                 const col2 = String(tr.children[1]?.innerText || "")         // kho
                     .replace(/\r/g, "")
@@ -3678,10 +3682,13 @@ import "./stockQuickPopup.js";
 
         const state = getState();
         state.nhap = {};
+        state.bayMau = {};
         state.xuat = {};
         state.ketQua = {};
         state.nhapOrder = [];
         state.xuatOrder = [];
+        state.selectedMasp = "";
+
         state.daKiemTra = false;
         state.thoiDiemChotTon = phieuTong.thoi_diem_chot_ton || null;
 
