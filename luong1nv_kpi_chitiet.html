@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Tính lương tháng nhân viên</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 8px;
+      background: #f5f5f5;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h1 {
+      font-size: 18px;
+      margin: 0 0 8px 0;
+    }
+
+    .card h2 {
+      font-size: 16px;
+      margin: 0 0 8px 0;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      font-size: 13px;
+    }
+
+    .field label {
+      margin-bottom: 2px;
+    }
+
+    .field input,
+    .field select {
+      font-size: 13px;
+      padding: 4px 6px;
+    }
+
+    button {
+      font-size: 13px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1.2fr;
+      gap: 10px;
+    }
+
+    .result-item {
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .result-item span.label {
+      display: inline-block;
+      min-width: 210px;
+      font-weight: 600;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .warning {
+      color: #d32f2f;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 768px) {
+      .result-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Tính lương tháng nhân viên</h1>
+    <div class="row">
+      <div class="field">
+        <label>Từ ngày:</label>
+        <input type="date" id="tu_ngay">
+      </div>
+      <div class="field">
+        <label>Đến ngày:</label>
+        <input type="date" id="den_ngay">
+      </div>
+      <div class="field">
+        <label>Mã nhân viên:</label>
+
+        <input type="text" id="manv" list="ds-manv" placeholder="Chọn mã NV">
+        <datalist id="ds-manv"></datalist>
+      </div>
+      <div class="field">
+        <label>Lương/giờ (VND):</label>
+        <input type="number" id="luong_gio" value="26000">
+      </div>
+      <div class="field">
+        <label>Khoán doanh thu / giờ (VND):</label>
+        <input type="number" id="khoan_gio" value="700000">
+      </div>
+      <div class="field">
+        <label>% thưởng trên phần vượt khoán:</label>
+        <input type="number" id="pct_thuong" value="1">
+      </div>
+      <div class="field" style="align-self:flex-end;">
+        <button id="btn-tinh-luong">Tính lương</button>
+      </div>
+    </div>
+    <div class="note">
+      - <b>Khoán doanh thu / giờ</b>: ví dụ 800.000đ/giờ → 1 giờ khoán 800k, 10 giờ khoán 8 triệu.<br>
+      - <b>% thưởng</b>: là % thưởng trên <u>phần doanh thu vượt khoán</u>. Ví dụ vượt 1000.000đ, thưởng 1% = 10.000đ.
+    </div>
+    <div id="status" class="note"></div>
+  </div>
+
+  <div class="card">
+    <h2>Kết quả lương tháng</h2>
+    <div id="result-section">
+      <div class="result-grid">
+        <div>
+          <div class="result-item"><span class="label">Mã nhân viên:</span> <span id="kq-manv">-</span></div>
+          <div class="result-item"><span class="label">Khoảng thời gian:</span> <span id="kq-range">-</span></div>
+          <div class="result-item"><span class="label">Số ngày có công:</span> <span id="kq-so-ngay-cong">0</span></div>
+          <div class="result-item"><span class="label">Tổng giờ công (thực tế):</span> <span
+              id="kq-tong-gio-cong">0</span> giờ</div>
+          <div class="result-item"><span class="label">Giờ công dùng để tính lương:</span> <span
+              id="kq-gio-cong-tinh-luong">0</span> giờ</div>
+          <div class="result-item"><span class="label">Giờ bị trừ do TANCA_LỊCH:</span> <span
+              id="kq-gio-phat-tanca-lich">0</span> giờ</div>
+          <div class="result-item"><span class="label">Số lần AUTO_TANCA:</span> <span id="kq-auto-tanca">0</span></div>
+          <div class="result-item"><span class="label">Số ngày quên vào ca:</span> <span id="kq-cb1">0</span></div>
+          <div class="result-item"><span class="label">Số ngày NTR quá 70 phút:</span> <span id="kq-cb2">0</span></div>
+          <div class="result-item"><span class="label">Số ngày NCH quá 40 phút:</span> <span id="kq-cb3">0</span></div>
+          <div class="result-item"><span class="label">Số ca VẮNG (vào ca muộn &gt; 15p):</span> <span
+              id="kq-so-ngay-vang">0</span></div>
+          <div class="result-item"><span class="label">Số ca TAN CA theo LỊCH:</span> <span
+              id="kq-so-ngay-tanca-lich">0</span></div>
+        </div>
+        <div>
+          <div class="result-item"><span class="label">Khoán doanh thu / giờ:</span> <span id="kq-khoan-gio">0</span> đ
+          </div>
+          <div class="result-item"><span class="label">Khoán doanh thu theo giờ công:</span> <span
+              id="kq-khoan-thang">0</span> đ</div>
+
+          <div class="result-item"><span class="label">Doanh thu thực tế (KPI):</span> <span id="kq-doanhso">0</span> đ
+          </div>
+
+          <div class="result-item"><span class="label">Hoa hồng sản phẩm:</span> <span id="kq-hoa-hong">0</span> đ</div>
+
+          <div class="result-item"><span class="label">Doanh thu vượt khoán:</span> <span id="kq-tien-vuot">0</span> đ
+          </div>
+
+          <div class="result-item"><span class="label">Tiền thưởng vượt khoán:</span> <span
+              id="kq-thuong-doanhso">0</span> đ</div>
+          <div class="result-item"><span class="label">Lương cứng (giờ * lương giờ):</span> <span
+              id="kq-luong-gio">0</span> đ</div>
+          <div class="result-item"><span class="label">Tổng lương (lương + thưởng + hoa hồng):</span>
+            <span id="kq-tong-luong">0</span> đ
+          </div>
+
+          <div class="result-item"><span class="label">Các khoản trừ:</span>
+            <span id="kq-khoan-tru">0</span> đ
+          </div>
+
+          <div class="result-item"><span class="label">Thực lĩnh:</span>
+            <span id="kq-thuc-linh">0</span> đ
+          </div>
+
+          <div class="result-item"><span class="label">Lương/1 giờ:</span>
+            <span id="kq-luong-1-gio">0</span> đ
+          </div>
+        </div>
+      </div>
+      <div class="note">
+        * TANCA_LICH là khi hết giờ làm theo đăng ký lịch nhưng không chấm tan ca.<br>
+        * AUTO_TANCA. rời khỏi cửa hàng 10 phút nhưng không tan ca hoặc nghỉ. <br>
+        * Mỗi ca TANCA_LỊCH (quên bấm tan ca sau giờ đăng ký + 15 phút) bị trừ <b>1 giờ công</b> khi tính lương.
+      </div>
+      <div id="warning-section" class="warning"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/luong1nv.js"></script>
+</body>
+
+</html>
