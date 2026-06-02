@@ -478,6 +478,75 @@
     display: none !important;
   }
 
+  /* ===== FIX MOBILE SAU KHI TÁCH CỘT TRÁI / PHẢI TRÊN PC ===== */
+
+  .banle-layout-moi {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .banle-left {
+    display: contents !important;
+  }
+
+  .banle-left>.top-inputs {
+    order: 1;
+  }
+
+  .khach-footer-info {
+    order: 2;
+  }
+
+  .main {
+    order: 3;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .banle-right {
+    order: 4;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    border-left: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .banle-right .sidebar {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border-left: none !important;
+  }
+
+  .footer-buttons {
+    order: 5;
+  }
+
+  .banle-right .tab-content {
+    padding: 10px !important;
+  }
+
+  .banle-right .btn-big {
+    width: 100% !important;
+    margin: 6px 0 !important;
+    box-sizing: border-box;
+  }
+
+  .banle-right .product-image {
+    width: 50px !important;
+    height: 50px !important;
+    margin: 6px auto !important;
+    object-fit: contain !important;
+  }
+
 }
 
 /* === GIỮ HIỂN THỊ ĐẦY ĐỦ CỘT KHI Ở DẠNG NGANG === */
