@@ -198,10 +198,18 @@ function renderHot(rows) {
     dropdownMenu: true,
     columnSorting: true,
     wordWrap: true,
+
+    stretchH: "none",
+    fixedColumnsStart: 3,
+    manualColumnResize: true,
+    manualRowResize: true,
+    width: "100%",
+    height: 520,
+
     columnHeaderHeight: 44,
     rowHeights: 26,
     colWidths: [
-      70, 100, 60, 80, 80, 80, 90, 90, 90,
+      70, 50, 60, 80, 80, 80, 90, 90, 90,
       110, 100, 100, 100, 100, 100, 100, 110,
       110, 100, 110
     ],
