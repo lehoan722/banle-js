@@ -321,17 +321,12 @@ async function taiBangLuongKpi() {
   }
 }
 
-async function initPage() {
+function initPage() {
   setDefaultDates();
 
-  await authModule.khoiTaoDangNhapDungChung({
-    loginContainerId: "login-container",
-    appContainerId: "app-container",
-    macDinhDiaDiem: "cs1",
-    onLoginSuccess: async () => true
-  }).catch(() => {});
-
-  btnTai.addEventListener("click", taiBangLuongKpi);
+  if (btnTai) {
+    btnTai.addEventListener("click", taiBangLuongKpi);
+  }
 }
 
 initPage();
