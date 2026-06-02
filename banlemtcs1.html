@@ -628,16 +628,7 @@
             min-width: 220px;
         }
 
-        #ghivitri {
-            background: #0068ff !important;
-            color: white !important;
-            font-weight: bold !important;
-            border: none !important;
-            border-radius: 8px !important;
-            padding: 0 12px !important;
-            font-size: 18px !important;
-            height: 34px !important;
-        }
+
 
         #ghichu {
             flex: 1 1 auto !important;
@@ -797,11 +788,10 @@
                         style="background:#0068ff;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
                         💬 Zalo
                     </button>
-                    <button id="ghivitri" type="button">📷 Quét</button>
                     <input id="ghichu" placeholder="Ghi chú HH" />
                     <button id="btnQrOA" type="button"
-                        style="background:#10c95a;color:white;font-weight:bold;border:none;border-radius:6px;padding:5px 10px;font-size:16px;">
-                        📱 QR OA
+                        style="background:#0068ff;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;height:34px;">
+                        📷 Quét QR
                     </button>
                 </div>
 
@@ -1585,12 +1575,6 @@
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
             const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
-        });
-
-        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
-        document.getElementById('ghivitri')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
             dispatchTarget.dispatchEvent(ev);
         });
 
