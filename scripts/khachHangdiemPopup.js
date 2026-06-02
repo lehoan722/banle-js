@@ -22,7 +22,11 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
 
   function fmtDate(v) {
     if (!v) return "";
-    return new Date(v).toLocaleString("vi-VN");
+
+    return new Date(v).toLocaleString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      hour12: false
+    });
   }
 
   function ensurePopup() {
@@ -166,7 +170,8 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
               <th style="border:1px solid #ddd;padding:6px;text-align:left;">Ngày</th>
               <th style="border:1px solid #ddd;padding:6px;text-align:left;">Số HĐ</th>
               <th style="border:1px solid #ddd;padding:6px;text-align:right;">Điểm trước</th>
-              <th style="border:1px solid #ddd;padding:6px;text-align:right;">Điểm sau</th>
+              <th style="border:1px solid #ddd;padding:6px;text-align:right;">Điểm dùng</th>
+              <th style="border:1px solid #ddd;padding:6px;text-align:right;">Điểm tích</th>
               <th style="border:1px solid #ddd;padding:6px;text-align:right;">Điểm còn lại</th>
             </tr>
           </thead>
@@ -177,11 +182,12 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
                     <td style="border:1px solid #ddd;padding:6px;">${fmtDate(r.ngay)}</td>
                     <td style="border:1px solid #ddd;padding:6px;">${r.sohd || ""}</td>
                     <td style="border:1px solid #ddd;padding:6px;text-align:right;">${fmtMoney(r.diem_truoc)}</td>
-                    <td style="border:1px solid #ddd;padding:6px;text-align:right;">${fmtMoney(r.diem_sau)}</td>
-                    <td style="border:1px solid #ddd;padding:6px;text-align:right;">${fmtMoney(r.diem_con_lai)}</td>
+                    <td style="border:1px solid #ddd;padding:6px;text-align:right;color:#b91c1c;">${fmtMoney(r.diem_dung)}</td>
+                    <td style="border:1px solid #ddd;padding:6px;text-align:right;color:#15803d;">${fmtMoney(r.diem_tich)}</td>
+                    <td style="border:1px solid #ddd;padding:6px;text-align:right;font-weight:bold;">${fmtMoney(r.diem_con_lai)}</td>
                   </tr>
                 `).join("")
-        : `<tr><td colspan="5" style="padding:12px;text-align:center;color:#777;">Chưa có lịch sử điểm</td></tr>`
+        : `<tr><td colspan="6" style="padding:12px;text-align:center;color:#777;">Chưa có lịch sử điểm</td></tr>`
       }
           </tbody>
         </table>
@@ -244,27 +250,45 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
       if (!sohd) return;
 
       if (!mapHoaDon.has(sohd)) {
-        mapHoaDon.set(sohd, {
-          ngay: r.ngay,
-          sohd: r.sohd,
-          diem_truoc: r.diem_truoc,
-          diem_sau: r.diem_sau,
-          diem_con_lai: r.diem_con_lai
-        });
-      } else {
-        const old = mapHoaDon.get(sohd);
-
-        if (new Date(r.ngay) < new Date(old.ngay)) {
-          old.diem_truoc = r.diem_truoc;
-        }
-
-        if (new Date(r.ngay) > new Date(old.ngay)) {
-          old.ngay = r.ngay;
-          old.diem_sau = r.diem_sau;
-          old.diem_con_lai = r.diem_con_lai;
-        }
+        mapHoaDon.set(sohd, []);
       }
+
+      mapHoaDon.get(sohd).push(r);
     });
+
+    const logs = Array.from(mapHoaDon.entries()).map(([sohd, arr]) => {
+      arr.sort((a, b) => new Date(a.ngay) - new Date(b.ngay));
+
+      const first = arr[0];
+      const last = arr[arr.length - 1];
+
+      const diemTruoc = Number(first.diem_truoc || 0);
+      const diemConLai = Number(last.diem_sau || last.diem_con_lai || 0);
+
+      let diemDung = 0;
+
+      arr.forEach(r => {
+        const truoc = Number(r.diem_truoc || 0);
+        const sau = Number(r.diem_sau || 0);
+
+        if (sau < truoc) {
+          diemDung += truoc - sau;
+        }
+      });
+
+      const diemTich = Math.max(0, diemConLai - diemTruoc + diemDung);
+
+      return {
+        ngay: last.ngay,
+        sohd,
+        diem_truoc: diemTruoc,
+        diem_dung: diemDung,
+        diem_tich: diemTich,
+        diem_con_lai: diemConLai
+      };
+    })
+      .sort((a, b) => new Date(b.ngay) - new Date(a.ngay))
+      .slice(0, limit);
 
     const logs = Array.from(mapHoaDon.values()).slice(0, limit);
 
