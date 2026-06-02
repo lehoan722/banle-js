@@ -1,7 +1,7 @@
 // scripts/scanner.js
-// Bản tối ưu QR: ưu tiên QR-only, camera sau/siêu rộng iPhone, chống quét lặp
+// Bản tối ưu theo timkiemhanghoa333: quét nhanh, ưu tiên camera sau siêu rộng iPhone
 
-const ZXING_URL = 'https://esm.sh/@zxing/browser@0.0.10';
+const ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm';
 
 let ZX = null;
 
@@ -14,16 +14,38 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
   let reader = null;
   let controls = null;
   let currentTrack = null;
-  let currentDeviceId = null;
-  let lastScanText = '';
-  let lastScanTime = 0;
-  let isStarting = false;
+  let currentDeviceId = '';
+  let lastText = '';
+  let lastTime = 0;
+  let starting = false;
 
   function setStatus(msg) {
     if (statusEl) statusEl.textContent = msg || '';
   }
 
-  async function enumerateCameras() {
+  function normText(s) {
+    return String(s || '').trim().toUpperCase();
+  }
+
+  function scoreCameraLabel(label = '') {
+    const s = String(label || '').toLowerCase();
+    let score = 0;
+
+    if (/(back|rear|environment|mặt sau|camera sau)/.test(s)) score += 100;
+
+    if (/(ultra\s*wide|ultrawide|0\.5x|0,5x|0\.5|0,5|cực rộng|siêu rộng)/.test(s)) {
+      score += 1000;
+    }
+
+    if (/(tele|zoom|2x|3x|chụp xa)/.test(s)) score -= 300;
+    if (/(front|trước|mặt trước|facetime)/.test(s)) score -= 1000;
+
+    return score;
+  }
+
+  async function listVideoDevices() {
+    const ZXING = await ensureZX();
+
     try {
       await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' } },
@@ -31,185 +53,120 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
       });
     } catch (_) {}
 
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    return devices.filter(d => d.kind === 'videoinput');
+    const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
+    return devices || [];
   }
 
-  function scoreCamera(label = '') {
-    const s = String(label || '').toLowerCase();
-    let p = 0;
+  async function populateCameraList() {
+    const devices = await listVideoDevices();
 
-    // Ưu tiên siêu rộng iPhone
-    if (s.includes('ultra wide')) p += 200;
-    if (s.includes('ultrawide')) p += 200;
-    if (s.includes('cực rộng')) p += 200;
-    if (s.includes('0.5')) p += 180;
-    if (s.includes('0,5')) p += 180;
+    devices.sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
 
-    // Ưu tiên camera sau
-    if (s.includes('back')) p += 100;
-    if (s.includes('rear')) p += 100;
-    if (s.includes('environment')) p += 80;
-    if (s.includes('mặt sau')) p += 100;
-    if (s.includes('sau')) p += 60;
-
-    // Tránh camera trước
-    if (s.includes('front')) p -= 100;
-    if (s.includes('facetime')) p -= 100;
-    if (s.includes('trước')) p -= 100;
-
-    return p;
-  }
-
-  function pickDefaultDeviceId(devices) {
-    if (!devices || !devices.length) return null;
-
-    return devices
-      .map(d => ({ d, p: scoreCamera(d.label) }))
-      .sort((a, b) => b.p - a.p)[0].d.deviceId;
-  }
-
-  function fillCameraSelect(devices, selectedId) {
-    if (!selectEl) return;
-
-    selectEl.innerHTML = devices.map((d, index) => {
-      const name = d.label || `Camera ${index + 1}`;
-      return `<option value="${d.deviceId}">${name}</option>`;
-    }).join('');
-
-    if (selectedId) selectEl.value = selectedId;
-  }
-
-  function getFastConstraints(deviceId = null) {
-    if (deviceId) {
-      return {
-        video: {
-          deviceId: { exact: deviceId },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30, max: 60 }
-        },
-        audio: false
-      };
+    if (selectEl) {
+      selectEl.innerHTML = devices.map((d, i) => {
+        const label = d.label || `Camera ${i + 1}`;
+        return `<option value="${d.deviceId}">${label}</option>`;
+      }).join('');
     }
 
-    return {
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30, max: 60 }
-      },
-      audio: false
-    };
+    if (devices[0]) {
+      currentDeviceId = devices[0].deviceId;
+      if (selectEl) selectEl.value = currentDeviceId;
+    }
+
+    return devices;
   }
 
-  async function applyCameraOptimizations() {
+  async function applyFastCameraSettings() {
     const stream = videoEl?.srcObject;
     currentTrack = stream?.getVideoTracks?.()[0] || null;
     if (!currentTrack) return;
 
     try {
-      const caps = currentTrack.getCapabilities?.() || {};
-      const advanced = [];
-
-      if ('focusMode' in caps && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
-        advanced.push({ focusMode: 'continuous' });
-      }
-
-      if ('exposureMode' in caps && Array.isArray(caps.exposureMode) && caps.exposureMode.includes('continuous')) {
-        advanced.push({ exposureMode: 'continuous' });
-      }
-
-      if (advanced.length) {
-        await currentTrack.applyConstraints({ advanced });
-      }
-    } catch (_) {
-      // iPhone/Safari có thể không hỗ trợ, bỏ qua
-    }
+      await currentTrack.applyConstraints({
+        advanced: [
+          { focusMode: 'continuous' },
+          { exposureMode: 'continuous' }
+        ]
+      });
+    } catch (_) {}
   }
 
-  function handleScan(result) {
-    if (!result) return;
+  function handleResult(result) {
+    if (!result?.getText) return;
 
-    const text = result.getText ? result.getText() : (result.rawValue || '');
+    const text = normText(result.getText());
     if (!text) return;
 
     const now = Date.now();
 
-    // Chống quét lặp liên tục cùng một mã
-    if (text === lastScanText && now - lastScanTime < 900) return;
+    if (text === lastText && now - lastTime < 800) return;
 
-    lastScanText = text;
-    lastScanTime = now;
+    lastText = text;
+    lastTime = now;
 
     onResult?.(text);
   }
 
-  async function startScan(deviceId = null) {
-    if (isStarting) return;
-    isStarting = true;
+  async function startScan(deviceId = '') {
+    if (starting) return;
+    starting = true;
 
     try {
       stopScan();
 
       setStatus('Đang mở camera...');
 
-      const { BrowserQRCodeReader } = await ensureZX();
+      const ZXING = await ensureZX();
 
-      reader = new BrowserQRCodeReader();
+      await populateCameraList();
 
-      if (!deviceId) {
-        const devices = await enumerateCameras();
-        deviceId = pickDefaultDeviceId(devices) || devices?.[0]?.deviceId || null;
-        fillCameraSelect(devices, deviceId);
+      const useId = deviceId || currentDeviceId || '';
+
+      if (useId) {
+        currentDeviceId = useId;
+        if (selectEl) selectEl.value = useId;
       }
 
-      currentDeviceId = deviceId;
+      reader = new ZXING.BrowserMultiFormatReader(undefined, {
+        delayBetweenScanAttempts: 25
+      });
 
-      const constraints = getFastConstraints(deviceId);
+      if (useId) {
+        controls = await reader.decodeFromVideoDevice(
+          useId,
+          videoEl,
+          (result) => handleResult(result)
+        );
+      } else {
+        controls = await reader.decodeFromConstraints(
+          {
+            video: {
+              facingMode: { ideal: 'environment' },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              frameRate: { ideal: 30 }
+            },
+            audio: false
+          },
+          videoEl,
+          (result) => handleResult(result)
+        );
+      }
 
-      controls = await reader.decodeFromConstraints(
-        constraints,
-        videoEl,
-        (result, err) => {
-          if (result) handleScan(result);
-        }
-      );
+      await applyFastCameraSettings();
 
-      await applyCameraOptimizations();
-
-      setStatus('Đang quét QR... đưa mã vào giữa khung');
+      setStatus('Đang quét... đưa mã vào khung');
     } catch (e) {
       console.error('startScan error:', e);
-
-      // Fallback nếu exact deviceId lỗi
-      try {
-        const { BrowserQRCodeReader } = await ensureZX();
-        reader = new BrowserQRCodeReader();
-
-        controls = await reader.decodeFromConstraints(
-          getFastConstraints(null),
-          videoEl,
-          (result) => {
-            if (result) handleScan(result);
-          }
-        );
-
-        await applyCameraOptimizations();
-
-        setStatus('Đang quét QR bằng camera sau...');
-      } catch (e2) {
-        console.error('fallback scan error:', e2);
-        setStatus('Không mở được camera');
-      }
+      setStatus('Không mở được camera');
     } finally {
-      isStarting = false;
+      starting = false;
     }
   }
 
   function stopScan() {
-    try { controls?.stop(); } catch (_) {}
+    try { controls?.stop?.(); } catch (_) {}
     try { reader?.reset?.(); } catch (_) {}
 
     try {
@@ -228,6 +185,7 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
 
   async function changeCamera(newDeviceId) {
     if (!newDeviceId || newDeviceId === currentDeviceId) return;
+    currentDeviceId = newDeviceId;
     stopScan();
     await startScan(newDeviceId);
   }
@@ -240,6 +198,7 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
       if (!('torch' in caps)) return false;
 
       const cur = currentTrack.getSettings?.().torch || false;
+
       await currentTrack.applyConstraints({
         advanced: [{ torch: !cur }]
       });
@@ -253,16 +212,16 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
   async function decodeFromFile(file) {
     if (!file) return;
 
+    const ZXING = await ensureZX();
+    const r = new ZXING.BrowserMultiFormatReader(undefined, {
+      delayBetweenScanAttempts: 25
+    });
+
     const url = URL.createObjectURL(file);
 
     try {
-      const { BrowserQRCodeReader } = await ensureZX();
-      const r = new BrowserQRCodeReader();
-
       const res = await r.decodeFromImageUrl(url);
-      const text = res.getText ? res.getText() : (res.rawValue || '');
-
-      if (text) onResult?.(text);
+      handleResult(res);
     } finally {
       URL.revokeObjectURL(url);
     }
