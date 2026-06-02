@@ -1,136 +1,140 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bảng lương KPI chi tiết</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bảng lương KPI chi tiết</title>
 
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 8px;
-      background: #f5f5f5;
-    }
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 8px;
+            background: #f5f5f5;
+        }
 
-    .card {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 10px;
-      margin-bottom: 8px;
-    }
+        .card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
 
-    h1 {
-      font-size: 17px;
-      margin: 0 0 8px 0;
-    }
+        h1 {
+            font-size: 17px;
+            margin: 0 0 8px 0;
+        }
 
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-    }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
 
-    label {
-      font-size: 12px;
-      margin-right: 4px;
-    }
+        label {
+            font-size: 12px;
+            margin-right: 4px;
+        }
 
-    input, select, button {
-      padding: 4px 6px;
-      font-size: 12px;
-    }
+        input,
+        select,
+        button {
+            padding: 4px 6px;
+            font-size: 12px;
+        }
 
-    button {
-      cursor: pointer;
-      font-weight: bold;
-    }
+        button {
+            cursor: pointer;
+            font-weight: bold;
+        }
 
-    #status {
-      font-size: 12px;
-      margin-top: 6px;
-      white-space: pre-line;
-    }
+        #status {
+            font-size: 12px;
+            margin-top: 6px;
+            white-space: pre-line;
+        }
 
-    #hotLuongKpi {
-      height: 520px;
-      overflow: auto;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
+        #hotLuongKpi {
+            height: 520px;
+            overflow: auto;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
 
-    .handsontable .ht_clone_top th .relative {
-      white-space: normal !important;
-      line-height: 1.2;
-    }
-  </style>
+        .handsontable .ht_clone_top th .relative {
+            white-space: normal !important;
+            line-height: 1.2;
+        }
+    </style>
 </head>
 
 <body>
-  <div class="card">
-    <h1>Bảng lương KPI chi tiết</h1>
+    <div class="card">
+        <h1>Bảng lương KPI chi tiết</h1>
 
-    <div class="row">
-      <div>
-        <label>Từ ngày:</label>
-        <input type="date" id="tu_ngay" />
-      </div>
+        <div class="row">
+            <div>
+                <label>Từ ngày:</label>
+                <input type="date" id="tu_ngay" />
+            </div>
 
-      <div>
-        <label>Đến ngày:</label>
-        <input type="date" id="den_ngay" />
-      </div>
+            <div>
+                <label>Đến ngày:</label>
+                <input type="date" id="den_ngay" />
+            </div>
 
-      <div>
-        <label>Cơ sở:</label>
-        <select id="diadiem">
-          <option value="">Tất cả</option>
-          <option value="cs1">cs1</option>
-          <option value="cs2">cs2</option>
-        </select>
-      </div>
+            <div>
+                <label>Cơ sở:</label>
+                <select id="diadiem">
+                    <option value="">Tất cả</option>
+                    <option value="cs1">cs1</option>
+                    <option value="cs2">cs2</option>
+                </select>
+            </div>
 
-      <div>
-        <label>Lương giờ bán:</label>
-        <input type="number" id="luong_gio_ban" value="26000" />
-      </div>
+            <div>
+                <label>Lương giờ bán:</label>
+                <input type="number" id="luong_gio_ban" value="26000" />
+            </div>
 
-      <div>
-        <label>Lương giờ task:</label>
-        <input type="number" id="luong_gio_task" value="26000" />
-      </div>
+            <div>
+                <label>Lương giờ task:</label>
+                <input type="number" id="luong_gio_task" value="26000" />
+            </div>
 
-      <div>
-        <label>Lương giờ dọn dẹp:</label>
-        <input type="number" id="luong_gio_dondep" value="26000" />
-      </div>
+            <div>
+                <label>Lương giờ dọn dẹp:</label>
+                <input type="number" id="luong_gio_dondep" value="26000" />
+            </div>
 
-      <div>
-        <label>Khoán DT/giờ bán:</label>
-        <input type="number" id="khoan_dt_gio" value="700000" />
-      </div>
+            <div>
+                <label>Khoán DT/giờ bán:</label>
+                <input type="number" id="khoan_dt_gio" value="700000" />
+            </div>
 
-      <div>
-        <label>% thưởng vượt:</label>
-        <input type="number" id="pct_thuong" value="1" step="0.1" />
-      </div>
+            <div>
+                <label>% thưởng vượt:</label>
+                <input type="number" id="pct_thuong" value="1" step="0.1" />
+            </div>
 
-      <button id="btn-tai">Tải bảng lương KPI</button>
+            <button id="btn-tai">Tải bảng lương KPI</button>
+        </div>
+
+        <div id="status"></div>
     </div>
 
-    <div id="status"></div>
-  </div>
+    <div class="card">
+        <div id="hotLuongKpi"></div>
+    </div>
 
-  <div class="card">
-    <div id="hotLuongKpi"></div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
-  <script type="module" src="./bangluong_kpi_chitiet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+    <script type="module" src="./scripts/bangluong_kpi_chitiet.js"></script>
 </body>
+
 </html>
