@@ -2677,6 +2677,41 @@ Shop chân thành cảm ơn!`;
         });
     </script>
 
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            setTimeout(() => {
+                const topInputs = document.querySelector(".banle-left .top-inputs");
+                const btnZaloOA = document.getElementById("btnQrOA");
+                if (!topInputs || !btnZaloOA) return;
+
+                const btnQuet = Array.from(topInputs.querySelectorAll("button"))
+                    .find(btn => {
+                        const txt = (btn.textContent || "").trim().toLowerCase();
+                        return txt.includes("quét") && btn.id !== "xemtonkho";
+                    });
+
+                if (!btnQuet) return;
+
+                btnQuet.id = btnQuet.id || "btnScanProduct";
+                btnQuet.innerHTML = "📷 Quét";
+
+                btnQuet.style.background = "#00c853";
+                btnQuet.style.color = "white";
+                btnQuet.style.fontWeight = "bold";
+                btnQuet.style.border = "none";
+                btnQuet.style.borderRadius = "8px";
+                btnQuet.style.padding = "0 16px";
+                btnQuet.style.fontSize = "18px";
+                btnQuet.style.height = "34px";
+                btnQuet.style.display = "inline-flex";
+                btnQuet.style.alignItems = "center";
+                btnQuet.style.gap = "5px";
+
+                topInputs.insertBefore(btnQuet, btnZaloOA);
+            }, 500);
+        });
+    </script>
+
 </body>
 
 </html>
