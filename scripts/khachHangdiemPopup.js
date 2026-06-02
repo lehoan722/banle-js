@@ -288,9 +288,7 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
       };
     })
       .sort((a, b) => new Date(b.ngay) - new Date(a.ngay))
-      .slice(0, limit);
-
-    const logs = Array.from(mapHoaDon.values()).slice(0, limit);
+      .slice(0, limit);    
 
     renderData(popup, khach, logs);
   }
