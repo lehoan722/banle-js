@@ -265,10 +265,13 @@ function renderHot(rows) {
     "Cơ sở",
     "Giờ công cũ",
     "Giờ bán",
-    "Giờ task",
+    "Giờ task giao",
+    "Giờ bất thường",
     "Giờ dọn dẹp",
     "Giờ nghỉ/off",
     "Tổng giờ log",
+    "Số lần bán",
+    "Hiệu suất %",
     "Doanh thu KPI",
     "Hoa hồng KPI",
     "Khoán DT",
@@ -276,6 +279,7 @@ function renderHot(rows) {
     "Thưởng vượt",
     "Lương bán",
     "Lương task",
+    "Lương bất thường",
     "Lương dọn dẹp",
     "Tổng lương",
     "Khoản trừ",
@@ -328,7 +332,28 @@ function renderHot(rows) {
     width: "100%",
     height: Math.min(900, Math.max(360, displayRows.length * 30 + 80)),
     columnHeaderHeight: 28,
-    rowHeights: 26,
+
+    cells: function (row, col) {
+      const cellProperties = {};
+      const label = displayRows?.[row]?.[0];
+
+      if (label === "Cảnh báo dữ liệu") {
+        cellProperties.renderer = function (instance, td, row, col, prop, value, cellProperties) {
+          Handsontable.renderers.TextRenderer.apply(this, arguments);
+          td.style.whiteSpace = "normal";
+          td.style.lineHeight = "1.3";
+          td.style.verticalAlign = "top";
+          td.style.overflow = "visible";
+        };
+      }
+
+      return cellProperties;
+    },
+
+    rowHeights: function (row) {
+      const label = displayRows?.[row]?.[0];
+      return label === "Cảnh báo dữ liệu" ? 90 : 26;
+    },
     colWidths: isDangDoc
       ? [160, ...Array.from({ length: Math.max(1, rows.length) }, () => 130)]
       : [
@@ -359,8 +384,11 @@ function transposeRows(rows, headers) {
 
     "Giờ công cũ",
     "Tổng giờ log",
+    "Số lần bán",
+    "Hiệu suất %",
     "Giờ bán",
-    "Giờ task",
+    "Giờ task giao",
+    "Giờ bất thường",
     "Giờ dọn dẹp",
     "Giờ nghỉ/off",
 
@@ -372,6 +400,7 @@ function transposeRows(rows, headers) {
 
     "Lương bán",
     "Lương task",
+    "Lương bất thường",
     "Lương dọn dẹp",
     "Tổng lương",
     "Khoản trừ",
@@ -469,7 +498,10 @@ async function taiBangLuongKpi() {
 
       const gioCongCu = fmtNumber(mapCongCu[keyCong]?.gio_cong_cu);
       const gioBan = fmtNumber(r.gio_ban_hang);
-      const gioTask = fmtNumber(r.gio_task);
+      const gioTask = fmtNumber(r.gio_task_duoc_giao ?? r.gio_task);
+      const gioBatThuong = fmtNumber(r.gio_viec_bat_thuong);
+      const soLanBan = fmtNumber(r.so_lan_ban);
+      const hieuSuatPct = fmtNumber(r.hieu_suat_pct);
       const gioDonDep = fmtNumber(r.gio_don_dep);
       const gioNghiOff = fmtNumber(r.gio_nghi_off);
       const tongGioLog = fmtNumber(r.tong_gio_log);
@@ -483,9 +515,10 @@ async function taiBangLuongKpi() {
 
       const luongBan = gioBan * luongGioBan;
       const luongTask = gioTask * luongGioTask;
+      const luongBatThuong = gioBatThuong * luongGioTask;
       const luongDonDep = gioDonDep * luongGioDonDep;
 
-      const tongLuong = luongBan + luongTask + luongDonDep + thuongVuot + hoaHong;
+      const tongLuong = luongBan + luongTask + luongBatThuong + luongDonDep + thuongVuot + hoaHong;
       const khoanTru = fmtNumber(mapKhoanTru[manv]);
       const thucLinh = tongLuong - khoanTru;
 
@@ -496,9 +529,12 @@ async function taiBangLuongKpi() {
         gioCongCu,
         gioBan,
         gioTask,
+        gioBatThuong,
         gioDonDep,
         gioNghiOff,
         tongGioLog,
+        soLanBan,
+        hieuSuatPct,
         Math.round(doanhThu),
         Math.round(hoaHong),
         Math.round(khoanDt),
@@ -506,6 +542,7 @@ async function taiBangLuongKpi() {
         Math.round(thuongVuot),
         Math.round(luongBan),
         Math.round(luongTask),
+        Math.round(luongBatThuong),
         Math.round(luongDonDep),
         Math.round(tongLuong),
         Math.round(khoanTru),
