@@ -286,8 +286,20 @@ function renderHot(rows) {
   lastRows = rows;
   lastColHeaders = colHeaders;
 
-  const columns = (isDangDoc ? displayHeaders : colHeaders).map((_, idx) => {
-    if (isDangDoc) return { data: idx, type: "text" };
+  const isDangDoc = !!chkDangDoc?.checked;
+
+  const displayRows = isDangDoc
+    ? transposeRows(rows, colHeaders)
+    : rows;
+
+  const displayHeaders = isDangDoc
+    ? ["Chỉ tiêu", ...rows.map(r => r[0] || "")]
+    : colHeaders;
+
+  const columns = displayHeaders.map((_, idx) => {
+    if (isDangDoc) {
+      return { data: idx, type: "text" };
+    }
 
     if (idx <= 2 || idx === colHeaders.length - 1) {
       return { data: idx, type: "text" };
@@ -300,12 +312,6 @@ function renderHot(rows) {
     };
   });
 
-  const isDangDoc = !!chkDangDoc?.checked;
-  const displayRows = isDangDoc ? transposeRows(rows, colHeaders) : rows;
-  const displayHeaders = isDangDoc
-    ? ["Chỉ tiêu", ...rows.map(r => r[0] || "")]
-    : colHeaders;
-
   const settings = {
     data: displayRows,
     colHeaders: displayHeaders,
@@ -314,17 +320,14 @@ function renderHot(rows) {
     filters: true,
     dropdownMenu: true,
     columnSorting: true,
-    wordWrap: true,
+    wordWrap: false,
     stretchH: "none",
-    fixedColumnsStart: 3,
+    fixedColumnsStart: isDangDoc ? 1 : 3,
     manualColumnResize: true,
     manualRowResize: true,
     width: "100%",
     height: 520,
-    wordWrap: false,
     columnHeaderHeight: 28,
-    fixedColumnsStart: isDangDoc ? 1 : 3,
-    columnHeaderHeight: 44,
     rowHeights: 26,
     colWidths: isDangDoc
       ? [130, ...Array.from({ length: Math.max(1, rows.length) }, () => 120)]
