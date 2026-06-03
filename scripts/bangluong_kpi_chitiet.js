@@ -326,11 +326,11 @@ function renderHot(rows) {
     manualColumnResize: true,
     manualRowResize: true,
     width: "100%",
-    height: 520,
+    height: Math.min(900, Math.max(360, displayRows.length * 30 + 80)),
     columnHeaderHeight: 28,
     rowHeights: 26,
     colWidths: isDangDoc
-      ? [130, ...Array.from({ length: Math.max(1, rows.length) }, () => 120)]
+      ? [160, ...Array.from({ length: Math.max(1, rows.length) }, () => 130)]
       : [
         75, 120, 60,
         85, 75, 75, 90, 90, 90,
@@ -352,10 +352,39 @@ function renderHot(rows) {
 function transposeRows(rows, headers) {
   if (!rows || !rows.length) return [];
 
-  return headers.map((header, colIndex) => {
+  const order = [
+    "Mã NV",
+    "Tên NV",
+    "Cơ sở",
+
+    "Giờ công cũ",
+    "Tổng giờ log",
+    "Giờ bán",
+    "Giờ task",
+    "Giờ dọn dẹp",
+    "Giờ nghỉ/off",
+
+    "Doanh thu KPI",
+    "Hoa hồng KPI",
+    "Khoán DT",
+    "Vượt khoán",
+    "Thưởng vượt",
+
+    "Lương bán",
+    "Lương task",
+    "Lương dọn dẹp",
+    "Tổng lương",
+    "Khoản trừ",
+    "Thực lĩnh",
+
+    "Cảnh báo dữ liệu"
+  ];
+
+  return order.map(label => {
+    const colIndex = headers.indexOf(label);
     return [
-      header,
-      ...rows.map(r => r[colIndex] ?? "")
+      label,
+      ...rows.map(r => colIndex >= 0 ? (r[colIndex] ?? "") : "")
     ];
   });
 }
