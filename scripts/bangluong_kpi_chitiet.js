@@ -516,7 +516,7 @@ async function taiBangLuongKpi() {
       const hoaHong = fmtNumber(mapKpi[manv]?.hoa_hong);
 
       const khoanDt = gioBan * khoanDtGio;
-      const vuotKhoan = Math.max(0, doanhThu - khoanDt);
+      const vuotKhoan = doanhThu - khoanDt;
       const thuongVuot = vuotKhoan * pctThuong;
 
       const luongBan = gioBan * luongGioBan;
