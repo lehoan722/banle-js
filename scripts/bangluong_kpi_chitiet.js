@@ -268,7 +268,7 @@ function renderHot(rows) {
     "Giờ task giao",
     "Giờ bất thường",
     "Giờ dọn dẹp",
-    "Giờ nghỉ/off",
+    "Giờ không tính lương",
     "Tổng giờ log",
     "Số lần bán",
     "Hiệu suất %",
@@ -390,7 +390,7 @@ function transposeRows(rows, headers) {
     "Giờ task giao",
     "Giờ bất thường",
     "Giờ dọn dẹp",
-    "Giờ nghỉ/off",
+    "Giờ không tính lương",
 
     "Doanh thu KPI",
     "Hoa hồng KPI",
@@ -505,6 +505,12 @@ async function taiBangLuongKpi() {
       const gioDonDep = fmtNumber(r.gio_don_dep);
       const gioNghiOff = fmtNumber(r.gio_nghi_off);
       const tongGioLog = fmtNumber(r.tong_gio_log);
+      const gioKhongTinhLuong =
+        tongGioLog
+        - gioBan
+        - gioTask
+        - gioBatThuong
+        - gioDonDep;
 
       const doanhThu = fmtNumber(mapKpi[manv]?.doanh_thu);
       const hoaHong = fmtNumber(mapKpi[manv]?.hoa_hong);
@@ -531,7 +537,7 @@ async function taiBangLuongKpi() {
         gioTask,
         gioBatThuong,
         gioDonDep,
-        gioNghiOff,
+        gioKhongTinhLuong,
         tongGioLog,
         soLanBan,
         hieuSuatPct,
