@@ -13,6 +13,11 @@ const pctThuongInput = document.getElementById("pct_thuong");
 
 const btnTai = document.getElementById("btn-tai");
 const btnCopy = document.getElementById("btn-copy");
+
+const chkDangDoc = document.getElementById("chk-dang-doc");
+let lastRows = [];
+let lastColHeaders = [];
+
 const statusEl = document.getElementById("status");
 const hotContainer = document.getElementById("hotLuongKpi");
 
@@ -278,37 +283,58 @@ function renderHot(rows) {
     "Cảnh báo dữ liệu"
   ];
 
-  const columns = colHeaders.map((_, idx) => {
+  lastRows = rows;
+  lastColHeaders = colHeaders;
+
+  const columns = (isDangDoc ? displayHeaders : colHeaders).map((_, idx) => {
+    if (isDangDoc) return { data: idx, type: "text" };
+
     if (idx <= 2 || idx === colHeaders.length - 1) {
       return { data: idx, type: "text" };
     }
-    return { data: idx, type: "numeric", numericFormat: { pattern: "0,0.00" } };
+
+    return {
+      data: idx,
+      type: "numeric",
+      numericFormat: { pattern: "0,0.00" }
+    };
   });
 
+  const isDangDoc = !!chkDangDoc?.checked;
+  const displayRows = isDangDoc ? transposeRows(rows, colHeaders) : rows;
+  const displayHeaders = isDangDoc
+    ? ["Chỉ tiêu", ...rows.map(r => r[0] || "")]
+    : colHeaders;
+
   const settings = {
-    data: rows,
-    colHeaders,
+    data: displayRows,
+    colHeaders: displayHeaders,
     columns,
     rowHeaders: true,
     filters: true,
     dropdownMenu: true,
     columnSorting: true,
     wordWrap: true,
-
     stretchH: "none",
     fixedColumnsStart: 3,
     manualColumnResize: true,
     manualRowResize: true,
     width: "100%",
     height: 520,
-
+    wordWrap: false,
+    columnHeaderHeight: 28,
+    fixedColumnsStart: isDangDoc ? 1 : 3,
     columnHeaderHeight: 44,
     rowHeights: 26,
-    colWidths: [
-      70, 50, 60, 80, 80, 80, 90, 90, 90,
-      110, 100, 100, 100, 100, 100, 100, 110,
-      110, 100, 110
-    ],
+    colWidths: isDangDoc
+      ? [130, ...Array.from({ length: Math.max(1, rows.length) }, () => 120)]
+      : [
+        75, 120, 60,
+        85, 75, 75, 90, 90, 90,
+        115, 105, 105, 105, 105,
+        100, 100, 110, 110, 100, 110,
+        300
+      ],
     licenseKey: "non-commercial-and-evaluation"
   };
 
@@ -318,6 +344,17 @@ function renderHot(rows) {
     hot.updateSettings(settings);
     hot.render();
   }
+}
+
+function transposeRows(rows, headers) {
+  if (!rows || !rows.length) return [];
+
+  return headers.map((header, colIndex) => {
+    return [
+      header,
+      ...rows.map(r => r[colIndex] ?? "")
+    ];
+  });
 }
 
 async function taiBangLuongKpi() {
@@ -501,6 +538,14 @@ function initPage() {
       navigator.clipboard.writeText(text).then(() => {
         alert("Đã copy bảng lương KPI.");
       });
+    });
+  }
+
+  if (chkDangDoc) {
+    chkDangDoc.addEventListener("change", () => {
+      if (lastRows.length) {
+        renderHot(lastRows);
+      }
     });
   }
 
