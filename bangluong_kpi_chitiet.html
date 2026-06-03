@@ -68,8 +68,18 @@
         }
 
         .handsontable .ht_clone_top th .relative {
-            white-space: normal !important;
-            line-height: 1.2;
+            white-space: nowrap !important;
+            line-height: 1.1;
+        }
+
+        .handsontable td {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        .handsontable th {
+            white-space: nowrap !important;
         }
     </style>
 </head>
@@ -125,6 +135,10 @@
 
             <button id="btn-tai">Tải bảng lương KPI</button>
             <button id="btn-copy">Copy bảng</button>
+            <label style="font-size:12px;margin-left:8px;">
+                <input type="checkbox" id="chk-dang-doc">
+                Xem dạng dọc
+            </label>
         </div>
 
         <div id="status"></div>
