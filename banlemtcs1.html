@@ -638,9 +638,9 @@
             padding: 4px 8px !important;
             box-sizing: border-box !important;
         }
-    </style>  
-  
-    
+    </style>
+
+
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
 
@@ -741,7 +741,7 @@
             <input id="manv" type="hidden" />
             <input id="tennv" placeholder="Tên NV" readonly />
             <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
-             <button id="xemtonkho" class="action-btn-small">🔍</button>
+            <button id="xemtonkho" class="action-btn-small">🔍</button>
 
         </div>
 
@@ -777,7 +777,7 @@
                     <input id="vitri" type="hidden" />
 
                     <span class="action-row-break"></span>
-                   
+
                     <button id="btnQLMK" type="button"
                         style="background:#ff9800;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;">
                         QLMK
@@ -1049,36 +1049,55 @@
 
             if (!hd) return;
 
+            const diemTru = Number(hd.diem_tru || 0);
+            const tienDoiDiem = Number(hd.tien_doi_diem || 0);
+
+            // 1. Nạp đúng thông tin đã lưu theo hóa đơn
             setVal("makh", hd.makh || "");
             setVal("khachhang", hd.khachhang || "");
-            setVal("diem_tru", hd.diem_tru || 0);
-            setVal("tien_doi_diem", Number(hd.tien_doi_diem || 0).toLocaleString("vi-VN"));
+            setVal("diem_tru", diemTru);
+            setVal("tien_doi_diem", tienDoiDiem.toLocaleString("vi-VN"));
 
+            // Nếu có ô hiển thị phụ thì cũng cập nhật
+            setVal("km_diem_hienthi", tienDoiDiem.toLocaleString("vi-VN"));
+            setVal("diemdung", diemTru);
+            setVal("giamdiem", tienDoiDiem.toLocaleString("vi-VN"));
+
+            // 2. Chỉ lấy thêm điểm hiện tại / hạng khách từ danh mục khách hàng
+            // Tuyệt đối KHÔNG gọi window.napThongTinDiemKhach(hd.makh)
+            // vì hàm đó sẽ reset diem_tru và tien_doi_diem về 0.
             if (hd.makh) {
-                if (typeof window.napThongTinDiemKhach === "function") {
-                    await window.napThongTinDiemKhach(hd.makh);
-                } else {
-                    const { data: kh } = await window.supabase
-                        .from("dmkhachhang")
-                        .select("diem_hientai, hang_khach, created_by_manv")
-                        .eq("makh", hd.makh)
-                        .maybeSingle();
+                const { data: kh, error: khError } = await window.supabase
+                    .from("dmkhachhang")
+                    .select("diem_hientai, hang_khach, created_by_manv")
+                    .eq("makh", hd.makh)
+                    .maybeSingle();
 
-                    if (kh) {
-                        setVal("diem_hientai", kh.diem_hientai ?? "");
-
-                        const hangText = kh.hang_khach || "THUONG";
-                        const nvTaoText = kh.created_by_manv ? "/" + kh.created_by_manv : "";
-                        setVal("hang_khach", hangText + nvTaoText);
-                    }
+                if (khError) {
+                    console.warn("⚠️ Không đọc được thông tin khách hàng:", khError);
                 }
-            }
 
-            if (hd.makh) {
+                if (kh) {
+                    setVal("diem_hientai", kh.diem_hientai ?? "");
+
+                    const hangText = kh.hang_khach || "THUONG";
+                    const nvTaoText = kh.created_by_manv ? "/" + kh.created_by_manv : "";
+                    setVal("hang_khach", hangText + nvTaoText);
+                }
+
                 await window.napTrangThaiZaloKhach?.(hd.makh);
             } else {
+                setVal("diem_hientai", "");
+                setVal("hang_khach", "");
                 window.resetZaloJoinedUI?.();
             }
+
+            // 3. Chốt lại lần cuối để tránh hàm Zalo/khách hàng phụ ghi đè
+            setVal("diem_tru", diemTru);
+            setVal("tien_doi_diem", tienDoiDiem.toLocaleString("vi-VN"));
+            setVal("km_diem_hienthi", tienDoiDiem.toLocaleString("vi-VN"));
+            setVal("diemdung", diemTru);
+            setVal("giamdiem", tienDoiDiem.toLocaleString("vi-VN"));
         }
 
         document.addEventListener("DOMContentLoaded", () => {
