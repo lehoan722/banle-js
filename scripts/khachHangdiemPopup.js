@@ -259,12 +259,12 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
 
     const sohdList = [...new Set((rawLogs || []).map(r => r.sohd).filter(Boolean))];
 
-    let sohdHopLeSet = new Set();
+    let hoaDonMap = new Map();
 
     if (sohdList.length) {
       const { data: hoaDonHopLe, error: hdErr } = await window.supabase
         .from("hoadon_banle")
-        .select("sohd, makh")
+        .select("sohd, makh, diem_tru, diem_cong, diem_sau_hoa_don, updated_at, created_at")
         .in("sohd", sohdList)
         .eq("makh", khach.makh);
 
@@ -272,10 +272,10 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
         console.error("❌ Lỗi kiểm tra hóa đơn hiện tại:", hdErr);
       }
 
-      sohdHopLeSet = new Set((hoaDonHopLe || []).map(h => h.sohd));
+      hoaDonMap = new Map((hoaDonHopLe || []).map(h => [h.sohd, h]));
     }
 
-    const rawLogsHopLe = (rawLogs || []).filter(r => sohdHopLeSet.has(r.sohd));
+    const rawLogsHopLe = (rawLogs || []).filter(r => hoaDonMap.has(r.sohd));
 
     const mapHoaDon = new Map();
 
@@ -299,26 +299,18 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
       const diemTruoc = Number(first.diem_truoc || 0);
       const diemConLai = Number(last.diem_sau || last.diem_con_lai || 0);
 
-      let diemDung = 0;
+      const hd = hoaDonMap.get(sohd) || {};
 
-      arr.forEach(r => {
-        const truoc = Number(r.diem_truoc || 0);
-        const sau = Number(r.diem_sau || 0);
-
-        if (sau < truoc) {
-          diemDung += truoc - sau;
-        }
-      });
-
-      const diemTich = Math.max(0, diemConLai - diemTruoc + diemDung);
+      const diemDung = Number(hd.diem_tru || 0);
+      const diemTich = Number(hd.diem_cong || 0);
 
       return {
-        ngay: last.ngay,
+        ngay: hd.updated_at || hd.created_at || last.ngay,
         sohd,
         diem_truoc: diemTruoc,
         diem_dung: diemDung,
         diem_tich: diemTich,
-        diem_con_lai: diemConLai
+        diem_con_lai: Number(hd.diem_sau_hoa_don || diemConLai || 0)
       };
     })
       .sort((a, b) => parseNgayVN(b.ngay) - parseNgayVN(a.ngay))
