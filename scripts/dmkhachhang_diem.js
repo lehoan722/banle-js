@@ -380,9 +380,7 @@ export function mountKhachHangSuggest(options = {}) {
 
     window.__tongPhaiTraGoc = tongGoc;
 
-    setVal(diemTruInputId, "0");
-    setVal(tienDoiDiemInputId, "0");
-    setVal("km_diem_hienthi", "0");
+    
     setVal("phaithanhtoan", tongGoc.toLocaleString("vi-VN"));
     setVal("khachtra", tongGoc.toLocaleString("vi-VN"));
     setVal("conlai", "0");
