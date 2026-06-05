@@ -131,10 +131,6 @@ export async function napHoaDonVaoTrang(hoadon) {
   document.getElementById("manv").value = hoadon.manv || "";
   document.getElementById("tennv").value = hoadon.tennv || "";
   document.getElementById("diadiem").value = hoadon.diadiem || "";
-
-  const makhEl = document.getElementById("makh");
-  if (makhEl) makhEl.value = hoadon.makh || "";
-
   document.getElementById("khachhang").value = hoadon.khachhang || "";
   document.getElementById("hinhthuctt").value = hoadon.hinhthuctt || "";
   // ✅ NẠP GHI CHÚ HÓA ĐƠN
@@ -144,7 +140,6 @@ export async function napHoaDonVaoTrang(hoadon) {
   const thanhToan = Number(hoadon.thanhtoan || 0);
   const tienDoiDiem = Number(hoadon.tien_doi_diem || 0);
   const diemTru = Number(hoadon.diem_tru || 0);
-  window.__tongPhaiTraGoc = thanhToan + tienDoiDiem;
 
   document.getElementById("chietkhau").value = hoadon.chietkhau || "0";
   document.getElementById("tongkm").value = Number(hoadon.tongkm || 0).toLocaleString("vi-VN");
