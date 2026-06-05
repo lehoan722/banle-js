@@ -244,6 +244,17 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
       return;
     }
 
+    const { count: soLanMuaThucTe, error: countErr } = await window.supabase
+      .from("hoadon_banle")
+      .select("sohd", { count: "exact", head: true })
+      .eq("makh", khach.makh)
+      .in("loaihd", ["bancs1", "bancs2"])
+      .gt("thanhtoan", 0);
+
+    if (!countErr) {
+      khach.so_lan_mua = soLanMuaThucTe || 0;
+    }
+
     const { data: rawLogs, error: logErr } = await window.supabase
       .from("kh_lichsu_diem")
       .select("ngay, sohd, diem_truoc, diem_sau, diem_con_lai")
