@@ -380,7 +380,9 @@ export function mountKhachHangSuggest(options = {}) {
 
     window.__tongPhaiTraGoc = tongGoc;
 
-    
+    setVal(diemTruInputId, "0");
+    setVal(tienDoiDiemInputId, "0");
+    setVal("km_diem_hienthi", "0");
     setVal("phaithanhtoan", tongGoc.toLocaleString("vi-VN"));
     setVal("khachtra", tongGoc.toLocaleString("vi-VN"));
     setVal("conlai", "0");
@@ -507,7 +509,7 @@ export function mountKhachHangSuggest(options = {}) {
 
     makhInput.value = chiLaySo(kh.makh || "");
     setVal(tenInputId, kh.tenkh || "");
-    copyMakhNeuDu10So();
+   // copyMakhNeuDu10So();
     suggestBox.style.display = "none";
 
     dangTaoKhachMoi = false;
@@ -911,7 +913,7 @@ export function mountKhachHangSuggest(options = {}) {
 
     makhInput.value = chiLaySo(makh);
     setVal(tenInputId, tenkh);
-    copyMakhNeuDu10So();
+    //copyMakhNeuDu10So();
 
     window.dispatchEvent(new CustomEvent("ht:khachhangmoi:saved", {
       detail: { makh, tenkh }
@@ -1126,7 +1128,7 @@ export function mountKhachHangSuggest(options = {}) {
         makhInput.value = maMoi;
       }
 
-      copyMakhNeuDu10So();
+      //copyMakhNeuDu10So();
 
       const kw = makhInput.value.trim();
 
@@ -1155,7 +1157,7 @@ export function mountKhachHangSuggest(options = {}) {
         makhInput.select?.();
       }, 50);
 
-      copyMakhNeuDu10So();
+      //copyMakhNeuDu10So();
 
       const kw = String(makhInput.value || "").trim();
 
@@ -1204,7 +1206,7 @@ export function mountKhachHangSuggest(options = {}) {
 
           makhInput.value = chiLaySo(kh.makh || "");
           setVal(tenInputId, kh.tenkh || "");
-          copyMakhNeuDu10So();
+         // copyMakhNeuDu10So();
 
           suggestBox.style.display = "none";
           dangTaoKhachMoi = false;
