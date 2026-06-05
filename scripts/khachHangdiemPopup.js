@@ -310,7 +310,7 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
         diem_truoc: diemTruoc,
         diem_dung: diemDung,
         diem_tich: diemTich,
-        diem_con_lai: Number(hd.diem_sau_hoa_don || diemConLai || 0)
+        diem_con_lai: Number(hd.diem_sau_hoa_don ?? diemConLai ?? 0)
       };
     })
       .sort((a, b) => parseNgayVN(b.ngay) - parseNgayVN(a.ngay))
