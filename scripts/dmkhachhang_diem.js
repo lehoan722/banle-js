@@ -1355,10 +1355,46 @@ export function mountKhachHangSuggest(options = {}) {
     bindEvents();
   });
 
+  async function napDiemDaDungTheoHoaDon(sohd) {
+    sohd = String(sohd || "").trim();
+    if (!sohd) return null;
+
+    const { data, error } = await window.supabase
+      .from("hoadon_banle")
+      .select("sohd, makh, khachhang, diem_tru, tien_doi_diem, thanhtoan")
+      .eq("sohd", sohd)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Không lấy được điểm đã dùng của hóa đơn:", error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    const diemTru = Number(data.diem_tru || 0);
+    const tienDoiDiem = Number(data.tien_doi_diem || 0);
+    const thanhToan = Number(data.thanhtoan || 0);
+
+    setVal(inputId, data.makh || "");
+    setVal(tenInputId, data.khachhang || "");
+    setVal(diemTruInputId, diemTru);
+    setVal(tienDoiDiemInputId, tienDoiDiem.toLocaleString("vi-VN"));
+    setVal("km_diem_hienthi", tienDoiDiem.toLocaleString("vi-VN"));
+    setVal("phaithanhtoan", thanhToan.toLocaleString("vi-VN"));
+    setVal("khachtra", thanhToan.toLocaleString("vi-VN"));
+    setVal("conlai", "0");
+
+    window.__tongPhaiTraGoc = thanhToan + tienDoiDiem;
+
+    return data;
+  }
+
   // Cho các file khác gọi lại nếu cần
   window.napThongTinDiemKhach = napThongTinDiemKhach;
   window.napTrangThaiZaloKhach = napTrangThaiZaloKhach;
   window.resetZaloJoinedUI = resetZaloJoinedUI;
   window.capNhatZaloTheoMakhHienTai = capNhatZaloTheoMakhHienTai;
   window.timKhachHangBanLe = timKhachHang;
+  window.napDiemDaDungTheoHoaDon = napDiemDaDungTheoHoaDon;
 }
