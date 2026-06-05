@@ -1357,6 +1357,7 @@ export async function napLaiChiTietHoaDon(sohd) {
     });
 
     capNhatBangHTML(bangKetQua, window.lastAdded);
+    await window.napDiemDaDungTheoHoaDon?.(sohd);
 }
 
 
