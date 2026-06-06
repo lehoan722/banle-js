@@ -35,8 +35,15 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
   const sellerInfo = isCs2 ? sellers.cs2 : sellers.cs1;
   // Ưu tiên override từ dmkhachhang
   const b = hoadon.__buyerOverride || null;
-  const _buyerName = (b?.buyerName || hoadon.khachhang || "Khách lẻ").trim();
-  const _hasTax = !!(b?.buyerTaxCode && String(b.buyerTaxCode).trim());
+
+  // Kiểm tra khách có mã số thuế hay không
+  const _buyerTaxCode = String(b?.buyerTaxCode || "").trim();
+  const _hasTax = !!_buyerTaxCode;
+
+  // Nếu không có MST thì coi là khách lẻ, không truyền tên thật lên Viettel
+  const _buyerName = _hasTax
+    ? String(b?.buyerName || hoadon.khachhang || "Khách lẻ").trim()
+    : "Khách lẻ";
   return {
     generalInvoiceInfo: {
       sohd: hoadon.sohd,
@@ -54,14 +61,16 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
 
     buyerInfo: {
       sohd: hoadon.sohd,
-      // Dùng cả hai khóa tên để tương thích template Viettel
-      buyerName: _buyerName,                 // cho trường hợp cá nhân/không MST
-      buyerLegalName: _buyerName,            // cho trường hợp tổ chức/có MST
-      buyerTaxCode: (b?.buyerTaxCode || "").trim(),
-      buyerAddressLine: (b?.buyerAddressLine || "").trim(),
-      buyerPhoneNumber: (b?.buyerPhoneNumber || "").trim(),
-      buyerEmail: (b?.buyerEmail || "").trim(),
-      // (tùy chọn) map thêm nếu cần
+
+      // Nếu có MST: truyền đầy đủ tên + MST.
+      // Nếu không có MST: chỉ truyền khách lẻ, không truyền tên thật lên Viettel.
+      buyerName: _hasTax ? _buyerName : "KL",
+      buyerLegalName: _hasTax ? _buyerName : "Khách lẻ",
+      buyerTaxCode: _hasTax ? _buyerTaxCode : "",
+      buyerAddressLine: _hasTax ? String(b?.buyerAddressLine || "").trim() : "",
+      buyerPhoneNumber: _hasTax ? String(b?.buyerPhoneNumber || "").trim() : "",
+      buyerEmail: _hasTax ? String(b?.buyerEmail || "").trim() : "",
+
       buyerIdNo: "",
       buyerIdType: "",
       buyerBudgetCode: ""
@@ -73,7 +82,7 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
     ],
     itemInfo: chitiet.map((item, index) => ({
       lineNumber: index + 1,
-     // itemCode: item.masp,
+      // itemCode: item.masp,
       itemName: item.tensp,
       unitName: item.dvt || "",
       quantity: Number(item.soluong),
