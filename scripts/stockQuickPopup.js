@@ -557,9 +557,13 @@
   order: 3;
 }
 
-  .sq-stock-table-wrapper {
-  max-height: 50vh;
-  overflow: auto;
+    .sq-stock-table-wrapper {
+  order: 1;
+  flex: 0 0 auto;
+  height: auto !important;
+  max-height: none !important;
+  overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -612,6 +616,7 @@
   margin-top: 6px;
   padding-top: 4px;
   order: 2;
+  flex: 0 0 auto;
 }
 
     .sq-vitri-action-row {
