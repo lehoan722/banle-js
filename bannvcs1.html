@@ -700,7 +700,7 @@
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
-            <button id="xuatexcel">Xuất Excel</button>
+            <button id="btnDanExcel">Dán</button>
             <button id="btnCCN">CCN</button>
 
 
@@ -1757,6 +1757,26 @@ Shop chân thành cảm ơn!`;
                 });
             });
         })();
+    </script>
+
+    <script>
+        // ✅ Nút Dán: đọc clipboard rồi dán vào bảng bán hàng
+        document.getElementById('btnDanExcel')?.addEventListener('click', async function () {
+            try {
+                const text = await navigator.clipboard.readText();
+
+                if (!text || !text.trim()) {
+                    alert('Clipboard đang trống hoặc chưa copy dữ liệu Excel.');
+                    return;
+                }
+
+                danDuLieuExcelVaoBang(text);
+
+            } catch (err) {
+                console.error('Không đọc được clipboard:', err);
+                alert('Trình duyệt không cho đọc clipboard. Hãy bấm vào bảng rồi Ctrl+V.');
+            }
+        });
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
