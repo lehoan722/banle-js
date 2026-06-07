@@ -520,9 +520,15 @@
     }
 
     .sq-title-text {
-      font-size: 15px;
-      line-height: 1.15;
-    }
+  font-size: 17px;
+  line-height: 1.38;
+  font-weight: 400;
+}
+
+.sq-title-masp {
+  font-size: 18px;
+  font-weight: 400;
+}
 
     .sq-photo-btn {
       font-size: 12px;
@@ -536,16 +542,28 @@
     }
 
     .sq-stock-table-wrapper {
-      max-height: none;
-      overflow: visible;
-    }
+  max-height: 44vh;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
     .sq-stock-popup th,
-    .sq-stock-popup td {
-      padding: 2px 4px;
-      font-size: 14px;
-      line-height: 1.1;
-    }
+.sq-stock-popup td {
+  padding: 4px 5px;
+  font-size: 15px;
+  line-height: 1.32;
+  font-weight: 400;
+}
+
+.sq-stock-popup th {
+  font-weight: 500;
+}
+
+.sq-stock-popup tr.sum-row td {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  line-height: 1.32;
+}
 
     .sq-stock-popup th {
       font-weight: 700;
@@ -557,16 +575,22 @@
     }
 
     .sq-img-wrapper {
-      flex: 0 0 auto;
-      width: 100%;
-      max-width: 100%;
-      margin-top: 4px;
-    }
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 4px;
+  text-align: left;
+  order: 2;
+}
 
-    .sq-img-wrapper img {
-      max-height: 22vh;
-      object-fit: contain;
-    }
+.sq-img-wrapper img {
+  width: auto;
+  max-width: 50%;
+  max-height: 11vh;
+  object-fit: contain;
+  display: block;
+  margin-left: 0;
+}
 
     .sq-vitri-actions-wrap {
       margin-top: 6px;
@@ -1544,9 +1568,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
               </tbody>
             </table>
           </div>
-          ${imgBlock}
-        </div>
+          </div>
         ${vitriEditorBlock}
+        ${imgBlock}
       </div>`;
   }
 
