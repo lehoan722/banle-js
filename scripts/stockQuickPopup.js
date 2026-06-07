@@ -536,10 +536,26 @@
       border-radius: 6px;
     }
 
-    .sq-stock-layout {
-      flex-direction: column;
-      gap: 6px;
-    }
+    .sq-stock-popup.show {
+  display: flex;
+  flex-direction: column;
+}
+
+.sq-stock-layout {
+  display: contents;
+}
+
+.sq-stock-table-wrapper {
+  order: 1;
+}
+
+.sq-vitri-actions-wrap {
+  order: 2;
+}
+
+.sq-img-wrapper {
+  order: 3;
+}
 
     .sq-stock-table-wrapper {
   max-height: 44vh;
@@ -1568,9 +1584,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
               </tbody>
             </table>
           </div>
-          </div>
+          ${imgBlock}
+        </div>
         ${vitriEditorBlock}
-        ${imgBlock}
       </div>`;
   }
 
