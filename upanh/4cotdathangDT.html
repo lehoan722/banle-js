@@ -36,7 +36,7 @@
         }
 
         .data-container {
-            width: 50%;
+            width: 100%;
             height: 100%;
             overflow-y: auto;
             padding: 10px;
@@ -45,46 +45,11 @@
             border-right: 1px solid #ddd;
         }
 
-        .gallery-container {
-            width: 50%;
-            height: 100%;
-            overflow-y: auto;
-            padding: 10px;
-            box-sizing: border-box;
-            background-color: #f1f1f1;
-        }
 
-        .gallery {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
 
-        .gallery img {
-            display: block;
-            object-fit: contain;
-            background: #fff;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            margin: 0 auto;
-            max-width: 100%;
-            max-height: 320px;
-            min-width: 0;
-            min-height: 0;
-        }
 
-        .gallery-item {
-            width: 320px;
-            height: 320px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f8f8f8;
-            border-radius: 8px;
-            box-shadow: 0 1px 6px #eee;
-            margin: 0 auto;
-            flex-direction: column;
-        }
+
+
 
 
         .dropdown {
@@ -127,7 +92,7 @@
             background-color: #f0f0f0;
         }
 
-        .dropdown:hover .dropdown-content {
+        .dropdown.open .dropdown-content {
             display: block;
         }
 
@@ -138,48 +103,9 @@
                 /* Sắp xếp dọc theo chiều từ trên xuống */
             }
 
-            .gallery-container {
-                order: 1;
-                /* Hiển thị đầu tiên */
-                height: 40vh;
-                /* Chiếm 50% chiều cao màn hình */
-                width: 100vw;
-                /* Chiếm toàn bộ chiều rộng màn hình */
-                overflow-y: auto;
-                /* Cuộn dọc nếu ảnh nhiều */
-                position: sticky;
-                /* Cố định khi cuộn */
-                top: 0;
-                /* Sát trên cùng */
-                background: #f1f1f1;
-                /* Nền sáng nhẹ */
-                padding: 10px;
-                /* Lề trong */
-                box-sizing: border-box;
-                /* Bao gồm cả padding trong kích thước */
-            }
 
-            .gallery {
-                display: flex;
-                /* Kích hoạt flex */
-                flex-direction: column;
-                /* Ảnh xếp theo cột */
-                align-items: center;
-                /* Căn giữa ảnh theo chiều ngang */
-                gap: 10px;
-                /* Khoảng cách giữa các ảnh */
-            }
 
-            .gallery img {
-                width: 100%;
-                /* Mỗi ảnh chiếm toàn chiều ngang */
-                height: auto;
-                /* Tự điều chỉnh chiều cao theo tỷ lệ */
-                border: 1px solid #ccc;
-                /* Viền ảnh */
-                border-radius: 4px;
-                /* Bo tròn nhẹ */
-            }
+
 
             .nutlenh {
                 order: 2;
@@ -299,6 +225,8 @@
         .dropdown:hover .dropdown-content {
             display: block;
         }
+
+        /* ✅ Ảnh đang chọn: nổi bật rõ ràng */
     </style>
 </head>
 
@@ -307,7 +235,7 @@
         <div class="dropdown">
             <div class="dropdown-button">☰ MENU</div>
             <div class="dropdown-content">
-                <button onclick="searchImages()">Hiện ảnh sản phẩm</button>
+
                 <button onclick="window.open('https://banle-js.vercel.app/timkiemhanghoa111.html')">Tim Kiem NV</button>
                 <button onclick="window.open('upanhmoi2.html')">Up ảnh mới</button>
                 <button onclick="window.open('/a/upanhdathang.html', '_blank')">Trang đặt hàng</button>
@@ -347,15 +275,23 @@
 
     <div class="main-content">
         <div class="data-container">
+            <div id="statusLoad" style="display:none; color:red; font-weight:bold; margin:6px 0;">
+                Đang tải dữ liệu...
+            </div>
+
             <div id="loading" class="loading"></div>
             <div id="hot"></div>
-        </div>
-        <div class="gallery-container">
-            <div class="gallery" id="gallery"></div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.js"></script>
+
+    <!-- Nếu trang này chưa có Supabase global thì phải có dòng này -->
+    <script src="scripts/supabaseClient.js"></script>
+
+    <!-- Module popup tồn nhanh -->
+    <script src="scripts/stockQuickPopup.js?v=55"></script>
+
     <script>
 
         //---------------------lenh---khai bao bang -------------------------------
@@ -383,6 +319,36 @@
             licenseKey: 'non-commercial-and-evaluation'
         });
 
+        // ===== Dropdown open/close bằng click (đóng được bằng JS) =====
+        function initDropdowns() {
+            const dropdowns = document.querySelectorAll('.dropdown');
+
+            dropdowns.forEach(dd => {
+                const btn = dd.querySelector('.dropdown-button');
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+
+                    // đóng các dropdown khác
+                    dropdowns.forEach(other => { if (other !== dd) other.classList.remove('open'); });
+
+                    // toggle dropdown hiện tại
+                    dd.classList.toggle('open');
+                });
+            });
+
+            // click ra ngoài -> đóng hết
+            document.addEventListener('click', () => {
+                dropdowns.forEach(dd => dd.classList.remove('open'));
+            });
+        }
+
+        function closeAllDropdowns() {
+            document.querySelectorAll('.dropdown').forEach(dd => dd.classList.remove('open'));
+        }
+
+        initDropdowns();
+
+
         //---------------------lenh--lay dia chi may chu -------------------------------
         function getServerIP() {
             const url = window.location.href;
@@ -390,144 +356,29 @@
             return ipMatch ? ipMatch[1] : null;
         }
 
+        // ✅ Click vào cột mã sản phẩm -> mở popup tồn nhanh
+        hot.addHook('afterOnCellMouseDown', async function (event, coords, TD) {
+            if (coords.row < 0 || coords.col !== 0) return;
 
-        //---------------------lenh--hien thi anh -------------------------------
+            const masp = String(hot.getDataAtCell(coords.row, 0) || "")
+                .trim()
+                .toUpperCase();
 
-        function displayImages(images) {
-            const gallery = document.getElementById('gallery');
-            gallery.innerHTML = '';
+            if (!masp) return;
 
-            images.forEach((image, index) => {
-                const galleryItem = document.createElement('div');
-                galleryItem.className = 'gallery-item';
-                galleryItem.id = `image-${index}`;
-
-                const link = document.createElement('a');
-                const nameNoExt = image.name.replace(/\.[^/.]+$/, "");
-                link.href = `${getServerIP()}/index.php?mdl=tonkho&ma=${nameNoExt}`;
-                link.target = "_blank";
-
-                const img = document.createElement('img');
-                img.src = image.url || '';
-                img.alt = image.name || 'Không có ảnh';
-                link.appendChild(img);
-
-                const caption = document.createElement('div');
-                caption.className = 'caption';
-                caption.textContent = image.url ? `${image.name} / ${image.date.toLocaleDateString()}` : `Không có ảnh`;
-
-                const itemNumber = document.createElement('div');
-                itemNumber.className = 'item-number';
-                itemNumber.textContent = index + 1;
-
-                galleryItem.appendChild(link);
-                galleryItem.appendChild(caption);
-                galleryItem.appendChild(itemNumber);
-                gallery.appendChild(galleryItem);
-            });
-        }
-        //---------------------lenh--tim kiem anh-------------------------------
-
-        async function searchImages() {
-            const data = hot.getData();
-            const searchNames = data
-                .map((row, index) => {
-                    const raw = row[0];
-                    const name = typeof raw === 'string' ? raw.trim() : String(raw || '').trim();
-                    return { name: name.toUpperCase(), index };
-                })
-                .filter(({ name }) => name);
-
-            if (searchNames.length === 0) {
-                alert("Vui lòng nhập ít nhất một tên ảnh để tìm kiếm.");
-                return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(masp).catch(() => { });
             }
 
-            document.getElementById("loading").style.display = "block";
-
-            const supabaseDomain = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
-            const matchedImages = searchNames.map(({ name, index }) => ({
-                name,
-                url: supabaseDomain + name + '.JPG',
-                date: new Date(),
-                notFound: false,
-                index
-            }));
-
-            displayImages(matchedImages);
-            document.getElementById("loading").style.display = "none";
-        }
-
-        function displayImages(images) {
-            const gallery = document.getElementById('gallery');
-            gallery.innerHTML = '';
-
-            images.forEach((image, index) => {
-                const galleryItem = document.createElement('div');
-                galleryItem.className = 'gallery-item';
-                galleryItem.id = `image-${index}`;
-
-                const link = document.createElement('a');
-                link.href = image.url;
-                link.target = "_blank";
-
-                const img = document.createElement('img');
-                img.src = image.url || '';
-                img.onerror = function () {
-                    if (img.src.endsWith('.JPG')) {
-                        img.src = img.src.replace('.JPG', '.png');
-                    } else if (img.src.endsWith('.png')) {
-                        img.alt = 'Không có ảnh';
-                    }
-                };
-
-                img.alt = image.name || 'Không có ảnh';
-                img.onerror = function () {
-                    if (img.src.endsWith('.JPG')) {
-                        img.src = img.src.replace('.JPG', '.png');
-                    } else if (img.src.endsWith('.png')) {
-                        img.alt = 'Không có ảnh';
-                    }
-                };
-                link.appendChild(img);
-
-                const caption = document.createElement('div');
-                caption.className = 'caption';
-                caption.textContent = image.url ? image.name : `Không có ảnh`;
-
-                const itemNumber = document.createElement('div');
-                itemNumber.className = 'item-number';
-                itemNumber.textContent = index + 1;
-
-                galleryItem.appendChild(link);
-                galleryItem.appendChild(caption);
-                galleryItem.appendChild(itemNumber);
-                gallery.appendChild(galleryItem);
-            });
-        }
-
-
-        //---------------------lenh---tu dong chuyen den hinh anh duoc chon------------------------------
-
-        hot.addHook('afterOnCellMouseDown', function (event, coords, TD) {
-            if (coords.col === 0) {
-                const rowIndex = coords.row;
-                const galleryItem = document.getElementById(`image-${rowIndex}`);
-                if (galleryItem) {
-                    galleryItem.scrollIntoView({ behavior: 'smooth' });
-
-                    const clickedName = hot.getDataAtCell(coords.row, coords.col);
-
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(clickedName).catch(err => {
-                            console.warn("Không thể sao chép vào clipboard:", err);
-                        });
-                    } else {
-                        console.warn("Clipboard API không hỗ trợ trình duyệt này.");
-                    }
-                }
+            if (window.StockQuick && typeof window.StockQuick.showFor === "function") {
+                await window.StockQuick.showFor(TD, masp);
+            } else if (typeof window.stockQuickPopup === "function") {
+                await window.stockQuickPopup(masp);
+            } else {
+                alert("Chưa tải được module stockQuickPopup.js");
             }
         });
+
 
         //-----lenh-----JavaScript dùng để xử lý hành vi dán dữ liệu------------------
 
@@ -647,7 +498,7 @@
                 document.getElementById("loading").style.display = "none";
             }
 
-            searchImages();
+
         }
 
 
@@ -767,7 +618,7 @@
                 document.getElementById("loading").style.display = "none";
             }
 
-            searchImages();
+
         }
 
 
@@ -870,7 +721,7 @@
                 document.getElementById("loading").style.display = "none";
             }
 
-            searchImages();
+
         }
 
 
@@ -916,79 +767,91 @@
         //---------------------lenh--tai ve du lieu kiem hang -------------------------------
 
         const GAS_BASE_URL = "https://script.google.com/macros/s/AKfycbzwGd4UAuD1Z_96dYdm6uDtROu_zW1xvYGn41lCcAmGLbfeS9yPI2y_uxkAQmq60zUQpw/exec";
-let currentAbortController = null;
+        let currentAbortController = null;
 
-function apply4ColsLayout() {
-  hot.updateSettings({
-    colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
-    columns: [
-      { data: 0, type: 'text' },
-      { data: 1, type: 'numeric' },
-      { data: 2, type: 'numeric' },
-      { data: 3, type: 'numeric' }
-    ]
-  });
-}
+        function apply4ColsLayout() {
+            hot.updateSettings({
+                colHeaders: ['Tên SP', 'Nhập', 'Bán', 'Tồn'],
+                columns: [
+                    { data: 0, type: 'text' },
+                    { data: 1, type: 'numeric' },
+                    { data: 2, type: 'numeric' },
+                    { data: 3, type: 'numeric' }
+                ]
+            });
+        }
 
-async function load4ColsFromSheet(sheetName) {
-  // Abort request trước nếu còn đang chạy
-  if (currentAbortController) currentAbortController.abort();
-  currentAbortController = new AbortController();
+        async function load4ColsFromSheet(sheetName) {
+            // ✅ đóng dropdown ngay khi bấm
+            closeAllDropdowns();
 
-  const url = `${GAS_BASE_URL}?sheet=${encodeURIComponent(sheetName)}`;
+            // Abort request trước nếu còn đang chạy
+            if (currentAbortController) currentAbortController.abort();
+            currentAbortController = new AbortController();
 
-  try {
-    document.getElementById("loading").style.display = "block";
+            const url = `${GAS_BASE_URL}?sheet=${encodeURIComponent(sheetName)}`;
 
-    const response = await fetch(url, { signal: currentAbortController.signal });
-    const json = await response.json();
+            const statusLoad = document.getElementById("statusLoad");
 
-    const formattedData = json.map(row => [
-      row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
-    ]);
+            try {
+                // ✅ hiện dòng đang tải ngay trên bảng
+                statusLoad.style.display = "block";
+                statusLoad.textContent = "Đang tải dữ liệu...";
 
-    const emptyRows = Array.from(
-      { length: Math.max(0, 400 - formattedData.length) },
-      () => ["", "", "", ""]
-    );
+                const response = await fetch(url, { signal: currentAbortController.signal });
+                const json = await response.json();
 
-    // Update layout trước, rồi load data
-    apply4ColsLayout();
-    hot.loadData([...formattedData, ...emptyRows]);
+                const formattedData = json.map(row => [
+                    row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
+                ]);
 
-  } catch (err) {
-    if (err.name !== "AbortError") {
-      console.error("Lỗi khi tải dữ liệu:", err);
-      alert("❌ Không thể tải dữ liệu từ Google Sheet.");
-    }
-  } finally {
-    document.getElementById("loading").style.display = "none";
-  }
-}
+                const emptyRows = Array.from(
+                    { length: Math.max(0, 400 - formattedData.length) },
+                    () => ["", "", "", ""]
+                );
 
-// ===== 4 nút MENU2 gọi vào đây =====
-async function loadDataFromKiemHangcs1() { 
-  await load4ColsFromSheet("kiemhangcs1"); 
-}
-
-async function loadDataFromKiemHangcs2() { 
-  await load4ColsFromSheet("kiemhangcs2"); 
-}
-
-async function loadDataFrombaymaucs1() {   
-  await load4ColsFromSheet("baymaucs1"); 
-}
-
-async function loadDataFrombaymaucs2() {   
-  await load4ColsFromSheet("baymaucs2"); 
-}
+                // Update layout trước, rồi load data
+                apply4ColsLayout();
+                hot.loadData([...formattedData, ...emptyRows]);
 
 
-     
+            } catch (err) {
+                if (err.name !== "AbortError") {
+                    console.error("Lỗi khi tải dữ liệu:", err);
+                    alert("❌ Không thể tải dữ liệu từ Google Sheet.");
+                }
+            } finally {
+                // ✅ ẩn dòng đang tải
+                statusLoad.style.display = "none";
+            }
+        }
+
+        // ===== 4 nút MENU2 gọi vào đây =====
+        async function loadDataFromKiemHangcs1() {
+            await load4ColsFromSheet("kiemhangcs1");
+        }
+
+        async function loadDataFromKiemHangcs2() {
+            await load4ColsFromSheet("kiemhangcs2");
+        }
+
+        async function loadDataFrombaymaucs1() {
+            await load4ColsFromSheet("baymaucs1");
+        }
+
+        async function loadDataFrombaymaucs2() {
+            await load4ColsFromSheet("baymaucs2");
+        }
+
+
+
         function resetPage() {
-            hot.loadData(Handsontable.helper.createEmptySpreadsheetData(400, 1));
-            document.getElementById("gallery").innerHTML = "";
+            hot.loadData(Handsontable.helper.createEmptySpreadsheetData(400, 4));
             document.getElementById("loading").style.display = "none";
+
+            document.querySelectorAll(".sq-stock-popup.show").forEach(p => {
+                p.classList.remove("show");
+            });
         }
 
 
