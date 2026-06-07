@@ -846,6 +846,82 @@
 
     <script>
         document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
+
+        // ✅ Copy bảng bán hàng ra clipboard
+        document.getElementById('btnCopy')?.addEventListener('click', function () {
+            const table = document.getElementById('bangketqua');
+            let str = '';
+
+            for (let row of table.querySelectorAll('tbody tr')) {
+                let line = [];
+                for (let cell of row.cells) {
+                    line.push(cell.innerText);
+                }
+                str += line.join('\t') + '\n';
+            }
+
+            navigator.clipboard.writeText(str)
+                .then(() => alert('Đã copy dữ liệu ra clipboard'))
+                .catch(err => {
+                    console.error('Lỗi copy:', err);
+                    alert('Không copy được dữ liệu.');
+                });
+        });
+
+        // ✅ Hàm dùng chung để dán dữ liệu Excel vào bảng
+        function danDuLieuExcelVaoBang(text) {
+            const rows = String(text || '').trim().split('\n').map(r => r.split('\t'));
+            const tbody = document.querySelector('#bangketqua tbody');
+
+            rows.forEach(rowArr => {
+                if (rowArr.length < 2) return;
+
+                const tr = document.createElement('tr');
+
+                rowArr.forEach((cell) => {
+                    const td = document.createElement('td');
+                    td.innerText = cell;
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            if (typeof capNhatThongTinTong === 'function') {
+                capNhatThongTinTong(window.bangKetQua || {});
+            }
+
+            console.log('window.bangKetQua:', window.bangKetQua);
+        }
+
+        // ✅ Nút Dán: đọc clipboard rồi dán vào bảng
+        document.getElementById('btnDanExcel')?.addEventListener('click', async function () {
+            try {
+                const text = await navigator.clipboard.readText();
+
+                if (!text || !text.trim()) {
+                    alert('Clipboard đang trống hoặc chưa copy dữ liệu Excel.');
+                    return;
+                }
+
+                danDuLieuExcelVaoBang(text);
+
+            } catch (err) {
+                console.error('Không đọc được clipboard:', err);
+                alert('Trình duyệt không cho đọc clipboard. Hãy bấm vào bảng rồi Ctrl+V.');
+            }
+        });
+
+        // ✅ Ctrl+V trực tiếp vào bảng
+        document.getElementById('bangketqua')?.addEventListener('paste', function (e) {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            danDuLieuExcelVaoBang(text);
+        });
     </script>
 
     <script>
@@ -1757,56 +1833,6 @@ Shop chân thành cảm ơn!`;
                 });
             });
         })();
-    </script>
-
-    <script>
-        // ✅ Nút Dán: đọc clipboard rồi dán vào bảng bán hàng
-        document.getElementById('btnDanExcel')?.addEventListener('click', async function () {
-            try {
-                const text = await navigator.clipboard.readText();
-
-                if (!text || !text.trim()) {
-                    alert('Clipboard đang trống hoặc chưa copy dữ liệu Excel.');
-                    return;
-                }
-
-                danDuLieuExcelVaoBang(text);
-
-            } catch (err) {
-                console.error('Không đọc được clipboard:', err);
-                alert('Trình duyệt không cho đọc clipboard. Hãy bấm vào bảng rồi Ctrl+V.');
-            }
-        });
-
-        function danDuLieuExcelVaoBang(text) {
-            const rows = String(text || '').trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.querySelector('#bangketqua tbody');
-
-            rows.forEach(rowArr => {
-                if (rowArr.length < 2) return;
-
-                const tr = document.createElement('tr');
-
-                rowArr.forEach((cell) => {
-                    const td = document.createElement('td');
-                    td.innerText = cell;
-                    tr.appendChild(td);
-                });
-
-                tbody.appendChild(tr);
-            });
-
-            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-                window.capNhatBangKetQuaTuDOM();
-            }
-
-            if (typeof capNhatThongTinTong === 'function') {
-                capNhatThongTinTong(window.bangKetQua || {});
-            }
-
-            console.log('window.bangKetQua:', window.bangKetQua);
-        }
-
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
