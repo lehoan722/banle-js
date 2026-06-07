@@ -134,17 +134,12 @@
 
             .data-container {
                 order: 3;
-                /* Vị trí cuối cùng */
-                height: 40vh;
-                /* Cao 40% màn hình */
+                height: calc(100vh - 48px);
                 width: 100vw;
-                /* Rộng toàn màn hình */
-                overflow-y: auto;
-                /* Cuộn dọc nếu dài */
-                padding: 10px;
-                /* Khoảng cách bên trong */
+                overflow: hidden;
+                padding: 4px;
                 box-sizing: border-box;
-                /* Bao gồm padding trong tổng kích thước */
+                background: #ffffff;
             }
         }
 
@@ -315,8 +310,14 @@
 
             stretchH: 'all',
             width: '100%',
-            height: '600px',
+            height: window.innerWidth <= 600 ? window.innerHeight - 55 : 600,
             licenseKey: 'non-commercial-and-evaluation'
+        });
+
+        window.addEventListener("resize", () => {
+            hot.updateSettings({
+                height: window.innerWidth <= 600 ? window.innerHeight - 55 : 600
+            });
         });
 
         // ===== Dropdown open/close bằng click (đóng được bằng JS) =====
