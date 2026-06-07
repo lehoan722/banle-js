@@ -1366,8 +1366,7 @@ data-color-masp="${targetMasp}"
         isAdmin
           ? `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="kho">Lưu kho</button>
-          <span class="sq-vitri-coso">CS1:</span>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="kho">Kho CS1</button>
           <input
             type="text"
             class="sq-vitri-input"
@@ -1382,8 +1381,7 @@ data-color-masp="${targetMasp}"
       `
           : `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" disabled>Lưu kho</button>
-          <span class="sq-vitri-coso">CS1:</span>
+          <button type="button" class="sq-vitri-save-btn" disabled>Kho CS1</button>
           <span class="sq-vitri-value-readonly">${vitri_cs1}</span>
           <span class="sq-vitri-msg"></span>
         </div>
@@ -1391,8 +1389,7 @@ data-color-masp="${targetMasp}"
       )
       : `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="kho">Lưu kho</button>
-          <span class="sq-vitri-coso">CS1:</span>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="kho">Kho CS1</button>
           <input
             type="text"
             class="sq-vitri-input"
@@ -1410,8 +1407,7 @@ data-color-masp="${targetMasp}"
         isAdmin
           ? `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="kho">Lưu kho</button>
-          <span class="sq-vitri-coso">CS2:</span>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="kho">Kho CS2</button>
           <input
             type="text"
             class="sq-vitri-input"
@@ -1426,8 +1422,7 @@ data-color-masp="${targetMasp}"
       `
           : `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" disabled>Lưu kho</button>
-          <span class="sq-vitri-coso">CS2:</span>
+          <button type="button" class="sq-vitri-save-btn" disabled>Kho CS2</button>
           <span class="sq-vitri-value-readonly">${vitri_cs2}</span>
           <span class="sq-vitri-msg"></span>
         </div>
@@ -1435,8 +1430,7 @@ data-color-masp="${targetMasp}"
       )
       : `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="kho">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="kho">Lưu kho</button>
-          <span class="sq-vitri-coso">CS2:</span>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="kho">Kho CS2</button>
           <input
             type="text"
             class="sq-vitri-input"
@@ -1454,8 +1448,7 @@ data-color-masp="${targetMasp}"
         isAdmin
           ? `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Lưu mẫu</button>
-          <span class="sq-vitri-coso">CS1:</span>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Mẫu CS1</button>
           <input
             type="text"
             class="sq-vitri-input"
@@ -1470,8 +1463,7 @@ data-color-masp="${targetMasp}"
       `
           : `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" disabled>Lưu mẫu</button>
-          <span class="sq-vitri-coso">CS1:</span>
+          <button type="button" class="sq-vitri-save-btn" disabled>Mẫu CS1</button>
           <span class="sq-vitri-value-readonly">${baymau_cs1}</span>
           <span class="sq-vitri-msg"></span>
         </div>
@@ -1479,8 +1471,7 @@ data-color-masp="${targetMasp}"
       )
       : `
         <div class="sq-vitri-action-row" data-coso="cs1" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Lưu mẫu</button>
-          <span class="sq-vitri-coso">CS1:</span>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="baymau">Mẫu CS1</button>
           <input
             type="text"
             class="sq-vitri-input"
@@ -1498,8 +1489,7 @@ data-color-masp="${targetMasp}"
         isAdmin
           ? `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Lưu mẫu</button>
-          <span class="sq-vitri-coso">CS2:</span>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Mẫu CS2</button>
           <input
             type="text"
             class="sq-vitri-input"
@@ -1514,8 +1504,7 @@ data-color-masp="${targetMasp}"
       `
           : `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" disabled>Lưu mẫu</button>
-          <span class="sq-vitri-coso">CS2:</span>
+          <button type="button" class="sq-vitri-save-btn" disabled>Mẫu CS2</button>
           <span class="sq-vitri-value-readonly">${baymau_cs2}</span>
           <span class="sq-vitri-msg"></span>
         </div>
@@ -1523,8 +1512,7 @@ data-color-masp="${targetMasp}"
       )
       : `
         <div class="sq-vitri-action-row" data-coso="cs2" data-loai="baymau">
-          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Lưu mẫu</button>
-          <span class="sq-vitri-coso">CS2:</span>
+          <button type="button" class="sq-vitri-save-btn" data-coso="cs2" data-loai="baymau">Mẫu CS2</button>
           <input
             type="text"
             class="sq-vitri-input"
@@ -1751,15 +1739,15 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
           const isAdminNow = getIsAdminLocal();
           const btnLabel =
             loai === "baymau"
-              ? "Lưu mẫu"
+              ? `Mẫu ${coso.toUpperCase()}`
               : loai === "nhomhang"
                 ? "Lưu nhóm"
-                : "Lưu kho";
+                : `Kho ${coso.toUpperCase()}`;
 
           if (isAdminNow) {
             row.innerHTML = `
       <button type="button" class="sq-vitri-save-btn" data-coso="${coso}" data-loai="${loai}">${btnLabel}</button>
-      <span class="sq-vitri-coso">${coso.toUpperCase()}:</span>
+      
       <input
         type="text"
         class="sq-vitri-input"
