@@ -291,8 +291,7 @@
 
   /* Ẩn nút phụ */
   #tieptuc,
-  #xemin,
-  #btnCopy,
+  #xemin,  
   #xuatexcel,
   #btn-logout {
     display: none !important;
