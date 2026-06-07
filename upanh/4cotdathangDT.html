@@ -287,10 +287,10 @@
     <script src="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.js"></script>
 
     <!-- Nếu trang này chưa có Supabase global thì phải có dòng này -->
-    <script src="scripts/supabaseClient.js"></script>
+    <script src="/scripts/supabaseClient.js"></script>
 
     <!-- Module popup tồn nhanh -->
-    <script src="scripts/stockQuickPopup.js?v=55"></script>
+    <script src="/scripts/stockQuickPopup.js?v=55"></script>
 
     <script>
 
@@ -558,7 +558,7 @@
 
             // Sau khi lưu thành công
             hot.loadData([]);                          // Xóa bảng
-            document.getElementById("gallery").innerHTML = "";  // Xóa ảnh
+            
             loadDataFromDatHang(); // goi lai du lieu da luu
 
         }
