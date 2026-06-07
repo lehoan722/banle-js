@@ -558,8 +558,9 @@
 }
 
     .sq-stock-table-wrapper {
-  max-height: 44vh;
-  overflow: auto;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -596,7 +597,7 @@
   max-width: 100%;
   margin-top: 4px;
   text-align: left;
-  order: 2;
+  order: 3;
 }
 
 .sq-img-wrapper img {
@@ -609,9 +610,10 @@
 }
 
     .sq-vitri-actions-wrap {
-      margin-top: 6px;
-      padding-top: 4px;
-    }
+  margin-top: 6px;
+  padding-top: 4px;
+  order: 2;
+}
 
     .sq-vitri-action-row {
       gap: 6px;
