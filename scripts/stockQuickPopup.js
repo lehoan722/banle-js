@@ -20,7 +20,7 @@
       }
 
       const s = document.createElement("script");
-      s.src = "scripts/stockQuickPopupbaymau.js?v=1";
+      s.src = "/scripts/stockQuickPopupbaymau.js?v=1";
       s.dataset.stockquickBaymau = "1";
       s.onload = () => resolve(true);
       s.onerror = () => {
