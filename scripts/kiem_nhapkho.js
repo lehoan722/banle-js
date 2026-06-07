@@ -4043,7 +4043,7 @@ document.addEventListener("keydown", function (e) {
     e.ctrlKey &&
     !e.shiftKey &&
     !e.altKey &&
-    e.key.toLowerCase() === "t"
+    e.key.toLowerCase() === "x"
   ) {
     e.preventDefault();
     e.stopPropagation();
