@@ -1777,6 +1777,36 @@ Shop chân thành cảm ơn!`;
                 alert('Trình duyệt không cho đọc clipboard. Hãy bấm vào bảng rồi Ctrl+V.');
             }
         });
+
+        function danDuLieuExcelVaoBang(text) {
+            const rows = String(text || '').trim().split('\n').map(r => r.split('\t'));
+            const tbody = document.querySelector('#bangketqua tbody');
+
+            rows.forEach(rowArr => {
+                if (rowArr.length < 2) return;
+
+                const tr = document.createElement('tr');
+
+                rowArr.forEach((cell) => {
+                    const td = document.createElement('td');
+                    td.innerText = cell;
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            if (typeof capNhatThongTinTong === 'function') {
+                capNhatThongTinTong(window.bangKetQua || {});
+            }
+
+            console.log('window.bangKetQua:', window.bangKetQua);
+        }
+
     </script>
 
     <script type="module" src="scripts/viettelInvoice.js"></script>
