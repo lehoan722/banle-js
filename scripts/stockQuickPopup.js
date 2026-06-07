@@ -557,10 +557,9 @@
   order: 3;
 }
 
-    .sq-stock-table-wrapper {
-  max-height: none;
-  overflow-x: auto;
-  overflow-y: visible;
+  .sq-stock-table-wrapper {
+  max-height: 50vh;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
 
