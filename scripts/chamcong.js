@@ -26,6 +26,7 @@ let currentWorkStatus = "unknown";
 let previousWorkStatusBeforeServing = null;
 let servingStartedAt = null;
 let servingTimerInterval = null;
+const TASK_IMAGE_BUCKET = "qlnv-task-images";
 
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.552722, lng: 105.842583 };
@@ -338,6 +339,217 @@ async function insertTaskLog({
     if (error) {
         console.error("Lỗi ghi task_logs:", error);
     }
+}
+
+function taskFileToImage(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("Không đọc được ảnh"));
+        };
+
+        img.src = url;
+    });
+}
+
+async function resizeTaskImageFixed(file, quality = 0.68, task = {}, kind = "before") {
+    const img = await taskFileToImage(file);
+
+    const isLandscape = img.width >= img.height;
+    const targetW = isLandscape ? 640 : 480;
+    const targetH = isLandscape ? 480 : 640;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetW;
+    canvas.height = targetH;
+
+    const ctx = canvas.getContext("2d", { alpha: false });
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, targetW, targetH);
+
+    const scale = Math.min(targetW / img.width, targetH / img.height);
+    const drawW = Math.round(img.width * scale);
+    const drawH = Math.round(img.height * scale);
+    const dx = Math.round((targetW - drawW) / 2);
+    const dy = Math.round((targetH - drawH) / 2);
+
+    ctx.drawImage(img, dx, dy, drawW, drawH);
+
+    const lines = [
+        kind === "before" ? "ẢNH TRƯỚC KHI LÀM" : "ẢNH SAU KHI LÀM",
+        `TASK: ${task.id || ""}`,
+        `NV: ${String(task.assigned_to || localStorage.getItem("manv") || "").toUpperCase()}`,
+        `CS: ${String(task.diadiem || getDiaDiemFromPath()).toUpperCase()}`,
+        new Date().toLocaleString("vi-VN")
+    ];
+
+    const fontSize = 20;
+    const pad = 10;
+    const lineH = 27;
+    const boxH = lineH * lines.length + pad * 2;
+    const boxW = Math.round(targetW * 0.92);
+    const boxX = 8;
+    const boxY = targetH - boxH - 8;
+
+    ctx.fillStyle = "rgba(0,0,0,0.62)";
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+
+    ctx.font = `700 ${fontSize}px Arial, sans-serif`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#ffeb3b";
+    ctx.strokeStyle = "rgba(0,0,0,0.9)";
+    ctx.lineWidth = 2;
+
+    lines.forEach((txt, i) => {
+        const x = boxX + pad;
+        const y = boxY + pad + i * lineH;
+        ctx.strokeText(txt, x, y);
+        ctx.fillText(txt, x, y);
+    });
+
+    return await new Promise((resolve, reject) => {
+        canvas.toBlob(
+            (blob) => {
+                if (!blob) {
+                    reject(new Error("Không nén được ảnh"));
+                    return;
+                }
+                resolve(blob);
+            },
+            "image/jpeg",
+            quality
+        );
+    });
+}
+
+function pickTaskImage(kind = "before") {
+    return new Promise((resolve) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.capture = "environment";
+        input.style.display = "none";
+
+        document.body.appendChild(input);
+
+        input.addEventListener("change", () => {
+            const file = input.files?.[0] || null;
+            input.remove();
+            resolve(file);
+        });
+
+        input.click();
+    });
+}
+
+async function uploadTaskImage(task, kind = "before") {
+    const sp = await ensureSupabase();
+    if (!sp || !task) return null;
+
+    const file = await pickTaskImage(kind);
+
+    if (!file) {
+        alert("Bạn chưa chụp/chọn ảnh. Không thể tiếp tục.");
+        return null;
+    }
+
+    let blob;
+    try {
+        blob = await resizeTaskImageFixed(file, 0.68, task, kind);
+    } catch (e) {
+        console.error("Lỗi xử lý ảnh task:", e);
+        alert("Không xử lý được ảnh. Vui lòng chụp lại.");
+        return null;
+    }
+
+    const manv = String(task.assigned_to || localStorage.getItem("manv") || "").toUpperCase();
+    const diadiem = task.diadiem || getDiaDiemFromPath();
+    const today = new Date().toISOString().slice(0, 10);
+    const filePath = `${diadiem}/${manv}/${today}/task_${task.id}_${kind}_${Date.now()}.jpg`;
+
+    const { error } = await sp.storage
+        .from(TASK_IMAGE_BUCKET)
+        .upload(filePath, blob, {
+            upsert: true,
+            contentType: "image/jpeg",
+            cacheControl: "3600"
+        });
+
+    if (error) {
+        console.error("Lỗi upload ảnh task:", error);
+        alert("Không upload được ảnh nhiệm vụ: " + (error.message || "Không rõ lỗi"));
+        return null;
+    }
+
+    return filePath;
+}
+
+async function ensureTaskImageBeforeStatusChange(task, newStatus) {
+    const sp = await ensureSupabase();
+    if (!sp || !task) return false;
+
+    if (!task.image_required) return true;
+
+    if (newStatus === "in_progress" && !task.before_image_path) {
+        alert("Công việc này yêu cầu ảnh TRƯỚC khi thực hiện. Vui lòng chụp ảnh trước.");
+
+        const path = await uploadTaskImage(task, "before");
+        if (!path) return false;
+
+        const { error } = await sp
+            .schema("qlnv")
+            .from("tasks")
+            .update({
+                before_image_path: path,
+                before_image_at: new Date().toISOString()
+            })
+            .eq("id", task.id);
+
+        if (error) {
+            console.error("Lỗi lưu before_image_path:", error);
+            alert("Không lưu được ảnh trước.");
+            return false;
+        }
+
+        task.before_image_path = path;
+        task.before_image_at = new Date().toISOString();
+    }
+
+    if (newStatus === "done" && !task.after_image_path) {
+        alert("Công việc này yêu cầu ảnh SAU khi hoàn thành. Vui lòng chụp ảnh sau.");
+
+        const path = await uploadTaskImage(task, "after");
+        if (!path) return false;
+
+        const { error } = await sp
+            .schema("qlnv")
+            .from("tasks")
+            .update({
+                after_image_path: path,
+                after_image_at: new Date().toISOString()
+            })
+            .eq("id", task.id);
+
+        if (error) {
+            console.error("Lỗi lưu after_image_path:", error);
+            alert("Không lưu được ảnh sau.");
+            return false;
+        }
+
+        task.after_image_path = path;
+        task.after_image_at = new Date().toISOString();
+    }
+
+    return true;
 }
 
 // ====== BẮT NHẮC BAY MAU TRƯỚC KHI CHẤM CÔNG ======
@@ -1925,6 +2137,13 @@ async function updateMyTaskStatus(newStatus) {
     const manv = localStorage.getItem("manv");
     const diadiem = getDiaDiemFromPath();
 
+    const imageOk = await ensureTaskImageBeforeStatusChange(
+        currentAssignedTask,
+        newStatus
+    );
+
+    if (!imageOk) return;
+
     let finalPausedSeconds = Number(currentAssignedTask.paused_seconds || 0);
 
     if (newStatus === "done" && currentAssignedTask.paused_at) {
@@ -2234,6 +2453,26 @@ async function startUnplannedTask() {
     currentUnplannedTask = data;
     currentAssignedTask = data;
 
+    const imageOk = await ensureTaskImageBeforeStatusChange(
+        currentUnplannedTask,
+        "in_progress"
+    );
+
+    if (!imageOk) {
+        await sp
+            .schema("qlnv")
+            .from("tasks")
+            .update({
+                status: "cancelled",
+                note: "Tự hủy vì chưa chụp ảnh trước khi làm"
+            })
+            .eq("id", currentUnplannedTask.id);
+
+        alert("Bạn chưa chụp ảnh trước nên việc bất thường chưa được bắt đầu.");
+        await loadMyCurrentTask({ manv, diadiem });
+        return;
+    }
+
     currentMainState = "unplanned";
     unplannedTaskStartedAt = new Date().toISOString();
     syncStateButtonsUI();
@@ -2287,6 +2526,13 @@ async function finishUnplannedTask() {
         alert("Việc bất thường vừa bắt đầu, vui lòng làm ít nhất 1 phút trước khi hoàn thành.");
         return;
     }
+
+    const imageOk = await ensureTaskImageBeforeStatusChange(
+        currentUnplannedTask,
+        "done"
+    );
+
+    if (!imageOk) return;
 
     const { error } = await sp
         .schema("qlnv")
