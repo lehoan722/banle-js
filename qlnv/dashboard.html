@@ -240,7 +240,10 @@
                   <h2>Công việc hôm nay</h2>
                   <p>Quản lý lifecycle: chưa làm, đang làm, hoàn thành</p>
                 </div>
-                <button id="btnThemTask" type="button">+ Thêm task</button>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button id="btnThemTask" type="button">+ Thêm task</button>
+                  <button id="btnThemViecBatThuong" type="button">+ Việc bất thường</button>
+                </div>
               </div>
 
               <div class="task-board">
@@ -382,6 +385,43 @@
 
     </div>
   </div>
+
+  <div id="unplannedTaskModal" class="modal hidden">
+  <div class="modal-content">
+
+    <h2>Thêm việc bất thường</h2>
+
+    <label>Nhân viên</label>
+    <select id="unplannedAssignedTo"></select>
+
+    <label>Tiêu đề</label>
+    <input id="unplannedTitle" type="text" placeholder="Ví dụ: Hỗ trợ xử lý việc phát sinh">
+
+    <label>Mô tả công việc</label>
+    <textarea id="unplannedDescription" placeholder="Nhập chi tiết việc bất thường cần giao"></textarea>
+
+    <label>Thời lượng dự kiến</label>
+    <input id="unplannedEstimatedMinutes" type="number" min="5" step="5" value="15">
+
+    <label>Mức ưu tiên</label>
+    <select id="unplannedPriority">
+      <option value="1" selected>Cao</option>
+      <option value="2">Bình thường</option>
+      <option value="3">Thấp</option>
+    </select>
+
+    <label class="checkbox-line">
+      <input id="unplannedImageRequired" type="checkbox">
+      Cần ảnh xác nhận
+    </label>
+
+    <div class="modal-actions">
+      <button id="btnSaveUnplannedTask" type="button">Lưu việc bất thường</button>
+      <button id="btnCloseUnplannedTaskModal" type="button">Đóng</button>
+    </div>
+
+  </div>
+</div>
 
   <script type="module" src="dashboard.js"></script>
 
