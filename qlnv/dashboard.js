@@ -88,6 +88,36 @@ const topAlertBadge =
 const btnThemTask =
   document.getElementById('btnThemTask');
 
+const btnThemViecBatThuong =
+  document.getElementById('btnThemViecBatThuong');
+
+const unplannedTaskModal =
+  document.getElementById('unplannedTaskModal');
+
+const btnCloseUnplannedTaskModal =
+  document.getElementById('btnCloseUnplannedTaskModal');
+
+const btnSaveUnplannedTask =
+  document.getElementById('btnSaveUnplannedTask');
+
+const unplannedAssignedTo =
+  document.getElementById('unplannedAssignedTo');
+
+const unplannedTitle =
+  document.getElementById('unplannedTitle');
+
+const unplannedDescription =
+  document.getElementById('unplannedDescription');
+
+const unplannedEstimatedMinutes =
+  document.getElementById('unplannedEstimatedMinutes');
+
+const unplannedPriority =
+  document.getElementById('unplannedPriority');
+
+const unplannedImageRequired =
+  document.getElementById('unplannedImageRequired');
+
 const btnToggleSidebar =
   document.getElementById('btnToggleSidebar');
 
@@ -1405,6 +1435,164 @@ function applySelectedTemplate() {
   }
 }
 
+async function openUnplannedTaskModal() {
+  const diadiem = selectDiadiem.value;
+
+  await loadAssignableStaffForUnplanned(diadiem);
+
+  unplannedTitle.value = '';
+  unplannedDescription.value = '';
+  unplannedEstimatedMinutes.value = '15';
+  unplannedPriority.value = '1';
+  unplannedImageRequired.checked = false;
+
+  unplannedTaskModal.classList.remove('hidden');
+
+  setTimeout(() => {
+    unplannedTitle?.focus();
+  }, 100);
+}
+
+async function loadAssignableStaffForUnplanned(diadiem) {
+  const { data, error } = await supabase
+    .schema('qlnv')
+    .from('v_staff_today_status')
+    .select('manv,tennv,work_state,can_assign_task,diadiem')
+    .eq('diadiem', diadiem)
+    .order('tennv');
+
+  if (error) {
+    console.error('Lỗi load nhân viên cho việc bất thường:', error);
+    unplannedAssignedTo.innerHTML = `<option value="">Lỗi tải nhân viên</option>`;
+    return;
+  }
+
+  const rows = (data || []).filter(item => {
+    return item.can_assign_task === true;
+  });
+
+  if (!rows.length) {
+    unplannedAssignedTo.innerHTML = `<option value="">Không có nhân viên rảnh</option>`;
+    return;
+  }
+
+  unplannedAssignedTo.innerHTML = rows.map(item => {
+    const manv = String(item.manv || '').trim().toUpperCase();
+    const ten = item.tennv || manv;
+
+    return `
+      <option value="${manv}" data-name="${ten}">
+        ${ten} - ${manv}
+      </option>
+    `;
+  }).join('');
+}
+
+async function saveUnplannedTaskFromDashboard() {
+  const diadiem = selectDiadiem.value;
+  const manv = unplannedAssignedTo.value;
+
+  if (!manv) {
+    alert('Chưa chọn nhân viên');
+    return;
+  }
+
+  const selectedStaff =
+    unplannedAssignedTo.options[
+    unplannedAssignedTo.selectedIndex
+    ];
+
+  const assignedName =
+    selectedStaff?.dataset?.name || manv;
+
+  const title = unplannedTitle.value.trim();
+  const description = unplannedDescription.value.trim();
+
+  if (!title) {
+    alert('Chưa nhập tiêu đề việc bất thường');
+    unplannedTitle.focus();
+    return;
+  }
+
+  if (!description) {
+    alert('Chưa nhập mô tả việc bất thường');
+    unplannedDescription.focus();
+    return;
+  }
+
+  const user = getCurrentUserInfo();
+
+  const payload = {
+    title,
+    description,
+    task_type: 'bat_thuong',
+    diadiem,
+    area: null,
+    assigned_to: String(manv || '').trim().toUpperCase(),
+    assigned_name: assignedName,
+    priority: Number(unplannedPriority.value || 1),
+    status: 'pending',
+    estimated_minutes: Number(unplannedEstimatedMinutes.value || 15),
+    image_required: unplannedImageRequired.checked,
+    created_by: user.manv || 'ADMIN',
+    note: 'ADMIN_UNPLANNED',
+    is_unplanned: true
+  };
+
+  const { data, error } = await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Lỗi lưu việc bất thường:', error);
+    alert('Không lưu được việc bất thường');
+    return;
+  }
+
+  await supabase
+    .schema('qlnv')
+    .from('logs')
+    .insert({
+      diadiem,
+      manv,
+      tennv: assignedName,
+      action: `Admin giao việc bất thường: ${title}`,
+      ref_type: 'task',
+      ref_id: data.id,
+      note: 'ADMIN_UNPLANNED',
+      created_at: new Date().toISOString()
+    });
+
+  await insertTaskLog({
+    task: data,
+    action: 'admin_unplanned_task_created',
+    oldStatus: null,
+    newStatus: 'pending',
+    source: 'dashboard',
+    note: `Admin giao việc bất thường: ${description}`
+  });
+
+  await createNotification({
+    diadiem,
+    target_manv: String(manv || '').trim().toUpperCase(),
+    target_role: 'staff',
+    title: 'Bạn có việc bất thường mới',
+    body: title,
+    type: 'admin_unplanned_task_created',
+    ref_type: 'task',
+    ref_id: data.id
+  });
+
+  unplannedTaskModal.classList.add('hidden');
+
+  await loadTasks(diadiem);
+  await loadLogs(diadiem);
+  await loadAlerts(diadiem);
+}
+
 async function saveTask() {
 
   const diadiem =
@@ -1548,6 +1736,23 @@ taskTemplate?.addEventListener(
 btnThemTask?.addEventListener(
   'click',
   openTaskModal
+);
+
+btnThemViecBatThuong?.addEventListener(
+  'click',
+  openUnplannedTaskModal
+);
+
+btnCloseUnplannedTaskModal?.addEventListener(
+  'click',
+  () => {
+    unplannedTaskModal.classList.add('hidden');
+  }
+);
+
+btnSaveUnplannedTask?.addEventListener(
+  'click',
+  saveUnplannedTaskFromDashboard
 );
 
 btnCloseTaskModal?.addEventListener(
