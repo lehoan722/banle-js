@@ -110,6 +110,11 @@
         .cap a.cap-link:hover {
             text-decoration: underline;
         }
+
+        .cap.ban-nhanh a.cap-link {
+            color: #dc2626;
+            font-weight: 800;
+        }
     </style>
 </head>
 
@@ -170,7 +175,7 @@
             return false;
         }
 
-        function createCard({ masp, giale, toncs1, toncs2 }) {
+        function createCard({ masp, giale, toncs1, toncs2, ban_nhanh }) {
             const card = document.createElement("div");
             card.className = "card";
             card.dataset.masp = masp;
@@ -193,7 +198,7 @@
             imgwrap.appendChild(img);
 
             const cap = document.createElement("div");
-            cap.className = "cap";
+            cap.className = ban_nhanh ? "cap ban-nhanh" : "cap";
             cap.innerHTML =
                 `<a class="cap-link"
                 href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}"
