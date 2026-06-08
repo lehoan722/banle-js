@@ -143,6 +143,35 @@
       return d <= moc;
     }
 
+    // BƯỚC 1: tính tổng tồn TOÀN MÃ, không lọc size
+    const totalByMasp = new Map();
+
+    (stockRows || []).forEach((r) => {
+      const masp = String(r.masp || "").trim().toUpperCase();
+      if (!masp || masp === sourceMasp) return;
+
+      const item = totalByMasp.get(masp) || {
+        tongTonAllSize: 0,
+        nhap_cuoi_ma: ""
+      };
+
+      item.tongTonAllSize += Number(r.ton_cs1 || 0) + Number(r.ton_cs2 || 0);
+
+      const ngayNhap =
+        r.nhap_cuoi_ma ||
+        r.ngay_nhap_cuoi ||
+        r.nhap_dau_ma ||
+        r.ngay_nhap_dau ||
+        "";
+
+      if (!item.nhap_cuoi_ma && ngayNhap) {
+        item.nhap_cuoi_ma = ngayNhap;
+      }
+
+      totalByMasp.set(masp, item);
+    });
+
+    // BƯỚC 2: tạo danh sách hiển thị theo size đang bấm
     const byMasp = new Map();
 
     (stockRows || []).forEach((r) => {
@@ -157,30 +186,32 @@
       const tonTarget = branch === "cs2" ? toncs2 : toncs1;
       if (tonTarget <= 0) return;
 
+      const totalInfo = totalByMasp.get(masp) || {
+        tongTonAllSize: toncs1 + toncs2,
+        nhap_cuoi_ma: ""
+      };
+
       const existed = byMasp.get(masp) || {
         masp,
         giale: masterMap.get(masp)?.giale || 0,
         toncs1: 0,
         toncs2: 0,
-        nhap_cuoi_ma: r.nhap_cuoi_ma || r.ngay_nhap_cuoi || ""
+        tongTonAllSize: totalInfo.tongTonAllSize,
+        nhap_cuoi_ma: totalInfo.nhap_cuoi_ma
       };
 
       existed.toncs1 += toncs1;
       existed.toncs2 += toncs2;
 
-      if (!existed.nhap_cuoi_ma && (r.nhap_cuoi_ma || r.ngay_nhap_cuoi)) {
-        existed.nhap_cuoi_ma = r.nhap_cuoi_ma || r.ngay_nhap_cuoi;
-      }
-
       byMasp.set(masp, existed);
     });
 
     return Array.from(byMasp.values()).map(item => {
-      const tongTon = Number(item.toncs1 || 0) + Number(item.toncs2 || 0);
-
       return {
         ...item,
-        ban_nhanh: tongTon === 1 && isNhapCuoiQua3Thang(item.nhap_cuoi_ma)
+        ban_nhanh:
+          Number(item.tongTonAllSize || 0) === 1 &&
+          isNhapCuoiQua3Thang(item.nhap_cuoi_ma)
       };
     }).sort((a, b) => {
       const ta = branch === "cs2" ? a.toncs2 : a.toncs1;
@@ -189,6 +220,7 @@
       return (b.toncs1 + b.toncs2) - (a.toncs1 + a.toncs2);
     });
   }
+
 
   function openViewer({ list, masp, size, branch, nhomhang }) {
     if (!list.length) {
