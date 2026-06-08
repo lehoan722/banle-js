@@ -707,6 +707,7 @@ function patchAlertWithBeep() {
       // tải xong thì render lại để dòng vị trí hiện ra
       setTimeout(() => {
         try {
+          sapXepLaiThuTuMaspTheoKetQua();
           renderBangKetQua();
         } catch (e) {
           console.error("[KNK] renderBangKetQua sau khi nạp vị trí bị lỗi:", e);
@@ -1114,25 +1115,121 @@ function patchAlertWithBeep() {
     return true;
   }
 
+  // =========================
+  // XẾP KHO THEO 3 TUYẾN KHO
+  // =========================
+
+  const TUYEN_KHO_ORDER = [
+    // TUYẾN 1
+    "GIA11-1A", "GIA12-1A", "GIA13-1A", "GIA14-1A", "GIA15-1A", "GIA16-1A", "GIA17-1A",
+    "GIA18-1A", "GIA18-2A", "GIA19-1A", "GIA19-2A", "GIA20-1A", "GIA20-2A",
+    "GIA21-1A", "GIA21-2A", "GIA22-1A", "GIA22-2A", "GIA23-1A", "GIA23-2A",
+    "GIA24-1A", "GIA24-2A",
+
+    // TUYẾN 2
+    "GIA1-1A", "GIA2-1A", "GIA3-1A", "GIA4-1A", "GIA5-1A", "GIA6-1A",
+    "GIA7-1A", "GIA8-1A", "GIA9-1A", "GIA10-1A",
+    "GIA11-2A", "GIA12-2A", "GIA13-2A", "GIA14-2A", "GIA15-2A", "GIA16-2A", "GIA17-2A",
+
+    // TUYẾN 3
+    "GIA1-2", "GIA2-2", "GIA3-2", "GIA4-2", "GIA5-2", "GIA6-2", "GIA7-2", "GIA8-2", "GIA9-2", "GIA10-2",
+    "GIAB14-1A", "GIAB14-2A", "GIAB15-1A", "GIAB1A", "GIAB2A", "GIAB15-2A",
+    "GIAB16-1A", "GIAB16-2A", "GIAB17-1A", "GIAB3A", "GIAB4A",
+    "GIAB17-2A", "GIAB19-1A", "GIAB19-2A", "GIAB20A", "GIA8-2", "GIAB6A", "GIAB5"
+  ];
+
+  const TUYEN_KHO_INDEX = new Map(
+    TUYEN_KHO_ORDER.map((vt, index) => [chuanHoaMaViTriKho(vt), index])
+  );
+
+  function chuanHoaMaViTriKho(v) {
+    let s = String(v || "").trim().toUpperCase();
+    if (!s || s === "-") return "";
+
+    // lấy vị trí đầu tiên nếu có nhiều vị trí
+    s = s.split(/[\s,;|/]+/).map(x => x.trim()).filter(Boolean)[0] || "";
+
+    // chuẩn hóa khoảng trắng
+    s = s.replace(/\s+/g, "");
+
+    // chuẩn hóa GIA B14-1A -> GIAB14-1A
+    s = s.replace(/^GIAB/, "GIAB");
+
+    return s;
+  }
+
+  function layIndexTuyenKhoTheoMasp(masp) {
+    const info = layThongTinViTriTheoMaspTuCache(masp);
+    const vt = chuanHoaMaViTriKho(info?.kho);
+
+    if (!vt) return null;
+
+    if (TUYEN_KHO_INDEX.has(vt)) {
+      return TUYEN_KHO_INDEX.get(vt);
+    }
+
+    return null;
+  }
+
+  function tinhDiemXepKhoTheoTuyen(masp, maspGoc) {
+    const m = normalizeMasp(masp);
+    const goc = normalizeMasp(maspGoc);
+
+    if (!m) return 999999;
+    if (m === goc) return -999999;
+
+    const idxGoc = layIndexTuyenKhoTheoMasp(goc);
+    const idxMasp = layIndexTuyenKhoTheoMasp(m);
+
+    if (idxGoc === null || idxMasp === null) {
+      return 900000;
+    }
+
+    const kc = Math.abs(idxMasp - idxGoc);
+
+    // Càng gần vị trí tuyến đi càng lên trên
+    return kc;
+  }
+
+  function sapXepLaiThuTuMaspTheoTuyenKho(maspGoc) {
+    const state = getState();
+    const nhapGroupMap = groupByMasp(state.nhap || {});
+    const xuatGroupMap = groupByMasp(state.xuat || {});
+    const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
+
+    const goc = normalizeMasp(maspGoc);
+    if (!goc || !allMasps.includes(goc)) return false;
+
+    const dsConLai = allMasps.filter(m => normalizeMasp(m) !== goc);
+
+    dsConLai.sort((a, b) => {
+      const da = tinhDiemXepKhoTheoTuyen(a, goc);
+      const db = tinhDiemXepKhoTheoTuyen(b, goc);
+
+      if (da !== db) return da - db;
+
+      return String(a || "").localeCompare(String(b || ""), "vi");
+    });
+
+    state.nhapOrder = [goc, ...dsConLai];
+    return true;
+  }
+
   function sapXepLaiThuTuMaspTheoKetQua() {
     const state = getState();
     const nhapGroupMap = groupByMasp(state.nhap || {});
     const xuatGroupMap = groupByMasp(state.xuat || {});
     const ketQuaMap = state.ketQua || {};
-
     const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
 
-    // lấy mã sản phẩm đang nằm trong ô nhập
     const maspDangNhap = normalizeMasp(byId("masp")?.value || "");
 
-    // Nếu bật Xếp kho thì ưu tiên sắp theo vị trí kho gần mã vừa nhập
     const chkXepKho = byId("chkXepKho");
     if (chkXepKho?.checked && maspDangNhap) {
-      const daXepKho = sapXepLaiThuTuMaspTheoViTriKho(maspDangNhap);
+      const daXepKho = sapXepLaiThuTuMaspTheoTuyenKho(maspDangNhap);
       if (daXepKho) return;
     }
 
-    // Cách cũ: sắp theo trạng thái THIẾU / LỆCH / THỪA / OK
     const dsConLai = allMasps.filter(m => normalizeMasp(m) !== maspDangNhap);
 
     dsConLai.sort((a, b) => {
