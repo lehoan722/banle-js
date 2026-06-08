@@ -2332,6 +2332,75 @@ async function finishUnplannedTask() {
     await loadMyCurrentTask({ manv, diadiem });
 }
 
+async function checkUnfinishedWorkBeforeLeaveWork({ manv, diadiem }) {
+    const sp = await ensureSupabase();
+    if (!sp || !manv) return false;
+
+    const manvUpper = String(manv || "").trim().toUpperCase();
+    const problems = [];
+
+    const { data: staffStatus, error: statusError } = await sp
+        .schema("qlnv")
+        .from("staff_status")
+        .select("current_status,last_action,current_task_id")
+        .eq("manv", manvUpper)
+        .eq("diadiem", diadiem)
+        .maybeSingle();
+
+    if (statusError) {
+        console.error("Lỗi kiểm tra trạng thái trước khi nghỉ/tan ca:", statusError);
+        alert("Không kiểm tra được trạng thái làm việc. Vui lòng thử lại.");
+        return false;
+    }
+
+    if (staffStatus?.current_status === "serving_customer") {
+        problems.push("Bạn đang phục vụ khách, cần bấm Kết thúc bán trước.");
+    }
+
+    const { data: tasks, error: taskError } = await sp
+        .schema("qlnv")
+        .from("tasks")
+        .select("id,title,status,is_unplanned,paused_at")
+        .eq("diadiem", diadiem)
+        .eq("assigned_to", manvUpper)
+        .in("status", ["pending", "in_progress"])
+        .order("is_unplanned", { ascending: false })
+        .order("created_at", { ascending: true });
+
+    if (taskError) {
+        console.error("Lỗi kiểm tra công việc dang dở:", taskError);
+        alert("Không kiểm tra được công việc chưa hoàn thành. Vui lòng thử lại.");
+        return false;
+    }
+
+    for (const task of tasks || []) {
+        const tenTask = task.title || "Không có tiêu đề";
+
+        if (task.status === "pending") {
+            problems.push(`Còn việc chưa bắt đầu: ${tenTask}`);
+        }
+
+        if (task.status === "in_progress" && task.paused_at) {
+            problems.push(`Còn việc đang tạm dừng: ${tenTask}`);
+        }
+
+        if (task.status === "in_progress" && !task.paused_at) {
+            problems.push(`Còn việc đang làm: ${tenTask}`);
+        }
+    }
+
+    if (problems.length > 0) {
+        alert(
+            "Bạn chưa thể nghỉ / tan ca vì còn công việc dang dở:\n\n" +
+            problems.map((x, i) => `${i + 1}. ${x}`).join("\n") +
+            "\n\nVui lòng hoàn thành hoặc kết thúc các việc trên trước."
+        );
+        return false;
+    }
+
+    return true;
+}
+
 function attachChamCongButtons(diadiem) {
     const manv = localStorage.getItem("manv");
     if (!manv) return;
@@ -2617,6 +2686,19 @@ function attachChamCongButtons(diadiem) {
 
                 // 3c. Nếu ca hôm nay đang ở trạng thái CHO_DUYET -> auto duyệt
                 await approveShiftWhenCheckin({ manv, diadiem });
+            }
+
+            // 3d. Chặn nghỉ trưa / nghỉ chiều / tan ca nếu còn việc dang dở
+            if (["NTR", "NCH", "TANCA"].includes(su_kien)) {
+                await loadMyStaffStatus({ manv, diadiem });
+                await loadMyCurrentTask({ manv, diadiem });
+
+                const canLeave = await checkUnfinishedWorkBeforeLeaveWork({
+                    manv,
+                    diadiem
+                });
+
+                if (!canLeave) return;
             }
 
             // 4) MỖI LẦN CHẤM CÔNG ĐỀU PHẢI XỬ LÝ BÀY MẪU (NẾU CÒN)
