@@ -1599,6 +1599,28 @@ function getRemainingSeconds(startAt, sec = 60) {
     return Math.max(0, sec - diff);
 }
 
+function isCurrentlyInWorkingShift() {
+    if (!todayEvents || todayEvents.length === 0) return false;
+
+    const sorted = [...todayEvents].sort((a, b) => a.createdAt - b.createdAt);
+    const last = sorted[sorted.length - 1];
+
+    if (!last) return false;
+
+    return ["VAOCA", "NTRD", "NCHD"].includes(last.su_kien);
+}
+
+function requireWorkingShiftBeforeAction() {
+    if (isCurrentlyInWorkingShift()) return true;
+
+    alert(
+        "Bạn chưa ở trạng thái trong ca làm việc.\n\n" +
+        "Vui lòng bấm Vào ca hoặc Nghỉ đến trước khi thực hiện thao tác này."
+    );
+
+    return false;
+}
+
 function syncStateButtonsUI() {
     const btnTaskStart = document.getElementById("btn-my-task-start");
     const btnTaskDone = document.getElementById("btn-my-task-done");
@@ -2410,7 +2432,10 @@ function attachChamCongButtons(diadiem) {
     const btnWorkCleanup = document.getElementById("btn-work-cleanup");
     const btnWorkOff = document.getElementById("btn-work-off");
 
+    // nút “Báo rảnh”
     btnWorkFree?.addEventListener("click", async () => {
+        todayEvents = await loadTodayEvents(manv, diadiem);
+        if (!requireWorkingShiftBeforeAction()) return;
         await updateQlnvStaffStatus({
             manv,
             diadiem,
@@ -2432,7 +2457,12 @@ function attachChamCongButtons(diadiem) {
         await loadMyCurrentTask({ manv, diadiem });
     });
 
+    // nút “Khách vào”
+
     btnWorkServing?.addEventListener("click", async () => {
+
+        todayEvents = await loadTodayEvents(manv, diadiem);
+        if (!requireWorkingShiftBeforeAction()) return;
 
         previousMainStateBeforeServing = currentMainState;
 
@@ -2581,9 +2611,14 @@ function attachChamCongButtons(diadiem) {
     const btnUnplannedDone =
         document.getElementById("btn-unplanned-done");
 
+    // nút “Việc bất thường”
+
     btnUnplannedStart?.addEventListener(
         "click",
-        () => {
+        async () => {
+            todayEvents = await loadTodayEvents(manv, diadiem);
+            if (!requireWorkingShiftBeforeAction()) return;
+
             openUnplannedModal();
         }
     );
@@ -2615,7 +2650,13 @@ function attachChamCongButtons(diadiem) {
         }
     );
 
+    //nút “Bắt đầu việc được giao”
+
     btnMyTaskStart?.addEventListener("click", async () => {
+
+        todayEvents = await loadTodayEvents(manv, diadiem);
+        if (!requireWorkingShiftBeforeAction()) return;
+
         await updateMyTaskStatus("in_progress");
 
         currentMainState = "task";
