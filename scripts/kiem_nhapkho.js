@@ -1040,6 +1040,80 @@ function patchAlertWithBeep() {
     return 5;
   }
 
+  function parseViTriKho(vitriText) {
+    const raw = String(vitriText || "").trim().toUpperCase();
+    if (!raw || raw === "-") return null;
+
+    // Lấy vị trí đầu tiên nếu có nhiều vị trí ngăn bằng dấu cách, dấu phẩy, xuống dòng
+    const first = raw.split(/[\s,;|]+/).map(x => x.trim()).filter(Boolean)[0] || "";
+
+    // Hỗ trợ dạng: GIA8-1A, GIA8-1, GIA08-1A
+    const m = first.match(/GIA\s*(\d+)\s*-\s*(\d+)\s*([A-Z]*)/i);
+    if (!m) return null;
+
+    return {
+      raw: first,
+      gia: Number(m[1]),
+      mat: String(m[2] || "").trim(),
+      hauTo: String(m[3] || "").trim()
+    };
+  }
+
+  function tinhDiemGanViTriKho(masp, maspGoc) {
+    const m = normalizeMasp(masp);
+    const goc = normalizeMasp(maspGoc);
+
+    if (!m) return 999999;
+    if (m === goc) return -999999; // mã vừa nhập luôn đầu tiên
+
+    const infoGoc = layThongTinViTriTheoMaspTuCache(goc);
+    const infoMasp = layThongTinViTriTheoMaspTuCache(m);
+
+    const vtGoc = parseViTriKho(infoGoc?.kho);
+    const vtMasp = parseViTriKho(infoMasp?.kho);
+
+    if (!vtGoc || !vtMasp) return 900000;
+
+    // Ưu tiên 2: cùng vị trí chính xác
+    if (vtMasp.raw === vtGoc.raw) return 0;
+
+    // Ưu tiên 3: cùng mặt, gần số giá
+    if (vtMasp.mat === vtGoc.mat) {
+      const khoangCach = Math.abs(vtMasp.gia - vtGoc.gia);
+
+      // Cùng mặt nhưng càng gần càng lên trên
+      // Nếu cùng khoảng cách thì ưu tiên giá nhỏ trước: ví dụ 7-1 trước 9-1 khi gốc là 8-1
+      return 1000 + khoangCach * 10 + (vtMasp.gia > vtGoc.gia ? 1 : 0);
+    }
+
+    // Khác mặt: không coi là gần, cho xuống sau nhóm cùng mặt
+    return 800000 + Math.abs(vtMasp.gia - vtGoc.gia);
+  }
+
+  function sapXepLaiThuTuMaspTheoViTriKho(maspGoc) {
+    const state = getState();
+    const nhapGroupMap = groupByMasp(state.nhap || {});
+    const xuatGroupMap = groupByMasp(state.xuat || {});
+    const allMasps = buildOrderedMasps(nhapGroupMap, xuatGroupMap, state);
+
+    const goc = normalizeMasp(maspGoc);
+    if (!goc || !allMasps.includes(goc)) return false;
+
+    const dsConLai = allMasps.filter(m => normalizeMasp(m) !== goc);
+
+    dsConLai.sort((a, b) => {
+      const da = tinhDiemGanViTriKho(a, goc);
+      const db = tinhDiemGanViTriKho(b, goc);
+
+      if (da !== db) return da - db;
+
+      return String(a || "").localeCompare(String(b || ""), "vi");
+    });
+
+    state.nhapOrder = [goc, ...dsConLai];
+    return true;
+  }
+
   function sapXepLaiThuTuMaspTheoKetQua() {
     const state = getState();
     const nhapGroupMap = groupByMasp(state.nhap || {});
@@ -1051,7 +1125,14 @@ function patchAlertWithBeep() {
     // lấy mã sản phẩm đang nằm trong ô nhập
     const maspDangNhap = normalizeMasp(byId("masp")?.value || "");
 
-    // tách mã đang nhập ra khỏi danh sách sort chung
+    // Nếu bật Xếp kho thì ưu tiên sắp theo vị trí kho gần mã vừa nhập
+    const chkXepKho = byId("chkXepKho");
+    if (chkXepKho?.checked && maspDangNhap) {
+      const daXepKho = sapXepLaiThuTuMaspTheoViTriKho(maspDangNhap);
+      if (daXepKho) return;
+    }
+
+    // Cách cũ: sắp theo trạng thái THIẾU / LỆCH / THỪA / OK
     const dsConLai = allMasps.filter(m => normalizeMasp(m) !== maspDangNhap);
 
     dsConLai.sort((a, b) => {
@@ -1066,7 +1147,6 @@ function patchAlertWithBeep() {
       return String(a || "").localeCompare(String(b || ""), "vi");
     });
 
-    // nếu mã đang nhập có tồn tại trong bảng thì ép nó lên đầu
     if (maspDangNhap && allMasps.includes(maspDangNhap)) {
       state.nhapOrder = [maspDangNhap, ...dsConLai];
     } else {
