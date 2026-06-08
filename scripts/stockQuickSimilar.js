@@ -108,6 +108,41 @@
       });
     });
 
+    function parseNgayNhapCuoi(v) {
+      if (!v) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        const d = new Date(s.slice(0, 10));
+        return isNaN(d.getTime()) ? null : d;
+      }
+
+      if (/^\d{6}$/.test(s)) {
+        const dd = s.slice(0, 2);
+        const mm = s.slice(2, 4);
+        const yy = s.slice(4, 6);
+        const yyyy = Number(yy) >= 70 ? "19" + yy : "20" + yy;
+        const d = new Date(`${yyyy}-${mm}-${dd}`);
+        return isNaN(d.getTime()) ? null : d;
+      }
+
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function isNhapCuoiQua3Thang(v) {
+      const d = parseNgayNhapCuoi(v);
+      if (!d) return false;
+
+      const moc = new Date();
+      moc.setHours(0, 0, 0, 0);
+      moc.setMonth(moc.getMonth() - 3);
+
+      d.setHours(0, 0, 0, 0);
+      return d <= moc;
+    }
+
     const byMasp = new Map();
 
     (stockRows || []).forEach((r) => {
@@ -127,14 +162,27 @@
         giale: masterMap.get(masp)?.giale || 0,
         toncs1: 0,
         toncs2: 0,
+        nhap_cuoi_ma: r.nhap_cuoi_ma || r.ngay_nhap_cuoi || ""
       };
 
       existed.toncs1 += toncs1;
       existed.toncs2 += toncs2;
+
+      if (!existed.nhap_cuoi_ma && (r.nhap_cuoi_ma || r.ngay_nhap_cuoi)) {
+        existed.nhap_cuoi_ma = r.nhap_cuoi_ma || r.ngay_nhap_cuoi;
+      }
+
       byMasp.set(masp, existed);
     });
 
-    return Array.from(byMasp.values()).sort((a, b) => {
+    return Array.from(byMasp.values()).map(item => {
+      const tongTon = Number(item.toncs1 || 0) + Number(item.toncs2 || 0);
+
+      return {
+        ...item,
+        ban_nhanh: tongTon === 1 && isNhapCuoiQua3Thang(item.nhap_cuoi_ma)
+      };
+    }).sort((a, b) => {
       const ta = branch === "cs2" ? a.toncs2 : a.toncs1;
       const tb = branch === "cs2" ? b.toncs2 : b.toncs1;
       if (tb !== ta) return tb - ta;
