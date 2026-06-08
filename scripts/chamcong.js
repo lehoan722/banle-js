@@ -433,21 +433,77 @@ async function resizeTaskImageFixed(file, quality = 0.68, task = {}, kind = "bef
 
 function pickTaskImage(kind = "before") {
     return new Promise((resolve) => {
+        const overlay = document.createElement("div");
+        overlay.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.45);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        `;
+
+        const box = document.createElement("div");
+        box.style.cssText = `
+            background: white;
+            border-radius: 14px;
+            padding: 18px;
+            width: 92%;
+            max-width: 360px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        `;
+
+        const title = kind === "before"
+            ? "Chụp ảnh trước khi làm"
+            : "Chụp ảnh sau khi làm";
+
+        box.innerHTML = `
+            <h3 style="margin-bottom:10px;">${title}</h3>
+            <p style="font-size:14px;color:#555;margin-bottom:14px;">
+                Công việc này yêu cầu ảnh xác nhận. Vui lòng chụp ảnh để tiếp tục.
+            </p>
+            <button id="btnTaskTakePhoto" type="button" style="width:100%;margin-bottom:8px;">
+                📷 Chụp ảnh / Chọn ảnh
+            </button>
+            <button id="btnTaskCancelPhoto" type="button" style="width:100%;background:#e5e7eb;color:#111;">
+                Hủy
+            </button>
+        `;
+
         const input = document.createElement("input");
         input.type = "file";
         input.accept = "image/*";
         input.capture = "environment";
         input.style.display = "none";
 
-        document.body.appendChild(input);
+        box.appendChild(input);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        const btnTake = box.querySelector("#btnTaskTakePhoto");
+        const btnCancel = box.querySelector("#btnTaskCancelPhoto");
+
+        function cleanup(file) {
+            overlay.remove();
+            resolve(file || null);
+        }
+
+        btnTake.addEventListener("click", () => {
+            input.value = "";
+            input.click();
+        });
+
+        btnCancel.addEventListener("click", () => {
+            cleanup(null);
+        });
 
         input.addEventListener("change", () => {
             const file = input.files?.[0] || null;
-            input.remove();
-            resolve(file);
+            cleanup(file);
         });
-
-        input.click();
     });
 }
 
@@ -500,7 +556,6 @@ async function ensureTaskImageBeforeStatusChange(task, newStatus) {
     if (!task.image_required) return true;
 
     if (newStatus === "in_progress" && !task.before_image_path) {
-        alert("Công việc này yêu cầu ảnh TRƯỚC khi thực hiện. Vui lòng chụp ảnh trước.");
 
         const path = await uploadTaskImage(task, "before");
         if (!path) return false;
@@ -525,7 +580,6 @@ async function ensureTaskImageBeforeStatusChange(task, newStatus) {
     }
 
     if (newStatus === "done" && !task.after_image_path) {
-        alert("Công việc này yêu cầu ảnh SAU khi hoàn thành. Vui lòng chụp ảnh sau.");
 
         const path = await uploadTaskImage(task, "after");
         if (!path) return false;
