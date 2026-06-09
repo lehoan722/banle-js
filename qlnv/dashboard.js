@@ -1535,8 +1535,8 @@ async function saveUnplannedTaskFromDashboard() {
     estimated_minutes: Number(unplannedEstimatedMinutes.value || 15),
     image_required: unplannedImageRequired.checked,
     created_by: user.manv || 'ADMIN',
-    note: 'ADMIN_UNPLANNED',
-    is_unplanned: true
+    note: 'ADMIN_ASSIGNED_UNPLANNED',
+    is_unplanned: false
   };
 
   const { data, error } = await supabase
@@ -1579,9 +1579,9 @@ async function saveUnplannedTaskFromDashboard() {
     diadiem,
     target_manv: String(manv || '').trim().toUpperCase(),
     target_role: 'staff',
-    title: 'Bạn có việc bất thường mới',
+    title: 'Bạn có việc được giao mới',
     body: title,
-    type: 'admin_unplanned_task_created',
+    type: 'admin_assigned_task_created',
     ref_type: 'task',
     ref_id: data.id
   });
