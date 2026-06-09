@@ -83,10 +83,14 @@ async function tinhLuongKpi1Nv() {
   const gio = gioData?.[0] || {};
 
   const gioBan = Number(gio.gio_ban_hang || 0);
-  const gioTask = Number(gio.gio_task || 0);
+  const gioTaskGiao = Number(gio.gio_task_duoc_giao ?? gio.gio_task ?? 0);
+  const gioBatThuong = Number(gio.gio_viec_bat_thuong || 0);
   const gioDonDep = Number(gio.gio_don_dep || 0);
   const gioNghiOff = Number(gio.gio_nghi_off || 0);
-  const tongGioLog = Number(gio.tong_gio_log || 0);
+
+  const gioTaskTinhLuong = gioTaskGiao + gioBatThuong;
+  const tongGioThucTe = gioBan + gioTaskGiao + gioBatThuong + gioDonDep;
+  const tongGioLog = tongGioThucTe;
 
   const { data: kpiData, error: kpiErr } = await supabase.rpc("nv_match2h_summary_all_v2", {
     tu_ngay: tuNgay,
@@ -112,14 +116,14 @@ async function tinhLuongKpi1Nv() {
   const tienThuong = tienVuot * pctThuong;
 
   const luongBan = gioBan * luongGioBan;
-  const luongTask = gioTask * luongGioBan;
+  const luongTask = gioTaskTinhLuong * luongGioBan;
   const luongDonDep = gioDonDep * luongGioBan;
 
   const tongLuong = luongBan + luongTask + luongDonDep + tienThuong + hoaHong;
   const khoanTru = await loadKhoanTru(tuNgay, denNgay, manv);
   const thucLinh = tongLuong - khoanTru;
 
-  const gioTinhLuong = gioBan + gioTask + gioDonDep;
+  const gioTinhLuong = tongGioThucTe;
   const luong1Gio = gioTinhLuong > 0 ? tongLuong / gioTinhLuong : 0;
 
   setText("kq-manv", manv);
@@ -128,7 +132,7 @@ async function tinhLuongKpi1Nv() {
   setText("kq-tong-gio-cong", fmtNumber(tongGioLog, 2));
   setText("kq-gio-cong-tinh-luong", fmtNumber(gioTinhLuong, 2));
   setText("kq-gio-ban", fmtNumber(gioBan, 2));
-  setText("kq-gio-task", fmtNumber(gioTask, 2));
+  setText("kq-gio-task", fmtNumber(gioTaskTinhLuong, 2));
   setText("kq-gio-dondep", fmtNumber(gioDonDep, 2));
   setText("kq-gio-nghi-off", fmtNumber(gioNghiOff, 2));
   setText("kq-tong-gio-log", fmtNumber(tongGioLog, 2));
