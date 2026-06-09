@@ -1806,7 +1806,17 @@ async function loadMyCurrentTask({ manv, diadiem }) {
     currentUnplannedTask = null;
 
     (data || []).forEach(t => {
-        if (t.is_unplanned) {
+        const assignedTo = String(t.assigned_to || "").trim().toUpperCase();
+        const createdBy = String(t.created_by || "").trim().toUpperCase();
+
+        // Chỉ coi là "việc bất thường" nếu nhân viên tự tạo từ trang chấm công
+        const isEmployeeCreatedUnplanned =
+            t.is_unplanned === true &&
+            createdBy === assignedTo &&
+            t.note !== "ADMIN_UNPLANNED" &&
+            t.note !== "ADMIN_ASSIGNED_UNPLANNED";
+
+        if (isEmployeeCreatedUnplanned) {
             if (!currentUnplannedTask) {
                 currentUnplannedTask = t;
             }
