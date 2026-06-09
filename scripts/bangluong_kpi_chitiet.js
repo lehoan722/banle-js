@@ -27,6 +27,10 @@ function fmtNumber(n) {
   return Number(n || 0);
 }
 
+function round2(n) {
+  return Math.round(Number(n || 0) * 100) / 100;
+}
+
 function normalizeManv(v) {
   return String(v || "").trim().toUpperCase();
 }
@@ -532,15 +536,15 @@ async function taiBangLuongKpi() {
         manv,
         emp.tennv || manv,
         emp.diadiem || "",
-        gioCongCu,
-        gioBan,
-        gioTask,
-        gioBatThuong,
-        gioDonDep,
-        gioKhongTinhLuong,
-        tongGioLog,
+        round2(gioCongCu),
+        round2(gioBan),
+        round2(gioTask),
+        round2(gioBatThuong),
+        round2(gioDonDep),
+        round2(gioKhongTinhLuong),
+        round2(tongGioLog),
         soLanBan,
-        hieuSuatPct,
+        round2(hieuSuatPct),
         Math.round(doanhThu),
         Math.round(hoaHong),
         Math.round(khoanDt),
@@ -577,7 +581,7 @@ async function taiBangLuongKpi() {
       "TỔNG",
       "",
       "",
-      ...Array.from({ length: 17 }, (_, i) => Math.round(Number(total[i + 3] || 0))),
+      ...Array.from({ length: 21 }, (_, i) => round2(total[i + 3] || 0)),
       ""
     ]);
 
