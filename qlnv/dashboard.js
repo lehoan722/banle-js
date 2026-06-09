@@ -1467,12 +1467,10 @@ async function loadAssignableStaffForUnplanned(diadiem) {
     return;
   }
 
-  const rows = (data || []).filter(item => {
-    return item.can_assign_task === true;
-  });
+  const rows = data || [];
 
   if (!rows.length) {
-    unplannedAssignedTo.innerHTML = `<option value="">Không có nhân viên rảnh</option>`;
+    unplannedAssignedTo.innerHTML = `<option value="">Không có nhân viên</option>`;
     return;
   }
 
