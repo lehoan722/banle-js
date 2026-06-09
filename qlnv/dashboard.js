@@ -1332,11 +1332,17 @@ async function loadAssignableStaff(diadiem) {
   }
 
   const rows = (data || []).filter(item => {
-    return item.can_assign_task === true;
+    return [
+      'DA_VAO_CA_DANG_RANH',
+      'DANG_LAM_TASK',
+      'DANG_PHUC_VU_KHACH',
+      'DANG_NGHI',
+      'DON_DEP_SAU_BAN'
+    ].includes(item.work_state);
   });
 
   if (!rows.length) {
-    taskAssignedTo.innerHTML = `<option value="">Không có nhân viên rảnh</option>`;
+    taskAssignedTo.innerHTML = `<option value="">Không có nhân viên đang trong ca</option>`;
     console.warn('Không có nhân viên có thể giao việc:', data);
     return;
   }
@@ -1467,10 +1473,18 @@ async function loadAssignableStaffForUnplanned(diadiem) {
     return;
   }
 
-  const rows = data || [];
+  const rows = (data || []).filter(item => {
+    return [
+      'DA_VAO_CA_DANG_RANH',
+      'DANG_LAM_TASK',
+      'DANG_PHUC_VU_KHACH',
+      'DANG_NGHI',
+      'DON_DEP_SAU_BAN'
+    ].includes(item.work_state);
+  });
 
   if (!rows.length) {
-    unplannedAssignedTo.innerHTML = `<option value="">Không có nhân viên</option>`;
+    unplannedAssignedTo.innerHTML = `<option value="">Không có nhân viên đang trong ca</option>`;
     return;
   }
 
