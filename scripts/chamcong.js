@@ -2987,6 +2987,15 @@ function attachChamCongButtons(diadiem) {
         normalTaskStartedAt = null;
 
         syncStateButtonsUI();
+
+        await updateMyTaskStatus("done");
+
+        currentMainState = "free";
+        normalTaskStartedAt = null;
+
+        await loadMyCurrentTask({ manv, diadiem });
+
+        syncStateButtonsUI();
     });
 
     btnMyTaskResume?.addEventListener("click", async () => {
