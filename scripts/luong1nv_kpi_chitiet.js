@@ -118,13 +118,14 @@ async function tinhLuongKpi1Nv() {
   const tongLuong = luongBan + luongTask + luongDonDep + tienThuong + hoaHong;
   const khoanTru = await loadKhoanTru(tuNgay, denNgay, manv);
   const thucLinh = tongLuong - khoanTru;
-  const luong1Gio = tongGioLog > 0 ? tongLuong / tongGioLog : 0;
+  const gioTinhLuong = gioBan + gioTask + gioDonDep;
+  const luong1Gio = gioTinhLuong > 0 ? tongLuong / gioTinhLuong : 0;
 
   setText("kq-manv", manv);
   setText("kq-range", `${tuNgay} → ${denNgay}`);
 
   setText("kq-tong-gio-cong", fmtNumber(tongGioLog, 2));
-  setText("kq-gio-cong-tinh-luong", fmtNumber(gioBan + gioTask + gioDonDep, 2));
+  setText("kq-gio-cong-tinh-luong", fmtNumber(gioTinhLuong, 2));
   setText("kq-gio-ban", fmtNumber(gioBan, 2));
   setText("kq-gio-task", fmtNumber(gioTask, 2));
   setText("kq-gio-dondep", fmtNumber(gioDonDep, 2));
