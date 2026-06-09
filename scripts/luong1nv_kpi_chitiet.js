@@ -118,6 +118,7 @@ async function tinhLuongKpi1Nv() {
   const tongLuong = luongBan + luongTask + luongDonDep + tienThuong + hoaHong;
   const khoanTru = await loadKhoanTru(tuNgay, denNgay, manv);
   const thucLinh = tongLuong - khoanTru;
+
   const gioTinhLuong = gioBan + gioTask + gioDonDep;
   const luong1Gio = gioTinhLuong > 0 ? tongLuong / gioTinhLuong : 0;
 
