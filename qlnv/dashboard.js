@@ -428,7 +428,50 @@ async function loadStoreStatus(diadiem) {
   }
 }
 
+async function getTaskSummaryByStaff(diadiem) {
+  const { startIso, endIso } = getTodayRangeVN();
+
+  const { data, error } = await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .select('assigned_to,status')
+    .eq('diadiem', diadiem)
+    .gte('created_at', startIso)
+    .lt('created_at', endIso)
+    .in('status', ['pending', 'in_progress']);
+
+  if (error) {
+    console.error('Lỗi lấy tổng hợp task theo nhân viên:', error);
+    return {};
+  }
+
+  const map = {};
+
+  (data || []).forEach(row => {
+    const manv = String(row.assigned_to || '').trim().toUpperCase();
+    if (!manv) return;
+
+    if (!map[manv]) {
+      map[manv] = {
+        doing: 0,
+        waiting: 0
+      };
+    }
+
+    if (row.status === 'in_progress') {
+      map[manv].doing++;
+    }
+
+    if (row.status === 'pending') {
+      map[manv].waiting++;
+    }
+  });
+
+  return map;
+}
+
 async function loadStaff(diadiem) {
+  const taskSummaryMap = await getTaskSummaryByStaff(diadiem);
   const { data, error } = await supabase
     .schema('qlnv')
     .from('v_staff_today_status')
@@ -502,6 +545,12 @@ async function loadStaff(diadiem) {
       ? 'Có thể giao'
       : 'Đang bận / chưa thể giao';
 
+    const manvKey = String(item.manv || '').trim().toUpperCase();
+    const taskSummary = taskSummaryMap[manvKey] || { doing: 0, waiting: 0 };
+
+    const taskQueueText =
+      `Đang làm ${taskSummary.doing} việc, còn ${taskSummary.waiting} việc chờ`;
+
     const div = document.createElement('div');
     div.className = `staff-row ${statusClass}`;
 
@@ -516,6 +565,7 @@ async function loadStaff(diadiem) {
     <span>, ${shiftText}</span>
     <span>, ${item.trang_thai_lich || 'Không có lịch'}</span>
     <span>, ${assignText}</span>
+<span style="font-weight:700;color:#2563eb;">, ${taskQueueText}</span>
   </div>
 `;
 
