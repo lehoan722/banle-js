@@ -1296,7 +1296,9 @@ function setupRealtimeDashboard() {
       },
       async () => {
         await loadStaff(diadiem);
+        await loadStaff(diadiem);
         await loadTasks(diadiem);
+        await loadAlerts(diadiem);
         await loadAlerts(diadiem);
       }
     )
@@ -1636,6 +1638,7 @@ async function saveUnplannedTaskFromDashboard() {
 
   unplannedTaskModal.classList.add('hidden');
 
+  await loadStaff(diadiem);
   await loadTasks(diadiem);
   await loadLogs(diadiem);
   await loadAlerts(diadiem);
@@ -1771,9 +1774,10 @@ async function saveTask() {
 
   taskModal.classList.add('hidden');
 
+  await loadStaff(diadiem);
   await loadTasks(diadiem);
-
   await loadLogs(diadiem);
+  await loadAlerts(diadiem);
 }
 
 taskTemplate?.addEventListener(
@@ -1856,7 +1860,7 @@ document.addEventListener('click', () => {
   dashboardPanelMenu?.classList.add('hidden');
 });
 
-showDashboardPanel('tasks');
+showDashboardPanel('staff');
 
 document.getElementById('tongNhanVien')?.closest('.kpi-card')
   ?.addEventListener('click', () => showDashboardPanel('staff'));
