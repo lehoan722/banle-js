@@ -298,6 +298,7 @@ function getTaskStatusText(status) {
   const map = {
     pending: 'Chưa làm',
     in_progress: 'Đang làm',
+    timeout: 'Quá hạn',
     done: 'Hoàn thành',
     cancelled: 'Đã hủy'
   };
@@ -310,6 +311,7 @@ function getTaskStatusClass(status) {
   const map = {
     pending: 'task-pending',
     in_progress: 'task-progress',
+    timeout: 'task-timeout',
     done: 'task-done',
     cancelled: 'task-cancel'
   };
@@ -317,42 +319,57 @@ function getTaskStatusClass(status) {
   return map[status] || 'task-pending';
 }
 
+function formatHMS(totalSeconds) {
+  const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+  const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+  const s = String(totalSeconds % 60).padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
 function renderTaskTimer(task) {
-  if (!task.started_at) return '';
+  if (!task.started_at) {
+    if (task.estimated_minutes) {
+      return `<span class="task-timer">⏳ ${Number(task.estimated_minutes)} phút</span>`;
+    }
+    return '';
+  }
 
   const startTime = new Date(task.started_at).getTime();
-  const pausedSeconds = Number(task.paused_seconds || 0);
+  const estimatedSeconds = Number(task.estimated_minutes || 0) * 60;
+  const deadlineTime = task.deadline_at
+    ? new Date(task.deadline_at).getTime()
+    : startTime + estimatedSeconds * 1000;
 
-  let endTime = Date.now();
+  if (task.status === 'in_progress' && !task.paused_at) {
+    const remain = Math.max(0, Math.floor((deadlineTime - Date.now()) / 1000));
 
-  if (task.status === 'done' && task.completed_at) {
-    endTime = new Date(task.completed_at).getTime();
-  } else if (task.paused_at) {
-    endTime = new Date(task.paused_at).getTime();
+    return `
+      <span
+        class="task-timer task-countdown"
+        data-task-id="${task.id}"
+        data-deadline="${deadlineTime}"
+      >⏳ ${formatHMS(remain)}</span>
+    `;
   }
 
-  const diff = Math.max(
-    0,
-    Math.floor((endTime - startTime) / 1000) - pausedSeconds
-  );
-
-  const h = String(Math.floor(diff / 3600)).padStart(2, '0');
-  const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
-  const s = String(diff % 60).padStart(2, '0');
+  if (task.status === 'timeout') {
+    const over = Math.max(0, Math.floor((Date.now() - deadlineTime) / 1000));
+    return `<span class="task-timer" style="color:#dc2626;font-weight:800;">🔴 Quá hạn ${formatHMS(over)}</span>`;
+  }
 
   if (task.status === 'done') {
-    return `<span class="task-timer done-fixed">⏱ ${h}:${m}:${s}</span>`;
+    const actual = Number(task.actual_minutes || 0);
+    const payroll = Number(task.payroll_minutes || 0);
+    const delay = Number(task.delay_minutes || 0);
+
+    return `
+      <span class="task-timer done-fixed">
+        ✅ Thực tế ${actual} phút, tính lương ${payroll} phút${delay > 0 ? `, trễ ${delay} phút` : ''}
+      </span>
+    `;
   }
 
-  return `
-    <span
-      class="task-timer"
-      data-start="${startTime}"
-      data-paused-at="${task.paused_at ? new Date(task.paused_at).getTime() : ''}"
-      data-paused-seconds="${pausedSeconds}"
-    >⏱ ${h}:${m}:${s}</span>
-    ${task.paused_at ? '<span style="color:#ef4444;font-size:11px;font-weight:700;"> Tạm dừng</span>' : ''}
-  `;
+  return '';
 }
 
 khoiTaoDangNhapDungChung({
@@ -777,6 +794,7 @@ async function loadTasks(diadiem) {
     const status = item.status || 'pending';
 
     if (status === 'pending') pendingCount++;
+    if (status === 'timeout') pausedCount++;
     if (status === 'in_progress' && item.paused_at) pausedCount++;
     else if (status === 'in_progress') doingCount++;
     if (status === 'done') doneCount++;
@@ -835,6 +853,20 @@ async function loadTasks(diadiem) {
       }
     }
 
+    else if (status === 'timeout') {
+      actionBox.innerHTML = `
+    <span class="task-done-text" style="background:#fee2e2;color:#991b1b;">
+      Quá hạn - đã dừng tính lương
+    </span>
+  `;
+
+      if (pausedContainer) {
+        pausedContainer.appendChild(div);
+      } else {
+        doingContainer.appendChild(div);
+      }
+    }
+
     else if (status === 'done') {
       actionBox.innerHTML = `<span class="task-done-text">Đã xong</span>`;
       doneContainer.appendChild(div);
@@ -859,36 +891,110 @@ async function loadTasks(diadiem) {
 }
 
 function startRealtimeTaskTimers() {
-  const timers = document.querySelectorAll('.task-timer');
+  const timers = document.querySelectorAll('.task-countdown');
 
   timers.forEach(el => {
-    const start = Number(el.dataset.start);
-    const pausedAt = Number(el.dataset.pausedAt || 0);
-    const pausedSeconds = Number(el.dataset.pausedSeconds || 0);
+    const deadline = Number(el.dataset.deadline);
+    const taskId = Number(el.dataset.taskId);
 
-    if (!start) return;
+    if (!deadline || !taskId) return;
 
     function update() {
-      const now = pausedAt || Date.now();
+      const remain = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+      el.innerHTML = `⏳ ${formatHMS(remain)}`;
 
-      const diff = Math.max(
-        0,
-        Math.floor((now - start) / 1000) - pausedSeconds
-      );
-
-      const h = String(Math.floor(diff / 3600)).padStart(2, '0');
-      const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
-      const s = String(diff % 60).padStart(2, '0');
-
-      el.innerHTML = `⏱ ${h}:${m}:${s}`;
+      if (remain <= 0 && el.dataset.timeoutDone !== '1') {
+        el.dataset.timeoutDone = '1';
+        autoTimeoutTaskFromDashboard(taskId);
+      }
     }
 
     update();
-
-    if (!pausedAt) {
-      setInterval(update, 1000);
-    }
+    setInterval(update, 1000);
   });
+}
+
+async function autoTimeoutTaskFromDashboard(taskId) {
+  const diadiem = selectDiadiem.value;
+
+  const { data: task, error: loadError } = await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .select('*')
+    .eq('id', taskId)
+    .maybeSingle();
+
+  if (loadError || !task) return;
+  if (task.status !== 'in_progress') return;
+
+  const estimated = Number(task.estimated_minutes || 0);
+  const startedAt = task.started_at ? new Date(task.started_at).getTime() : Date.now();
+  const actualMinutes = Math.max(0, Math.ceil((Date.now() - startedAt) / 60000));
+  const payrollMinutes = estimated;
+  const delayMinutes = Math.max(0, actualMinutes - estimated);
+
+  const { error } = await supabase
+    .schema('qlnv')
+    .from('tasks')
+    .update({
+      status: 'timeout',
+      timeout_at: new Date().toISOString(),
+      payroll_minutes: payrollMinutes,
+      actual_minutes: actualMinutes,
+      delay_minutes: delayMinutes
+    })
+    .eq('id', task.id)
+    .eq('status', 'in_progress');
+
+  if (error) {
+    console.error('Lỗi tự chuyển quá hạn:', error);
+    return;
+  }
+
+  if (task.assigned_to) {
+    await supabase
+      .schema('qlnv')
+      .from('staff_status')
+      .update({
+        current_status: 'free',
+        current_task_id: null,
+        last_action: 'Task quá hạn - tự chuyển rảnh',
+        updated_at: new Date().toISOString()
+      })
+      .eq('manv', task.assigned_to)
+      .eq('diadiem', diadiem);
+  }
+
+  await insertTaskLog({
+    task,
+    action: 'task_timeout',
+    oldStatus: 'in_progress',
+    newStatus: 'timeout',
+    source: 'dashboard',
+    note: `Task hết thời gian khoán ${estimated} phút`
+  });
+
+  await createNotification({
+    diadiem,
+    target_manv: task.assigned_to || null,
+    target_role: 'staff',
+    title: 'Công việc đã hết thời gian',
+    body: `${task.title || ''} đã quá thời gian khoán ${estimated} phút`,
+    type: 'task_timeout',
+    ref_type: 'task',
+    ref_id: task.id
+  });
+
+  playNotifySound();
+  showLocalPopup(
+    '⚠ Công việc quá hạn',
+    `${task.assigned_name || task.assigned_to || ''}: ${task.title || ''}`
+  );
+
+  await loadTasks(diadiem);
+  await loadStaff(diadiem);
+  await loadAlerts(diadiem);
+  await loadLogs(diadiem);
 }
 
 async function updateTaskStatus(task, newStatus) {
@@ -928,15 +1034,27 @@ async function updateTaskStatus(task, newStatus) {
   */
 
   if (newStatus === 'in_progress') {
+    const now = new Date();
+    const deadline = new Date(now);
+    deadline.setMinutes(deadline.getMinutes() + Number(task.estimated_minutes || 0));
 
-    updateData.started_at =
-      new Date().toISOString();
+    updateData.started_at = now.toISOString();
+    updateData.deadline_at = deadline.toISOString();
+    updateData.payroll_minutes = Number(task.estimated_minutes || 0);
   }
 
   if (newStatus === 'done') {
-    updateData.completed_at = new Date().toISOString();
+    const now = new Date();
+    const startedAt = task.started_at ? new Date(task.started_at).getTime() : now.getTime();
+    const actualMinutes = Math.max(0, Math.ceil((now.getTime() - startedAt) / 60000));
+    const estimated = Number(task.estimated_minutes || 0);
+
+    updateData.completed_at = now.toISOString();
     updateData.paused_at = null;
     updateData.paused_seconds = finalPausedSeconds;
+    updateData.actual_minutes = actualMinutes;
+    updateData.payroll_minutes = estimated;
+    updateData.delay_minutes = Math.max(0, actualMinutes - estimated);
   }
 
   /*
