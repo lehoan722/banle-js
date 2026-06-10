@@ -1,4 +1,4 @@
-// scripts/chamcong.js  
+// scripts/chamcong.js
 
 // Dùng chung cơ chế đăng nhập như trang Up ảnh nhanh
 import { khoiTaoDangNhapDungChung } from './authModule.js';
@@ -1798,7 +1798,7 @@ async function loadMyCurrentTask({ manv, diadiem }) {
         .select("*")
         .eq("diadiem", diadiem)
         .eq("assigned_to", String(manv).toUpperCase())
-        .in("status", ["pending", "in_progress"])
+        .in("status", ["pending", "in_progress", "timeout"])
         .order("is_unplanned", { ascending: false })
         .order("priority", { ascending: true })
         .order("created_at", { ascending: true });
@@ -1852,7 +1852,10 @@ function syncMainStateFromLoadedTasks() {
         return;
     }
 
-    if (currentUnplannedTask && currentUnplannedTask.status === "in_progress") {
+    if (
+        currentUnplannedTask &&
+        ["in_progress", "timeout"].includes(currentUnplannedTask.status)
+    ) {
         currentMainState = "unplanned";
         unplannedTaskStartedAt =
             currentUnplannedTask.started_at ||
@@ -1861,7 +1864,10 @@ function syncMainStateFromLoadedTasks() {
         return;
     }
 
-    if (currentNormalTask && currentNormalTask.status === "in_progress") {
+    if (
+        currentNormalTask &&
+        ["in_progress", "timeout"].includes(currentNormalTask.status)
+    ) {
         currentMainState = "task";
         normalTaskStartedAt =
             currentNormalTask.started_at ||
@@ -1984,14 +1990,25 @@ function syncStateButtonsUI() {
         if (btnFree) btnFree.style.display = "none";
         if (btnOff) btnOff.style.display = "none";
 
-        const remain = getRemainingSeconds(unplannedTaskStartedAt, 60);
-        if (remain > 0) {
-            btnUnplannedDone.disabled = true;
-            btnUnplannedDone.style.opacity = "0.4";
-            btnUnplannedDone.textContent = `Hoàn thành bất thường (${remain}s)`;
-            setTimeout(syncStateButtonsUI, 1000);
-        } else {
-            btnUnplannedDone.textContent = "Hoàn thành bất thường";
+        if (btnUnplannedDone) {
+            if (currentUnplannedTask?.status === "timeout") {
+                btnUnplannedDone.disabled = false;
+                btnUnplannedDone.style.opacity = "1";
+                btnUnplannedDone.textContent = "Hoàn thành bất thường quá hạn";
+            } else {
+                const remain = getRemainingSeconds(unplannedTaskStartedAt, 60);
+
+                if (remain > 0) {
+                    btnUnplannedDone.disabled = true;
+                    btnUnplannedDone.style.opacity = "0.4";
+                    btnUnplannedDone.textContent = `Hoàn thành bất thường (${remain}s)`;
+                    setTimeout(syncStateButtonsUI, 1000);
+                } else {
+                    btnUnplannedDone.disabled = false;
+                    btnUnplannedDone.style.opacity = "1";
+                    btnUnplannedDone.textContent = "Hoàn thành bất thường";
+                }
+            }
         }
 
         return;
@@ -2082,8 +2099,10 @@ function renderMyTask() {
     box.innerHTML = `
     <b>${currentAssignedTask.title || ""}</b><br>
     ${currentAssignedTask.description || ""}<br>
-    Trạng thái: <b>${currentAssignedTask.status}</b><br>
-    Thời gian làm: <b id="my-task-timer">00:00:00</b>
+    Trạng thái: <b style="${currentAssignedTask.status === 'timeout' ? 'color:#dc2626;' : ''}">
+    ${currentAssignedTask.status === 'timeout' ? 'QUÁ HẠN - đã dừng tính lương' : currentAssignedTask.status}
+</b><br>
+Thời gian: <b id="my-task-timer">00:00:00</b>
     ${currentAssignedTask.paused_at ? "<br><b style='color:#e53935'>Đang tạm dừng vì phục vụ khách</b>" : ""}
  `;
 
@@ -2095,7 +2114,7 @@ function renderMyTask() {
     }
 
     if (btnDone) {
-        btnDone.disabled = currentAssignedTask.status !== "in_progress";
+        btnDone.disabled = !["in_progress", "timeout"].includes(currentAssignedTask.status);
     }
 
     if (btnResume) {
@@ -2341,7 +2360,7 @@ async function updateMyTaskStatus(newStatus) {
         updateData.paused_at = null;
         updateData.paused_seconds = finalPausedSeconds;
         updateData.actual_minutes = actualMinutes;
-        updateData.payroll_minutes = estimated;
+        updateData.payroll_minutes = Number(currentAssignedTask.payroll_minutes || estimated);
         updateData.delay_minutes = Math.max(0, actualMinutes - estimated);
     }
 
