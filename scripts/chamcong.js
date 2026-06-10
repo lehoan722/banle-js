@@ -28,6 +28,13 @@ let servingStartedAt = null;
 let servingTimerInterval = null;
 const TASK_IMAGE_BUCKET = "qlnv-task-images";
 
+function formatHMS(totalSeconds) {
+    const h = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+    const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+    const s = String(totalSeconds % 60).padStart(2, "0");
+    return `${h}:${m}:${s}`;
+}
+
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.552722, lng: 105.842583 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
@@ -2166,32 +2173,124 @@ function startMyTaskTimer() {
     function update() {
         if (!task || !task.started_at) return;
 
+        const estimatedSeconds = Number(task.estimated_minutes || 0) * 60;
         const startedAt = new Date(task.started_at).getTime();
-        const pausedSeconds = Number(task.paused_seconds || 0);
 
-        let now = Date.now();
+        const deadline = task.deadline_at
+            ? new Date(task.deadline_at).getTime()
+            : startedAt + estimatedSeconds * 1000;
 
-        if (task.paused_at) {
-            now = new Date(task.paused_at).getTime();
+        if (task.status === "in_progress" && !task.paused_at) {
+            const remain = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+            el.textContent = formatHMS(remain);
+
+            if (remain <= 0 && task.datasetTimeoutDone !== true) {
+                task.datasetTimeoutDone = true;
+                autoTimeoutMyTask(task);
+            }
+
+            return;
         }
+
+        if (task.status === "timeout") {
+            const over = Math.max(0, Math.floor((Date.now() - deadline) / 1000));
+            el.textContent = `QUÁ HẠN ${formatHMS(over)}`;
+            el.style.color = "#dc2626";
+            return;
+        }
+
+        const completed = task.completed_at
+            ? new Date(task.completed_at).getTime()
+            : Date.now();
 
         const diff = Math.max(
             0,
-            Math.floor((now - startedAt) / 1000) - pausedSeconds
+            Math.floor((completed - startedAt) / 1000) - Number(task.paused_seconds || 0)
         );
 
-        const h = String(Math.floor(diff / 3600)).padStart(2, "0");
-        const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
-        const s = String(diff % 60).padStart(2, "0");
-
-        el.textContent = `${h}:${m}:${s}`;
+        el.textContent = formatHMS(diff);
     }
 
     update();
 
-    if (!task.paused_at) {
+    if (!task.paused_at && task.status === "in_progress") {
         myTaskTimerInterval = setInterval(update, 1000);
     }
+}
+
+async function autoTimeoutMyTask(task) {
+    const sp = await ensureSupabase();
+    if (!sp || !task) return;
+
+    if (task.status !== "in_progress") return;
+
+    const manv = localStorage.getItem("manv");
+    const diadiem = getDiaDiemFromPath();
+
+    const estimated = Number(task.estimated_minutes || 0);
+    const startedAt = task.started_at ? new Date(task.started_at).getTime() : Date.now();
+    const actualMinutes = Math.max(0, Math.ceil((Date.now() - startedAt) / 60000));
+    const payrollMinutes = estimated;
+    const delayMinutes = Math.max(0, actualMinutes - estimated);
+
+    const { error } = await sp
+        .schema("qlnv")
+        .from("tasks")
+        .update({
+            status: "timeout",
+            timeout_at: new Date().toISOString(),
+            payroll_minutes: payrollMinutes,
+            actual_minutes: actualMinutes,
+            delay_minutes: delayMinutes
+        })
+        .eq("id", task.id)
+        .eq("status", "in_progress");
+
+    if (error) {
+        console.error("Lỗi tự quá hạn task:", error);
+        return;
+    }
+
+    await insertTaskLog({
+        task,
+        action: "task_timeout",
+        oldStatus: "in_progress",
+        newStatus: "timeout",
+        source: "chamcong",
+        note: `Hết thời gian khoán ${estimated} phút`
+    });
+
+    await updateQlnvStaffStatus({
+        manv,
+        diadiem,
+        status: "free",
+        lastAction: "Task hết thời gian khoán"
+    });
+
+    renderWorkStatusText("free");
+
+    await notifyAdminAndLocal({
+        diadiem,
+        manv,
+        title: "⚠ Công việc đã hết thời gian",
+        body: `${manv} quá hạn task: ${task.title || ""}. Đã dừng tính lương task.`,
+        type: "task_timeout",
+        refType: "task"
+    });
+
+    playNotifySound();
+
+    showTaskPopup(
+        "⚠ Đã hết thời gian công việc",
+        `${task.title || ""}<br>Đã dừng tính lương. Nếu cần làm tiếp, hãy tạo Việc bất thường.`
+    );
+
+    currentMainState = "free";
+    normalTaskStartedAt = null;
+    unplannedTaskStartedAt = null;
+
+    await loadMyCurrentTask({ manv, diadiem });
+    syncStateButtonsUI();
 }
 
 async function updateMyTaskStatus(newStatus) {
@@ -2220,13 +2319,30 @@ async function updateMyTaskStatus(newStatus) {
     };
 
     if (newStatus === "in_progress") {
-        updateData.started_at = new Date().toISOString();
+        const now = new Date();
+        const deadline = new Date(now);
+        deadline.setMinutes(deadline.getMinutes() + Number(currentAssignedTask.estimated_minutes || 0));
+
+        updateData.started_at = now.toISOString();
+        updateData.deadline_at = deadline.toISOString();
+        updateData.payroll_minutes = Number(currentAssignedTask.estimated_minutes || 0);
     }
 
     if (newStatus === "done") {
-        updateData.completed_at = new Date().toISOString();
+        const now = new Date();
+        const startedAt = currentAssignedTask.started_at
+            ? new Date(currentAssignedTask.started_at).getTime()
+            : now.getTime();
+
+        const actualMinutes = Math.max(0, Math.ceil((now.getTime() - startedAt) / 60000));
+        const estimated = Number(currentAssignedTask.estimated_minutes || 0);
+
+        updateData.completed_at = now.toISOString();
         updateData.paused_at = null;
         updateData.paused_seconds = finalPausedSeconds;
+        updateData.actual_minutes = actualMinutes;
+        updateData.payroll_minutes = estimated;
+        updateData.delay_minutes = Math.max(0, actualMinutes - estimated);
     }
 
     const { error } = await sp
@@ -2438,12 +2554,43 @@ async function resumeTaskAndSetDoing() {
 
 function openUnplannedModal() {
     const modal = document.getElementById("unplanned-modal");
-    const noteEl = document.getElementById("unplanned-task-note");
+    if (!modal) return;
 
-    if (noteEl) noteEl.value = "";
-    if (modal) modal.style.display = "flex";
+    modal.innerHTML = `
+        <div style="background:#fff;width:92%;max-width:420px;border-radius:12px;padding:16px;">
+            <h3 style="margin-top:0;">Tạo việc bất thường</h3>
 
-    setTimeout(() => noteEl?.focus(), 100);
+            <label>Tiêu đề công việc</label>
+            <input id="unplanned-title" type="text" style="width:100%;margin-bottom:10px;" placeholder="VD: Làm tiếp hàng nhập">
+
+            <label>Mô tả công việc</label>
+            <textarea id="unplanned-description" style="width:100%;height:80px;margin-bottom:10px;" placeholder="Mô tả lý do phát sinh"></textarea>
+
+            <label>Thời gian dự kiến, phút</label>
+            <input id="unplanned-minutes" type="number" min="1" value="15" style="width:100%;margin-bottom:10px;">
+
+            <div style="background:#fff7ed;border:1px solid #fdba74;padding:8px;border-radius:8px;margin-bottom:12px;">
+                📷 Việc bất thường bắt buộc chụp ảnh trước và ảnh sau.
+            </div>
+
+            <div style="display:flex;gap:8px;">
+                <button id="btn-unplanned-confirm" type="button" style="flex:1;">Bắt đầu việc</button>
+                <button id="btn-unplanned-cancel" type="button" style="flex:1;background:#e5e7eb;color:#111;">Hủy</button>
+            </div>
+        </div>
+    `;
+
+    modal.style.display = "flex";
+
+    document.getElementById("btn-unplanned-confirm")?.addEventListener("click", async () => {
+        await startUnplannedTask();
+    });
+
+    document.getElementById("btn-unplanned-cancel")?.addEventListener("click", () => {
+        closeUnplannedModal();
+    });
+
+    setTimeout(() => document.getElementById("unplanned-title")?.focus(), 100);
 }
 
 function closeUnplannedModal() {
@@ -2459,14 +2606,29 @@ async function startUnplannedTask() {
 
     if (!manv) return;
 
-    const noteEl =
-        document.getElementById("unplanned-task-note");
+    const titleEl = document.getElementById("unplanned-title");
+    const descEl = document.getElementById("unplanned-description");
+    const minutesEl = document.getElementById("unplanned-minutes");
 
-    const note =
-        String(noteEl?.value || "").trim();
+    const title = String(titleEl?.value || "").trim();
+    const note = String(descEl?.value || "").trim();
+    const estimatedMinutes = Number(minutesEl?.value || 15);
+
+    if (!title) {
+        alert("Vui lòng nhập tiêu đề việc bất thường.");
+        titleEl?.focus();
+        return;
+    }
 
     if (!note) {
         alert("Vui lòng nhập mô tả nhiệm vụ bất thường.");
+        descEl?.focus();
+        return;
+    }
+
+    if (!estimatedMinutes || estimatedMinutes <= 0) {
+        alert("Thời gian dự kiến không hợp lệ.");
+        minutesEl?.focus();
         return;
     }
 
@@ -2489,7 +2651,7 @@ async function startUnplannedTask() {
         .schema("qlnv")
         .from("tasks")
         .insert({
-            title: "Nhiệm vụ bất thường",
+            title,
             description: note,
             task_type: "bat_thuong",
             diadiem,
@@ -2499,7 +2661,8 @@ async function startUnplannedTask() {
             priority: 1,
             status: "in_progress",
             started_at: new Date().toISOString(),
-            estimated_minutes: 10,
+            estimated_minutes: estimatedMinutes,
+            image_required: true,
             created_by: String(manv).toUpperCase(),
             is_unplanned: true,
             parent_task_id:
@@ -2539,6 +2702,18 @@ async function startUnplannedTask() {
 
     currentMainState = "unplanned";
     unplannedTaskStartedAt = new Date().toISOString();
+
+    const deadline = new Date();
+    deadline.setMinutes(deadline.getMinutes() + estimatedMinutes);
+
+    await sp
+        .schema("qlnv")
+        .from("tasks")
+        .update({
+            deadline_at: deadline.toISOString(),
+            payroll_minutes: estimatedMinutes
+        })
+        .eq("id", data.id);
     syncStateButtonsUI();
 
     await insertTaskLog({
@@ -2569,7 +2744,6 @@ async function startUnplannedTask() {
         refType: "task"
     });
 
-    noteEl.value = "";
     closeUnplannedModal();
 
     await loadMyCurrentTask({ manv, diadiem });
@@ -2986,15 +3160,7 @@ function attachChamCongButtons(diadiem) {
         currentMainState = "free";
         normalTaskStartedAt = null;
 
-        syncStateButtonsUI();
-
-        await updateMyTaskStatus("done");
-
-        currentMainState = "free";
-        normalTaskStartedAt = null;
-
         await loadMyCurrentTask({ manv, diadiem });
-
         syncStateButtonsUI();
     });
 
@@ -3297,12 +3463,4 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
-
-
-
-
-
-
-
-
 
