@@ -1,4 +1,4 @@
-// scripts/chamcong.js
+// scripts/chamcong.js 
 
 // Dùng chung cơ chế đăng nhập như trang Up ảnh nhanh
 import { khoiTaoDangNhapDungChung } from './authModule.js';
