@@ -414,21 +414,24 @@
             }
 
             if (dataKey === 'trang_thai') {
+              const tt = String(value || '').toUpperCase();
+
               td.style.fontWeight = '700';
-              td.style.color = String(value || '').toUpperCase() === 'OK' ? '#168a16' : '#c00';
+
+              if (tt === 'OK') {
+                td.style.color = '#008000';
+              } else if (tt === 'THIEU') {
+                td.style.color = '#d00000';
+              } else if (tt === 'THUA') {
+                td.style.color = '#d00000';
+              } else if (tt === 'LECH') {
+                td.style.color = '#d00000';
+              } else {
+                td.style.color = '#d00000';
+              }
             } else {
               td.style.fontWeight = '';
               td.style.color = '';
-            }
-          };
-
-          props.renderer = function (instance, td, row, col, prop, value, cellProperties) {
-            Handsontable.renderers.TextRenderer.apply(this, arguments);
-
-            td.classList.remove('htDongDangChon');
-
-            if (row === rowDangChonHot) {
-              td.classList.add('htDongDangChon');
             }
           };
 
