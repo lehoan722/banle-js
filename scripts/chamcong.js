@@ -2241,7 +2241,16 @@ async function autoTimeoutMyTask(task) {
     const sp = await ensureSupabase();
     if (!sp || !task) return;
 
-    if (task.status !== "in_progress") return;
+    const { data: freshTask } = await sp
+        .schema("qlnv")
+        .from("tasks")
+        .select("id,status,paused_at")
+        .eq("id", task.id)
+        .maybeSingle();
+
+    if (!freshTask) return;
+    if (freshTask.status !== "in_progress") return;
+    if (freshTask.paused_at) return;
 
     const manv = localStorage.getItem("manv");
     const diadiem = getDiaDiemFromPath();
@@ -2513,7 +2522,10 @@ async function resumeCurrentTaskIfPaused() {
         .from("tasks")
         .update({
             paused_at: null,
-            paused_seconds: oldPausedSeconds + addSeconds
+            paused_seconds: oldPausedSeconds + addSeconds,
+            deadline_at: currentAssignedTask.deadline_at
+                ? new Date(new Date(currentAssignedTask.deadline_at).getTime() + addSeconds * 1000).toISOString()
+                : null
         })
         .eq("id", currentAssignedTask.id);
 
