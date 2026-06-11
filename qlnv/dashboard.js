@@ -353,9 +353,15 @@ function renderTaskTimer(task) {
   }
 
   if (task.status === 'timeout') {
-    const over = Math.max(0, Math.floor((Date.now() - deadlineTime) / 1000));
-    return `<span class="task-timer" style="color:#dc2626;font-weight:800;">🔴 Quá hạn ${formatHMS(over)}</span>`;
-  }
+  const over = Math.max(0, Math.floor((Date.now() - deadlineTime) / 1000));
+  return `
+    <span
+      class="task-timer task-timeout-live"
+      data-deadline="${deadlineTime}"
+      style="color:#dc2626;font-weight:800;"
+    >🔴 Quá hạn ${formatHMS(over)}</span>
+  `;
+}
 
   if (task.status === 'done') {
     const actual = Number(task.actual_minutes || 0);
@@ -891,15 +897,13 @@ async function loadTasks(diadiem) {
 }
 
 function startRealtimeTaskTimers() {
-  const timers = document.querySelectorAll('.task-countdown');
-
-  timers.forEach(el => {
+  document.querySelectorAll('.task-countdown').forEach(el => {
     const deadline = Number(el.dataset.deadline);
     const taskId = Number(el.dataset.taskId);
 
     if (!deadline || !taskId) return;
 
-    function update() {
+    function updateCountdown() {
       const remain = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
       el.innerHTML = `⏳ ${formatHMS(remain)}`;
 
@@ -909,8 +913,21 @@ function startRealtimeTaskTimers() {
       }
     }
 
-    update();
-    setInterval(update, 1000);
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+  });
+
+  document.querySelectorAll('.task-timeout-live').forEach(el => {
+    const deadline = Number(el.dataset.deadline);
+    if (!deadline) return;
+
+    function updateTimeout() {
+      const over = Math.max(0, Math.floor((Date.now() - deadline) / 1000));
+      el.innerHTML = `🔴 Quá hạn ${formatHMS(over)}`;
+    }
+
+    updateTimeout();
+    setInterval(updateTimeout, 1000);
   });
 
   document.querySelectorAll('.task-timer[data-start]').forEach(el => {
