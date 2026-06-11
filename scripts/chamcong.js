@@ -2186,12 +2186,9 @@ function startMyTaskTimer() {
     }
 
     const task = currentAssignedTask;
-
     if (!el || !task || !task.started_at) return;
 
     function update() {
-        if (!task || !task.started_at) return;
-
         const estimatedSeconds = Number(task.estimated_minutes || 0) * 60;
         const startedAt = new Date(task.started_at).getTime();
 
@@ -2199,11 +2196,16 @@ function startMyTaskTimer() {
             ? new Date(task.deadline_at).getTime()
             : startedAt + estimatedSeconds * 1000;
 
-        if (task.status === "in_progress" && !task.paused_at) {
-            const remain = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
-            el.textContent = formatHMS(remain);
+        if (task.status === "in_progress") {
+            const baseTime = task.paused_at
+                ? new Date(task.paused_at).getTime()
+                : Date.now();
 
-            if (remain <= 0 && task.datasetTimeoutDone !== true) {
+            const remain = Math.max(0, Math.floor((deadline - baseTime) / 1000));
+            el.textContent = formatHMS(remain);
+            el.style.color = "";
+
+            if (!task.paused_at && remain <= 0 && task.datasetTimeoutDone !== true) {
                 task.datasetTimeoutDone = true;
                 autoTimeoutMyTask(task);
             }
@@ -2217,25 +2219,11 @@ function startMyTaskTimer() {
             el.style.color = "#dc2626";
             return;
         }
-
-        const completed = task.completed_at
-            ? new Date(task.completed_at).getTime()
-            : Date.now();
-
-        const diff = Math.max(
-            0,
-            Math.floor((completed - startedAt) / 1000) - Number(task.paused_seconds || 0)
-        );
-
-        el.textContent = formatHMS(diff);
     }
 
     update();
 
-    if (
-        (!task.paused_at && task.status === "in_progress") ||
-        task.status === "timeout"
-    ) {
+    if (!task.paused_at || task.status === "timeout") {
         myTaskTimerInterval = setInterval(update, 1000);
     }
 }
@@ -2520,15 +2508,17 @@ async function resumeCurrentTaskIfPaused() {
 
     const oldPausedSeconds = Number(currentAssignedTask.paused_seconds || 0);
 
+    const newDeadlineAt = currentAssignedTask.deadline_at
+        ? new Date(new Date(currentAssignedTask.deadline_at).getTime() + addSeconds * 1000).toISOString()
+        : null;
+
     const { error } = await sp
         .schema("qlnv")
         .from("tasks")
         .update({
             paused_at: null,
             paused_seconds: oldPausedSeconds + addSeconds,
-            deadline_at: currentAssignedTask.deadline_at
-                ? new Date(new Date(currentAssignedTask.deadline_at).getTime() + addSeconds * 1000).toISOString()
-                : null
+            deadline_at: newDeadlineAt
         })
         .eq("id", currentAssignedTask.id);
 
@@ -2548,6 +2538,8 @@ async function resumeCurrentTaskIfPaused() {
 
     currentAssignedTask.paused_at = null;
     currentAssignedTask.paused_seconds = oldPausedSeconds + addSeconds;
+    currentAssignedTask.deadline_at = newDeadlineAt;
+
     renderMyTask();
 }
 
