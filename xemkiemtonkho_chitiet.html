@@ -103,6 +103,17 @@
       line-height: 1.35 !important;
     }
 
+    /* Rê chuột đến dòng nào thì dòng đó xám nhạt */
+    #hot .handsontable tbody tr:hover td {
+      background: #f1f1f1 !important;
+      cursor: pointer;
+    }
+
+    /* Dòng đã chọn thì vàng */
+    #hot .handsontable td.htDongDangChon {
+      background: #ffe08a !important;
+    }
+
     #hot .handsontable tbody tr:hover td {
       background: #fff176 !important;
     }
@@ -192,6 +203,7 @@
     let allRows = [];
     let currentPage = 1;
     let totalPages = 1;
+    let rowDangChonHot = null;
 
     const columns = [
       { data: 'stt', type: 'numeric', readOnly: true },
@@ -374,6 +386,9 @@
         colWidths: getWidthsDangHienThi(),
         cells(row, col) {
           const props = {};
+          if (row === rowDangChonHot) {
+            props.className = (props.className || '') + ' htDongDangChon';
+          }
           const currentColumns = getColumnsDangHienThi();
           const dataKey = currentColumns[col]?.data;
 
@@ -407,6 +422,9 @@
         },
         afterOnCellMouseDown(event, coords) {
           if (coords.row < 0) return;
+
+          rowDangChonHot = coords.row;
+          hot.render();
 
           const r = hot.getSourceDataAtRow(coords.row);
           if (!r) return;
