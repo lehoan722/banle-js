@@ -281,16 +281,18 @@
     function sortChiTietLech(value) {
       const s = String(value || '').trim();
       if (!s) return '';
+
       return s
         .split('|')
         .map(part => {
           const p = part.trim();
           if (!p.includes(':')) return sortSizeText(p);
+
           const idx = p.indexOf(':');
           const label = p.slice(0, idx).trim();
           const rest = p.slice(idx + 1).trim();
-          return label + ': ' + sortSizeText(rest).replace(/
-            / g, ', ');
+
+          return label + ': ' + sortSizeText(rest).replace(/\n/g, ', ');
         })
         .join(' | ');
     }
