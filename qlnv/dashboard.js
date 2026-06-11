@@ -1,4 +1,4 @@
-import { 
+import {
   khoiTaoDangNhapDungChung,
   getSupabaseClient,
   getCurrentUserInfo,
@@ -1451,6 +1451,7 @@ async function loadAssignableStaff(diadiem) {
 
   const rows = (data || []).filter(item => {
     return [
+      'CO_LICH_CHUA_VAO_CA',
       'DA_VAO_CA_DANG_RANH',
       'DANG_LAM_TASK',
       'DANG_PHUC_VU_KHACH',
@@ -1460,7 +1461,7 @@ async function loadAssignableStaff(diadiem) {
   });
 
   if (!rows.length) {
-    taskAssignedTo.innerHTML = `<option value="">Không có nhân viên đang trong ca</option>`;
+    taskAssignedTo.innerHTML = `<option value="">Không có nhân viên đã đăng ký ca / đang trong ca</option>`;
     console.warn('Không có nhân viên có thể giao việc:', data);
     return;
   }
@@ -1593,6 +1594,7 @@ async function loadAssignableStaffForUnplanned(diadiem) {
 
   const rows = (data || []).filter(item => {
     return [
+      'CO_LICH_CHUA_VAO_CA',
       'DA_VAO_CA_DANG_RANH',
       'DANG_LAM_TASK',
       'DANG_PHUC_VU_KHACH',
@@ -1602,7 +1604,7 @@ async function loadAssignableStaffForUnplanned(diadiem) {
   });
 
   if (!rows.length) {
-    unplannedAssignedTo.innerHTML = `<option value="">Không có nhân viên đang trong ca</option>`;
+    unplannedAssignedTo.innerHTML = `<option value="">Không có nhân viên đã đăng ký ca / đang trong ca</option>`;
     return;
   }
 
