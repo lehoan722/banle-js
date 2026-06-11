@@ -612,7 +612,8 @@
 
           // ===== Tài khoản nhận theo cơ sở =====
           // ===== Tài khoản nhận mặc định theo cơ sở =====
-          let bankId = "VietinBank";
+          // let bankId = "VietinBank";
+          let bankId = "ICB"; // VietinBank
           let bankLabel = "VietinBank";
           let accountNo = "101880222833";
           let accountName = "  cs1   ";
@@ -695,11 +696,16 @@
           if (elAddInfo) elAddInfo.textContent = addInfo;
 
           const url =
-            "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-qr_only.png" +
+            "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-compact2.png" +
             "?amount=" + encodeURIComponent(amount) +
             "&addInfo=" + encodeURIComponent(addInfo) +
             "&accountName=" + encodeURIComponent(accountName) +
-            "&t=" + Date.now(); // chống cache ảnh cũ
+            "&v=" + Date.now();
+
+          img.onerror = function () {
+            console.error("Không tải được VietQR:", url);
+            img.alt = "Không tải được mã QR thanh toán";
+          };        
 
           img.src = url;
         }
