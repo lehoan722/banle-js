@@ -142,7 +142,7 @@
       <label style="user-select:none"><input type="checkbox" id="chkMatchAll"> Phiếu phải chứa tất cả mã</label>
       <label style="user-select:none"><input type="checkbox" id="chkOnlyLech"> Chỉ xem dòng lệch</label>
       <label style="user-select:none;font-weight:700;color:#0066cc;">
-        <input type="checkbox" id="chkRutGon"> Rút gọn
+        <input type="checkbox" id="chkRutGon" checked> Rút gọn
       </label>
 
       <button class="loc-btn" onclick="taiChiTiet()">🔍 Lọc chi tiết</button>
@@ -270,6 +270,25 @@
     }
 
     function fmtNumber(v) { return Number(v || 0).toLocaleString('vi-VN'); }
+
+    function sapXepSizeTheoCot(value) {
+      const s = String(value || '').trim();
+      if (!s) return '';
+
+      const parts = s
+        .split(/\s+/)
+        .map(x => x.trim())
+        .filter(Boolean);
+
+      parts.sort((a, b) => {
+        const na = Number((a.match(/^(\d+)/) || [])[1] || 999999);
+        const nb = Number((b.match(/^(\d+)/) || [])[1] || 999999);
+        if (na !== nb) return na - nb;
+        return a.localeCompare(b, 'vi');
+      });
+
+      return parts.join('\n');
+    }
 
     function normalizePgTimestamp(input) {
       if (!input) return input;
@@ -493,13 +512,13 @@
             nguoi_kiem_full: `${h.nguoi_kiem || ''}${h.ten_nguoi_kiem ? ' - ' + h.ten_nguoi_kiem : ''}`,
             masp: ct.masp || '',
             tensp: ct.tensp || '',
-            size_kiem_kho: ct.size_kiem_kho || '',
+            size_kiem_kho: sapXepSizeTheoCot(ct.size_kiem_kho),
             tong_sl_kiem_kho: Number(ct.tong_sl_kiem_kho || 0),
-            size_kiem_bay_mau: ct.size_kiem_bay_mau || '',
+            size_kiem_bay_mau: sapXepSizeTheoCot(ct.size_kiem_bay_mau),
             tong_sl_kiem_bay_mau: Number(ct.tong_sl_kiem_bay_mau || 0),
-            size_kiem: ct.size_kiem || '',
+            size_kiem: sapXepSizeTheoCot(ct.size_kiem),
             tong_sl_kiem: Number(ct.tong_sl_kiem || 0),
-            size_ton_may: ct.size_ton_may || '',
+            size_ton_may: sapXepSizeTheoCot(ct.size_ton_may),
             tong_sl_ton_may: Number(ct.tong_sl_ton_may || 0),
             trang_thai: ct.trang_thai || '',
             chi_tiet_chenh_lech: ct.chi_tiet_chenh_lech || '',
