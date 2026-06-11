@@ -912,6 +912,21 @@ function startRealtimeTaskTimers() {
     update();
     setInterval(update, 1000);
   });
+
+  document.querySelectorAll('.task-timer[data-start]').forEach(el => {
+    const start = Number(el.dataset.start);
+    const pausedSeconds = Number(el.dataset.pausedSeconds || 0);
+
+    if (!start) return;
+
+    function updateElapsed() {
+      const diff = Math.max(0, Math.floor((Date.now() - start) / 1000) - pausedSeconds);
+      el.innerHTML = `⏱ ${formatHMS(diff)}`;
+    }
+
+    updateElapsed();
+    setInterval(updateElapsed, 1000);
+  });
 }
 
 async function autoTimeoutTaskFromDashboard(taskId) {
@@ -926,6 +941,7 @@ async function autoTimeoutTaskFromDashboard(taskId) {
 
   if (loadError || !task) return;
   if (task.status !== 'in_progress') return;
+  if (task.paused_at) return;
 
   const estimated = Number(task.estimated_minutes || 0);
   const startedAt = task.started_at ? new Date(task.started_at).getTime() : Date.now();
