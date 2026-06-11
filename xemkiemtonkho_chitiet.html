@@ -97,6 +97,11 @@
       color: #c00;
       font-weight: 700;
     }
+
+    .htSizeMultiLine {
+      white-space: pre-line !important;
+      line-height: 1.35 !important;
+    }
   </style>
 </head>
 
@@ -365,25 +370,55 @@
         colWidths: getWidthsDangHienThi(),
         cells(row, col) {
           const props = {};
-          if (col >= 9 && col <= 15) props.className = 'htRight';
-          if (col === 16) {
-            const v = this.instance.getDataAtCell(row, col);
+          const currentColumns = getColumnsDangHienThi();
+          const dataKey = currentColumns[col]?.data;
+
+          if ([
+            'tong_sl_kiem_kho',
+            'tong_sl_kiem_bay_mau',
+            'tong_sl_kiem',
+            'tong_sl_ton_may'
+          ].includes(dataKey)) {
+            props.className = 'htRight';
+          }
+
+          if ([
+            'size_kiem_kho',
+            'size_kiem_bay_mau',
+            'size_kiem',
+            'size_ton_may'
+          ].includes(dataKey)) {
+            props.className = (props.className || '') + ' htSizeMultiLine';
+          }
+
+          if (dataKey === 'trang_thai') {
             props.renderer = function (instance, td, row, col, prop, value) {
               Handsontable.renderers.TextRenderer.apply(this, arguments);
               td.style.fontWeight = '700';
               td.style.color = String(value || '').toUpperCase() === 'OK' ? '#168a16' : '#c00';
             };
           }
+
           return props;
         },
         afterOnCellMouseDown(event, coords) {
           if (coords.row < 0) return;
+
           const r = hot.getSourceDataAtRow(coords.row);
           if (!r) return;
-          if (coords.col === 1 && r.so_phieu) copyText(r.so_phieu);
-          if (coords.col === 6 && r.masp) {
+
+          const currentColumns = getColumnsDangHienThi();
+          const dataKey = currentColumns[coords.col]?.data;
+
+          if (dataKey === 'so_phieu' && r.so_phieu) {
+            copyText(r.so_phieu);
+          }
+
+          if (dataKey === 'masp' && r.masp) {
             copyText(r.masp);
-            if (typeof window.stockQuickPopup === 'function') window.stockQuickPopup(r.masp);
+            if (typeof window.stockQuickPopup === 'function') {
+              window.stockQuickPopup(r.masp);
+            }
           }
         }
       });
@@ -606,12 +641,12 @@
       ['locDiaDiem', 'locTrangThaiPhieu', 'locTrangThaiCT', 'chkOnlyLech'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', taiChiTiet);
-
-        const chkRutGon = document.getElementById('chkRutGon');
-        if (chkRutGon) {
-          chkRutGon.addEventListener('change', capNhatCheDoCot);
-        }
       });
+
+      const chkRutGon = document.getElementById('chkRutGon');
+      if (chkRutGon) {
+        chkRutGon.addEventListener('change', capNhatCheDoCot);
+      }
 
       document.getElementById('btnCopyTable').addEventListener('click', async () => {
         const currentHeaders = getHeadersDangHienThi();
