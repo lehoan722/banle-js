@@ -2232,7 +2232,10 @@ function startMyTaskTimer() {
 
     update();
 
-    if (!task.paused_at && task.status === "in_progress") {
+    if (
+        (!task.paused_at && task.status === "in_progress") ||
+        task.status === "timeout"
+    ) {
         myTaskTimerInterval = setInterval(update, 1000);
     }
 }
