@@ -112,7 +112,7 @@
     /* Dòng đã chọn thì vàng */
     #hot .handsontable td.htDongDangChon {
       background: #ffe08a !important;
-    }    
+    }
   </style>
 </head>
 
@@ -382,9 +382,7 @@
         colWidths: getWidthsDangHienThi(),
         cells(row, col) {
           const props = {};
-          if (row === rowDangChonHot) {
-            props.className = (props.className || '') + ' htDongDangChon';
-          }
+
           const currentColumns = getColumnsDangHienThi();
           const dataKey = currentColumns[col]?.data;
 
@@ -406,13 +404,33 @@
             props.className = (props.className || '') + ' htSizeMultiLine';
           }
 
-          if (dataKey === 'trang_thai') {
-            props.renderer = function (instance, td, row, col, prop, value) {
-              Handsontable.renderers.TextRenderer.apply(this, arguments);
+          props.renderer = function (instance, td, row, col, prop, value, cellProperties) {
+            Handsontable.renderers.TextRenderer.apply(this, arguments);
+
+            td.classList.remove('htDongDangChon');
+
+            if (row === rowDangChonHot) {
+              td.classList.add('htDongDangChon');
+            }
+
+            if (dataKey === 'trang_thai') {
               td.style.fontWeight = '700';
               td.style.color = String(value || '').toUpperCase() === 'OK' ? '#168a16' : '#c00';
-            };
-          }
+            } else {
+              td.style.fontWeight = '';
+              td.style.color = '';
+            }
+          };
+
+          props.renderer = function (instance, td, row, col, prop, value, cellProperties) {
+            Handsontable.renderers.TextRenderer.apply(this, arguments);
+
+            td.classList.remove('htDongDangChon');
+
+            if (row === rowDangChonHot) {
+              td.classList.add('htDongDangChon');
+            }
+          };
 
           return props;
         },
