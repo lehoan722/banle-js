@@ -141,8 +141,9 @@
       <input type="text" id="locMasp" style="min-width:260px" placeholder="Tìm nhiều mã SP, cách nhau dấu phẩy">
       <label style="user-select:none"><input type="checkbox" id="chkMatchAll"> Phiếu phải chứa tất cả mã</label>
       <label style="user-select:none"><input type="checkbox" id="chkOnlyLech"> Chỉ xem dòng lệch</label>
-      <label style="user-select:none;font-weight:700;color:#0066cc;"><input type="checkbox" id="chkFullView"> Hiển thị
-        đầy đủ</label>
+      <label style="user-select:none;font-weight:700;color:#0066cc;">
+        <input type="checkbox" id="chkRutGon"> Rút gọn
+      </label>
 
       <button class="loc-btn" onclick="taiChiTiet()">🔍 Lọc chi tiết</button>
       <button id="btnCopyTable" class="xoa-btn">📋 Copy bảng</button>
@@ -183,7 +184,7 @@
     let currentPage = 1;
     let totalPages = 1;
 
-    const fullColumns = [
+    const columns = [
       { data: 'stt', type: 'numeric', readOnly: true },
       { data: 'so_phieu', readOnly: true },
       { data: 'ngay_ct', readOnly: true },
@@ -205,97 +206,70 @@
       { data: 'ghi_chu', readOnly: true }
     ];
 
-    const fullColHeaders = [
+    const colHeaders = [
       'STT', 'Số phiếu', 'Ngày CT', 'Thời điểm kiểm', 'Cơ sở', 'Người kiểm', 'Mã SP', 'Tên SP',
       'Size kiểm kho', 'SL kiểm kho', 'Size bày mẫu', 'SL bày mẫu', 'Size kiểm tổng', 'Tổng SL kiểm',
       'Size tồn máy', 'SL tồn máy', 'Trạng thái', 'Chi tiết lệch', 'Ghi chú'
     ];
 
-    const fullColWidths = [50, 120, 90, 130, 70, 210, 140, 190, 110, 85, 110, 85, 120, 90, 120, 90, 85, 240, 200];
+    const colWidths = [50, 120, 90, 130, 70, 210, 140, 190, 110, 85, 110, 85, 120, 90, 120, 90, 85, 240, 200];
 
     const compactColumns = [
-      { data: 'stt', type: 'numeric', readOnly: true },
-      { data: 'so_phieu', readOnly: true },
-      { data: 'thoi_diem_kiem', readOnly: true },
-      { data: 'nguoi_kiem_full', readOnly: true },
-      { data: 'masp', readOnly: true },
-      { data: 'size_kiem', readOnly: true },
-      { data: 'size_ton_may', readOnly: true },
-      { data: 'trang_thai', readOnly: true },
-      { data: 'chi_tiet_chenh_lech', readOnly: true },
-      { data: 'ghi_chu', readOnly: true }
+      columns[0],  // STT
+      columns[1],  // Số phiếu
+      columns[3],  // Thời điểm kiểm
+      columns[5],  // Người kiểm
+      columns[6],  // Mã SP
+      columns[12], // Size kiểm tổng
+      columns[14], // Size tồn máy
+      columns[16], // Trạng thái
+      columns[17], // Chi tiết lệch
+      columns[18]  // Ghi chú
     ];
 
     const compactColHeaders = [
-      'STT', 'Số phiếu', 'Thời điểm kiểm', 'Người kiểm', 'Mã SP',
-      'Size kiểm tổng', 'Size tồn máy', 'Trạng thái', 'Chi tiết lệch', 'Ghi chú'
+      'STT',
+      'Số phiếu',
+      'Thời điểm kiểm',
+      'Người kiểm',
+      'Mã SP',
+      'Size kiểm tổng',
+      'Size tồn máy',
+      'Trạng thái',
+      'Chi tiết lệch',
+      'Ghi chú'
     ];
 
     const compactColWidths = [50, 130, 140, 230, 150, 160, 160, 90, 280, 220];
 
-    function isFullView() {
-      return !!document.getElementById('chkFullView')?.checked;
+    function dangRutGon() {
+      return !!document.getElementById('chkRutGon')?.checked;
     }
 
-    function getViewConfig() {
-      return isFullView()
-        ? { columns: fullColumns, colHeaders: fullColHeaders, colWidths: fullColWidths, fixedColumnsStart: 3 }
-        : { columns: compactColumns, colHeaders: compactColHeaders, colWidths: compactColWidths, fixedColumnsStart: 2 };
+    function getColumnsDangHienThi() {
+      return dangRutGon() ? compactColumns : columns;
     }
 
-    function applyViewMode() {
+    function getHeadersDangHienThi() {
+      return dangRutGon() ? compactColHeaders : colHeaders;
+    }
+
+    function getWidthsDangHienThi() {
+      return dangRutGon() ? compactColWidths : colWidths;
+    }
+
+    function capNhatCheDoCot() {
       if (!hot) return;
-      const cfg = getViewConfig();
       hot.updateSettings({
-        columns: cfg.columns,
-        colHeaders: cfg.colHeaders,
-        colWidths: cfg.colWidths,
-        fixedColumnsStart: cfg.fixedColumnsStart
+        columns: getColumnsDangHienThi(),
+        colHeaders: getHeadersDangHienThi(),
+        colWidths: getWidthsDangHienThi(),
+        fixedColumnsStart: dangRutGon() ? 2 : 3
       });
       renderPage();
     }
 
     function fmtNumber(v) { return Number(v || 0).toLocaleString('vi-VN'); }
-
-    function sortSizeText(value) {
-      const s = String(value || '').trim();
-      if (!s) return '';
-
-      const parts = s
-        .split(/\s+/)
-        .map(x => x.trim())
-        .filter(Boolean);
-
-      parts.sort((a, b) => {
-        const ma = a.match(/^(\d+)(?:\/\d+)?/);
-        const mb = b.match(/^(\d+)(?:\/\d+)?/);
-        const na = ma ? Number(ma[1]) : 999999;
-        const nb = mb ? Number(mb[1]) : 999999;
-        if (na !== nb) return na - nb;
-        return a.localeCompare(b, 'vi');
-      });
-
-      return parts.join('\n');
-    }
-
-    function sortChiTietLech(value) {
-      const s = String(value || '').trim();
-      if (!s) return '';
-
-      return s
-        .split('|')
-        .map(part => {
-          const p = part.trim();
-          if (!p.includes(':')) return sortSizeText(p);
-
-          const idx = p.indexOf(':');
-          const label = p.slice(0, idx).trim();
-          const rest = p.slice(idx + 1).trim();
-
-          return label + ': ' + sortSizeText(rest).replace(/\n/g, ', ');
-        })
-        .join(' | ');
-    }
 
     function normalizePgTimestamp(input) {
       if (!input) return input;
@@ -352,8 +326,8 @@
       const container = document.getElementById('hot');
       hot = new Handsontable(container, {
         data: [],
-        columns: getViewConfig().columns,
-        colHeaders: getViewConfig().colHeaders,
+        columns: getColumnsDangHienThi(),
+        colHeaders: getHeadersDangHienThi(),
         rowHeaders: false,
         readOnly: true,
         height: '100%',
@@ -366,20 +340,15 @@
         dropdownMenu: true,
         contextMenu: ['copy'],
         licenseKey: 'non-commercial-and-evaluation',
-        fixedColumnsStart: getViewConfig().fixedColumnsStart,
+        fixedColumnsStart: 3,
         columnSorting: true,
         wordWrap: false,
-        colWidths: getViewConfig().colWidths,
+        colWidths: getWidthsDangHienThi(),
         cells(row, col) {
           const props = {};
-          const cfg = getViewConfig();
-          const dataKey = cfg.columns[col]?.data;
-
-          if ([
-            'tong_sl_kiem_kho', 'tong_sl_kiem_bay_mau', 'tong_sl_kiem', 'tong_sl_ton_may'
-          ].includes(dataKey)) props.className = 'htRight';
-
-          if (dataKey === 'trang_thai') {
+          if (col >= 9 && col <= 15) props.className = 'htRight';
+          if (col === 16) {
+            const v = this.instance.getDataAtCell(row, col);
             props.renderer = function (instance, td, row, col, prop, value) {
               Handsontable.renderers.TextRenderer.apply(this, arguments);
               td.style.fontWeight = '700';
@@ -392,10 +361,8 @@
           if (coords.row < 0) return;
           const r = hot.getSourceDataAtRow(coords.row);
           if (!r) return;
-          const cfg = getViewConfig();
-          const dataKey = cfg.columns[coords.col]?.data;
-          if (dataKey === 'so_phieu' && r.so_phieu) copyText(r.so_phieu);
-          if (dataKey === 'masp' && r.masp) {
+          if (coords.col === 1 && r.so_phieu) copyText(r.so_phieu);
+          if (coords.col === 6 && r.masp) {
             copyText(r.masp);
             if (typeof window.stockQuickPopup === 'function') window.stockQuickPopup(r.masp);
           }
@@ -526,16 +493,16 @@
             nguoi_kiem_full: `${h.nguoi_kiem || ''}${h.ten_nguoi_kiem ? ' - ' + h.ten_nguoi_kiem : ''}`,
             masp: ct.masp || '',
             tensp: ct.tensp || '',
-            size_kiem_kho: sortSizeText(ct.size_kiem_kho),
+            size_kiem_kho: ct.size_kiem_kho || '',
             tong_sl_kiem_kho: Number(ct.tong_sl_kiem_kho || 0),
-            size_kiem_bay_mau: sortSizeText(ct.size_kiem_bay_mau),
+            size_kiem_bay_mau: ct.size_kiem_bay_mau || '',
             tong_sl_kiem_bay_mau: Number(ct.tong_sl_kiem_bay_mau || 0),
-            size_kiem: sortSizeText(ct.size_kiem),
+            size_kiem: ct.size_kiem || '',
             tong_sl_kiem: Number(ct.tong_sl_kiem || 0),
-            size_ton_may: sortSizeText(ct.size_ton_may),
+            size_ton_may: ct.size_ton_may || '',
             tong_sl_ton_may: Number(ct.tong_sl_ton_may || 0),
             trang_thai: ct.trang_thai || '',
-            chi_tiet_chenh_lech: sortChiTietLech(ct.chi_tiet_chenh_lech),
+            chi_tiet_chenh_lech: ct.chi_tiet_chenh_lech || '',
             ghi_chu: h.ghi_chu || ''
           });
         });
@@ -620,11 +587,19 @@
       ['locDiaDiem', 'locTrangThaiPhieu', 'locTrangThaiCT', 'chkOnlyLech'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', taiChiTiet);
+
+        const chkRutGon = document.getElementById('chkRutGon');
+        if (chkRutGon) {
+          chkRutGon.addEventListener('change', capNhatCheDoCot);
+        }
       });
 
       document.getElementById('btnCopyTable').addEventListener('click', async () => {
-        const headers = colHeaders.join('\t');
-        const lines = allRows.map(r => columns.map(c => r[c.data] ?? '').join('\t'));
+        const currentHeaders = getHeadersDangHienThi();
+        const currentColumns = getColumnsDangHienThi();
+
+        const headers = currentHeaders.join('\t');
+        const lines = allRows.map(r => currentColumns.map(c => r[c.data] ?? '').join('\t'));
         await copyText([headers].concat(lines).join('\n'));
       });
     }
