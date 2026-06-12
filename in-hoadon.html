@@ -540,7 +540,7 @@
         <div class="invoice-right">
           <div class="payqr" id="payqr">
             <div class="payqr-title">QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN</div>
-            <img id="vietqr_img" class="vietqr-img" alt="VietQR" />
+            <canvas id="vietqr_canvas" class="vietqr-img"></canvas>
             <div class="payqr-info">
               <div><b id="qr_bank_label">Techcombank</b> - <span id="qr_account_no">2662222333</span>
               </div>
@@ -551,6 +551,8 @@
         </div>
 
       </div>
+
+      <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
 
       <script>
         // Lấy dữ liệu từ localStorage
@@ -602,21 +604,74 @@
 
 
         // ✅ Tạo ảnh VietQR (Quick Link) kèm số tiền + nội dung
-        function renderVietQR() {
-          const img = document.getElementById("vietqr_img");
-          if (!img) return;
 
-          // ===== Nhận biết cơ sở =====
+        function tlv(id, value) {
+          value = String(value || "");
+          return id + String(value.length).padStart(2, "0") + value;
+        }
+
+        function crc16ccitt(str) {
+          let crc = 0xFFFF;
+          for (let i = 0; i < str.length; i++) {
+            crc ^= str.charCodeAt(i) << 8;
+            for (let j = 0; j < 8; j++) {
+              crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+              crc &= 0xFFFF;
+            }
+          }
+          return crc.toString(16).toUpperCase().padStart(4, "0");
+        }
+
+        function removeVietnamese(str) {
+          return String(str || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d")
+            .replace(/Đ/g, "D")
+            .replace(/[^A-Za-z0-9 ]/g, "")
+            .trim()
+            .toUpperCase();
+        }
+
+        function taoVietQRPayload({ bankBin, accountNo, accountName, amount, addInfo }) {
+          const guid = tlv("00", "A000000727");
+          const bankInfo = tlv("00", bankBin) + tlv("01", accountNo);
+          const consumerAccount = tlv("01", bankInfo);
+          const serviceCode = tlv("02", "QRIBFTTA");
+
+          const merchantAccountInfo = tlv("38", guid + consumerAccount + serviceCode);
+
+          let payload =
+            tlv("00", "01") +
+            tlv("01", "12") +
+            merchantAccountInfo +
+            tlv("53", "704");
+
+          if (Number(amount) > 0) {
+            payload += tlv("54", String(Math.round(Number(amount))));
+          }
+
+          payload +=
+            tlv("58", "VN") +
+            tlv("59", removeVietnamese(accountName).slice(0, 25) || "SHOP HOAN TUYET") +
+            tlv("60", "THAI NGUYEN") +
+            tlv("62", tlv("08", removeVietnamese(addInfo).slice(0, 50)));
+
+          const payloadForCRC = payload + "6304";
+          return payloadForCRC + crc16ccitt(payloadForCRC);
+        }
+
+        function renderVietQR() {
+          const canvas = document.getElementById("vietqr_canvas");
+          if (!canvas) return;
+
           const rawDiaDiem = (hoadon.diadiem ?? hoadon.dia_diem ?? hoadon.coso ?? hoadon.macoso ?? hoadon.loaihd ?? "").toString().toLowerCase();
           const isCS2 = rawDiaDiem.includes("cs2") || rawDiaDiem.includes("cơ sở 2") || rawDiaDiem.includes("co so 2");
 
-          // ===== Tài khoản nhận theo cơ sở =====
-          // ===== Tài khoản nhận mặc định theo cơ sở =====
-         // let bankId = "VietinBank";
-         let bankId = "ICB"; // VietinBank
+          let bankBin = "970415";
           let bankLabel = "VietinBank";
           let accountNo = "101880222833";
-          let accountName = "  cs1   ";
+          let accountName = "DANG LE HOAN";
 
           const sohdText = (hoadon.sohd || "").toString().trim();
           const soCuoiMatch = sohdText.match(/(\d+)\s*$/);
@@ -625,31 +680,20 @@
 
           if (isCS2) {
             if (laSoChan) {
-
-              //bankId = "MB";
-              //bankLabel = "MB";
-              //accountNo = "0963486775";
-
-              bankId = "MB";
+              bankBin = "970422";
               bankLabel = "MB";
               accountNo = "0963486775";
-              accountName = "  cs2   ";
+              accountName = "NGUYEN ANH TUYET";
             } else {
-              bankId = "Vietcombank";
+              bankBin = "970436";
               bankLabel = "Vietcombank";
               accountNo = "1068146050";
-
-              //bankId = "BIDV";
-              //bankLabel = "BIDV";
-              //accountNo = "8898174130";
-
-              accountName = "  cs2   ";
+              accountName = "NGUYEN ANH TUYET";
             }
           }
 
-          // ===== Nếu đang bật chế độ F2 thì ép về Techcombank theo cơ sở =====
           if (qrF2TechcombankMode) {
-            bankId = "VPBank";
+            bankBin = "970432";
             bankLabel = "VPBank";
 
             if (isCS2) {
@@ -661,10 +705,7 @@
             }
           }
 
-
-          const addInfo = " CK ";
-
-          // ✅ Nếu đang bật chế độ nhập tay số tiền thì QR = 0
+          const addInfo = "CK";
           let amount;
 
           if (qrCustomAmount !== null) {
@@ -675,34 +716,25 @@
             amount = Math.round(Number(thanhtoan) || 0);
           }
 
-          // cập nhật thông tin hiển thị dưới QR
-          const elBank = document.getElementById("qr_bank_label");
-          const elAccNo = document.getElementById("qr_account_no");
-          const elAccName = document.getElementById("qr_account_name");
-          const elAmount = document.getElementById("qr_amount");
-          const elAddInfo = document.getElementById("qr_addinfo");
+          if (document.getElementById("qr_bank_label")) document.getElementById("qr_bank_label").textContent = bankLabel;
+          if (document.getElementById("qr_account_no")) document.getElementById("qr_account_no").textContent = accountNo;
+          if (document.getElementById("qr_account_name")) document.getElementById("qr_account_name").textContent = accountName;
+          if (document.getElementById("qr_amount")) document.getElementById("qr_amount").textContent = formatSo(amount);
 
-          if (thanhtoan <= 0) {
-            document.querySelector('.invoice-layout').style.display = 'none';
-            document.getElementById('invalidInvoiceBox').style.display = 'block';
-            localStorage.removeItem("data_hoadon_in");
-            return;
-          }
+          const payload = taoVietQRPayload({
+            bankBin,
+            accountNo,
+            accountName,
+            amount,
+            addInfo
+          });
 
-          if (elBank) elBank.textContent = bankLabel;
-          if (elAccNo) elAccNo.textContent = accountNo;
-          if (elAccName) elAccName.textContent = accountName;
-          if (elAmount) elAmount.textContent = (typeof formatSo === "function") ? formatSo(amount) : String(amount);
-          if (elAddInfo) elAddInfo.textContent = addInfo;
-
-          const url =
-            "https://img.vietqr.io/image/" + bankId + "-" + accountNo + "-qr_only.png" +
-            "?amount=" + encodeURIComponent(amount) +
-            "&addInfo=" + encodeURIComponent(addInfo) +
-            "&accountName=" + encodeURIComponent(accountName) +
-            "&t=" + Date.now(); // chống cache ảnh cũ
-
-          img.src = url;
+          new QRious({
+            element: canvas,
+            value: payload,
+            size: 320,
+            level: "M"
+          });
         }
 
         // render lần đầu
