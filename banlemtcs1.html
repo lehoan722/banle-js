@@ -2657,28 +2657,7 @@ Shop chân thành cảm ơn!`;
     <script type="module" src="scripts/viettelInvoice.js"></script>
 
     <script src="scripts/stockQuickSimilar.js"></script>
-
-    <script>
-        // Tự mở trang báo cáo bày mẫu khi khởi động trang bán lẻ CS1 co so coso
-        document.addEventListener("DOMContentLoaded", function () {
-            const urlBaoCaoBayMau = "https://app.hoantuyet.vn/baocaochitiet222.html?cs=cs1";
-
-            setTimeout(() => {
-                try {
-                    const win = window.open(urlBaoCaoBayMau, "_blank", "noopener,noreferrer");
-
-                    // Nếu mở được thì đưa focus lại trang bán lẻ
-                    if (win) {
-                        window.focus();
-                    } else {
-                        console.warn("Trình duyệt đã chặn popup mở báo cáo bày mẫu.");
-                    }
-                } catch (e) {
-                    console.error("Không mở được trang báo cáo bày mẫu:", e);
-                }
-            }, 1500);
-        });
-    </script>
+   
 
     <script>
         if ("serviceWorker" in navigator) {
