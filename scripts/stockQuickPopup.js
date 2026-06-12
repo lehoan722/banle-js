@@ -549,11 +549,11 @@
   order: 1;
 }
 
-.sq-vitri-actions-wrap {
+.sq-img-wrapper {
   order: 2;
 }
 
-.sq-img-wrapper {
+.sq-vitri-actions-wrap {
   order: 3;
 }
 
@@ -600,7 +600,7 @@
   max-width: 100%;
   margin-top: 4px;
   text-align: left;
-  order: 3;
+  order: 2;
 }
 
 .sq-img-wrapper img {
@@ -612,10 +612,10 @@
   margin-left: 0;
 }
 
-    .sq-vitri-actions-wrap {
+   .sq-vitri-actions-wrap {
   margin-top: 6px;
   padding-top: 4px;
-  order: 2;
+  order: 3;
   flex: 0 0 auto;
 }
 
