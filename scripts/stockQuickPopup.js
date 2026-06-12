@@ -610,11 +610,12 @@
 }
 
 .sq-img-wrapper img {
-  width: 100%;
+  width: auto;
   max-width: 100%;
   max-height: 45vh;
   object-fit: contain;
   display: block;
+  margin-left: 0;
 }
 
    .sq-vitri-actions-wrap {
