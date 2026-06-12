@@ -477,7 +477,7 @@
       const select = document.getElementById('loaiChungTu');
       if (!select) return;
 
-      const macDinh = new Set(['bancs2']);
+      const macDinh = new Set(['bancs1', 'bancs2']);
 
       Array.from(select.options).forEach(opt => {
         opt.selected = macDinh.has(opt.value);
@@ -1493,7 +1493,9 @@
       const selectLoai = document.getElementById("loaiChungTu");
       if (selectLoai) {
         Array.from(selectLoai.options).forEach(o => {
-          o.selected = (o.value === 'bancs2');
+          o.selected =
+            o.value === 'bancs1' ||
+            o.value === 'bancs2';
         });
         updateLoaiChungTuDisplay();
       }
