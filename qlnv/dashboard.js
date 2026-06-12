@@ -386,7 +386,7 @@ function renderTaskTimer(task) {
 
     return `
       <span class="task-timer done-fixed">
-        ✅ Thực tế ${actual} phút, tính lương ${payroll} phút${delay > 0 ? `, trễ ${delay} phút` : ''}
+        ✅ Thực tế ${actual} phút, Giao việc ${payroll} phút${delay > 0 ? `, trễ ${delay} phút` : ''}
       </span>
     `;
   }
