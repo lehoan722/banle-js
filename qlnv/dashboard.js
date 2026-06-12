@@ -353,20 +353,36 @@ function renderTaskTimer(task) {
   }
 
   if (task.status === 'timeout') {
-  const over = Math.max(0, Math.floor((Date.now() - deadlineTime) / 1000));
-  return `
+    const over = Math.max(0, Math.floor((Date.now() - deadlineTime) / 1000));
+    return `
     <span
       class="task-timer task-timeout-live"
       data-deadline="${deadlineTime}"
       style="color:#dc2626;font-weight:800;"
     >🔴 Quá hạn ${formatHMS(over)}</span>
   `;
-}
+  }
 
   if (task.status === 'done') {
-    const actual = Number(task.actual_minutes || 0);
-    const payroll = Number(task.payroll_minutes || 0);
-    const delay = Number(task.delay_minutes || 0);
+    let actual = Number(task.actual_minutes || 0);
+
+    if (
+      actual <= 0 &&
+      task.started_at &&
+      task.completed_at
+    ) {
+      const startedAt = new Date(task.started_at).getTime();
+      const completedAt = new Date(task.completed_at).getTime();
+      const pausedSeconds = Number(task.paused_seconds || 0);
+
+      actual = Math.max(
+        0,
+        Math.ceil((completedAt - startedAt - pausedSeconds * 1000) / 60000)
+      );
+    }
+
+    const payroll = Number(task.payroll_minutes || task.estimated_minutes || 0);
+    const delay = Math.max(0, actual - payroll);
 
     return `
       <span class="task-timer done-fixed">
