@@ -611,8 +611,8 @@
 
 .sq-img-wrapper img {
   width: auto;
-  max-width: 100%;
-  max-height: 45vh;
+  max-width: 70%;
+  max-height: 20vh;
   object-fit: contain;
   display: block;
   margin-left: 0;
