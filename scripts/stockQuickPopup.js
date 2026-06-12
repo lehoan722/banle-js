@@ -373,6 +373,12 @@
     line-height: 1.2;
   }
 
+  .sq-vitri-save-btn[data-coso="cs2"] {
+  color: #b91c1c;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
   .sq-vitri-save-btn:hover {
     background: #dbeafe;
   }
@@ -604,12 +610,11 @@
 }
 
 .sq-img-wrapper img {
-  width: auto;
-  max-width: 50%;
-  max-height: 11vh;
+  width: 100%;
+  max-width: 100%;
+  max-height: 45vh;
   object-fit: contain;
   display: block;
-  margin-left: 0;
 }
 
    .sq-vitri-actions-wrap {
