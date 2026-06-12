@@ -710,7 +710,7 @@
 
           if (qrCustomAmount !== null) {
             amount = qrCustomAmount;
-          } else if (qrManualAmountMode || qrF2TechcombankMode) {
+          } else if (qrManualAmountMode) {
             amount = 0;
           } else {
             amount = Math.round(Number(thanhtoan) || 0);
@@ -896,7 +896,6 @@
 
             // Khi bật F2 thì ưu tiên chế độ QR = 0 để khách tự nhập
             if (qrF2TechcombankMode) {
-              qrManualAmountMode = false;
               qrCustomAmount = null;
             }
 
