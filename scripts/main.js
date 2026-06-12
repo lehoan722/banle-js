@@ -1194,7 +1194,17 @@ function showBayMauPopup(tasks, context) {
     marginBottom: "4px",
     fontWeight: "600",
   });
-  header.innerHTML = `<span>YÊU CẦU BÀY MẪU SP</span>`;
+  const yesterdayCount = tasks.filter(x => x.task_age === "YESTERDAY").length;
+  const todayCount = tasks.filter(x => x.task_age === "TODAY").length;
+
+  header.innerHTML = `
+  <span>
+    YÊU CẦU BÀY MẪU SP
+    <span style="color:#c00;">Hôm qua: ${yesterdayCount}</span>
+    |
+    <span style="color:#0b6;">Hôm nay: ${todayCount}</span>
+  </span>
+`;
 
   const btnClose = document.createElement("button");
   btnClose.textContent = "✕";
@@ -1253,7 +1263,11 @@ function showBayMauPopup(tasks, context) {
   tasks.forEach((row) => {
     const tr = document.createElement("tr");
     row._tr = tr;
-    tr.style.background = "#fdf1d6";
+    if (row.task_age === "YESTERDAY") {
+      tr.style.background = "#ffd6d6";
+    } else {
+      tr.style.background = "#fdf1d6";
+    }
 
     // 1. checkbox BÀY MẪU
 
