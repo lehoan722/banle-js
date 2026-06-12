@@ -200,12 +200,9 @@
             const cap = document.createElement("div");
             cap.className = ban_nhanh ? "cap ban-nhanh" : "cap";
             cap.innerHTML =
-                `<a class="cap-link"
-                href="${DETAIL_URL}?masp=${encodeURIComponent(masp)}"
-                target="_blank"
-                rel="noopener">
-                ${masp} / ${fmtVND(giale)} ${Number(toncs1 || 0)}/${Number(toncs2 || 0)}
-            </a>`;
+                `<a class="cap-link" href="javascript:void(0)">
+    ${masp} / ${fmtVND(giale)} ${Number(toncs1 || 0)}/${Number(toncs2 || 0)}
+</a>`;
 
             card.appendChild(imgwrap);
             card.appendChild(cap);
@@ -244,7 +241,74 @@
             cards.forEach(card => {
                 if (card.dataset.sqBound === "1") return;
                 card.dataset.sqBound = "1";
-                window.StockQuick.attach(card, card.dataset.masp);
+
+                const masp = card.dataset.masp;
+                const capLink = card.querySelector(".cap-link");
+                const img = card.querySelector("img");
+
+                // Bấm dòng thông tin sản phẩm -> mở stockQuickPopup
+                if (capLink) {
+                    capLink.addEventListener("click", function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        if (window.StockQuick && typeof window.StockQuick.showFor === "function") {
+                            window.StockQuick.showFor(document.body, masp);
+                        }
+                    });
+                }
+
+                // Bấm ảnh -> mở full màn hình giống stockQuickPopup
+                if (img) {
+                    img.style.cursor = "zoom-in";
+
+                    img.addEventListener("click", function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        if (typeof openFullSizeImage === "function") {
+                            openFullSizeImage(img.src, masp);
+                            return;
+                        }
+
+                        // fallback nếu openFullSizeImage không global
+                        const overlay = document.createElement("div");
+                        overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.82);
+                z-index: 100000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            `;
+
+                        overlay.innerHTML = `
+                <span style="
+                    position:fixed;
+                    top:12px;
+                    right:18px;
+                    color:#fff;
+                    font-size:34px;
+                    font-weight:700;
+                    cursor:pointer;
+                ">×</span>
+                <img src="${img.src}" alt="${masp}" style="
+                    max-width:96vw;
+                    max-height:96vh;
+                    object-fit:contain;
+                    cursor:zoom-out;
+                ">
+            `;
+
+                        overlay.addEventListener("click", function () {
+                            overlay.remove();
+                        });
+
+                        document.body.appendChild(overlay);
+                    });
+                }
             });
 
             // làm ấm popup nhanh cho iPhone / Safari:
