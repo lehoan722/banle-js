@@ -40,13 +40,28 @@
   //========================
 
   function scoreCamera(label = "") {
-    const s = label.toLowerCase();
+    const s = String(label || "").toLowerCase();
     let score = 0;
 
-    if (s.includes("back") || s.includes("rear") || s.includes("environment")) score += 50;
-    if (s.includes("ultra") || s.includes("0.5x") || s.includes("0,5x")) score += 200;
-    if (s.includes("tele") || s.includes("zoom") || s.includes("2x") || s.includes("3x")) score -= 150;
-    if (s.includes("front")) score -= 300;
+    // Ưu tiên camera sau
+    if (s.includes("back")) score += 100;
+    if (s.includes("rear")) score += 100;
+    if (s.includes("environment")) score += 100;
+    if (s.includes("mặt sau")) score += 100;
+
+    // Ưu tiên siêu rộng 0.5x
+    if (s.includes("ultra")) score += 300;
+    if (s.includes("wide")) score += 120;
+    if (s.includes("0.5")) score += 300;
+    if (s.includes("0,5")) score += 300;
+
+    // Trừ điểm camera trước / tele / zoom
+    if (s.includes("front")) score -= 500;
+    if (s.includes("mặt trước")) score -= 500;
+    if (s.includes("tele")) score -= 300;
+    if (s.includes("zoom")) score -= 250;
+    if (s.includes("2x")) score -= 250;
+    if (s.includes("3x")) score -= 250;
 
     return score;
   }
@@ -220,33 +235,39 @@
       delayBetweenScanAttempts: 40
     });
 
-    const constraints = {
-      video: {
-        facingMode: "environment",
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      }
-    };
-
     try {
+      let constraints;
+
       if (deviceId) {
-        scanControls = await codeReader.decodeFromVideoDevice(
-          deviceId,
-          video,
-          onScanResult
-        );
+        // Mở đúng camera đã chọn: ưu tiên Ultra Wide / 0.5x
+        constraints = {
+          video: {
+            deviceId: { exact: deviceId },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: { ideal: "environment" }
+          }
+        };
       } else {
-        scanControls = await codeReader.decodeFromConstraints(
-          constraints,
-          video,
-          onScanResult
-        );
+        // Fallback: camera sau
+        constraints = {
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        };
       }
+
+      scanControls = await codeReader.decodeFromConstraints(
+        constraints,
+        video,
+        onScanResult
+      );
 
       const stream = video.srcObject;
       if (stream) track = stream.getVideoTracks()[0];
 
-      // Auto-OCR fallback sau 2.5s nếu không có QR
       clearTimeout(autoOcrTimer);
       hasQrResult = false;
 
@@ -254,10 +275,36 @@
         if (!hasQrResult) captureOCR();
       }, 2500);
 
-      status.textContent = "Đưa mã vào camera...";
+      const label = track?.label || "";
+      status.textContent = label
+        ? "Đang dùng camera: " + label
+        : "Đưa mã vào camera...";
+
     } catch (err) {
-      console.error("Camera error:", err);
-      status.textContent = "Không mở được camera.";
+      console.error("Camera exact error:", err);
+
+      // Nếu exact deviceId lỗi thì fallback camera sau
+      try {
+        scanControls = await codeReader.decodeFromConstraints(
+          {
+            video: {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          },
+          video,
+          onScanResult
+        );
+
+        const stream = video.srcObject;
+        if (stream) track = stream.getVideoTracks()[0];
+
+        status.textContent = "Đưa mã vào camera...";
+      } catch (err2) {
+        console.error("Camera fallback error:", err2);
+        status.textContent = "Không mở được camera.";
+      }
     }
   }
 
@@ -281,7 +328,11 @@
       // Safari yêu cầu "mồi" để lộ label camera
       try {
         const pre = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
         });
         pre.getTracks().forEach(t => t.stop());
       } catch (_) { }
