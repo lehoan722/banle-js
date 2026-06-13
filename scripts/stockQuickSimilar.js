@@ -1,6 +1,4 @@
-// stockQuickSimilar.js - JS FILTER THEO NHÓM (không dùng RPC riêng)
-
-// stockQuickSimilar.js chỉ lo phần mở sản phẩm cùng nhóm theo size.
+// stockQuickSimilar.js - Tìm sản phẩm cùng nhóm cùng size
 
 (function () {
   function getSupabaseClient() {
@@ -12,17 +10,14 @@
     return client;
   }
 
-  function normalizeSize(sizeRaw) {
-    const s = String(sizeRaw || "").trim();
-    const m = s.match(/(\d{1,2})/);
-    return m ? m[1] : s;
+  function normText(v) {
+    return String(v || "").trim().toUpperCase().replace(/\s+/g, " ");
   }
 
-  function normalizeSizeForCompare(v) {
-    const raw = String(v || "").trim();
-    const noPrefix = raw.replace(/^size\s+/i, "").trim();
-    const m = noPrefix.match(/(\d{1,2})/);
-    return m ? m[1] : noPrefix;
+  function normalizeSize(v) {
+    const s = String(v || "").trim();
+    const m = s.match(/(\d{1,2})/);
+    return m ? m[1] : s;
   }
 
   function detectBranch() {
@@ -32,7 +27,7 @@
     return "";
   }
 
-  function pickBranchIfNeeded() {
+  async function pickBranchIfNeeded() {
     return new Promise((resolve) => {
       const div = document.createElement("div");
       div.style = `
@@ -41,7 +36,7 @@
       `;
       div.innerHTML = `
         <div style="background:#fff;padding:16px 18px;border-radius:10px;text-align:center;min-width:220px">
-          <div style="margin-bottom:12px;font-weight:700">Chọn cơ sở để lọc tồn</div>
+          <div style="margin-bottom:12px;font-weight:700">Chọn cơ sở ưu tiên sắp xếp</div>
           <div style="display:flex;gap:8px;justify-content:center">
             <button id="sqPickCS1" type="button">CS1</button>
             <button id="sqPickCS2" type="button">CS2</button>
@@ -61,166 +56,98 @@
     const client = getSupabaseClient();
     if (!client) return [];
 
+    const groupNorm = normText(nhomhang);
+
     const { data, error } = await client
       .from("dmhanghoa")
       .select("masp, giale, nhomhang")
-      .eq("nhomhang", nhomhang)
+      .ilike("nhomhang", `%${String(nhomhang || "").trim()}%`)
       .order("masp", { ascending: true });
 
     if (error) {
-      console.warn("[StockQuickSimilar] Lỗi đọc dmhanghoa theo nhóm:", error);
       alert("Lỗi đọc danh mục nhóm hàng: " + error.message);
       return [];
     }
 
-    return data || [];
+    return (data || []).filter(x => normText(x.nhomhang) === groupNorm);
   }
 
   async function fetchGroupStockRows(maspList, denNgay) {
     const client = getSupabaseClient();
-    if (!client) return [];
+    if (!client || !Array.isArray(maspList) || !maspList.length) return [];
 
-    if (!Array.isArray(maspList) || !maspList.length) return [];
+    const all = [];
+    const chunkSize = 80;
 
-    const { data, error } = await client.rpc("xntnhanh", {
-      p_masps: maspList,
-      p_den_ngay: denNgay,
-      p_tonghop_size: false,
-    });
+    for (let i = 0; i < maspList.length; i += chunkSize) {
+      const chunk = maspList.slice(i, i + chunkSize);
 
-    if (error) {
-      console.warn("[StockQuickSimilar] Lỗi xntnhanh nhóm:", error);
-      alert("Lỗi đọc tồn nhóm hàng: " + error.message);
-      return [];
+      const { data, error } = await client.rpc("xntnhanh", {
+        p_masps: chunk,
+        p_den_ngay: denNgay,
+        p_tonghop_size: false,
+      });
+
+      if (error) {
+        alert("Lỗi đọc tồn nhóm hàng: " + error.message);
+        return all;
+      }
+
+      all.push(...(data || []));
     }
 
-    return data || [];
+    return all;
   }
 
   function buildListFromGroupData({ sourceMasp, size, branch, masters, stockRows }) {
     const sizeNorm = normalizeSize(size);
+    const source = normText(sourceMasp);
 
     const masterMap = new Map();
-    (masters || []).forEach((m) => {
-      masterMap.set(String(m.masp || "").trim().toUpperCase(), {
+    masters.forEach(m => {
+      masterMap.set(normText(m.masp), {
         giale: Number(m.giale || 0),
         nhomhang: m.nhomhang || "",
       });
     });
 
-    function parseNgayNhapCuoi(v) {
-      if (!v) return null;
-      const s = String(v).trim();
-      if (!s) return null;
-
-      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-        const d = new Date(s.slice(0, 10));
-        return isNaN(d.getTime()) ? null : d;
-      }
-
-      if (/^\d{6}$/.test(s)) {
-        const dd = s.slice(0, 2);
-        const mm = s.slice(2, 4);
-        const yy = s.slice(4, 6);
-        const yyyy = Number(yy) >= 70 ? "19" + yy : "20" + yy;
-        const d = new Date(`${yyyy}-${mm}-${dd}`);
-        return isNaN(d.getTime()) ? null : d;
-      }
-
-      const d = new Date(s);
-      return isNaN(d.getTime()) ? null : d;
-    }
-
-    function isNhapCuoiQua3Thang(v) {
-      const d = parseNgayNhapCuoi(v);
-      if (!d) return false;
-
-      const moc = new Date();
-      moc.setHours(0, 0, 0, 0);
-      moc.setMonth(moc.getMonth() - 3);
-
-      d.setHours(0, 0, 0, 0);
-      return d <= moc;
-    }
-
-    // BƯỚC 1: tính tổng tồn TOÀN MÃ, không lọc size
-    const totalByMasp = new Map();
-
-    (stockRows || []).forEach((r) => {
-      const masp = String(r.masp || "").trim().toUpperCase();
-      if (!masp || masp === sourceMasp) return;
-
-      const item = totalByMasp.get(masp) || {
-        tongTonAllSize: 0,
-        nhap_cuoi_ma: ""
-      };
-
-      item.tongTonAllSize += Number(r.ton_cs1 || 0) + Number(r.ton_cs2 || 0);
-
-      const ngayNhap =
-        r.nhap_cuoi_ma ||
-        r.ngay_nhap_cuoi ||
-        r.nhap_dau_ma ||
-        r.ngay_nhap_dau ||
-        "";
-
-      if (!item.nhap_cuoi_ma && ngayNhap) {
-        item.nhap_cuoi_ma = ngayNhap;
-      }
-
-      totalByMasp.set(masp, item);
-    });
-
-    // BƯỚC 2: tạo danh sách hiển thị theo size đang bấm
     const byMasp = new Map();
 
-    (stockRows || []).forEach((r) => {
-      const masp = String(r.masp || "").trim().toUpperCase();
-      if (!masp || masp === sourceMasp) return;
+    stockRows.forEach(r => {
+      const masp = normText(r.masp);
+      if (!masp || masp === source) return;
 
-      const rowSize = normalizeSizeForCompare(r.size);
+      const rowSize = normalizeSize(r.size);
       if (rowSize !== sizeNorm) return;
 
       const toncs1 = Number(r.ton_cs1 || 0);
       const toncs2 = Number(r.ton_cs2 || 0);
-      const tonTarget = branch === "cs2" ? toncs2 : toncs1;
-      if (tonTarget <= 0) return;
 
-      const totalInfo = totalByMasp.get(masp) || {
-        tongTonAllSize: toncs1 + toncs2,
-        nhap_cuoi_ma: ""
-      };
+      // Quan trọng: còn ở CS1 hoặc CS2 đều lấy, không loại theo 1 cơ sở
+      if (toncs1 + toncs2 <= 0) return;
 
-      const existed = byMasp.get(masp) || {
+      const item = byMasp.get(masp) || {
         masp,
         giale: masterMap.get(masp)?.giale || 0,
         toncs1: 0,
         toncs2: 0,
-        tongTonAllSize: totalInfo.tongTonAllSize,
-        nhap_cuoi_ma: totalInfo.nhap_cuoi_ma
+        ban_nhanh: false,
       };
 
-      existed.toncs1 += toncs1;
-      existed.toncs2 += toncs2;
+      item.toncs1 += toncs1;
+      item.toncs2 += toncs2;
 
-      byMasp.set(masp, existed);
+      byMasp.set(masp, item);
     });
 
-    return Array.from(byMasp.values()).map(item => {
-      return {
-        ...item,
-        ban_nhanh:
-          Number(item.tongTonAllSize || 0) === 1 &&
-          isNhapCuoiQua3Thang(item.nhap_cuoi_ma)
-      };
-    }).sort((a, b) => {
+    return Array.from(byMasp.values()).sort((a, b) => {
       const ta = branch === "cs2" ? a.toncs2 : a.toncs1;
       const tb = branch === "cs2" ? b.toncs2 : b.toncs1;
+
       if (tb !== ta) return tb - ta;
       return (b.toncs1 + b.toncs2) - (a.toncs1 + a.toncs2);
     });
   }
-
 
   function openViewer({ list, masp, size, branch, nhomhang }) {
     if (!list.length) {
@@ -240,7 +167,7 @@
   }
 
   async function openFromPopup({ masp, size, nhomhang, denNgay }) {
-    const sourceMasp = String(masp || "").trim().toUpperCase();
+    const sourceMasp = normText(masp);
     const sourceGroup = String(nhomhang || "").trim();
     const sizeNorm = normalizeSize(size);
 
@@ -256,16 +183,10 @@
     }
 
     const masters = await fetchGroupMasterProducts(sourceGroup);
-    if (!masters.length) {
-      alert(`Không tìm thấy danh mục nhóm ${sourceGroup}`);
-      return;
-    }
-
-    const maspList = masters
-      .map(x => String(x.masp || "").trim().toUpperCase())
-      .filter(Boolean);
+    const maspList = masters.map(x => normText(x.masp)).filter(Boolean);
 
     const stockRows = await fetchGroupStockRows(maspList, denNgay);
+
     const list = buildListFromGroupData({
       sourceMasp,
       size: sizeNorm,
@@ -283,7 +204,5 @@
     });
   }
 
-  window.StockQuickSimilar = {
-    openFromPopup
-  };
+  window.StockQuickSimilar = { openFromPopup };
 })();
