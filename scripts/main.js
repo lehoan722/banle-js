@@ -722,23 +722,19 @@ export async function khoiTaoUngDung() {
 
     // mở popup & mặc định chọn Ultra-Wide/0.5x nếu có
     // mở popup & mặc định chọn Ultra-Wide/0.5x nếu có
-    const btnScan = document.createElement("button");
 
-    btnScan.innerHTML = "📷 QUÉT";
-
-    btnScan.type = "button";
-    btnScan.id = "btnScanQuick";
+    btnScan.className = "action-btn-small";
 
     btnScan.style.cssText = `
-background:#2196f3;
+background:#00c853;
 color:white;
 font-weight:bold;
 border:none;
 border-radius:8px;
 padding:0 12px;
 font-size:18px;
-height:40px;
 `;
+
     btnScan.onclick = () => {
       document.getElementById("popupScan").style.display = "block";
       startScan();
