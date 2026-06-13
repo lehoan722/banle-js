@@ -726,12 +726,6 @@
 
             <div class="top-inputs">
                 <div style="position: relative;">
-
-                    <button id="btnQuetMasp" type="button"
-                        style="background:#00c853;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;height:42px;">
-                        📷 QUÉT
-                    </button>
-
                     <input id="masp" placeholder="Mã SP" autocomplete="off" />
                     <div id="popup_masp"
                         style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
@@ -754,6 +748,12 @@
                 <input type="checkbox" id="nhapsize" hidden />
 
                 <input id="sohd" placeholder="Số phiếu kiểm tồn" />
+
+                <button id="btnQuetMasp" type="button"
+                    style="background:#00c853;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;height:42px;">
+                    📷 QUÉT
+                </button>
+
                 <input id="ghichu_top" placeholder="Ghi chú kiểm tồn" style="width:260px;" />
 
                 <div id="thongke_dautrang"
@@ -1888,62 +1888,9 @@
         });
     </script>
 
-    <div id="maspScannerModal"
-        style="display:none;position:fixed;inset:0;background:#000;z-index:99999;align-items:center;justify-content:center;flex-direction:column;">
-        <video id="maspScannerVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
 
-        <div
-            style="position:absolute;top:10px;left:10px;right:10px;display:flex;gap:8px;align-items:center;z-index:100000;">
-            <button id="maspScannerClose" type="button"
-                style="padding:8px 12px;border:none;border-radius:8px;font-weight:bold;">
-                Đóng
-            </button>
-
-            <button id="maspScannerFlash" type="button"
-                style="padding:8px 12px;border:none;border-radius:8px;font-weight:bold;">
-                🔦 Đèn
-            </button>
-
-            <button id="maspScannerOcr" type="button"
-                style="padding:8px 12px;border:none;border-radius:8px;font-weight:bold;">
-                OCR
-            </button>
-
-            <div id="maspScannerStatus"
-                style="color:white;font-weight:bold;background:rgba(0,0,0,.45);padding:6px 10px;border-radius:8px;">
-                Đưa mã vào camera...
-            </div>
-        </div>
-    </div>
-
-    <script src="scripts/quetmasp.js"></script>
 
     <script type="module" src="scripts/kiem_tonkho.js"></script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const btn = document.getElementById("btnQuetMasp");
-            const maspEl = document.getElementById("masp");
-
-            if (!btn || !maspEl || !window.MaspScanner) return;
-
-            btn.addEventListener("click", () => {
-                window.MaspScanner.openForInput("masp", {
-                    onResult: (code) => {
-                        maspEl.value = String(code || "").trim().toUpperCase();
-
-                        // Gọi lại đúng luồng Enter hiện tại của trang kiểm tồn kho
-                        maspEl.dispatchEvent(
-                            new KeyboardEvent("keydown", {
-                                key: "Enter",
-                                bubbles: true
-                            })
-                        );
-                    }
-                });
-            });
-        });
-    </script>
 
 
     <script>
@@ -2073,6 +2020,32 @@
             }, { passive: true });
 
             setTopExpanded(true);
+        });
+    </script>
+
+    <script src="scripts/quetmasp.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const btn = document.getElementById("btnQuetMasp");
+            const maspEl = document.getElementById("masp");
+
+            if (!btn || !maspEl || !window.MaspScanner) return;
+
+            btn.addEventListener("click", () => {
+                window.MaspScanner.openForInput("masp", {
+                    onResult: (code) => {
+                        maspEl.value = String(code || "").trim().toUpperCase();
+
+                        maspEl.dispatchEvent(
+                            new KeyboardEvent("keydown", {
+                                key: "Enter",
+                                bubbles: true
+                            })
+                        );
+                    }
+                });
+            });
         });
     </script>
 
