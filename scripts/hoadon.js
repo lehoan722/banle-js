@@ -267,6 +267,48 @@ function recalcThanhtienFromForm() {
     if (ttEl) ttEl.value = tt.toLocaleString();
 }
 
+function chuanHoaKhuyenMaiNhapTay() {
+    const giaEl = document.getElementById("gia");
+    const kmEl = document.getElementById("khuyenmai");
+    const ttEl = document.getElementById("thanhtien");
+
+    if (!giaEl || !kmEl) return 0;
+
+    const gia = toInt(giaEl.value || "0");
+    const sl = toInt(document.getElementById("soluong")?.value || "1") || 1;
+
+    let raw = String(kmEl.value || "").trim();
+
+    if (!raw) {
+        kmEl.value = "0";
+        if (ttEl) ttEl.value = (gia * sl).toLocaleString();
+        return 0;
+    }
+
+    let kmNhap = parseFloat(
+        raw.replace(/\./g, "").replace(/,/g, ".").replace(/\s/g, "")
+    );
+
+    if (!isFinite(kmNhap) || kmNhap < 0) kmNhap = 0;
+
+    let kmTien = 0;
+
+    // <= 100 là %, > 100 là số tiền
+    if (kmNhap > 0 && kmNhap <= 100) {
+        kmTien = Math.round(gia * kmNhap / 100);
+    } else {
+        kmTien = Math.round(kmNhap);
+    }
+
+    kmEl.value = kmTien.toLocaleString();
+
+    if (ttEl) {
+        ttEl.value = ((gia - kmTien) * sl).toLocaleString();
+    }
+
+    return kmTien;
+}
+
 /***** CCN HELPERS: xác định bối cảnh chuyển chi nhánh *****/
 function isCCNMode() {
     const p = (location.pathname || "").toLowerCase();
@@ -1047,9 +1089,11 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     }
 
 
-    // Nếu nhập khuyến mại < 100 → coi là %
-    if (kmForm > 0 && kmForm < 100) {
-        kmForm = Math.round((giaForm * kmForm) / 100);
+
+    // Nếu ADMIN nhập khuyến mại tay:
+    // <=100 là %, >100 là tiền
+    if (isAdminUser()) {
+        kmForm = chuanHoaKhuyenMaiNhapTay();
     }
 
     const key = masp;
@@ -1077,15 +1121,9 @@ export function themVaoBang(forcedSize = null, opts = {}) {
             kmSys = tinhKhuyenMai(sp, giaSys) || 0;
         }
 
-        // Giá luôn theo hệ thống
         giaForm = giaSys;
+        kmForm = kmSys;
 
-        // Giữ nguyên KM người dùng đã nhập nếu > 0
-        if (!kmForm || kmForm <= 0) {
-            kmForm = kmSys;
-        }
-
-        // Đồng bộ lại form
         const _giaEl = document.getElementById('gia');
         const _kmEl = document.getElementById('khuyenmai');
         if (_giaEl) _giaEl.value = giaForm.toLocaleString();
@@ -1361,21 +1399,60 @@ export async function napLaiChiTietHoaDon(sohd) {
 }
 
 
-// ===== Chuyển focus về #size khi Enter ở #gia hoặc #khuyenmai =====
+// ===== ADMIN sửa giá / khuyến mại trực tiếp trên form =====
 document.addEventListener("DOMContentLoaded", () => {
     applyRoleLockToPriceFields();
+
+    window.capNhatQuyenGiaoDien = function () {
+        applyRoleLockToPriceFields();
+    };
+
     ["gia", "khuyenmai"].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                const sizeEl = document.getElementById("size");
-                if (sizeEl) {
-                    sizeEl.focus();
-                    sizeEl.select();
-                }
+
+        el.addEventListener("input", () => {
+            if (!isAdminUser()) return;
+            if (id === "khuyenmai") {
+                // đang gõ thì chưa format để không nhảy con trỏ
+                return;
             }
+            recalcThanhtienFromForm();
+        });
+
+        el.addEventListener("keydown", (e) => {
+            if (e.key !== "Enter") return;
+
+            e.preventDefault();
+
+            if (!isAdminUser()) {
+                alert("Chỉ ADMIN được sửa giá/khuyến mại.");
+                return;
+            }
+
+            if (id === "gia") {
+                const gia = toInt(el.value || "0");
+                el.value = gia.toLocaleString();
+            }
+
+            chuanHoaKhuyenMaiNhapTay();
+
+            const sizeEl = document.getElementById("size");
+            if (sizeEl) {
+                sizeEl.focus();
+                sizeEl.select();
+            }
+        });
+
+        el.addEventListener("blur", () => {
+            if (!isAdminUser()) return;
+
+            if (id === "gia") {
+                const gia = toInt(el.value || "0");
+                el.value = gia.toLocaleString();
+            }
+
+            chuanHoaKhuyenMaiNhapTay();
         });
     });
 });
