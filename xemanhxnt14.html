@@ -333,7 +333,15 @@
         }
 
         async function initPage() {
-            const list = JSON.parse(sessionStorage.getItem("XNT14_MASP_LIST") || "[]");
+            let list = JSON.parse(sessionStorage.getItem("XNT14_MASP_LIST") || "[]");
+
+            // Sắp xếp theo mã sản phẩm A-Z
+            list.sort((a, b) => {
+                const ma = String(a.masp || "").trim().toUpperCase();
+                const mb = String(b.masp || "").trim().toUpperCase();
+                return ma.localeCompare(mb, "vi", { numeric: true });
+            });
+
             const cards = renderList(list);
 
             if (!list.length) return;
@@ -358,7 +366,7 @@
         }
     </script>
 
-    <script src="scripts/stockQuickSimilar.js"></script>  
+    <script src="scripts/stockQuickSimilar.js"></script>
 
 
 </body>
