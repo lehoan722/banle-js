@@ -134,10 +134,10 @@ function locDuLieu() {
   const filtered = allData.filter(r => {
     return [
       r.masp,
-      r.tenhang,
-      r.nhom,
+      r.tensp,
+      r.nhomhang,
       r.chungloai,
-      r.vitri
+      r.vitrikho1
     ].some(v => String(v || "").toUpperCase().includes(kw));
   });
 
