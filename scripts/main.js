@@ -722,9 +722,6 @@ export async function khoiTaoUngDung() {
 
     // mở popup & mặc định chọn Ultra-Wide/0.5x nếu có
     // mở popup & mặc định chọn Ultra-Wide/0.5x nếu có
-
-    btnScan.className = "action-btn-small";
-
     btnScan.style.cssText = `
 background:#00c853;
 color:white;
@@ -733,8 +730,8 @@ border:none;
 border-radius:8px;
 padding:0 12px;
 font-size:18px;
+height:34px;
 `;
-
     btnScan.onclick = () => {
       document.getElementById("popupScan").style.display = "block";
       startScan();
