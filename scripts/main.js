@@ -723,30 +723,21 @@ export async function khoiTaoUngDung() {
     // mở popup & mặc định chọn Ultra-Wide/0.5x nếu có
     // mở popup & mặc định chọn Ultra-Wide/0.5x nếu có
     const btnScan = document.createElement("button");
-    btnScan.innerHTML = `
-  <span style="font-size:28px;">📷</span>
-  <span>QUÉT MÃ</span>
-`;
+
+    btnScan.innerHTML = "📷 QUÉT";
 
     btnScan.type = "button";
     btnScan.id = "btnScanQuick";
 
     btnScan.style.cssText = `
-  height:60px;
-  min-width:120px;
-  padding:8px 16px;
-  border:none;
-  border-radius:12px;
-  background:#1976d2;
-  color:#fff;
-  font-weight:700;
-  font-size:18px;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  box-shadow:0 2px 6px rgba(0,0,0,.25);
+background:#2196f3;
+color:white;
+font-weight:bold;
+border:none;
+border-radius:8px;
+padding:0 12px;
+font-size:18px;
+height:40px;
 `;
     btnScan.onclick = () => {
       document.getElementById("popupScan").style.display = "block";
