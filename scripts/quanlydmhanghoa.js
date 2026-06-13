@@ -39,7 +39,7 @@ function initHot() {
     colHeaders: COLUMNS.map(c => c.title),
     rowHeaders: true,
     width: "100%",
-    height: "100%",
+    height: window.innerHeight - 210,
     licenseKey: "non-commercial-and-evaluation",
     stretchH: "all",
     filters: true,
@@ -69,6 +69,14 @@ function initHot() {
     }
   });
 }
+
+window.addEventListener("resize", () => {
+  if (hot) {
+    hot.updateSettings({
+      height: window.innerHeight - 210
+    });
+  }
+});
 
 async function taiDuLieu() {
   setStatus("Đang tải dữ liệu...");
