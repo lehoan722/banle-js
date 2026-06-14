@@ -160,6 +160,12 @@
   cursor: pointer;
 }
 
+.sq-mc {
+  color:#dc2626;
+  font-weight:900;
+  margin-right:2px;
+}
+
 .sq-title-price {
   color: #dc2626;
   font-weight: 700;
@@ -946,6 +952,10 @@ data-color-masp="${targetMasp}"
     let giale = "";
     let nhomhang = "";
     let mau_khac = "";
+    let manocanh = {
+      cs1: {},
+      cs2: {}
+    };
 
     const client = await waitForSupabaseReady(1000);
     if (!client) {
@@ -981,7 +991,7 @@ data-color-masp="${targetMasp}"
         }
       }
 
-      let [snapRes, hhRes, kiemRes, colorRes] = await Promise.all([
+      let [snapRes, hhRes, kiemRes, colorRes, manocanhRes] = await Promise.all([
         client.rpc("xntnhanh", {
           p_masps: [masp],
           p_den_ngay: denNgay,
@@ -998,7 +1008,12 @@ data-color-masp="${targetMasp}"
           p_masp: masp
         }),
 
-        colorResPromise
+        colorResPromise,
+
+        client
+          .from("manocanh")
+          .select("masp, size, coso")
+          .eq("masp", masp)
       ]);
 
       const firstRows = Array.isArray(snapRes?.data) ? snapRes.data : [];
@@ -1026,6 +1041,23 @@ data-color-masp="${targetMasp}"
       }
       if (kiemData) {
         kiemton = kiemData;
+      }
+
+      const { data: mcData, error: mcErr } = manocanhRes || {};
+
+      if (mcErr) {
+        console.warn("[StockQuickPopup] Lỗi đọc manocanh:", mcErr);
+      }
+
+      if (Array.isArray(mcData)) {
+        mcData.forEach((x) => {
+          const coso = String(x.coso || "").trim().toLowerCase();
+          const sizeKey = String(x.size || "").replace(/^size\s+/i, "").trim();
+
+          if (!["cs1", "cs2"].includes(coso) || !sizeKey) return;
+
+          manocanh[coso][sizeKey] = true;
+        });
       }
 
       // --- A) dữ liệu từ RPC ---
@@ -1137,7 +1169,8 @@ data-color-masp="${targetMasp}"
       nhap_cuoi_ma,
       giale,
       nhomhang,
-      mau_khac
+      mau_khac,
+      manocanh
     };
 
   }
@@ -1182,6 +1215,14 @@ data-color-masp="${targetMasp}"
       return v === undefined || v === null || Number(v) === 0 ? null : Number(v);
     }
     const isAdmin = getIsAdminLocal();
+
+    const manocanh = payload && payload.manocanh
+      ? payload.manocanh
+      : { cs1: {}, cs2: {} };
+
+    function hasManocanh(coso, sizeNum) {
+      return !!manocanh?.[coso]?.[String(sizeNum)];
+    }
 
     const nhomhangRow = nhomhang
       ? (
@@ -1232,20 +1273,21 @@ data-color-masp="${targetMasp}"
       return Number(v).toLocaleString("vi-VN");
     }
 
-    function renderTonLech(tonRaw, lechRaw) {
+    function renderTonLech(tonRaw, lechRaw, coManocanh = false) {
       const ton = Number(tonRaw || 0);
       const lech = lechRaw === null || lechRaw === undefined ? null : Number(lechRaw);
 
-      if ((ton === 0 || !ton) && (lech === null || lech === 0)) return "";
+      if ((ton === 0 || !ton) && (lech === null || lech === 0) && !coManocanh) return "";
 
       const tonText = ton !== 0 ? String(ton) : "0";
+      const cText = coManocanh ? `<span class="sq-mc">C</span>` : "";
 
       if (lech === null || lech === 0) {
-        return ton !== 0 ? tonText : "";
+        return ton !== 0 || coManocanh ? `${cText}${tonText}` : "";
       }
 
       const sign = lech > 0 ? "+" : "";
-      return `${tonText}<span class="sq-lech">${sign}${lech}</span>`;
+      return `${cText}${tonText}<span class="sq-lech">${sign}${lech}</span>`;
     }
 
     function renderSumTonLech(tonRaw, lechRaw) {
@@ -1337,10 +1379,10 @@ data-color-masp="${targetMasp}"
         <tr class="sq-open-similar-row" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
           <td>${sizeLabel}</td>
           <td class="num sq-col-k1">
-  ${renderTonLech(r.ton_cs1, r.lech_cs1)}
+  ${renderTonLech(r.ton_cs1, r.lech_cs1, hasManocanh("cs1", sizeNum))}
 </td>
           <td class="num sq-col-k2">
-  ${renderTonLech(r.ton_cs2, r.lech_cs2)}
+  ${renderTonLech(r.ton_cs2, r.lech_cs2, hasManocanh("cs2", sizeNum))}
 </td>
           <td class="num sq-col-b1">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
           <td class="num sq-col-b2">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
