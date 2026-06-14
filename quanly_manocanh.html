@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Quản lý manocanh</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f4f6f8; color: #111827; }
+    #app-container { padding: 10px; }
+    .topbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+    .title { font-size: 22px; font-weight: 800; margin-right:auto; }
+    .info { font-size: 15px; font-weight: 700; color:#0f172a; background:#e0f2fe; padding:6px 10px; border-radius:8px; }
+    .logout { padding:7px 12px; border:1px solid #d1d5db; background:#fff; border-radius:8px; font-weight:700; cursor:pointer; }
+
+    .entry-wrap { background:#fff; border:1px solid #d1d5db; border-radius:10px; padding:10px; margin-bottom:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+    .entry-grid { display:grid; grid-template-columns: 2fr .8fr .9fr 1.2fr auto; gap:0; align-items:stretch; max-width:900px; }
+    .entry-grid input, .entry-grid select { height:42px; border:1px solid #111827; border-right:0; padding:6px 8px; font-size:18px; background:#e8f3f4; text-transform:uppercase; }
+    .entry-grid input[readonly] { background:#f3f4f6; color:#111827; }
+    .entry-grid button { border:0; background:#1e9af0; color:#fff; font-size:18px; font-weight:800; padding:0 14px; cursor:pointer; border-radius:0 8px 8px 0; }
+    .entry-actions { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+    .btn { border:0; border-radius:8px; padding:10px 18px; font-size:18px; font-weight:800; cursor:pointer; }
+    .btn-save { background:#e5e7eb; color:#111827; }
+    .btn-delete { background:#fee2e2; color:#991b1b; }
+    .btn-refresh { background:#dbeafe; color:#1d4ed8; }
+
+    .msg { margin-top:8px; font-size:17px; font-weight:800; min-height:26px; }
+    .msg.ok { color:#15803d; }
+    .msg.err { color:#dc2626; }
+    .msg.warn { color:#b45309; }
+    .duplicate-box { display:none; margin-top:8px; padding:10px; background:#fff7ed; border:1px solid #fdba74; border-radius:8px; font-weight:800; }
+    .duplicate-box button { margin-left:8px; padding:8px 14px; border:0; border-radius:8px; font-weight:800; cursor:pointer; }
+    .dup-yes { background:#dc2626; color:#fff; }
+    .dup-no { background:#e5e7eb; color:#111827; }
+
+    .table-wrap { background:#fff; border:1px solid #d1d5db; border-radius:10px; padding:8px; overflow:auto; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+    table { border-collapse:collapse; min-width:780px; width:100%; font-size:18px; }
+    th, td { border:1px solid #e5e7eb; padding:7px 8px; text-align:left; white-space:nowrap; }
+    th { background:#f8fafc; font-weight:800; }
+    td.size, th.size { text-align:center; width:80px; }
+    td.xoa, th.xoa { text-align:center; width:70px; }
+    .row-highlight td { background:#fde68a !important; animation: flashRow 1.2s ease-in-out 2; }
+    @keyframes flashRow { 0%{background:#fca5a5;} 100%{background:#fde68a;} }
+    input[type="checkbox"] { width:24px; height:24px; accent-color:#2563eb; }
+    .empty { padding:14px; font-weight:700; color:#6b7280; }
+
+    @media (max-width: 700px) {
+      #app-container { padding: 6px; }
+      .title { font-size:18px; }
+      .entry-grid { grid-template-columns: 1.8fr .75fr .75fr 1fr auto; }
+      .entry-grid input, .entry-grid select { height:40px; font-size:15px; padding:5px; }
+      .entry-grid button { font-size:15px; padding:0 8px; }
+      .btn { font-size:16px; padding:9px 14px; }
+      table { font-size:15px; min-width:690px; }
+      th, td { padding:6px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="login-container"></div>
+
+  <div id="app-container" style="display:none;">
+    <div class="topbar">
+      <div class="title">QUẢN LÝ MANOCANH</div>
+      <div class="info">Cơ sở: <span id="lbl-coso">--</span></div>
+      <div class="info">NV: <span id="lbl-nhanvien">--</span></div>
+      <button id="btn-logout" class="logout" type="button">Đăng xuất</button>
+    </div>
+
+    <div class="entry-wrap">
+      <div class="entry-grid">
+        <input id="masp" type="text" placeholder="Mã SP" autocomplete="off" />
+        <select id="size">
+          <option value="">SIZE</option>
+          <option value="0">0</option>
+          <option value="38">38</option>
+          <option value="39">39</option>
+          <option value="40">40</option>
+          <option value="41">41</option>
+          <option value="42">42</option>
+          <option value="43">43</option>
+          <option value="44">44</option>
+          <option value="45">45</option>
+        </select>
+        <input id="coso" type="text" readonly />
+        <input id="nhanvien" type="text" readonly />
+        <button id="btn-scan" type="button">📷 QUÉT</button>
+      </div>
+
+      <div class="entry-actions">
+        <button id="btn-save" class="btn btn-save" type="button">💾 Lưu</button>
+        <button id="btn-delete" class="btn btn-delete" type="button">XÓA</button>
+        <button id="btn-refresh" class="btn btn-refresh" type="button">Tải lại</button>
+      </div>
+
+      <div id="message" class="msg"></div>
+      <div id="duplicate-box" class="duplicate-box">
+        <span id="duplicate-text"></span>
+        <button id="dup-yes" class="dup-yes" type="button">Có, xóa/gỡ</button>
+        <button id="dup-no" class="dup-no" type="button">Không</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ma sp</th>
+            <th class="size">size</th>
+            <th>co so</th>
+            <th>nhan vien</th>
+            <th>created_at</th>
+            <th class="xoa">xoa</th>
+          </tr>
+        </thead>
+        <tbody id="data-body"></tbody>
+      </table>
+      <div id="empty-state" class="empty" style="display:none;">Chưa có sản phẩm nào trên manocanh của cơ sở này.</div>
+    </div>
+  </div>
+
+  <script src="/scripts/quetmasp.js?v=1"></script>
+  <script type="module" src="/scripts/quanly_manocanh.js?v=1"></script>
+</body>
+</html>
