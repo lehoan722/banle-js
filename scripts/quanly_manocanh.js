@@ -155,6 +155,27 @@ function findDuplicateLocal(masp, size) {
   ) || null;
 }
 
+async function checkMaspTonTaiTrongDanhMuc(masp) {
+  if (!supabase) supabase = getSupabaseClient();
+
+  const code = normalizeMasp(masp);
+  if (!code) return false;
+
+  const { data, error } = await supabase
+    .from("dmhanghoa")
+    .select("masp")
+    .eq("masp", code)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[manocanh] Lỗi kiểm tra mã sản phẩm:", error);
+    setMsg("Lỗi kiểm tra mã sản phẩm: " + error.message, "err");
+    return false;
+  }
+
+  return !!data;
+}
+
 async function saveCurrentInput() {
   if (!supabase) supabase = getSupabaseClient();
   getAuthInfo();
@@ -170,6 +191,17 @@ async function saveCurrentInput() {
   if (!size) {
     setMsg("Chưa chọn size.", "err");
     $("size").focus();
+    return;
+  }
+
+  setMsg("Đang kiểm tra mã sản phẩm...", "warn");
+
+  const maspTonTai = await checkMaspTonTaiTrongDanhMuc(masp);
+
+  if (!maspTonTai) {
+    setMsg(`Mã sản phẩm ${masp} không đúng hoặc chưa có trong danh mục hàng hóa.`, "err");
+    $("masp").focus();
+    $("masp").select();
     return;
   }
 
