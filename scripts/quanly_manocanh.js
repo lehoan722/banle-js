@@ -357,8 +357,15 @@ function bindEvents() {
     }
   });
 
-  $("size")?.addEventListener("change", () => {
+  $("size")?.addEventListener("change", async () => {
     hideDuplicateBox();
+
+    const masp = normalizeMasp($("masp")?.value);
+    const size = normalizeSize($("size")?.value);
+
+    if (!masp || !size) return;
+
+    await saveCurrentInput();
   });
 
   $("dup-yes")?.addEventListener("click", async () => {
