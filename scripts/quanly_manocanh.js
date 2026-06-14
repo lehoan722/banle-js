@@ -176,6 +176,34 @@ async function checkMaspTonTaiTrongDanhMuc(masp) {
   return !!data;
 }
 
+async function kiemTraMaspVaChuyenSangSize() {
+  if (!supabase) supabase = getSupabaseClient();
+
+  const maspInput = $("masp");
+  const sizeInput = $("size");
+  const masp = normalizeMasp(maspInput.value);
+
+  if (!masp) {
+    setMsg("Chưa nhập mã sản phẩm.", "err");
+    maspInput.focus();
+    return;
+  }
+
+  setMsg("Đang kiểm tra mã sản phẩm...", "warn");
+
+  const maspTonTai = await checkMaspTonTaiTrongDanhMuc(masp);
+
+  if (!maspTonTai) {
+    setMsg(`Mã sản phẩm ${masp} không đúng hoặc chưa có trong danh mục hàng hóa.`, "err");
+    maspInput.focus();
+    maspInput.select();
+    return;
+  }
+
+  setMsg(`Mã ${masp} hợp lệ. Chọn size rồi nhấn Enter để lưu.`, "ok");
+  sizeInput.focus();
+}
+
 async function saveCurrentInput() {
   if (!supabase) supabase = getSupabaseClient();
   getAuthInfo();
@@ -303,7 +331,9 @@ function bindEvents() {
 
     window.MaspScanner.openForInput("masp", {
       onResult: () => {
-        setTimeout(() => $("size")?.focus(), 100);
+        setTimeout(() => {
+          kiemTraMaspVaChuyenSangSize();
+        }, 100);
       }
     });
   });
@@ -313,10 +343,10 @@ function bindEvents() {
     hideDuplicateBox();
   });
 
-  $("masp")?.addEventListener("keydown", (e) => {
+  $("masp")?.addEventListener("keydown", async (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      $("size")?.focus();
+      await kiemTraMaspVaChuyenSangSize();
     }
   });
 
