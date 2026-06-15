@@ -523,6 +523,21 @@ async function updateStatus(id, newStatus) {
   }
 
   await loadRequests();
+
+  if (newStatus === "DA_DUYET") {
+  const { data: autoData, error: autoError } = await supabase
+    .schema("qlnv")
+    .rpc("rpc_tu_dong_giao_viec_theo_ca", {
+      p_lichlam_id: Number(id)
+    });
+
+  if (autoError) {
+    console.error("Lỗi tự động giao việc sau khi duyệt ca:", autoError);
+  } else {
+    console.log("Đã tự động giao việc sau duyệt ca:", autoData);
+  }
+}
+
 }
 
 async function deleteRequest(id) {
@@ -589,6 +604,21 @@ async function approveAllVisible() {
   }
 
   await loadRequests();
+
+  for (const id of ids) {
+  const { data: autoData, error: autoError } = await supabase
+    .schema("qlnv")
+    .rpc("rpc_tu_dong_giao_viec_theo_ca", {
+      p_lichlam_id: Number(id)
+    });
+
+  if (autoError) {
+    console.error("Lỗi giao việc tự động cho ca id", id, autoError);
+  } else {
+    console.log("Giao việc tự động cho ca id", id, autoData);
+  }
+}
+
 }
 
 
