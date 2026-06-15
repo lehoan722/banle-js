@@ -407,15 +407,14 @@ async function fetchMaspsByNhomHang(nhomHangs) {
 
   const { data, error } = await supabase
     .from("dmhanghoa")
-    .select("masp, nhomhang");
+    .select("masp, nhomhang, active")
+    .in("nhomhang", list)
+    .neq("active", false);
 
   if (error) throw error;
 
-  const setNhom = new Set(list);
-
   return uniq(
     (data || [])
-      .filter(r => setNhom.has(String(r.nhomhang || "").trim().toUpperCase()))
       .map(r => normalizeMasp(r.masp))
       .filter(Boolean)
   );
@@ -803,14 +802,14 @@ function renderBang() {
     const tr = document.createElement("tr");
 
     if (row.trang_thai_dong === "da_chuyen") {
-  tr.style.background = "#fff3cd";
-}
-else if (row.co_kiemton) {
-  tr.style.background = "#fff7cc";
-}
-else if (row.needReview) {
-  tr.style.background = "#fff3cd";
-}
+      tr.style.background = "#fff3cd";
+    }
+    else if (row.co_kiemton) {
+      tr.style.background = "#fff7cc";
+    }
+    else if (row.needReview) {
+      tr.style.background = "#fff3cd";
+    }
 
     if (row.done) tr.classList.add("done-row");
     if (idx === STATE.selectedIndex) tr.classList.add("highlight-row");
