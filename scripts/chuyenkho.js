@@ -16,7 +16,7 @@ const PAGE_CFG = PATH.includes("chuyenkho2v1cs2")
     tuCoso: "cs2",
     denCoso: "cs1",
     dir: "2v1",
-    ccnTargetUrl: "https://app.hoantuyet.vn/ccn2v1cs2.html",
+    ccnTargetUrl: `${window.location.origin}/ccn2v1cs2.html`,
     macDinhDiaDiem: "cs2",
   }
   : {
@@ -25,7 +25,7 @@ const PAGE_CFG = PATH.includes("chuyenkho2v1cs2")
     tuCoso: "cs1",
     denCoso: "cs2",
     dir: "1v2",
-    ccnTargetUrl: "https://app.hoantuyet.vn/ccn1v2cs1.html",
+    ccnTargetUrl: `${window.location.origin}/ccn1v2cs1.html`,
     macDinhDiaDiem: "cs1",
   };
 
@@ -1569,17 +1569,19 @@ function buildCcnPayloadFromDoneRows() {
 
 async function taoPhieuCCN() {
   try {
-    // Lưu phiếu hiện tại trước
     await luuPhieu();
 
-    // Sau khi lưu xong mới tạo payload CCN
     const payload = buildCcnPayloadFromDoneRows();
     if (!payload) {
-      alert("Không có dòng hoàn thành hợp lệ để tạo phiếu CCN.");
+      alert("Không có dòng đang chuyển hợp lệ để tạo phiếu CCN.");
       return;
     }
 
-    localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+    const key = "ccn_prefill_payload";
+    localStorage.setItem(key, JSON.stringify(payload));
+
+    console.log("[ChuyenKho] Đã ghi payload CCN:", payload);
+
     window.open(PAGE_CFG.ccnTargetUrl, "_blank");
   } catch (e) {
     showError("Không tạo được phiếu CCN.", e);
