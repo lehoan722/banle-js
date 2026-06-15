@@ -1,5 +1,5 @@
-import { supabase } from "./supabaseClient.js";
-import { khoiTaoDangNhapDungChung } from "./authModule.js";
+import { supabase } from "/supabaseClient.js";
+import { khoiTaoDangNhapDungChung } from "/authModule.js";
 
 const diadiemEl = document.getElementById("diadiem");
 const dangBatEl = document.getElementById("dang_bat");
@@ -26,6 +26,7 @@ async function loadConfig() {
     setMsg("Đang tải cấu hình...");
 
     const { data, error } = await supabase
+        .schema("qlnv")
         .from("cau_hinh_giao_viec_tu_dong")
         .select("*")
         .eq("diadiem", diadiem)
@@ -69,6 +70,7 @@ async function saveConfig() {
     setMsg("Đang lưu...");
 
     const { error } = await supabase
+        .schema("qlnv")
         .from("cau_hinh_giao_viec_tu_dong")
         .upsert(payload, {
             onConflict: "diadiem"
