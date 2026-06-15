@@ -656,6 +656,49 @@ async function handleDangKy() {
     }
 
     setMsg(data.message, false);
+
+    try {
+    let lichlamId = data.id || data.lichlam_id || data.lichlamId || null;
+
+    if (!lichlamId) {
+        const { data: latestCa } = await supabase
+            .from("lichlam_dangky")
+            .select("id")
+            .eq("manv", target)
+            .eq("diadiem", diadiem)
+            .eq("ngay", ngay)
+            .eq("loai_dang_ky", "CA_LAM")
+            .eq("gio_bat_dau", gio_bd)
+            .eq("gio_ket_thuc", gio_kt)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        lichlamId = latestCa?.id || null;
+    }
+
+    if (lichlamId && loai_dang_ky === "CA_LAM") {
+        const { data: autoData, error: autoError } = await supabase
+            .schema("qlnv")
+            .rpc("rpc_auto_duyet_ca_cung_va_giao_viec", {
+                p_lichlam_id: lichlamId,
+                p_actor: actor || "AUTO_CA_CUNG"
+            });
+
+        if (autoError) {
+            console.error("Lỗi auto duyệt ca cứng/giao việc:", autoError);
+        } else {
+            console.log("Auto duyệt ca cứng/giao việc:", autoData);
+
+            if (autoData?.matched_ca_cung) {
+                setMsg("Đăng ký thành công. Ca khớp ca cứng nên đã tự động duyệt và giao việc.", false);
+            }
+        }
+    }
+} catch (e) {
+    console.error("Lỗi xử lý auto duyệt sau đăng ký:", e);
+}
+
     await loadMyRequests(target, true); // ✅ giờ sẽ không ghi đè msg nữa
     validateDangKyUI(true);             // ✅ giữ msg thành công
 
