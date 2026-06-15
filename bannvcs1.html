@@ -1255,15 +1255,57 @@
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
-        setTimeout(function () {
-            window.LUU_HOADON_F2 = async () => {
-                const result = await saveBanLe111("F2-NV");
+        // ✅ Lưu xong chỉ báo thành công, không hỏi/in/xem hóa đơn nữa
+        async function luuHoaDonNVKhongIn(context) {
+            const oldConfirm = window.confirm;
+            const oldPrint = window.print;
+            const oldOpen = window.open;
+
+            window.__SKIP_PRINT_AFTER_SAVE = true;
+            window.__KHONG_IN_HOA_DON_SAU_LUU = true;
+
+            window.confirm = function (msg) {
+                const text = String(msg || "").toLowerCase();
+                if (text.includes("in") || text.includes("hóa đơn") || text.includes("hoá đơn") || text.includes("xem in")) {
+                    return false;
+                }
+                return oldConfirm.call(window, msg);
+            };
+
+            window.print = function () {
+                console.log("Đã chặn lệnh in hóa đơn sau khi lưu.");
+            };
+
+            window.open = function (url, target, features) {
+                const text = String(url || "").toLowerCase();
+                if (text.includes("xemhoadon") || text.includes("hoadon") || text.includes("print") || text.includes("invoice")) {
+                    console.log("Đã chặn mở trang in hóa đơn sau khi lưu:", url);
+                    return null;
+                }
+                return oldOpen.call(window, url, target, features);
+            };
+
+            try {
+                const result = await saveBanLe111(context);
 
                 if (result?.ok) {
                     window.resetQLMK?.();
+                    alert("✅ Đã lưu dữ liệu thành công");
                 }
 
                 return result;
+            } finally {
+                window.confirm = oldConfirm;
+                window.print = oldPrint;
+                window.open = oldOpen;
+                window.__SKIP_PRINT_AFTER_SAVE = false;
+                window.__KHONG_IN_HOA_DON_SAU_LUU = false;
+            }
+        }
+
+        setTimeout(function () {
+            window.LUU_HOADON_F2 = async () => {
+                return await luuHoaDonNVKhongIn("F2-NV");
             };
         }, 1000);
 
@@ -1285,12 +1327,10 @@
             }
 
             try {
-                const result = await saveBanLe111("BTN-LUU-NV");
+                const result = await luuHoaDonNVKhongIn("BTN-LUU-NV");
 
                 if (!result?.ok) {
                     console.warn("saveBanLe111 NV không trả ok=true:", result);
-                } else {
-                    window.resetQLMK?.();
                 }
             } catch (e) {
                 console.error(e);
