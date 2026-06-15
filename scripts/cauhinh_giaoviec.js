@@ -1,5 +1,5 @@
-import { supabase } from "/supabaseClient.js";
-import { khoiTaoDangNhapDungChung } from "/authModule.js";
+import { supabase } from "./supabaseClient.js";
+import { khoiTaoDangNhapDungChung } from "./authModule.js";
 
 const diadiemEl = document.getElementById("diadiem");
 const dangBatEl = document.getElementById("dang_bat");
