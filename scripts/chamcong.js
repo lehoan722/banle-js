@@ -1347,6 +1347,19 @@ async function approveShiftWhenCheckin({ manv, diadiem }) {
         }
 
         console.log("ĐÃ AUTO DUYỆT ca id", target.id, "cho", manv, "tại", diadiem);
+
+        const { data: autoAssignData, error: autoAssignError } = await sp
+            .schema("qlnv")
+            .rpc("rpc_tu_dong_giao_viec_theo_ca", {
+                p_lichlam_id: target.id
+            });
+
+        if (autoAssignError) {
+            console.error("Lỗi tự động giao việc theo ca:", autoAssignError);
+        } else {
+            console.log("Kết quả tự động giao việc:", autoAssignData);
+        }
+
     } catch (e) {
         console.error("Lỗi ngoại lệ auto duyệt ca:", e);
     }
