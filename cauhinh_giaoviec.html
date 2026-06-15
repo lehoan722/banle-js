@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Cấu hình giao việc tự động</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 10px;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0 0 10px 0;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 10px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      min-width: 150px;
+      font-size: 13px;
+    }
+    .field label {
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    input, select {
+      font-size: 14px;
+      padding: 7px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+    }
+    button {
+      font-size: 14px;
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      font-weight: 600;
+    }
+    button.secondary {
+      background: #6b7280;
+    }
+    .hint {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #374151;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 10px;
+    }
+    #msg {
+      font-size: 13px;
+      margin-top: 8px;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div id="login-container"></div>
+
+  <div id="app-container" style="display:none;">
+    <div class="card">
+      <h1>Cấu hình giao việc tự động</h1>
+
+      <div class="row">
+        <div class="field">
+          <label>Cơ sở</label>
+          <select id="diadiem">
+            <option value="cs1">CS1</option>
+            <option value="cs2">CS2</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Bật giao việc tự động</label>
+          <select id="dang_bat">
+            <option value="true">Bật</option>
+            <option value="false">Tắt</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Có giao vệ sinh sáng</label>
+          <select id="giao_ve_sinh_sang">
+            <option value="true">Có</option>
+            <option value="false">Không</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Mốc số giờ</label>
+          <input id="so_gio_moc" type="number" min="1" step="0.5" value="5">
+        </div>
+
+        <div class="field">
+          <label>Số nhiệm vụ theo mốc</label>
+          <input id="so_task_moc" type="number" min="0" step="1" value="3">
+        </div>
+
+        <div class="field">
+          <label>Số nhiệm vụ tối đa / ca</label>
+          <input id="so_task_toi_da" type="number" min="0" step="1" value="8">
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="btn-save" type="button">Lưu cấu hình</button>
+        <button id="btn-load" type="button" class="secondary">Tải lại</button>
+      </div>
+
+      <div id="msg"></div>
+    </div>
+
+    <div class="card hint">
+      <b>Cách tính:</b><br>
+      Nếu đặt <b>mốc số giờ = 5</b> và <b>số nhiệm vụ theo mốc = 3</b>:<br>
+      - Ca 5 tiếng sẽ giao tối đa 3 nhiệm vụ.<br>
+      - Ca 10 tiếng sẽ giao tối đa 6 nhiệm vụ.<br>
+      - Nếu có vệ sinh sáng thì vệ sinh sáng cũng được tính là 1 nhiệm vụ trong tổng số này.<br>
+      - Số nhiệm vụ tối đa / ca dùng để chặn ca quá dài không bị giao quá nhiều việc.
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/cauhinh_giaoviec.js"></script>
+</body>
+</html>
