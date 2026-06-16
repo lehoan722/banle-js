@@ -388,26 +388,26 @@ export async function saveHoaDonSpecial(ctx) {
   const sohdChinh = rpcRes[0].sohd;
 
   // ✅ ÉP CẬP NHẬT LẠI HEADER CHÍNH SAU RPC
-// Giống hoadonSale.js để đảm bảo ghi đủ khách hàng và điểm khách hàng
-const { error: errUpdateHeaderChinh } = await supabase
-  .from("hoadon_banle")
-  .update({
-    makh: getText("makh") || headerChinhKhongSo.makh || null,
-    khachhang: headerChinhKhongSo.khachhang,
-    diem_tru: headerChinhKhongSo.diem_tru,
-    tien_doi_diem: headerChinhKhongSo.tien_doi_diem,
-    thanhtoan: headerChinhKhongSo.thanhtoan,
-    tongthanhtien: headerChinhKhongSo.tongthanhtien,
-    tongkm: headerChinhKhongSo.tongkm,
-    chietkhau: headerChinhKhongSo.chietkhau
-  })
-  .eq("sohd", sohdChinh);
+  // Giống hoadonSale.js để đảm bảo ghi đủ khách hàng và điểm khách hàng
+  const { error: errUpdateHeaderChinh } = await supabase
+    .from("hoadon_banle")
+    .update({
+      makh: getText("makh") || headerChinhKhongSo.makh || null,
+      khachhang: headerChinhKhongSo.khachhang,
+      diem_tru: headerChinhKhongSo.diem_tru,
+      tien_doi_diem: headerChinhKhongSo.tien_doi_diem,
+      thanhtoan: headerChinhKhongSo.thanhtoan,
+      tongthanhtien: headerChinhKhongSo.tongthanhtien,
+      tongkm: headerChinhKhongSo.tongkm,
+      chietkhau: headerChinhKhongSo.chietkhau
+    })
+    .eq("sohd", sohdChinh);
 
-if (errUpdateHeaderChinh) {
-  console.error("❌ Lỗi cập nhật lại header chính sau RPC:", errUpdateHeaderChinh);
-  alert("❌ Đã cấp số hóa đơn đặc biệt nhưng chưa cập nhật được thông tin khách hàng/điểm.");
-  return;
-}
+  if (errUpdateHeaderChinh) {
+    console.error("❌ Lỗi cập nhật lại header chính sau RPC:", errUpdateHeaderChinh);
+    alert("❌ Đã cấp số hóa đơn đặc biệt nhưng chưa cập nhật được thông tin khách hàng/điểm.");
+    return;
+  }
 
   const loaiT = loai + "T";
   const { data: sohdT, error: sohdTErr } = await supabase.rpc("next_sohd_only", {
@@ -480,23 +480,40 @@ if (errUpdateHeaderChinh) {
   // 6) In bản chính
   printInvoice(hoadonChinh, chitietChinh, true);
 
-  // 7) Gửi Viettel cho bản T
-  // ✅ Tạm ngừng gửi Viettel cho CS1, nhưng vẫn lưu đầy đủ 2 bản như cũ
-  if (loai === "bancs1") {
-    console.warn("⛔ Tạm ngừng gửi Viettel cho hóa đơn đặc biệt CS1:", sohdT);
+  // 7) Gửi Viettel cho bản T theo cấu hình động
+  try {
+    const { data: ruleCheck, error: ruleErr } = await supabase.rpc("preview_viettel_eligibility", {
+      p_sohd: sohdT,
+      p_ngay: hoadonPhu.ngay,
+      p_thanhtoan: hoadonPhu.thanhtoan
+    });
 
-    // Nếu muốn hiển thị trạng thái dễ theo dõi trong trang xem hóa đơn T
-    await supabase
-      .from("hoadon_banleT")
-      .update({ trang_thai_gui: "ngừng gửi CS1" })
-      .eq("sohd", sohdT);
-  } else {
-    try {
+    if (ruleErr) {
+      console.error("❌ Lỗi kiểm tra quy tắc Viettel:", ruleErr);
+      await supabase
+        .from("hoadon_banleT")
+        .update({ trang_thai_gui: "Lỗi kiểm tra quy tắc Viettel" })
+        .eq("sohd", sohdT);
+
+    } else if (!ruleCheck?.eligible) {
+      await supabase
+        .from("hoadon_banleT")
+        .update({ trang_thai_gui: ruleCheck?.reason || "Không đủ điều kiện gửi Viettel" })
+        .eq("sohd", sohdT);
+
+    } else if (!ruleCheck?.auto_send) {
+      await supabase
+        .from("hoadon_banleT")
+        .update({ trang_thai_gui: "Đủ điều kiện nhưng tắt tự gửi Viettel" })
+        .eq("sohd", sohdT);
+
+    } else {
       await guiHoaDonViettel(sohdT);
-    } catch (e) {
-      console.error("guiHoaDonViettel lỗi:", e);
-      alert("⚠️ Đã lưu xong 2 bản nhưng gửi Viettel thất bại. Bạn có thể gửi lại sau ở trang xem hóa đơn T.");
     }
+
+  } catch (e) {
+    console.error("guiHoaDonViettel lỗi:", e);
+    alert("⚠️ Đã lưu xong 2 bản nhưng gửi Viettel thất bại. Bạn có thể gửi lại sau ở trang xem hóa đơn T.");
   }
 
   await resetAfterSave();
