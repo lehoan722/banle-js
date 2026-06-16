@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý quy tắc Viettel</title>
+  <script type="module" src="/scripts/quanly_viettel_rule.js"></script>
+  <style>
+    body { font-family: Arial; padding: 16px; background:#f5f7fb; }
+    h2 { margin-top:0; }
+    table { border-collapse: collapse; width:100%; background:white; }
+    th, td { border:1px solid #ccc; padding:8px; text-align:center; }
+    th { background:#0078d7; color:white; }
+    input { width:120px; padding:6px; font-size:16px; text-align:right; }
+    input[type="checkbox"] { width:22px; height:22px; }
+    button { padding:8px 14px; font-size:16px; font-weight:bold; cursor:pointer; }
+    .save { background:#0b8f35; color:white; border:none; border-radius:6px; }
+    .reload { background:#0078d7; color:white; border:none; border-radius:6px; }
+    .note { background:#fff8d6; border:1px solid #e0c85a; padding:10px; margin-bottom:12px; }
+  </style>
+</head>
+<body>
+  <h2>Quản lý quy tắc gửi Viettel</h2>
+
+  <div class="note">
+    Chu kỳ gửi = 4 nghĩa là 3 hóa đơn không gửi, hóa đơn thứ 4 gửi.
+    Chu kỳ gửi = 5 nghĩa là 4 hóa đơn không gửi, hóa đơn thứ 5 gửi.
+  </div>
+
+  <p>
+    <button id="btnReload" class="reload">Tải lại</button>
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Cơ sở</th>
+        <th>Bật quy tắc</th>
+        <th>Tự gửi Viettel</th>
+        <th>Chu kỳ gửi</th>
+        <th>Giới hạn ngày</th>
+        <th>Giới hạn 1 hóa đơn</th>
+        <th>Lưu</th>
+      </tr>
+    </thead>
+    <tbody id="ruleBody"></tbody>
+  </table>
+</body>
+</html>
