@@ -1875,6 +1875,15 @@
                 const ngay = String(ngayEl?.value || "").trim(); // yyyy-mm-dd
                 const thanhtoan = getMoney(totalEl);
 
+                const hinhThucTT = document.getElementById("hinhthuctt");
+                const isTMT = String(hinhThucTT?.value || "").trim().toLowerCase() === "tmt";
+
+                if (isTMT) {
+                    sohdEl.setAttribute("data-mod3", "yes");
+                    console.log("🚀 TMT: tô đỏ trực tiếp, bỏ qua kiểm tra rule config");
+                    return;
+                }
+
                 // Nếu chưa đủ dữ liệu tối thiểu thì bỏ tô đỏ
 
                 if (!sohd || !ngay) {
@@ -1929,11 +1938,14 @@
             }
 
             // Bắt các thay đổi thường gặp
+            const hinhThucTT = document.getElementById("hinhthuctt");
+
             ["input", "change"].forEach(evt => {
                 sohdEl.addEventListener(evt, scheduleCheck);
                 if (totalEl) totalEl.addEventListener(evt, scheduleCheck);
                 if (ngayEl) ngayEl.addEventListener(evt, scheduleCheck);
                 if (hd) hd.addEventListener(evt, scheduleCheck);
+                if (hinhThucTT) hinhThucTT.addEventListener(evt, scheduleCheck);
             });
 
             // fallback: nhiều chỗ set .value bằng JS
