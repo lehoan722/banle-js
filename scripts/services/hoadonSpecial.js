@@ -500,7 +500,7 @@ export async function saveHoaDonSpecial(ctx) {
     } else {
       // ✅ Không phải TMT thì vẫn kiểm tra theo cấu hình động
       const { data: ruleCheck, error: ruleErr } = await supabase.rpc("preview_viettel_eligibility", {
-        p_sohd: sohdT,
+        p_sohd: sohdChinh,
         p_ngay: hoadonPhu.ngay,
         p_thanhtoan: hoadonPhu.thanhtoan
       });
