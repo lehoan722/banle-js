@@ -481,34 +481,52 @@ export async function saveHoaDonSpecial(ctx) {
   printInvoice(hoadonChinh, chitietChinh, true);
 
   // 7) Gửi Viettel cho bản T theo cấu hình động
+
   try {
-    const { data: ruleCheck, error: ruleErr } = await supabase.rpc("preview_viettel_eligibility", {
-      p_sohd: sohdT,
-      p_ngay: hoadonPhu.ngay,
-      p_thanhtoan: hoadonPhu.thanhtoan
-    });
+    const isForceViettelByTMT =
+      String(hoadonPhu.hinhthuctt || "").trim().toLowerCase() === "tmt";
 
-    if (ruleErr) {
-      console.error("❌ Lỗi kiểm tra quy tắc Viettel:", ruleErr);
+    // ✅ Nếu chọn Tiền mặtt thì bỏ qua toàn bộ viettel_rule_config
+    if (isForceViettelByTMT) {
+      console.log("🚀 TMT: Bỏ qua quy tắc Viettel, gửi trực tiếp:", sohdT);
+
       await supabase
         .from("hoadon_banleT")
-        .update({ trang_thai_gui: "Lỗi kiểm tra quy tắc Viettel" })
+        .update({ trang_thai_gui: "Đang gửi Viettel theo Tiền mặtt" })
         .eq("sohd", sohdT);
 
-    } else if (!ruleCheck?.eligible) {
-      await supabase
-        .from("hoadon_banleT")
-        .update({ trang_thai_gui: ruleCheck?.reason || "Không đủ điều kiện gửi Viettel" })
-        .eq("sohd", sohdT);
-
-    } else if (!ruleCheck?.auto_send) {
-      await supabase
-        .from("hoadon_banleT")
-        .update({ trang_thai_gui: "Đủ điều kiện nhưng tắt tự gửi Viettel" })
-        .eq("sohd", sohdT);
+      await guiHoaDonViettel(sohdT);
 
     } else {
-      await guiHoaDonViettel(sohdT);
+      // ✅ Không phải TMT thì vẫn kiểm tra theo cấu hình động
+      const { data: ruleCheck, error: ruleErr } = await supabase.rpc("preview_viettel_eligibility", {
+        p_sohd: sohdT,
+        p_ngay: hoadonPhu.ngay,
+        p_thanhtoan: hoadonPhu.thanhtoan
+      });
+
+      if (ruleErr) {
+        console.error("❌ Lỗi kiểm tra quy tắc Viettel:", ruleErr);
+        await supabase
+          .from("hoadon_banleT")
+          .update({ trang_thai_gui: "Lỗi kiểm tra quy tắc Viettel" })
+          .eq("sohd", sohdT);
+
+      } else if (!ruleCheck?.eligible) {
+        await supabase
+          .from("hoadon_banleT")
+          .update({ trang_thai_gui: ruleCheck?.reason || "Không đủ điều kiện gửi Viettel" })
+          .eq("sohd", sohdT);
+
+      } else if (!ruleCheck?.auto_send) {
+        await supabase
+          .from("hoadon_banleT")
+          .update({ trang_thai_gui: "Đủ điều kiện nhưng tắt tự gửi Viettel" })
+          .eq("sohd", sohdT);
+
+      } else {
+        await guiHoaDonViettel(sohdT);
+      }
     }
 
   } catch (e) {
