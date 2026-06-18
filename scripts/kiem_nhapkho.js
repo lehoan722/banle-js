@@ -1,4 +1,5 @@
 import "./stockQuickPopup.js";
+import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
 // =========================
 // SOUND FALLBACK NỘI BỘ
@@ -4153,6 +4154,11 @@ function patchAlertWithBeep() {
     setDefaultBranchInfo();
     bindInputEvents();
     bindButtons();
+        try {
+      initAutocompleteRealtimeMasp();
+    } catch (err) {
+      console.error("[KNK] Lỗi gắn gợi ý mã sản phẩm realtime:", err);
+    }
 
     // Mở khóa beep cho trình duyệt
     setupBeepUnlockOnce(document);
