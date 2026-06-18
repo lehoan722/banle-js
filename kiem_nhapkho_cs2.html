@@ -505,6 +505,12 @@
             <input type="checkbox" id="nhapsize" hidden />
 
             <input id="sohd" placeholder="Số phiếu kiểm nhập" />
+
+            <button id="btnQuetMasp" type="button"
+                style="background:#2196f3;color:white;font-weight:bold;border:none;border-radius:8px;padding:0 12px;font-size:18px;height:34px;">
+                📷 QUÉT
+            </button>
+
             <input id="ghichu_top" placeholder="Ghi chú / DS HĐ CCN" style="width:260px;" readonly />
 
             <div id="thongke_dautrang"
@@ -1820,6 +1826,32 @@
 
             window.addEventListener("mouseup", function () {
                 onEnd();
+            });
+        });
+    </script>
+
+    <script src="scripts/quetmasp.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const btn = document.getElementById("btnQuetMasp");
+            const maspEl = document.getElementById("masp");
+
+            if (!btn || !maspEl || !window.MaspScanner) return;
+
+            btn.addEventListener("click", () => {
+                window.MaspScanner.openForInput("masp", {
+                    onResult: (code) => {
+                        maspEl.value = String(code || "").trim().toUpperCase();
+
+                        maspEl.dispatchEvent(
+                            new KeyboardEvent("keydown", {
+                                key: "Enter",
+                                bubbles: true
+                            })
+                        );
+                    }
+                });
             });
         });
     </script>
