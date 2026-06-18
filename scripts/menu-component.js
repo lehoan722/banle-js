@@ -696,42 +696,33 @@
     global.openMenuSizeDropdownFor = function (inputEl, onPick) {
       if (!inputEl) return;
 
-      const dd = new SizeDropdown();
+      if (!inputEl.__menuSizeDropdown) {
+        const dd = new SizeDropdown();
 
-      dd.onPick = (val, row, source) => {
-        inputEl.value = String(val);
-        inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-        inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+        dd.root.style.zIndex = "999999";
 
-        if (typeof onPick === "function") {
-          onPick(val, row, source);
-        }
-      };
+        dd.onPick = (val, row, source) => {
+          inputEl.value = String(val);
+          inputEl.dispatchEvent(new Event("change", { bubbles: true }));
 
-      inputEl.addEventListener("focus", () => {
-        dd.openFor(inputEl);
-      });
+          if (typeof onPick === "function") {
+            onPick(val, row, source);
+          }
+        };
 
-      inputEl.addEventListener("click", () => {
-        dd.openFor(inputEl);
-      });
-
-      inputEl.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-          dd.close();
-          return;
-        }
-
-        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-          e.preventDefault();
+        inputEl.addEventListener("focus", () => {
           dd.openFor(inputEl);
-          return;
-        }
-      });
+        });
 
-      dd.openFor(inputEl);
+        inputEl.addEventListener("click", () => {
+          dd.openFor(inputEl);
+        });
 
-      return dd;
+        inputEl.__menuSizeDropdown = dd;
+      }
+
+      inputEl.__menuSizeDropdown.openFor(inputEl);
+      return inputEl.__menuSizeDropdown;
     };
 
     function initGlobalSizeDropdown() {
