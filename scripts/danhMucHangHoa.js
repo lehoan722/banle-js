@@ -49,8 +49,8 @@ export async function napDanhMucHangHoa(force = false) {
             quanlykichco,
             active
         `)
-        .eq("active", true)
-        .order("masp");
+        .order("masp")
+        .limit(100000);
 
     dangTai = false;
 
