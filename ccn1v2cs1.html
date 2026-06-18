@@ -1886,8 +1886,7 @@
                     showSizePopupKiemTra();
                 });
 
-                sizeEl.addEventListener("focus", showSizePopupKiemTra);
-                sizeEl.addEventListener("input", showSizePopupKiemTra);
+                sizeEl.addEventListener("focus", showSizePopupKiemTra);                
 
                 sizeEl.addEventListener("keydown", function (e) {
                     if (e.key !== "Enter") return;
@@ -1981,7 +1980,7 @@
                 });
             }
 
-            function themDongKiemTra() {
+            function themDongKiemTra(giuPopupSize = false) {
                 const maspEl = document.getElementById("ccnktMasp");
                 const slEl = document.getElementById("ccnktSL");
                 const sizeEl = document.getElementById("ccnktSize");
