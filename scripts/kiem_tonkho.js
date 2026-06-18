@@ -6,7 +6,7 @@ import {
 } from "./soundBeep.js";
 
 import "./stockQuickPopup.js";
-import { ganPopupMaSP } from "./goiymasanpham.js";
+import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
 // scripts/nhapkiemkho.js 
 (function () {
@@ -4048,11 +4048,11 @@ import { ganPopupMaSP } from "./goiymasanpham.js";
         bindButtons();
         bindRowSelection();
 
-            try {
-        await ganPopupMaSP("masp", "popup_masp");
-    } catch (err) {
-        console.error("[KTK] Lỗi gắn gợi ý mã sản phẩm:", err);
-    }
+        try {
+            initAutocompleteRealtimeMasp();
+        } catch (err) {
+            console.error("[KTK] Lỗi gắn autocomplete mã sản phẩm realtime:", err);
+        }
 
         // Mở khóa beep cho trình duyệt
         setupBeepUnlockOnce(document);
