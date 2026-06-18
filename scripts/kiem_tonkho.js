@@ -952,6 +952,43 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
         return `${prefix}${next}`;
     }
 
+    async function damBaoSoPhieuChuaTonTaiTruocKhiLuu(soPhieuBanDau) {
+        let soPhieu = String(soPhieuBanDau || "").trim();
+
+        while (true) {
+            const { data, error } = await window.supabase
+                .from("kiem_ton_kho")
+                .select("id, so_phieu")
+                .eq("so_phieu", soPhieu)
+                .maybeSingle();
+
+            if (error) {
+                console.error("[kiem_ton_kho] check so phieu error:", error);
+                throw new Error("Lỗi khi kiểm tra số phiếu đã tồn tại.");
+            }
+
+            if (!data) {
+                return soPhieu;
+            }
+
+            const soPhieuMoi = await taoSoPhieuMoi();
+
+            const ok = confirm(
+                `Số phiếu ${soPhieu} đã được người khác sử dụng.\n\n` +
+                `Bạn có muốn chuyển sang số phiếu ${soPhieuMoi} để lưu tiếp không?`
+            );
+
+            if (!ok) {
+                throw new Error("Người dùng hủy lưu do trùng số phiếu.");
+            }
+
+            soPhieu = soPhieuMoi;
+
+            const sohdEl = byId("sohd");
+            if (sohdEl) sohdEl.value = soPhieu;
+        }
+    }
+
     function updateTitle() {
         document.title = CFG.title || document.title;
     }
@@ -3354,7 +3391,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
             const tennvEl = byId("tennv");
             const ghichuEl = byId("ghichu_top");
 
-            const so_phieu = String(sohdEl?.value || "").trim();
+            let so_phieu = String(sohdEl?.value || "").trim();
             const ngay_ct = String(ngayEl?.value || "").trim();
             const ten_nguoi_kiem = String(tennvEl?.value || "").trim();
             const ghi_chu = String(ghichuEl?.value || "").trim();
@@ -3399,15 +3436,10 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
                 return;
             }
 
-            const { data: tonTaiCu, error: errCheck } = await window.supabase
-                .from("kiem_ton_kho")
-                .select("id, so_phieu")
-                .eq("so_phieu", so_phieu)
-                .maybeSingle();
-
-            if (errCheck) {
-                console.error("[kiem_ton_kho] check ton tai error:", errCheck);
-                alert("Lỗi khi kiểm tra phiếu đã tồn tại.");
+            try {
+                so_phieu = await damBaoSoPhieuChuaTonTaiTruocKhiLuu(so_phieu);
+            } catch (err) {
+                alert(err.message || "Đã hủy lưu phiếu kiểm tồn.");
                 return;
             }
 
@@ -3438,11 +3470,6 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
                 so_dong_thua,
                 so_dong_lech
             };
-
-            if (tonTaiCu) {
-                alert(`Số phiếu ${so_phieu} đã tồn tại. Không được ghi đè phiếu kiểm tồn cũ. Hãy bấm Thêm mới để tạo phiếu mới.`);
-                return;
-            }
 
             const { error: errTong } = await window.supabase
                 .from("kiem_ton_kho")
@@ -3565,7 +3592,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
                     return;
                 }
 
-               suaDongDangChon();
+                suaDongDangChon();
             });
         }
 
