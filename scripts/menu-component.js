@@ -693,7 +693,46 @@
       }
     });
 
+    global.openMenuSizeDropdownFor = function (inputEl, onPick) {
+      if (!inputEl) return;
 
+      const dd = new SizeDropdown();
+
+      dd.onPick = (val, row, source) => {
+        inputEl.value = String(val);
+        inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+        inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+
+        if (typeof onPick === "function") {
+          onPick(val, row, source);
+        }
+      };
+
+      inputEl.addEventListener("focus", () => {
+        dd.openFor(inputEl);
+      });
+
+      inputEl.addEventListener("click", () => {
+        dd.openFor(inputEl);
+      });
+
+      inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          dd.close();
+          return;
+        }
+
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          dd.openFor(inputEl);
+          return;
+        }
+      });
+
+      dd.openFor(inputEl);
+
+      return dd;
+    };
 
     function initGlobalSizeDropdown() {
       if (__sizeDDInited) return;
