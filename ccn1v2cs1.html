@@ -1468,7 +1468,8 @@
                 goc: {},
                 kiem: {},
                 ok: false,
-                lastMasp: ""
+                lastMasp: "",
+                selectedMasp: ""
             };
 
             function normMasp(v) {
@@ -1748,6 +1749,11 @@
                 font-weight:bold;
             }
 
+            .ccnkt-selected td {
+    background: #fff3cd !important;
+    outline: 2px solid #ff9800;
+}
+
             .ccnkt-foot {
                 display:grid;
                 grid-template-columns:1fr 1fr;
@@ -1851,12 +1857,7 @@
                 overlay.onclick = closePopupKiemTraCCN;
 
                 document.getElementById("ccnktClear").onclick = function () {
-                    if (!confirm("Xóa toàn bộ dữ liệu kiểm lại?")) return;
-                    window.ccnKiemTraState.kiem = {};
-                    window.ccnKiemTraState.ok = false;
-                    setHdStateCCN("moi");
-                    renderPopupKiemTraCCN();
-                    focusMaspKiemTra();
+                    xoaDuLieuKiemTheoMaspDangChon();
                 };
 
                 document.getElementById("ccnktConfirm").onclick = function () {
@@ -1873,11 +1874,28 @@
                     closePopupKiemTraCCN();
                 };
 
-                maspEl.addEventListener("input", showMaspSuggestKiemTra);
+                maspEl.addEventListener("input", function () {
+                    const m = normMasp(maspEl.value);
+
+                    if (m) {
+                        window.ccnKiemTraState.lastMasp = m;
+                        window.ccnKiemTraState.selectedMasp = m;
+                        renderPopupKiemTraCCN();
+                    }
+
+                    showMaspSuggestKiemTra();
+                });
 
                 maspEl.addEventListener("keydown", function (e) {
                     if (e.key !== "Enter") return;
                     e.preventDefault();
+
+                    const m = normMasp(maspEl.value);
+                    if (m) {
+                        chonMaspTrongPopupKiemTra(m, true);
+                        return;
+                    }
+
                     sizeEl.focus();
                     sizeEl.select();
                     showSizePopupKiemTra();
@@ -1888,7 +1906,26 @@
                 sizeEl.addEventListener("keydown", function (e) {
                     if (e.key !== "Enter") return;
                     e.preventDefault();
-                    themDongKiemTra();
+
+                    const raw = String(sizeEl.value || "").trim();
+                    const size = normSize(raw);
+
+                    if (!VALID_SIZES.includes(size)) {
+                        if (raw.length >= 3) {
+                            const maspQuet = normMasp(raw);
+                            sizeEl.value = "";
+
+                            chonMaspTrongPopupKiemTra(maspQuet, true);
+                            return;
+                        }
+
+                        alert("Bạn phải nhập size hợp lệ hoặc quét/nhập mã sản phẩm.");
+                        sizeEl.focus();
+                        sizeEl.select();
+                        return;
+                    }
+
+                    themDongKiemTra(true);
                 });
 
                 slEl.addEventListener("keydown", function (e) {
@@ -1977,6 +2014,68 @@
                 });
             }
 
+            function chonMaspTrongPopupKiemTra(masp, focusSize = true) {
+                const m = normMasp(masp);
+                if (!m) return;
+
+                window.ccnKiemTraState.lastMasp = m;
+                window.ccnKiemTraState.selectedMasp = m;
+
+                const maspEl = document.getElementById("ccnktMasp");
+                const sizeEl = document.getElementById("ccnktSize");
+
+                if (maspEl) maspEl.value = m;
+
+                renderPopupKiemTraCCN();
+
+                if (focusSize && sizeEl) {
+                    setTimeout(() => {
+                        sizeEl.focus();
+                        sizeEl.select();
+                        showSizePopupKiemTra();
+                    }, 30);
+                }
+            }
+
+            function xoaDuLieuKiemTheoMaspDangChon() {
+                const masp = normMasp(
+                    window.ccnKiemTraState.selectedMasp ||
+                    document.getElementById("ccnktMasp")?.value
+                );
+
+                if (!masp) {
+                    alert("Bạn chưa chọn mã sản phẩm để xóa kiểm.");
+                    return;
+                }
+
+                if (!confirm(`Xóa toàn bộ dữ liệu kiểm lại của mã ${masp}?`)) return;
+
+                Object.keys(window.ccnKiemTraState.kiem || {}).forEach(key => {
+                    const k = splitKey(key);
+                    if (normMasp(k.masp) === masp) {
+                        delete window.ccnKiemTraState.kiem[key];
+                    }
+                });
+
+                window.ccnKiemTraState.lastMasp = masp;
+                window.ccnKiemTraState.selectedMasp = masp;
+
+                renderPopupKiemTraCCN();
+
+                const maspEl = document.getElementById("ccnktMasp");
+                const sizeEl = document.getElementById("ccnktSize");
+
+                if (maspEl) maspEl.value = masp;
+                if (sizeEl) {
+                    sizeEl.value = "";
+                    setTimeout(() => {
+                        sizeEl.focus();
+                        sizeEl.select();
+                        showSizePopupKiemTra();
+                    }, 30);
+                }
+            }
+
             function themDongKiemTra(giuPopupSize = false) {
                 const maspEl = document.getElementById("ccnktMasp");
                 const slEl = document.getElementById("ccnktSL");
@@ -2002,6 +2101,7 @@
                 const key = makeKey(masp, size);
                 window.ccnKiemTraState.kiem[key] = (window.ccnKiemTraState.kiem[key] || 0) + sl;
                 window.ccnKiemTraState.lastMasp = masp;
+                window.ccnKiemTraState.selectedMasp = masp;
 
                 sizeEl.value = "";
                 slEl.value = "1";
@@ -2079,6 +2179,9 @@
                     if (row.trangthai !== "OK") allOk = false;
 
                     const tr = document.createElement("tr");
+                    if (normMasp(row.masp) === normMasp(window.ccnKiemTraState.selectedMasp)) {
+                        tr.classList.add("ccnkt-selected");
+                    }
 
                     // OK không tô màu, sai lệch mới tô màu
                     if (row.trangthai !== "OK") {
@@ -2094,6 +2197,10 @@
             <td>${row.trangthai}</td>
             <td>${row.chitiet || ""}</td>
         `;
+
+                    tr.addEventListener("click", function () {
+                        chonMaspTrongPopupKiemTra(row.masp, true);
+                    });
 
                     tbody.appendChild(tr);
                 });
