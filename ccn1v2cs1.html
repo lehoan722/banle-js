@@ -1750,8 +1750,10 @@
             }
 
             .ccnkt-selected td {
-    background: #fff3cd !important;
-    outline: 2px solid #ff9800;
+    background: #ffe082 !important;
+    color: #000 !important;
+    font-weight: 800 !important;
+    outline: 2px solid #ff6f00;
 }
 
             .ccnkt-foot {
@@ -1981,10 +1983,12 @@
 
                 box.querySelectorAll(".ccnkt-suggest-row").forEach(row => {
                     row.onclick = function () {
-                        maspEl.value = this.dataset.masp;
+                        const m = this.dataset.masp;
+
+                        maspEl.value = m;
                         box.style.display = "none";
-                        document.getElementById("ccnktSize").focus();
-                        showSizePopupKiemTra();
+
+                        chonMaspTrongPopupKiemTra(m, true);
                     };
                 });
             }
@@ -2080,6 +2084,18 @@
                 const maspEl = document.getElementById("ccnktMasp");
                 const slEl = document.getElementById("ccnktSL");
                 const sizeEl = document.getElementById("ccnktSize");
+
+                maspEl.addEventListener("focus", function () {
+                    setTimeout(() => {
+                        maspEl.select();
+                    }, 0);
+                });
+
+                maspEl.addEventListener("click", function () {
+                    setTimeout(() => {
+                        maspEl.select();
+                    }, 0);
+                });
 
                 const masp = normMasp(maspEl.value);
                 const size = normSize(sizeEl.value || "0");
