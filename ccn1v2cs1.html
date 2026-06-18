@@ -1467,7 +1467,8 @@
             window.ccnKiemTraState = {
                 goc: {},
                 kiem: {},
-                ok: false
+                ok: false,
+                lastMasp: ""
             };
 
             function normMasp(v) {
@@ -1739,11 +1740,7 @@
                 font-weight:bold;
                 color:#0047cc;
                 word-break:break-word;
-            }
-
-            .ccnkt-ok {
-                background:#e8f5e9;
-            }
+            }            
 
             .ccnkt-bad {
                 background:#ffebee;
@@ -1886,7 +1883,7 @@
                     showSizePopupKiemTra();
                 });
 
-                sizeEl.addEventListener("focus", showSizePopupKiemTra);                
+                sizeEl.addEventListener("focus", showSizePopupKiemTra);
 
                 sizeEl.addEventListener("keydown", function (e) {
                     if (e.key !== "Enter") return;
@@ -2004,6 +2001,7 @@
 
                 const key = makeKey(masp, size);
                 window.ccnKiemTraState.kiem[key] = (window.ccnKiemTraState.kiem[key] || 0) + sl;
+                window.ccnKiemTraState.lastMasp = masp;
 
                 sizeEl.value = "";
                 slEl.value = "1";
@@ -2020,43 +2018,82 @@
                 }
             }
 
+            function getSortWeightCCN(trangthai) {
+                const tt = String(trangthai || "").trim().toUpperCase();
+
+                if (tt === "THIẾU" || tt === "THIEU") return 1;
+                if (tt === "LỆCH" || tt === "LECH") return 2;
+                if (tt === "THỪA" || tt === "THUA") return 3;
+                if (tt === "OK") return 4;
+
+                return 5;
+            }
+
             function renderPopupKiemTraCCN() {
                 const tbody = document.getElementById("ccnktTbody");
                 if (!tbody) return;
 
                 const gocGroup = groupTheoMasp(window.ccnKiemTraState.goc || {});
                 const kiemGroup = groupTheoMasp(window.ccnKiemTraState.kiem || {});
+                const lastMasp = normMasp(window.ccnKiemTraState.lastMasp || "");
 
-                const allMasps = Array.from(new Set([
+                let rowsData = Array.from(new Set([
                     ...Object.keys(gocGroup),
                     ...Object.keys(kiemGroup)
-                ]));
-
-                allMasps.sort();
-
-                tbody.innerHTML = "";
-
-                let allOk = allMasps.length > 0;
-
-                allMasps.forEach(masp => {
+                ])).map(masp => {
                     const g = gocGroup[masp];
                     const k = kiemGroup[masp];
                     const kq = buildKetQuaTheoMasp(masp, g, k);
 
-                    if (kq.trangthai !== "OK") allOk = false;
+                    return {
+                        masp,
+                        g,
+                        k,
+                        trangthai: kq.trangthai,
+                        chitiet: kq.chitiet || ""
+                    };
+                });
+
+                rowsData.sort((a, b) => {
+                    const aM = normMasp(a.masp);
+                    const bM = normMasp(b.masp);
+
+                    // 1) Mã vừa nhập luôn lên đầu tiên
+                    if (lastMasp && aM === lastMasp && bM !== lastMasp) return -1;
+                    if (lastMasp && bM === lastMasp && aM !== lastMasp) return 1;
+
+                    // 2) Dòng sai lệch lên trên, OK xuống dưới
+                    const wa = getSortWeightCCN(a.trangthai);
+                    const wb = getSortWeightCCN(b.trangthai);
+                    if (wa !== wb) return wa - wb;
+
+                    // 3) Còn lại sắp xếp theo mã
+                    return String(a.masp).localeCompare(String(b.masp), "vi");
+                });
+
+                tbody.innerHTML = "";
+
+                let allOk = rowsData.length > 0;
+
+                rowsData.forEach(row => {
+                    if (row.trangthai !== "OK") allOk = false;
 
                     const tr = document.createElement("tr");
-                    tr.className = kq.trangthai === "OK" ? "ccnkt-ok" : "ccnkt-bad";
+
+                    // OK không tô màu, sai lệch mới tô màu
+                    if (row.trangthai !== "OK") {
+                        tr.className = "ccnkt-bad";
+                    }
 
                     tr.innerHTML = `
-                <td>${masp}</td>
-                <td>${formatSizeSl(g?.items || [])}</td>
-                <td>${g?.tong || ""}</td>
-                <td>${formatSizeSl(k?.items || [])}</td>
-                <td>${k?.tong || ""}</td>
-                <td>${kq.trangthai}</td>
-                <td>${kq.chitiet || ""}</td>
-            `;
+            <td>${row.masp}</td>
+            <td>${formatSizeSl(row.g?.items || [])}</td>
+            <td>${row.g?.tong || ""}</td>
+            <td>${formatSizeSl(row.k?.items || [])}</td>
+            <td>${row.k?.tong || ""}</td>
+            <td>${row.trangthai}</td>
+            <td>${row.chitiet || ""}</td>
+        `;
 
                     tbody.appendChild(tr);
                 });
