@@ -636,6 +636,9 @@
 
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
+                <button id="btnKiemTraCCN" type="button" style="background:#ff9800;color:white;font-weight:bold;">
+                    ✅ Kiểm tra
+                </button>
             </div>
 
             <!-- Popup tìm khách hàng
@@ -1027,6 +1030,473 @@
         }
     </script>
 
+    <script>
+        (function () {
+            const VALID_SIZES = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
+
+            let ccnCheck = {
+                goc: {},
+                kiem: {},
+                ok: false
+            };
+
+            function normMasp(v) {
+                return String(v || "").trim().toUpperCase();
+            }
+
+            function normSize(v) {
+                const s = String(v || "").trim();
+                const m = s.match(/\d{1,2}/);
+                return m ? m[0] : "0";
+            }
+
+            function toNum(v) {
+                return Number(String(v || "").replace(/[^\d.-]/g, "")) || 0;
+            }
+
+            function makeKey(masp, size) {
+                return normMasp(masp) + "@@" + normSize(size);
+            }
+
+            function setHdStateCCN(state) {
+                const el = document.getElementById("hd_state");
+                if (!el) return;
+                el.value = state;
+                el.setAttribute("data-state", state);
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+
+            function getBangGocTuHoaDon() {
+                if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                    window.capNhatBangKetQuaTuDOM();
+                }
+
+                const bang = window.bangKetQua || {};
+                const out = {};
+
+                Object.values(bang).forEach(item => {
+                    const masp = normMasp(item.masp);
+                    if (!masp) return;
+
+                    (item.sizes || []).forEach((sz, i) => {
+                        const size = normSize(sz);
+                        const sl = toNum((item.soluongs || [])[i]);
+                        if (sl <= 0) return;
+
+                        const key = makeKey(masp, size);
+                        out[key] = (out[key] || 0) + sl;
+                    });
+                });
+
+                return out;
+            }
+
+            function tinhKetQua() {
+                const keys = new Set([
+                    ...Object.keys(ccnCheck.goc || {}),
+                    ...Object.keys(ccnCheck.kiem || {})
+                ]);
+
+                const rows = [];
+                let allOk = true;
+
+                keys.forEach(key => {
+                    const [masp, size] = key.split("@@");
+                    const slGoc = toNum(ccnCheck.goc[key]);
+                    const slKiem = toNum(ccnCheck.kiem[key]);
+
+                    let trangthai = "OK";
+                    let chitiet = "";
+
+                    if (slGoc === slKiem) {
+                        trangthai = "OK";
+                    } else {
+                        allOk = false;
+
+                        if (slKiem > slGoc) {
+                            trangthai = "THỪA";
+                            chitiet = `${size}/${slKiem - slGoc}`;
+                        } else if (slKiem < slGoc) {
+                            trangthai = "THIẾU";
+                            chitiet = `${size}/${slGoc - slKiem}`;
+                        } else {
+                            trangthai = "LỆCH";
+                            chitiet = `Gốc ${slGoc} / Kiểm ${slKiem}`;
+                        }
+                    }
+
+                    rows.push({
+                        masp,
+                        size,
+                        slGoc,
+                        slKiem,
+                        trangthai,
+                        chitiet
+                    });
+                });
+
+                rows.sort((a, b) => {
+                    if (a.trangthai === "OK" && b.trangthai !== "OK") return 1;
+                    if (a.trangthai !== "OK" && b.trangthai === "OK") return -1;
+                    if (a.masp !== b.masp) return a.masp.localeCompare(b.masp);
+                    return Number(a.size) - Number(b.size);
+                });
+
+                ccnCheck.ok = allOk && rows.length > 0;
+                return rows;
+            }
+
+            function ensurePopup() {
+                if (document.getElementById("ccnCheckOverlay")) return;
+
+                const style = document.createElement("style");
+                style.textContent = `
+            .ccn-check-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,.25);
+                z-index: 20000;
+                display: none;
+            }
+
+            .ccn-check-wrap {
+                position: fixed;
+                inset: 8px;
+                background: #fff;
+                z-index: 20001;
+                display: none;
+                flex-direction: column;
+                border-radius: 14px;
+                overflow: hidden;
+                box-shadow: 0 10px 40px rgba(0,0,0,.3);
+                font-family: Arial, sans-serif;
+            }
+
+            .ccn-check-head {
+                background: #ff9800;
+                color: #fff;
+                padding: 8px;
+                display: flex;
+                gap: 6px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+
+            .ccn-check-head b {
+                font-size: 18px;
+                margin-right: auto;
+            }
+
+            .ccn-check-head button {
+                height: 36px;
+                border: 0;
+                border-radius: 8px;
+                padding: 0 10px;
+                font-weight: bold;
+            }
+
+            .ccn-check-inputs {
+                display: grid;
+                grid-template-columns: 1fr 70px 70px;
+                gap: 6px;
+                padding: 8px;
+                background: #f5f5f5;
+            }
+
+            .ccn-check-inputs input {
+                height: 44px;
+                font-size: 22px;
+                box-sizing: border-box;
+                padding: 4px 6px;
+            }
+
+            #ccnCheckMasp {
+                background: #f3d0ff;
+            }
+
+            #ccnCheckSL,
+            #ccnCheckSize {
+                background: #fff59d;
+                text-align: center;
+            }
+
+            .ccn-check-body {
+                flex: 1;
+                overflow: auto;
+            }
+
+            .ccn-check-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 16px;
+            }
+
+            .ccn-check-table th,
+            .ccn-check-table td {
+                border: 1px solid #ddd;
+                padding: 6px 4px;
+                text-align: center;
+            }
+
+            .ccn-check-table th {
+                position: sticky;
+                top: 0;
+                background: #fff3cd;
+                z-index: 1;
+            }
+
+            .ccn-ok {
+                background: #e8f5e9;
+            }
+
+            .ccn-bad {
+                background: #ffebee;
+                color: #b00020;
+                font-weight: bold;
+            }
+
+            .ccn-check-foot {
+                padding: 8px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                background: #eef6ff;
+            }
+
+            .ccn-check-foot button {
+                height: 46px;
+                font-size: 17px;
+                font-weight: bold;
+                border-radius: 10px;
+                border: 1px solid #ccc;
+            }
+
+            @media (max-width: 480px) {
+                .ccn-check-wrap {
+                    inset: 0;
+                    border-radius: 0;
+                }
+
+                .ccn-check-table {
+                    font-size: 14px;
+                }
+
+                .ccn-check-table th,
+                .ccn-check-table td {
+                    padding: 5px 3px;
+                }
+
+                .ccn-check-head b {
+                    width: 100%;
+                }
+            }
+        `;
+                document.head.appendChild(style);
+
+                const overlay = document.createElement("div");
+                overlay.id = "ccnCheckOverlay";
+                overlay.className = "ccn-check-overlay";
+
+                const wrap = document.createElement("div");
+                wrap.id = "ccnCheckWrap";
+                wrap.className = "ccn-check-wrap";
+                wrap.innerHTML = `
+            <div class="ccn-check-head">
+                <b>✅ Kiểm tra phiếu chuyển chi nhánh</b>
+                <button type="button" id="ccnCheckClose">Đóng</button>
+            </div>
+
+            <div class="ccn-check-inputs">
+                <input id="ccnCheckMasp" placeholder="Mã SP" autocomplete="off">
+                <input id="ccnCheckSL" value="1" placeholder="SL">
+                <input id="ccnCheckSize" placeholder="SIZE">
+            </div>
+
+            <div class="ccn-check-body">
+                <table class="ccn-check-table">
+                    <thead>
+                        <tr>
+                            <th>Mã hàng</th>
+                            <th>Size</th>
+                            <th>SL</th>
+                            <th>SizeK</th>
+                            <th>SLK</th>
+                            <th>Trạng thái</th>
+                            <th>Chi tiết</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ccnCheckTbody"></tbody>
+                </table>
+            </div>
+
+            <div class="ccn-check-foot">
+                <button type="button" id="ccnCheckClear">Xóa kiểm</button>
+                <button type="button" id="ccnCheckConfirm">Xác nhận kiểm đúng</button>
+            </div>
+        `;
+
+                document.body.appendChild(overlay);
+                document.body.appendChild(wrap);
+
+                document.getElementById("ccnCheckClose").onclick = closePopup;
+                overlay.onclick = closePopup;
+
+                document.getElementById("ccnCheckClear").onclick = function () {
+                    if (!confirm("Xóa toàn bộ dữ liệu kiểm lại?")) return;
+                    ccnCheck.kiem = {};
+                    ccnCheck.ok = false;
+                    renderCheckTable();
+                    focusCheckMasp();
+                };
+
+                document.getElementById("ccnCheckConfirm").onclick = function () {
+                    renderCheckTable();
+
+                    if (!ccnCheck.ok) {
+                        alert("❌ Dữ liệu kiểm chưa khớp. Vui lòng kiểm tra lại các dòng THỪA / THIẾU / LỆCH.");
+                        focusCheckMasp();
+                        return;
+                    }
+
+                    setHdStateCCN("kiemtra");
+                    alert("✅ Phiếu đã kiểm đúng. Bây giờ có thể lưu.");
+                    closePopup();
+                };
+
+                const maspEl = document.getElementById("ccnCheckMasp");
+                const slEl = document.getElementById("ccnCheckSL");
+                const sizeEl = document.getElementById("ccnCheckSize");
+
+                function addCheckLine() {
+                    const masp = normMasp(maspEl.value);
+                    const size = normSize(sizeEl.value || "0");
+                    const sl = toNum(slEl.value || "1") || 1;
+
+                    if (!masp) {
+                        alert("Bạn chưa nhập mã sản phẩm.");
+                        focusCheckMasp();
+                        return;
+                    }
+
+                    if (!VALID_SIZES.includes(size)) {
+                        alert("Size không hợp lệ. Chỉ dùng: " + VALID_SIZES.join(", "));
+                        sizeEl.focus();
+                        sizeEl.select();
+                        return;
+                    }
+
+                    const key = makeKey(masp, size);
+                    ccnCheck.kiem[key] = (ccnCheck.kiem[key] || 0) + sl;
+
+                    maspEl.value = "";
+                    sizeEl.value = "";
+                    slEl.value = "1";
+
+                    renderCheckTable();
+                    focusCheckMasp();
+                }
+
+                maspEl.addEventListener("keydown", function (e) {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    sizeEl.focus();
+                    sizeEl.select();
+                });
+
+                sizeEl.addEventListener("keydown", function (e) {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    addCheckLine();
+                });
+
+                slEl.addEventListener("keydown", function (e) {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    sizeEl.focus();
+                    sizeEl.select();
+                });
+            }
+
+            function renderCheckTable() {
+                const tbody = document.getElementById("ccnCheckTbody");
+                if (!tbody) return;
+
+                const rows = tinhKetQua();
+                tbody.innerHTML = "";
+
+                rows.forEach(r => {
+                    const tr = document.createElement("tr");
+                    tr.className = r.trangthai === "OK" ? "ccn-ok" : "ccn-bad";
+
+                    tr.innerHTML = `
+                <td>${r.masp}</td>
+                <td>${r.size}</td>
+                <td>${r.slGoc || ""}</td>
+                <td>${r.size}</td>
+                <td>${r.slKiem || ""}</td>
+                <td>${r.trangthai}</td>
+                <td>${r.chitiet || ""}</td>
+            `;
+
+                    tbody.appendChild(tr);
+                });
+
+                const btn = document.getElementById("ccnCheckConfirm");
+                if (btn) {
+                    btn.disabled = !ccnCheck.ok;
+                    btn.style.opacity = ccnCheck.ok ? "1" : ".45";
+                }
+            }
+
+            function focusCheckMasp() {
+                const el = document.getElementById("ccnCheckMasp");
+                if (!el) return;
+                setTimeout(() => {
+                    el.focus();
+                    el.select();
+                }, 50);
+            }
+
+            function openPopup() {
+                ensurePopup();
+
+                ccnCheck.goc = getBangGocTuHoaDon();
+                ccnCheck.kiem = {};
+                ccnCheck.ok = false;
+
+                if (!Object.keys(ccnCheck.goc).length) {
+                    alert("⚠️ Chưa có dữ liệu hóa đơn để kiểm tra.");
+                    return;
+                }
+
+                document.getElementById("ccnCheckOverlay").style.display = "block";
+                document.getElementById("ccnCheckWrap").style.display = "flex";
+
+                renderCheckTable();
+                focusCheckMasp();
+            }
+
+            function closePopup() {
+                const overlay = document.getElementById("ccnCheckOverlay");
+                const wrap = document.getElementById("ccnCheckWrap");
+                if (overlay) overlay.style.display = "none";
+                if (wrap) wrap.style.display = "none";
+            }
+
+            window.moPopupKiemTraCCN = openPopup;
+        })();
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const btn = document.getElementById("btnKiemTraCCN");
+            if (!btn) return;
+
+            btn.addEventListener("click", function () {
+                window.moPopupKiemTraCCN?.();
+            });
+        });
+    </script>
 
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
@@ -1539,6 +2009,20 @@
 
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
+
+            const hdStateEl = document.getElementById("hd_state");
+            const hdState = String(hdStateEl?.value || "moi").trim().toLowerCase();
+
+            if (hdState === "moi") {
+                alert("Phiếu mới bắt buộc phải kiểm tra trước khi lưu.");
+                window.moPopupKiemTraCCN?.();
+                return;
+            }
+
+            if (hdState !== "kiemtra" && hdState !== "xem" && hdState !== "sua") {
+                alert("Trạng thái phiếu không hợp lệ. Chỉ được lưu khi trạng thái là KIỂM TRA, XEM hoặc SỬA.");
+                return;
+            }
 
             window.dangLuu = true;
             this.disabled = true;
