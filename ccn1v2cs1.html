@@ -1956,46 +1956,28 @@
                 });
             }
 
+            let ccnktSizeDropdown = null;
+
             function showSizePopupKiemTra() {
-                const box = document.getElementById("ccnktSizePopup");
                 const sizeEl = document.getElementById("ccnktSize");
-                const masp = normMasp(document.getElementById("ccnktMasp")?.value);
-                if (!box || !sizeEl || !masp) return;
+                if (!sizeEl) return;
 
-                const sizes = new Set();
-
-                Object.keys(window.ccnKiemTraState.goc || {}).forEach(key => {
-                    const k = splitKey(key);
-                    if (k.masp === masp) sizes.add(k.size);
-                });
-
-                VALID_SIZES.forEach(s => sizes.add(s));
-
-                const kw = normSize(sizeEl.value);
-                let list = Array.from(sizes).filter(Boolean);
-
-                if (kw) {
-                    list = list.filter(s => String(s).includes(kw));
+                if (typeof window.openMenuSizeDropdownFor !== "function") {
+                    alert("Chưa tải được popup size từ menu-component.js");
+                    return;
                 }
 
-                list.sort((a, b) => Number(a) - Number(b));
+                ccnktSizeDropdown = window.openMenuSizeDropdownFor(sizeEl, function (val) {
+                    sizeEl.value = String(val);
 
-                box.innerHTML = list.map(s => `<div class="ccnkt-suggest-row" data-size="${s}">${s}</div>`).join("");
+                    // Chọn size xong thì tự đẩy vào bảng kiểm
+                    themDongKiemTra(true);
 
-                const rect = sizeEl.getBoundingClientRect();
-                const wrapRect = document.querySelector(".ccnkt-inputs").getBoundingClientRect();
-
-                box.style.left = (rect.left - wrapRect.left) + "px";
-                box.style.top = (rect.bottom - wrapRect.top) + "px";
-                box.style.width = rect.width + "px";
-                box.style.display = "block";
-
-                box.querySelectorAll(".ccnkt-suggest-row").forEach(row => {
-                    row.onclick = function () {
-                        sizeEl.value = this.dataset.size;
-                        box.style.display = "none";
-                        themDongKiemTra();
-                    };
+                    // Giữ lại mã SP, focus lại size để chọn tiếp
+                    setTimeout(() => {
+                        sizeEl.focus();
+                        sizeEl.select();
+                    }, 30);
                 });
             }
 
@@ -2024,15 +2006,19 @@
                 const key = makeKey(masp, size);
                 window.ccnKiemTraState.kiem[key] = (window.ccnKiemTraState.kiem[key] || 0) + sl;
 
-                maspEl.value = "";
                 sizeEl.value = "";
                 slEl.value = "1";
 
-                document.getElementById("ccnktSuggest").style.display = "none";
-                document.getElementById("ccnktSizePopup").style.display = "none";
-
                 renderPopupKiemTraCCN();
-                focusMaspKiemTra();
+
+                if (giuPopupSize) {
+                    setTimeout(() => {
+                        sizeEl.focus();
+                        sizeEl.select();
+                    }, 30);
+                } else {
+                    focusMaspKiemTra();
+                }
             }
 
             function renderPopupKiemTraCCN() {
