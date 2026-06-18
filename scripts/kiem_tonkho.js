@@ -3565,7 +3565,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
                     return;
                 }
 
-                xoaDongDangChon();
+               suaDongDangChon();
             });
         }
 
