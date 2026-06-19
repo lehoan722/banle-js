@@ -847,66 +847,9 @@
 WRAPPER CHẶN LƯU CCN
 ========================= */
 
-window.saveHoaDonCCNCoKiemTra = async function (source = "BTN-LUU-CCN") {
-
-    const hdState =
-        String(
-            document.getElementById("hd_state")?.value || "moi"
-        )
-            .trim()
-            .toLowerCase();
-
-    if (hdState === "moi") {
-
-        alert(
-            "Phiếu chuyển chi nhánh phải kiểm tra trước khi lưu."
-        );
-
-        if (typeof window.moPopupKiemTraCCN === "function") {
-            window.moPopupKiemTraCCN();
-        }
-
-        return {
-            ok: false,
-            reason: "CHUA_KIEM_TRA"
-        };
-    }
-
-    if (
-        hdState !== "kiemtra" &&
-        hdState !== "xem" &&
-        hdState !== "sua"
-    ) {
-
-        alert(
-            "Trạng thái phiếu không hợp lệ."
-        );
-
-        return {
-            ok: false,
-            reason: "STATE_INVALID"
-        };
-    }
-
-    if (
-        typeof window.__SAVE_CCN_GOC__ !== "function"
-    ) {
-
-        alert(
-            "Không tìm thấy hàm lưu gốc."
-        );
-
-        return {
-            ok: false,
-            reason: "NO_SAVE_FN"
-        };
-    }
-
-    return await window.__SAVE_CCN_GOC__(source);
-};
-
-window.saveHoaDonCCN =
-    window.saveHoaDonCCNCoKiemTra;
+/* =========================
+   WRAPPER CHẶN LƯU CCN
+========================= */
 
 window.saveHoaDonCCNCoKiemTra = async function (source = "BTN-LUU-CCN") {
     const hdState = String(document.getElementById("hd_state")?.value || "moi")
@@ -914,7 +857,7 @@ window.saveHoaDonCCNCoKiemTra = async function (source = "BTN-LUU-CCN") {
         .toLowerCase();
 
     if (hdState === "moi") {
-        alert("Phiếu mới bắt buộc phải kiểm tra trước khi lưu.");
+        alert("Phiếu chuyển chi nhánh phải kiểm tra trước khi lưu.");
         window.moPopupKiemTraCCN?.();
         return { ok: false, reason: "CHUA_KIEM_TRA" };
     }
@@ -924,5 +867,12 @@ window.saveHoaDonCCNCoKiemTra = async function (source = "BTN-LUU-CCN") {
         return { ok: false, reason: "STATE_INVALID" };
     }
 
+    if (typeof window.__SAVE_CCN_GOC__ !== "function") {
+        alert("Không tìm thấy hàm lưu gốc.");
+        return { ok: false, reason: "NO_SAVE_FN" };
+    }
+
     return await window.__SAVE_CCN_GOC__(source);
 };
+
+window.saveHoaDonCCN = window.saveHoaDonCCNCoKiemTra;
