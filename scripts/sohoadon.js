@@ -5,7 +5,7 @@ async function kiemTraSoHoaDonDaTonTai(loai, so) {
     const { data } = await supabase
         .from("hoadon_banle")
         .select("sohd")
-        .eq("sohd", `${loai}_${String(so).padStart(5, "0")}`)
+        .eq("sohd", `${loai}_${String(so).padStart(6, "0")}`)
         .maybeSingle(); // dùng maybeSingle để không lỗi nếu không có bản ghi
     return !!data;
 }
@@ -77,7 +77,7 @@ export async function capNhatSoHoaDonTuDong() {
 
         } else if (pathname.includes("kiem_nhapkho")) {
             loai = diadiem === "cs1" ? "kiemnhapkhocs1" : "kiemnhapkhocs2";
-        
+
 
         } else if (pathname.includes("chuyenkho1v2cs1")) {
             loai = "ck1v2_cs1";
@@ -133,7 +133,7 @@ export async function capNhatSoHoaDonTuDong() {
         // KHÔNG cập nhật lại số_hientai vào bảng sochungtu ở đây!
 
         // 7. Ghép số hóa đơn đúng chuẩn
-        const sohd = `${loai}_${String(soMoi).padStart(5, "0")}`;
+        const sohd = `${loai}_${String(soMoi).padStart(6, "0")}`;
 
         // 8. Cập nhật lên giao diện (có kiểm tra tồn tại phần tử)
         const sohdEl = document.getElementById("sohd");
