@@ -52,31 +52,44 @@ function getSohdPrefix(sohd) {
   return sohd.substring(0, idx);
 }
 
+function getSohdNumber(sohd) {
+  const raw = String(sohd || "").trim();
+  const idx = raw.indexOf("_");
+  if (idx === -1) return null;
+
+  const n = Number(raw.slice(idx + 1).replace(/\D/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
 
 async function taiHoaDonTruoc() {
-  const sohd = document.getElementById("sohd").value;
+  const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return;
 
-  const prefix = getSohdPrefix(sohd); // ví dụ: "bancs1"
+  const prefix = getSohdPrefix(sohd);
+  const currentNum = getSohdNumber(sohd);
 
-  let query = supabase
-    .from("hoadon_banle")
-    .select("*");
-
-  // Khóa theo đúng tiền tố số chứng từ của trang hiện hành
-  if (prefix) {
-    query = query.like("sohd", `${prefix}_%`);
+  if (!prefix || currentNum == null) {
+    alert("❌ Số hóa đơn không hợp lệ.");
+    return;
   }
 
-  query = query
-    .lt("sohd", sohd)
-    .order("sohd", { ascending: false })
-    .limit(1);
+  const { data, error } = await supabase
+    .from("hoadon_banle")
+    .select("*")
+    .like("sohd", `${prefix}_%`);
 
-  const { data, error } = await query;
+  if (error || !data?.length) {
+    alert("❌ Không còn hóa đơn trước đó trong loại này.");
+    return;
+  }
 
-  if (!error && data && data.length) {
-    napHoaDonVaoTrang(data[0]);
+  const prev = data
+    .map(hd => ({ ...hd, __num: getSohdNumber(hd.sohd) }))
+    .filter(hd => hd.__num != null && hd.__num < currentNum)
+    .sort((a, b) => b.__num - a.__num)[0];
+
+  if (prev) {
+    napHoaDonVaoTrang(prev);
   } else {
     alert("❌ Không còn hóa đơn trước đó trong loại này.");
   }
@@ -84,29 +97,34 @@ async function taiHoaDonTruoc() {
 
 
 async function taiHoaDonTiep() {
-  const sohd = document.getElementById("sohd").value;
+  const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return;
 
-  const prefix = getSohdPrefix(sohd); // ví dụ: "bancs1"
+  const prefix = getSohdPrefix(sohd);
+  const currentNum = getSohdNumber(sohd);
 
-  let query = supabase
-    .from("hoadon_banle")
-    .select("*");
-
-  // Khóa theo đúng tiền tố số chứng từ hiện hành
-  if (prefix) {
-    query = query.like("sohd", `${prefix}_%`);
+  if (!prefix || currentNum == null) {
+    alert("❌ Số hóa đơn không hợp lệ.");
+    return;
   }
 
-  query = query
-    .gt("sohd", sohd)
-    .order("sohd", { ascending: true })
-    .limit(1);
+  const { data, error } = await supabase
+    .from("hoadon_banle")
+    .select("*")
+    .like("sohd", `${prefix}_%`);
 
-  const { data, error } = await query;
+  if (error || !data?.length) {
+    alert("❌ Không còn hóa đơn tiếp theo trong loại này.");
+    return;
+  }
 
-  if (!error && data && data.length) {
-    napHoaDonVaoTrang(data[0]);
+  const next = data
+    .map(hd => ({ ...hd, __num: getSohdNumber(hd.sohd) }))
+    .filter(hd => hd.__num != null && hd.__num > currentNum)
+    .sort((a, b) => a.__num - b.__num)[0];
+
+  if (next) {
+    napHoaDonVaoTrang(next);
   } else {
     alert("❌ Không còn hóa đơn tiếp theo trong loại này.");
   }
