@@ -987,9 +987,6 @@
         document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
     </script>
 
-
-    <script src="./scripts/kiemtraccn.js"></script>
-
     <script type="module">
         // Không import backup nữa vì không dùng
         // import { backupAllTablesToZip } from './scripts/backup.js';
@@ -1031,37 +1028,21 @@
         }
     </script>
 
+    <script src="./scripts/kiemtraccn.js"></script>
 
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
-        window.__SAVE_CCN_GOC__ = saveBanLe111;
-        window.saveHoaDonCCN = window.saveHoaDonCCNCoKiemTra;
+        setTimeout(function () {
 
-        document.getElementById('btn-luu').onclick = async function () {
-            if (window.dangLuu) return;
+            window.__SAVE_CCN_GOC__ = saveBanLe111;
 
-            window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
+            window.LUU_HOADON_F2 = async () => {
+                return await window.saveHoaDonCCNCoKiemTra("F2-CCN");
+            };
 
-            try {
-                const result = await window.saveHoaDonCCNCoKiemTra("BTN-LUU-CCN");
-
-                if (!result?.ok) {
-                    console.warn("Lưu CCN không ok:", result);
-                }
-            } catch (e) {
-                console.error(e);
-                alert("❌ Lỗi lưu: " + (e?.message || e));
-            } finally {
-                window.dangLuu = false;
-                this.disabled = false;
-                this.innerText = "💾 Lưu";
-            }
-        };
+        }, 1000);
     </script>
-
 
     <script>
         const dispatchTarget = document.body || document.documentElement;
@@ -1570,11 +1551,9 @@
             this.innerText = "Đang lưu...";
 
             try {
-                if (typeof window.saveHoaDonCCNCoKiemTra === "function") {
-                    const result = await window.saveHoaDonCCNCoKiemTra("BTN-LUU-CCN");
-                } else {
-                    const result = await saveBanLe111("BTN-LUU-CCN");
-                }
+                window.__SAVE_CCN_GOC__ = saveBanLe111;
+
+                const result = await window.saveHoaDonCCNCoKiemTra("BTN-LUU-CCN");
 
                 if (result?.ok) {
                     // có thể để trống
