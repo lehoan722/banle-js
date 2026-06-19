@@ -65,71 +65,33 @@ async function taiHoaDonTruoc() {
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return;
 
-  const prefix = getSohdPrefix(sohd);
-  const currentNum = getSohdNumber(sohd);
+  const { data, error } = await supabase.rpc("rpc_get_adjacent_hoadon", {
+    p_sohd: sohd,
+    p_direction: "prev"
+  });
 
-  if (!prefix || currentNum == null) {
-    alert("❌ Số hóa đơn không hợp lệ.");
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("hoadon_banle")
-    .select("*")
-    .like("sohd", `${prefix}_%`);
-
-  if (error || !data?.length) {
-    alert("❌ Không còn hóa đơn trước đó trong loại này.");
-    return;
-  }
-
-  const prev = data
-    .map(hd => ({ ...hd, __num: getSohdNumber(hd.sohd) }))
-    .filter(hd => hd.__num != null && hd.__num < currentNum)
-    .sort((a, b) => b.__num - a.__num)[0];
-
-  if (prev) {
-    napHoaDonVaoTrang(prev);
+  if (!error && data && data.length) {
+    napHoaDonVaoTrang(data[0]);
   } else {
     alert("❌ Không còn hóa đơn trước đó trong loại này.");
   }
 }
-
 
 async function taiHoaDonTiep() {
   const sohd = document.getElementById("sohd").value.trim();
   if (!sohd) return;
 
-  const prefix = getSohdPrefix(sohd);
-  const currentNum = getSohdNumber(sohd);
+  const { data, error } = await supabase.rpc("rpc_get_adjacent_hoadon", {
+    p_sohd: sohd,
+    p_direction: "next"
+  });
 
-  if (!prefix || currentNum == null) {
-    alert("❌ Số hóa đơn không hợp lệ.");
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("hoadon_banle")
-    .select("*")
-    .like("sohd", `${prefix}_%`);
-
-  if (error || !data?.length) {
-    alert("❌ Không còn hóa đơn tiếp theo trong loại này.");
-    return;
-  }
-
-  const next = data
-    .map(hd => ({ ...hd, __num: getSohdNumber(hd.sohd) }))
-    .filter(hd => hd.__num != null && hd.__num > currentNum)
-    .sort((a, b) => a.__num - b.__num)[0];
-
-  if (next) {
-    napHoaDonVaoTrang(next);
+  if (!error && data && data.length) {
+    napHoaDonVaoTrang(data[0]);
   } else {
     alert("❌ Không còn hóa đơn tiếp theo trong loại này.");
   }
 }
-
 
 export async function napHoaDonVaoTrang(hoadon) {
   if (!hoadon) return;
