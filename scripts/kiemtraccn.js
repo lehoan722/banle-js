@@ -393,7 +393,7 @@
                 </table>
             </div>
 
-            <div class="ccnkt-foot">
+            
                 <div class="ccnkt-foot">
     <button type="button" id="ccnktClear">Xóa kiểm</button>
     <button type="button" id="ccnktClearAll">Xóa toàn bộ kiểm</button>
