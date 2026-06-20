@@ -501,11 +501,6 @@
                 img.className = 'ktk-img-thumb';
                 img.title = 'Bấm để xem ảnh lớn';
 
-                img.addEventListener('click', function (ev) {
-                  ev.stopPropagation();
-                  openKtkImageViewer(url);
-                });
-
                 td.appendChild(img);
               } else {
                 td.textContent = '';
@@ -555,6 +550,13 @@
 
           const currentColumns = getColumnsDangHienThi();
           const dataKey = currentColumns[coords.col]?.data;
+          if (dataKey === 'baymau_image_path' && r.baymau_image_path) {
+            const url = getKtkImagePublicUrl(r.baymau_image_path);
+            if (url) {
+              openKtkImageViewer(url);
+            }
+            return;
+          }
 
           if (dataKey === 'so_phieu' && r.so_phieu) {
             copyText(r.so_phieu);
