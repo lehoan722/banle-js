@@ -45,6 +45,27 @@ let NHOMHANG_OPTIONS = [];
 ========================================================= */
 const $ = (id) => document.getElementById(id);
 
+function buildSoCtCandidates(soCt) {
+  const s = String(soCt || "").trim();
+  if (!s) return [];
+
+  const out = [s];
+
+  const m = s.match(/^(.+_)(\d+)$/);
+  if (m) {
+    const prefix = m[1];
+    const num = Number(m[2]);
+
+    if (Number.isFinite(num)) {
+      out.push(prefix + String(num).padStart(6, "0"));
+      out.push(prefix + String(num).padStart(5, "0"));
+      out.push(prefix + String(num));
+    }
+  }
+
+  return [...new Set(out)];
+}
+
 function getTodayYmd() {
   const d = new Date();
   return d.toISOString().slice(0, 10);
@@ -1363,18 +1384,30 @@ async function napPhieu(soCtParam = "") {
     const soCt = String(soCtInput || "").trim();
     if (!soCt) return;
 
-    const { data: hd, error: errHd } = await supabase
+    const soCtCandidates = buildSoCtCandidates(soCt);
+
+    const { data: hdList, error: errHd } = await supabase
       .from("yeucau_chuyenkho")
       .select("*")
-      .eq("so_ct", soCt)
-      .single();
+      .in("so_ct", soCtCandidates)
+      .limit(1);
 
     if (errHd) throw errHd;
+
+    const hd = hdList?.[0];
+
+    if (!hd) {
+      alert(
+        "Không tìm thấy phiếu: " + soCt +
+        "\n\nĐã thử tìm các dạng:\n" + soCtCandidates.join("\n")
+      );
+      return;
+    }
 
     const { data: ct, error: errCt } = await supabase
       .from("yeucau_chuyenkho_ct")
       .select("*")
-      .eq("so_ct", soCt)
+      .eq("so_ct", hd.so_ct)
       .order("stt", { ascending: true });
 
     if (errCt) throw errCt;
