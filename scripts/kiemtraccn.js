@@ -334,6 +334,21 @@
                     padding:5px 3px;
                 }
             }
+
+            @media (max-width:480px){
+
+    .ccnkt-foot{
+        gap:4px;
+        padding:4px;
+    }
+
+    .ccnkt-foot button{
+        height:52px;
+        font-size:15px;
+    }
+
+}
+    
         `;
         document.head.appendChild(style);
 
@@ -445,9 +460,9 @@
             const m = normMasp(maspEl.value);
 
             if (m === "OKK") {
-    xacNhanKiemDungDacCachOKK();
-    return;
-}
+                xacNhanKiemDungDacCachOKK();
+                return;
+            }
 
             if (m) {
                 chonMaspTrongPopupKiemTra(m, true);
@@ -839,15 +854,15 @@
     }
 
     function xacNhanKiemDungDacCachOKK() {
-    // Cách 1: ép dữ liệu kiểm = dữ liệu gốc để hệ thống hiểu là đã kiểm đúng
-    window.ccnKiemTraState.kiem = { ...(window.ccnKiemTraState.goc || {}) };
-    window.ccnKiemTraState.ok = true;
+        // Cách 1: ép dữ liệu kiểm = dữ liệu gốc để hệ thống hiểu là đã kiểm đúng
+        window.ccnKiemTraState.kiem = { ...(window.ccnKiemTraState.goc || {}) };
+        window.ccnKiemTraState.ok = true;
 
-    renderPopupKiemTraCCN();
+        renderPopupKiemTraCCN();
 
-    setHdStateCCN("kiemtra");
-    closePopupKiemTraCCN();
-}
+        setHdStateCCN("kiemtra");
+        closePopupKiemTraCCN();
+    }
 
     function openPopupKiemTraCCN() {
         ensurePopupKiemTraCCN();
