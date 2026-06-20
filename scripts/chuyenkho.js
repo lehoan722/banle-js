@@ -1392,7 +1392,7 @@ async function luuPhieu(mode = "xong") {
     }
 
     $("hd_state").value = "sua";
-    await napPhieu(soCt);
+   // await napPhieu(soCt);
 
     alert("Đã lưu phiếu chuyển kho.");
 
