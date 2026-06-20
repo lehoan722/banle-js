@@ -3162,6 +3162,294 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
     // SAVE KIEM NHAP KHO
     // =========================
 
+    // =========================
+    // BẮT BUỘC CHỤP ẢNH BÀY MẪU KHI LƯU KIỂM TỒN
+    // =========================
+
+    function ktkFileToImage(file) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                resolve(img);
+            };
+
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error("Không đọc được ảnh"));
+            };
+
+            img.src = url;
+        });
+    }
+
+    function formatKtkBayMauTime(d = new Date()) {
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const yyyy = d.getFullYear();
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mi = String(d.getMinutes()).padStart(2, "0");
+        return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+    }
+
+    async function resizeKtkBayMauImage(file, masp, soPhieu, manv, diadiem, quality = 0.62) {
+        const img = await ktkFileToImage(file);
+
+        const isLandscape = img.width >= img.height;
+        const targetW = isLandscape ? 480 : 360;
+        const targetH = isLandscape ? 360 : 480;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = targetW;
+        canvas.height = targetH;
+
+        const ctx = canvas.getContext("2d", { alpha: false });
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, targetW, targetH);
+
+        const scale = Math.min(targetW / img.width, targetH / img.height);
+        const drawW = Math.round(img.width * scale);
+        const drawH = Math.round(img.height * scale);
+        const dx = Math.round((targetW - drawW) / 2);
+        const dy = Math.round((targetH - drawH) / 2);
+
+        ctx.drawImage(img, dx, dy, drawW, drawH);
+
+        const lines = [
+            `KIỂM TỒN - ẢNH BÀY MẪU`,
+            `MÃ SP: ${String(masp || "").toUpperCase()}`,
+            `PHIẾU: ${String(soPhieu || "")}`,
+            `NV: ${String(manv || "").toUpperCase()}`,
+            `CS: ${String(diadiem || "").toUpperCase()}`,
+            `TG: ${formatKtkBayMauTime(new Date())}`
+        ];
+
+        const fontSize = Math.max(14, Math.round(Math.min(targetW, targetH) * 0.04));
+        const pad = 8;
+        const lineH = Math.round(fontSize * 1.35);
+        const boxH = lineH * lines.length + pad * 2;
+        const boxW = Math.round(targetW * 0.94);
+        const boxX = 8;
+        const boxY = targetH - boxH - 8;
+
+        ctx.fillStyle = "rgba(0,0,0,0.62)";
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+
+        ctx.font = `700 ${fontSize}px Arial, sans-serif`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillStyle = "#ffeb3b";
+        ctx.strokeStyle = "rgba(0,0,0,0.9)";
+        ctx.lineWidth = 2;
+
+        lines.forEach((txt, i) => {
+            const x = boxX + pad;
+            const y = boxY + pad + i * lineH;
+            ctx.strokeText(txt, x, y);
+            ctx.fillText(txt, x, y);
+        });
+
+        return await new Promise((resolve, reject) => {
+            canvas.toBlob(
+                (blob) => {
+                    if (!blob) {
+                        reject(new Error("Không nén được ảnh"));
+                        return;
+                    }
+                    resolve(blob);
+                },
+                "image/jpeg",
+                quality
+            );
+        });
+    }
+
+    function popupChupAnhBayMauKiemTon({ masp, soPhieu }) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement("div");
+            overlay.style.cssText = `
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,.45);
+            z-index:99999;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:16px;
+        `;
+
+            const box = document.createElement("div");
+            box.style.cssText = `
+            background:#fff;
+            border-radius:14px;
+            padding:18px;
+            width:92%;
+            max-width:380px;
+            text-align:center;
+            font-family:Arial,sans-serif;
+        `;
+
+            box.innerHTML = `
+            <h3 style="margin:0 0 10px 0;">Bắt buộc chụp ảnh bày mẫu</h3>
+            <p style="font-size:15px;color:#444;margin-bottom:12px;">
+                Phiếu kiểm tồn <b>${escapeHtml(soPhieu)}</b><br>
+                Mã sản phẩm: <b>${escapeHtml(masp)}</b>
+            </p>
+            <p style="font-size:14px;color:#666;margin-bottom:14px;">
+                Tất cả hàng đã kiểm đều phải có ảnh bày mẫu trước khi lưu.
+            </p>
+            <button id="btnKtkTakePhoto" type="button" style="width:100%;margin-bottom:8px;background:#0b57d0;color:white;font-weight:bold;">
+                📷 Chụp ảnh / Chọn ảnh
+            </button>
+            <button id="btnKtkCancelPhoto" type="button" style="width:100%;background:#e5e7eb;color:#111;">
+                Hủy lưu
+            </button>
+        `;
+
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "image/*";
+            input.capture = "environment";
+            input.style.display = "none";
+
+            box.appendChild(input);
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+
+            const btnTake = box.querySelector("#btnKtkTakePhoto");
+            const btnCancel = box.querySelector("#btnKtkCancelPhoto");
+
+            function cleanup(file) {
+                overlay.remove();
+                resolve(file || null);
+            }
+
+            btnTake.addEventListener("click", () => {
+                input.value = "";
+                input.click();
+            });
+
+            btnCancel.addEventListener("click", () => {
+                cleanup(null);
+            });
+
+            input.addEventListener("change", () => {
+                cleanup(input.files?.[0] || null);
+            });
+        });
+    }
+
+    async function uploadAnhBayMauKiemTon({ masp, soPhieu, manv, diadiem }) {
+        if (!window.supabase) {
+            alert("Chưa khởi tạo Supabase, không thể lưu ảnh.");
+            return null;
+        }
+
+        const file = await popupChupAnhBayMauKiemTon({ masp, soPhieu });
+
+        if (!file) {
+            alert("Bạn chưa chụp ảnh bày mẫu. Phiếu kiểm tồn chưa được lưu.");
+            return null;
+        }
+
+        let blob;
+        try {
+            blob = await resizeKtkBayMauImage(file, masp, soPhieu, manv, diadiem, 0.62);
+        } catch (err) {
+            console.error("[KTK] Lỗi xử lý ảnh bày mẫu:", err);
+            alert("Không xử lý được ảnh. Vui lòng chụp lại.");
+            return null;
+        }
+
+        const today = new Date().toISOString().slice(0, 10);
+        const filePath = `${diadiem}/${manv}/${today}/kiemton_${soPhieu}_${masp}_${Date.now()}.jpg`;
+
+        const { error } = await window.supabase.storage
+            .from("ANHBAYMAU")
+            .upload(filePath, blob, {
+                cacheControl: "3600",
+                upsert: true,
+                contentType: "image/jpeg"
+            });
+
+        if (error) {
+            console.error("[KTK] Lỗi upload ảnh bày mẫu:", error);
+            alert("Không upload được ảnh bày mẫu: " + (error.message || "Không rõ lỗi"));
+            return null;
+        }
+
+        return {
+            path: filePath,
+            at: new Date().toISOString(),
+            by: manv
+        };
+    }
+
+    function layDanhSachMaspTrongPhieuKiemTon() {
+        docLaiNhapTuBangHTML();
+
+        const state = getState();
+        const all = [];
+
+        Object.values(state.nhap || {}).forEach(row => {
+            const m = normalizeMasp(row?.masp);
+            if (m) all.push(m);
+        });
+
+        Object.values(state.bayMau || {}).forEach(row => {
+            const m = normalizeMasp(row?.masp);
+            if (m) all.push(m);
+        });
+
+        Object.values(state.xuat || {}).forEach(row => {
+            const m = normalizeMasp(row?.masp);
+            if (m) all.push(m);
+        });
+
+        return Array.from(new Set(all));
+    }
+
+    async function batBuocAnhBayMauTruocKhiLuuKiemTon({ soPhieu, diadiem }) {
+        const dsMasp = layDanhSachMaspTrongPhieuKiemTon();
+
+        if (dsMasp.length === 0) {
+            alert("Chưa có dữ liệu kiểm tồn để lưu.");
+            return null;
+        }
+
+        if (dsMasp.length > 1) {
+            phatAmThanhLoi();
+            alert(
+                "Mỗi phiếu kiểm tồn chỉ được kiểm 1 mã sản phẩm.\n\n" +
+                "Phiếu hiện tại đang có nhiều mã:\n" +
+                dsMasp.join(", ") +
+                "\n\nVui lòng tách ra mỗi mã một phiếu."
+            );
+            return null;
+        }
+
+        const manv = String(byId("manv")?.value || localStorage.getItem("manv") || "").trim().toUpperCase();
+        const masp = dsMasp[0];
+
+        const anh = await uploadAnhBayMauKiemTon({
+            masp,
+            soPhieu,
+            manv,
+            diadiem
+        });
+
+        if (!anh) return null;
+
+        return {
+            masp,
+            baymau_image_path: anh.path,
+            baymau_image_at: anh.at,
+            baymau_by: anh.by
+        };
+    }
+
     function tinhTongSoLuongTheoMap(mapObj) {
         return Object.values(mapObj || {}).reduce((sum, row) => {
             return sum + normalizeNumber(row?.sl || 0);
@@ -3443,8 +3731,25 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
                 return;
             }
 
+            const anhBayMauKiemTon = await batBuocAnhBayMauTruocKhiLuuKiemTon({
+                soPhieu: so_phieu,
+                diadiem
+            });
+
+            if (!anhBayMauKiemTon) {
+                return;
+            }
+
             const thongTinTong = xayDungDuLieuTongVaChiTietLech();
-            const rowsChiTiet = buildChiTietKiemTonRows(so_phieu, diadiem);
+
+            let rowsChiTiet = buildChiTietKiemTonRows(so_phieu, diadiem);
+
+            rowsChiTiet = rowsChiTiet.map(row => ({
+                ...row,
+                baymau_image_path: anhBayMauKiemTon.baymau_image_path,
+                baymau_image_at: anhBayMauKiemTon.baymau_image_at,
+                baymau_by: anhBayMauKiemTon.baymau_by
+            }));
 
             const so_dong_ok = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "OK").length;
             const so_dong_thieu = rowsChiTiet.filter(x => String(x.trang_thai || "").toUpperCase() === "THIEU").length;
