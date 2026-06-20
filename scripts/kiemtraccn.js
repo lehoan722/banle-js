@@ -396,7 +396,7 @@
             
                 <div class="ccnkt-foot">
     <button type="button" id="ccnktClear">Xóa kiểm</button>
-    <button type="button" id="ccnktClearAll">Xóa toàn bộ kiểm</button>
+    <button type="button" id="ccnktClearAll">Làm mới</button>
     <button type="button" id="ccnktConfirm">Xác nhận kiểm đúng</button>
 </div>
             </div>
