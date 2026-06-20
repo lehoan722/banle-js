@@ -1280,7 +1280,7 @@ async function capNhatSoChungTuSauKhiLuuDauTien(soCt) {
   }
 }
 
-async function luuPhieu() {
+async function luuPhieu(mode = "xong") {
   try {
     const soCt = $("sohd").value.trim();
     if (!soCt) {
@@ -1292,14 +1292,20 @@ async function luuPhieu() {
 
     // Chỉ giữ lại các dòng đã chọn
     const currentRows = dedupeRowsByMaspSize(
-      STATE.rows.filter(r =>
-        r.done === true ||
-        r.trang_thai_dong === "dang_chuyen"
-      )
+      mode === "giao"
+        ? STATE.rows.filter(r => !!r.selected)
+        : STATE.rows.filter(r =>
+          r.done === true ||
+          r.trang_thai_dong === "dang_chuyen"
+        )
     );
 
     if (!currentRows.length) {
-      alert("Chưa có dòng nào được tích Xong để lưu.");
+      alert(
+        mode === "giao"
+          ? "Chưa có dòng nào được chọn để giao việc."
+          : "Chưa có dòng nào được tích Xong để lưu."
+      );
       return;
     }
 
@@ -1546,7 +1552,7 @@ async function giaoViec() {
 
     renderBang();
     capNhatTong();
-    await luuPhieu();
+    await luuPhieu("giao");
   } catch (e) {
     showError("Giao việc thất bại.", e);
   }
