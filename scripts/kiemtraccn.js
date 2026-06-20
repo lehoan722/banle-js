@@ -295,44 +295,10 @@
             }
 
             .ccnkt-foot {
-    position: sticky;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 6px;
-    padding: 6px;
-    background: #eef6ff;
-    z-index: 20;
-    box-sizing: border-box;
-}
-
-.ccnkt-foot button {
-    height: 50px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    white-space: normal;
-    line-height: 1.15;
-    padding: 4px;
-    min-width: 0;
-}
-
-@media (max-width: 480px) {
-    .ccnkt-foot {
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 4px;
-        padding: 4px;
-    }
-
-    .ccnkt-foot button {
-        height: 48px;
-        font-size: 14px;
-        padding: 3px;
-    }
-}
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;background:#eef6ff;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+            }
 
             .ccnkt-foot button {
                 height:52px;
@@ -479,9 +445,9 @@
             const m = normMasp(maspEl.value);
 
             if (m === "OKK") {
-                xacNhanKiemDungDacCachOKK();
-                return;
-            }
+    xacNhanKiemDungDacCachOKK();
+    return;
+}
 
             if (m) {
                 chonMaspTrongPopupKiemTra(m, true);
@@ -873,15 +839,15 @@
     }
 
     function xacNhanKiemDungDacCachOKK() {
-        // Cách 1: ép dữ liệu kiểm = dữ liệu gốc để hệ thống hiểu là đã kiểm đúng
-        window.ccnKiemTraState.kiem = { ...(window.ccnKiemTraState.goc || {}) };
-        window.ccnKiemTraState.ok = true;
+    // Cách 1: ép dữ liệu kiểm = dữ liệu gốc để hệ thống hiểu là đã kiểm đúng
+    window.ccnKiemTraState.kiem = { ...(window.ccnKiemTraState.goc || {}) };
+    window.ccnKiemTraState.ok = true;
 
-        renderPopupKiemTraCCN();
+    renderPopupKiemTraCCN();
 
-        setHdStateCCN("kiemtra");
-        closePopupKiemTraCCN();
-    }
+    setHdStateCCN("kiemtra");
+    closePopupKiemTraCCN();
+}
 
     function openPopupKiemTraCCN() {
         ensurePopupKiemTraCCN();
