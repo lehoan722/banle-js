@@ -113,6 +113,45 @@
     #hot .handsontable td.htDongDangChon {
       background: #ffe08a !important;
     }
+
+    .ktk-img-thumb {
+      width: 52px;
+      height: 52px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      cursor: zoom-in;
+      background: #f3f3f3;
+    }
+
+    #ktkImageViewer {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .82);
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    #ktkImageViewer img {
+      max-width: 96vw;
+      max-height: 92vh;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 8px;
+    }
+
+    #ktkImageViewerClose {
+      position: fixed;
+      top: 12px;
+      right: 18px;
+      color: #fff;
+      font-size: 34px;
+      font-weight: bold;
+      cursor: pointer;
+    }
   </style>
 </head>
 
@@ -194,6 +233,11 @@
     <div id="hot"></div>
   </div>
 
+  <div id="ktkImageViewer">
+    <div id="ktkImageViewerClose">×</div>
+    <img id="ktkImageViewerImg" src="">
+  </div>
+
   <script>
     let hot = null;
     let allRows = [];
@@ -208,6 +252,7 @@
       { data: 'thoi_diem_kiem', readOnly: true },
       { data: 'diadiem', readOnly: true },
       { data: 'nguoi_kiem_full', readOnly: true },
+      { data: 'baymau_image_path', readOnly: true },
       { data: 'masp', readOnly: true },
       { data: 'tensp', readOnly: true },
       { data: 'size_kiem_kho', readOnly: true },
@@ -224,24 +269,25 @@
     ];
 
     const colHeaders = [
-      'STT', 'Số phiếu', 'Ngày CT', 'Thời điểm kiểm', 'Cơ sở', 'Người kiểm', 'Mã SP', 'Tên SP',
+      'STT', 'Số phiếu', 'Ngày CT', 'Thời điểm kiểm', 'Cơ sở', 'Người kiểm', 'Ảnh', 'Mã SP', 'Tên SP',
       'Size kiểm kho', 'SL kiểm kho', 'Size bày mẫu', 'SL bày mẫu', 'Size kiểm tổng', 'Tổng SL kiểm',
       'Size tồn máy', 'SL tồn máy', 'Trạng thái', 'Chi tiết lệch', 'Ghi chú'
     ];
 
-    const colWidths = [50, 120, 90, 130, 70, 210, 140, 190, 110, 85, 110, 85, 120, 90, 120, 90, 85, 240, 200];
+    const colWidths = [50, 120, 90, 130, 70, 210, 70, 140, 190, 110, 85, 110, 85, 120, 90, 120, 90, 85, 240, 200];
 
     const compactColumns = [
-      columns[0],  // STT
-      columns[1],  // Số phiếu
-      columns[3],  // Thời điểm kiểm
-      columns[5],  // Người kiểm
-      columns[6],  // Mã SP
-      columns[12], // Size kiểm tổng
-      columns[14], // Size tồn máy
-      columns[16], // Trạng thái
-      columns[17], // Chi tiết lệch
-      columns[18]  // Ghi chú
+      columns[0],
+      columns[1],
+      columns[3],
+      columns[5],
+      columns[6],
+      columns[7],
+      columns[13],
+      columns[15],
+      columns[17],
+      columns[18],
+      columns[19]
     ];
 
     const compactColHeaders = [
@@ -249,6 +295,7 @@
       'Số phiếu',
       'Thời điểm kiểm',
       'Người kiểm',
+      'Ảnh',
       'Mã SP',
       'Size kiểm tổng',
       'Size tồn máy',
@@ -257,7 +304,7 @@
       'Ghi chú'
     ];
 
-    const compactColWidths = [50, 130, 140, 230, 150, 160, 160, 90, 280, 220];
+    const compactColWidths = [50, 130, 140, 230, 70, 150, 160, 160, 90, 280, 220];
 
     function dangRutGon() {
       return !!document.getElementById('chkRutGon')?.checked;
@@ -358,6 +405,42 @@
       return ok;
     }
 
+    function getKtkImagePublicUrl(path) {
+      const p = String(path || '').trim();
+      if (!p || !window.supabase) return '';
+
+      const { data } = window.supabase
+        .storage
+        .from('ANHBAYMAU')
+        .getPublicUrl(p);
+
+      return data?.publicUrl || '';
+    }
+
+    function openKtkImageViewer(url) {
+      if (!url) return;
+
+      const viewer = document.getElementById('ktkImageViewer');
+      const img = document.getElementById('ktkImageViewerImg');
+
+      img.src = url;
+      viewer.style.display = 'flex';
+    }
+
+    function closeKtkImageViewer() {
+      const viewer = document.getElementById('ktkImageViewer');
+      const img = document.getElementById('ktkImageViewerImg');
+
+      viewer.style.display = 'none';
+      img.src = '';
+    }
+
+    document.addEventListener('click', function (e) {
+      if (e.target?.id === 'ktkImageViewer' || e.target?.id === 'ktkImageViewerClose') {
+        closeKtkImageViewer();
+      }
+    });
+
     function initHot() {
       const container = document.getElementById('hot');
       hot = new Handsontable(container, {
@@ -406,6 +489,30 @@
 
           props.renderer = function (instance, td, row, col, prop, value, cellProperties) {
             Handsontable.renderers.TextRenderer.apply(this, arguments);
+
+            if (dataKey === 'baymau_image_path') {
+              td.innerHTML = '';
+
+              const url = getKtkImagePublicUrl(value);
+
+              if (url) {
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'ktk-img-thumb';
+                img.title = 'Bấm để xem ảnh lớn';
+
+                img.addEventListener('click', function (ev) {
+                  ev.stopPropagation();
+                  openKtkImageViewer(url);
+                });
+
+                td.appendChild(img);
+              } else {
+                td.textContent = '';
+              }
+
+              return td;
+            }
 
             td.classList.remove('htDongDangChon');
 
@@ -584,6 +691,7 @@
             thoi_diem_kiem: dinhDangNgayGio(h.thoi_diem_kiem || h.created_at),
             diadiem: h.diadiem || '',
             nguoi_kiem_full: `${h.nguoi_kiem || ''}${h.ten_nguoi_kiem ? ' - ' + h.ten_nguoi_kiem : ''}`,
+            baymau_image_path: ct.baymau_image_path || '',
             masp: ct.masp || '',
             tensp: ct.tensp || '',
             size_kiem_kho: sapXepSizeTheoCot(ct.size_kiem_kho),
