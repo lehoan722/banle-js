@@ -431,13 +431,18 @@ async function fetchMaspsByNhomHang(nhomHangs) {
   const { data, error } = await supabase
     .from("dmhanghoa")
     .select("masp, nhomhang, active")
-    .in("nhomhang", list)
-    .neq("active", false);
+    .range(0, 20000);
 
   if (error) throw error;
 
   return uniq(
     (data || [])
+      .filter(r => {
+        const nhom = String(r.nhomhang || "").trim().toUpperCase();
+        const active = r.active;
+
+        return list.includes(nhom) && active !== false;
+      })
       .map(r => normalizeMasp(r.masp))
       .filter(Boolean)
   );
