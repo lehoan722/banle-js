@@ -428,21 +428,19 @@ async function fetchMaspsByNhomHang(nhomHangs) {
 
   if (!list.length) return [];
 
+  console.log("Nhóm hàng đang tìm:", list);
+
   const { data, error } = await supabase
     .from("dmhanghoa")
-    .select("masp, nhomhang, active")
-    .range(0, 20000);
+    .select("masp, nhomhang")
+    .in("nhomhang", list);
 
   if (error) throw error;
 
+  console.log("Số mã tìm được theo nhóm:", data?.length || 0, data);
+
   return uniq(
     (data || [])
-      .filter(r => {
-        const nhom = String(r.nhomhang || "").trim().toUpperCase();
-        const active = r.active;
-
-        return list.includes(nhom) && active !== false;
-      })
       .map(r => normalizeMasp(r.masp))
       .filter(Boolean)
   );
