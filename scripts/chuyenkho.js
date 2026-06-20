@@ -45,27 +45,6 @@ let NHOMHANG_OPTIONS = [];
 ========================================================= */
 const $ = (id) => document.getElementById(id);
 
-function buildSoCtCandidates(soCt) {
-  const s = String(soCt || "").trim();
-  if (!s) return [];
-
-  const out = [s];
-
-  const m = s.match(/^(.+_)(\d+)$/);
-  if (m) {
-    const prefix = m[1];
-    const num = Number(m[2]);
-
-    if (Number.isFinite(num)) {
-      out.push(prefix + String(num).padStart(6, "0"));
-      out.push(prefix + String(num).padStart(5, "0"));
-      out.push(prefix + String(num));
-    }
-  }
-
-  return [...new Set(out)];
-}
-
 function getTodayYmd() {
   const d = new Date();
   return d.toISOString().slice(0, 10);
@@ -158,16 +137,14 @@ function dedupeRowsByMaspSize(rows) {
 
 function getPrevVoucherNo(soCt) {
   const s = String(soCt || "").trim();
-  const m = s.match(/^(.+_)(\d+)$/i);
+  const m = s.match(/^([a-z0-9_]+)_(\d{5})$/i);
   if (!m) return "";
 
   const prefix = m[1];
-  const numText = m[2];
-  const num = Number(numText);
-
+  const num = Number(m[2]);
   if (!Number.isFinite(num) || num <= 1) return "";
 
-  return `${prefix}${String(num - 1).padStart(numText.length, "0")}`;
+  return `${prefix}_${String(num - 1).padStart(5, "0")}`;
 }
 
 function getOpenVoucherDefault() {
@@ -1258,7 +1235,7 @@ function getDetailPayload() {
 }
 
 async function capNhatSoChungTuSauKhiLuuDauTien(soCt) {
-  const m = String(soCt || "").match(/^([a-z0-9_]+)_(\d{6})$/i);
+  const m = String(soCt || "").match(/^([a-z0-9_]+)_(\d{5})$/i);
   if (!m) return;
 
   const loai = m[1];
@@ -1386,30 +1363,18 @@ async function napPhieu(soCtParam = "") {
     const soCt = String(soCtInput || "").trim();
     if (!soCt) return;
 
-    const soCtCandidates = buildSoCtCandidates(soCt);
-
-    const { data: hdList, error: errHd } = await supabase
+    const { data: hd, error: errHd } = await supabase
       .from("yeucau_chuyenkho")
       .select("*")
-      .in("so_ct", soCtCandidates)
-      .limit(1);
+      .eq("so_ct", soCt)
+      .single();
 
     if (errHd) throw errHd;
-
-    const hd = hdList?.[0];
-
-    if (!hd) {
-      alert(
-        "Không tìm thấy phiếu: " + soCt +
-        "\n\nĐã thử tìm các dạng:\n" + soCtCandidates.join("\n")
-      );
-      return;
-    }
 
     const { data: ct, error: errCt } = await supabase
       .from("yeucau_chuyenkho_ct")
       .select("*")
-      .eq("so_ct", hd.so_ct)
+      .eq("so_ct", soCt)
       .order("stt", { ascending: true });
 
     if (errCt) throw errCt;
