@@ -158,14 +158,16 @@ function dedupeRowsByMaspSize(rows) {
 
 function getPrevVoucherNo(soCt) {
   const s = String(soCt || "").trim();
-  const m = s.match(/^([a-z0-9_]+)_(\d{5})$/i);
+  const m = s.match(/^(.+_)(\d+)$/i);
   if (!m) return "";
 
   const prefix = m[1];
-  const num = Number(m[2]);
+  const numText = m[2];
+  const num = Number(numText);
+
   if (!Number.isFinite(num) || num <= 1) return "";
 
-  return `${prefix}_${String(num - 1).padStart(5, "0")}`;
+  return `${prefix}${String(num - 1).padStart(numText.length, "0")}`;
 }
 
 function getOpenVoucherDefault() {
@@ -1256,7 +1258,7 @@ function getDetailPayload() {
 }
 
 async function capNhatSoChungTuSauKhiLuuDauTien(soCt) {
-  const m = String(soCt || "").match(/^([a-z0-9_]+)_(\d{5})$/i);
+  const m = String(soCt || "").match(/^([a-z0-9_]+)_(\d{6})$/i);
   if (!m) return;
 
   const loai = m[1];
