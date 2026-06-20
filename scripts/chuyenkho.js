@@ -428,16 +428,13 @@ async function fetchMaspsByNhomHang(nhomHangs) {
 
   if (!list.length) return [];
 
-  console.log("Nhóm hàng đang tìm:", list);
-
   const { data, error } = await supabase
     .from("dmhanghoa")
-    .select("masp, nhomhang")
-    .in("nhomhang", list);
+    .select("masp, nhomhang, active")
+    .in("nhomhang", list)
+    .neq("active", false);
 
   if (error) throw error;
-
-  console.log("Số mã tìm được theo nhóm:", data?.length || 0, data);
 
   return uniq(
     (data || [])
@@ -1283,7 +1280,7 @@ async function capNhatSoChungTuSauKhiLuuDauTien(soCt) {
   }
 }
 
-async function luuPhieu(mode = "xong") {
+async function luuPhieu() {
   try {
     const soCt = $("sohd").value.trim();
     if (!soCt) {
@@ -1294,44 +1291,15 @@ async function luuPhieu(mode = "xong") {
     const header = getHeaderPayload();
 
     // Chỉ giữ lại các dòng đã chọn
-    const currentRows = dedupeRowsByMaspSize(
-      mode === "giao"
-        ? STATE.rows.filter(r => !!r.selected)
-        : STATE.rows.filter(r =>
-          r.done === true ||
-          r.trang_thai_dong === "dang_chuyen"
-        )
-    );
+    STATE.rows = dedupeRowsByMaspSize(STATE.rows.filter(r => !!r.selected));
+    STATE.selectedIndex = STATE.rows.length ? 0 : -1;
 
-    if (!currentRows.length) {
-      alert(
-        mode === "giao"
-          ? "Chưa có dòng nào được chọn để giao việc."
-          : "Chưa có dòng nào được tích Xong để lưu."
-      );
+    if (!STATE.rows.length) {
+      alert("Không có dòng nào được chọn để lưu.");
       return;
     }
 
-    const details = currentRows.map((r, idx) => ({
-      so_ct: soCt,
-      stt: idx + 1,
-      masp: r.masp,
-      size: r.size,
-      ton_nguon: toNumber(r.ton_nguon),
-      ton_dich: toNumber(r.ton_dich),
-      huong_goiy: r.huong_goiy,
-      sl_goiy: toNumber(r.sl_goiy),
-      sl_duyet: toNumber(r.sl_duyet),
-      sl_thuc: toNumber(r.sl_thuc),
-      manv_phutrach: r.manv_phutrach || null,
-      tennv_phutrach: r.tennv_phutrach || null,
-      done: !!r.done,
-      done_at: r.done ? new Date().toISOString() : null,
-      done_by: r.done ? ($("manv").value || "") : null,
-      done_by_name: r.done ? ($("tennv").value || "") : null,
-      trang_thai_dong: r.trang_thai_dong || "de_xuat",
-      ghi_chu: r.ghi_chu || "",
-    }));
+    const details = getDetailPayload();
 
     const isMoi = $("hd_state").value === "moi";
     const oldHeader = STATE.oldHeader ? deepClone(STATE.oldHeader) : null;
@@ -1343,12 +1311,19 @@ async function luuPhieu(mode = "xong") {
 
     if (upsertHeaderErr) throw upsertHeaderErr;
 
-    if (details.length) {
-      const { error: upsertCtErr } = await supabase
-        .from("yeucau_chuyenkho_ct")
-        .upsert(details, { onConflict: "so_ct,masp,size" });
+    const { error: delErr } = await supabase
+      .from("yeucau_chuyenkho_ct")
+      .delete()
+      .eq("so_ct", soCt);
 
-      if (upsertCtErr) throw upsertCtErr;
+    if (delErr) throw delErr;
+
+    if (details.length) {
+      const { error: insCtErr } = await supabase
+        .from("yeucau_chuyenkho_ct")
+        .insert(details);
+
+      if (insCtErr) throw insCtErr;
     }
 
     if (isMoi) {
@@ -1555,7 +1530,7 @@ async function giaoViec() {
 
     renderBang();
     capNhatTong();
-    await luuPhieu("giao");
+    await luuPhieu();
   } catch (e) {
     showError("Giao việc thất bại.", e);
   }
