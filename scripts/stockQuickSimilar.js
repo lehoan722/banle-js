@@ -123,8 +123,9 @@
       const toncs1 = Number(r.ton_cs1 || 0);
       const toncs2 = Number(r.ton_cs2 || 0);
 
-      // Quan trọng: còn ở CS1 hoặc CS2 đều lấy, không loại theo 1 cơ sở
-      if (toncs1 + toncs2 <= 0) return;
+      // Chỉ lấy mã còn tồn tại cơ sở đã chọn
+      if (branch === "cs1" && toncs1 <= 0) return;
+      if (branch === "cs2" && toncs2 <= 0) return;
 
       const item = byMasp.get(masp) || {
         masp,
