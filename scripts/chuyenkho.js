@@ -1291,15 +1291,27 @@ async function luuPhieu() {
     const header = getHeaderPayload();
 
     // Chỉ giữ lại các dòng đã chọn
-    STATE.rows = dedupeRowsByMaspSize(STATE.rows.filter(r => !!r.selected));
-    STATE.selectedIndex = STATE.rows.length ? 0 : -1;
-
-    if (!STATE.rows.length) {
-      alert("Không có dòng nào được chọn để lưu.");
-      return;
-    }
-
-    const details = getDetailPayload();
+    const currentRows = dedupeRowsByMaspSize(STATE.rows);
+const details = currentRows.map((r, idx) => ({
+  so_ct: soCt,
+  stt: idx + 1,
+  masp: r.masp,
+  size: r.size,
+  ton_nguon: toNumber(r.ton_nguon),
+  ton_dich: toNumber(r.ton_dich),
+  huong_goiy: r.huong_goiy,
+  sl_goiy: toNumber(r.sl_goiy),
+  sl_duyet: toNumber(r.sl_duyet),
+  sl_thuc: toNumber(r.sl_thuc),
+  manv_phutrach: r.manv_phutrach || null,
+  tennv_phutrach: r.tennv_phutrach || null,
+  done: !!r.done,
+  done_at: r.done ? new Date().toISOString() : null,
+  done_by: r.done ? ($("manv").value || "") : null,
+  done_by_name: r.done ? ($("tennv").value || "") : null,
+  trang_thai_dong: r.trang_thai_dong || "de_xuat",
+  ghi_chu: r.ghi_chu || "",
+}));
 
     const isMoi = $("hd_state").value === "moi";
     const oldHeader = STATE.oldHeader ? deepClone(STATE.oldHeader) : null;
@@ -1311,20 +1323,13 @@ async function luuPhieu() {
 
     if (upsertHeaderErr) throw upsertHeaderErr;
 
-    const { error: delErr } = await supabase
-      .from("yeucau_chuyenkho_ct")
-      .delete()
-      .eq("so_ct", soCt);
-
-    if (delErr) throw delErr;
-
     if (details.length) {
-      const { error: insCtErr } = await supabase
-        .from("yeucau_chuyenkho_ct")
-        .insert(details);
+  const { error: upsertCtErr } = await supabase
+    .from("yeucau_chuyenkho_ct")
+    .upsert(details, { onConflict: "so_ct,masp,size" });
 
-      if (insCtErr) throw insCtErr;
-    }
+  if (upsertCtErr) throw upsertCtErr;
+}
 
     if (isMoi) {
       await capNhatSoChungTuSauKhiLuuDauTien(soCt);
