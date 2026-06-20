@@ -295,11 +295,8 @@
             }
 
             .ccnkt-foot {
-                display:grid;
-                grid-template-columns:1fr 1fr;
-                gap:8px;
-                padding:8px;
-                background:#eef6ff;
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;background:#eef6ff;
             }
 
             .ccnkt-foot button {
@@ -381,8 +378,11 @@
             </div>
 
             <div class="ccnkt-foot">
-                <button type="button" id="ccnktClear">Xóa kiểm</button>
-                <button type="button" id="ccnktConfirm">Xác nhận kiểm đúng</button>
+                <div class="ccnkt-foot">
+    <button type="button" id="ccnktClear">Xóa kiểm</button>
+    <button type="button" id="ccnktClearAll">Xóa toàn bộ kiểm</button>
+    <button type="button" id="ccnktConfirm">Xác nhận kiểm đúng</button>
+</div>
             </div>
         `;
 
@@ -401,17 +401,28 @@
         };
 
         document.getElementById("ccnktConfirm").onclick = function () {
+            xacNhanKiemDungCCN();
+        };
+
+        document.getElementById("ccnktClearAll").onclick = function () {
+            if (!confirm("Xóa toàn bộ dữ liệu kiểm của phiếu này để kiểm hóa đơn mới?")) return;
+
+            window.ccnKiemTraState.kiem = {};
+            window.ccnKiemTraState.ok = false;
+            window.ccnKiemTraState.lastMasp = "";
+            window.ccnKiemTraState.selectedMasp = "";
+
             renderPopupKiemTraCCN();
 
-            if (!window.ccnKiemTraState.ok) {
-                alert("❌ Dữ liệu kiểm chưa khớp. Vui lòng kiểm tra lại dòng THIẾU / THỪA / LỆCH.");
-                focusMaspKiemTra();
-                return;
-            }
+            const maspEl = document.getElementById("ccnktMasp");
+            const sizeEl = document.getElementById("ccnktSize");
+            const slEl = document.getElementById("ccnktSL");
 
-            setHdStateCCN("kiemtra");
-            // alert("✅ Phiếu đã kiểm đúng. Bây giờ có thể lưu.");
-            closePopupKiemTraCCN();
+            if (maspEl) maspEl.value = "";
+            if (sizeEl) sizeEl.value = "";
+            if (slEl) slEl.value = "1";
+
+            focusMaspKiemTra();
         };
 
         maspEl.addEventListener("input", function () {
@@ -431,6 +442,12 @@
             e.preventDefault();
 
             const m = normMasp(maspEl.value);
+
+            if (m === "OKK") {
+                xacNhanKiemDungCCN();
+                return;
+            }
+
             if (m) {
                 chonMaspTrongPopupKiemTra(m, true);
                 return;
@@ -796,6 +813,19 @@
             btn.disabled = !allOk;
             btn.style.opacity = allOk ? "1" : ".45";
         }
+    }
+
+    function xacNhanKiemDungCCN() {
+        renderPopupKiemTraCCN();
+
+        if (!window.ccnKiemTraState.ok) {
+            alert("❌ Dữ liệu kiểm chưa khớp. Vui lòng kiểm tra lại dòng THIẾU / THỪA / LỆCH.");
+            focusMaspKiemTra();
+            return;
+        }
+
+        setHdStateCCN("kiemtra");
+        closePopupKiemTraCCN();
     }
 
     function focusMaspKiemTra() {
