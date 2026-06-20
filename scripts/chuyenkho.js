@@ -45,6 +45,27 @@ let NHOMHANG_OPTIONS = [];
 ========================================================= */
 const $ = (id) => document.getElementById(id);
 
+function buildSoCtCandidates(soCt) {
+  const s = String(soCt || "").trim();
+  if (!s) return [];
+
+  const out = [s];
+
+  const m = s.match(/^(.+_)(\d+)$/);
+  if (m) {
+    const prefix = m[1];
+    const num = Number(m[2]);
+
+    if (Number.isFinite(num)) {
+      out.push(prefix + String(num).padStart(6, "0"));
+      out.push(prefix + String(num).padStart(5, "0"));
+      out.push(prefix + String(num));
+    }
+  }
+
+  return [...new Set(out)];
+}
+
 function getTodayYmd() {
   const d = new Date();
   return d.toISOString().slice(0, 10);
@@ -137,14 +158,16 @@ function dedupeRowsByMaspSize(rows) {
 
 function getPrevVoucherNo(soCt) {
   const s = String(soCt || "").trim();
-  const m = s.match(/^([a-z0-9_]+)_(\d{5})$/i);
+  const m = s.match(/^(.+_)(\d+)$/i);
   if (!m) return "";
 
   const prefix = m[1];
-  const num = Number(m[2]);
+  const numText = m[2];
+  const num = Number(numText);
+
   if (!Number.isFinite(num) || num <= 1) return "";
 
-  return `${prefix}_${String(num - 1).padStart(5, "0")}`;
+  return `${prefix}${String(num - 1).padStart(numText.length, "0")}`;
 }
 
 function getOpenVoucherDefault() {
@@ -405,13 +428,16 @@ async function fetchMaspsByNhomHang(nhomHangs) {
 
   if (!list.length) return [];
 
+  console.log("Nhóm hàng đang tìm:", list);
+
   const { data, error } = await supabase
     .from("dmhanghoa")
-    .select("masp, nhomhang, active")
-    .in("nhomhang", list)
-    .neq("active", false);
+    .select("masp, nhomhang")
+    .in("nhomhang", list);
 
   if (error) throw error;
+
+  console.log("Số mã tìm được theo nhóm:", data?.length || 0, data);
 
   return uniq(
     (data || [])
@@ -1235,7 +1261,7 @@ function getDetailPayload() {
 }
 
 async function capNhatSoChungTuSauKhiLuuDauTien(soCt) {
-  const m = String(soCt || "").match(/^([a-z0-9_]+)_(\d{5})$/i);
+  const m = String(soCt || "").match(/^([a-z0-9_]+)_(\d{6})$/i);
   if (!m) return;
 
   const loai = m[1];
@@ -1257,7 +1283,7 @@ async function capNhatSoChungTuSauKhiLuuDauTien(soCt) {
   }
 }
 
-async function luuPhieu() {
+async function luuPhieu(mode = "xong") {
   try {
     const soCt = $("sohd").value.trim();
     if (!soCt) {
@@ -1268,15 +1294,44 @@ async function luuPhieu() {
     const header = getHeaderPayload();
 
     // Chỉ giữ lại các dòng đã chọn
-    STATE.rows = dedupeRowsByMaspSize(STATE.rows.filter(r => !!r.selected));
-    STATE.selectedIndex = STATE.rows.length ? 0 : -1;
+    const currentRows = dedupeRowsByMaspSize(
+      mode === "giao"
+        ? STATE.rows.filter(r => !!r.selected)
+        : STATE.rows.filter(r =>
+          r.done === true ||
+          r.trang_thai_dong === "dang_chuyen"
+        )
+    );
 
-    if (!STATE.rows.length) {
-      alert("Không có dòng nào được chọn để lưu.");
+    if (!currentRows.length) {
+      alert(
+        mode === "giao"
+          ? "Chưa có dòng nào được chọn để giao việc."
+          : "Chưa có dòng nào được tích Xong để lưu."
+      );
       return;
     }
 
-    const details = getDetailPayload();
+    const details = currentRows.map((r, idx) => ({
+      so_ct: soCt,
+      stt: idx + 1,
+      masp: r.masp,
+      size: r.size,
+      ton_nguon: toNumber(r.ton_nguon),
+      ton_dich: toNumber(r.ton_dich),
+      huong_goiy: r.huong_goiy,
+      sl_goiy: toNumber(r.sl_goiy),
+      sl_duyet: toNumber(r.sl_duyet),
+      sl_thuc: toNumber(r.sl_thuc),
+      manv_phutrach: r.manv_phutrach || null,
+      tennv_phutrach: r.tennv_phutrach || null,
+      done: !!r.done,
+      done_at: r.done ? new Date().toISOString() : null,
+      done_by: r.done ? ($("manv").value || "") : null,
+      done_by_name: r.done ? ($("tennv").value || "") : null,
+      trang_thai_dong: r.trang_thai_dong || "de_xuat",
+      ghi_chu: r.ghi_chu || "",
+    }));
 
     const isMoi = $("hd_state").value === "moi";
     const oldHeader = STATE.oldHeader ? deepClone(STATE.oldHeader) : null;
@@ -1288,19 +1343,12 @@ async function luuPhieu() {
 
     if (upsertHeaderErr) throw upsertHeaderErr;
 
-    const { error: delErr } = await supabase
-      .from("yeucau_chuyenkho_ct")
-      .delete()
-      .eq("so_ct", soCt);
-
-    if (delErr) throw delErr;
-
     if (details.length) {
-      const { error: insCtErr } = await supabase
+      const { error: upsertCtErr } = await supabase
         .from("yeucau_chuyenkho_ct")
-        .insert(details);
+        .upsert(details, { onConflict: "so_ct,masp,size" });
 
-      if (insCtErr) throw insCtErr;
+      if (upsertCtErr) throw upsertCtErr;
     }
 
     if (isMoi) {
@@ -1363,18 +1411,30 @@ async function napPhieu(soCtParam = "") {
     const soCt = String(soCtInput || "").trim();
     if (!soCt) return;
 
-    const { data: hd, error: errHd } = await supabase
+    const soCtCandidates = buildSoCtCandidates(soCt);
+
+    const { data: hdList, error: errHd } = await supabase
       .from("yeucau_chuyenkho")
       .select("*")
-      .eq("so_ct", soCt)
-      .single();
+      .in("so_ct", soCtCandidates)
+      .limit(1);
 
     if (errHd) throw errHd;
+
+    const hd = hdList?.[0];
+
+    if (!hd) {
+      alert(
+        "Không tìm thấy phiếu: " + soCt +
+        "\n\nĐã thử tìm các dạng:\n" + soCtCandidates.join("\n")
+      );
+      return;
+    }
 
     const { data: ct, error: errCt } = await supabase
       .from("yeucau_chuyenkho_ct")
       .select("*")
-      .eq("so_ct", soCt)
+      .eq("so_ct", hd.so_ct)
       .order("stt", { ascending: true });
 
     if (errCt) throw errCt;
@@ -1495,7 +1555,7 @@ async function giaoViec() {
 
     renderBang();
     capNhatTong();
-    await luuPhieu();
+    await luuPhieu("giao");
   } catch (e) {
     showError("Giao việc thất bại.", e);
   }
