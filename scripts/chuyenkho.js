@@ -1131,6 +1131,7 @@ function applyDoneState(row, checked) {
   if (row.trang_thai_dong === "da_chuyen") return;
 
   row.done = checked;
+  row._dirty = true;
 
   const manvDangNhap = String($("manv")?.value || "").trim().toUpperCase();
   const tennvDangNhap = String($("tennv")?.value || "").trim();
@@ -1298,6 +1299,7 @@ async function luuPhieu(mode = "xong") {
       mode === "giao"
         ? STATE.rows.filter(r => !!r.selected)
         : STATE.rows.filter(r =>
+          r._dirty === true ||
           r.done === true ||
           r.trang_thai_dong === "dang_chuyen"
         )
@@ -1392,9 +1394,9 @@ async function luuPhieu(mode = "xong") {
     }
 
     $("hd_state").value = "sua";
-   // await napPhieu(soCt);
+    await napPhieu(soCt);
 
-    alert("Đã lưu phiếu chuyển kho.");
+    alert("Đã lưu và mở lại phiếu chuyển kho.");
 
   } catch (e) {
     showError("Lưu phiếu thất bại.", e);
