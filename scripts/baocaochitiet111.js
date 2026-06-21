@@ -1,5 +1,6 @@
 // baocaochitiet.js
-import { supabase } from "./supabaseClient.js";
+import { getSupabaseClient } from "./authModule.js";
+const supabase = getSupabaseClient();
 window.supabase = supabase;
 import { openInvoiceFromRow } from "./invoiceNavigator.js";
 let hotInstance = null;
@@ -686,7 +687,7 @@ window.selectPopupValue = function (type, value, el) {
 
 
 // ========== AUTO FILL NGÀY MẶC ĐỊNH ==========
-window.onload = function () {
+window.initBaoCaoChiTietAfterAdmin = async function () {
     const today = new Date().toISOString().slice(0, 10);
 
     // Từ ngày cố định: 01/05/2025
