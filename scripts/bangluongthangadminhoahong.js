@@ -1219,13 +1219,18 @@ async function taiBangCong() {
   });
   let tongTatCa = 0;
 
-  const ngayList = Object.keys(groupByNgay).sort((a, b) => Number(a) - Number(b));
+  const soNgayTrongThang = new Date(nam, thang, 0).getDate();
+  const ngayList = Array.from({ length: soNgayTrongThang }, (_, i) => String(i + 1));
 
   let html = "";
 
   ngayList.forEach(ng => {
-    const row = groupByNgay[ng];
-    const thu = row[0].thu;
+    const row = groupByNgay[ng] || [];
+
+    const ngayDate = new Date(nam, thang - 1, Number(ng));
+    const thu = row[0]?.thu || ngayDate.toLocaleDateString("en-US", {
+      weekday: "short"
+    });
     let sum = 0;
 
     const rowData = [Number(ng), thu];
