@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <title>BÁO CÁO CHI TIẾT BÁN HÀNG</title>
     <!-- Kết nối Supabase + Handsontable + SheetJS -->
-    <script type="module" src="scripts/supabaseClient.js"></script>
     <script type="module" src="scripts/baocaochitiet111.js"></script>
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css" />
@@ -282,129 +281,181 @@
 </head>
 
 <body>
-    <div class="container">
-        <h2>📊 BÁO CÁO CHI TIẾT BÁN HÀNG <span style="font-size:0.7em; color:#666;">(chuẩn hóa)</span></h2>
-        <div class="filters-row">
-            <div class="filters-left filters">
-                <label>Từ ngày: <input type="date" id="tuNgay"></label>
-                <label>Đến ngày: <input type="date" id="denNgay"></label>
-                <label>Loại hóa đơn:</label>
 
-                <div class="loaihd-wrap" id="loaihdWrap">
-                    <div class="loaihd-box">
-                        <input type="text" id="loaihdDisplay" readonly placeholder="Chọn loại hóa đơn">
-                        <button type="button" id="toggleLoaihdPopup" class="loaihd-btn">▼</button>
+    <div id="app-container">
+        <div class="container">
+            <h2>📊 BÁO CÁO CHI TIẾT BÁN HÀNG <span style="font-size:0.7em; color:#666;">(chuẩn hóa)</span></h2>
+            <div class="filters-row">
+                <div class="filters-left filters">
+                    <label>Từ ngày: <input type="date" id="tuNgay"></label>
+                    <label>Đến ngày: <input type="date" id="denNgay"></label>
+                    <label>Loại hóa đơn:</label>
+
+                    <div class="loaihd-wrap" id="loaihdWrap">
+                        <div class="loaihd-box">
+                            <input type="text" id="loaihdDisplay" readonly placeholder="Chọn loại hóa đơn">
+                            <button type="button" id="toggleLoaihdPopup" class="loaihd-btn">▼</button>
+                        </div>
+
+                        <div id="loaihdPopup" class="loaihd-popup" style="display:none;">
+                            <div id="loaihdPopupList"></div>
+                        </div>
+
+                        <select id="loaihdSelect" multiple style="display:none;">
+                            <option value="bancs1">bancs1</option>
+                            <option value="bancs2">bancs2</option>
+                            <option value="bannvcs1">bannvcs1</option>
+                            <option value="bannvcs2">bannvcs2</option>
+                            <option value="nmcs1">nmcs1</option>
+                            <option value="nmcs2">nmcs2</option>
+                            <option value="xcncs1">xuat cn cs1</option>
+                            <option value="ncncs1">nhap cn cs1</option>
+                            <option value="xcncs2">xuat cn cs2</option>
+                            <option value="ncncs2">nhap cn cs2</option>
+                            <option value="nhapkiemcs1">nhapkiemcs1</option>
+                            <option value="nhapkiemcs2">nhapkiemcs2</option>
+                            <option value="xuatkiemcs1">xuatkiemcs1</option>
+                            <option value="xuatkiemcs2">xuatkiemcs2</option>
+                            <option value="nhaptamcs1">nhaptamcs1</option>
+                            <option value="nhaptamcs2">nhaptamcs2</option>
+                        </select>
                     </div>
-
-                    <div id="loaihdPopup" class="loaihd-popup" style="display:none;">
-                        <div id="loaihdPopupList"></div>
-                    </div>
-
-                    <select id="loaihdSelect" multiple style="display:none;">
-                        <option value="bancs1">bancs1</option>
-                        <option value="bancs2">bancs2</option>
-                        <option value="bannvcs1">bannvcs1</option>
-                        <option value="bannvcs2">bannvcs2</option>
-                        <option value="nmcs1">nmcs1</option>
-                        <option value="nmcs2">nmcs2</option>
-                        <option value="xcncs1">xuat cn cs1</option>
-                        <option value="ncncs1">nhap cn cs1</option>
-                        <option value="xcncs2">xuat cn cs2</option>
-                        <option value="ncncs2">nhap cn cs2</option>
-                        <option value="nhapkiemcs1">nhapkiemcs1</option>
-                        <option value="nhapkiemcs2">nhapkiemcs2</option>
-                        <option value="xuatkiemcs1">xuatkiemcs1</option>
-                        <option value="xuatkiemcs2">xuatkiemcs2</option>
-                        <option value="nhaptamcs1">nhaptamcs1</option>
-                        <option value="nhaptamcs2">nhaptamcs2</option>
-                    </select>
-                </div>
-                <label>Địa điểm:
-                    <select id="diadiemSelect" style="min-width:90px;">
-                        <option value="">Tất cả</option>
-                        <option value="cs1">Cơ sở 1</option>
-                        <option value="cs2">Cơ sở 2</option>
-                    </select>
-                </label>
-                <span class="input-popup-group">
-                    <input id="khachhangInput" placeholder="Khách hàng">
-                    <button onclick="openPopupSearch('khachhang')">🔍</button>
-                    <button onclick="clearInput('khachhangInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="nhanvienInput" placeholder="Nhân viên">
-                    <button onclick="openPopupSearch('nhanvien')">🔍</button>
-                    <button onclick="clearInput('nhanvienInput')">✖</button>
-                </span>
-                <span class="input-popup-group">
-                    <input id="maspInput" placeholder="Mã hàng">
-                    <button onclick="openPopupSearch('mahang')">🔍</button>
-                    <button onclick="clearInput('maspInput')">✖</button>
-                </span>
-
-                <label>
-                    Số HĐ:
-                    <input type="text" id="sohdInput" placeholder="Nhập số hóa đơn cần lọc">
-                </label>
-
-                <label>Tên hàng: <input id="tenspInput" type="text" placeholder="Tên sản phẩm"></label>
-                <label>Kích cỡ: <input id="sizeInput" type="text" style="width:60px" placeholder="Size"></label>
-                <label>Từ giá: <input type="number" id="tuGia" min="0" style="width:90px;" placeholder="Từ"></label>
-                <label>Đến giá: <input type="number" id="denGia" min="0" style="width:90px;" placeholder="Đến"></label>
-
-                <label style="margin-left:12px;">
-                    <input type="checkbox" id="tongHopSize">
-                    Tổng hợp size
-                </label>
-
-                <button class="main-btn" onclick="taiBaoCaoChiTiet()">Xem báo cáo</button>
-                <button class="main-btn" onclick="xuatExcel()">Xuất Excel</button>
-                <button class="main-btn" id="btnCompact" onclick="toggleCompact()">Rút gọn</button>
-
-                <!-- thêm cụm phân trang -->
-                <div id="pagingBar" style="margin:8px 0; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <label>Số dòng/trang:
-                        <select id="pageSize" style="padding:4px 6px;">
-                            <option value="500">500</option>
-                            <option value="1000" selected>1000</option>
-                            <option value="2000">2000</option>
+                    <label>Địa điểm:
+                        <select id="diadiemSelect" style="min-width:90px;">
+                            <option value="">Tất cả</option>
+                            <option value="cs1">Cơ sở 1</option>
+                            <option value="cs2">Cơ sở 2</option>
                         </select>
                     </label>
+                    <span class="input-popup-group">
+                        <input id="khachhangInput" placeholder="Khách hàng">
+                        <button onclick="openPopupSearch('khachhang')">🔍</button>
+                        <button onclick="clearInput('khachhangInput')">✖</button>
+                    </span>
+                    <span class="input-popup-group">
+                        <input id="nhanvienInput" placeholder="Nhân viên">
+                        <button onclick="openPopupSearch('nhanvien')">🔍</button>
+                        <button onclick="clearInput('nhanvienInput')">✖</button>
+                    </span>
+                    <span class="input-popup-group">
+                        <input id="maspInput" placeholder="Mã hàng">
+                        <button onclick="openPopupSearch('mahang')">🔍</button>
+                        <button onclick="clearInput('maspInput')">✖</button>
+                    </span>
 
-                    <button class="main-btn" id="btnPrev" onclick="window.trangTruoc()">⬅ Trang trước</button>
-                    <button class="main-btn" id="btnNext" onclick="window.trangSau()">Trang sau ➡</button>
+                    <label>
+                        Số HĐ:
+                        <input type="text" id="sohdInput" placeholder="Nhập số hóa đơn cần lọc">
+                    </label>
+
+                    <label>Tên hàng: <input id="tenspInput" type="text" placeholder="Tên sản phẩm"></label>
+                    <label>Kích cỡ: <input id="sizeInput" type="text" style="width:60px" placeholder="Size"></label>
+                    <label>Từ giá: <input type="number" id="tuGia" min="0" style="width:90px;" placeholder="Từ"></label>
+                    <label>Đến giá: <input type="number" id="denGia" min="0" style="width:90px;"
+                            placeholder="Đến"></label>
+
+                    <label style="margin-left:12px;">
+                        <input type="checkbox" id="tongHopSize">
+                        Tổng hợp size
+                    </label>
+
+                    <button class="main-btn" onclick="taiBaoCaoChiTiet()">Xem báo cáo</button>
+                    <button class="main-btn" onclick="xuatExcel()">Xuất Excel</button>
+                    <button class="main-btn" id="btnCompact" onclick="toggleCompact()">Rút gọn</button>
+
+                    <!-- thêm cụm phân trang -->
+                    <div id="pagingBar"
+                        style="margin:8px 0; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <label>Số dòng/trang:
+                            <select id="pageSize" style="padding:4px 6px;">
+                                <option value="500">500</option>
+                                <option value="1000" selected>1000</option>
+                                <option value="2000">2000</option>
+                            </select>
+                        </label>
+
+                        <button class="main-btn" id="btnPrev" onclick="window.trangTruoc()">⬅ Trang trước</button>
+                        <button class="main-btn" id="btnNext" onclick="window.trangSau()">Trang sau ➡</button>
 
 
-                    <span id="pageInfo" style="color:#444">Trang 0/0 (Tổng: 0)</span>
-                    <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
-                    <button class="main-btn" onclick="window.toiTrang()">Đi</button>
+                        <span id="pageInfo" style="color:#444">Trang 0/0 (Tổng: 0)</span>
+                        <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Tới trang">
+                        <button class="main-btn" onclick="window.toiTrang()">Đi</button>
 
-                    <!-- nút xuất toàn bộ -->
-                    <button class="main-btn" onclick="xuatExcelToanBo()">Xuất toàn bộ</button>
+                        <!-- nút xuất toàn bộ -->
+                        <button class="main-btn" onclick="xuatExcelToanBo()">Xuất toàn bộ</button>
+                    </div>
+
+
                 </div>
 
 
+
+                <div class="filters-right">
+                    <textarea id="maspList" rows="12"
+                        placeholder="Nhập/dán nhiều mã sản phẩm, mỗi mã 1 dòng..."></textarea>
+                </div>
             </div>
 
+            <div id="tonghop" style="margin: 10px 0 5px 0; color: #1976d2; font-weight: bold; font-size: 17px;"></div>
 
-
-            <div class="filters-right">
-                <textarea id="maspList" rows="12" placeholder="Nhập/dán nhiều mã sản phẩm, mỗi mã 1 dòng..."></textarea>
+            <div id="hot"></div>
+        </div>
+        <!-- Popup tìm kiếm dùng chung -->
+        <div id="popupSearch">
+            <div style="padding:6px 10px; border-bottom:1px solid #eee; background:#f8fafd;">
+                <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
+                <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
             </div>
+            <div id="popupSearchList"></div>
         </div>
 
-        <div id="tonghop" style="margin: 10px 0 5px 0; color: #1976d2; font-weight: bold; font-size: 17px;"></div>
+    </div>
 
-        <div id="hot"></div>
-    </div>
-    <!-- Popup tìm kiếm dùng chung -->
-    <div id="popupSearch">
-        <div style="padding:6px 10px; border-bottom:1px solid #eee; background:#f8fafd;">
-            <input id="popupSearchInput" type="text" placeholder="Nhập từ khóa tìm kiếm..." autofocus>
-            <button onclick="closePopupSearch()" style="float:right;background:#e57373;color:#fff;">Đóng</button>
-        </div>
-        <div id="popupSearchList"></div>
-    </div>
+    <script type="module">
+  import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+
+  khoiTaoDangNhapDungChung({
+    appContainerId: 'app-container',
+    macDinhDiaDiem: '',
+    tuDongKhoaCoSo: false,
+    loginApiPath: (cs) => `/api/login-${cs}`,
+
+    async onLoginSuccess(nv, ctx) {
+      let isAdmin = false;
+
+      try {
+        const { data, error } = await window.supabase.rpc('is_admin');
+        isAdmin = (!error && data === true);
+      } catch (e) {
+        isAdmin = false;
+      }
+
+      if (!isAdmin) {
+        alert('Bạn không phải ADMIN, không được phép xem báo cáo này.');
+
+        const login = document.getElementById('login-container');
+        if (login) login.style.display = 'none';
+
+        const app = document.getElementById('app-container') || document.body;
+        app.style.display = '';
+        app.innerHTML = `
+          <h2 style="color:#c00; margin-top:20px; font-weight:bold;">
+            🚫 Bạn không có quyền xem báo cáo này
+          </h2>
+        `;
+        return false;
+      }
+
+      if (typeof window.initBaoCaoChiTietAfterAdmin === 'function') {
+        await window.initBaoCaoChiTietAfterAdmin();
+      }
+
+      return true;
+    }
+  });
+</script>
+
 </body>
 
 </html>
