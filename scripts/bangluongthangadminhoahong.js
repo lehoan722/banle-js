@@ -1153,17 +1153,27 @@ async function taiBangCong() {
   const tbody = document.getElementById("tbody-bangcong");
   const thead = document.getElementById("thead-bangcong");
 
+  if (!thang || !nam) {
+    alert("Vui lòng nhập tháng và năm.");
+    return;
+  }
+
+  const tu_ngay = `${nam}-${String(thang).padStart(2, "0")}-01`;
+  const den_ngay = toIsoDate(new Date(nam, thang, 0));
+
   tbody.innerHTML = `<tr><td colspan="50">Đang tải...</td></tr>`;
 
   const { data, error } = await supabase
-    .rpc("chamcong_bangcong_monthly", {
-      p_month: thang,
-      p_year: nam
+    .rpc("chamcong_tinhcong_monthly", {
+      tu_ngay,
+      den_ngay,
+      p_diadiem: null,
+      p_manv: null
     })
     .range(0, 9999);
 
   if (error) {
-    console.error(error);
+    console.error("Lỗi tải bảng công:", error);
     tbody.innerHTML = `<tr><td colspan="50">Lỗi tải dữ liệu</td></tr>`;
     renderBangCongHot([], []);
     return;
@@ -1178,19 +1188,18 @@ async function taiBangCong() {
   const nhanvien = [
     ...new Set(
       data
-        .filter(d => Number(d.gio_cong || 0) > 0)
-        .map(d => `${normalizeManv(d.manv)}|${d.tennv}`)
+        .filter(d => Number(d.tong_gio_cong || 0) > 0)
+        .map(d => `${normalizeManv(d.manv)}|${d.tennv || d.manv}`)
     )
   ];
 
-  if (nhanvien.length === 0) {
-    thead.innerHTML = `<tr><th>Ngày</th><th>Thứ</th><th>Tổng</th></tr>`;
-    tbody.innerHTML = `<tr><td colspan="3">Không có nhân viên nào phát sinh công trong tháng này.</td></tr>`;
-    renderBangCongHot([], []);
-    return;
-  }
+  const colHeaders = ["Ngày", "Thứ"];
+  nhanvien.forEach(n => {
+    const [, tennv] = n.split("|");
+    colHeaders.push(tennv);
+  });
+  colHeaders.push("Tổng");
 
-  // Header HTML dự phòng
   let header = `<th>Ngày</th><th>Thứ</th>`;
   nhanvien.forEach(n => {
     const [, tennv] = n.split("|");
@@ -1199,51 +1208,38 @@ async function taiBangCong() {
   header += `<th>Tổng</th>`;
   thead.innerHTML = `<tr>${header}</tr>`;
 
-  // Group theo ngày
   const groupByNgay = {};
   data.forEach(d => {
-    groupByNgay[d.ngay] = groupByNgay[d.ngay] || [];
-    groupByNgay[d.ngay].push(d);
+    const ngay = Number(String(d.ngay || d.ngay_date || d.ngay_chamcong || "").slice(-2));
+    if (!ngay) return;
+
+    groupByNgay[ngay] = groupByNgay[ngay] || [];
+    groupByNgay[ngay].push(d);
   });
 
-  // Header cho Handsontable
-  const colHeaders = ["Ngày", "Thứ"];
-  nhanvien.forEach(n => {
-    const [, tennv] = n.split("|");
-    colHeaders.push(tennv);
-  });
-  colHeaders.push("Tổng");
-
+  const soNgayTrongThang = new Date(nam, thang, 0).getDate();
   const hotData = [];
   const tongTheoNhanVien = {};
   nhanvien.forEach(n => {
-    const manv = normalizeManv(n.split("|")[0]);
-    tongTheoNhanVien[manv] = 0;
+    tongTheoNhanVien[normalizeManv(n.split("|")[0])] = 0;
   });
+
   let tongTatCa = 0;
-
-  const soNgayTrongThang = new Date(nam, thang, 0).getDate();
-  const ngayList = Array.from({ length: soNgayTrongThang }, (_, i) => String(i + 1));
-
   let html = "";
 
-  ngayList.forEach(ng => {
+  for (let ng = 1; ng <= soNgayTrongThang; ng++) {
     const row = groupByNgay[ng] || [];
+    const ngayDate = new Date(nam, thang - 1, ng);
+    const thu = ngayDate.toLocaleDateString("en-US", { weekday: "short" });
 
-    const ngayDate = new Date(nam, thang - 1, Number(ng));
-    const thu = row[0]?.thu || ngayDate.toLocaleDateString("en-US", {
-      weekday: "short"
-    });
     let sum = 0;
-
-    const rowData = [Number(ng), thu];
-
+    const rowData = [ng, thu];
     let cellsHtml = "";
 
     nhanvien.forEach(n => {
       const manv = normalizeManv(n.split("|")[0]);
       const found = row.find(r => normalizeManv(r.manv) === manv);
-      const gioCong = found ? Number(found.gio_cong || 0) : 0;
+      const gioCong = found ? Number(found.tong_gio_cong || 0) : 0;
 
       sum += gioCong;
       tongTheoNhanVien[manv] += gioCong;
@@ -1254,27 +1250,27 @@ async function taiBangCong() {
 
     tongTatCa += sum;
     rowData.push(Number(sum.toFixed(2)));
-
     hotData.push(rowData);
-    html += `<tr><td>${ng}</td><td>${thu}</td>${cellsHtml}<td>${sum ? sum.toFixed(2) : ""}</td></tr>`;
-  });
 
-  // Total row
-  let totalHtml = `<tr style="font-weight:bold;background:#f3f3f3"><td colspan="2">Tổng</td>`;
+    html += `<tr><td>${ng}</td><td>${thu}</td>${cellsHtml}<td>${sum ? sum.toFixed(2) : ""}</td></tr>`;
+  }
+
   const totalRow = ["Tổng", ""];
+  let totalHtml = `<tr style="font-weight:bold;background:#f3f3f3"><td colspan="2">Tổng</td>`;
+
   nhanvien.forEach(n => {
     const manv = normalizeManv(n.split("|")[0]);
-    totalRow.push(Number(tongTheoNhanVien[manv].toFixed(2)));
-    totalHtml += `<td>${tongTheoNhanVien[manv] ? tongTheoNhanVien[manv].toFixed(2) : ""}</td>`;
+    const tong = Number(tongTheoNhanVien[manv] || 0);
+    totalRow.push(Number(tong.toFixed(2)));
+    totalHtml += `<td>${tong ? tong.toFixed(2) : ""}</td>`;
   });
+
   totalRow.push(Number(tongTatCa.toFixed(2)));
   totalHtml += `<td>${tongTatCa ? tongTatCa.toFixed(2) : ""}</td></tr>`;
 
   hotData.push(totalRow);
-
   tbody.innerHTML = html + totalHtml;
 
-  // Render Handsontable
   renderBangCongHot(colHeaders, hotData);
 }
 
