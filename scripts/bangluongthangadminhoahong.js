@@ -183,6 +183,15 @@ async function loadTenNhanVienForRange(tu_ngay, den_ngay, manvArr) {
         p_month: month,
         p_year: year
       });
+
+      console.log("DEBUG bang cong RPC:", {
+        thang,
+        nam,
+        tongDong: data?.length,
+        ngay21: data?.filter(r => Number(r.ngay) === 21),
+        ngay21CoCong: data?.filter(r => Number(r.ngay) === 21 && Number(r.gio_cong || 0) > 0)
+      });
+
       if (error || !Array.isArray(data)) continue;
 
       for (const r of data) {
