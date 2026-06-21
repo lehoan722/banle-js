@@ -183,7 +183,6 @@ async function loadTenNhanVienForRange(tu_ngay, den_ngay, manvArr) {
         p_month: month,
         p_year: year
       });
-
       if (error || !Array.isArray(data)) continue;
 
       for (const r of data) {
@@ -1155,12 +1154,10 @@ async function taiBangCong() {
 
   tbody.innerHTML = `<tr><td colspan="50">Đang tải...</td></tr>`;
 
-  const { data, error } = await supabase
-    .rpc("chamcong_bangcong_monthly", {
-      p_month: thang,
-      p_year: nam
-    })
-    .range(0, 9999);
+  const { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
+    p_month: thang,
+    p_year: nam
+  });
 
   if (error) {
     console.error(error);
@@ -1222,18 +1219,13 @@ async function taiBangCong() {
   });
   let tongTatCa = 0;
 
-  const soNgayTrongThang = new Date(nam, thang, 0).getDate();
-  const ngayList = Array.from({ length: soNgayTrongThang }, (_, i) => String(i + 1));
+  const ngayList = Object.keys(groupByNgay).sort((a, b) => Number(a) - Number(b));
 
   let html = "";
 
   ngayList.forEach(ng => {
-    const row = groupByNgay[ng] || [];
-
-    const ngayDate = new Date(nam, thang - 1, Number(ng));
-    const thu = row[0]?.thu || ngayDate.toLocaleDateString("en-US", {
-      weekday: "short"
-    });
+    const row = groupByNgay[ng];
+    const thu = row[0].thu;
     let sum = 0;
 
     const rowData = [Number(ng), thu];
