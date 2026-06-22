@@ -64,6 +64,49 @@
     }).join("");
   }
 
+  function toDateValue(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function getDefaultTuNgay() {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 3);
+    d.setDate(1);
+    return toDateValue(d);
+  }
+
+  function getDefaultDenNgay() {
+    return toDateValue(new Date());
+  }
+
+  function setDefaultDateInputs() {
+    const tu = byId("tuNgay");
+    const den = byId("denNgay");
+
+    if (tu && !tu.value) tu.value = getDefaultTuNgay();
+    if (den && !den.value) den.value = getDefaultDenNgay();
+  }
+
+  function getDateRange() {
+    const tuNgay = String(byId("tuNgay")?.value || "").trim();
+    const denNgay = String(byId("denNgay")?.value || "").trim();
+
+    if (!tuNgay || !denNgay) {
+      alert("Bạn cần nhập Từ ngày và Đến ngày.");
+      return null;
+    }
+
+    if (tuNgay > denNgay) {
+      alert("Từ ngày không được lớn hơn Đến ngày.");
+      return null;
+    }
+
+    return { tuNgay, denNgay };
+  }
+
   async function taiDanhSach() {
     if (!window.supabase) {
       alert("Không tìm thấy window.supabase.");
@@ -72,13 +115,17 @@
 
     const btn = byId("btnTai");
     const diadiem = getDiadiem();
+    const range = getDateRange();
+    if (!range) return;
 
     try {
       if (btn) btn.disabled = true;
       setStatus("Đang tải danh sách...");
 
       const { data, error } = await window.supabase.rpc("rpc_tim_ban_nham_size", {
-        p_diadiem: diadiem
+        p_diadiem: diadiem,
+        p_tu_ngay: range.tuNgay,
+        p_den_ngay: range.denNgay
       });
 
       if (error) {
@@ -187,6 +234,8 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    setDefaultDateInputs();
+
     byId("btnTai")?.addEventListener("click", taiDanhSach);
     byId("btnCanDoi")?.addEventListener("click", canDoiDaChon);
     byId("btnChonHet")?.addEventListener("click", chonHet);
