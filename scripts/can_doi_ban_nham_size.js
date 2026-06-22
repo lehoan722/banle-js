@@ -62,7 +62,13 @@
         <tr data-index="${i}">
           <td><input type="checkbox" class="chkRow" ${disabled}></td>
           <td>${i + 1}</td>
-          <td><b>${esc(r.masp)}</b></td>
+          <td>
+  <b class="cell-masp-click"
+     data-masp="${esc(r.masp)}"
+     style="cursor:pointer; color:#0b57d0; text-decoration:underline;">
+    ${esc(r.masp)}
+  </b>
+</td>
           <td class="bad">${esc(r.size_from)}</td>
           <td class="ok">${esc(r.size_to)}</td>
           <td>${esc(r.size_from)} → ${esc(r.size_to)}</td>
@@ -73,6 +79,29 @@
         </tr>
       `;
     }).join("");
+
+    bindStockQuickForMaspCells();
+  }
+
+  function bindStockQuickForMaspCells() {
+    document.querySelectorAll(".cell-masp-click[data-masp]").forEach((el) => {
+      if (el.dataset.stockQuickBound === "1") return;
+
+      const masp = String(el.dataset.masp || "").trim().toUpperCase();
+      if (!masp) return;
+
+      el.dataset.stockQuickBound = "1";
+
+      if (window.StockQuick && typeof window.StockQuick.attach === "function") {
+        window.StockQuick.attach(el, masp);
+      } else if (typeof window.stockQuickPopup === "function") {
+        el.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          window.stockQuickPopup(masp);
+        });
+      }
+    });
   }
 
   function toDateValue(d) {
