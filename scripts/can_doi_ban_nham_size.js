@@ -2,6 +2,7 @@
   "use strict";
 
   let rows = [];
+  let currentMode = "danhsach"; // danhsach | lichsu
 
   function byId(id) {
     return document.getElementById(id);
@@ -44,8 +45,18 @@
     }
 
     tbody.innerHTML = rows.map((r, i) => {
-      const disabled = !r.ct_id || r.trangthai !== "cho_xu_ly" ? "disabled" : "";
-      const cls = r.trangthai === "cho_xu_ly" ? "ok" : "bad";
+      let disabled = "";
+
+      if (currentMode === "danhsach") {
+        disabled = !r.ct_id || r.trangthai !== "cho_xu_ly" ? "disabled" : "";
+      } else {
+        disabled = !r.log_id || r.trangthai === "da_khoi_phuc" ? "disabled" : "";
+      }
+
+      const cls =
+        r.trangthai === "cho_xu_ly" || r.trangthai === "da_xu_ly"
+          ? "ok"
+          : "bad";
 
       return `
         <tr data-index="${i}">
@@ -117,6 +128,7 @@
     const diadiem = getDiadiem();
     const range = getDateRange();
     if (!range) return;
+    currentMode = "danhsach";
 
     try {
       if (btn) btn.disabled = true;
@@ -225,6 +237,120 @@
     }
   }
 
+  async function taiLichSu() {
+    if (!window.supabase) {
+      alert("Không tìm thấy window.supabase.");
+      return;
+    }
+
+    const btn = byId("btnTaiLichSu");
+    const diadiem = getDiadiem();
+    const range = getDateRange();
+    if (!range) return;
+
+    try {
+      if (btn) btn.disabled = true;
+
+      currentMode = "lichsu";
+      setStatus("Đang tải lịch sử...");
+
+      const { data, error } = await window.supabase.rpc("rpc_tai_log_can_doi_ban_nham_size", {
+        p_diadiem: diadiem,
+        p_tu_ngay: range.tuNgay,
+        p_den_ngay: range.denNgay
+      });
+
+      if (error) {
+        console.error(error);
+        alert("Lỗi tải lịch sử: " + (error.message || error));
+        return;
+      }
+
+      rows = Array.isArray(data?.rows) ? data.rows : [];
+      render();
+
+      const coTheKhoiPhuc = rows.filter(r => r.log_id && r.trangthai !== "da_khoi_phuc").length;
+      setStatus(`Lịch sử: ${rows.length} dòng, có thể khôi phục ${coTheKhoiPhuc} dòng.`);
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi hệ thống khi tải lịch sử.");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function khoiPhucDaChon() {
+    if (currentMode !== "lichsu") {
+      alert("Bạn cần bấm Tải lịch sử trước, sau đó mới chọn dòng để khôi phục.");
+      return;
+    }
+
+    const selected = [];
+
+    document.querySelectorAll("#tbodyKetQua tr").forEach(tr => {
+      const idx = Number(tr.getAttribute("data-index"));
+      const chk = tr.querySelector(".chkRow");
+      if (!chk || !chk.checked) return;
+
+      const r = rows[idx];
+      if (r && r.log_id && r.trangthai !== "da_khoi_phuc") {
+        selected.push({ index: idx, row: r });
+      }
+    });
+
+    if (!selected.length) {
+      alert("Bạn chưa chọn dòng lịch sử nào để khôi phục.");
+      return;
+    }
+
+    const ok = confirm(
+      `Bạn có chắc muốn KHÔI PHỤC ${selected.length} dòng đã chọn?\n\n` +
+      `Hệ thống sẽ đổi size ngược lại theo log.`
+    );
+    if (!ok) return;
+
+    const btn = byId("btnKhoiPhuc");
+    const manv = String(localStorage.getItem("manv") || byId("manv")?.value || "").trim();
+
+    let done = 0;
+    let fail = 0;
+
+    try {
+      if (btn) btn.disabled = true;
+
+      for (const item of selected) {
+        const r = item.row;
+        setStatus(`Đang khôi phục ${done + fail + 1}/${selected.length}: ${r.masp}`);
+
+        const { error } = await window.supabase.rpc("rpc_khoi_phuc_can_doi_ban_nham_size", {
+          p_log_id: Number(r.log_id),
+          p_nguoi_thuc_hien: manv || null
+        });
+
+        if (error) {
+          console.error("Lỗi khôi phục:", r, error);
+          r.trangthai = "loi: " + (error.message || "không rõ");
+          fail++;
+        } else {
+          r.trangthai = "da_khoi_phuc";
+          done++;
+        }
+
+        render();
+      }
+
+      alert(`Hoàn tất khôi phục.\nĐã khôi phục: ${done}\nLỗi: ${fail}`);
+      setStatus(`Hoàn tất khôi phục: ${done}, lỗi ${fail}.`);
+
+      await taiLichSu();
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi hệ thống khi khôi phục.");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   function chonHet() {
     document.querySelectorAll(".chkRow:not(:disabled)").forEach(chk => chk.checked = true);
   }
@@ -238,6 +364,8 @@
 
     byId("btnTai")?.addEventListener("click", taiDanhSach);
     byId("btnCanDoi")?.addEventListener("click", canDoiDaChon);
+    byId("btnTaiLichSu")?.addEventListener("click", taiLichSu);
+    byId("btnKhoiPhuc")?.addEventListener("click", khoiPhucDaChon);
     byId("btnChonHet")?.addEventListener("click", chonHet);
     byId("btnBoChon")?.addEventListener("click", boChon);
   });
