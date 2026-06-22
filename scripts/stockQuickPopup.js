@@ -2376,7 +2376,3 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
   }
 
 })();
-
-
-
-
