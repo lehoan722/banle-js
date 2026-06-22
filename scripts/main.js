@@ -604,6 +604,41 @@ export async function khoiTaoUngDung() {
     // Đảm bảo cho biến global dùng được ở bangketqua.js
     window.hienThiAnhSanPhamTuMasp = hienThiAnhSanPhamTuMasp;
 
+    function ganCopyMaspKhiClickCotDauBangKetQua() {
+      if (window.__copyMaspCotDauBound) return;
+      window.__copyMaspCotDauBound = true;
+
+      document.addEventListener("click", async function (e) {
+        const td = e.target.closest("td");
+        if (!td) return;
+
+        const tr = td.closest("tr");
+        if (!tr) return;
+
+        const table = tr.closest("table");
+        if (!table || table.id !== "bangketqua") return;
+
+        const cellIndex = Array.from(tr.children).indexOf(td);
+        if (cellIndex !== 0) return; // chỉ cột Mã hàng / Mã SP
+
+        const masp = String(td.innerText || td.textContent || "")
+          .toUpperCase()
+          .replace(/\(\d+\)\s*$/, "")
+          .trim();
+
+        if (!masp) return;
+
+        try {
+          await navigator.clipboard.writeText(masp);
+          console.log("✅ Đã copy mã SP:", masp);
+        } catch (err) {
+          console.warn("Không copy được mã SP:", err);
+        }
+      }, true);
+    }
+
+    ganCopyMaspKhiClickCotDauBangKetQua();
+
     // Gán sự kiện khi nhập xong
     const maspInput = document.getElementById("masp");
     if (maspInput) {
