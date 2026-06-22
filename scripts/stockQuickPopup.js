@@ -2369,9 +2369,10 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       return window.StockQuick.showFor(document.body, masp);
     };
 
-    document.addEventListener("DOMContentLoaded", () => {
-      window.StockQuick.attachInput("#masp");
-    });
+    // BỎ tự động mở stockQuickPopup khi click vào ô nhập #masp
+    // document.addEventListener("DOMContentLoaded", () => {
+    //   window.StockQuick.attachInput("#masp");
+    // });
   }
 
 })();
