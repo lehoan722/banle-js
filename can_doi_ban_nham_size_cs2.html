@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cân đối bán nhầm size CS2</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 0;
+    }
+
+    .header {
+      background: #b00020;
+      color: white;
+      padding: 10px;
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      background: #eef6ff;
+      flex-wrap: wrap;
+    }
+
+    input,
+    select,
+    button {
+      font-size: 16px;
+      padding: 6px;
+    }
+
+    button {
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #btnTai {
+      background: #b00020;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+    }
+
+    #btnCanDoi {
+      background: #b00020;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+    }
+
+    #status {
+      font-weight: 700;
+      color: #003366;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f3f3f3;
+      position: sticky;
+      top: 0;
+    }
+
+    .table-wrap {
+      height: calc(100vh - 130px);
+      overflow: auto;
+    }
+
+    .ok {
+      color: #0b7a00;
+      font-weight: 700;
+    }
+
+    .bad {
+      color: #b00020;
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">CÂN ĐỐI BÁN NHẦM SIZE cs2</div>
+
+  <div id="app-container" style="display:none;">
+    <div class="toolbar">
+      <label>Cơ sở:
+        <input id="diadiem" value="cs2" readonly style="width:70px;">
+      </label>
+
+      <input id="manv" type="hidden">
+      <input id="tennv" readonly placeholder="Tên NV" style="width:160px;">
+
+      <label>Từ ngày:
+        <input id="tuNgay" type="date">
+      </label>
+
+      <label>Đến ngày:
+        <input id="denNgay" type="date">
+      </label>
+
+      <button id="btnTai">Tải danh sách</button>
+      <button id="btnCanDoi">Cân đối dòng đã chọn</button>
+      <button id="btnTaiLichSu" type="button">Tải lịch sử</button>
+      <button id="btnKhoiPhuc" type="button">Khôi phục dòng đã chọn</button>
+      <button id="btnChonHet">Chọn hết</button>
+      <button id="btnBoChon">Bỏ chọn</button>
+
+      <span id="status">Chưa tải dữ liệu</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Chọn</th>
+            <th>STT</th>
+            <th>Mã SP</th>
+            <th>Size âm</th>
+            <th>Size dương</th>
+            <th>Sửa</th>
+            <th>Số HĐ</th>
+            <th>Ngày</th>
+            <th>NV bán</th>
+            <th>Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyKetQua"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="login-container"></div>
+
+  <script type="module">
+    import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+
+    khoiTaoDangNhapDungChung({
+      macDinhDiaDiem: "cs2",
+      tuDongKhoaCoSo: true,
+      loginApiPath: "/api/login-cs2",
+      onLoginSuccess: async (nhanvien, { diadiem, session }) => {
+        if (diadiem) localStorage.setItem("diadiem", diadiem);
+        if (session?.access_token) {
+          localStorage.setItem("supabase_access_token", session.access_token);
+        }
+
+        localStorage.setItem("manv", nhanvien.manv || "");
+        localStorage.setItem("tennv", nhanvien.tennv || "");
+
+        document.getElementById("manv").value = nhanvien.manv || "";
+        document.getElementById("tennv").value = nhanvien.tennv || "";
+        document.getElementById("diadiem").value = "cs2";
+
+        document.getElementById("app-container").style.display = "block";
+      }
+    });
+  </script>
+
+  <script src="./scripts/stockQuickPopup.js?v=1"></script>
+  <script type="module" src="./scripts/can_doi_ban_nham_size.js"></script>
+</body>
+
+</html>
