@@ -625,17 +625,20 @@
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
             <button id="btn-sua" class="btn edit" type="button">SỬA</button>
-            <button id="quaylai">Quay lại</button>            
+            <button id="quaylai">Quay lại</button>
+            <button id="xoa" class="xoaDongDangChon" type="button">xoa</button>
+
             <button id="tieptuc">Tiếp tục</button>
-            <button id="xoa" class="xoaDongDangChon" type="button">xoa</button>            
-            <button id="btnCopy">Copy</button>           
+            <button id="xemin">Xem in</button>
+            <button id="btnCopy">Copy</button>
+            <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
-            <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
-            <button id="btnKiemTraCCN" type="button">✅ Kiểm tra</button>
+
+            <div style="margin-bottom:6px;">
+                <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
+            </div>
 
             <!-- Popup tìm khách hàng
-             <button id="xemin">Xem in</button>
-              <button id="xuatexcel">Xuất Excel</button>
              <button onclick="luuHoaDonccn2v1()">💾 Lưu</button>
              <button id="xuatexcel">Xuất Excel</button>
              <button id="timkiem">Tìm kiếm</button>
@@ -1024,16 +1027,13 @@
         }
     </script>
 
-    <script src="./scripts/kiemtraccn.js"></script>
 
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
         setTimeout(function () {
-            window.__SAVE_CCN_GOC__ = saveBanLe111;
-
             window.LUU_HOADON_F2 = async () => {
-                return await window.saveHoaDonCCNCoKiemTra("F2-CCN");
+                return await saveBanLe111("F2-CCN");
             };
         }, 1000);
     </script>
@@ -1545,9 +1545,7 @@
             this.innerText = "Đang lưu...";
 
             try {
-                window.__SAVE_CCN_GOC__ = saveBanLe111;
-
-                const result = await window.saveHoaDonCCNCoKiemTra("BTN-LUU-CCN");
+                const result = await saveBanLe111("BTN-LUU-CCN");
 
                 if (result?.ok) {
                     // có thể để trống
