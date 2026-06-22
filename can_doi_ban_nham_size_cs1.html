@@ -1,25 +1,99 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cân đối bán nhầm size CS1</title>
 
   <style>
-    body { font-family: Arial; margin: 0; }
-    .header { background:#0b57d0; color:white; padding:10px; font-size:24px; font-weight:700; text-align:center; }
-    .toolbar { display:flex; gap:8px; align-items:center; padding:8px; background:#eef6ff; flex-wrap:wrap; }
-    input, select, button { font-size:16px; padding:6px; }
-    button { font-weight:700; cursor:pointer; }
-    #btnTai { background:#0b57d0; color:white; border:0; border-radius:6px; }
-    #btnCanDoi { background:#b00020; color:white; border:0; border-radius:6px; }
-    #status { font-weight:700; color:#003366; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { border:1px solid #ccc; padding:6px; text-align:center; font-size:14px; }
-    th { background:#f3f3f3; position:sticky; top:0; }
-    .table-wrap { height:calc(100vh - 130px); overflow:auto; }
-    .ok { color:#0b7a00; font-weight:700; }
-    .bad { color:#b00020; font-weight:700; }
+    body {
+      font-family: Arial;
+      margin: 0;
+    }
+
+    .header {
+      background: #0b57d0;
+      color: white;
+      padding: 10px;
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      background: #eef6ff;
+      flex-wrap: wrap;
+    }
+
+    input,
+    select,
+    button {
+      font-size: 16px;
+      padding: 6px;
+    }
+
+    button {
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #btnTai {
+      background: #0b57d0;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+    }
+
+    #btnCanDoi {
+      background: #b00020;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+    }
+
+    #status {
+      font-weight: 700;
+      color: #003366;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f3f3f3;
+      position: sticky;
+      top: 0;
+    }
+
+    .table-wrap {
+      height: calc(100vh - 130px);
+      overflow: auto;
+    }
+
+    .ok {
+      color: #0b7a00;
+      font-weight: 700;
+    }
+
+    .bad {
+      color: #b00020;
+      font-weight: 700;
+    }
   </style>
 </head>
 
@@ -36,15 +110,17 @@
       <input id="tennv" readonly placeholder="Tên NV" style="width:160px;">
 
       <label>Từ ngày:
-  <input id="tuNgay" type="date">
-</label>
+        <input id="tuNgay" type="date">
+      </label>
 
-<label>Đến ngày:
-  <input id="denNgay" type="date">
-</label>
+      <label>Đến ngày:
+        <input id="denNgay" type="date">
+      </label>
 
       <button id="btnTai">Tải danh sách</button>
       <button id="btnCanDoi">Cân đối dòng đã chọn</button>
+      <button id="btnTaiLichSu" type="button">Tải lịch sử</button>
+      <button id="btnKhoiPhuc" type="button">Khôi phục dòng đã chọn</button>
       <button id="btnChonHet">Chọn hết</button>
       <button id="btnBoChon">Bỏ chọn</button>
 
@@ -101,4 +177,5 @@
 
   <script type="module" src="./scripts/can_doi_ban_nham_size.js"></script>
 </body>
+
 </html>
