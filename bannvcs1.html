@@ -391,7 +391,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-    <link rel="stylesheet" href="banlemobilecs1.css">
+    <link rel="stylesheet" href="banlemobilecs1.css?v=16">
 
 </head>
 
@@ -810,7 +810,7 @@
                 //    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
                 let okInit = true;
                 try {
-                    const module = await import("./scripts/main.js");
+                    const module = await import("./scripts/main.js?v=75");
                     if (typeof module.khoiTaoUngDung === "function") {
                         okInit = await module.khoiTaoUngDung();
                     }
@@ -983,7 +983,7 @@
         }
     </script>
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
-    <script src="scripts/stockQuickPopup.js"></script>
+    <script src="/scripts/stockQuickPopup.js?v=77"></script>
     <script src="scripts/menu-component.js"></script>
 
     <script type="module">
