@@ -797,7 +797,7 @@
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
                 try {
-                    const module = await import("./scripts/main.js?v=100");
+                    const module = await import("./scripts/main.js?v=101");
                     if (typeof module.khoiTaoUngDung === "function") {
                         module.khoiTaoUngDung();
                     }
@@ -830,7 +830,7 @@
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
-    <script src="/scripts/stockQuickPopup.js?v=100"></script>
+    <script src="/scripts/stockQuickPopup.js?v=101"></script>
 
     <script src="scripts/menu-component.js"></script>
 
@@ -1532,6 +1532,18 @@
             };
 
         })();
+    </script>
+
+    <script type="module">
+        import { initDatHangChuyenKho } from "./scripts/datHangChuyenKho.js?v=101";
+
+        initDatHangChuyenKho({
+            supabase: window.supabase,
+            diadiem: localStorage.getItem("diadiem") || "cs1",
+            manvDangNhap: localStorage.getItem("manv") || ""
+        });
+
+        console.log("✅ CCN đã nạp DatHangChuyenKho:", !!window.DatHangChuyenKho);
     </script>
 
     <script type="module">
