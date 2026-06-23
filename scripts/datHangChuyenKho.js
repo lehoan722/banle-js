@@ -252,17 +252,20 @@ function showPanel(allRows) {
   box.style.cssText = `
     position:fixed;
     left:6px;
-    bottom:58px;
+    top:56vh;
     width:620px;
     max-width:94vw;
-    max-height:44vh;
-    overflow:auto;
+    height:36vh;
+    max-height:36vh;
+    overflow-y:auto;
+    overflow-x:auto;
     background:#fff4d6;
     border:1px solid #d8a63b;
     box-shadow:0 2px 10px rgba(0,0,0,.25);
     z-index:9997;
     font-size:13px;
     padding:6px;
+    box-sizing:border-box;
   `;
 
   box.innerHTML = `
@@ -312,19 +315,39 @@ function showPanel(allRows) {
   document.body.appendChild(box);
 
   box.querySelector("#dhck-close").onclick = () => {
-    popupOpen = false;
-    box.remove();
+    closeDhckPanel();
   };
 
   box.querySelector("#dhck-create-ccn").onclick = () => createCcnFromChecked(box, canMove);
 
-  document.addEventListener("keydown", function esc(e) {
+  function closeDhckPanel() {
+    popupOpen = false;
+    box.remove();
+    document.removeEventListener("keydown", esc, true);
+    document.removeEventListener("mousedown", outsideClick, true);
+  }
+
+  function esc(e) {
     if (e.key === "Escape" && document.getElementById("dhck-panel")) {
-      popupOpen = false;
-      box.remove();
-      document.removeEventListener("keydown", esc, true);
+      closeDhckPanel();
     }
-  }, true);
+  }
+
+  function outsideClick(e) {
+    const panel = document.getElementById("dhck-panel");
+    if (!panel) return;
+
+    if (panel.contains(e.target)) return;
+    if (e.target.closest("#dhck-confirm")) return;
+
+    closeDhckPanel();
+  }
+
+  document.addEventListener("keydown", esc, true);
+
+  setTimeout(() => {
+    document.addEventListener("mousedown", outsideClick, true);
+  }, 100);
 }
 
 async function createCcnFromChecked(box, canMove) {
