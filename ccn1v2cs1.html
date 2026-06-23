@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>CCN2V1_CS2</title>
+    <title>CCN1V2</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
@@ -343,7 +343,7 @@
     </style>
 
     <style>
-        /* Cột size của bảng kết quả CCN2v1:
+        /* Cột size của bảng kết quả CCN1V2:
      đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
         #bangketqua th:nth-child(3),
         #bangketqua td:nth-child(3) {
@@ -500,7 +500,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="CCN2V1" autocomplete="off" />
+                <input id="masp" placeholder="CCN1V2" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 400px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -639,7 +639,7 @@
             </div>
 
             <!-- Popup tìm khách hàng
-             <button onclick="luuHoaDonccn2v1()">💾 Lưu</button>
+             <button onclick="luuHoaDonccn1v2()">💾 Lưu</button>
              <button id="xuatexcel">Xuất Excel</button>
              <button id="timkiem">Tìm kiếm</button>
              <button id="luu">Lưu</button>
@@ -752,11 +752,11 @@
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT CS2
+        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs2",          // cố định cơ sở 1
+            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs2", // API backend mới
+            loginApiPath: "/api/login-cs1", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, { diadiem, session }) => {
@@ -836,7 +836,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs2");       // vd: "cs1" / "cs1"
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -1292,23 +1292,23 @@
     </script>
 
     <script>
-        /** Nạp dữ liệu chuyển CN từ localStorage vào bảng kết quả (chỉ cho 2v1) */
+        /** Nạp dữ liệu chuyển CN từ localStorage vào bảng kết quả (chỉ cho 1v2) */
         function tryPrefillFromStorage(waitForRenderer = true, tries = 0) {
             try {
                 const raw = localStorage.getItem('ccn_prefill_payload');
                 if (!raw) {
-                    console.log('[CCN 2v1] Không thấy payload trong localStorage.');
+                    console.log('[CCN 1v2] Không thấy payload trong localStorage.');
                     return;
                 }
 
                 let pf;
                 try { pf = JSON.parse(raw); } catch (parseErr) {
-                    console.error('[CCN 2v1] Lỗi parse payload:', parseErr);
+                    console.error('[CCN 1v2] Lỗi parse payload:', parseErr);
                     return;
                 }
 
-                if (!pf || pf.dir !== '2v1') {
-                    console.log('[CCN 2v1] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
+                if (!pf || pf.dir !== '1v2') {
+                    console.log('[CCN 1v2] Bỏ qua payload vì dir không khớp:', pf && pf.dir);
                     return;
                 }
 
@@ -1330,7 +1330,7 @@
                     }
                 }
 
-                console.log('[CCN 2v1] Payload OK, rows:', rows.length);
+                console.log('[CCN 1v2] Payload OK, rows:', rows.length);
 
                 const renderFn = window.capNhatBangHTML || window.renderBangKetQua || null;
 
@@ -1340,16 +1340,16 @@
                     renderFn(window.bangKetQua);
 
                     localStorage.removeItem('ccn_prefill_payload');
-                    console.log('[CCN 2v1] Đã render qua hàm chính & xóa payload.');
+                    console.log('[CCN 1v2] Đã render qua hàm chính & xóa payload.');
 
                     setTimeout(() => {
-                        tryAutoSaveFromNhapTamCCN('2v1');
+                        tryAutoSaveFromNhapTamCCN('1v2');
                     }, 800);
                     return;
                 }
 
                 if (waitForRenderer && tries < 20) {
-                    console.log('[CCN 2v1] Chưa có hàm render, thử lại...', tries + 1);
+                    console.log('[CCN 1v2] Chưa có hàm render, thử lại...', tries + 1);
                     setTimeout(() => tryPrefillFromStorage(true, tries + 1), 300);
                     return;
                 }
@@ -1357,16 +1357,16 @@
                 const ok = renderRowsDirectIntoTable(rows);
                 if (ok) {
                     localStorage.removeItem('ccn_prefill_payload');
-                    console.log('[CCN 2v1] Render Fallback ok & đã xoá payload.');
+                    console.log('[CCN 1v2] Render Fallback ok & đã xoá payload.');
 
                     setTimeout(() => {
-                        tryAutoSaveFromNhapTamCCN('2v1');
+                        tryAutoSaveFromNhapTamCCN('1v2');
                     }, 800);
                 } else {
-                    console.warn('[CCN 2v1] Fallback render không thành công.');
+                    console.warn('[CCN 1v2] Fallback render không thành công.');
                 }
             } catch (e) {
-                console.error('[CCN 2v1] Lỗi nạp payload:', e);
+                console.error('[CCN 1v2] Lỗi nạp payload:', e);
             }
         }
 
