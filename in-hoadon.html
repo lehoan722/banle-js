@@ -668,10 +668,10 @@
           const rawDiaDiem = (hoadon.diadiem ?? hoadon.dia_diem ?? hoadon.coso ?? hoadon.macoso ?? hoadon.loaihd ?? "").toString().toLowerCase();
           const isCS2 = rawDiaDiem.includes("cs2") || rawDiaDiem.includes("cơ sở 2") || rawDiaDiem.includes("co so 2");
 
-          let bankBin = "970415";
-          let bankLabel = "VietinBank";
-          let accountNo = "101880222833";
-          let accountName = "DANG LE HOAN";
+          let bankBin;
+          let bankLabel;
+          let accountNo;
+          let accountName;
 
           const sohdText = (hoadon.sohd || "").toString().trim();
           const soCuoiMatch = sohdText.match(/(\d+)\s*$/);
@@ -679,6 +679,8 @@
           const laSoChan = soCuoiHoaDon % 2 === 0;
 
           if (isCS2) {
+
+            // ===== CS2 =====
             if (laSoChan) {
               bankBin = "970422";
               bankLabel = "MB";
@@ -689,6 +691,33 @@
               bankLabel = "Vietcombank";
               accountNo = "1068146050";
               accountName = "--";
+            }
+
+          } else {
+
+            // ===== CS1 =====
+            if (laSoChan) {
+
+              // Hóa đơn chẵn
+              bankBin = "970418";      // BIDV
+              bankLabel = "BIDV";
+              accountNo = "8848543915";
+              accountName = "--";
+
+            } else {
+
+              // Hóa đơn chẵn
+              bankBin = "970418";      // BIDV
+              bankLabel = "BIDV";
+              accountNo = "8848543915";
+              accountName = "--";
+
+              // Hóa đơn lẻ
+              //bankBin = "970415";      // VietinBank
+              //bankLabel = "VietinBank";
+              //accountNo = "101880222833";
+              //accountName = "DANG LE HOAN";
+
             }
           }
 
