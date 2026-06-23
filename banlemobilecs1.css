@@ -291,7 +291,7 @@
 
   /* Ẩn nút phụ */
   #tieptuc,
-  #xemin,
+  #xemin,  
   #xuatexcel,
   #btn-logout {
     display: none !important;
@@ -565,3 +565,39 @@
   }
 }
 
+
+@media (max-width: 480px) {
+  #baymau-popup {
+    margin-top: 360px !important;
+    margin-left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    height: 150px !important;
+    max-height: 150px !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    box-sizing: border-box !important;
+    pointer-events: auto !important;
+    border-radius: 0 !important;
+    z-index: 10010 !important;
+  }
+
+  #baymau-popup table {
+    min-width: 620px !important;
+  }
+
+  #dhck-panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+    z-index: 10020 !important;
+  }
+
+  #dhck-panel table {
+    min-width: 620px !important;
+  }
+}
