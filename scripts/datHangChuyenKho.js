@@ -294,16 +294,20 @@ function showPanel(allRows) {
   `;
 
   if (window.matchMedia("(max-width: 480px)").matches) {
-  box.style.left = "0";
-  box.style.right = "0";
-  box.style.top = "62vh";
-  box.style.bottom = "54px";
-  box.style.width = "100vw";
-  box.style.maxWidth = "100vw";
-  box.style.height = "auto";
-  box.style.maxHeight = "calc(38vh - 54px)";
-  box.style.fontSize = "12px";
-}
+    box.style.left = "0";
+    box.style.right = "0";
+    box.style.top = "520px";
+    box.style.bottom = "118px";
+    box.style.width = "100vw";
+    box.style.maxWidth = "100vw";
+    box.style.height = "auto";
+    box.style.maxHeight = "190px";
+    box.style.overflowY = "auto";
+    box.style.overflowX = "auto";
+    box.style.fontSize = "12px";
+    box.style.zIndex = "9998";
+
+  }
 
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;font-weight:bold;margin-bottom:4px;">
