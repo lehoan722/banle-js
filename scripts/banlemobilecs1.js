@@ -1,358 +1,614 @@
-// ===== 1. Khởi tạo Supabase Client ===== 
+/* ===== Bản mobile cho banlemtcs1.html ===== */
+@media (max-width: 480px) {
 
-import { tinhKhuyenMai } from './khuyenmai.js';
+  /* 1) Header & Menu */
+  .menu-bar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 8px 10px;
+  }
 
-const supabaseUrl = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+  .menu-item {
+    display: none !important;
+  }
 
-// ===== 2. Biến toàn cục =====
-let dsSanPham = [];
-let spHienTai = null; // Lưu tạm object sản phẩm vừa tìm được
-let currentLoai = 'bancs1'; // Có thể cấu hình nếu chuyển cơ sở
-let currentCoso = 'cs1';
-let currentSoHD = '';
-let nhanvien = {}; // Lưu thông tin nhân viên nếu cần
+  /* Ẩn menu thả xuống, giữ .tennv */
+  .app-menu {
+    display: none !important;
+  }
 
-// ===== 3. Hàm sinh số hóa đơn tự động =====
-// ===== REPLACE: genSoHoaDon dùng RPC atomic =====
-// ===== genSoHoaDon: gọi RPC mới next_sohd_mobile(prefix, pad) =====
-// Gọi phát sinh số HĐ theo chuẩn MT
-async function genSoHoaDon() {
-    return await window.capNhatSoHoaDonTuDong();
+  /* Ẩn menu thả xuống, giữ .tennv */
+
+  /* Khối tennv: luôn 1 dòng, khoảng cách gọn */
+  .tennv {
+    display: flex;
+    flex-wrap: nowrap;
+    /* không cho xuống dòng */
+    justify-content: flex-start;
+    /* không dàn đều tạo khoảng trống lớn */
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Label là flex-item thật, control bên trong fill 100% */
+  .tennv>label {
+    display: flex;
+    flex: 0 1 auto;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    /* tránh iOS ép min-content */
+  }
+
+  .tennv>label select,
+  .tennv>label input {
+    width: 100%;
+    min-width: 0;
+    height: 20px;
+    font-size: 15px;
+  }
+
+  /* Ưu tiên hiển thị Tên NV: thu gọn "Địa điểm" để không bị chèn mất */
+  /* Gợi ý: Địa điểm thường chỉ CS1/CS2 nên để dạng "fit" theo nội dung */
+  .tennv>label:has(#diadiem),
+  .tennv>label:nth-of-type(1) {
+    /* fallback nếu #diadiem là label đầu */
+    flex: 0 0 72px;
+    /* ~1/3 so với khối rộng 200px+ trước đây */
+    max-width: 72px;
+    min-width: 72px;
+  }
+
+  #diadiem {
+    width: 72px;
+    /* giữ gọn và ổn định trên iOS */
+    min-width: 0;
+  }
+
+  .tennv>label:has(#ngay),
+  .tennv>label:nth-of-type(2) {
+    /* fallback nếu #ngay là label thứ 2 */
+    flex: 0 0 120px;
+    max-width: 120px;
+    min-width: 120px;
+  }
+
+  #ngay {
+    width: 120px;
+    min-width: 0;
+  }
+
+  /* Ô Tên NV là flex-item trực tiếp */
+  #tennv {
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
+    height: 20px;
+    font-size: 15px;
+  }
+
+  /* Ẩn các mục không dùng */
+  #manv,
+  #btnReloadSP {
+    display: none !important;
+  }
+
+
+
+  /* 2) Khối nhập nhanh */
+  .top-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    /* cho phép tự xuống nhiều hàng */
+    gap: 6px;
+    padding: 8px;
+    background: #f6f7f9;
+    align-items: center;
+  }
+
+  /* Ẩn trường không dùng (giữ DOM để JS không lỗi) */
+  #dvt,
+  #khuyenmai,
+  #thanhtien {
+    display: none !important;
+  }
+
+  /* Reset width cũ (bỏ !important trước đó) + tránh iOS ép min-content */
+  #masp,
+  #soluong,
+  #size,
+  #gia,
+  #sohd,
+  #ghichu {
+    width: auto;
+    min-width: 0;
+  }
+
+  /* Mã SP nằm trong <div> wrapper -> chia % cho WRAPPER */
+  .top-inputs>div:first-child,
+  .top-inputs>div:has(#masp) {
+    /* :has là dự phòng, first-child đã đủ */
+    flex: 0 1 40%;
+    max-width: 40%;
+    min-width: 0;
+  }
+
+  /* Input #masp fill đủ bên trong wrapper */
+  #masp {
+    width: 100%;
+  }
+
+  /* Tỉ lệ bạn yêu cầu */
+  #soluong {
+    flex: 0 1 20%;
+    max-width: 10%;
+    text-align: center;
+  }
+
+  #size {
+    flex: 0 1 20%;
+    max-width: 15%;
+    text-align: center;
+  }
+
+  #gia {
+    flex: 0 1 30%;
+    max-width: 30%;
+    text-align: right;
+  }
+
+  /* Vị trí mới: 30% sau Số HĐ */
+  #vitri {
+    flex: 0 1 40%;
+    max-width: 40%;
+  }
+
+  #sohd {
+    flex: 0 1 40%;
+    max-width: 40%;
+  }
+
+  #ghichu {
+    display: none !important;
+  }
+
+  #mathang {
+    flex: 0 1 25%;
+    max-width: 25%;
+  }
+
+  #tongsl {
+    flex: 0 1 25%;
+    max-width: 25%;
+  }
+
+  /* Nút kính lúp theo nội dung, không chiếm % */
+  #masp-search {
+    display: none !important;
+  }
+
+  /* Ẩn các .top-inputs nằm SAU footer (hai dòng gạch) */
+  .footer-buttons~.top-inputs {
+    display: none !important;
+  }
+
+  /* 3) Main chuyển cột; bảng co giãn */
+  .main {
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  /*--------------------- mới — cho mobile nhìn “gấp đôi” và chắc chắn đẩy panel xuống dưới -------------------------------- */
+  /* Cho mobile: mở khóa chiều cao trang & cho phép cuộn */
+  #app-container {
+    height: auto;
+    /* bỏ height:100vh của trang chính */
+    min-height: 100dvh;
+    /* vẫn đủ tối thiểu bằng viewport, tương thích iOS */
+  }
+
+  .main {
+    height: auto;
+    /* bỏ height:1px */
+    overflow: visible;
+    /* bỏ overflow:hidden để toàn trang cuộn được */
+  }
+
+  /* Bảng vẫn cao ~75% màn hình như anh muốn */
+  .table-area {
+    height: 60dvh;
+    max-height: none !important;
+    /* gỡ trần 100% từ trang chính */
+    flex: 0 0 auto;
+    /* tránh flex:1 co lại */
+  }
+
+  /* Fallback cho máy chưa hỗ trợ dvh */
+  @supports not (height: 1dvh) {
+    .table-area {
+      height: 60vh;
+    }
+  }
+
+  /* (tuỳ chọn) để panel cuộn riêng nếu nội dung dài */
+  .sidebar {
+    max-height: none;
+    overflow: visible;
+  }
+
+  /*--------------------- mới — cho mobile nhìn “gấp đôi” và chắc chắn đẩy panel xuống dưới -------------------------------- */
+
+  .sidebar {
+    width: 100%;
+    border-left: 0;
+  }
+
+  /* 4) Ẩn bớt cột bảng theo thứ tự */
+  #bangketqua thead th:nth-child(2),
+  #bangketqua tbody td:nth-child(2),
+  #bangketqua thead th:nth-child(5),
+  #bangketqua tbody td:nth-child(5),
+  #bangketqua thead th:nth-child(7),
+  #bangketqua tbody td:nth-child(7) {
+    display: none;
+  }
+
+  /* 5) Thẻ tổng tiền/khách trả bố cục đẹp hơn */
+  .btn-big {
+    width: 100%;
+    font-size: 18px;
+  }
+
+  #phaithanhtoan,
+  #khachtra,
+  #conlai {
+    width: 140px !important;
+  }
+
+  /* 6) Ảnh sản phẩm */
+  .product-image {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 3px;
+  }
+
+  /* 7) Footer nút lớn sticky */
+  .footer-buttons {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px;
+    gap: 8px;
+    background: #dce9f9;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Ẩn nút phụ */
+  #tieptuc,
+  #xemin,  
+  #xuatexcel,
+  #btn-logout {
+    display: none !important;
+  }
+
+  .footer-buttons button {
+    height: 44px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  /* 8) Tabs bên phải */
+  .tabs button {
+    padding: 10px;
+    font-size: 15px;
+  }
+
+  .tab-content {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  /* === MOBILE: đưa thông tin khách lên cao và chỉ giữ 3 ô cần dùng === */
+
+  #app-container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Đưa dòng khách hàng lên ngay sau khối nhập mã SP */
+  .khach-footer-info {
+    order: 2;
+    width: 100% !important;
+    display: grid !important;
+
+    /* makh | tenkh | diem | zalo */
+    grid-template-columns: 30% 23% 12% 35%;
+
+    gap: 4px;
+    padding: 4px 6px;
+
+    background: #f7f7f7;
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+
+    box-sizing: border-box;
+  }
+
+  .main {
+    order: 3;
+  }
+
+  .footer-buttons {
+    order: 4;
+  }
+
+  /* Ô mã khách */
+  .khach-footer-info #khBox {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .khach-footer-info #makh {
+    width: 100% !important;
+    height: 26px;
+    font-size: 14px;
+    padding-right: 28px !important;
+  }
+
+  .khach-footer-info #btnPopupKH {
+    width: 26px !important;
+    height: 24px !important;
+  }
+
+  /* Label Khách hàng + Điểm KH */
+  .khach-footer-info label {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center;
+    gap: 3px;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0;
+    /* ẩn chữ label để tiết kiệm ngang */
+  }
+
+  .khach-footer-info label input {
+    width: 100% !important;
+    height: 26px;
+    font-size: 14px;
+    padding: 2px 5px;
+    box-sizing: border-box;
+  }
+
+  /* Chỉ giữ: mã khách, tên khách, điểm khách */
+  /* Ẩn các ô không cần trên mobile */
+
+  .khach-footer-info label:has(#hang_khach),
+  .khach-footer-info label:has(#diem_tru),
+  .khach-footer-info label:has(#tien_doi_diem) {
+    display: none !important;
+  }
+
+  /* Safari fallback */
+
+  .khach-footer-info label.hide-mobile {
+    display: none !important;
+  }
+
+  /* ===== Ô trạng thái Zalo ===== */
+
+  .zalo-status-wrap {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 2px;
+
+    width: 100%;
+    min-width: 0;
+  }
+
+  .zalo-invited-label,
+  .zalo-joined-label {
+
+    flex: 1;
+
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+
+    gap: 1px;
+
+    font-size: 10px !important;
+
+    background: #fff;
+
+    border: 1px solid #ccc;
+    border-radius: 4px;
+
+    height: 26px;
+
+    padding: 0 2px;
+
+    box-sizing: border-box;
+
+    white-space: nowrap;
+  }
+
+  #zalo_da_moi,
+  #zalo_da_vao_nhom {
+
+    width: 14px !important;
+    height: 14px !important;
+
+    margin: 0;
+  }
+
+  #zalo_da_vao_nhom {
+    width: 18px !important;
+    height: 18px !important;
+    margin: 0;
+  }
+
+  #zalo_joined_text {
+    font-size: 11px !important;
+    white-space: nowrap;
+  }
+
+  /* Popup gợi ý khách mở phía dưới ô mã khách, không làm vỡ ngang */
+  #khSuggestList {
+    width: 320px !important;
+    max-width: 92vw !important;
+    left: 0 !important;
+    bottom: auto !important;
+    top: 100% !important;
+    font-size: 14px;
+  }
+
+  /* Ẩn nút CCN trên mobile */
+  #btnCCN {
+    display: none !important;
+  }
+
+  /* ===== FIX MOBILE SAU KHI TÁCH CỘT TRÁI / PHẢI TRÊN PC ===== */
+
+  .banle-layout-moi {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .banle-left {
+    display: contents !important;
+  }
+
+  .banle-left>.top-inputs {
+    order: 1;
+  }
+
+  .khach-footer-info {
+    order: 2;
+  }
+
+  .main {
+    order: 3;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .banle-right {
+    order: 4;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    border-left: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .banle-right .sidebar {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border-left: none !important;
+  }
+
+  .footer-buttons {
+    order: 5;
+  }
+
+  .banle-right .tab-content {
+    padding: 10px !important;
+  }
+
+  .banle-right .btn-big {
+    width: 100% !important;
+    margin: 6px 0 !important;
+    box-sizing: border-box;
+  }
+
+  .banle-right .product-image {
+    width: 50px !important;
+    height: 50px !important;
+    margin: 6px auto !important;
+    object-fit: contain !important;
+  }
+
 }
 
-
-
-
-// ===== RPC mới: next_sohd_mobile(prefix text, pad int default 5) =====
-async function getNextSoHDTuRPCMobile(prefix, pad = 5) {
-    const { data, error } = await _supabase.rpc('next_sohd_mobile', { p_prefix: prefix, p_pad: pad });
-    if (error) throw new Error('RPC next_sohd_mobile lỗi: ' + error.message);
-    return data; // ví dụ "bancs1_00012"
+/* === GIỮ HIỂN THỊ ĐẦY ĐỦ CỘT KHI Ở DẠNG NGANG === */
+.bang-ngang-mode #bangketqua th,
+.bang-ngang-mode #bangketqua td {
+  display: table-cell !important;
+  visibility: visible !important;
 }
 
+/* Chỉ mở toàn bộ cột khi đang xem "dạng ngang" trên màn hình nhỏ */
+@media (max-width: 768px) {
 
-// ===== 4. Hàm tìm sản phẩm và xác định loại quản lý size =====
-async function timSanPhamTheoMa(masp) {
-    masp = (masp || '').toUpperCase();
-    let { data, error } = await _supabase
-        .from('dmhanghoa')
-        .select('masp, tensp, giale, chungloai')
-        .eq('masp', masp)
-        .limit(1)
-        .single();
-    if (error || !data) return null;
-    return data;
+  #bangketqua[data-mode="ngang"] th,
+  #bangketqua[data-mode="ngang"] td {
+    display: table-cell !important;
+    visibility: visible !important;
+  }
 }
 
-// ===== 5. Sự kiện nhập mã sản phẩm (enter hoặc sau khi quét QR) =====
-const SIZE_HOP_LE = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
+@media (max-width: 480px) {
+  #baymau-overlay {
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    pointer-events: none !important;
+    z-index: 9996 !important;
+  }
 
-// Xử lý nhập mã sản phẩm (enter hoặc sau khi quét QR)
-document.getElementById('masp').addEventListener('keydown', async function (e) {
-    if (e.key === 'Enter') {
-        let masp = document.getElementById('masp').value.trim().toUpperCase();
-        if (!masp) return;
-        let sp = await timSanPhamTheoMa(masp);
-        if (!sp) {
-            spHienTai = sp; // Lưu lại
-            alert('Không tìm thấy mã sản phẩm!');
-            resetInputSanPham();
-            return;
-        }
-        document.getElementById('gia').value = sp.giale || 0;
-        document.getElementById('soluong').value = 1;
+  #baymau-popup {
+    margin-top: 100px !important;
+    margin-left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    height: 36vh !important;
+    max-height: 36vh !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    box-sizing: border-box !important;
+    pointer-events: auto !important;
+    border-radius: 0 !important;
+  }
 
-        let chungloai = (sp.chungloai || '').toUpperCase();
-        spHienTai = sp; // <- Gán lại để ô size dùng!
-        if (chungloai === 'GD') {
-            // Quản lý size → focus vào size, bắt nhập size mới thêm vào bảng
-            document.getElementById('size').focus();
-            // Lưu loại này vào input để sự kiện ở ô size biết đang là mã quản lý size
-            document.getElementById('size').dataset.isGD = '1';
-        } else {
-            // Không quản lý size → thêm luôn vào bảng, size mặc định 0
-            document.getElementById('size').value = '0';
-            document.getElementById('size').dataset.isGD = '';
-            let gia = Number(document.getElementById('gia').value);
-            let soluong = Number(document.getElementById('soluong').value) || 1;
-            themSanPhamVaoBang(sp, '0', gia, soluong); // truyền sp là object sản phẩm đã lấy ở trên!
-            spHienTai = null;
-        }
-    }
-});
-// Nếu dùng quét QR thì khi quét xong cũng gọi lại hàm này!
-async function xuLyNhapMaSP() {
-    let masp = document.getElementById('masp').value.trim().toUpperCase();
-    if (!masp) return;
-    let sp = await timSanPhamTheoMa(masp);
-    if (!sp) {
-        alert('Không tìm thấy mã sản phẩm!');
-        resetInputSanPham();
-        return;
-    }
-    document.getElementById('gia').value = sp.giale || 0;
-    document.getElementById('soluong').value = 1;
-    // Nếu là giày dép (chungloai = GD) thì show ô size và focus vào đó
-    let chungloai = (sp.chungloai || '').toUpperCase();
-    if (chungloai === 'GD') {
-        document.getElementById('size').style.display = '';
-        document.getElementById('size').focus();
-    } else {
-        document.getElementById('size').style.display = 'none';
-        themSanPhamVaoBang(sp, '', sp.giale, 1); // không cần nhập size
-    }
+  #baymau-popup table {
+    min-width: 620px !important;
+  }
+
+  #dhck-panel {
+    left: 0 !important;
+    right: 0 !important;
+    top: 62vh !important;
+    bottom: 54px !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: auto !important;
+    max-height: calc(38vh - 54px) !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+    z-index: 9997 !important;
+  }
+
+  #dhck-panel table {
+    min-width: 620px !important;
+  }
 }
-
-// ===== 6. Sự kiện nhập size xong enter thì đẩy vào bảng =====
-// Sự kiện nhập size (enter hoặc chọn size)
-document.getElementById('size').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-        // Chỉ xử lý thêm vào bảng nếu đang là mã quản lý size (chungloai = GD)
-        if (this.dataset.isGD === '1') {
-            let masp = document.getElementById('masp').value.trim().toUpperCase();
-            let gia = Number(document.getElementById('gia').value);
-            let soluong = Number(document.getElementById('soluong').value) || 1;
-            let size = document.getElementById('size').value.trim();
-
-            // Validate size hợp lệ
-            const SIZE_HOP_LE = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
-            if (!SIZE_HOP_LE.includes(size)) {
-                alert('Size không hợp lệ! Chỉ cho phép nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45');
-                document.getElementById('size').focus();
-                document.getElementById('size').select();
-                return;
-            }
-            themSanPhamVaoBang(spHienTai, size, gia, soluong);
-            spHienTai = null;
-        }
-    }
-});
-
-
-// ===== 7. Hàm thêm sản phẩm vào bảng kết quả =====
-function themSanPhamVaoBang(sp, size, gia, soluong) {
-    if (!sp || !sp.masp || !gia || !soluong) return;
-    if (!size) size = "0";
-
-    // Lấy thông tin khuyến mại từ danh mục/khuyenmai.js
-    // Tùy logic của bạn, có thể cần lấy thêm từ bảng dmhanghoa hoặc truyền sp
-    let khuyenmai = 0;
-    if (typeof tinhKhuyenMai === 'function') {
-        // Có thể cần truyền thêm thông tin sản phẩm, ở đây chỉ có masp/gia
-        khuyenmai = tinhKhuyenMai(sp, gia) || 0;
-    }
-
-    // Check lại size hợp lệ...
-    const SIZE_HOP_LE = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
-    if (!SIZE_HOP_LE.includes(size)) {
-        alert('Size không hợp lệ! Chỉ cho phép nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45');
-        document.getElementById('size').focus();
-        return;
-    }
-
-    // Kiểm tra trùng mã+size
-    let idx = dsSanPham.findIndex(x => x.masp === sp.masp && (x.size || '') === (size || ''));
-    if (idx >= 0) {
-        dsSanPham[idx].soluong += soluong;
-        dsSanPham[idx].thanhtien = (dsSanPham[idx].gia - dsSanPham[idx].khuyenmai) * dsSanPham[idx].soluong;
-    } else {
-        dsSanPham.push({
-            masp: sp.masp,
-            size,
-            gia,
-            soluong,
-            khuyenmai,
-            thanhtien: (gia - khuyenmai) * soluong
-        });
-    }
-    renderBangSanPham();
-    resetInputSanPham();
-}
-
-
-// ===== 8. Reset input nhập sản phẩm =====
-function resetInputSanPham() {
-    document.getElementById('masp').value = '';
-    document.getElementById('size').value = '';
-    document.getElementById('size').dataset.isGD = '';
-    document.getElementById('gia').value = '';
-    document.getElementById('soluong').value = 1;
-    document.getElementById('masp').focus();
-}
-
-// ===== 9. Render bảng sản phẩm: mã, size, giá, sl, tiền =====
-function renderBangSanPham() {
-    const tbody = document.querySelector('#bangketqua tbody');
-    tbody.innerHTML = '';
-    dsSanPham.forEach((sp, idx) => {
-        let tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${sp.masp}</td>
-            <td>${sp.size || ''}</td>
-            <td>${Number(sp.gia).toLocaleString('vi-VN')}</td>
-            <td>${sp.soluong}</td>
-            <td>${Number(sp.thanhtien).toLocaleString('vi-VN')}</td>
-            <td><button class="btn-delete-row" onclick="xoaDongSanPham(${idx})">🗑️</button></td>
-        `;
-        tbody.appendChild(tr);
-    });
-    capNhatTongKet();
-}
-
-
-// ===== 10. Tính tổng & cập nhật giao diện =====
-function capNhatTongKet() {
-    let tongkm = dsSanPham.reduce((sum, x) => sum + (Number(x.khuyenmai || 0) * Number(x.soluong)), 0);
-    let tongtien = dsSanPham.reduce((sum, x) => sum + Number(x.thanhtien), 0);
-
-    // Đọc chiết khấu, chuẩn hóa số
-    let chietkhau_raw = document.getElementById('chietkhau_input') ? document.getElementById('chietkhau_input').value : "0";
-    let chietkhau = Number(chietkhau_raw.toString().replace(/\D/g, '') || 0);
-
-    // Format lại input chiết khấu sau mỗi lần render
-    if (document.getElementById('chietkhau_input')) {
-        document.getElementById('chietkhau_input').value = chietkhau.toLocaleString('vi-VN');
-    }
-
-    let phaitra = tongtien - chietkhau;
-
-    document.getElementById('tongkm').textContent = tongkm.toLocaleString('vi-VN');
-    document.getElementById('phaithanhtoan').textContent = phaitra.toLocaleString('vi-VN');
-    // Bạn có thể lưu tổng tiền, tổng km, chietkhau cho mục ghi hóa đơn ở đây nếu cần
-}
-
-
-// ===== 11. Xóa sản phẩm khỏi bảng kết quả =====
-window.xoaDongSanPham = function (idx) {
-    dsSanPham.splice(idx, 1);
-    renderBangSanPham();
-};
-
-// ===== 12. Sự kiện "Thêm mới" (reset form) =====
-document.getElementById('btn-them-moi').onclick = function () {
-    dsSanPham = [];
-    renderBangSanPham();
-    document.getElementById('makh').value = '';
-    document.getElementById('manv').value = '';
-    genSoHoaDon();
-    document.getElementById('masp').focus();
-    document.getElementById('chietkhau_input').value = 0;
-    document.getElementById('tongkm').textContent = '0';
-    document.getElementById('phaithanhtoan').textContent = '0';
-    document.getElementById('tongtien').textContent = '0';
-
-};
-
-// ===== 13. Sự kiện lưu hóa đơn =====
-document.getElementById('btn-luu').onclick = async function () {
-    if (dsSanPham.length === 0) {
-        alert('Chưa có sản phẩm nào!');
-        return;
-    }
-    let sohd = document.getElementById('sohd').value.trim();
-    let makh = document.getElementById('makh').value.trim();
-    let manv = document.getElementById('manv').value.trim();
-    let tennv = ''; // Nếu bạn tra tên nhân viên từ mã thì bổ sung ở đây
-    let diadiem = currentCoso;
-    let tongtien = dsSanPham.reduce((sum, x) => sum + Number(x.thanhtien), 0);
-    let tongsl = dsSanPham.reduce((sum, x) => sum + Number(x.soluong), 0);
-    let hinhthuctt = document.getElementById('hinhthuctt').value;
-    let ngay = new Date().toISOString().slice(0, 10);
-    let now = new Date().toISOString();
-    let tongkm = dsSanPham.reduce((sum, x) => sum + (Number(x.khuyenmai || 0) * Number(x.soluong)), 0);
-    const ckEl = document.getElementById('chietkhau_input') || document.getElementById('chietkhau');
-    let chietkhau = Number((ckEl?.value || '0').toString().replace(/\D/g, '') || 0);
-
-    let phaitra = tongtien - tongkm - chietkhau;
-    if (phaitra < 0) phaitra = 0;
-
-
-
-    // 1. Lưu hoadon_banle
-    let { data: hd, error: errHD } = await _supabase
-        .from('hoadon_banle')
-        .insert([{
-            sohd, ngay, created_at: now, manv, tennv, diadiem, khachhang: makh,
-            tongsl, tongkm, chietkhau, thanhtoan: phaitra, hinhthuctt,
-            loaihd: currentLoai // hoặc loại khác tùy setup
-        }])
-        .select()
-        .single();
-
-    if (errHD || !hd) {
-        alert('Lỗi lưu hóa đơn: ' + (errHD?.message || ''));
-        return;
-    }
-
-    // 2. Lưu ct_hoadon_banle
-    let chitiet = dsSanPham.map(sp => ({
-        sohd,
-        masp: sp.masp,
-        tensp: '', // Nếu muốn lấy tên thì tra lại bảng dmhanghoa, hoặc bổ sung trong dsSanPham ở bước thêm
-        size: sp.size || '',
-        soluong: sp.soluong,
-        gia: sp.gia,
-        km: sp.khuyenmai || 0,
-        thanhtien: sp.thanhtien,
-        dvt: '', // Nếu có đơn vị tính lấy theo mã SP
-        diadiem,
-        created_at: now,
-        ngay
-    }));
-    let { error: errCT } = await _supabase
-        .from('ct_hoadon_banle')
-        .insert(chitiet);
-    if (errCT) {
-        alert('Lỗi lưu chi tiết: ' + errCT.message);
-        return;
-    }
-    // === Cập nhật số chứng từ CHỈ SAU KHI LƯU THÀNH CÔNG ===
-    const sohdStr = document.getElementById('sohd').value.trim();
-    const [loai, soStr] = sohdStr.split('_');         // ví dụ: "bancs1_00031" -> ["bancs1","00031"]
-    const soMoi = parseInt(soStr, 10);
-
-    // Update theo 'loai'; nếu chưa có thì insert
-    let { data: upd, error: errUpd } = await _supabase
-        .from("sochungtu")
-        .update({ so_hientai: soMoi })
-        .eq("loai", loai)
-        .select("loai");
-
-    if (errUpd || !upd || upd.length === 0) {
-        await _supabase.from("sochungtu").insert([{ loai, so_hientai: soMoi }]);
-    }
-
-
-
-    alert('Đã lưu hóa đơn thành công!');
-    dsSanPham = [];
-    renderBangSanPham();
-    document.getElementById('makh').value = '';
-    document.getElementById('manv').value = '';
-    genSoHoaDon();
-    document.getElementById('masp').focus();
-    document.getElementById('chietkhau_input').value = 0;
-};
-
-// ===== 14. Khi load trang, sinh số hóa đơn mới =====
-
-window.addEventListener('DOMContentLoaded', function () {
-    genSoHoaDon();
-    document.getElementById('masp').focus();
-
-    // ==== Thêm đoạn này để tự tính lại tổng khi nhập chiết khấu ====
-    if (document.getElementById('chietkhau_input')) {
-        document.getElementById('chietkhau_input').addEventListener('input', function () {
-            capNhatTongKet();
-        });
-    }
-});
-
-
-// ===== 15. Bổ sung: Khi chọn mã sản phẩm từ popup tìm kiếm, hoặc quét QR xong, hãy gọi xuLyNhapMaSP() =====
-
-// Nếu bạn có popup chọn sp, khi chọn xong, gán mã vào ô #masp rồi gọi xuLyNhapMaSP()
-
-// ====== KẾT THÚC ======
