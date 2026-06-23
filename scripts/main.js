@@ -20,6 +20,7 @@ import { ensureAccess } from './auth_guard.js';
 import { startSessionKeeper } from "./supabaseClient.js";
 import { initPopupChuyenKhoContext, triggerChuyenKhoCheckNgay } from './popupchuyenkho.js';
 import { showPageLoading, hidePageLoading, setPageLoadingText } from './pageLoading.js';
+import { initDatHangChuyenKho } from './datHangChuyenKho.js';
 // ===== tam ngung kiem tra vi tri =====
 const ENABLE_LOCATION_GUARD = false;
 //const ENABLE_LOCATION_GUARD = true;
@@ -396,6 +397,13 @@ export async function khoiTaoUngDung() {
         mode,
         manvDangNhap,
       });
+
+      initDatHangChuyenKho({
+        supabase,
+        diadiem,
+        manvDangNhap
+      });
+
     }
 
     if (isBanLePage || isBanNvPage) {
