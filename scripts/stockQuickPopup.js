@@ -1610,7 +1610,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
             <table>
                             <thead>
                 <tr>
-                  <th>Size</th>
+                  <th class="sq-dhck-open" title="Bấm để tạo đặt hàng chuyển kho">Size / Đặt hàng</th>
                   <th class="sq-col-k1 sq-ktk-open" data-ktk-coso="cs1" title="Bấm để kiểm tồn nhanh CS1">tk1</th>
 <th class="sq-col-k2 sq-ktk-open" data-ktk-coso="cs2" title="Bấm để kiểm tồn nhanh CS2">tk2</th>
                   <th class="sq-col-b1">B1</th>
@@ -1966,6 +1966,30 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     }
   }
 
+  function bindDatHangChuyenKhoHeader(popup, payload) {
+    if (!popup) return;
+
+    const dhckHead = popup.querySelector(".sq-dhck-open");
+    if (!dhckHead || dhckHead.dataset.dhckBound === "1") return;
+
+    dhckHead.dataset.dhckBound = "1";
+    dhckHead.style.cursor = "pointer";
+    dhckHead.style.color = "#d00000";
+    dhckHead.style.fontWeight = "700";
+
+    dhckHead.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      if (window.DatHangChuyenKho?.openFromStockQuick) {
+        window.DatHangChuyenKho.openFromStockQuick(popup, payload);
+      } else {
+        alert("Module đặt hàng chưa sẵn sàng. Vui lòng bấm lại sau vài giây.");
+      }
+    });
+  }
+
   function bindGlobalCloseHandlers() {
     if (globalCloseBound) return;
     globalCloseBound = true;
@@ -2305,26 +2329,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     popup.style.transform = "none";
 
     try {
-      window.DatHangChuyenKho?.attachStockQuickPopup?.(popup, payload);
+      bindDatHangChuyenKhoHeader(popup, payload);
     } catch (e) {
-      console.warn("[StockQuickPopup] lỗi gắn đặt hàng chuyển kho:", e);
-    }
-
-    try {
-      window.__LAST_STOCKQUICK_POPUP__ = popup;
-      window.__LAST_STOCKQUICK_PAYLOAD__ = payload;
-
-      window.dispatchEvent(new CustomEvent("stockquick:rendered", {
-        detail: {
-          popup,
-          payload,
-          masp: popup.dataset.masp || masp
-        }
-      }));
-
-      window.DatHangChuyenKho?.attachStockQuickPopup?.(popup, payload);
-    } catch (e) {
-      console.warn("[StockQuickPopup] lỗi phát tín hiệu đặt hàng:", e);
+      console.warn("[StockQuickPopup] lỗi gắn nút đặt hàng:", e);
     }
 
     bindGlobalCloseHandlers();
