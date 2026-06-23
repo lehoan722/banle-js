@@ -633,7 +633,7 @@
     </style>
 
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-    <link rel="stylesheet" href="banlemobilecs1.css">
+    <link rel="stylesheet" href="banlemobilecs1.css?v=16">
 
 </head>
 
@@ -1011,7 +1011,7 @@
         });
     </script>
 
-    <script src="scripts/stockQuickPopup.js"></script>
+    <script src="/scripts/stockQuickPopup.js?v=77"></script>
 
     <script type="module">
         import { mountKhachHangSuggest } from "./scripts/dmkhachhang_diem.js";
@@ -1448,7 +1448,7 @@
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
                 try {
-                    const module = await import("./scripts/main.js");
+                    const module = await import("./scripts/main.js?v=75");
                     if (typeof module.khoiTaoUngDung === "function") {
                         module.khoiTaoUngDung();
                     }
