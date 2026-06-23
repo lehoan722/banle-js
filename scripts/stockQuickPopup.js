@@ -2188,6 +2188,19 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     }, { passive: true });
   }
 
+  async function waitForDatHangChuyenKho(maxWaitMs = 2000) {
+    const start = Date.now();
+
+    while (Date.now() - start < maxWaitMs) {
+      if (window.DatHangChuyenKho?.attachStockQuickPopup) {
+        return window.DatHangChuyenKho;
+      }
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    return window.DatHangChuyenKho || null;
+  }
+
   async function ensurePopup(card, masp) {
     if (!card) return;
 
@@ -2305,7 +2318,13 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     popup.style.transform = "none";
 
     try {
-      window.DatHangChuyenKho?.attachStockQuickPopup?.(popup, payload);
+      const dhck = await waitForDatHangChuyenKho(2000);
+
+      if (dhck?.attachStockQuickPopup) {
+        dhck.attachStockQuickPopup(popup, payload);
+      } else {
+        console.warn("[StockQuickPopup] DatHangChuyenKho chưa sẵn sàng sau khi chờ");
+      }
     } catch (e) {
       console.warn("[StockQuickPopup] lỗi gắn đặt hàng chuyển kho:", e);
     }
