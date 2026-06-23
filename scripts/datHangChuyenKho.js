@@ -598,6 +598,25 @@ async function afterCcnSaved(result) {
   ids = ids.map(Number).filter(Boolean);
   if (!ids.length) return;
 
+  if (!ids.length) {
+    const note = String(
+      document.getElementById("ghichu")?.value ||
+      result?.hoadon?.ghichu ||
+      ""
+    );
+
+    const m = note.match(/ĐẶT\s*HÀNG\s*CK\s*:\s*([0-9,\s]+)/i);
+
+    if (m && m[1]) {
+      ids = m[1]
+        .split(",")
+        .map(x => Number(String(x).trim()))
+        .filter(Boolean);
+    }
+  }
+
+  console.log("[Đặt hàng CK] afterCcnSaved ids:", ids, "result:", result);
+
   const dir =
     payload?.dir ||
     (location.pathname.toLowerCase().includes("ccn2v1") ? "2v1" : "1v2");
