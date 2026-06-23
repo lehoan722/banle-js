@@ -1965,7 +1965,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       }, { once: true });
     }
   }
-  
+
 
   function bindDatHangChuyenKhoHeader(popup, payload) {
     if (!popup) return;
@@ -2013,6 +2013,10 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       }
 
       if (e.target.closest(".sq-stock-popup")) return;
+
+      // ✅ Không đóng tồn kho nhanh khi đang thao tác popup đặt hàng chuyển kho
+      if (e.target.closest("#dhck-confirm")) return;
+      if (e.target.closest("#dhck-panel")) return;
 
       hideAllPopups();
     });
