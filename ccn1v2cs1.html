@@ -1548,7 +1548,7 @@
                 const result = await saveBanLe111("BTN-LUU-CCN");
 
                 if (result?.ok) {
-                    // có thể để trống
+                    await window.DatHangChuyenKho?.afterCcnSaved?.(result);
                 } else {
                     console.warn("saveBanLe111 không trả về ok=true:", result);
                 }
