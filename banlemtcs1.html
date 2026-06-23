@@ -1456,7 +1456,7 @@
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
                 try {
-                    const module = await import("./scripts/main.js");
+                    const module = await import("./scripts/main.js?v=75");
                     if (typeof module.khoiTaoUngDung === "function") {
                         module.khoiTaoUngDung();
                     }
