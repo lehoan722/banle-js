@@ -112,6 +112,11 @@ export function ganSuKienNutLenh() {
       window.triggerBayMauCheckNgay();
     }
 
+    // 🔔 Sau khi bắt đầu hóa đơn mới -> nhắc đặt hàng chuyển kho
+    if (window.DatHangChuyenKho?.triggerCheck) {
+      window.DatHangChuyenKho.triggerCheck();
+    }
+
   });
 
   document.getElementById("luu")?.addEventListener("click", async () => {
