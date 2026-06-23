@@ -293,6 +293,18 @@ function showPanel(allRows) {
     box-sizing:border-box;
   `;
 
+  if (window.matchMedia("(max-width: 480px)").matches) {
+  box.style.left = "0";
+  box.style.right = "0";
+  box.style.top = "62vh";
+  box.style.bottom = "54px";
+  box.style.width = "100vw";
+  box.style.maxWidth = "100vw";
+  box.style.height = "auto";
+  box.style.maxHeight = "calc(38vh - 54px)";
+  box.style.fontSize = "12px";
+}
+
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;font-weight:bold;margin-bottom:4px;">
       <span>ĐẶT HÀNG CHUYỂN KHO | Cần chuyển: ${canMove.length} | Theo dõi: ${onlyView.length}</span>
