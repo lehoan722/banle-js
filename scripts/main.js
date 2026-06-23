@@ -1214,7 +1214,7 @@ function showBayMauPopup(tasks, context) {
     display: "flex",
     justifyContent: "flex-start",
     alignItems: "flex-start",
-    pointerEvents: "none",
+    pointerEvents: "auto",
   });
 
   // Khối popup chính (ở gần cuối màn hình)
