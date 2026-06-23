@@ -2304,6 +2304,11 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     popup.style.left = "auto";
     popup.style.transform = "none";
 
+    try {
+      window.DatHangChuyenKho?.attachStockQuickPopup?.(popup, payload);
+    } catch (e) {
+      console.warn("[StockQuickPopup] lỗi gắn đặt hàng chuyển kho:", e);
+    }
 
     bindGlobalCloseHandlers();
     hideAllPopups();
