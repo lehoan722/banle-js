@@ -314,6 +314,14 @@ function showPanel(allRows) {
 
   document.body.appendChild(box);
 
+  box.addEventListener("mousedown", (e) => {
+    e.stopPropagation();
+  }, true);
+
+  box.addEventListener("click", (e) => {
+    e.stopPropagation();
+  }, true);
+
   box.querySelector("#dhck-close").onclick = () => {
     closeDhckPanel();
   };
@@ -337,8 +345,11 @@ function showPanel(allRows) {
     const panel = document.getElementById("dhck-panel");
     if (!panel) return;
 
-    if (panel.contains(e.target)) return;
-    if (e.target.closest("#dhck-confirm")) return;
+    const path = e.composedPath ? e.composedPath() : [];
+
+    if (path.includes(panel)) return;
+    if (e.target.closest?.("#dhck-panel")) return;
+    if (e.target.closest?.("#dhck-confirm")) return;
 
     closeDhckPanel();
   }
