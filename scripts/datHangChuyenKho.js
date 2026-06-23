@@ -496,13 +496,19 @@ export function attachStockQuickPopup(popup, payload) {
   thSize.style.color = "#d00000";
   thSize.title = "Bấm để tạo gợi ý đặt hàng chuyển kho";
 
-  thSize.addEventListener("click", (e) => {
+  function openDatHangFromSizeHeader(e) {
     e.preventDefault();
     e.stopPropagation();
 
     const masp = String(popup.dataset.masp || payload?.masp || "").toUpperCase();
     const suggestions = calcSuggestionsFromPayload(masp, payload);
     showCreateConfirm(suggestions);
+  }
+
+  thSize.addEventListener("click", openDatHangFromSizeHeader);
+  thSize.addEventListener("pointerup", (e) => {
+    if (e.pointerType === "mouse") return;
+    openDatHangFromSizeHeader(e);
   });
 }
 
