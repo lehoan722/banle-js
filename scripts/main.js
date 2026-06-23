@@ -1286,7 +1286,7 @@ function showBayMauPopup(tasks, context) {
   }
 
   trHead.appendChild(mkTh("bày mẫu"));
-  //trHead.appendChild(mkTh("ảnh"));  // tạm ẩn đi cột ảnh
+  trHead.appendChild(mkTh("ảnh"));
   trHead.appendChild(mkTh("mã sp"));
   trHead.appendChild(mkTh("nv bán"));
   trHead.appendChild(mkTh("GHI CHÚ"));
