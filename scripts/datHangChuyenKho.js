@@ -294,19 +294,30 @@ function showPanel(allRows) {
   `;
 
   if (window.matchMedia("(max-width: 480px)").matches) {
+    const baymau = document.getElementById("baymau-popup");
+    const footer = document.querySelector(".footer-buttons");
+
+    const vh = window.visualViewport?.height || window.innerHeight;
+
+    const bayRect = baymau?.getBoundingClientRect();
+    const footerRect = footer?.getBoundingClientRect();
+
+    const top = bayRect ? Math.round(bayRect.bottom + 4) : 520;
+    const bottomLimit = footerRect ? Math.round(footerRect.top - 6) : Math.round(vh - 120);
+    const h = Math.max(90, bottomLimit - top);
+
     box.style.left = "0";
     box.style.right = "0";
-    box.style.top = "520px";
-    box.style.bottom = "118px";
+    box.style.top = top + "px";
+    box.style.bottom = "auto";
     box.style.width = "100vw";
     box.style.maxWidth = "100vw";
-    box.style.height = "auto";
-    box.style.maxHeight = "190px";
+    box.style.height = h + "px";
+    box.style.maxHeight = h + "px";
     box.style.overflowY = "auto";
     box.style.overflowX = "auto";
     box.style.fontSize = "12px";
-    box.style.zIndex = "9998";
-
+    box.style.zIndex = "10020";
   }
 
   box.innerHTML = `
