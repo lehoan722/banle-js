@@ -291,7 +291,7 @@
 
   /* Ẩn nút phụ */
   #tieptuc,
-  #xemin,  
+  #xemin,
   #xuatexcel,
   #btn-logout {
     display: none !important;
@@ -569,7 +569,7 @@
   #baymau-overlay {
     align-items: flex-start !important;
     justify-content: flex-start !important;
-    pointer-events: none !important;
+    pointer-events: auto !important;
     z-index: 9996 !important;
   }
 
