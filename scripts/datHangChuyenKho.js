@@ -213,6 +213,27 @@ async function fetchOrders() {
   return data || [];
 }
 
+function openStockQuickFromDatHang(masp) {
+  const code = String(masp || "").trim().toUpperCase();
+  if (!code) return;
+
+  try {
+    if (window.StockQuick?.showFor) {
+      window.StockQuick.showFor(document.body, code);
+      return;
+    }
+
+    if (typeof window.stockQuickPopup === "function") {
+      window.stockQuickPopup(code);
+      return;
+    }
+
+    alert("Chưa tải được module tồn kho nhanh.");
+  } catch (e) {
+    console.error("[Đặt hàng CK] lỗi mở stock quick:", e);
+  }
+}
+
 function renderRows(rows, allowMove) {
   return rows.map(r => `
     <tr class="${allowMove ? "" : "dhck-readonly"}">
@@ -221,7 +242,11 @@ function renderRows(rows, allowMove) {
           ${allowMove ? "" : "disabled"}
           data-id="${r.id}">
       </td>
-      <td>${r.masp || ""}</td>
+      <td>
+  <span class="dhck-masp-link" data-masp="${r.masp || ""}">
+    ${r.masp || ""}
+  </span>
+</td>
       <td>${r.soluong || 1}</td>
       <td>${r.size || ""}</td>
       <td>${r.huong_chuyen || ""}</td>
@@ -309,10 +334,27 @@ function showPanel(allRows) {
     #dhck-panel .dhck-readonly {
       opacity:.65;
     }
+
+    #dhck-panel .dhck-masp-link {
+  color:#0b57d0;
+  font-weight:700;
+  text-decoration:underline;
+  cursor:pointer;
+}
+  
   `;
   box.appendChild(style);
 
   document.body.appendChild(box);
+
+  box.querySelectorAll(".dhck-masp-link").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      openStockQuickFromDatHang(el.dataset.masp);
+    });
+  });
 
   box.querySelector("#dhck-close").onclick = () => {
     popupOpen = false;
