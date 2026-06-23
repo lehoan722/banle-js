@@ -472,9 +472,46 @@ async function runDatHangCheck(forceShow = false) {
   showPanel(rows);
 }
 
-function openFromStockQuick(popup, payload) {
+async function filterSuggestionsNotPending(items) {
+  if (!ctx?.supabase || !items?.length) return items || [];
+
+  const masps = Array.from(new Set(items.map(x => String(x.masp || "").toUpperCase())));
+  const sizes = Array.from(new Set(items.map(x => String(x.size || ""))));
+
+  const { data, error } = await ctx.supabase
+    .from("dat_hang_chuyen_kho")
+    .select("masp, size, huong_chuyen, trang_thai")
+    .in("trang_thai", ["moi", "dang_chuyen"])
+    .in("masp", masps)
+    .in("size", sizes);
+
+  if (error) {
+    console.warn("[Đặt hàng CK] Không kiểm tra được dòng đang mở:", error);
+    return items;
+  }
+
+  const opened = new Set(
+    (data || []).map(r =>
+      `${String(r.masp).toUpperCase()}|${String(r.size)}|${r.huong_chuyen}`
+    )
+  );
+
+  return items.filter(x => {
+    const key = `${String(x.masp).toUpperCase()}|${String(x.size)}|${x.huong_chuyen}`;
+    return !opened.has(key);
+  });
+}
+
+async function openFromStockQuick(popup, payload) {
   const masp = String(popup?.dataset?.masp || payload?.masp || "").toUpperCase();
-  const suggestions = calcSuggestionsFromPayload(masp, payload);
+  let suggestions = calcSuggestionsFromPayload(masp, payload);
+  suggestions = await filterSuggestionsNotPending(suggestions);
+
+  if (!suggestions.length) {
+    alert("Không có size mới cần tạo đặt hàng chuyển kho.");
+    return;
+  }
+
   showCreateConfirm(suggestions);
 }
 
@@ -536,35 +573,112 @@ export function attachStockQuickPopup(popup, payload) {
   });
 }
 
-export async function afterCcnSaved(result) {
+async function afterCcnSaved(result) {
   if (!result?.ok || !result?.sohd || !ctx?.supabase) return;
 
   let ids = [];
+  let payload = null;
+
   try {
     ids = JSON.parse(localStorage.getItem("dhck_pending_ids") || "[]");
   } catch {
     ids = [];
   }
 
+  try {
+    payload = JSON.parse(localStorage.getItem("ccn_prefill_payload") || "null");
+  } catch {
+    payload = null;
+  }
+
+  if ((!ids || !ids.length) && Array.isArray(payload?.order_ids)) {
+    ids = payload.order_ids;
+  }
+
   ids = ids.map(Number).filter(Boolean);
   if (!ids.length) return;
 
-  const { error } = await ctx.supabase
+  const dir =
+    payload?.dir ||
+    (location.pathname.toLowerCase().includes("ccn2v1") ? "2v1" : "1v2");
+
+  const normMasp = v => String(v || "").trim().toUpperCase();
+
+  const normSize = v => {
+    const s = String(v || "").replace(/^size\s+/i, "").trim();
+    const m = s.match(/\d{1,2}/);
+    return m ? m[0] : s;
+  };
+
+  const qtyMap = new Map();
+
+  (result.chitiet || []).forEach(r => {
+    const masp = normMasp(r.masp);
+    const size = normSize(r.size);
+    const sl = Number(r.soluong || 0);
+    if (!masp || !size || !sl) return;
+
+    const key = `${masp}|${size}|${dir}`;
+    qtyMap.set(key, (qtyMap.get(key) || 0) + sl);
+  });
+
+  const { data: orders, error: fetchErr } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
-    .update({
-      trang_thai: "da_chuyen",
-      da_chuyen: true,
-      sohd_chuyen: result.sohd,
-      manv_chuyen: getManv(),
-      ngay_chuyen: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
+    .select("id, masp, size, soluong, huong_chuyen, trang_thai")
     .in("id", ids);
 
-  if (error) {
-    console.error("[Đặt hàng CK] cập nhật sau lưu CCN lỗi:", error);
-    alert("⚠️ Hóa đơn đã lưu nhưng chưa cập nhật được trạng thái đặt hàng.");
+  if (fetchErr) {
+    console.error("[Đặt hàng CK] Không đọc được dòng đặt hàng:", fetchErr);
+    alert("⚠️ Hóa đơn đã lưu nhưng chưa kiểm tra được trạng thái đặt hàng.");
     return;
+  }
+
+  const idsDaChuyen = [];
+  const idsTraVeMoi = [];
+
+  (orders || []).forEach(o => {
+    const key = `${normMasp(o.masp)}|${normSize(o.size)}|${o.huong_chuyen}`;
+    const canCo = Number(o.soluong || 1);
+    const dangCoTrongPhieu = Number(qtyMap.get(key) || 0);
+
+    if (dangCoTrongPhieu >= canCo) {
+      idsDaChuyen.push(o.id);
+      qtyMap.set(key, dangCoTrongPhieu - canCo);
+    } else {
+      idsTraVeMoi.push(o.id);
+    }
+  });
+
+  const now = new Date().toISOString();
+  const manv = getManv();
+
+  if (idsDaChuyen.length) {
+    const { error } = await ctx.supabase
+      .from("dat_hang_chuyen_kho")
+      .update({
+        trang_thai: "da_chuyen",
+        sohd_chuyen: result.sohd,
+        manv_chuyen: manv,
+        ngay_chuyen: now,
+        updated_at: now
+      })
+      .in("id", idsDaChuyen);
+
+    if (error) {
+      console.error("[Đặt hàng CK] Lỗi cập nhật đã chuyển:", error);
+      alert("⚠️ Hóa đơn đã lưu nhưng chưa cập nhật được trạng thái đã chuyển.");
+      return;
+    }
+  }
+
+  if (idsTraVeMoi.length) {
+    await ctx.supabase
+      .from("dat_hang_chuyen_kho")
+      .update({
+        trang_thai: "moi",
+        updated_at: now
+      })
+      .in("id", idsTraVeMoi);
   }
 
   localStorage.removeItem("dhck_pending_ids");
