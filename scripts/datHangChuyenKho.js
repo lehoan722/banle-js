@@ -255,7 +255,7 @@ function renderRows(rows, allowMove) {
         <input class="dhck-note-inline" data-id="${r.id}"
           value="${r.ghichu_dat || ""}"
           ${allowMove ? "" : "readonly"}
-          style="width:100%;box-sizing:border-box;">
+          style="width:90px;box-sizing:border-box;">
       </td>
       <td>${statusText(r.trang_thai)}</td>
     </tr>
@@ -281,9 +281,9 @@ function showPanel(allRows) {
     width:620px;
     max-width:94vw;
     height:36vh;
-    max-height:36vh;
-    overflow-y:auto;
-    overflow-x:auto;
+max-height:36vh;
+overflow:auto;
+overscroll-behavior: contain;
     background:#fff4d6;
     border:1px solid #d8a63b;
     box-shadow:0 2px 10px rgba(0,0,0,.25);
@@ -373,6 +373,9 @@ function showPanel(allRows) {
   box.appendChild(style);
 
   document.body.appendChild(box);
+  box.addEventListener("wheel", (e) => {
+    e.stopPropagation();
+  }, { passive: true });
 
   box.querySelectorAll(".dhck-masp-link").forEach(el => {
     el.addEventListener("click", (e) => {
