@@ -817,7 +817,13 @@
 
 
         // Hiển thị thông tin hóa đơn
-        document.getElementById("diadiem").textContent = hoadon.diadiem || "";
+        const sohdIn = (hoadon.sohd || "").toString().trim();
+        const sohd4SoCuoi = sohdIn.replace(/\D/g, "").slice(-4);
+
+        const diadiemIn = (hoadon.diadiem || "").toString().trim();
+
+        document.getElementById("diadiem").textContent =
+          sohd4SoCuoi ? `${diadiemIn}${sohd4SoCuoi}` : diadiemIn;
         const tenKH = hoadon.khachhang || "";
         const sdtKH =
           hoadon.makh ||
