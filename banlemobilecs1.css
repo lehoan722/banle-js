@@ -595,8 +595,8 @@
   #dhck-panel {
     left: 0 !important;
     right: 0 !important;
-    top: 55vh !important;
-    bottom: 48px !important;
+    top: 50vh !important;
+    bottom: 54px !important;
     width: 100vw !important;
     max-width: 100vw !important;
     height: auto !important;
