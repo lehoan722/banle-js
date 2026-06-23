@@ -163,7 +163,17 @@ function showCreateConfirm(items) {
     </div>
   `;
 
-  document.body.appendChild(box);
+  box.addEventListener("click", (e) => {
+    e.stopPropagation();
+  }, true);
+
+  box.addEventListener("mousedown", (e) => {
+    e.stopPropagation();
+  }, true);
+
+  box.addEventListener("touchstart", (e) => {
+    e.stopPropagation();
+  }, true);
 
   box.querySelector("#dhck-cancel").onclick = () => box.remove();
 
