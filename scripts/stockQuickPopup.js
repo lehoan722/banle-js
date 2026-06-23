@@ -1965,28 +1965,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       }, { once: true });
     }
   }
-
-  function autoPromptDatHangChuyenKho(popup, payload) {
-    if (!popup || !payload) return;
-
-    let count = 0;
-
-    function tryOpen() {
-      count++;
-
-      if (window.DatHangChuyenKho?.autoOpenFromStockQuick) {
-        window.DatHangChuyenKho.autoOpenFromStockQuick(popup, payload);
-        return;
-      }
-
-      // Chờ module đặt hàng sẵn sàng, tối đa khoảng 3 giây
-      if (count < 10) {
-        setTimeout(tryOpen, 300);
-      }
-    }
-
-    setTimeout(tryOpen, 300);
-  }
+  
 
   function bindDatHangChuyenKhoHeader(popup, payload) {
     if (!popup) return;
@@ -2362,7 +2341,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     lastStockQuickOpenAt = Date.now();
 
     popup.classList.add("show");
-    autoPromptDatHangChuyenKho(popup, payload);
   }
 
   // ===== attach: luôn dùng CLICK để bật/tắt popup =====
