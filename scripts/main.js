@@ -1221,13 +1221,13 @@ function showBayMauPopup(tasks, context) {
   const box = document.createElement("div");
   box.id = "baymau-popup";
   Object.assign(box.style, {
-    marginTop: "6px",
+    marginTop: "96px",
     marginLeft: "6px",
     minWidth: "320px",
     maxWidth: "520px",
     maxHeight: "45vh",
     pointerEvents: "auto",
-    background: "#f7e0b3",   // vàng nhạt
+    background: "#f7e0b3",
     borderRadius: "6px",
     boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
     padding: "8px 10px",
