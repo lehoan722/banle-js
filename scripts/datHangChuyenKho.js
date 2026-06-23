@@ -469,11 +469,18 @@ async function runDatHangCheck(forceShow = false) {
   showPanel(rows);
 }
 
+function openFromStockQuick(popup, payload) {
+  const masp = String(popup?.dataset?.masp || payload?.masp || "").toUpperCase();
+  const suggestions = calcSuggestionsFromPayload(masp, payload);
+  showCreateConfirm(suggestions);
+}
+
 export function initDatHangChuyenKho(options = {}) {
   ctx = options;
 
   window.DatHangChuyenKho = {
     attachStockQuickPopup,
+    openFromStockQuick,
     triggerCheck: () => runDatHangCheck(true),
     afterCcnSaved
   };
