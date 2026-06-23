@@ -1209,22 +1209,24 @@ function showBayMauPopup(tasks, context) {
   Object.assign(overlay.style, {
     position: "fixed",
     inset: "0",
-    background: "rgba(0,0,0,0.05)",
+    background: "transparent",
     zIndex: "9998",
     display: "flex",
-    justifyContent: "center",
-    alignItems: "flex-end",
-    pointerEvents: "auto",
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+    pointerEvents: "none",
   });
 
   // Khối popup chính (ở gần cuối màn hình)
   const box = document.createElement("div");
   box.id = "baymau-popup";
   Object.assign(box.style, {
-    marginBottom: "12px",
+    marginTop: "6px",
+    marginLeft: "6px",
     minWidth: "320px",
-    maxWidth: "650px",
-    maxHeight: "60vh",
+    maxWidth: "520px",
+    maxHeight: "45vh",
+    pointerEvents: "auto",
     background: "#f7e0b3",   // vàng nhạt
     borderRadius: "6px",
     boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
