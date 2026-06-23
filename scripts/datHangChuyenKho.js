@@ -478,6 +478,25 @@ export function initDatHangChuyenKho(options = {}) {
     afterCcnSaved
   };
 
+  window.addEventListener("stockquick:rendered", (e) => {
+    const popup = e.detail?.popup;
+    const payload = e.detail?.payload;
+
+    if (popup && payload) {
+      attachStockQuickPopup(popup, payload);
+    }
+  });
+
+  // Nếu stockQuick đã mở trước khi module đặt hàng sẵn sàng
+  setTimeout(() => {
+    if (window.__LAST_STOCKQUICK_POPUP__ && window.__LAST_STOCKQUICK_PAYLOAD__) {
+      attachStockQuickPopup(
+        window.__LAST_STOCKQUICK_POPUP__,
+        window.__LAST_STOCKQUICK_PAYLOAD__
+      );
+    }
+  }, 300);
+
   runDatHangCheck();
 
   if (timer) clearInterval(timer);
@@ -496,19 +515,13 @@ export function attachStockQuickPopup(popup, payload) {
   thSize.style.color = "#d00000";
   thSize.title = "Bấm để tạo gợi ý đặt hàng chuyển kho";
 
-  function openDatHangFromSizeHeader(e) {
+  thSize.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
 
     const masp = String(popup.dataset.masp || payload?.masp || "").toUpperCase();
     const suggestions = calcSuggestionsFromPayload(masp, payload);
     showCreateConfirm(suggestions);
-  }
-
-  thSize.addEventListener("click", openDatHangFromSizeHeader);
-  thSize.addEventListener("pointerup", (e) => {
-    if (e.pointerType === "mouse") return;
-    openDatHangFromSizeHeader(e);
   });
 }
 
