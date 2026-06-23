@@ -1225,7 +1225,7 @@ function showBayMauPopup(tasks, context) {
     marginLeft: "6px",
     minWidth: "320px",
     maxWidth: "520px",
-    maxHeight: "65vh",
+    maxHeight: "45vh",
     pointerEvents: "auto",
     background: "#f7e0b3",
     borderRadius: "6px",
