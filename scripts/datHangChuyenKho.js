@@ -314,51 +314,20 @@ function showPanel(allRows) {
 
   document.body.appendChild(box);
 
-  box.addEventListener("mousedown", (e) => {
-    e.stopPropagation();
-  }, true);
-
-  box.addEventListener("click", (e) => {
-    e.stopPropagation();
-  }, true);
-
   box.querySelector("#dhck-close").onclick = () => {
-    closeDhckPanel();
+    popupOpen = false;
+    box.remove();
   };
 
   box.querySelector("#dhck-create-ccn").onclick = () => createCcnFromChecked(box, canMove);
 
-  function closeDhckPanel() {
-    popupOpen = false;
-    box.remove();
-    document.removeEventListener("keydown", esc, true);
-    document.removeEventListener("mousedown", outsideClick, true);
-  }
-
-  function esc(e) {
+  document.addEventListener("keydown", function esc(e) {
     if (e.key === "Escape" && document.getElementById("dhck-panel")) {
-      closeDhckPanel();
+      popupOpen = false;
+      box.remove();
+      document.removeEventListener("keydown", esc, true);
     }
-  }
-
-  function outsideClick(e) {
-    const panel = document.getElementById("dhck-panel");
-    if (!panel) return;
-
-    const path = e.composedPath ? e.composedPath() : [];
-
-    if (path.includes(panel)) return;
-    if (e.target.closest?.("#dhck-panel")) return;
-    if (e.target.closest?.("#dhck-confirm")) return;
-
-    closeDhckPanel();
-  }
-
-  document.addEventListener("keydown", esc, true);
-
-  setTimeout(() => {
-    document.addEventListener("mousedown", outsideClick, true);
-  }, 100);
+  }, true);
 }
 
 async function createCcnFromChecked(box, canMove) {
