@@ -2188,19 +2188,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     }, { passive: true });
   }
 
-  async function waitForDatHangChuyenKho(maxWaitMs = 2000) {
-    const start = Date.now();
-
-    while (Date.now() - start < maxWaitMs) {
-      if (window.DatHangChuyenKho?.attachStockQuickPopup) {
-        return window.DatHangChuyenKho;
-      }
-      await new Promise(r => setTimeout(r, 100));
-    }
-
-    return window.DatHangChuyenKho || null;
-  }
-
   async function ensurePopup(card, masp) {
     if (!card) return;
 
@@ -2318,15 +2305,26 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     popup.style.transform = "none";
 
     try {
-      const dhck = await waitForDatHangChuyenKho(2000);
-
-      if (dhck?.attachStockQuickPopup) {
-        dhck.attachStockQuickPopup(popup, payload);
-      } else {
-        console.warn("[StockQuickPopup] DatHangChuyenKho chưa sẵn sàng sau khi chờ");
-      }
+      window.DatHangChuyenKho?.attachStockQuickPopup?.(popup, payload);
     } catch (e) {
       console.warn("[StockQuickPopup] lỗi gắn đặt hàng chuyển kho:", e);
+    }
+
+    try {
+      window.__LAST_STOCKQUICK_POPUP__ = popup;
+      window.__LAST_STOCKQUICK_PAYLOAD__ = payload;
+
+      window.dispatchEvent(new CustomEvent("stockquick:rendered", {
+        detail: {
+          popup,
+          payload,
+          masp: popup.dataset.masp || masp
+        }
+      }));
+
+      window.DatHangChuyenKho?.attachStockQuickPopup?.(popup, payload);
+    } catch (e) {
+      console.warn("[StockQuickPopup] lỗi phát tín hiệu đặt hàng:", e);
     }
 
     bindGlobalCloseHandlers();
