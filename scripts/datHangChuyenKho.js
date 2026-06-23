@@ -478,17 +478,6 @@ function openFromStockQuick(popup, payload) {
   showCreateConfirm(suggestions);
 }
 
-function autoOpenFromStockQuick(popup, payload) {
-  const masp = String(popup?.dataset?.masp || payload?.masp || "").toUpperCase();
-
-  const suggestions = calcSuggestionsFromPayload(masp, payload);
-
-  // Không có gợi ý thì im lặng, không báo gì
-  if (!suggestions.length) return false;
-
-  showCreateConfirm(suggestions);
-  return true;
-}
 
 export function initDatHangChuyenKho(options = {}) {
   ctx = options;
@@ -496,7 +485,6 @@ export function initDatHangChuyenKho(options = {}) {
   window.DatHangChuyenKho = {
     attachStockQuickPopup,
     openFromStockQuick,
-    autoOpenFromStockQuick,
     triggerCheck: () => runDatHangCheck(true),
     afterCcnSaved
   };
