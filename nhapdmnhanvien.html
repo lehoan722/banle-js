@@ -189,7 +189,7 @@
             </div>
 
             <div class="row">
-                <label class="required">Số điện thoại*</label>
+                <label class="required">Số điện thoại *</label>
                 <input id="dienthoai" inputmode="tel" autocomplete="tel">
             </div>
 
@@ -420,13 +420,17 @@
         async function saveNV() {
             let manv = getVal('manv').trim().toUpperCase();
             let tennv = getVal('tennv').trim();
+            let dienthoai = getVal('dienthoai').trim();
             if (!manv) return showMsg('Mã nhân viên không được bỏ trống!', 'error');
             if (!tennv) return showMsg('Tên nhân viên không được bỏ trống!', 'error');
+            if (!dienthoai) return showMsg('Số điện thoại không được bỏ trống!', 'error');
+            if (!/^[0-9]{10,15}$/.test(dienthoai))
+                return showMsg('Số điện thoại không hợp lệ!', 'error');
 
             let obj = {
                 manv,
                 tennv,
-                dienthoai: getVal('dienthoai').trim() || null,
+                dienthoai: dienthoai,
                 trangthai: getVal('trangthai') === 'true',
                 matkhau: getVal('matkhau') || null,
                 sua_hoadon: getVal('sua_hoadon') === 'true',
