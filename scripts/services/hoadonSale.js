@@ -36,6 +36,170 @@ function getInput(id) {
   return document.getElementById(id);
 }
 
+function normText(v) {
+  return String(v || "").trim().toUpperCase();
+}
+
+function normSizeDatHang(v) {
+  const s = String(v || "").trim();
+  const m = s.match(/\d{1,2}/);
+  return m ? m[0] : s;
+}
+
+function layIdsDatHangTuGhiChu(ghichu) {
+  const text = String(ghichu || "");
+
+  const m = text.match(/ĐẶT\s*HÀNG\s*CK\s*:\s*([0-9,\s]+)/i);
+  if (!m || !m[1]) return [];
+
+  return m[1]
+    .split(",")
+    .map(x => Number(String(x).trim()))
+    .filter(Boolean);
+}
+
+function xacDinhHuongChuyenKho(loai, sohd) {
+  const path = String(location.pathname || "").toLowerCase();
+  const l = String(loai || "").toLowerCase();
+  const s = String(sohd || "").toLowerCase();
+
+  if (
+    path.includes("ccn1v2") ||
+    l.includes("xcncs1") ||
+    s.includes("xcncs1") ||
+    l.includes("ncncs2") ||
+    s.includes("ncncs2")
+  ) {
+    return "1v2";
+  }
+
+  if (
+    path.includes("ccn2v1") ||
+    l.includes("xcncs2") ||
+    s.includes("xcncs2") ||
+    l.includes("ncncs1") ||
+    s.includes("ncncs1")
+  ) {
+    return "2v1";
+  }
+
+  return "";
+}
+
+function congVaoQtyMap(map, masp, size, huong, sl) {
+  const key = `${normText(masp)}|${normSizeDatHang(size)}|${huong}`;
+  map.set(key, (map.get(key) || 0) + Number(sl || 0));
+}
+
+function buildQtyMapFromChitiet(chitiet, huong) {
+  const map = new Map();
+
+  for (const r of chitiet || []) {
+    const masp = r.masp;
+    const sizeRaw = String(r.size || "").trim();
+    const slRaw = Number(r.soluong || 0) || 0;
+
+    if (!masp || !sizeRaw) continue;
+
+    // Hỗ trợ cả dạng thường "38" và dạng gom "38/1 40/2"
+    const pairs = Array.from(sizeRaw.matchAll(/(\d{1,2})\s*\/\s*(\d+)/g));
+
+    if (pairs.length) {
+      for (const p of pairs) {
+        congVaoQtyMap(map, masp, p[1], huong, Number(p[2] || 0));
+      }
+    } else {
+      congVaoQtyMap(map, masp, sizeRaw, huong, slRaw || 1);
+    }
+  }
+
+  return map;
+}
+
+async function capNhatDatHangDaChuyenSauLuuCCN({ sohd, loai, ghichu, chitiet }) {
+  try {
+    const ids = layIdsDatHangTuGhiChu(ghichu);
+    if (!ids.length) return;
+
+    const huong = xacDinhHuongChuyenKho(loai, sohd);
+    if (!huong) {
+      console.warn("[Đặt hàng CK] Không xác định được hướng chuyển:", { loai, sohd });
+      return;
+    }
+
+    const qtyMap = buildQtyMapFromChitiet(chitiet, huong);
+
+    const { data: orders, error: errRead } = await supabase
+      .from("dat_hang_chuyen_kho")
+      .select("id, masp, size, soluong, huong_chuyen, trang_thai")
+      .in("id", ids);
+
+    if (errRead) {
+      console.error("[Đặt hàng CK] Lỗi đọc bảng đặt hàng:", errRead);
+      return;
+    }
+
+    const idsDaChuyen = [];
+    const idsTraVeMoi = [];
+
+    for (const o of orders || []) {
+      const key = `${normText(o.masp)}|${normSizeDatHang(o.size)}|${o.huong_chuyen}`;
+      const canChuyen = Number(o.soluong || 1);
+      const coTrongPhieu = Number(qtyMap.get(key) || 0);
+
+      if (o.huong_chuyen === huong && coTrongPhieu >= canChuyen) {
+        idsDaChuyen.push(o.id);
+        qtyMap.set(key, coTrongPhieu - canChuyen);
+      } else {
+        idsTraVeMoi.push(o.id);
+      }
+    }
+
+    const now = new Date().toISOString();
+    const manv =
+      getText("manv") ||
+      localStorage.getItem("manv") ||
+      "";
+
+    if (idsDaChuyen.length) {
+      const { error } = await supabase
+        .from("dat_hang_chuyen_kho")
+        .update({
+          trang_thai: "da_chuyen",
+          sohd_chuyen: sohd,
+          manv_chuyen: manv,
+          ngay_chuyen: now,
+          updated_at: now
+        })
+        .in("id", idsDaChuyen);
+
+      if (error) {
+        console.error("[Đặt hàng CK] Lỗi cập nhật Đã chuyển:", error);
+      } else {
+        console.log("[Đặt hàng CK] Đã chuyển:", idsDaChuyen);
+      }
+    }
+
+    if (idsTraVeMoi.length) {
+      const { error } = await supabase
+        .from("dat_hang_chuyen_kho")
+        .update({
+          trang_thai: "moi",
+          updated_at: now
+        })
+        .in("id", idsTraVeMoi);
+
+      if (error) {
+        console.error("[Đặt hàng CK] Lỗi trả về Mới:", error);
+      } else {
+        console.log("[Đặt hàng CK] Trả về Mới:", idsTraVeMoi);
+      }
+    }
+  } catch (e) {
+    console.error("[Đặt hàng CK] Lỗi xử lý sau lưu CCN:", e);
+  }
+}
+
 function laTrangNhapXuatKiem(loai, sohd) {
   const path = String(window.location.pathname || "").toLowerCase();
   const l = String(loai || "").toLowerCase();
@@ -460,6 +624,13 @@ async function saveNewBanLe() {
     diadiemTrang,
     bangKetQua
   );
+
+  await capNhatDatHangDaChuyenSauLuuCCN({
+    sohd: sohdThucTe,
+    loai,
+    ghichu: header.ghichu,
+    chitiet
+  });
 
   // ✅ Xử lý điểm khách hàng sau khi hóa đơn đã lưu thành công
   // 🔥 CHỈ tích điểm cho hóa đơn bán tại quầy (bancs)
