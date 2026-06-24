@@ -510,6 +510,23 @@ overscroll-behavior: contain;
     }
   };
 
+  // Mặc định khi popup mở lên thì thu gọn
+  setTimeout(() => {
+    const body = box.querySelector("#dhck-body");
+    const btn = box.querySelector("#dhck-toggle");
+
+    dhckCollapsed = true;
+
+    body.style.setProperty("display", "none", "important");
+    body.style.setProperty("height", "0", "important");
+    body.style.setProperty("max-height", "0", "important");
+    body.style.setProperty("overflow", "hidden", "important");
+
+    btn.textContent = "▲";
+
+    placeCollapsedBox();
+  }, 0);
+
   box.querySelector("#dhck-create-ccn").onclick = () => createCcnFromChecked(box, canMove);
   box.querySelector("#dhck-delete")?.addEventListener("click", () => {
     deleteCheckedOrders(box, canMove);
