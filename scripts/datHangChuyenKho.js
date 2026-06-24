@@ -338,9 +338,14 @@ overscroll-behavior: contain;
 
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;font-weight:bold;margin-bottom:4px;">
-      <span>ĐẶT HÀNG CHUYỂN KHO | Cần chuyển: ${canMove.length} | Theo dõi: ${onlyView.length}</span>
-      <button id="dhck-close" style="border:none;background:transparent;font-weight:bold;font-size:18px;">×</button>
-    </div>
+  <span>ĐẶT HÀNG CHUYỂN KHO | Cần chuyển: ${canMove.length} | Theo dõi: ${onlyView.length}</span>
+  <div>
+    <button id="dhck-toggle" style="border:none;background:transparent;font-weight:bold;font-size:18px;">▼</button>
+    <button id="dhck-close" style="border:none;background:transparent;font-weight:bold;font-size:18px;">×</button>
+  </div>
+</div>
+
+<div id="dhck-body">
     
     <table style="width:100%;border-collapse:collapse;background:#fff;">
       <thead>
@@ -354,7 +359,7 @@ overscroll-behavior: contain;
     <div style="text-align:right;margin:6px 0;">
   ${isAdmin ? `<button id="dhck-delete">Xóa đặt hàng</button>` : ""}
   <button id="dhck-create-ccn">Tạo hóa đơn CCN</button>
-</div>
+ </div>
 
     <table style="width:100%;border-collapse:collapse;background:#f7f7f7;">
       <thead>
@@ -364,6 +369,8 @@ overscroll-behavior: contain;
       </thead>
       <tbody>${renderRows(onlyView, false)}</tbody>
     </table>
+
+</div>
   `;
 
   const style = document.createElement("style");
@@ -404,6 +411,37 @@ overscroll-behavior: contain;
   box.querySelector("#dhck-close").onclick = () => {
     popupOpen = false;
     box.remove();
+  };
+
+  let dhckCollapsed = false;
+  const oldHeight = box.style.height;
+  const oldMaxHeight = box.style.maxHeight;
+  const oldOverflowY = box.style.overflowY;
+  const oldOverflow = box.style.overflow;
+
+  box.querySelector("#dhck-toggle").onclick = () => {
+    dhckCollapsed = !dhckCollapsed;
+
+    const body = box.querySelector("#dhck-body");
+    const btn = box.querySelector("#dhck-toggle");
+
+    if (dhckCollapsed) {
+      body.style.display = "none";
+      btn.textContent = "▲";
+
+      box.style.height = "auto";
+      box.style.maxHeight = "none";
+      box.style.overflow = "hidden";
+      box.style.overflowY = "hidden";
+    } else {
+      body.style.display = "";
+      btn.textContent = "▼";
+
+      box.style.height = oldHeight;
+      box.style.maxHeight = oldMaxHeight;
+      box.style.overflow = oldOverflow || "auto";
+      box.style.overflowY = oldOverflowY || "auto";
+    }
   };
 
   box.querySelector("#dhck-create-ccn").onclick = () => createCcnFromChecked(box, canMove);
