@@ -56,6 +56,17 @@ function getTargetStockByTotal(total) {
   return { cs1, cs2: t - cs1 };
 }
 
+function getTonSauKiem(r, coso) {
+  const tonKey = coso === "cs2" ? "ton_cs2" : "ton_cs1";
+  const lechKey = coso === "cs2" ? "lech_cs2" : "lech_cs1";
+
+  const ton = Number(r?.[tonKey] || 0);
+  const lech = Number(r?.[lechKey] || 0);
+
+  // Tồn thực tế sau kiểm = tồn sổ + lệch kiểm
+  return Math.max(0, ton + lech);
+}
+
 function calcSuggestionsFromPayload(masp, payload) {
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   const out = [];
@@ -64,8 +75,9 @@ function calcSuggestionsFromPayload(masp, payload) {
     const size = normSize(r.size);
     if (!size || size === "0") return;
 
-    const ton1 = Number(r.ton_cs1 || 0);
-    const ton2 = Number(r.ton_cs2 || 0);
+    const ton1 = getTonSauKiem(r, "cs1");
+    const ton2 = getTonSauKiem(r, "cs2");
+
     const total = ton1 + ton2;
     if (total <= 0) return;
 
@@ -78,7 +90,9 @@ function calcSuggestionsFromPayload(masp, payload) {
         soluong: Math.min(ton1 - target.cs1, target.cs2 - ton2),
         huong_chuyen: "1v2",
         tu_coso: "cs1",
-        den_coso: "cs2"
+        den_coso: "cs2",
+        ton_sau_kiem_cs1: ton1,
+        ton_sau_kiem_cs2: ton2
       });
     }
 
@@ -89,7 +103,9 @@ function calcSuggestionsFromPayload(masp, payload) {
         soluong: Math.min(ton2 - target.cs2, target.cs1 - ton1),
         huong_chuyen: "2v1",
         tu_coso: "cs2",
-        den_coso: "cs1"
+        den_coso: "cs1",
+        ton_sau_kiem_cs1: ton1,
+        ton_sau_kiem_cs2: ton2
       });
     }
   });
