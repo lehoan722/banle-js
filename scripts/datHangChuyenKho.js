@@ -384,6 +384,11 @@ overscroll-behavior: contain;
       opacity:.65;
     }
 
+    #dhck-panel > div:first-child {
+  min-height: 24px;
+  line-height: 24px;
+}
+
     #dhck-panel .dhck-masp-link {
   color:#0b57d0;
   font-weight:700;
@@ -414,10 +419,37 @@ overscroll-behavior: contain;
   };
 
   let dhckCollapsed = false;
+
+  const oldTop = box.style.top;
+  const oldBottom = box.style.bottom;
   const oldHeight = box.style.height;
   const oldMaxHeight = box.style.maxHeight;
   const oldOverflowY = box.style.overflowY;
+  const oldOverflowX = box.style.overflowX;
   const oldOverflow = box.style.overflow;
+
+  function placeCollapsedBox() {
+    const maKhach =
+      document.querySelector('input[placeholder*="mã khách"]') ||
+      document.getElementById("makhach") ||
+      document.querySelector("#maKhach");
+
+    const h = 34;
+
+    if (maKhach) {
+      const r = maKhach.getBoundingClientRect();
+      const top = Math.max(0, Math.round(r.top - h - 4));
+      box.style.top = top + "px";
+    }
+
+    box.style.bottom = "auto";
+    box.style.height = h + "px";
+    box.style.maxHeight = h + "px";
+    box.style.overflow = "hidden";
+    box.style.overflowY = "hidden";
+    box.style.overflowX = "hidden";
+    box.style.padding = "4px 6px";
+  }
 
   box.querySelector("#dhck-toggle").onclick = () => {
     dhckCollapsed = !dhckCollapsed;
@@ -429,18 +461,19 @@ overscroll-behavior: contain;
       body.style.display = "none";
       btn.textContent = "▲";
 
-      box.style.height = "auto";
-      box.style.maxHeight = "none";
-      box.style.overflow = "hidden";
-      box.style.overflowY = "hidden";
+      placeCollapsedBox();
     } else {
       body.style.display = "";
       btn.textContent = "▼";
 
+      box.style.top = oldTop;
+      box.style.bottom = oldBottom;
       box.style.height = oldHeight;
       box.style.maxHeight = oldMaxHeight;
       box.style.overflow = oldOverflow || "auto";
       box.style.overflowY = oldOverflowY || "auto";
+      box.style.overflowX = oldOverflowX || "auto";
+      box.style.padding = "6px";
     }
   };
 
