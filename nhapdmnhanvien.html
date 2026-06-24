@@ -189,6 +189,11 @@
             </div>
 
             <div class="row">
+                <label>Số điện thoại</label>
+                <input id="dienthoai" inputmode="tel" autocomplete="tel">
+            </div>
+
+            <div class="row">
                 <label>Trạng thái</label>
                 <select id="trangthai">
                     <option value="true">Đang hoạt động</option>
@@ -365,7 +370,7 @@
         }
 
         function resetForm() {
-            ['manv', 'tennv', 'matkhau', 'email', 'loai_duoc_sua'].forEach(id => setVal(id, ''));
+            ['manv', 'tennv', 'dienthoai', 'matkhau', 'email', 'loai_duoc_sua'].forEach(id => setVal(id, ''));
 
             // ĐẶT MẶC ĐỊNH
             document.getElementById('trangthai').value = 'true';   // đang hoạt động
@@ -395,6 +400,7 @@
 
             if (data && data.manv) {
                 setVal('tennv', data.tennv);
+                setVal('dienthoai', data.dienthoai);
                 setVal('matkhau', data.matkhau);
                 setVal('email', data.email);
                 setVal('loai_duoc_sua', (data.loai_duoc_sua || []).join(', '));
@@ -420,6 +426,7 @@
             let obj = {
                 manv,
                 tennv,
+                dienthoai: getVal('dienthoai').trim() || null,
                 trangthai: getVal('trangthai') === 'true',
                 matkhau: getVal('matkhau') || null,
                 sua_hoadon: getVal('sua_hoadon') === 'true',
