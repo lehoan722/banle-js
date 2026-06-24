@@ -468,6 +468,48 @@ async function ghiTaoHdCcnChoKiemNhap(meta, bangKetQua) {
   }
 }
 
+async function capNhatDatHangDaChuyen(meta, bangKetQua) {
+  try {
+
+    const m = String(meta.ghichu || '')
+      .match(/ĐẶT\s*HÀNG\s*CK\s*:\s*([0-9,\s]+)/i);
+
+    if (!m) {
+      console.log('[DAT_HANG] Không có ID đặt hàng trong ghi chú');
+      return;
+    }
+
+    const ids = m[1]
+      .split(',')
+      .map(x => Number(x.trim()))
+      .filter(Boolean);
+
+    if (!ids.length) return;
+
+    const now = new Date().toISOString();
+
+    const { error } = await supabase
+      .from('dat_hang_chuyen_kho')
+      .update({
+        trang_thai: 'da_chuyen',
+        sohd_chuyen: meta.sohd,
+        manv_chuyen: meta.manv,
+        ngay_chuyen: now,
+        updated_at: now
+      })
+      .in('id', ids);
+
+    if (error) {
+      console.error('[DAT_HANG] lỗi cập nhật:', error);
+    } else {
+      console.log('[DAT_HANG] đã chuyển:', ids);
+    }
+
+  } catch (e) {
+    console.error('[DAT_HANG] exception:', e);
+  }
+}
+
 async function danhDauKiemNhapChoCaHaiPhieu(meta) {
   try {
     const ghichu = String(meta.ghichu || "").trim();
@@ -658,7 +700,7 @@ async function saveNewCCNByModern(ctx, prep) {
   }
 
   const { chitietGoc, chitietDoiUng, createdAtGoc, createdAtDoiUng } =
-  await buildDetailRowsForSave(meta, bangKetQua);
+    await buildDetailRowsForSave(meta, bangKetQua);
 
   if (!chitietGoc.length) {
     alert("❌ Không có chi tiết hóa đơn để lưu.");
@@ -738,7 +780,8 @@ async function saveNewCCNByModern(ctx, prep) {
   // 6) Hook yêu cầu chuyển kho
   await capNhatYeuCauChuyenKhoCt(meta, bangKetQua);
 
-  // 7) Hook kiểm nhập
+  await capNhatDatHangDaChuyen(meta, bangKetQua);
+
   await ghiTaoHdCcnChoKiemNhap(meta, bangKetQua);
   await danhDauKiemNhapChoCaHaiPhieu(meta);
 
@@ -888,7 +931,7 @@ async function saveEditCCNByModern(ctx, prep) {
 
   // 2) Build lại dữ liệu mới
   const { chitietGoc, chitietDoiUng, createdAtGoc, createdAtDoiUng } =
-  await buildDetailRowsForSave(meta, bangKetQua);
+    await buildDetailRowsForSave(meta, bangKetQua);
 
   if (!chitietGoc.length) {
     alert("❌ Không có chi tiết hóa đơn để sửa.");
@@ -1019,6 +1062,9 @@ async function saveEditCCNByModern(ctx, prep) {
 
   // 6) Hook sau sửa
   await capNhatYeuCauChuyenKhoCt(meta, bangKetQua);
+
+  await capNhatDatHangDaChuyen(meta, bangKetQua);
+
   await ghiTaoHdCcnChoKiemNhap(meta, bangKetQua);
   await danhDauKiemNhapChoCaHaiPhieu(meta);
 
