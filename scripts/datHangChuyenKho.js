@@ -434,21 +434,29 @@ overscroll-behavior: contain;
       document.getElementById("makhach") ||
       document.querySelector("#maKhach");
 
-    const h = 34;
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
+    const h = isMobile ? 36 : 34;
 
     if (maKhach) {
       const r = maKhach.getBoundingClientRect();
-      const top = Math.max(0, Math.round(r.top - h - 4));
-      box.style.top = top + "px";
+
+      // PC: đẩy lên cao hơn 1 dòng nữa
+      // Mobile: đặt ngay trên ô mã khách
+      const extraUp = isMobile ? 4 : 38;
+      const top = Math.max(0, Math.round(r.top - h - extraUp));
+
+      box.style.setProperty("top", top + "px", "important");
     }
 
-    box.style.bottom = "auto";
-    box.style.height = h + "px";
-    box.style.maxHeight = h + "px";
-    box.style.overflow = "hidden";
-    box.style.overflowY = "hidden";
-    box.style.overflowX = "hidden";
-    box.style.padding = "4px 6px";
+    box.style.setProperty("bottom", "auto", "important");
+    box.style.setProperty("height", h + "px", "important");
+    box.style.setProperty("min-height", h + "px", "important");
+    box.style.setProperty("max-height", h + "px", "important");
+    box.style.setProperty("overflow", "hidden", "important");
+    box.style.setProperty("overflow-y", "hidden", "important");
+    box.style.setProperty("overflow-x", "hidden", "important");
+    box.style.setProperty("padding", "4px 6px", "important");
   }
 
   box.querySelector("#dhck-toggle").onclick = () => {
@@ -458,12 +466,20 @@ overscroll-behavior: contain;
     const btn = box.querySelector("#dhck-toggle");
 
     if (dhckCollapsed) {
-      body.style.display = "none";
+      body.style.setProperty("display", "none", "important");
+      body.style.setProperty("height", "0", "important");
+      body.style.setProperty("max-height", "0", "important");
+      body.style.setProperty("overflow", "hidden", "important");
+
       btn.textContent = "▲";
 
       placeCollapsedBox();
     } else {
-      body.style.display = "";
+      body.style.removeProperty("display");
+      body.style.removeProperty("height");
+      body.style.removeProperty("max-height");
+      body.style.removeProperty("overflow");
+
       btn.textContent = "▼";
 
       box.style.top = oldTop;
