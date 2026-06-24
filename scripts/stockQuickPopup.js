@@ -302,6 +302,16 @@
     background: #dbeafe;
   }
 
+  .sq-stock-popup tr.sq-dhck-suggest-row td {
+  background: #d9fbe6 !important;
+}
+
+.sq-stock-popup tr.sq-dhck-suggest-row td:first-child::after {
+  content: " ⇄";
+  color: #15803d;
+  font-weight: 900;
+}
+
   .sq-stock-popup tr.sq-hide-row td:first-child {
     color: #111827;
     font-weight: 700;
@@ -1374,9 +1384,40 @@ data-color-masp="${targetMasp}"
         const tonTong = Number(r.ton_cs1 || 0) + Number(r.ton_cs2 || 0);
         sumTongTon += tonTong;
 
+        function getTonSauKiemLocal(tonRaw, lechRaw) {
+          return Math.max(0, Number(tonRaw || 0) + Number(lechRaw || 0));
+        }
+
+        function getTargetStockByTotalLocal(total) {
+          const t = Number(total || 0);
+          if (t <= 0) return { cs1: 0, cs2: 0 };
+          if (t === 1) return { cs1: 0, cs2: 1 };
+          if (t === 2) return { cs1: 1, cs2: 1 };
+          if (t === 3) return { cs1: 1, cs2: 2 };
+          if (t === 4) return { cs1: 1, cs2: 3 };
+          if (t === 5) return { cs1: 2, cs2: 3 };
+
+          const cs1 = Math.floor(t / 3);
+          return { cs1, cs2: t - cs1 };
+        }
+
+        const tonSauKiem1 = getTonSauKiemLocal(r.ton_cs1, r.lech_cs1);
+        const tonSauKiem2 = getTonSauKiemLocal(r.ton_cs2, r.lech_cs2);
+        const totalSauKiem = tonSauKiem1 + tonSauKiem2;
+        const targetSauKiem = getTargetStockByTotalLocal(totalSauKiem);
+
+        const coGoiYChuyen =
+          sizeNum !== "0" &&
+          totalSauKiem > 0 &&
+          (
+            (tonSauKiem1 > targetSauKiem.cs1 && tonSauKiem2 < targetSauKiem.cs2) ||
+            (tonSauKiem2 > targetSauKiem.cs2 && tonSauKiem1 < targetSauKiem.cs1)
+          );
+
+        const suggestClass = coGoiYChuyen ? " sq-dhck-suggest-row" : "";
 
         return `
-        <tr class="sq-open-similar-row" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
+        <tr class="sq-open-similar-row${suggestClass}" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
           <td>${sizeLabel}</td>
           <td class="num sq-col-k1">
   ${renderTonLech(r.ton_cs1, r.lech_cs1, hasManocanh("cs1", sizeNum))}
