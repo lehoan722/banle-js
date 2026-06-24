@@ -675,7 +675,12 @@ async function runDatHangCheck(forceShow = false) {
 }
 
 async function filterSuggestionsNotPending(items) {
-  if (!ctx?.supabase || !items?.length) return items || [];
+  const result = {
+    newItems: items || [],
+    pendingItems: []
+  };
+
+  if (!ctx?.supabase || !items?.length) return result;
 
   const masps = Array.from(new Set(items.map(x => String(x.masp || "").toUpperCase())));
   const sizes = Array.from(new Set(items.map(x => String(x.size || ""))));
@@ -683,38 +688,75 @@ async function filterSuggestionsNotPending(items) {
   const { data, error } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
     .select("masp, size, huong_chuyen, trang_thai")
-    .in("trang_thai", ["moi", "dang_chuyen"])
+    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu"])
     .in("masp", masps)
     .in("size", sizes);
 
   if (error) {
     console.warn("[Đặt hàng CK] Không kiểm tra được dòng đang mở:", error);
-    return items;
+    return result;
   }
 
   const opened = new Set(
     (data || []).map(r =>
-      `${String(r.masp).toUpperCase()}|${String(r.size)}|${r.huong_chuyen}`
+      `${String(r.masp).toUpperCase()}|${normSize(r.size)}|${r.huong_chuyen}`
     )
   );
 
-  return items.filter(x => {
-    const key = `${String(x.masp).toUpperCase()}|${String(x.size)}|${x.huong_chuyen}`;
-    return !opened.has(key);
+  result.newItems = [];
+  result.pendingItems = [];
+
+  (items || []).forEach(x => {
+    const key = `${String(x.masp).toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`;
+
+    if (opened.has(key)) {
+      result.pendingItems.push(x);
+    } else {
+      result.newItems.push(x);
+    }
   });
+
+  return result;
 }
 
 async function openFromStockQuick(popup, payload) {
   const masp = String(popup?.dataset?.masp || payload?.masp || "").toUpperCase();
-  let suggestions = calcSuggestionsFromPayload(masp, payload);
-  suggestions = await filterSuggestionsNotPending(suggestions);
+
+  const suggestions = calcSuggestionsFromPayload(masp, payload);
+  const checked = await filterSuggestionsNotPending(suggestions);
+
+  const newItems = checked.newItems || [];
+  const pendingItems = checked.pendingItems || [];
 
   if (!suggestions.length) {
-    alert("Không có size mới cần tạo đặt hàng chuyển kho.");
+    alert("Không có size nào cần gợi ý chuyển kho.");
     return;
   }
 
-  showCreateConfirm(suggestions);
+  if (!newItems.length && pendingItems.length) {
+    const lines = pendingItems
+      .map(x => `${x.huong_chuyen} | ${x.masp} | size ${x.size} | SL ${x.soluong}`)
+      .join("\n");
+
+    alert(
+      "Các size cần chuyển kho đã được đặt rồi, đang nằm trong hàng đợi:\n\n" +
+      lines
+    );
+    return;
+  }
+
+  if (newItems.length && pendingItems.length) {
+    const lines = pendingItems
+      .map(x => `${x.huong_chuyen} | ${x.masp} | size ${x.size}`)
+      .join("\n");
+
+    alert(
+      "Một số size đã được đặt rồi nên sẽ không tạo lại:\n\n" +
+      lines
+    );
+  }
+
+  showCreateConfirm(newItems);
 }
 
 
