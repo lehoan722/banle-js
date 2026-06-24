@@ -429,27 +429,44 @@ overscroll-behavior: contain;
   const oldOverflow = box.style.overflow;
 
   function placeCollapsedBox() {
-    const maKhach =
-      document.querySelector('input[placeholder*="mã khách"]') ||
-      document.getElementById("makhach") ||
-      document.querySelector("#maKhach");
-
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
-
     const h = isMobile ? 36 : 34;
 
-    if (maKhach) {
-      const r = maKhach.getBoundingClientRect();
+    if (isMobile) {
+      const footer =
+        document.querySelector(".footer-buttons") ||
+        document.querySelector(".bottom-buttons") ||
+        document.querySelector("#footer-buttons") ||
+        document.querySelector("#bottomButtons");
 
-      // PC: đẩy lên cao hơn 1 dòng nữa
-      // Mobile: đặt ngay trên ô mã khách
-      const extraUp = isMobile ? 4 : 38;
-      const top = Math.max(0, Math.round(r.top - h - extraUp));
+      if (footer) {
+        const r = footer.getBoundingClientRect();
+        const top = Math.max(0, Math.round(r.top - h - 4));
+        box.style.setProperty("top", top + "px", "important");
+      } else {
+        box.style.setProperty("top", "auto", "important");
+        box.style.setProperty("bottom", "84px", "important");
+      }
 
-      box.style.setProperty("top", top + "px", "important");
+      box.style.setProperty("left", "0", "important");
+      box.style.setProperty("right", "0", "important");
+      box.style.setProperty("width", "100vw", "important");
+      box.style.setProperty("max-width", "100vw", "important");
+    } else {
+      const maKhach =
+        document.querySelector('input[placeholder*="mã khách"]') ||
+        document.getElementById("makhach") ||
+        document.querySelector("#maKhach");
+
+      if (maKhach) {
+        const r = maKhach.getBoundingClientRect();
+        const top = Math.max(0, Math.round(r.top - h - 38));
+        box.style.setProperty("top", top + "px", "important");
+      }
+
+      box.style.setProperty("bottom", "auto", "important");
     }
 
-    box.style.setProperty("bottom", "auto", "important");
     box.style.setProperty("height", h + "px", "important");
     box.style.setProperty("min-height", h + "px", "important");
     box.style.setProperty("max-height", h + "px", "important");
