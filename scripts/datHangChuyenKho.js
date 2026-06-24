@@ -22,6 +22,21 @@ function getManv() {
   ).trim();
 }
 
+async function isAdminUser() {
+  if (ctx?.isAdmin === true || window.isAdmin === true) return true;
+
+  if (!ctx?.supabase) return false;
+
+  const { data, error } = await ctx.supabase.rpc("is_admin");
+
+  if (error) {
+    console.warn("[Đặt hàng CK] Không kiểm tra được admin:", error);
+    return false;
+  }
+
+  return data === true;
+}
+
 function normSize(v) {
   const s = String(v || "").trim();
   const m = s.match(/\d{1,2}/);
@@ -262,7 +277,7 @@ function renderRows(rows, allowMove) {
   `).join("");
 }
 
-function showPanel(allRows) {
+async function showPanel(allRows) {
   const coso = getCurrentCoso();
   if (!coso || !allRows.length || popupOpen) return;
 
@@ -271,6 +286,7 @@ function showPanel(allRows) {
 
   const canMove = allRows.filter(r => String(r.tu_coso).toLowerCase() === coso);
   const onlyView = allRows.filter(r => String(r.tu_coso).toLowerCase() !== coso);
+  const isAdmin = await isAdminUser();
 
   const box = document.createElement("div");
   box.id = "dhck-panel";
@@ -280,8 +296,8 @@ function showPanel(allRows) {
     top:56vh;
     width:620px;
     max-width:94vw;
-    height:36vh;
-max-height:36vh;
+    height:26vh;
+max-height:26vh;
 overflow:auto;
 overscroll-behavior: contain;
     background:#fff4d6;
@@ -325,8 +341,7 @@ overscroll-behavior: contain;
       <span>ĐẶT HÀNG CHUYỂN KHO | Cần chuyển: ${canMove.length} | Theo dõi: ${onlyView.length}</span>
       <button id="dhck-close" style="border:none;background:transparent;font-weight:bold;font-size:18px;">×</button>
     </div>
-
-    <div style="font-weight:bold;color:#b00000;margin:3px 0;">Cơ sở này cần chuẩn bị</div>
+    
     <table style="width:100%;border-collapse:collapse;background:#fff;">
       <thead>
         <tr style="background:#f4c985;">
@@ -337,10 +352,10 @@ overscroll-behavior: contain;
     </table>
 
     <div style="text-align:right;margin:6px 0;">
-      <button id="dhck-create-ccn">Tạo hóa đơn CCN</button>
-    </div>
+  ${isAdmin ? `<button id="dhck-delete">Xóa đặt hàng</button>` : ""}
+  <button id="dhck-create-ccn">Tạo hóa đơn CCN</button>
+</div>
 
-    <div style="font-weight:bold;color:#555;margin:5px 0 3px;">Chỉ xem / theo dõi</div>
     <table style="width:100%;border-collapse:collapse;background:#f7f7f7;">
       <thead>
         <tr style="background:#ddd;">
@@ -392,6 +407,9 @@ overscroll-behavior: contain;
   };
 
   box.querySelector("#dhck-create-ccn").onclick = () => createCcnFromChecked(box, canMove);
+  box.querySelector("#dhck-delete")?.addEventListener("click", () => {
+    deleteCheckedOrders(box, canMove);
+  });
 
   document.addEventListener("keydown", function esc(e) {
     if (e.key === "Escape" && document.getElementById("dhck-panel")) {
@@ -400,6 +418,53 @@ overscroll-behavior: contain;
       document.removeEventListener("keydown", esc, true);
     }
   }, true);
+}
+
+async function deleteCheckedOrders(box, canMove) {
+  const isAdmin = await isAdminUser();
+
+  if (!isAdmin) {
+    alert("Bạn không có quyền xóa đặt hàng.");
+    return;
+  }
+
+  const ids = Array.from(box.querySelectorAll(".dhck-row-check:checked"))
+    .map(c => Number(c.dataset.id))
+    .filter(Boolean);
+
+  if (!ids.length) {
+    alert("Bạn chưa tick dòng nào để xóa.");
+    return;
+  }
+
+  const allowedIds = canMove.map(r => Number(r.id));
+  const deleteIds = ids.filter(id => allowedIds.includes(id));
+
+  if (!deleteIds.length) {
+    alert("Bạn chỉ được xóa dòng đặt hàng của cơ sở mình.");
+    return;
+  }
+
+  if (!confirm(`Bạn chắc chắn muốn xóa ${deleteIds.length} dòng đặt hàng này?`)) {
+    return;
+  }
+
+  const { error } = await ctx.supabase
+    .from("dat_hang_chuyen_kho")
+    .delete()
+    .in("id", deleteIds);
+
+  if (error) {
+    console.error("[Đặt hàng CK] Lỗi xóa:", error);
+    alert("❌ Không xóa được đặt hàng.");
+    return;
+  }
+
+  alert("✅ Đã xóa đặt hàng.");
+
+  popupOpen = false;
+  document.getElementById("dhck-panel")?.remove();
+  await runDatHangCheck(true);
 }
 
 async function createCcnFromChecked(box, canMove) {
