@@ -346,10 +346,17 @@ function renderRows(rows, allowMove) {
   return rows.map(r => `
     <tr class="${allowMove ? "" : "dhck-readonly"}">
       <td style="text-align:center;">
-        <input type="checkbox" class="dhck-row-check"
-          ${allowMove ? "" : "disabled"}
-          data-id="${r.id}">
-      </td>
+  <input type="checkbox" class="dhck-delete-check"
+    ${allowMove ? "" : "disabled"}
+    data-id="${r.id}">
+</td>
+
+<td style="text-align:center;">
+  <input type="checkbox" class="dhck-move-check"
+    ${allowMove ? "" : "disabled"}
+    ${r.chon_chuyen ? "checked" : ""}
+    data-id="${r.id}">
+</td>
       <td>
   <span class="dhck-masp-link" data-masp="${r.masp || ""}">
     ${r.masp || ""}
@@ -436,6 +443,57 @@ async function flushInlineNotes(box) {
   }));
 }
 
+async function saveMoveCheck(id, checked) {
+  if (!ctx?.supabase || !id) return false;
+
+  const now = new Date().toISOString();
+
+  const patch = checked
+    ? {
+      chon_chuyen: true,
+      trang_thai: "dang_chuyen",
+      updated_at: now
+    }
+    : {
+      chon_chuyen: false,
+      trang_thai: "moi",
+      updated_at: now
+    };
+
+  suppressRealtimeUntil = Date.now() + 800;
+
+  const { error } = await ctx.supabase
+    .from("dat_hang_chuyen_kho")
+    .update(patch)
+    .eq("id", Number(id))
+    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu"]);
+
+  if (error) {
+    console.error("[Đặt hàng CK] Lỗi lưu tick chuyển:", error);
+    alert("❌ Không lưu được trạng thái chuyển.");
+    return false;
+  }
+
+  return true;
+}
+
+function bindMoveCheck(box) {
+  box.querySelectorAll(".dhck-move-check").forEach(input => {
+    input.addEventListener("change", async () => {
+      input.disabled = true;
+
+      const ok = await saveMoveCheck(input.dataset.id, input.checked);
+
+      if (!ok) {
+        input.checked = !input.checked;
+      }
+
+      input.disabled = false;
+      await runDatHangCheck(true);
+    });
+  });
+}
+
 async function showPanel(allRows) {
   const coso = getCurrentCoso();
   if (!coso || !allRows.length || popupOpen) return;
@@ -509,7 +567,7 @@ async function showPanel(allRows) {
     <table style="width:100%;border-collapse:collapse;background:#fff;">
       <thead>
         <tr style="background:#f4c985;">
-          <th>✓</th><th>mã sp</th><th>SL</th><th>size</th><th>hướng</th><th>NV đặt</th><th>ghi chú</th><th>trạng thái</th>
+          <th>Xóa</th><th>Chuyển</th><th>mã sp</th><th>SL</th><th>size</th><th>hướng</th><th>NV đặt</th><th>ghi chú</th><th>trạng thái</th>
         </tr>
       </thead>
       <tbody>${renderRows(canMove, true)}</tbody>
@@ -523,7 +581,7 @@ async function showPanel(allRows) {
     <table style="width:100%;border-collapse:collapse;background:#f7f7f7;">
       <thead>
         <tr style="background:#ddd;">
-          <th>✓</th><th>mã sp</th><th>SL</th><th>size</th><th>hướng</th><th>NV đặt</th><th>ghi chú</th><th>trạng thái</th>
+          <th>Xóa</th><th>Chuyển</th><th>mã sp</th><th>SL</th><th>size</th><th>hướng</th><th>NV đặt</th><th>ghi chú</th><th>trạng thái</th>
         </tr>
       </thead>
       <tbody>${renderRows(onlyView, false)}</tbody>
@@ -573,6 +631,7 @@ async function showPanel(allRows) {
   });
 
   bindInlineNoteAutosave(box);
+  bindMoveCheck(box);
 
   box.querySelector("#dhck-close").onclick = async () => {
     userClosedPanel = true;
@@ -715,7 +774,7 @@ async function deleteCheckedOrders(box, canMove) {
     return;
   }
 
-  const ids = Array.from(box.querySelectorAll(".dhck-row-check:checked"))
+  const ids = Array.from(box.querySelectorAll(".dhck-delete-check:checked"))
     .map(c => Number(c.dataset.id))
     .filter(Boolean);
 
@@ -792,7 +851,7 @@ async function validateOrderIdsBeforeCreate(ids) {
 
 async function createCcnFromChecked(box, canMove) {
   await flushInlineNotes(box);
-  const ids = Array.from(box.querySelectorAll(".dhck-row-check:checked"))
+  const ids = Array.from(box.querySelectorAll(".dhck-move-check:checked"))
     .map(c => Number(c.dataset.id))
     .filter(Boolean);
 
@@ -834,14 +893,6 @@ async function createCcnFromChecked(box, canMove) {
 
   localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
   localStorage.setItem("dhck_pending_ids", JSON.stringify(ids));
-
-  await ctx.supabase
-    .from("dat_hang_chuyen_kho")
-    .update({
-      trang_thai: "dang_chuyen",
-      updated_at: new Date().toISOString()
-    })
-    .in("id", ids);
 
   const url = dir === "2v1"
     ? "/ccn2v1cs2.html"
