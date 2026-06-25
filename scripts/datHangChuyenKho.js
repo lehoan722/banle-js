@@ -383,13 +383,13 @@ async function showPanel(allRows) {
   box.style.cssText = `
     position:fixed;
     left:6px;
-    top:56vh;
+    top:26vh;
     width:620px;
     max-width:94vw;
-    height:26vh;
-max-height:26vh;
-overflow:auto;
-overscroll-behavior: contain;
+    height:56vh;
+    max-height:56vh;
+    overflow:auto;
+    overscroll-behavior: contain;
     background:#fff4d6;
     border:1px solid #d8a63b;
     box-shadow:0 2px 10px rgba(0,0,0,.25);
