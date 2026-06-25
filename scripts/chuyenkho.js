@@ -701,8 +701,16 @@ function calcGoiy(cs1, cs2) {
 
   const target = getTargetStockByTotal(total);
 
-  if (n1 > target.cs1 && n2 < target.cs2) return "1v2";
-  if (n2 > target.cs2 && n1 < target.cs1) return "2v1";
+  // Quy tắc mới:
+  // - Chỉ gợi ý 1v2 nếu CS2 còn dưới 3
+  // - Chỉ gợi ý 2v1 nếu CS1 còn dưới 2
+  if (n1 > target.cs1 && n2 < target.cs2 && n2 < 3) {
+    return "1v2";
+  }
+
+  if (n2 > target.cs2 && n1 < target.cs1 && n1 < 2) {
+    return "2v1";
+  }
 
   return "cân bằng";
 }
@@ -719,10 +727,12 @@ function calcMoveQty(cs1, cs2, goiy) {
   const target = getTargetStockByTotal(total);
 
   if (goiy === "1v2") {
+    if (n2 >= 3) return 0;
     return Math.max(0, Math.min(n1 - target.cs1, target.cs2 - n2));
   }
 
   if (goiy === "2v1") {
+    if (n1 >= 2) return 0;
     return Math.max(0, Math.min(n2 - target.cs2, target.cs1 - n1));
   }
 
