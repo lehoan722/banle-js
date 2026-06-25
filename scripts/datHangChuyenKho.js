@@ -560,7 +560,7 @@ async function showPanel(allRows) {
 
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;font-weight:bold;margin-bottom:4px;">
-  <span>ĐẶT HÀNG CHUYỂN KHO | Cần chuyển: ${canMove.length} | Theo dõi: ${onlyView.length}</span>
+  <span class="dhck-title-count">ĐẶT HÀNG CHUYỂN KHO | Cần chuyển: ${canMove.length} | Theo dõi: ${onlyView.length}</span>
   <div>
     <button id="dhck-toggle" style="border:none;background:transparent;font-weight:bold;font-size:18px;">▼</button>
     <button id="dhck-close" style="border:none;background:transparent;font-weight:bold;font-size:18px;">×</button>
@@ -1022,6 +1022,54 @@ async function openFromStockQuick(popup, payload) {
   showCreateConfirm(newItems);
 }
 
+async function refreshPanelSmooth() {
+  const panel = document.getElementById("dhck-panel");
+
+  // Nếu panel chưa có thì mở như bình thường
+  if (!panel) {
+    await runDatHangCheck(false);
+    return;
+  }
+
+  const rows = await fetchOrders();
+
+  if (!rows.length) {
+    popupOpen = false;
+    panel.remove();
+    return;
+  }
+
+  const coso = getCurrentCoso();
+  const canMove = rows.filter(r => String(r.tu_coso).toLowerCase() === coso);
+  const onlyView = rows.filter(r => String(r.tu_coso).toLowerCase() !== coso);
+
+  const tables = panel.querySelectorAll("tbody");
+
+  if (tables[0]) {
+    tables[0].innerHTML = renderRows(canMove, true);
+  }
+
+  if (tables[1]) {
+    tables[1].innerHTML = renderRows(onlyView, false);
+  }
+
+  const title = panel.querySelector(".dhck-title-count");
+  if (title) {
+    title.textContent = `ĐẶT HÀNG CHUYỂN KHO | Cần chuyển: ${canMove.length} | Theo dõi: ${onlyView.length}`;
+  }
+
+  bindMoveCheck(panel);
+  bindInlineNoteAutosave(panel);
+
+  panel.querySelectorAll(".dhck-masp-link").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openStockQuickFromDatHang(el.dataset.masp);
+    });
+  });
+}
+
 function setupDatHangRealtime() {
   if (!ctx?.supabase || realtimeChannel) return;
 
@@ -1042,16 +1090,7 @@ function setupDatHangRealtime() {
 
         console.log("[Đặt hàng CK] Realtime thay đổi, tải lại panel");
 
-        const oldPanel = document.getElementById("dhck-panel");
-        const oldBody = oldPanel?.querySelector("#dhck-body");
-
-        // Nếu máy người khác đang mở bảng, sau realtime phải mở lại như cũ
-        restorePanelExpandedOnce = !!oldBody && oldBody.style.display !== "none";
-
-        popupOpen = false;
-        oldPanel?.remove();
-
-        await runDatHangCheck(false);
+        await refreshPanelSmooth();
       }
     )
     .subscribe((status) => {
