@@ -1482,10 +1482,44 @@ data-color-masp="${targetMasp}"
         const tonSauKiem1 = getTonSauKiemLocal(r.ton_cs1, r.lech_cs1);
         const tonSauKiem2 = getTonSauKiemLocal(r.ton_cs2, r.lech_cs2);
         const totalSauKiem = tonSauKiem1 + tonSauKiem2;
+        function hasValidTransferSuggestionLocal(ton1, ton2) {
+          const total = Number(ton1 || 0) + Number(ton2 || 0);
+
+          if (total <= 0) return false;
+
+          if (isAcceptedStockLocal(total, ton1, ton2)) {
+            return false;
+          }
+
+          const target = (() => {
+            if (total === 1) return { cs1: 0, cs2: 1 };
+            if (total === 2) return { cs1: 1, cs2: 1 };
+            if (total === 3) return { cs1: 1, cs2: 2 };
+            if (total === 4) return { cs1: 2, cs2: 2 };
+            if (total === 5) return { cs1: 2, cs2: 3 };
+            if (total === 6) return { cs1: 2, cs2: 4 };
+            if (total === 7) return { cs1: 3, cs2: 4 };
+
+            const cs1 = Math.floor(total / 3);
+            return { cs1, cs2: total - cs1 };
+          })();
+
+          // 1v2: chỉ gợi ý nếu CS2 còn dưới 3
+          if (ton1 > target.cs1 && ton2 < target.cs2 && ton2 < 3) {
+            return true;
+          }
+
+          // 2v1: chỉ gợi ý nếu CS1 còn dưới 2
+          if (ton2 > target.cs2 && ton1 < target.cs1 && ton1 < 2) {
+            return true;
+          }
+
+          return false;
+        }
+
         const coGoiYChuyen =
           sizeNum !== "0" &&
-          totalSauKiem > 0 &&
-          !isAcceptedStockLocal(totalSauKiem, tonSauKiem1, tonSauKiem2);
+          hasValidTransferSuggestionLocal(tonSauKiem1, tonSauKiem2);
 
         const suggestClass = coGoiYChuyen ? " sq-dhck-suggest-row" : "";
 
