@@ -176,11 +176,7 @@ function calcSuggestionsFromPayload(masp, payload) {
       });
     }
 
-    if (
-      ton2 > target.cs2 &&
-      ton1 < target.cs1 &&
-      ton1 < 2
-    ) {
+    if (ton2 > target.cs2 && ton1 < target.cs1) {
       out.push({
         masp,
         size,
