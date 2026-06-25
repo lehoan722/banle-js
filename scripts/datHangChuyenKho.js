@@ -4,6 +4,8 @@ let ctx = null;
 let timer = null;
 let popupOpen = false;
 let realtimeChannel = null;
+let suppressRealtimeUntil = 0;
+let userClosedPanel = false;
 
 function getCurrentCoso() {
   return String(
@@ -151,6 +153,7 @@ async function insertOrders(items, note = "") {
   }
 
   alert("✅ Đã tạo đặt hàng chuyển kho.");
+  userClosedPanel = false;
   await runDatHangCheck(true);
   return true;
 }
@@ -312,6 +315,8 @@ async function saveInlineNote(id, value, input = null) {
     input.dataset.saving = "1";
     input.style.background = "#fff7cc";
   }
+
+  suppressRealtimeUntil = Date.now() + 2000;
 
   const { error } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
@@ -506,7 +511,11 @@ async function showPanel(allRows) {
   bindInlineNoteAutosave(box);
 
   box.querySelector("#dhck-close").onclick = async () => {
+    userClosedPanel = true;
+    suppressRealtimeUntil = Date.now() + 3000;
+
     await flushInlineNotes(box);
+
     popupOpen = false;
     box.remove();
   };
@@ -780,6 +789,14 @@ async function createCcnFromChecked(box, canMove) {
 async function runDatHangCheck(forceShow = false) {
   if (!ctx?.supabase) return;
 
+  if (forceShow) {
+    userClosedPanel = false;
+  }
+
+  if (userClosedPanel && !forceShow) {
+    return;
+  }
+
   const rows = await fetchOrders();
   if (!rows.length) return;
 
@@ -889,12 +906,17 @@ function setupDatHangRealtime() {
         table: "dat_hang_chuyen_kho"
       },
       async () => {
+        if (Date.now() < suppressRealtimeUntil) {
+          console.log("[Đặt hàng CK] Bỏ qua realtime do chính mình vừa lưu ghi chú/đóng popup");
+          return;
+        }
+
         console.log("[Đặt hàng CK] Realtime thay đổi, tải lại panel");
 
         popupOpen = false;
         document.getElementById("dhck-panel")?.remove();
 
-        await runDatHangCheck(true);
+        await runDatHangCheck(false);
       }
     )
     .subscribe((status) => {
