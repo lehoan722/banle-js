@@ -617,35 +617,77 @@ async function fetchChungLoaiMap(masps) {
 /* =========================================================
    9) LOGIC GỢI Ý
 ========================================================= */
+const ACCEPTED_STOCK_RULES = {
+  1: [{ cs1: 0, cs2: 1 }],
+  2: [{ cs1: 1, cs2: 1 }],
+  3: [{ cs1: 1, cs2: 2 }],
+  4: [
+    { cs1: 1, cs2: 3 },
+    { cs1: 2, cs2: 2 }
+  ],
+  5: [
+    { cs1: 1, cs2: 4 },
+    { cs1: 2, cs2: 3 },
+    { cs1: 3, cs2: 2 }
+  ],
+  6: [
+    { cs1: 2, cs2: 4 },
+    { cs1: 3, cs2: 3 },
+    { cs1: 4, cs2: 2 }
+  ],
+  7: [
+    { cs1: 2, cs2: 5 },
+    { cs1: 3, cs2: 4 },
+    { cs1: 4, cs2: 3 },
+    { cs1: 5, cs2: 2 }
+  ]
+};
+
+const BEAUTIFUL_STOCK_TARGET = {
+  1: { cs1: 0, cs2: 1 },
+  2: { cs1: 1, cs2: 1 },
+  3: { cs1: 1, cs2: 2 },
+  4: { cs1: 2, cs2: 2 },
+  5: { cs1: 2, cs2: 3 },
+  6: { cs1: 2, cs2: 4 },
+  7: { cs1: 3, cs2: 4 }
+};
+
+function getAcceptedStockRules(total) {
+  const t = Number(total || 0);
+
+  if (ACCEPTED_STOCK_RULES[t]) {
+    return ACCEPTED_STOCK_RULES[t];
+  }
+
+  if (t <= 0) {
+    return [{ cs1: 0, cs2: 0 }];
+  }
+
+  const cs1 = Math.floor(t / 3);
+  return [{ cs1, cs2: t - cs1 }];
+}
+
 function getTargetStockByTotal(total) {
   const t = Number(total || 0);
+
+  if (BEAUTIFUL_STOCK_TARGET[t]) {
+    return BEAUTIFUL_STOCK_TARGET[t];
+  }
 
   if (t <= 0) {
     return { cs1: 0, cs2: 0 };
   }
 
-  // Quy tắc cố định từ 1 đến 5
-  if (t === 1) return { cs1: 0, cs2: 1 };
-  if (t === 2) return { cs1: 1, cs2: 1 };
-  if (t === 3) return { cs1: 1, cs2: 2 };
-  if (t === 4) return { cs1: 2, cs2: 2 };
-  if (t === 5) return { cs1: 2, cs2: 3 };
-  if (t === 6) return { cs1: 3, cs2: 3 };
-  if (t === 7) return { cs1: 3, cs2: 4 };
-  if (t === 8) return { cs1: 3, cs2: 5 };
-  if (t === 9) return { cs1: 3, cs2: 6 };
-  if (t === 10) return { cs1: 4, cs2: 6 };
+  const cs1 = Math.floor(t / 3);
+  return { cs1, cs2: t - cs1 };
+}
 
-  // Từ 6 trở lên:
-  // CS1 = 1/3 tổng làm tròn xuống
-  // CS2 = phần còn lại = 2/3 làm tròn lên
-  const targetCs1 = Math.floor(t / 3);
-  const targetCs2 = t - targetCs1;
-
-  return {
-    cs1: targetCs1,
-    cs2: targetCs2
-  };
+function isAcceptedStock(total, cs1, cs2) {
+  return getAcceptedStockRules(total).some(r =>
+    Number(r.cs1) === Number(cs1) &&
+    Number(r.cs2) === Number(cs2)
+  );
 }
 
 function calcGoiy(cs1, cs2) {
@@ -653,10 +695,15 @@ function calcGoiy(cs1, cs2) {
   const n2 = Number(cs2 || 0);
   const total = n1 + n2;
 
+  if (isAcceptedStock(total, n1, n2)) {
+    return "cân bằng";
+  }
+
   const target = getTargetStockByTotal(total);
 
-  if (n1 > target.cs1) return "1v2";
-  if (n1 < target.cs1) return "2v1";
+  if (n1 > target.cs1 && n2 < target.cs2) return "1v2";
+  if (n2 > target.cs2 && n1 < target.cs1) return "2v1";
+
   return "cân bằng";
 }
 
@@ -665,14 +712,18 @@ function calcMoveQty(cs1, cs2, goiy) {
   const n2 = Number(cs2 || 0);
   const total = n1 + n2;
 
+  if (isAcceptedStock(total, n1, n2)) {
+    return 0;
+  }
+
   const target = getTargetStockByTotal(total);
 
   if (goiy === "1v2") {
-    return Math.max(0, n1 - target.cs1);
+    return Math.max(0, Math.min(n1 - target.cs1, target.cs2 - n2));
   }
 
   if (goiy === "2v1") {
-    return Math.max(0, target.cs1 - n1);
+    return Math.max(0, Math.min(n2 - target.cs2, target.cs1 - n1));
   }
 
   return 0;
