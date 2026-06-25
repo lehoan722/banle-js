@@ -161,7 +161,13 @@
 }
 
 .sq-mc {
-  color:#dc2626;
+  color: #dc2626;
+  font-weight:900;
+  margin-right:2px;
+}
+
+.sq-dc {
+  color: #2563eb;
   font-weight:900;
   margin-right:2px;
 }
@@ -967,6 +973,11 @@ data-color-masp="${targetMasp}"
       cs2: {}
     };
 
+    let dangchuyen = {
+      cs1: {},
+      cs2: {}
+    };
+
     const client = await waitForSupabaseReady(1000);
     if (!client) {
       return { masp, rows, vitri_cs1, vitri_cs2, nhap_dau_ma, nhap_cuoi_ma };
@@ -1001,7 +1012,7 @@ data-color-masp="${targetMasp}"
         }
       }
 
-      let [snapRes, hhRes, kiemRes, colorRes, manocanhRes] = await Promise.all([
+      let [snapRes, hhRes, kiemRes, colorRes, manocanhRes, dangChuyenRes] = await Promise.all([
         client.rpc("xntnhanh", {
           p_masps: [masp],
           p_den_ngay: denNgay,
@@ -1023,7 +1034,14 @@ data-color-masp="${targetMasp}"
         client
           .from("manocanh")
           .select("masp, size, coso")
+          .eq("masp", masp),
+
+        client
+          .from("dat_hang_chuyen_kho")
+          .select("size, tu_coso, soluong")
           .eq("masp", masp)
+          .eq("chon_chuyen", true)
+          .eq("trang_thai", "dang_chuyen")
       ]);
 
       const firstRows = Array.isArray(snapRes?.data) ? snapRes.data : [];
@@ -1067,6 +1085,24 @@ data-color-masp="${targetMasp}"
           if (!["cs1", "cs2"].includes(coso) || !sizeKey) return;
 
           manocanh[coso][sizeKey] = true;
+        });
+      }
+
+      const { data: dcData, error: dcErr } = dangChuyenRes || {};
+
+      if (dcErr) {
+        console.warn("[StockQuickPopup] Lỗi đọc đặt hàng đang chuyển:", dcErr);
+      }
+
+      if (Array.isArray(dcData)) {
+        dcData.forEach((x) => {
+          const coso = String(x.tu_coso || "").trim().toLowerCase();
+          const sizeKey = String(x.size || "").replace(/^size\s+/i, "").trim();
+          const sl = Number(x.soluong || 1);
+
+          if (!["cs1", "cs2"].includes(coso) || !sizeKey) return;
+
+          dangchuyen[coso][sizeKey] = Number(dangchuyen[coso][sizeKey] || 0) + sl;
         });
       }
 
@@ -1180,7 +1216,8 @@ data-color-masp="${targetMasp}"
       giale,
       nhomhang,
       mau_khac,
-      manocanh
+      manocanh,
+      dangchuyen
     };
 
   }
@@ -1229,6 +1266,14 @@ data-color-masp="${targetMasp}"
     const manocanh = payload && payload.manocanh
       ? payload.manocanh
       : { cs1: {}, cs2: {} };
+
+    const dangchuyen = payload && payload.dangchuyen
+      ? payload.dangchuyen
+      : { cs1: {}, cs2: {} };
+
+    function getDangChuyenQty(coso, sizeNum) {
+      return Number(dangchuyen?.[coso]?.[String(sizeNum)] || 0);
+    }
 
     function hasManocanh(coso, sizeNum) {
       return !!manocanh?.[coso]?.[String(sizeNum)];
@@ -1283,21 +1328,23 @@ data-color-masp="${targetMasp}"
       return Number(v).toLocaleString("vi-VN");
     }
 
-    function renderTonLech(tonRaw, lechRaw, coManocanh = false) {
+    function renderTonLech(tonRaw, lechRaw, coManocanh = false, dangChuyenQty = 0) {
       const ton = Number(tonRaw || 0);
       const lech = lechRaw === null || lechRaw === undefined ? null : Number(lechRaw);
+      const dc = Number(dangChuyenQty || 0);
 
-      if ((ton === 0 || !ton) && (lech === null || lech === 0) && !coManocanh) return "";
+      if ((ton === 0 || !ton) && (lech === null || lech === 0) && !coManocanh && !dc) return "";
 
       const tonText = ton !== 0 ? String(ton) : "0";
       const cText = coManocanh ? `<span class="sq-mc">C</span>` : "";
+      const dText = dc > 0 ? `<span class="sq-dc" title="Đang chuyển: ${dc}">D</span>` : "";
 
       if (lech === null || lech === 0) {
-        return ton !== 0 || coManocanh ? `${cText}${tonText}` : "";
+        return ton !== 0 || coManocanh || dc ? `${cText}${dText}${tonText}` : "";
       }
 
       const sign = lech > 0 ? "+" : "";
-      return `${cText}${tonText}<span class="sq-lech">${sign}${lech}</span>`;
+      return `${cText}${dText}${tonText}<span class="sq-lech">${sign}${lech}</span>`;
     }
 
     function renderSumTonLech(tonRaw, lechRaw) {
@@ -1446,10 +1493,10 @@ data-color-masp="${targetMasp}"
         <tr class="sq-open-similar-row${suggestClass}" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
           <td>${sizeLabel}</td>
           <td class="num sq-col-k1">
-  ${renderTonLech(r.ton_cs1, r.lech_cs1, hasManocanh("cs1", sizeNum))}
+  ${renderTonLech(r.ton_cs1, r.lech_cs1, hasManocanh("cs1", sizeNum), getDangChuyenQty("cs1", sizeNum))}
 </td>
           <td class="num sq-col-k2">
-  ${renderTonLech(r.ton_cs2, r.lech_cs2, hasManocanh("cs2", sizeNum))}
+  ${renderTonLech(r.ton_cs2, r.lech_cs2, hasManocanh("cs2", sizeNum), getDangChuyenQty("cs2", sizeNum))}
 </td>
           <td class="num sq-col-b1">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
           <td class="num sq-col-b2">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
