@@ -6,6 +6,7 @@ let popupOpen = false;
 let realtimeChannel = null;
 let suppressRealtimeUntil = 0;
 let userClosedPanel = false;
+let restorePanelExpandedOnce = false;
 
 function getCurrentCoso() {
   return String(
@@ -738,10 +739,19 @@ async function showPanel(allRows) {
     }
   };
 
-  // Mặc định khi popup mở lên thì thu gọn
+  // Mặc định mở lần đầu thì thu gọn.
+  // Nhưng nếu realtime cập nhật khi người dùng đang mở bảng,
+  // thì giữ nguyên trạng thái mở, không tự thu gọn.
   setTimeout(() => {
     const body = box.querySelector("#dhck-body");
     const btn = box.querySelector("#dhck-toggle");
+
+    if (restorePanelExpandedOnce) {
+      dhckCollapsed = false;
+      btn.textContent = "▼";
+      restorePanelExpandedOnce = false;
+      return;
+    }
 
     dhckCollapsed = true;
 
@@ -1032,8 +1042,14 @@ function setupDatHangRealtime() {
 
         console.log("[Đặt hàng CK] Realtime thay đổi, tải lại panel");
 
+        const oldPanel = document.getElementById("dhck-panel");
+        const oldBody = oldPanel?.querySelector("#dhck-body");
+
+        // Nếu máy người khác đang mở bảng, sau realtime phải mở lại như cũ
+        restorePanelExpandedOnce = !!oldBody && oldBody.style.display !== "none";
+
         popupOpen = false;
-        document.getElementById("dhck-panel")?.remove();
+        oldPanel?.remove();
 
         await runDatHangCheck(false);
       }
