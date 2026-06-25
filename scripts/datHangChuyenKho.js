@@ -43,6 +43,14 @@ function normSize(v) {
   return m ? m[0] : s;
 }
 
+function escAttr(v) {
+  return String(v ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function getTargetStockByTotal(total) {
   const t = Number(total || 0);
   if (t <= 0) return { cs1: 0, cs2: 0 };
@@ -284,13 +292,77 @@ function renderRows(rows, allowMove) {
       <td>${r.manv_dat || ""}</td>
       <td>
         <input class="dhck-note-inline" data-id="${r.id}"
-          value="${r.ghichu_dat || ""}"
+          value="${escAttr(r.ghichu_dat || "")}"
           ${allowMove ? "" : "readonly"}
           style="width:90px;box-sizing:border-box;">
       </td>
       <td>${statusText(r.trang_thai)}</td>
     </tr>
   `).join("");
+}
+
+const noteSaveTimers = new Map();
+
+async function saveInlineNote(id, value, input = null) {
+  if (!ctx?.supabase || !id) return false;
+
+  if (input) {
+    input.dataset.saving = "1";
+    input.style.background = "#fff7cc";
+  }
+
+  const { error } = await ctx.supabase
+    .from("dat_hang_chuyen_kho")
+    .update({
+      ghichu_dat: String(value || ""),
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", Number(id));
+
+  if (input) {
+    input.dataset.saving = "0";
+    input.style.background = error ? "#ffe0e0" : "";
+  }
+
+  if (error) {
+    console.error("[Đặt hàng CK] Lỗi lưu ghi chú:", error);
+    return false;
+  }
+
+  return true;
+}
+
+function bindInlineNoteAutosave(box) {
+  box.querySelectorAll(".dhck-note-inline:not([readonly])").forEach(input => {
+    input.addEventListener("input", () => {
+      const id = input.dataset.id;
+      clearTimeout(noteSaveTimers.get(id));
+
+      const t = setTimeout(() => {
+        saveInlineNote(id, input.value, input);
+      }, 800);
+
+      noteSaveTimers.set(id, t);
+    });
+
+    input.addEventListener("blur", () => {
+      const id = input.dataset.id;
+      clearTimeout(noteSaveTimers.get(id));
+      saveInlineNote(id, input.value, input);
+    });
+  });
+}
+
+async function flushInlineNotes(box) {
+  const inputs = Array.from(
+    box.querySelectorAll(".dhck-note-inline:not([readonly])")
+  );
+
+  await Promise.all(inputs.map(input => {
+    const id = input.dataset.id;
+    clearTimeout(noteSaveTimers.get(id));
+    return saveInlineNote(id, input.value, input);
+  }));
 }
 
 async function showPanel(allRows) {
@@ -429,11 +501,13 @@ overscroll-behavior: contain;
     });
   });
 
-  box.querySelector("#dhck-close").onclick = () => {
+  bindInlineNoteAutosave(box);
+
+  box.querySelector("#dhck-close").onclick = async () => {
+    await flushInlineNotes(box);
     popupOpen = false;
     box.remove();
   };
-
   let dhckCollapsed = false;
 
   const oldTop = box.style.top;
@@ -558,6 +632,7 @@ overscroll-behavior: contain;
 }
 
 async function deleteCheckedOrders(box, canMove) {
+  await flushInlineNotes(box);
   const isAdmin = await isAdminUser();
 
   if (!isAdmin) {
@@ -605,6 +680,7 @@ async function deleteCheckedOrders(box, canMove) {
 }
 
 async function createCcnFromChecked(box, canMove) {
+  await flushInlineNotes(box);
   const ids = Array.from(box.querySelectorAll(".dhck-row-check:checked"))
     .map(c => Number(c.dataset.id))
     .filter(Boolean);
