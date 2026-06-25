@@ -14,12 +14,18 @@ function normSize(v) {
 
 function getTargetStockByTotal(total) {
   const t = Number(total || 0);
+
   if (t <= 0) return { cs1: 0, cs2: 0 };
   if (t === 1) return { cs1: 0, cs2: 1 };
   if (t === 2) return { cs1: 1, cs2: 1 };
   if (t === 3) return { cs1: 1, cs2: 2 };
-  if (t === 4) return { cs1: 1, cs2: 3 };
+  if (t === 4) return { cs1: 2, cs2: 2 };
   if (t === 5) return { cs1: 2, cs2: 3 };
+  if (t === 6) return { cs1: 3, cs2: 3 };
+  if (t === 7) return { cs1: 3, cs2: 4 };
+  if (t === 8) return { cs1: 3, cs2: 5 };
+  if (t === 9) return { cs1: 3, cs2: 6 };
+  if (t === 10) return { cs1: 4, cs2: 6 };
 
   const cs1 = Math.floor(t / 3);
   return { cs1, cs2: t - cs1 };
