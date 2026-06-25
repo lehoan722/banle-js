@@ -185,7 +185,7 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
       tu_coso: x.tu_coso,
       den_coso: x.den_coso,
       manv_dat: meta.manv || localStorage.getItem("manv") || "",
-      ghichu_dat: meta.sohd || "",
+      ghichu_dat: meta.sohd ? `${meta.sohd}` : "",
       trang_thai: "moi",
       nguon: "auto_stock_balance"
     }));
