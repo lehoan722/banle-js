@@ -1,5 +1,6 @@
 // scripts/services/hoadonSale.js
 
+import { emitInventoryChangedByBangKetQua } from "./inventoryEvents.js";
 import { supabase } from '../supabaseClient.js';
 import { getBangKetQua, resetBangKetQua } from '../hoadon.js';
 import { capNhatThongTinTong } from '../utils.js';
@@ -461,6 +462,14 @@ async function saveNewBanLe() {
     bangKetQua
   );
 
+  emitInventoryChangedByBangKetQua(bangKetQua, {
+    source: "hoadon_sale_new",
+    sohd: sohdThucTe,
+    loai,
+    diadiem: diadiemTrang,
+    manv: header.manv
+  });
+
   // ✅ Xử lý điểm khách hàng sau khi hóa đơn đã lưu thành công
   // 🔥 CHỈ tích điểm cho hóa đơn bán tại quầy (bancs)
   if (loai === "bancs1" || loai === "bancs2") {
@@ -648,6 +657,14 @@ async function saveEditBanLe() {
   }
 
   await capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang);
+
+  emitInventoryChangedByBangKetQua(bangKetQua, {
+    source: "hoadon_sale_edit",
+    sohd,
+    loai,
+    diadiem: diadiemTrang,
+    manv: header.manv
+  });
 
   if (loai === "bancs1" || loai === "bancs2") {
     const diemRes = await xuLyDiemKhachHangSauLuu(sohd, header.thanhtoan, {
