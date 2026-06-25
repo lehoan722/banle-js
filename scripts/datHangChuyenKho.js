@@ -234,6 +234,7 @@ function statusText(s) {
   if (v === "da_tao_phieu") return "Đã tạo phiếu";
   if (v === "da_chuyen") return "Đã chuyển";
   if (v === "huy") return "Hủy";
+  if (v === "loi_thoi") return "Lỗi thời";
   return v;
 }
 
