@@ -372,7 +372,7 @@ function renderRows(rows, allowMove) {
           ${allowMove ? "" : "readonly"}
           style="width:90px;box-sizing:border-box;">
       </td>
-      <td>${statusText(r.trang_thai)}</td>
+      <td class="dhck-status-cell">${statusText(r.trang_thai)}</td>
     </tr>
   `).join("");
 }
@@ -482,14 +482,18 @@ function bindMoveCheck(box) {
     input.addEventListener("change", async () => {
       input.disabled = true;
 
+      const row = input.closest("tr");
+      const statusCell = row?.querySelector(".dhck-status-cell");
+
       const ok = await saveMoveCheck(input.dataset.id, input.checked);
 
       if (!ok) {
         input.checked = !input.checked;
+      } else if (statusCell) {
+        statusCell.textContent = input.checked ? "Đang chuyển" : "Mới";
       }
 
       input.disabled = false;
-      await runDatHangCheck(true);
     });
   });
 }
