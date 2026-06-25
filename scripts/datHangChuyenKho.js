@@ -159,7 +159,11 @@ function calcSuggestionsFromPayload(masp, payload) {
 
     const target = getTargetStockByTotal(total);
 
-    if (ton1 > target.cs1 && ton2 < target.cs2) {
+    if (
+      ton1 > target.cs1 &&
+      ton2 < target.cs2 &&
+      ton2 < 3
+    ) {
       out.push({
         masp,
         size,
@@ -172,7 +176,11 @@ function calcSuggestionsFromPayload(masp, payload) {
       });
     }
 
-    if (ton2 > target.cs2 && ton1 < target.cs1) {
+    if (
+      ton2 > target.cs2 &&
+      ton1 < target.cs1 &&
+      ton1 < 2
+    ) {
       out.push({
         masp,
         size,
