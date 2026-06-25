@@ -1,5 +1,7 @@
 // scripts/services/hoadonCcn.js
 
+import { emitInventoryChangedByBangKetQua } from "./inventoryEvents.js";
+
 import { supabase } from '../supabaseClient.js';
 import { getBangKetQua, resetBangKetQua } from '../hoadon.js';
 import { capNhatThongTinTong } from '../utils.js';
@@ -782,6 +784,15 @@ async function saveNewCCNByModern(ctx, prep) {
 
   await capNhatDatHangDaChuyen(meta, bangKetQua);
 
+  emitInventoryChangedByBangKetQua(bangKetQua, {
+    source: "ccn_new",
+    sohd: meta.sohd,
+    loai: meta.loaihdGoc,
+    src: meta.src,
+    dst: meta.dst,
+    manv: meta.manv
+  });
+
   await ghiTaoHdCcnChoKiemNhap(meta, bangKetQua);
   await danhDauKiemNhapChoCaHaiPhieu(meta);
 
@@ -1064,6 +1075,15 @@ async function saveEditCCNByModern(ctx, prep) {
   await capNhatYeuCauChuyenKhoCt(meta, bangKetQua);
 
   await capNhatDatHangDaChuyen(meta, bangKetQua);
+
+  emitInventoryChangedByBangKetQua(bangKetQua, {
+    source: "ccn_edit",
+    sohd: meta.sohd,
+    loai: meta.loaihdGoc,
+    src: meta.src,
+    dst: meta.dst,
+    manv: meta.manv
+  });
 
   await ghiTaoHdCcnChoKiemNhap(meta, bangKetQua);
   await danhDauKiemNhapChoCaHaiPhieu(meta);
