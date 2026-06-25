@@ -3,6 +3,7 @@
 let ctx = null;
 let timer = null;
 let popupOpen = false;
+let realtimeChannel = null;
 
 function getCurrentCoso() {
   return String(
@@ -680,6 +681,42 @@ async function deleteCheckedOrders(box, canMove) {
   await runDatHangCheck(true);
 }
 
+async function validateOrderIdsBeforeCreate(ids) {
+  if (!ctx?.supabase || !ids?.length) {
+    return { ok: false, rows: [] };
+  }
+
+  const { data, error } = await ctx.supabase
+    .from("dat_hang_chuyen_kho")
+    .select("id, masp, size, soluong, huong_chuyen, trang_thai")
+    .in("id", ids);
+
+  if (error) {
+    console.error("[Đặt hàng CK] Lỗi kiểm tra trạng thái trước khi tạo CCN:", error);
+    alert("❌ Không kiểm tra được trạng thái đặt hàng. Vui lòng thử lại.");
+    return { ok: false, rows: [] };
+  }
+
+  const badRows = (data || []).filter(r =>
+    !["moi", "dang_chuyen", "da_tao_phieu"].includes(String(r.trang_thai || ""))
+  );
+
+  if (badRows.length) {
+    alert(
+      "⚠️ Có dòng đặt hàng đã lỗi thời hoặc không còn hợp lệ.\n" +
+      "Hệ thống sẽ tải lại danh sách, vui lòng chọn lại."
+    );
+
+    popupOpen = false;
+    document.getElementById("dhck-panel")?.remove();
+    await runDatHangCheck(true);
+
+    return { ok: false, rows: data || [] };
+  }
+
+  return { ok: true, rows: data || [] };
+}
+
 async function createCcnFromChecked(box, canMove) {
   await flushInlineNotes(box);
   const ids = Array.from(box.querySelectorAll(".dhck-row-check:checked"))
@@ -690,6 +727,9 @@ async function createCcnFromChecked(box, canMove) {
     alert("Bạn chưa tick dòng nào để tạo hóa đơn CCN.");
     return;
   }
+
+  const validCheck = await validateOrderIdsBeforeCreate(ids);
+  if (!validCheck.ok) return;
 
   const selected = canMove.filter(r => ids.includes(Number(r.id)));
   const dirs = Array.from(new Set(selected.map(r => r.huong_chuyen)));
@@ -836,6 +876,31 @@ async function openFromStockQuick(popup, payload) {
   showCreateConfirm(newItems);
 }
 
+function setupDatHangRealtime() {
+  if (!ctx?.supabase || realtimeChannel) return;
+
+  realtimeChannel = ctx.supabase
+    .channel("dat_hang_chuyen_kho_realtime")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "dat_hang_chuyen_kho"
+      },
+      async () => {
+        console.log("[Đặt hàng CK] Realtime thay đổi, tải lại panel");
+
+        popupOpen = false;
+        document.getElementById("dhck-panel")?.remove();
+
+        await runDatHangCheck(true);
+      }
+    )
+    .subscribe((status) => {
+      console.log("[Đặt hàng CK] realtime status:", status);
+    });
+}
 
 export function initDatHangChuyenKho(options = {}) {
   ctx = options;
@@ -867,6 +932,7 @@ export function initDatHangChuyenKho(options = {}) {
   }, 300);
 
   runDatHangCheck();
+  setupDatHangRealtime();
 
   if (timer) clearInterval(timer);
   timer = setInterval(() => runDatHangCheck(), 5 * 60 * 1000);
