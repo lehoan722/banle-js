@@ -1,4 +1,5 @@
 // /scripts/datHangChuyenKho.js
+import { normSize, calcSuggestionsFromPayload } from "./services/luatChuyenKho.js";
 
 let ctx = null;
 let timer = null;
@@ -41,160 +42,12 @@ async function isAdminUser() {
   return data === true;
 }
 
-function normSize(v) {
-  const s = String(v || "").trim();
-  const m = s.match(/\d{1,2}/);
-  return m ? m[0] : s;
-}
-
 function escAttr(v) {
   return String(v ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll('"', "&quot;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
-}
-
-const ACCEPTED_STOCK_RULES = {
-  1: [{ cs1: 0, cs2: 1 }],
-  2: [{ cs1: 1, cs2: 1 }],
-  3: [{ cs1: 1, cs2: 2 }],
-  4: [
-    { cs1: 1, cs2: 3 },
-    { cs1: 2, cs2: 2 }
-  ],
-  5: [
-    { cs1: 1, cs2: 4 },
-    { cs1: 2, cs2: 3 },
-    { cs1: 3, cs2: 2 }
-  ],
-  6: [
-    { cs1: 2, cs2: 4 },
-    { cs1: 3, cs2: 3 },
-    { cs1: 4, cs2: 2 }
-  ],
-  7: [
-    { cs1: 2, cs2: 5 },
-    { cs1: 3, cs2: 4 },
-    { cs1: 4, cs2: 3 },
-    { cs1: 5, cs2: 2 }
-  ]
-};
-
-const BEAUTIFUL_STOCK_TARGET = {
-  1: { cs1: 0, cs2: 1 },
-  2: { cs1: 1, cs2: 1 },
-  3: { cs1: 1, cs2: 2 },
-  4: { cs1: 2, cs2: 2 },
-  5: { cs1: 2, cs2: 3 },
-  6: { cs1: 2, cs2: 4 },
-  7: { cs1: 3, cs2: 4 }
-};
-
-function getAcceptedStockRules(total) {
-  const t = Number(total || 0);
-
-  if (ACCEPTED_STOCK_RULES[t]) {
-    return ACCEPTED_STOCK_RULES[t];
-  }
-
-  if (t <= 0) {
-    return [{ cs1: 0, cs2: 0 }];
-  }
-
-  const cs1 = Math.floor(t / 3);
-  return [{ cs1, cs2: t - cs1 }];
-}
-
-function getTargetStockByTotal(total) {
-  const t = Number(total || 0);
-
-  if (BEAUTIFUL_STOCK_TARGET[t]) {
-    return BEAUTIFUL_STOCK_TARGET[t];
-  }
-
-  if (t <= 0) {
-    return { cs1: 0, cs2: 0 };
-  }
-
-  const cs1 = Math.floor(t / 3);
-  return { cs1, cs2: t - cs1 };
-}
-
-function isAcceptedStock(total, ton1, ton2) {
-  return getAcceptedStockRules(total).some(r =>
-    Number(r.cs1) === Number(ton1) &&
-    Number(r.cs2) === Number(ton2)
-  );
-}
-
-function getTonSauKiem(r, coso) {
-  const tonKey = coso === "cs2" ? "ton_cs2" : "ton_cs1";
-  const lechKey = coso === "cs2" ? "lech_cs2" : "lech_cs1";
-
-  const ton = Number(r?.[tonKey] || 0);
-  const lech = Number(r?.[lechKey] || 0);
-
-  // Tồn thực tế sau kiểm = tồn sổ + lệch kiểm
-  return Math.max(0, ton + lech);
-}
-
-function calcSuggestionsFromPayload(masp, payload) {
-  const rows = Array.isArray(payload?.rows) ? payload.rows : [];
-  const out = [];
-
-  rows.forEach(r => {
-    const size = normSize(r.size);
-    if (!size || size === "0") return;
-
-    const ton1 = getTonSauKiem(r, "cs1");
-    const ton2 = getTonSauKiem(r, "cs2");
-
-    const total = ton1 + ton2;
-    if (total <= 0) return;
-
-    if (isAcceptedStock(total, ton1, ton2)) {
-      return;
-    }
-
-    const target = getTargetStockByTotal(total);
-
-    if (
-      ton1 > target.cs1 &&
-      ton2 < target.cs2 &&
-      ton2 < 3
-    ) {
-      out.push({
-        masp,
-        size,
-        soluong: Math.min(ton1 - target.cs1, target.cs2 - ton2),
-        huong_chuyen: "1v2",
-        tu_coso: "cs1",
-        den_coso: "cs2",
-        ton_sau_kiem_cs1: ton1,
-        ton_sau_kiem_cs2: ton2
-      });
-    }
-
-    if (
-      ton2 > target.cs2 &&
-      ton1 < target.cs1 &&
-      ton1 < 2
-    ) {
-      out.push({
-        masp,
-        size,
-        soluong: Math.min(ton2 - target.cs2, target.cs1 - ton1),
-        huong_chuyen: "2v1",
-        tu_coso: "cs2",
-        den_coso: "cs1",
-        ton_sau_kiem_cs1: ton1,
-        ton_sau_kiem_cs2: ton2
-      });
-    }
-  });
-
-  return out.filter(x => Number(x.soluong || 0) > 0);
 }
 
 async function insertOrders(items, note = "") {
