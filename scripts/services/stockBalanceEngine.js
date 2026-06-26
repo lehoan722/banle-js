@@ -1,89 +1,7 @@
 import { supabase } from "../supabaseClient.js";
+import {  normMasp,  normSize,  calcSuggestionsFromRows} from "./luatChuyenKho.js";
 
 const ACTIVE_STATUS = ["moi", "dang_chuyen", "da_tao_phieu"];
-
-function normMasp(v) {
-  return String(v || "").trim().toUpperCase();
-}
-
-function normSize(v) {
-  const s = String(v || "").replace(/^size\s+/i, "").trim();
-  const m = s.match(/\d{1,2}/);
-  return m ? m[0] : s;
-}
-
-const ACCEPTED_STOCK_RULES = {
-  1: [{ cs1: 0, cs2: 1 }],
-  2: [{ cs1: 1, cs2: 1 }],
-  3: [{ cs1: 1, cs2: 2 }],
-  4: [
-    { cs1: 1, cs2: 3 },
-    { cs1: 2, cs2: 2 }
-  ],
-  5: [
-    { cs1: 1, cs2: 4 },
-    { cs1: 2, cs2: 3 },
-    { cs1: 3, cs2: 2 }
-  ],
-  6: [
-    { cs1: 2, cs2: 4 },
-    { cs1: 3, cs2: 3 },
-    { cs1: 4, cs2: 2 }
-  ],
-  7: [
-    { cs1: 2, cs2: 5 },
-    { cs1: 3, cs2: 4 },
-    { cs1: 4, cs2: 3 },
-    { cs1: 5, cs2: 2 }
-  ]
-};
-
-const BEAUTIFUL_STOCK_TARGET = {
-  1: { cs1: 0, cs2: 1 },
-  2: { cs1: 1, cs2: 1 },
-  3: { cs1: 1, cs2: 2 },
-  4: { cs1: 2, cs2: 2 },
-  5: { cs1: 2, cs2: 3 },
-  6: { cs1: 2, cs2: 4 },
-  7: { cs1: 3, cs2: 4 }
-};
-
-function getAcceptedStockRules(total) {
-  const t = Number(total || 0);
-
-  if (ACCEPTED_STOCK_RULES[t]) {
-    return ACCEPTED_STOCK_RULES[t];
-  }
-
-  if (t <= 0) {
-    return [{ cs1: 0, cs2: 0 }];
-  }
-
-  const cs1 = Math.floor(t / 3);
-  return [{ cs1, cs2: t - cs1 }];
-}
-
-function getTargetStockByTotal(total) {
-  const t = Number(total || 0);
-
-  if (BEAUTIFUL_STOCK_TARGET[t]) {
-    return BEAUTIFUL_STOCK_TARGET[t];
-  }
-
-  if (t <= 0) {
-    return { cs1: 0, cs2: 0 };
-  }
-
-  const cs1 = Math.floor(t / 3);
-  return { cs1, cs2: t - cs1 };
-}
-
-function isAcceptedStock(total, ton1, ton2) {
-  return getAcceptedStockRules(total).some(r =>
-    Number(r.cs1) === Number(ton1) &&
-    Number(r.cs2) === Number(ton2)
-  );
-}
 
 async function fetchCurrentPayload(masp) {
   const today = new Date().toISOString().slice(0, 10);
@@ -120,51 +38,6 @@ async function fetchCurrentPayload(masp) {
   });
 }
 
-function calcSuggestions(masp, rows) {
-  const out = [];
-
-  rows.forEach(r => {
-    const size = normSize(r.size);
-    if (!size || size === "0") return;
-
-    const ton1 = Math.max(0, Number(r.ton_cs1 || 0) + Number(r.lech_cs1 || 0));
-    const ton2 = Math.max(0, Number(r.ton_cs2 || 0) + Number(r.lech_cs2 || 0));
-
-    const total = ton1 + ton2;
-    if (total <= 0) return;
-
-    if (isAcceptedStock(total, ton1, ton2)) {
-      return;
-    }
-
-    const target = getTargetStockByTotal(total);
-
-    if (ton1 > target.cs1 && ton2 < target.cs2 && ton2 < 3) {
-      out.push({
-        masp,
-        size,
-        soluong: Math.min(ton1 - target.cs1, target.cs2 - ton2),
-        huong_chuyen: "1v2",
-        tu_coso: "cs1",
-        den_coso: "cs2"
-      });
-    }
-
-    if (ton2 > target.cs2 && ton1 < target.cs1 && ton1 < 2) {
-      out.push({
-        masp,
-        size,
-        soluong: Math.min(ton2 - target.cs2, target.cs1 - ton1),
-        huong_chuyen: "2v1",
-        tu_coso: "cs2",
-        den_coso: "cs1"
-      });
-    }
-  });
-
-  return out.filter(x => Number(x.soluong || 0) > 0);
-}
-
 export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
   const masps = Array.from(new Set(
     (maspsInput || []).map(normMasp).filter(Boolean)
@@ -189,7 +62,7 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
 
   for (const masp of masps) {
     const rows = await fetchCurrentPayload(masp);
-    const suggestions = calcSuggestions(masp, rows);
+    const suggestions = calcSuggestionsFromRows(rows, masp);
     allSuggestions = allSuggestions.concat(suggestions);
   }
 
