@@ -172,6 +172,7 @@ function statusText(s) {
 function sortOrdersForDisplay(rows) {
   const arr = Array.isArray(rows) ? rows.slice() : [];
 
+  // Thời điểm mới nhất của từng mã sản phẩm
   const latestByMasp = new Map();
 
   arr.forEach(r => {
@@ -184,19 +185,28 @@ function sortOrdersForDisplay(rows) {
   });
 
   return arr.sort((a, b) => {
+
     const ma = String(a.masp || "").trim().toUpperCase();
     const mb = String(b.masp || "").trim().toUpperCase();
 
+    // ===== Ưu tiên 1 =====
     const ga = latestByMasp.get(ma) || 0;
     const gb = latestByMasp.get(mb) || 0;
 
-    // Nhóm mã nào có lần nhập gần nhất thì lên trên
     if (gb !== ga) return gb - ga;
 
-    // Trong cùng nhóm mã: cùng mã xếp cạnh nhau
-    if (ma !== mb) return ma.localeCompare(mb);
+    // ===== Ưu tiên 2 =====
+    if (ma !== mb) {
+      return ma.localeCompare(mb);
+    }
 
-    // Cùng mã: dòng mới nhất nằm trên
+    // ===== Ưu tiên 3 =====
+    const sa = Number(a.size) || 0;
+    const sb = Number(b.size) || 0;
+
+    if (sa !== sb) return sa - sb;
+
+    // ===== Ưu tiên 4 =====
     const ta = new Date(a.created_at || a.updated_at || 0).getTime();
     const tb = new Date(b.created_at || b.updated_at || 0).getTime();
 
