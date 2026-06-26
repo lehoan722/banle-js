@@ -595,7 +595,7 @@ export async function chuyenFocus(e) {
             }
 
             // Không hợp lệ (dài hay ngắn đều coi là sai) -> chỉ báo lỗi + ở lại #size
-            alert("Size không hợp lệ! Chỉ cho phép nhập: 38 -> 45");
+            alert("Size không hợp lệ! Chỉ cho phép nhập: 38 -> 46");
             sizeInput.focus();
             sizeInput.select();
             return;
@@ -658,11 +658,11 @@ function tachMaspVaSizeHauTo(raw) {
 async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 
     // --- [NEW SIZE SUFFIX] Tách hậu tố _NN (ví dụ abc12-dg38_38) ---
-    // Lấy danh sách size hợp lệ: ưu tiên window.danhMucSize, fallback 38–45
+    // Lấy danh sách size hợp lệ: ưu tiên window.danhMucSize, fallback 38–46
     const allowedFromDM = Array.isArray(window.danhMucSize)
         ? new Set(window.danhMucSize.map(s => String(s).trim().toUpperCase()))
         : null;
-    const fallbackAllowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
+    const fallbackAllowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45", "46"]);
 
     let typedSize = null;
     let baseCode = String(maspVal || "").trim().toUpperCase();
@@ -986,7 +986,7 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     const banSieuNhanh = document.getElementById("bansieunhanh")?.checked;
 
     // quản lý việc tất cả các mã hàng thuộc điều kiện quản lý theo size thì
-    //  không được phép nhập sai bằng 0 chỉ được phép nhập (38–45):    
+    //  không được phép nhập sai bằng 0 chỉ được phép nhập (38–46):    
     // ===== CỬA CUỐI: khóa size cho mọi đường vào =====
     {
         if (sp) {
@@ -1011,16 +1011,16 @@ export function themVaoBang(forcedSize = null, opts = {}) {
             const giaHangHoa = Number(sp.giale) || 0;
             const managedByGia = qlSizeTheoGiaOn && (isQLSize || giaHangHoa >= 170000); // ✅
 
-            // 🔒 Chỉ khi thực sự thuộc diện quản lý size mới kiểm tra 38–45
+            // 🔒 Chỉ khi thực sự thuộc diện quản lý size mới kiểm tra 38–46
             const requireManagedSize = (size45On && isQLSize) || groupRequires || managedByGia;  // ✅
 
             if (requireManagedSize) {
-                const allowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
+                const allowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45", "46"]);
                 const rawSize = (forcedSize ?? size ?? "").toString().trim().toUpperCase();
 
                 const invalid = (!rawSize || rawSize === "0" || !allowed.has(rawSize));
                 if (invalid) {
-                    alert("Size không hợp lệ! Chỉ cho phép nhập size 38–45.");
+                    alert("Size không hợp lệ! Chỉ cho phép nhập size 38–46.");
                     const sizeEl = document.getElementById("size");
                     if (sizeEl) { sizeEl.focus(); sizeEl.select(); }
                     window.soundWaitSize?.();   // beep cảnh báo
