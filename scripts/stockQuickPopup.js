@@ -785,6 +785,7 @@ data-color-masp="${targetMasp}"
       "43": "43,7,3X,56,265,190",
       "44": "44,8,4X,58,270,195",
       "45": "45,9,5X,60,275,200",
+      "46": "46,10,6X,62,280,205",
     };
 
     // Rút số size nếu chuỗi có lẫn chữ (vd: "39", "39.0", "Size 39", "39 ")
@@ -1380,7 +1381,7 @@ data-color-masp="${targetMasp}"
       sumTongTon = 0;
 
     // ===== Luôn hiển thị đủ các dòng size: 0, 38..45 (kể cả không có dữ liệu) =====
-    const SIZE_ORDER = ["0", "38", "39", "40", "41", "42", "43", "44", "45"];
+    const SIZE_ORDER = ["0", "38", "39", "40", "41", "42", "43", "44", "45",, "46"];
 
     // Map dữ liệu trả về theo số size (0/38/39...)
     const bySizeNum = new Map();
