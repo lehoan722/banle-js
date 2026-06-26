@@ -1,4 +1,5 @@
 // /scripts/datHangChuyenKho.js
+
 import { normSize, calcSuggestionsFromPayload } from "./services/luatChuyenKho.js";
 
 let ctx = null;
@@ -168,19 +169,54 @@ function statusText(s) {
   return v;
 }
 
+function sortOrdersForDisplay(rows) {
+  const arr = Array.isArray(rows) ? rows.slice() : [];
+
+  const latestByMasp = new Map();
+
+  arr.forEach(r => {
+    const masp = String(r.masp || "").trim().toUpperCase();
+    const t = new Date(r.created_at || r.updated_at || 0).getTime();
+
+    if (!latestByMasp.has(masp) || t > latestByMasp.get(masp)) {
+      latestByMasp.set(masp, t);
+    }
+  });
+
+  return arr.sort((a, b) => {
+    const ma = String(a.masp || "").trim().toUpperCase();
+    const mb = String(b.masp || "").trim().toUpperCase();
+
+    const ga = latestByMasp.get(ma) || 0;
+    const gb = latestByMasp.get(mb) || 0;
+
+    // Nhóm mã nào có lần nhập gần nhất thì lên trên
+    if (gb !== ga) return gb - ga;
+
+    // Trong cùng nhóm mã: cùng mã xếp cạnh nhau
+    if (ma !== mb) return ma.localeCompare(mb);
+
+    // Cùng mã: dòng mới nhất nằm trên
+    const ta = new Date(a.created_at || a.updated_at || 0).getTime();
+    const tb = new Date(b.created_at || b.updated_at || 0).getTime();
+
+    return tb - ta;
+  });
+}
+
 async function fetchOrders() {
   const { data, error } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
     .select("*")
     .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu"])
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("[Đặt hàng CK] fetch lỗi:", error);
     return [];
   }
 
-  return data || [];
+  return sortOrdersForDisplay(data || []);
 }
 
 function openStockQuickFromDatHang(masp) {
