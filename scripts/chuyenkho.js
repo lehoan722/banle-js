@@ -2,6 +2,8 @@ import { supabase, startSessionKeeper } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung, getCurrentUserInfo } from "./authModule.js";
 import { capNhatSoHoaDonTuDong } from "./sohoadon.js";
 
+import { calcGoiy, calcMoveQty } from "./services/luatChuyenKho.js";
+
 /* =========================================================
    1) CẤU HÌNH TRANG
 ========================================================= */
@@ -617,127 +619,7 @@ async function fetchChungLoaiMap(masps) {
 /* =========================================================
    9) LOGIC GỢI Ý
 ========================================================= */
-const ACCEPTED_STOCK_RULES = {
-  1: [{ cs1: 0, cs2: 1 }],
-  2: [{ cs1: 1, cs2: 1 }],
-  3: [{ cs1: 1, cs2: 2 }],
-  4: [
-    { cs1: 1, cs2: 3 },
-    { cs1: 2, cs2: 2 }
-  ],
-  5: [
-    { cs1: 1, cs2: 4 },
-    { cs1: 2, cs2: 3 },
-    { cs1: 3, cs2: 2 }
-  ],
-  6: [
-    { cs1: 2, cs2: 4 },
-    { cs1: 3, cs2: 3 },
-    { cs1: 4, cs2: 2 }
-  ],
-  7: [
-    { cs1: 2, cs2: 5 },
-    { cs1: 3, cs2: 4 },
-    { cs1: 4, cs2: 3 },
-    { cs1: 5, cs2: 2 }
-  ]
-};
 
-const BEAUTIFUL_STOCK_TARGET = {
-  1: { cs1: 0, cs2: 1 },
-  2: { cs1: 1, cs2: 1 },
-  3: { cs1: 1, cs2: 2 },
-  4: { cs1: 2, cs2: 2 },
-  5: { cs1: 2, cs2: 3 },
-  6: { cs1: 2, cs2: 4 },
-  7: { cs1: 3, cs2: 4 }
-};
-
-function getAcceptedStockRules(total) {
-  const t = Number(total || 0);
-
-  if (ACCEPTED_STOCK_RULES[t]) {
-    return ACCEPTED_STOCK_RULES[t];
-  }
-
-  if (t <= 0) {
-    return [{ cs1: 0, cs2: 0 }];
-  }
-
-  const cs1 = Math.floor(t / 3);
-  return [{ cs1, cs2: t - cs1 }];
-}
-
-function getTargetStockByTotal(total) {
-  const t = Number(total || 0);
-
-  if (BEAUTIFUL_STOCK_TARGET[t]) {
-    return BEAUTIFUL_STOCK_TARGET[t];
-  }
-
-  if (t <= 0) {
-    return { cs1: 0, cs2: 0 };
-  }
-
-  const cs1 = Math.floor(t / 3);
-  return { cs1, cs2: t - cs1 };
-}
-
-function isAcceptedStock(total, cs1, cs2) {
-  return getAcceptedStockRules(total).some(r =>
-    Number(r.cs1) === Number(cs1) &&
-    Number(r.cs2) === Number(cs2)
-  );
-}
-
-function calcGoiy(cs1, cs2) {
-  const n1 = Number(cs1 || 0);
-  const n2 = Number(cs2 || 0);
-  const total = n1 + n2;
-
-  if (isAcceptedStock(total, n1, n2)) {
-    return "cân bằng";
-  }
-
-  const target = getTargetStockByTotal(total);
-
-  // Quy tắc mới:
-  // - Chỉ gợi ý 1v2 nếu CS2 còn dưới 3
-  // - Chỉ gợi ý 2v1 nếu CS1 còn dưới 2
-  if (n1 > target.cs1 && n2 < target.cs2 && n2 < 3) {
-    return "1v2";
-  }
-
-  if (n2 > target.cs2 && n1 < target.cs1 && n1 < 2) {
-    return "2v1";
-  }
-
-  return "cân bằng";
-}
-
-function calcMoveQty(cs1, cs2, goiy) {
-  const n1 = Number(cs1 || 0);
-  const n2 = Number(cs2 || 0);
-  const total = n1 + n2;
-
-  if (isAcceptedStock(total, n1, n2)) {
-    return 0;
-  }
-
-  const target = getTargetStockByTotal(total);
-
-  if (goiy === "1v2") {
-    if (n2 >= 3) return 0;
-    return Math.max(0, Math.min(n1 - target.cs1, target.cs2 - n2));
-  }
-
-  if (goiy === "2v1") {
-    if (n1 >= 2) return 0;
-    return Math.max(0, Math.min(n2 - target.cs2, target.cs1 - n1));
-  }
-
-  return 0;
-}
 
 function buildSuggestionRows({ xntRows }) {
   const out = [];
