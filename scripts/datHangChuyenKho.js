@@ -819,9 +819,11 @@ async function validateOrderIdsBeforeCreate(ids) {
 
 async function createCcnFromChecked(box, canMove) {
   await flushInlineNotes(box);
+  const allowedIds = new Set(canMove.map(r => Number(r.id)));
+
   const ids = Array.from(box.querySelectorAll(".dhck-move-check:checked"))
     .map(c => Number(c.dataset.id))
-    .filter(Boolean);
+    .filter(id => allowedIds.has(id));
 
   if (!ids.length) {
     alert("Bạn chưa tick dòng nào để tạo hóa đơn CCN.");
