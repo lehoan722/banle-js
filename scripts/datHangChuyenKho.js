@@ -169,6 +169,10 @@ function statusText(s) {
   return v;
 }
 
+function isOutdatedMovingRow(r) {
+  return String(r.trang_thai || "") === "loi_thoi" && r.chon_chuyen === true;
+}
+
 function sortOrdersForDisplay(rows) {
   const arr = Array.isArray(rows) ? rows.slice() : [];
 
@@ -185,6 +189,12 @@ function sortOrdersForDisplay(rows) {
   });
 
   return arr.sort((a, b) => {
+
+    // Dòng lỗi thời nhưng đang chuyển luôn đẩy xuống cuối danh sách
+    const oa = isOutdatedMovingRow(a) ? 1 : 0;
+    const ob = isOutdatedMovingRow(b) ? 1 : 0;
+
+    if (oa !== ob) return oa - ob;
 
     const ma = String(a.masp || "").trim().toUpperCase();
     const mb = String(b.masp || "").trim().toUpperCase();
@@ -218,7 +228,9 @@ async function fetchOrders() {
   const { data, error } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
     .select("*")
-    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu"])
+    .or(
+      "trang_thai.in.(moi,dang_chuyen,da_tao_phieu),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
+    )
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -251,38 +263,49 @@ function openStockQuickFromDatHang(masp) {
 }
 
 function renderRows(rows, allowMove) {
-  return rows.map(r => `
-    <tr class="${allowMove ? "" : "dhck-readonly"}">
-      <td style="text-align:center;">
-  <input type="checkbox" class="dhck-delete-check"
-    ${allowMove ? "" : "disabled"}
-    data-id="${r.id}">
-</td>
+  return rows.map(r => {
+    const outdatedMoving = isOutdatedMovingRow(r);
 
-<td style="text-align:center;">
-  <input type="checkbox" class="dhck-move-check"
-    ${allowMove ? "" : "disabled"}
-    ${r.chon_chuyen ? "checked" : ""}
-    data-id="${r.id}">
-</td>
-      <td>
-  <span class="dhck-masp-link" data-masp="${r.masp || ""}">
-    ${r.masp || ""}
-  </span>
-</td>
-      <td>${r.soluong || 1}</td>
-      <td>${r.size || ""}</td>
-      <td>${r.huong_chuyen || ""}</td>
-      <td>${r.manv_dat || ""}</td>
-      <td>
-        <input class="dhck-note-inline" data-id="${r.id}"
-          value="${escAttr(r.ghichu_dat || "")}"
-          ${allowMove ? "" : "readonly"}
-          style="width:90px;box-sizing:border-box;">
-      </td>
-      <td class="dhck-status-cell">${statusText(r.trang_thai)}</td>
-    </tr>
-  `).join("");
+    return `
+      <tr class="${allowMove ? "" : "dhck-readonly"} ${outdatedMoving ? "dhck-outdated-moving" : ""}">
+        <td style="text-align:center;">
+          <input type="checkbox" class="dhck-delete-check"
+            ${allowMove ? "" : "disabled"}
+            data-id="${r.id}">
+        </td>
+
+        <td style="text-align:center;">
+          <input type="checkbox" class="dhck-move-check"
+            ${allowMove ? "" : "disabled"}
+            ${r.chon_chuyen ? "checked" : ""}
+            data-id="${r.id}"
+            data-status="${r.trang_thai || ""}">
+        </td>
+
+        <td>
+          <span class="dhck-masp-link" data-masp="${r.masp || ""}">
+            ${r.masp || ""}
+          </span>
+        </td>
+
+        <td>${r.soluong || 1}</td>
+        <td>${r.size || ""}</td>
+        <td>${r.huong_chuyen || ""}</td>
+        <td>${r.manv_dat || ""}</td>
+
+        <td>
+          <input class="dhck-note-inline" data-id="${r.id}"
+            value="${escAttr(r.ghichu_dat || "")}"
+            ${allowMove ? "" : "readonly"}
+            style="width:90px;box-sizing:border-box;">
+        </td>
+
+        <td class="dhck-status-cell">
+          ${outdatedMoving ? "Lỗi thời - trả lại kho" : statusText(r.trang_thai)}
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 const noteSaveTimers = new Map();
@@ -356,15 +379,19 @@ async function saveMoveCheck(id, checked) {
 
   const now = new Date().toISOString();
 
+  const currentStatus = String(
+    document.querySelector(`.dhck-move-check[data-id="${id}"]`)?.dataset.status || ""
+  );
+
   const patch = checked
     ? {
       chon_chuyen: true,
-      trang_thai: "dang_chuyen",
+      trang_thai: currentStatus === "loi_thoi" ? "loi_thoi" : "dang_chuyen",
       updated_at: now
     }
     : {
       chon_chuyen: false,
-      trang_thai: "moi",
+      trang_thai: currentStatus === "loi_thoi" ? "loi_thoi" : "moi",
       updated_at: now
     };
 
@@ -374,7 +401,7 @@ async function saveMoveCheck(id, checked) {
     .from("dat_hang_chuyen_kho")
     .update(patch)
     .eq("id", Number(id))
-    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu"]);
+    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu", "loi_thoi"]);
 
   if (error) {
     console.error("[Đặt hàng CK] Lỗi lưu tick chuyển:", error);
@@ -398,7 +425,15 @@ function bindMoveCheck(box) {
       if (!ok) {
         input.checked = !input.checked;
       } else if (statusCell) {
-        statusCell.textContent = input.checked ? "Đang chuyển" : "Mới";
+        const oldStatus = String(input.dataset.status || "");
+
+        if (oldStatus === "loi_thoi") {
+          statusCell.textContent = "Lỗi thời";
+          input.closest("tr")?.remove();
+        } else {
+          statusCell.textContent = input.checked ? "Đang chuyển" : "Mới";
+          input.dataset.status = input.checked ? "dang_chuyen" : "moi";
+        }
       }
 
       input.disabled = false;
@@ -523,6 +558,16 @@ async function showPanel(allRows) {
   font-weight:700;
   text-decoration:underline;
   cursor:pointer;
+}
+
+#dhck-panel tr.dhck-outdated-moving td {
+  background:#ffd6d6 !important;
+  color:#b00000 !important;
+  font-weight:700;
+}
+
+#dhck-panel tr.dhck-outdated-moving .dhck-masp-link {
+  color:#b00000 !important;
 }
   
   `;
@@ -751,13 +796,15 @@ async function validateOrderIdsBeforeCreate(ids) {
   }
 
   const badRows = (data || []).filter(r =>
+    String(r.trang_thai || "") === "loi_thoi" ||
     !["moi", "dang_chuyen", "da_tao_phieu"].includes(String(r.trang_thai || ""))
   );
 
   if (badRows.length) {
     alert(
-      "⚠️ Có dòng đặt hàng đã lỗi thời hoặc không còn hợp lệ.\n" +
-      "Hệ thống sẽ tải lại danh sách, vui lòng chọn lại."
+      "⚠️ Có dòng đặt hàng đã lỗi thời.\n" +
+      "Dòng này không được tạo hóa đơn chuyển kho nữa.\n\n" +
+      "Vui lòng bỏ tích cột Chuyển và đưa sản phẩm trả lại kho."
     );
 
     popupOpen = false;
