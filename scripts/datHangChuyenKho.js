@@ -298,7 +298,7 @@ async function autoMarkOutdatedNewOrders(rows) {
       String(r.trang_thai || "") === "moi" &&
       String(r.tu_coso || "").toLowerCase() === coso
     )
-    .slice(0, 150);
+    .slice(0, 500);
 
   if (!newRows.length) return false;
 
