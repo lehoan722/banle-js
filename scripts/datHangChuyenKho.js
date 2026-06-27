@@ -291,9 +291,14 @@ async function fetchCurrentSuggestionKeysByMasp(masp) {
 async function autoMarkOutdatedNewOrders(rows) {
   if (!ctx?.supabase || !Array.isArray(rows) || !rows.length) return false;
 
+  const coso = getCurrentCoso();
+
   const newRows = rows
-    .filter(r => String(r.trang_thai || "") === "moi")
-    .slice(0, 30);
+    .filter(r =>
+      String(r.trang_thai || "") === "moi" &&
+      String(r.tu_coso || "").toLowerCase() === coso
+    )
+    .slice(0, 150);
 
   if (!newRows.length) return false;
 
@@ -359,9 +364,9 @@ async function fetchOrders() {
     return [];
   }
 
-  const rows = data || [];
+  const sortedRows = sortOrdersForDisplay(data || []);
 
-  const changed = await autoMarkOutdatedNewOrders(rows);
+  const changed = await autoMarkOutdatedNewOrders(sortedRows);
 
   if (changed) {
     const { data: data2, error: error2 } = await ctx.supabase
@@ -374,13 +379,13 @@ async function fetchOrders() {
 
     if (error2) {
       console.error("[Đặt hàng CK] fetch lại lỗi:", error2);
-      return sortOrdersForDisplay(rows);
+      return sortedRows;
     }
 
     return sortOrdersForDisplay(data2 || []);
   }
 
-  return sortOrdersForDisplay(rows);
+  return sortedRows;
 }
 
 function openStockQuickFromDatHang(masp) {
