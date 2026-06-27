@@ -517,6 +517,7 @@
                             <option value="quanao">Tem quần áo</option>
                             <option value="tem_giamgia">Tem giảm giá</option>
                             <option value="tem_mavach">Tem mã vạch</option>
+                            <option value="tem_mau">Tem mẫu</option>
                             <option value="insize_tomy114">In size </option>
                         </select>
                     </label>
@@ -1108,7 +1109,68 @@
                     else html += `
                     
 
-                    ${loaiTem === "tem_mavach" ? `
+                    ${loaiTem === "tem_mau" ? `
+<div class="tem"
+     data-masp="${t.masp}"
+     data-size="${(t.size ?? '').toString().trim()}"
+     style="
+        width:${TEM_WIDTH_MM}mm;
+        height:${TEM_HEIGHT_MM}mm;
+        box-sizing:border-box;
+        overflow:hidden;
+        border:0;
+        margin:0;
+        padding:0;
+     ">
+    <div style="
+        display:grid;
+        grid-template-columns:50% 50%;
+        width:100%;
+        height:100%;
+        box-sizing:border-box;
+        align-items:center;
+    ">
+        <div style="
+            width:100%;
+            height:100%;
+            box-sizing:border-box;
+            display:flex;
+            align-items:flex-start;
+            justify-content:flex-start;
+            padding:1.2mm 0.8mm 0.6mm 1mm;
+            overflow:hidden;
+        ">
+            <div style="
+                font-family:Arial, sans-serif;
+                font-size:14pt;
+                font-weight:400;
+                line-height:1.02;
+                color:#000;
+                white-space:normal;
+                overflow:hidden;
+                word-break:break-word;
+                overflow-wrap:anywhere;
+                text-align:left;
+            ">
+                ${t.masp}
+            </div>
+        </div>
+
+        <div class="qr-col" style="
+            width:100%;
+            height:100%;
+            box-sizing:border-box;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            margin:0;
+            padding:0.5mm;
+        ">
+            <canvas class="qr" style="width:16mm; height:16mm;"></canvas>
+        </div>
+    </div>
+</div>
+` : loaiTem === "tem_mavach" ? `
 <div class="tem"
      data-masp="${t.masp}"
      data-size="${(t.size ?? '').toString().trim()}"
@@ -1521,7 +1583,7 @@
                     return;
                 }
 
-                const ok = kiemTraGiaLeTruocKhiIn();
+                const ok = (loaiTem === 'tem_mau') ? true : kiemTraGiaLeTruocKhiIn();
                 if (!ok) {
                     return;
                 }
@@ -1607,7 +1669,7 @@
                     return;
                 }
 
-                const okGia = kiemTraGiaLeTruocKhiIn();
+                const okGia = (loaiTem === 'tem_mau') ? true : kiemTraGiaLeTruocKhiIn();
                 if (!okGia) return;
 
                 const ok = await renderAllPagesForPrint();
