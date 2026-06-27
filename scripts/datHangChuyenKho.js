@@ -325,6 +325,14 @@ async function autoMarkOutdatedNewOrders(rows) {
     const stillNeeded = suggestionKeysByMasp.get(masp).has(key);
 
     if (!stillNeeded) {
+      console.log("[Đặt hàng CK] Dòng mới đã lỗi thời:", {
+        id: r.id,
+        masp,
+        size: r.size,
+        huong: r.huong_chuyen,
+        key
+      });
+
       outdatedIds.push(Number(r.id));
     }
   });
