@@ -521,6 +521,7 @@ async function showPanel(allRows) {
     </table>
 
     <div style="text-align:right;margin:6px 0;">
+  ${isAdmin ? `<button id="dhck-delete-outdated">Xóa lỗi thời</button>` : ""}
   ${isAdmin ? `<button id="dhck-delete">Xóa đặt hàng</button>` : ""}
   <button id="dhck-create-ccn">Tạo hóa đơn CCN</button>
  </div>
@@ -722,6 +723,10 @@ async function showPanel(allRows) {
     deleteCheckedOrders(box, canMove);
   });
 
+  box.querySelector("#dhck-delete-outdated")?.addEventListener("click", () => {
+    deleteOutdatedMovingOrders(box, canMove);
+  });
+
   document.addEventListener("keydown", function esc(e) {
     if (e.key === "Escape" && document.getElementById("dhck-panel")) {
       popupOpen = false;
@@ -729,6 +734,52 @@ async function showPanel(allRows) {
       document.removeEventListener("keydown", esc, true);
     }
   }, true);
+}
+
+async function deleteOutdatedMovingOrders(box, canMove) {
+  await flushInlineNotes(box);
+
+  const isAdmin = await isAdminUser();
+
+  if (!isAdmin) {
+    alert("Bạn không có quyền xóa dòng lỗi thời.");
+    return;
+  }
+
+  const deleteIds = canMove
+    .filter(r => isOutdatedMovingRow(r))
+    .map(r => Number(r.id))
+    .filter(Boolean);
+
+  if (!deleteIds.length) {
+    alert("Không có dòng lỗi thời đang chuyển nào của cơ sở mình để xóa.");
+    return;
+  }
+
+  if (!confirm(`Bạn chắc chắn muốn xóa ${deleteIds.length} dòng lỗi thời đang chuyển của cơ sở mình?`)) {
+    return;
+  }
+
+  suppressRealtimeUntil = Date.now() + 1500;
+
+  const { error } = await ctx.supabase
+    .from("dat_hang_chuyen_kho")
+    .delete()
+    .in("id", deleteIds)
+    .eq("trang_thai", "loi_thoi")
+    .eq("chon_chuyen", true);
+
+  if (error) {
+    console.error("[Đặt hàng CK] Lỗi xóa dòng lỗi thời:", error);
+    alert("❌ Không xóa được dòng lỗi thời.");
+    return;
+  }
+
+  alert("✅ Đã xóa các dòng lỗi thời đang chuyển của cơ sở mình.");
+
+  popupOpen = false;
+  document.getElementById("dhck-panel")?.remove();
+  await runDatHangCheck(true);
 }
 
 async function deleteCheckedOrders(box, canMove) {
