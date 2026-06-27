@@ -304,7 +304,7 @@ async function autoMarkOutdatedNewOrders(rows) {
 
   const masps = Array.from(
     new Set(newRows.map(r => String(r.masp || "").trim().toUpperCase()).filter(Boolean))
-  ).slice(0, 8);
+  ).slice(0, 500);
 
   if (!masps.length) return false;
 
