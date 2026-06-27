@@ -1,6 +1,10 @@
 // /scripts/datHangChuyenKho.js
 
-import { normSize, calcSuggestionsFromPayload } from "./services/luatChuyenKho.js";
+import {
+  normSize,
+  calcSuggestionsFromPayload,
+  calcSuggestionsFromRows
+} from "./services/luatChuyenKho.js";
 
 let ctx = null;
 let timer = null;
@@ -224,6 +228,123 @@ function sortOrdersForDisplay(rows) {
   });
 }
 
+function getDenNgayForDhck() {
+  try {
+    const raw = sessionStorage.getItem("XNT14_FILTERS");
+    if (raw) {
+      const f = JSON.parse(raw);
+      if (f.den_ngay) return f.den_ngay;
+    }
+  } catch { }
+
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function fetchCurrentSuggestionKeysByMasp(masp) {
+  if (!ctx?.supabase || !masp) return new Set();
+
+  const code = String(masp || "").trim().toUpperCase();
+  const denNgay = getDenNgayForDhck();
+
+  const [snapRes, kiemRes] = await Promise.all([
+    ctx.supabase.rpc("xntnhanh", {
+      p_masps: [code],
+      p_den_ngay: denNgay,
+      p_tonghop_size: false
+    }),
+
+    ctx.supabase.rpc("rpc_stockquick_kiemton", {
+      p_masp: code
+    })
+  ]);
+
+  if (snapRes.error) {
+    console.warn("[Đặt hàng CK] Không đọc được tồn hiện tại:", code, snapRes.error);
+    return new Set();
+  }
+
+  const kiemton = kiemRes?.data || { cs1: {}, cs2: {} };
+  const data = Array.isArray(snapRes.data) ? snapRes.data : [];
+
+  const rows = data.map(r => {
+    const sizeKey = String(r.size || "").replace(/^size\s+/i, "").trim();
+
+    return {
+      masp: String(r.masp || code).toUpperCase(),
+      size: r.size,
+      ton_cs1: Number(r.ton_cs1 || 0),
+      ton_cs2: Number(r.ton_cs2 || 0),
+      lech_cs1: Number(kiemton?.cs1?.lech?.[sizeKey] || 0),
+      lech_cs2: Number(kiemton?.cs2?.lech?.[sizeKey] || 0)
+    };
+  });
+
+  const suggestions = calcSuggestionsFromRows(rows, code);
+
+  return new Set(
+    suggestions.map(x =>
+      `${String(x.masp).toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`
+    )
+  );
+}
+
+async function autoMarkOutdatedNewOrders(rows) {
+  if (!ctx?.supabase || !Array.isArray(rows) || !rows.length) return false;
+
+  const newRows = rows
+    .filter(r => String(r.trang_thai || "") === "moi")
+    .slice(0, 30);
+
+  if (!newRows.length) return false;
+
+  const masps = Array.from(
+    new Set(newRows.map(r => String(r.masp || "").trim().toUpperCase()).filter(Boolean))
+  ).slice(0, 8);
+
+  if (!masps.length) return false;
+
+  const suggestionKeysByMasp = new Map();
+
+  for (const masp of masps) {
+    const keys = await fetchCurrentSuggestionKeysByMasp(masp);
+    suggestionKeysByMasp.set(masp, keys);
+  }
+
+  const outdatedIds = [];
+
+  newRows.forEach(r => {
+    const masp = String(r.masp || "").trim().toUpperCase();
+    if (!suggestionKeysByMasp.has(masp)) return;
+
+    const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
+    const stillNeeded = suggestionKeysByMasp.get(masp).has(key);
+
+    if (!stillNeeded) {
+      outdatedIds.push(Number(r.id));
+    }
+  });
+
+  if (!outdatedIds.length) return false;
+
+  const { error } = await ctx.supabase
+    .from("dat_hang_chuyen_kho")
+    .update({
+      trang_thai: "loi_thoi",
+      chon_chuyen: false,
+      updated_at: new Date().toISOString()
+    })
+    .in("id", outdatedIds)
+    .eq("trang_thai", "moi");
+
+  if (error) {
+    console.warn("[Đặt hàng CK] Không cập nhật được dòng mới lỗi thời:", error);
+    return false;
+  }
+
+  console.log("[Đặt hàng CK] Đã tự chuyển lỗi thời:", outdatedIds);
+  return true;
+}
+
 async function fetchOrders() {
   const { data, error } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
@@ -238,7 +359,28 @@ async function fetchOrders() {
     return [];
   }
 
-  return sortOrdersForDisplay(data || []);
+  const rows = data || [];
+
+  const changed = await autoMarkOutdatedNewOrders(rows);
+
+  if (changed) {
+    const { data: data2, error: error2 } = await ctx.supabase
+      .from("dat_hang_chuyen_kho")
+      .select("*")
+      .or(
+        "trang_thai.in.(moi,dang_chuyen,da_tao_phieu),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
+      )
+      .order("created_at", { ascending: false });
+
+    if (error2) {
+      console.error("[Đặt hàng CK] fetch lại lỗi:", error2);
+      return sortOrdersForDisplay(rows);
+    }
+
+    return sortOrdersForDisplay(data2 || []);
+  }
+
+  return sortOrdersForDisplay(rows);
 }
 
 function openStockQuickFromDatHang(masp) {
