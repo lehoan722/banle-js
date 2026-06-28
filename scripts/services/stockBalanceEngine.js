@@ -142,6 +142,20 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
     }
 
     if (!stillValid) {
+
+    console.error("KHÔNG CÒN GỢI Ý", {
+        id: row.id,
+        masp: row.masp,
+        size: row.size,
+        huong: row.huong_chuyen,
+        key,
+        suggestionKeySet: [...suggestionKeySet]
+    });
+
+    outdatedIds.push(Number(row.id));
+}
+
+    if (!stillValid) {
       outdatedIds.push(Number(row.id));
     }
   }
@@ -179,7 +193,21 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
   }
 
   if (outdatedIds.length) {
-    const { error } = await supabase
+
+  console.warn("========== STOCK BALANCE ĐÁNH LỖI THỜI ==========");
+  console.table(
+    (pendingRows || [])
+      .filter(r => outdatedIds.includes(Number(r.id)))
+      .map(r => ({
+        id: r.id,
+        masp: r.masp,
+        size: r.size,
+        huong: r.huong_chuyen,
+        trang_thai: r.trang_thai
+      }))
+  );
+
+  const { error } = await supabase
       .from("dat_hang_chuyen_kho")
       .update({
         trang_thai: "loi_thoi",
