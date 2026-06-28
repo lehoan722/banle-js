@@ -1483,37 +1483,46 @@ data-color-masp="${targetMasp}"
         const tonSauKiem1 = getTonSauKiemLocal(r.ton_cs1, r.lech_cs1);
         const tonSauKiem2 = getTonSauKiemLocal(r.ton_cs2, r.lech_cs2);
         const totalSauKiem = tonSauKiem1 + tonSauKiem2;
-        function normSizeForDhck(v) {
-  const s = String(v || "").replace(/^size\s+/i, "").trim();
-  const m = s.match(/\d{1,2}/);
-  return m ? m[0] : s;
-}
+        function hasValidTransferSuggestionLocal(ton1, ton2) {
+          const total = Number(ton1 || 0) + Number(ton2 || 0);
 
-const dhckSuggestions = (() => {
-  try {
-    if (window.DatHangChuyenKho?.calcSuggestionsFromPayloadForView) {
-      return window.DatHangChuyenKho.calcSuggestionsFromPayloadForView(upper, payload) || [];
-    }
-  } catch (e) {
-    console.warn("[StockQuickPopup] Không tính được gợi ý tô xanh:", e);
-  }
-  return [];
-})();
+          if (total <= 0) return false;
 
-const dhckSuggestKeySet = new Set(
-  dhckSuggestions.map(x =>
-    `${String(x.masp || upper).toUpperCase()}|${normSizeForDhck(x.size)}|${x.huong_chuyen}`
-  )
-);
+          if (isAcceptedStockLocal(total, ton1, ton2)) {
+            return false;
+          }
 
-const rowKey1v2 = `${upper}|${normSizeForDhck(sizeNum)}|1v2`;
-const rowKey2v1 = `${upper}|${normSizeForDhck(sizeNum)}|2v1`;
+          const target = (() => {
+            if (total === 1) return { cs1: 0, cs2: 1 };
+            if (total === 2) return { cs1: 1, cs2: 1 };
+            if (total === 3) return { cs1: 1, cs2: 2 };
+            if (total === 4) return { cs1: 2, cs2: 2 };
+            if (total === 5) return { cs1: 2, cs2: 3 };
+            if (total === 6) return { cs1: 2, cs2: 4 };
+            if (total === 7) return { cs1: 3, cs2: 4 };
 
-const coGoiYChuyen =
-  sizeNum !== "0" &&
-  (dhckSuggestKeySet.has(rowKey1v2) || dhckSuggestKeySet.has(rowKey2v1));
+            const cs1 = Math.floor(total / 3);
+            return { cs1, cs2: total - cs1 };
+          })();
 
-const suggestClass = coGoiYChuyen ? " sq-dhck-suggest-row" : "";
+          // 1v2: chỉ gợi ý nếu CS2 còn dưới 3
+          if (ton1 > target.cs1 && ton2 < target.cs2 && ton2 < 3) {
+            return true;
+          }
+
+          // 2v1: chỉ gợi ý nếu CS1 còn dưới 2
+          if (ton2 > target.cs2 && ton1 < target.cs1 && ton1 < 2) {
+            return true;
+          }
+
+          return false;
+        }
+
+        const coGoiYChuyen =
+          sizeNum !== "0" &&
+          hasValidTransferSuggestionLocal(tonSauKiem1, tonSauKiem2);
+
+        const suggestClass = coGoiYChuyen ? " sq-dhck-suggest-row" : "";
 
         return `
         <tr class="sq-open-similar-row${suggestClass}" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
