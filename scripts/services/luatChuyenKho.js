@@ -13,7 +13,7 @@ export function normSize(v) {
 export const ACCEPTED_STOCK_RULES = {
   1: [{ cs1: 0, cs2: 1 }],
   2: [{ cs1: 1, cs2: 1 }],
-  3: [{ cs1: 1, cs2: 2 }],
+  3: [{ cs1: 1, cs2: 2 }, { cs1: 2, cs2: 1 }],
   4: [{ cs1: 1, cs2: 3 }, { cs1: 2, cs2: 2 }],
   5: [{ cs1: 1, cs2: 4 }, { cs1: 2, cs2: 3 }, { cs1: 3, cs2: 2 }],
   6: [{ cs1: 2, cs2: 4 }, { cs1: 3, cs2: 3 }, { cs1: 4, cs2: 2 }],
