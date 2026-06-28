@@ -281,7 +281,14 @@ async function fetchCurrentSuggestionKeysByMasp(masp) {
       ton_cs1: Number(r.ton_cs1 || 0),
       ton_cs2: Number(r.ton_cs2 || 0),
       lech_cs1: Number(kiemton?.cs1?.lech?.[sizeKey] || 0),
-      lech_cs2: Number(kiemton?.cs2?.lech?.[sizeKey] || 0)
+      lech_cs2: Number(kiemton?.cs2?.lech?.[sizeKey] || 0),
+
+      // Quan trọng: truyền dữ liệu bán để luật thông minh hoạt động
+      ban_cs1: Number(r.ban_cs1 || 0),
+      ban_cs2: Number(r.ban_cs2 || 0),
+      tong_ban: Number(r.tong_ban || 0),
+      tong_nhap: Number(r.tong_nhap || 0),
+      tong_ton: Number(r.tong_ton || 0)
     };
   });
 
