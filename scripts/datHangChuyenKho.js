@@ -341,6 +341,41 @@ async function autoMarkOutdatedNewOrders(rows) {
     const outdatedIds = [];
     const needCheckIds = [];
 
+    newRows.forEach(r => {
+      const masp = String(r.masp || "").trim().toUpperCase();
+      if (!suggestionInfoByMasp.has(masp)) return;
+
+      const info = suggestionInfoByMasp.get(masp);
+
+      if (info?.hasNegative) {
+        needCheckIds.push(Number(r.id));
+        return;
+      }
+
+      const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
+      const stillNeeded = info.keys.has(key);
+
+      if (!stillNeeded) {
+        outdatedIds.push(Number(r.id));
+      }
+    });
+
+    if (needCheckIds.length) {
+      const { error } = await ctx.supabase
+        .from("dat_hang_chuyen_kho")
+        .update({
+          trang_thai: "yeu_cau_kiem_kho",
+          chon_chuyen: false,
+          updated_at: new Date().toISOString()
+        })
+        .in("id", needCheckIds)
+        .eq("trang_thai", "moi");
+
+      if (error) {
+        console.warn("[Đặt hàng CK] Không cập nhật được dòng yêu cầu kiểm kho:", error);
+      }
+    }
+
     if (!outdatedIds.length && !needCheckIds.length) return false;
     if (!outdatedIds.length) return true;
 
