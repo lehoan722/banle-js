@@ -14,6 +14,7 @@ let realtimeChannel = null;
 let suppressRealtimeUntil = 0;
 let userClosedPanel = false;
 let restorePanelExpandedOnce = false;
+let autoRecheckRunning = false;
 
 function getCurrentCoso() {
   return String(
@@ -308,141 +309,187 @@ async function fetchCurrentSuggestionKeysByMasp(masp) {
 
 async function autoMarkOutdatedNewOrders(rows) {
   if (!ctx?.supabase || !Array.isArray(rows) || !rows.length) return false;
+  if (autoRecheckRunning) return false;
+  autoRecheckRunning = true;
 
-  const coso = getCurrentCoso();
+  try {
 
-  const newRows = rows
-    .filter(r =>
-      String(r.trang_thai || "") === "moi" &&
-      String(r.tu_coso || "").toLowerCase() === coso
-    )
-    .slice(0, 200);
+    const coso = getCurrentCoso();
 
-  if (!newRows.length) return false;
+    const newRows = rows
+      .filter(r =>
+        String(r.trang_thai || "") === "moi" &&
+        String(r.tu_coso || "").toLowerCase() === coso
+      )
+      .slice(0, 200);
 
-  const masps = Array.from(
-    new Set(newRows.map(r => String(r.masp || "").trim().toUpperCase()).filter(Boolean))
-  ).slice(0, 200);
+    if (!newRows.length) return false;
 
-  if (!masps.length) return false;
+    const masps = Array.from(
+      new Set(newRows.map(r => String(r.masp || "").trim().toUpperCase()).filter(Boolean))
+    ).slice(0, 200);
 
-  const suggestionInfoByMasp = new Map();
+    if (!masps.length) return false;
 
-  for (const masp of masps) {
-    const info = await fetchCurrentSuggestionKeysByMasp(masp);
-    suggestionInfoByMasp.set(masp, info);
-  }
+    const suggestionInfoByMasp = new Map();
 
-  const outdatedIds = [];
-  const needCheckIds = [];
-
-  const existingOpenKeys = new Set(
-    (rows || [])
-      .filter(r => ["moi", "dang_chuyen", "da_tao_phieu"].includes(String(r.trang_thai || "")))
-      .map(r => `${String(r.masp || "").toUpperCase()}|${normSize(r.size)}|${r.huong_chuyen}`)
-  );
-
-  const rowsToInsert = [];
-
-  newRows.forEach(r => {
-    const masp = String(r.masp || "").trim().toUpperCase();
-    if (!suggestionInfoByMasp.has(masp)) return;
-
-    const info = suggestionInfoByMasp.get(masp);
-
-    if (info?.hasNegative) {
-      needCheckIds.push(Number(r.id));
-      return;
+    for (const masp of masps) {
+      const info = await fetchCurrentSuggestionKeysByMasp(masp);
+      suggestionInfoByMasp.set(masp, info);
     }
 
-    const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
-    const stillNeeded = info.keys.has(key);
+    const outdatedIds = [];
+    const needCheckIds = [];
 
-    if (!stillNeeded) {
+    const existingOpenKeys = new Set(
+      (rows || [])
+        .filter(r => ["moi", "dang_chuyen", "da_tao_phieu"].includes(String(r.trang_thai || "")))
+        .map(r => `${String(r.masp || "").toUpperCase()}|${normSize(r.size)}|${r.huong_chuyen}`)
+    );
 
-      console.log("[Đặt hàng CK] Dòng mới đã lỗi thời:", {
-        id: r.id,
-        masp,
-        size: r.size,
-        huong: r.huong_chuyen,
-        key
-      });
+    const rowsToInsert = [];
 
-      outdatedIds.push(Number(r.id));
-    }
-  });
+    newRows.forEach(r => {
+      const masp = String(r.masp || "").trim().toUpperCase();
+      if (!suggestionInfoByMasp.has(masp)) return;
 
-  for (const info of suggestionInfoByMasp.values()) {
-    if (info?.hasNegative) continue;
+      const info = suggestionInfoByMasp.get(masp);
 
-    (info?.suggestions || []).forEach(x => {
-      const key = `${String(x.masp || "").toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`;
+      if (info?.hasNegative) {
+        needCheckIds.push(Number(r.id));
+        return;
+      }
 
-      if (!existingOpenKeys.has(key)) {
-        rowsToInsert.push({
-          masp: String(x.masp || "").toUpperCase(),
-          size: String(x.size || ""),
-          soluong: Number(x.soluong || 1),
-          huong_chuyen: x.huong_chuyen,
-          tu_coso: x.tu_coso,
-          den_coso: x.den_coso,
-          manv_dat: getManv(),
-          ghichu_dat: "auto luật mới",
-          trang_thai: "moi",
-          nguon: "auto_recheck"
+      const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
+      const stillNeeded = info.keys.has(key);
+
+      if (!stillNeeded) {
+
+        console.log("[Đặt hàng CK] Dòng mới đã lỗi thời:", {
+          id: r.id,
+          masp,
+          size: r.size,
+          huong: r.huong_chuyen,
+          key
         });
 
-        existingOpenKeys.add(key);
+        outdatedIds.push(Number(r.id));
       }
     });
-  }
 
-  if (needCheckIds.length) {
+    for (const info of suggestionInfoByMasp.values()) {
+      if (info?.hasNegative) continue;
+
+      (info?.suggestions || []).forEach(x => {
+        const key = `${String(x.masp || "").toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`;
+
+        if (!existingOpenKeys.has(key)) {
+          rowsToInsert.push({
+            masp: String(x.masp || "").toUpperCase(),
+            size: String(x.size || ""),
+            soluong: Number(x.soluong || 1),
+            huong_chuyen: x.huong_chuyen,
+            tu_coso: x.tu_coso,
+            den_coso: x.den_coso,
+            manv_dat: getManv(),
+            ghichu_dat: "auto luật mới",
+            trang_thai: "moi",
+            nguon: "auto_recheck"
+          });
+
+          existingOpenKeys.add(key);
+        }
+      });
+    }
+
+    if (needCheckIds.length) {
+      const { error } = await ctx.supabase
+        .from("dat_hang_chuyen_kho")
+        .update({
+          trang_thai: "yeu_cau_kiem_kho",
+          chon_chuyen: false,
+          updated_at: new Date().toISOString()
+        })
+        .in("id", needCheckIds)
+        .eq("trang_thai", "moi");
+
+      if (error) {
+        console.warn("[Đặt hàng CK] Không cập nhật được dòng yêu cầu kiểm kho:", error);
+      }
+    }
+
+    if (rowsToInsert.length) {
+      const maspsInsert = Array.from(new Set(rowsToInsert.map(x => x.masp)));
+      const sizesInsert = Array.from(new Set(rowsToInsert.map(x => String(x.size))));
+
+      const { data: freshOpen, error: freshErr } = await ctx.supabase
+        .from("dat_hang_chuyen_kho")
+        .select("masp, size, huong_chuyen, trang_thai")
+        .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu"])
+        .in("masp", maspsInsert)
+        .in("size", sizesInsert);
+
+      if (freshErr) {
+        console.warn("[Đặt hàng CK] Không kiểm tra lại dòng mở trước khi insert:", freshErr);
+      }
+
+      const freshKeys = new Set(
+        (freshOpen || []).map(r =>
+          `${String(r.masp || "").toUpperCase()}|${normSize(r.size)}|${r.huong_chuyen}`
+        )
+      );
+
+      const finalRowsToInsert = [];
+      const finalKeys = new Set();
+
+      rowsToInsert.forEach(x => {
+        const key = `${String(x.masp || "").toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`;
+
+        if (freshKeys.has(key)) return;
+        if (finalKeys.has(key)) return;
+
+        finalKeys.add(key);
+        finalRowsToInsert.push(x);
+      });
+
+      if (finalRowsToInsert.length) {
+        suppressRealtimeUntil = Date.now() + 2000;
+
+        const { error } = await ctx.supabase
+          .from("dat_hang_chuyen_kho")
+          .insert(finalRowsToInsert);
+
+        if (error) {
+          console.warn("[Đặt hàng CK] Không tạo được gợi ý mới theo luật:", error);
+        }
+      }
+    }
+
+    if (!outdatedIds.length && !needCheckIds.length && !rowsToInsert.length) return false;
+    if (!outdatedIds.length) return true;
+
     const { error } = await ctx.supabase
       .from("dat_hang_chuyen_kho")
       .update({
-        trang_thai: "yeu_cau_kiem_kho",
+        trang_thai: "loi_thoi",
         chon_chuyen: false,
         updated_at: new Date().toISOString()
       })
-      .in("id", needCheckIds)
+      .in("id", outdatedIds)
       .eq("trang_thai", "moi");
 
     if (error) {
-      console.warn("[Đặt hàng CK] Không cập nhật được dòng yêu cầu kiểm kho:", error);
+      console.warn("[Đặt hàng CK] Không cập nhật được dòng mới lỗi thời:", error);
+      return false;
     }
+
+    console.log("[Đặt hàng CK] Đã tự chuyển lỗi thời:", outdatedIds);
+    return true;
+
+  } finally {
+    autoRecheckRunning = false;
   }
 
-  if (rowsToInsert.length) {
-    const { error } = await ctx.supabase
-      .from("dat_hang_chuyen_kho")
-      .insert(rowsToInsert);
-
-    if (error) {
-      console.warn("[Đặt hàng CK] Không tạo được gợi ý mới theo luật:", error);
-    }
-  }
-
-  if (!outdatedIds.length && !needCheckIds.length && !rowsToInsert.length) return false;
-  if (!outdatedIds.length) return true;
-
-  const { error } = await ctx.supabase
-    .from("dat_hang_chuyen_kho")
-    .update({
-      trang_thai: "loi_thoi",
-      chon_chuyen: false,
-      updated_at: new Date().toISOString()
-    })
-    .in("id", outdatedIds)
-    .eq("trang_thai", "moi");
-
-  if (error) {
-    console.warn("[Đặt hàng CK] Không cập nhật được dòng mới lỗi thời:", error);
-    return false;
-  }
-
-  console.log("[Đặt hàng CK] Đã tự chuyển lỗi thời:", outdatedIds);
-  return true;
 }
 
 async function fetchOrders() {
