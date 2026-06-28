@@ -33,16 +33,30 @@ async function fetchCurrentPayload(masp) {
   const kiemton = kiemRes.data || { cs1: {}, cs2: {} };
 
   return (snapRes.data || []).map(r => {
+
     const size = normSize(r.size);
 
     return {
+
       masp,
       size,
+
       ton_cs1: Number(r.ton_cs1 || 0),
       ton_cs2: Number(r.ton_cs2 || 0),
+
       lech_cs1: Number(kiemton?.cs1?.lech?.[size] || 0),
-      lech_cs2: Number(kiemton?.cs2?.lech?.[size] || 0)
+      lech_cs2: Number(kiemton?.cs2?.lech?.[size] || 0),
+
+      // ===== truyền đầy đủ dữ liệu bán =====
+
+      ban_cs1: Number(r.ban_cs1 || 0),
+      ban_cs2: Number(r.ban_cs2 || 0),
+
+      tong_ban: Number(r.tong_ban || 0),
+      tong_nhap: Number(r.tong_nhap || 0),
+      tong_ton: Number(r.tong_ton || 0)
     };
+
   });
 }
 
