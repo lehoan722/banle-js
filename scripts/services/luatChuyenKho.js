@@ -58,24 +58,18 @@ export function getSmartTargetBySales(total, ban1, ban2) {
   const winner = getSalesWinner(ban1, ban2);
 
   if (!winner) return getTargetStockByTotal(t);
-
-  // Nếu tổng tồn nhỏ quá thì vẫn giữ luật đẹp cũ để tránh đảo hàng quá nhạy
-  if (t <= 3) return getTargetStockByTotal(t);
+  if (t <= 0) return { cs1: 0, cs2: 0 };
 
   const baseTarget = getTargetStockByTotal(t);
 
   if (winner === "cs1") {
-    return {
-      cs1: Math.max(baseTarget.cs1, Math.ceil(t * 0.6)),
-      cs2: t - Math.max(baseTarget.cs1, Math.ceil(t * 0.6))
-    };
+    const cs1Need = Math.max(baseTarget.cs1, Math.round(t * 0.6), 1);
+    return { cs1: Math.min(t, cs1Need), cs2: t - Math.min(t, cs1Need) };
   }
 
   if (winner === "cs2") {
-    return {
-      cs1: t - Math.max(baseTarget.cs2, Math.ceil(t * 0.6)),
-      cs2: Math.max(baseTarget.cs2, Math.ceil(t * 0.6))
-    };
+    const cs2Need = Math.max(baseTarget.cs2, Math.round(t * 0.6), 1);
+    return { cs1: t - Math.min(t, cs2Need), cs2: Math.min(t, cs2Need) };
   }
 
   return baseTarget;
@@ -175,7 +169,7 @@ export function calcMoveQty(cs1, cs2, goiy = "", ban1 = 0, ban2 = 0) {
   return 0;
 }
 
-export function calcSuggestionFromRow(row, maspInput = "") {
+export function calcSuggestionFromRow(row, maspInput = "", salesContext = null) {
   const masp = normMasp(row?.masp || maspInput);
   const size = normSize(row?.size);
 
@@ -184,8 +178,8 @@ export function calcSuggestionFromRow(row, maspInput = "") {
   const ton1 = getTonSauKiem(row, "cs1");
   const ton2 = getTonSauKiem(row, "cs2");
 
-  const ban1 = Number(row?.ban_cs1 || 0);
-  const ban2 = Number(row?.ban_cs2 || 0);
+  const ban1 = Number(salesContext?.ban_cs1 ?? row?.ban_cs1 ?? 0);
+  const ban2 = Number(salesContext?.ban_cs2 ?? row?.ban_cs2 ?? 0);
 
   const huong = calcGoiy(ton1, ton2, ban1, ban2);
   if (huong === "cân bằng") return null;
@@ -212,8 +206,14 @@ export function calcSuggestionFromRow(row, maspInput = "") {
 export function calcSuggestionsFromRows(rows = [], maspInput = "") {
   if (hasNegativeStockRows(rows)) return [];
 
+  const ban1Total = (rows || []).reduce((s, r) => s + Number(r?.ban_cs1 || 0), 0);
+  const ban2Total = (rows || []).reduce((s, r) => s + Number(r?.ban_cs2 || 0), 0);
+
   return (rows || [])
-    .map(r => calcSuggestionFromRow(r, maspInput))
+    .map(r => calcSuggestionFromRow(r, maspInput, {
+      ban_cs1: ban1Total,
+      ban_cs2: ban2Total
+    }))
     .filter(Boolean);
 }
 
