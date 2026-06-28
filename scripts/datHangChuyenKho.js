@@ -3,7 +3,8 @@
 import {
   normSize,
   calcSuggestionsFromPayload,
-  calcSuggestionsFromRows
+  calcSuggestionsFromRows,
+  hasNegativeStockRows
 } from "./services/luatChuyenKho.js";
 
 let ctx = null;
@@ -13,6 +14,7 @@ let realtimeChannel = null;
 let suppressRealtimeUntil = 0;
 let userClosedPanel = false;
 let restorePanelExpandedOnce = false;
+let autoRecheckRunning = false;
 
 function getCurrentCoso() {
   return String(
@@ -170,11 +172,16 @@ function statusText(s) {
   if (v === "da_chuyen") return "Đã chuyển";
   if (v === "huy") return "Hủy";
   if (v === "loi_thoi") return "Lỗi thời";
+  if (v === "yeu_cau_kiem_kho") return "Yêu cầu kiểm kho";
   return v;
 }
 
 function isOutdatedMovingRow(r) {
   return String(r.trang_thai || "") === "loi_thoi" && r.chon_chuyen === true;
+}
+
+function isNeedStockCheckRow(r) {
+  return String(r.trang_thai || "") === "yeu_cau_kiem_kho";
 }
 
 function sortOrdersForDisplay(rows) {
@@ -275,87 +282,143 @@ async function fetchCurrentSuggestionKeysByMasp(masp) {
       ton_cs1: Number(r.ton_cs1 || 0),
       ton_cs2: Number(r.ton_cs2 || 0),
       lech_cs1: Number(kiemton?.cs1?.lech?.[sizeKey] || 0),
-      lech_cs2: Number(kiemton?.cs2?.lech?.[sizeKey] || 0)
+      lech_cs2: Number(kiemton?.cs2?.lech?.[sizeKey] || 0),
+
+      // Quan trọng: truyền dữ liệu bán để luật thông minh hoạt động
+      ban_cs1: Number(r.ban_cs1 || 0),
+      ban_cs2: Number(r.ban_cs2 || 0),
+      tong_ban: Number(r.tong_ban || 0),
+      tong_nhap: Number(r.tong_nhap || 0),
+      tong_ton: Number(r.tong_ton || 0)
     };
   });
 
-  const suggestions = calcSuggestionsFromRows(rows, code);
+  const hasNegative = hasNegativeStockRows(rows);
+  const suggestions = hasNegative ? [] : calcSuggestionsFromRows(rows, code);
 
-  return new Set(
-    suggestions.map(x =>
-      `${String(x.masp).toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`
+  return {
+    hasNegative,
+    suggestions,
+    keys: new Set(
+      suggestions.map(x =>
+        `${String(x.masp).toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`
+      )
     )
-  );
+  };
 }
 
 async function autoMarkOutdatedNewOrders(rows) {
   if (!ctx?.supabase || !Array.isArray(rows) || !rows.length) return false;
+  if (autoRecheckRunning) return false;
+  autoRecheckRunning = true;
 
-  const coso = getCurrentCoso();
+  try {
 
-  const newRows = rows
-    .filter(r =>
-      String(r.trang_thai || "") === "moi" &&
-      String(r.tu_coso || "").toLowerCase() === coso
-    )
-    .slice(0, 500);
+    const coso = getCurrentCoso();
 
-  if (!newRows.length) return false;
+    const newRows = rows
+      .filter(r =>
+        String(r.trang_thai || "") === "moi" &&
+        String(r.tu_coso || "").toLowerCase() === coso
+      )
+      .slice(0, 200);
 
-  const masps = Array.from(
-    new Set(newRows.map(r => String(r.masp || "").trim().toUpperCase()).filter(Boolean))
-  ).slice(0, 500);
+    if (!newRows.length) return false;
 
-  if (!masps.length) return false;
+    const masps = Array.from(
+      new Set(newRows.map(r => String(r.masp || "").trim().toUpperCase()).filter(Boolean))
+    ).slice(0, 200);
 
-  const suggestionKeysByMasp = new Map();
+    if (!masps.length) return false;
 
-  for (const masp of masps) {
-    const keys = await fetchCurrentSuggestionKeysByMasp(masp);
-    suggestionKeysByMasp.set(masp, keys);
-  }
+    const suggestionInfoByMasp = new Map();
 
-  const outdatedIds = [];
+    for (const masp of masps) {
+      const info = await fetchCurrentSuggestionKeysByMasp(masp);
+      suggestionInfoByMasp.set(masp, info);
+    }
 
-  newRows.forEach(r => {
-    const masp = String(r.masp || "").trim().toUpperCase();
-    if (!suggestionKeysByMasp.has(masp)) return;
+    const outdatedIds = [];
+    const needCheckIds = [];
 
-    const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
-    const stillNeeded = suggestionKeysByMasp.get(masp).has(key);
+    newRows.forEach(r => {
+      const masp = String(r.masp || "").trim().toUpperCase();
+      if (!suggestionInfoByMasp.has(masp)) return;
 
-    if (!stillNeeded) {
-      console.log("[Đặt hàng CK] Dòng mới đã lỗi thời:", {
+      const info = suggestionInfoByMasp.get(masp);
+
+      if (info?.hasNegative) {
+        needCheckIds.push(Number(r.id));
+        return;
+      }
+
+      const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
+      const stillNeeded = info.keys.has(key);
+
+      if (!stillNeeded) {
+        console.warn("DHCK BỎ QUA DÒNG KHÔNG CÒN GỢI Ý - KHÔNG ĐÁNH LỖI THỜI", {
+          id: r.id,
+          masp: r.masp,
+          size: r.size,
+          huong: r.huong_chuyen,
+          key,
+          suggestionKeys: [...info.keys]
+        });
+      }
+    });
+
+    if (needCheckIds.length) {
+      const { error } = await ctx.supabase
+        .from("dat_hang_chuyen_kho")
+        .update({
+          trang_thai: "yeu_cau_kiem_kho",
+          chon_chuyen: false,
+          updated_at: new Date().toISOString()
+        })
+        .in("id", needCheckIds)
+        .eq("trang_thai", "moi");
+
+      if (error) {
+        console.warn("[Đặt hàng CK] Không cập nhật được dòng yêu cầu kiểm kho:", error);
+      }
+    }
+
+    if (!outdatedIds.length && !needCheckIds.length) return false;
+    if (!outdatedIds.length) return true;
+
+    console.warn("========== DHCK ĐÁNH LỖI THỜI ==========");
+    console.table(
+      newRows.filter(r => outdatedIds.includes(Number(r.id))).map(r => ({
         id: r.id,
-        masp,
+        masp: r.masp,
         size: r.size,
         huong: r.huong_chuyen,
-        key
-      });
+        trang_thai: r.trang_thai
+      }))
+    );
 
-      outdatedIds.push(Number(r.id));
+    const { error } = await ctx.supabase
+      .from("dat_hang_chuyen_kho")
+      .update({
+        trang_thai: "loi_thoi",
+        chon_chuyen: false,
+        updated_at: new Date().toISOString()
+      })
+      .in("id", outdatedIds)
+      .eq("trang_thai", "moi");
+
+    if (error) {
+      console.warn("[Đặt hàng CK] Không cập nhật được dòng mới lỗi thời:", error);
+      return false;
     }
-  });
 
-  if (!outdatedIds.length) return false;
+    console.log("[Đặt hàng CK] Đã tự chuyển lỗi thời:", outdatedIds);
+    return true;
 
-  const { error } = await ctx.supabase
-    .from("dat_hang_chuyen_kho")
-    .update({
-      trang_thai: "loi_thoi",
-      chon_chuyen: false,
-      updated_at: new Date().toISOString()
-    })
-    .in("id", outdatedIds)
-    .eq("trang_thai", "moi");
-
-  if (error) {
-    console.warn("[Đặt hàng CK] Không cập nhật được dòng mới lỗi thời:", error);
-    return false;
+  } finally {
+    autoRecheckRunning = false;
   }
 
-  console.log("[Đặt hàng CK] Đã tự chuyển lỗi thời:", outdatedIds);
-  return true;
 }
 
 async function fetchOrders() {
@@ -363,7 +426,7 @@ async function fetchOrders() {
     .from("dat_hang_chuyen_kho")
     .select("*")
     .or(
-      "trang_thai.in.(moi,dang_chuyen,da_tao_phieu),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
+      "trang_thai.in.(moi,dang_chuyen,da_tao_phieu,yeu_cau_kiem_kho),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
     )
     .order("created_at", { ascending: false });
 
@@ -381,7 +444,7 @@ async function fetchOrders() {
       .from("dat_hang_chuyen_kho")
       .select("*")
       .or(
-        "trang_thai.in.(moi,dang_chuyen,da_tao_phieu),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
+        "trang_thai.in.(moi,dang_chuyen,da_tao_phieu,yeu_cau_kiem_kho),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
       )
       .order("created_at", { ascending: false });
 
@@ -420,9 +483,10 @@ function openStockQuickFromDatHang(masp) {
 function renderRows(rows, allowMove) {
   return rows.map(r => {
     const outdatedMoving = isOutdatedMovingRow(r);
+    const needStockCheck = isNeedStockCheckRow(r);
 
     return `
-      <tr class="${allowMove ? "" : "dhck-readonly"} ${outdatedMoving ? "dhck-outdated-moving" : ""}">
+      <tr class="${allowMove ? "" : "dhck-readonly"} ${outdatedMoving ? "dhck-outdated-moving" : ""} ${needStockCheck ? "dhck-need-stock-check" : ""}">
         <td style="text-align:center;">
           <input type="checkbox" class="dhck-delete-check"
             ${allowMove ? "" : "disabled"}
@@ -456,7 +520,7 @@ function renderRows(rows, allowMove) {
         </td>
 
         <td class="dhck-status-cell">
-          ${outdatedMoving ? "Lỗi thời - trả lại kho" : statusText(r.trang_thai)}
+         ${needStockCheck ? "Yêu cầu kiểm kho" : outdatedMoving ? "Lỗi thời - trả lại kho" : statusText(r.trang_thai)}
         </td>
       </tr>
     `;
@@ -724,6 +788,16 @@ async function showPanel(allRows) {
 
 #dhck-panel tr.dhck-outdated-moving .dhck-masp-link {
   color:#b00000 !important;
+}
+
+#dhck-panel tr.dhck-need-stock-check td {
+  background:#fff3b0 !important;
+  color:#7a4b00 !important;
+  font-weight:700;
+}
+
+#dhck-panel tr.dhck-need-stock-check .dhck-masp-link {
+  color:#7a4b00 !important;
 }
   
   `;
@@ -1002,15 +1076,15 @@ async function validateOrderIdsBeforeCreate(ids) {
   }
 
   const badRows = (data || []).filter(r =>
-    String(r.trang_thai || "") === "loi_thoi" ||
+    ["loi_thoi", "yeu_cau_kiem_kho"].includes(String(r.trang_thai || "")) ||
     !["moi", "dang_chuyen", "da_tao_phieu"].includes(String(r.trang_thai || ""))
   );
 
   if (badRows.length) {
     alert(
-      "⚠️ Có dòng đặt hàng đã lỗi thời.\n" +
-      "Dòng này không được tạo hóa đơn chuyển kho nữa.\n\n" +
-      "Vui lòng bỏ tích cột Chuyển và đưa sản phẩm trả lại kho."
+      "⚠️ Có dòng đặt hàng lỗi thời hoặc yêu cầu kiểm kho.\n" +
+      "Không được tạo hóa đơn chuyển kho cho dòng này.\n\n" +
+      "Vui lòng kiểm kho lại trước khi chuyển."
     );
 
     popupOpen = false;
@@ -1244,7 +1318,14 @@ function setupDatHangRealtime() {
         schema: "public",
         table: "dat_hang_chuyen_kho"
       },
-      async () => {
+      async (payload) => {
+        console.warn("[DHCK REALTIME EVENT TEXT]",
+          JSON.stringify({
+            eventType: payload.eventType,
+            old: payload.old,
+            new: payload.new
+          }, null, 2)
+        );
         if (Date.now() < suppressRealtimeUntil) {
           console.log("[Đặt hàng CK] Bỏ qua realtime do chính mình vừa lưu ghi chú/đóng popup");
           return;
@@ -1267,6 +1348,7 @@ export function initDatHangChuyenKho(options = {}) {
     attachStockQuickPopup,
     openFromStockQuick,
     triggerCheck: () => runDatHangCheck(true),
+    calcSuggestionsFromPayloadForView: calcSuggestionsFromPayload,
     afterCcnSaved
   };
 
