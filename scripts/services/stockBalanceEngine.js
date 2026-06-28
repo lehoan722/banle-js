@@ -142,7 +142,7 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
     }
 
     if (!stillValid) {
-      console.error("STOCK BALANCE KHÔNG CÒN GỢI Ý", {
+      console.warn("STOCK BALANCE BỎ QUA DÒNG KHÔNG CÒN GỢI Ý - KHÔNG ĐÁNH LỖI THỜI", {
         id: row.id,
         masp: row.masp,
         size: row.size,
@@ -151,7 +151,7 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
         suggestionKeySet: [...suggestionKeySet]
       });
 
-      outdatedIds.push(Number(row.id));
+      continue;
     }
   }
 
