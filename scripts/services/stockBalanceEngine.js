@@ -136,7 +136,14 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
       if (stillValid) {
         restoreFromCheckIds.push(Number(row.id));
       } else {
-        outdatedIds.push(Number(row.id));
+        console.warn("STOCK BALANCE GIỮ DÒNG YÊU CẦU KIỂM KHO - KHÔNG ĐÁNH LỖI THỜI", {
+          id: row.id,
+          masp: row.masp,
+          size: row.size,
+          huong: row.huong_chuyen,
+          key,
+          suggestionKeySet: [...suggestionKeySet]
+        });
       }
       continue;
     }
