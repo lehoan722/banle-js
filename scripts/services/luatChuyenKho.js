@@ -55,6 +55,21 @@ export function isAcceptedStock(total, cs1, cs2) {
   );
 }
 
+export function getTonSauKiemRaw(row, coso) {
+  const tonKey = coso === "cs2" ? "ton_cs2" : "ton_cs1";
+  const lechKey = coso === "cs2" ? "lech_cs2" : "lech_cs1";
+
+  return Number(row?.[tonKey] || 0) + Number(row?.[lechKey] || 0);
+}
+
+export function hasNegativeStockRow(row) {
+  return getTonSauKiemRaw(row, "cs1") < 0 || getTonSauKiemRaw(row, "cs2") < 0;
+}
+
+export function hasNegativeStockRows(rows = []) {
+  return (rows || []).some(r => hasNegativeStockRow(r));
+}
+
 export function getTonSauKiem(row, coso) {
   const tonKey = coso === "cs2" ? "ton_cs2" : "ton_cs1";
   const lechKey = coso === "cs2" ? "lech_cs2" : "lech_cs1";
@@ -132,6 +147,8 @@ export function calcSuggestionFromRow(row, maspInput = "") {
 }
 
 export function calcSuggestionsFromRows(rows = [], maspInput = "") {
+  if (hasNegativeStockRows(rows)) return [];
+
   return (rows || [])
     .map(r => calcSuggestionFromRow(r, maspInput))
     .filter(Boolean);
