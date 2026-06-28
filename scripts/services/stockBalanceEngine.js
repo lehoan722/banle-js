@@ -1,5 +1,9 @@
 import { supabase } from "../supabaseClient.js";
-import {  normMasp,  normSize,  calcSuggestionsFromRows} from "./luatChuyenKho.js";
+import {
+  normSize,
+  calcSuggestionsFromPayload,
+  calcSuggestionsFromRows
+} from "./services/luatChuyenKho.js";
 
 const ACTIVE_STATUS = ["moi", "dang_chuyen", "da_tao_phieu"];
 
