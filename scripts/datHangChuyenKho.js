@@ -356,7 +356,7 @@ async function autoMarkOutdatedNewOrders(rows) {
       const stillNeeded = info.keys.has(key);
 
       if (!stillNeeded) {
-        console.error("DHCK KHÔNG CÒN GỢI Ý", {
+        console.warn("DHCK BỎ QUA DÒNG KHÔNG CÒN GỢI Ý - KHÔNG ĐÁNH LỖI THỜI", {
           id: r.id,
           masp: r.masp,
           size: r.size,
@@ -364,8 +364,6 @@ async function autoMarkOutdatedNewOrders(rows) {
           key,
           suggestionKeys: [...info.keys]
         });
-
-        outdatedIds.push(Number(r.id));
       }
     });
 
