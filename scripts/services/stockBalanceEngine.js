@@ -1,15 +1,7 @@
 import { supabase } from "../supabaseClient.js";
-import {
-  normMasp,
-  normSize,
-  calcSuggestionsFromRows,
-  hasNegativeStockRows
-} from "./luatChuyenKho.js";
+import {  normMasp,  normSize,  calcSuggestionsFromRows} from "./luatChuyenKho.js";
 
-const ACTIVE_STATUS = ["moi", "dang_chuyen", "da_tao_phieu", "yeu_cau_kiem_kho"];
-function makeKey(x) {
-  return `${normMasp(x.masp)}|${normSize(x.size)}|${x.huong_chuyen}`;
-}
+const ACTIVE_STATUS = ["moi", "dang_chuyen", "da_tao_phieu"];
 
 async function fetchCurrentPayload(masp) {
   const today = new Date().toISOString().slice(0, 10);
@@ -33,30 +25,16 @@ async function fetchCurrentPayload(masp) {
   const kiemton = kiemRes.data || { cs1: {}, cs2: {} };
 
   return (snapRes.data || []).map(r => {
-
     const size = normSize(r.size);
 
     return {
-
       masp,
       size,
-
       ton_cs1: Number(r.ton_cs1 || 0),
       ton_cs2: Number(r.ton_cs2 || 0),
-
       lech_cs1: Number(kiemton?.cs1?.lech?.[size] || 0),
-      lech_cs2: Number(kiemton?.cs2?.lech?.[size] || 0),
-
-      // ===== truyền đầy đủ dữ liệu bán =====
-
-      ban_cs1: Number(r.ban_cs1 || 0),
-      ban_cs2: Number(r.ban_cs2 || 0),
-
-      tong_ban: Number(r.tong_ban || 0),
-      tong_nhap: Number(r.tong_nhap || 0),
-      tong_ton: Number(r.tong_ton || 0)
+      lech_cs2: Number(kiemton?.cs2?.lech?.[size] || 0)
     };
-
   });
 }
 
@@ -81,139 +59,35 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
   }
 
   let allSuggestions = [];
-  const negativeMasps = new Set();
 
   for (const masp of masps) {
     const rows = await fetchCurrentPayload(masp);
-
-    if (hasNegativeStockRows(rows)) {
-      negativeMasps.add(masp);
-      continue;
-    }
-
     const suggestions = calcSuggestionsFromRows(rows, masp);
-    console.log("[StockBalance DEBUG]", {
-      masp,
-      rows,
-      suggestions,
-      suggestionKeys: suggestions.map(makeKey)
-    });
     allSuggestions = allSuggestions.concat(suggestions);
   }
 
   const suggestionKeySet = new Set(
-    allSuggestions.map(makeKey)
+    allSuggestions.map(x =>
+      `${normMasp(x.masp)}|${normSize(x.size)}|${x.huong_chuyen}`
+    )
   );
 
   const outdatedIds = [];
-  const needCheckIds = [];
-  const restoreFromCheckIds = [];
 
   for (const row of pendingRows || []) {
-    const masp = normMasp(row.masp);
-    const status = String(row.trang_thai || "");
-    const key = makeKey(row);
-
-    if (negativeMasps.has(masp)) {
-      if (status === "moi") {
-        needCheckIds.push(Number(row.id));
-      }
-      continue;
-    }
-
+    const key = `${normMasp(row.masp)}|${normSize(row.size)}|${row.huong_chuyen}`;
     const stillValid = suggestionKeySet.has(key);
-    console.log("[StockBalance CHECK]", {
-      id: row.id,
-      masp: row.masp,
-      size: row.size,
-      huong: row.huong_chuyen,
-      key,
-      stillValid,
-      suggestionKeySet: Array.from(suggestionKeySet)
-    });
-
-    if (status === "yeu_cau_kiem_kho") {
-      if (stillValid) {
-        restoreFromCheckIds.push(Number(row.id));
-      } else {
-        console.warn("STOCK BALANCE GIỮ DÒNG YÊU CẦU KIỂM KHO - KHÔNG ĐÁNH LỖI THỜI", {
-          id: row.id,
-          masp: row.masp,
-          size: row.size,
-          huong: row.huong_chuyen,
-          key,
-          suggestionKeySet: [...suggestionKeySet]
-        });
-      }
-      continue;
-    }
 
     if (!stillValid) {
-      console.warn("STOCK BALANCE BỎ QUA DÒNG KHÔNG CÒN GỢI Ý - KHÔNG ĐÁNH LỖI THỜI", {
-        id: row.id,
-        masp: row.masp,
-        size: row.size,
-        huong: row.huong_chuyen,
-        key,
-        suggestionKeySet: [...suggestionKeySet]
-      });
-
-      continue;
-    }
-  }
-
-  if (needCheckIds.length) {
-    const { error } = await supabase
-      .from("dat_hang_chuyen_kho")
-      .update({
-        trang_thai: "yeu_cau_kiem_kho",
-        chon_chuyen: false,
-        updated_at: new Date().toISOString()
-      })
-      .in("id", needCheckIds)
-      .eq("trang_thai", "moi");
-
-    if (error) {
-      console.error("[StockBalance] Lỗi đánh yêu cầu kiểm kho:", error);
-    }
-  }
-
-  if (restoreFromCheckIds.length) {
-    const { error } = await supabase
-      .from("dat_hang_chuyen_kho")
-      .update({
-        trang_thai: "moi",
-        chon_chuyen: false,
-        updated_at: new Date().toISOString()
-      })
-      .in("id", restoreFromCheckIds)
-      .eq("trang_thai", "yeu_cau_kiem_kho");
-
-    if (error) {
-      console.error("[StockBalance] Lỗi khôi phục yêu cầu kiểm kho:", error);
+      outdatedIds.push(Number(row.id));
     }
   }
 
   if (outdatedIds.length) {
-
-    console.warn("========== STOCK BALANCE ĐÁNH LỖI THỜI ==========");
-    console.table(
-      (pendingRows || [])
-        .filter(r => outdatedIds.includes(Number(r.id)))
-        .map(r => ({
-          id: r.id,
-          masp: r.masp,
-          size: r.size,
-          huong: r.huong_chuyen,
-          trang_thai: r.trang_thai
-        }))
-    );
-
     const { error } = await supabase
       .from("dat_hang_chuyen_kho")
       .update({
         trang_thai: "loi_thoi",
-        chon_chuyen: false,
         updated_at: new Date().toISOString()
       })
       .in("id", outdatedIds);
@@ -225,16 +99,9 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
 
   const activeKeySet = new Set(
     (pendingRows || [])
-      .filter(r =>
-        !outdatedIds.includes(Number(r.id)) &&
-        !needCheckIds.includes(Number(r.id))
-      )
-      .map(makeKey)
+      .filter(r => !outdatedIds.includes(Number(r.id)))
+      .map(r => `${normMasp(r.masp)}|${normSize(r.size)}|${r.huong_chuyen}`)
   );
-
-  if (negativeMasps.size) {
-    console.warn("[StockBalance] Có mã tồn âm, không tạo gợi ý:", Array.from(negativeMasps));
-  }
 
   const rowsToInsert = allSuggestions
     .filter(x => {
@@ -267,9 +134,6 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
   return {
     ok: true,
     masps,
-    negative: Array.from(negativeMasps),
-    need_check: needCheckIds.length,
-    restored_from_check: restoreFromCheckIds.length,
     outdated: outdatedIds.length,
     inserted: rowsToInsert.length
   };
