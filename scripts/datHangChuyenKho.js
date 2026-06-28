@@ -356,22 +356,17 @@ async function autoMarkOutdatedNewOrders(rows) {
       const stillNeeded = info.keys.has(key);
 
       if (!stillNeeded) {
+  console.error("DHCK KHÔNG CÒN GỢI Ý", {
+    id: r.id,
+    masp: r.masp,
+    size: r.size,
+    huong: r.huong_chuyen,
+    key,
+    suggestionKeys: [...info.keys]
+  });
 
-        console.error("DHCK KHÔNG CÒN GỢI Ý", {
-          id: r.id,
-          masp: r.masp,
-          size: r.size,
-          huong: r.huong_chuyen,
-          key,
-          suggestionKeys: [...info.keys]
-        });
-
-        outdatedIds.push(Number(r.id));
-      }
-
-      if (!stillNeeded) {
-        outdatedIds.push(Number(r.id));
-      }
+  outdatedIds.push(Number(r.id));
+}
     });
 
     if (needCheckIds.length) {
@@ -391,21 +386,21 @@ async function autoMarkOutdatedNewOrders(rows) {
     }
 
     if (!outdatedIds.length && !needCheckIds.length) return false;
-    if (!outdatedIds.length) return true;
+if (!outdatedIds.length) return true;
 
-    console.warn("========== DHCK ĐÁNH LỖI THỜI ==========");
-    console.table(
-      newRows.filter(r => outdatedIds.includes(Number(r.id))).map(r => ({
-        id: r.id,
-        masp: r.masp,
-        size: r.size,
-        huong: r.huong_chuyen,
-        trang_thai: r.trang_thai
-      }))
-    );
+console.warn("========== DHCK ĐÁNH LỖI THỜI ==========");
+console.table(
+  newRows.filter(r => outdatedIds.includes(Number(r.id))).map(r => ({
+    id: r.id,
+    masp: r.masp,
+    size: r.size,
+    huong: r.huong_chuyen,
+    trang_thai: r.trang_thai
+  }))
+);
 
-    const { error } = await ctx.supabase
-      .from("dat_hang_chuyen_kho")
+const { error } = await ctx.supabase
+  .from("dat_hang_chuyen_kho")
       .update({
         trang_thai: "loi_thoi",
         chon_chuyen: false,
@@ -1325,7 +1320,12 @@ function setupDatHangRealtime() {
         schema: "public",
         table: "dat_hang_chuyen_kho"
       },
-      async () => {
+      async (payload) => {
+  console.warn("[DHCK REALTIME EVENT]", {
+    eventType: payload.eventType,
+    old: payload.old,
+    new: payload.new
+  });
         if (Date.now() < suppressRealtimeUntil) {
           console.log("[Đặt hàng CK] Bỏ qua realtime do chính mình vừa lưu ghi chú/đóng popup");
           return;
