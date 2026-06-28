@@ -39,6 +39,48 @@ export function getAcceptedStockRules(total) {
   return [{ cs1, cs2: t - cs1 }];
 }
 
+export function getSalesWinner(ban1, ban2) {
+  const b1 = Number(ban1 || 0);
+  const b2 = Number(ban2 || 0);
+
+  if (b1 <= 0 && b2 <= 0) return "";
+
+  // Một bên bán hơn bên kia ít nhất 2 sản phẩm
+  // và đồng thời phải có sức bán vượt trội rõ ràng.
+  if (b1 >= b2 + 2 && (b2 === 0 || b1 >= b2 * 2)) return "cs1";
+  if (b2 >= b1 + 2 && (b1 === 0 || b2 >= b1 * 2)) return "cs2";
+
+  return "";
+}
+
+export function getSmartTargetBySales(total, ban1, ban2) {
+  const t = Number(total || 0);
+  const winner = getSalesWinner(ban1, ban2);
+
+  if (!winner) return getTargetStockByTotal(t);
+
+  // Nếu tổng tồn nhỏ quá thì vẫn giữ luật đẹp cũ để tránh đảo hàng quá nhạy
+  if (t <= 3) return getTargetStockByTotal(t);
+
+  const baseTarget = getTargetStockByTotal(t);
+
+  if (winner === "cs1") {
+    return {
+      cs1: Math.max(baseTarget.cs1, Math.ceil(t * 0.6)),
+      cs2: t - Math.max(baseTarget.cs1, Math.ceil(t * 0.6))
+    };
+  }
+
+  if (winner === "cs2") {
+    return {
+      cs1: t - Math.max(baseTarget.cs2, Math.ceil(t * 0.6)),
+      cs2: Math.max(baseTarget.cs2, Math.ceil(t * 0.6))
+    };
+  }
+
+  return baseTarget;
+}
+
 export function getTargetStockByTotal(total) {
   const t = Number(total || 0);
   if (BEAUTIFUL_STOCK_TARGET[t]) return BEAUTIFUL_STOCK_TARGET[t];
@@ -80,15 +122,23 @@ export function getTonSauKiem(row, coso) {
   );
 }
 
-export function calcGoiy(cs1, cs2) {
+export function calcGoiy(cs1, cs2, ban1 = 0, ban2 = 0) {
   const n1 = Number(cs1 || 0);
   const n2 = Number(cs2 || 0);
   const total = n1 + n2;
 
   if (total <= 0) return "cân bằng";
-  if (isAcceptedStock(total, n1, n2)) return "cân bằng";
 
-  const target = getTargetStockByTotal(total);
+  const salesWinner = getSalesWinner(ban1, ban2);
+
+  // Nếu không có cơ sở bán vượt trội thì dùng luật chấp nhận cũ
+  if (!salesWinner && isAcceptedStock(total, n1, n2)) {
+    return "cân bằng";
+  }
+
+  const target = salesWinner
+    ? getSmartTargetBySales(total, ban1, ban2)
+    : getTargetStockByTotal(total);
 
   if (n1 > target.cs1 && n2 < target.cs2 && n2 < 3) return "1v2";
   if (n2 > target.cs2 && n1 < target.cs1 && n1 < 2) return "2v1";
@@ -96,23 +146,29 @@ export function calcGoiy(cs1, cs2) {
   return "cân bằng";
 }
 
-export function calcMoveQty(cs1, cs2, goiy = "") {
+export function calcMoveQty(cs1, cs2, goiy = "", ban1 = 0, ban2 = 0) {
   const n1 = Number(cs1 || 0);
   const n2 = Number(cs2 || 0);
   const total = n1 + n2;
 
   if (total <= 0) return 0;
-  if (isAcceptedStock(total, n1, n2)) return 0;
 
-  const target = getTargetStockByTotal(total);
+  const salesWinner = getSalesWinner(ban1, ban2);
+
+  // Nếu không có cơ sở bán vượt trội thì giữ luật cân bằng cũ
+  if (!salesWinner && isAcceptedStock(total, n1, n2)) return 0;
+
+  const target = salesWinner
+    ? getSmartTargetBySales(total, ban1, ban2)
+    : getTargetStockByTotal(total);
 
   if (goiy === "1v2") {
-    if (n2 >= 3) return 0;
+    if (n2 >= target.cs2) return 0;
     return Math.max(0, Math.min(n1 - target.cs1, target.cs2 - n2));
   }
 
   if (goiy === "2v1") {
-    if (n1 >= 2) return 0;
+    if (n1 >= target.cs1) return 0;
     return Math.max(0, Math.min(n2 - target.cs2, target.cs1 - n1));
   }
 
@@ -128,10 +184,13 @@ export function calcSuggestionFromRow(row, maspInput = "") {
   const ton1 = getTonSauKiem(row, "cs1");
   const ton2 = getTonSauKiem(row, "cs2");
 
-  const huong = calcGoiy(ton1, ton2);
+  const ban1 = Number(row?.ban_cs1 || 0);
+  const ban2 = Number(row?.ban_cs2 || 0);
+
+  const huong = calcGoiy(ton1, ton2, ban1, ban2);
   if (huong === "cân bằng") return null;
 
-  const soluong = calcMoveQty(ton1, ton2, huong);
+  const soluong = calcMoveQty(ton1, ton2, huong, ban1, ban2);
   if (soluong <= 0) return null;
 
   return {
@@ -142,7 +201,11 @@ export function calcSuggestionFromRow(row, maspInput = "") {
     tu_coso: huong === "1v2" ? "cs1" : "cs2",
     den_coso: huong === "1v2" ? "cs2" : "cs1",
     ton_sau_kiem_cs1: ton1,
-    ton_sau_kiem_cs2: ton2
+    ton_sau_kiem_cs2: ton2,
+    ban_cs1: ban1,
+    ban_cs2: ban2,
+    sales_winner: getSalesWinner(ban1, ban2),
+    smart_target: getSmartTargetBySales(ton1 + ton2, ban1, ban2)
   };
 }
 
