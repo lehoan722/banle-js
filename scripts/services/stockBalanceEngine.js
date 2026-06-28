@@ -92,6 +92,12 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
     }
 
     const suggestions = calcSuggestionsFromRows(rows, masp);
+    console.log("[StockBalance DEBUG]", {
+      masp,
+      rows,
+      suggestions,
+      suggestionKeys: suggestions.map(makeKey)
+    });
     allSuggestions = allSuggestions.concat(suggestions);
   }
 
@@ -116,6 +122,15 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
     }
 
     const stillValid = suggestionKeySet.has(key);
+    console.log("[StockBalance CHECK]", {
+      id: row.id,
+      masp: row.masp,
+      size: row.size,
+      huong: row.huong_chuyen,
+      key,
+      stillValid,
+      suggestionKeySet: Array.from(suggestionKeySet)
+    });
 
     if (status === "yeu_cau_kiem_kho") {
       if (stillValid) {
