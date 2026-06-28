@@ -356,6 +356,20 @@ async function autoMarkOutdatedNewOrders(rows) {
       const stillNeeded = info.keys.has(key);
 
       if (!stillNeeded) {
+
+        console.error("DHCK KHÔNG CÒN GỢI Ý", {
+          id: r.id,
+          masp: r.masp,
+          size: r.size,
+          huong: r.huong_chuyen,
+          key,
+          suggestionKeys: [...info.keys]
+        });
+
+        outdatedIds.push(Number(r.id));
+      }
+
+      if (!stillNeeded) {
         outdatedIds.push(Number(r.id));
       }
     });
@@ -378,6 +392,17 @@ async function autoMarkOutdatedNewOrders(rows) {
 
     if (!outdatedIds.length && !needCheckIds.length) return false;
     if (!outdatedIds.length) return true;
+
+    console.warn("========== DHCK ĐÁNH LỖI THỜI ==========");
+    console.table(
+      newRows.filter(r => outdatedIds.includes(Number(r.id))).map(r => ({
+        id: r.id,
+        masp: r.masp,
+        size: r.size,
+        huong: r.huong_chuyen,
+        trang_thai: r.trang_thai
+      }))
+    );
 
     const { error } = await ctx.supabase
       .from("dat_hang_chuyen_kho")
