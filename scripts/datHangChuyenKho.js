@@ -3,7 +3,8 @@
 import {
   normSize,
   calcSuggestionsFromPayload,
-  calcSuggestionsFromRows
+  calcSuggestionsFromRows,
+  hasNegativeStockRows
 } from "./services/luatChuyenKho.js";
 
 let ctx = null;
@@ -170,11 +171,16 @@ function statusText(s) {
   if (v === "da_chuyen") return "Đã chuyển";
   if (v === "huy") return "Hủy";
   if (v === "loi_thoi") return "Lỗi thời";
+  if (v === "yeu_cau_kiem_kho") return "Yêu cầu kiểm kho";
   return v;
 }
 
 function isOutdatedMovingRow(r) {
   return String(r.trang_thai || "") === "loi_thoi" && r.chon_chuyen === true;
+}
+
+function isNeedStockCheckRow(r) {
+  return String(r.trang_thai || "") === "yeu_cau_kiem_kho";
 }
 
 function sortOrdersForDisplay(rows) {
@@ -279,13 +285,17 @@ async function fetchCurrentSuggestionKeysByMasp(masp) {
     };
   });
 
-  const suggestions = calcSuggestionsFromRows(rows, code);
+  const hasNegative = hasNegativeStockRows(rows);
+  const suggestions = hasNegative ? [] : calcSuggestionsFromRows(rows, code);
 
-  return new Set(
-    suggestions.map(x =>
-      `${String(x.masp).toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`
+  return {
+    hasNegative,
+    keys: new Set(
+      suggestions.map(x =>
+        `${String(x.masp).toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`
+      )
     )
-  );
+  };
 }
 
 async function autoMarkOutdatedNewOrders(rows) {
@@ -308,23 +318,32 @@ async function autoMarkOutdatedNewOrders(rows) {
 
   if (!masps.length) return false;
 
-  const suggestionKeysByMasp = new Map();
+  const suggestionInfoByMasp = new Map();
 
   for (const masp of masps) {
-    const keys = await fetchCurrentSuggestionKeysByMasp(masp);
-    suggestionKeysByMasp.set(masp, keys);
+    const info = await fetchCurrentSuggestionKeysByMasp(masp);
+    suggestionInfoByMasp.set(masp, info);
   }
 
   const outdatedIds = [];
+  const needCheckIds = [];
 
   newRows.forEach(r => {
     const masp = String(r.masp || "").trim().toUpperCase();
-    if (!suggestionKeysByMasp.has(masp)) return;
+    if (!suggestionInfoByMasp.has(masp)) return;
+
+    const info = suggestionInfoByMasp.get(masp);
+
+    if (info?.hasNegative) {
+      needCheckIds.push(Number(r.id));
+      return;
+    }
 
     const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
-    const stillNeeded = suggestionKeysByMasp.get(masp).has(key);
+    const stillNeeded = info.keys.has(key);
 
     if (!stillNeeded) {
+
       console.log("[Đặt hàng CK] Dòng mới đã lỗi thời:", {
         id: r.id,
         masp,
@@ -337,7 +356,24 @@ async function autoMarkOutdatedNewOrders(rows) {
     }
   });
 
-  if (!outdatedIds.length) return false;
+  if (needCheckIds.length) {
+    const { error } = await ctx.supabase
+      .from("dat_hang_chuyen_kho")
+      .update({
+        trang_thai: "yeu_cau_kiem_kho",
+        chon_chuyen: false,
+        updated_at: new Date().toISOString()
+      })
+      .in("id", needCheckIds)
+      .eq("trang_thai", "moi");
+
+    if (error) {
+      console.warn("[Đặt hàng CK] Không cập nhật được dòng yêu cầu kiểm kho:", error);
+    }
+  }
+
+  if (!outdatedIds.length && !needCheckIds.length) return false;
+  if (!outdatedIds.length) return true;
 
   const { error } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
@@ -363,7 +399,7 @@ async function fetchOrders() {
     .from("dat_hang_chuyen_kho")
     .select("*")
     .or(
-      "trang_thai.in.(moi,dang_chuyen,da_tao_phieu),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
+      "trang_thai.in.(moi,dang_chuyen,da_tao_phieu,yeu_cau_kiem_kho),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
     )
     .order("created_at", { ascending: false });
 
@@ -381,7 +417,7 @@ async function fetchOrders() {
       .from("dat_hang_chuyen_kho")
       .select("*")
       .or(
-        "trang_thai.in.(moi,dang_chuyen,da_tao_phieu),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
+        "trang_thai.in.(moi,dang_chuyen,da_tao_phieu,yeu_cau_kiem_kho),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
       )
       .order("created_at", { ascending: false });
 
@@ -420,9 +456,10 @@ function openStockQuickFromDatHang(masp) {
 function renderRows(rows, allowMove) {
   return rows.map(r => {
     const outdatedMoving = isOutdatedMovingRow(r);
+    const needStockCheck = isNeedStockCheckRow(r);
 
     return `
-      <tr class="${allowMove ? "" : "dhck-readonly"} ${outdatedMoving ? "dhck-outdated-moving" : ""}">
+      <tr class="${allowMove ? "" : "dhck-readonly"} ${outdatedMoving ? "dhck-outdated-moving" : ""} ${needStockCheck ? "dhck-need-stock-check" : ""}">
         <td style="text-align:center;">
           <input type="checkbox" class="dhck-delete-check"
             ${allowMove ? "" : "disabled"}
@@ -456,7 +493,7 @@ function renderRows(rows, allowMove) {
         </td>
 
         <td class="dhck-status-cell">
-          ${outdatedMoving ? "Lỗi thời - trả lại kho" : statusText(r.trang_thai)}
+         ${needStockCheck ? "Yêu cầu kiểm kho" : outdatedMoving ? "Lỗi thời - trả lại kho" : statusText(r.trang_thai)}
         </td>
       </tr>
     `;
@@ -724,6 +761,16 @@ async function showPanel(allRows) {
 
 #dhck-panel tr.dhck-outdated-moving .dhck-masp-link {
   color:#b00000 !important;
+}
+
+#dhck-panel tr.dhck-need-stock-check td {
+  background:#fff3b0 !important;
+  color:#7a4b00 !important;
+  font-weight:700;
+}
+
+#dhck-panel tr.dhck-need-stock-check .dhck-masp-link {
+  color:#7a4b00 !important;
 }
   
   `;
@@ -1002,15 +1049,15 @@ async function validateOrderIdsBeforeCreate(ids) {
   }
 
   const badRows = (data || []).filter(r =>
-    String(r.trang_thai || "") === "loi_thoi" ||
+    ["loi_thoi", "yeu_cau_kiem_kho"].includes(String(r.trang_thai || "")) ||
     !["moi", "dang_chuyen", "da_tao_phieu"].includes(String(r.trang_thai || ""))
   );
 
   if (badRows.length) {
     alert(
-      "⚠️ Có dòng đặt hàng đã lỗi thời.\n" +
-      "Dòng này không được tạo hóa đơn chuyển kho nữa.\n\n" +
-      "Vui lòng bỏ tích cột Chuyển và đưa sản phẩm trả lại kho."
+      "⚠️ Có dòng đặt hàng lỗi thời hoặc yêu cầu kiểm kho.\n" +
+      "Không được tạo hóa đơn chuyển kho cho dòng này.\n\n" +
+      "Vui lòng kiểm kho lại trước khi chuyển."
     );
 
     popupOpen = false;
