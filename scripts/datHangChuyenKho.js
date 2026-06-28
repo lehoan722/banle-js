@@ -1321,6 +1321,7 @@ export function initDatHangChuyenKho(options = {}) {
     attachStockQuickPopup,
     openFromStockQuick,
     triggerCheck: () => runDatHangCheck(true),
+    calcSuggestionsFromPayloadForView: calcSuggestionsFromPayload,
     afterCcnSaved
   };
 
