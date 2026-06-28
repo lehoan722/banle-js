@@ -297,6 +297,7 @@ async function fetchCurrentSuggestionKeysByMasp(masp) {
 
   return {
     hasNegative,
+    suggestions,
     keys: new Set(
       suggestions.map(x =>
         `${String(x.masp).toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`
@@ -335,6 +336,14 @@ async function autoMarkOutdatedNewOrders(rows) {
   const outdatedIds = [];
   const needCheckIds = [];
 
+  const existingOpenKeys = new Set(
+    (rows || [])
+      .filter(r => ["moi", "dang_chuyen", "da_tao_phieu"].includes(String(r.trang_thai || "")))
+      .map(r => `${String(r.masp || "").toUpperCase()}|${normSize(r.size)}|${r.huong_chuyen}`)
+  );
+
+  const rowsToInsert = [];
+
   newRows.forEach(r => {
     const masp = String(r.masp || "").trim().toUpperCase();
     if (!suggestionInfoByMasp.has(masp)) return;
@@ -363,6 +372,31 @@ async function autoMarkOutdatedNewOrders(rows) {
     }
   });
 
+  for (const info of suggestionInfoByMasp.values()) {
+    if (info?.hasNegative) continue;
+
+    (info?.suggestions || []).forEach(x => {
+      const key = `${String(x.masp || "").toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`;
+
+      if (!existingOpenKeys.has(key)) {
+        rowsToInsert.push({
+          masp: String(x.masp || "").toUpperCase(),
+          size: String(x.size || ""),
+          soluong: Number(x.soluong || 1),
+          huong_chuyen: x.huong_chuyen,
+          tu_coso: x.tu_coso,
+          den_coso: x.den_coso,
+          manv_dat: getManv(),
+          ghichu_dat: "auto luật mới",
+          trang_thai: "moi",
+          nguon: "auto_recheck"
+        });
+
+        existingOpenKeys.add(key);
+      }
+    });
+  }
+
   if (needCheckIds.length) {
     const { error } = await ctx.supabase
       .from("dat_hang_chuyen_kho")
@@ -379,7 +413,17 @@ async function autoMarkOutdatedNewOrders(rows) {
     }
   }
 
-  if (!outdatedIds.length && !needCheckIds.length) return false;
+  if (rowsToInsert.length) {
+    const { error } = await ctx.supabase
+      .from("dat_hang_chuyen_kho")
+      .insert(rowsToInsert);
+
+    if (error) {
+      console.warn("[Đặt hàng CK] Không tạo được gợi ý mới theo luật:", error);
+    }
+  }
+
+  if (!outdatedIds.length && !needCheckIds.length && !rowsToInsert.length) return false;
   if (!outdatedIds.length) return true;
 
   const { error } = await ctx.supabase
