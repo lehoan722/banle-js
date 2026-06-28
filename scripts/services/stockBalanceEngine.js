@@ -1,11 +1,15 @@
 import { supabase } from "../supabaseClient.js";
 import {
+  normMasp,
   normSize,
-  calcSuggestionsFromPayload,
-  calcSuggestionsFromRows
-} from "./services/luatChuyenKho.js";
+  calcSuggestionsFromRows,
+  hasNegativeStockRows
+} from "./luatChuyenKho.js";
 
-const ACTIVE_STATUS = ["moi", "dang_chuyen", "da_tao_phieu"];
+const ACTIVE_STATUS = ["moi", "dang_chuyen", "da_tao_phieu", "yeu_cau_kiem_kho"];
+function makeKey(x) {
+  return `${normMasp(x.masp)}|${normSize(x.size)}|${x.huong_chuyen}`;
+}
 
 async function fetchCurrentPayload(masp) {
   const today = new Date().toISOString().slice(0, 10);
@@ -63,27 +67,85 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
   }
 
   let allSuggestions = [];
+  const negativeMasps = new Set();
 
   for (const masp of masps) {
     const rows = await fetchCurrentPayload(masp);
+
+    if (hasNegativeStockRows(rows)) {
+      negativeMasps.add(masp);
+      continue;
+    }
+
     const suggestions = calcSuggestionsFromRows(rows, masp);
     allSuggestions = allSuggestions.concat(suggestions);
   }
 
   const suggestionKeySet = new Set(
-    allSuggestions.map(x =>
-      `${normMasp(x.masp)}|${normSize(x.size)}|${x.huong_chuyen}`
-    )
+    allSuggestions.map(makeKey)
   );
 
   const outdatedIds = [];
+  const needCheckIds = [];
+  const restoreFromCheckIds = [];
 
   for (const row of pendingRows || []) {
-    const key = `${normMasp(row.masp)}|${normSize(row.size)}|${row.huong_chuyen}`;
+    const masp = normMasp(row.masp);
+    const status = String(row.trang_thai || "");
+    const key = makeKey(row);
+
+    if (negativeMasps.has(masp)) {
+      if (status === "moi") {
+        needCheckIds.push(Number(row.id));
+      }
+      continue;
+    }
+
     const stillValid = suggestionKeySet.has(key);
+
+    if (status === "yeu_cau_kiem_kho") {
+      if (stillValid) {
+        restoreFromCheckIds.push(Number(row.id));
+      } else {
+        outdatedIds.push(Number(row.id));
+      }
+      continue;
+    }
 
     if (!stillValid) {
       outdatedIds.push(Number(row.id));
+    }
+  }
+
+  if (needCheckIds.length) {
+    const { error } = await supabase
+      .from("dat_hang_chuyen_kho")
+      .update({
+        trang_thai: "yeu_cau_kiem_kho",
+        chon_chuyen: false,
+        updated_at: new Date().toISOString()
+      })
+      .in("id", needCheckIds)
+      .eq("trang_thai", "moi");
+
+    if (error) {
+      console.error("[StockBalance] Lỗi đánh yêu cầu kiểm kho:", error);
+    }
+  }
+
+  if (restoreFromCheckIds.length) {
+    const { error } = await supabase
+      .from("dat_hang_chuyen_kho")
+      .update({
+        trang_thai: "moi",
+        chon_chuyen: false,
+        updated_at: new Date().toISOString()
+      })
+      .in("id", restoreFromCheckIds)
+      .eq("trang_thai", "yeu_cau_kiem_kho");
+
+    if (error) {
+      console.error("[StockBalance] Lỗi khôi phục yêu cầu kiểm kho:", error);
     }
   }
 
@@ -92,6 +154,7 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
       .from("dat_hang_chuyen_kho")
       .update({
         trang_thai: "loi_thoi",
+        chon_chuyen: false,
         updated_at: new Date().toISOString()
       })
       .in("id", outdatedIds);
@@ -103,9 +166,16 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
 
   const activeKeySet = new Set(
     (pendingRows || [])
-      .filter(r => !outdatedIds.includes(Number(r.id)))
-      .map(r => `${normMasp(r.masp)}|${normSize(r.size)}|${r.huong_chuyen}`)
+      .filter(r =>
+        !outdatedIds.includes(Number(r.id)) &&
+        !needCheckIds.includes(Number(r.id))
+      )
+      .map(makeKey)
   );
+
+  if (negativeMasps.size) {
+    console.warn("[StockBalance] Có mã tồn âm, không tạo gợi ý:", Array.from(negativeMasps));
+  }
 
   const rowsToInsert = allSuggestions
     .filter(x => {
@@ -138,6 +208,9 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
   return {
     ok: true,
     masps,
+    negative: Array.from(negativeMasps),
+    need_check: needCheckIds.length,
+    restored_from_check: restoreFromCheckIds.length,
     outdated: outdatedIds.length,
     inserted: rowsToInsert.length
   };
