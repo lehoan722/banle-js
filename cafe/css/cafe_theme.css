@@ -1,0 +1,12 @@
+:root {
+  --cafe-blue: #0573d9;
+  --cafe-blue-dark: #004b9b;
+  --cafe-blue-soft: #e9f4ff;
+  --cafe-border: #dce5ee;
+  --cafe-bg: #f3f7fb;
+  --cafe-white: #ffffff;
+  --cafe-text: #17212b;
+  --cafe-muted: #6b7785;
+  --cafe-warning: #fff4dc;
+  --cafe-shadow: 0 8px 24px rgba(15, 60, 120, 0.12);
+}
