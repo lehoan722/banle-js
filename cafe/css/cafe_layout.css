@@ -377,13 +377,13 @@ body {
 }
 
 .cafe-product-tabs {
-  min-height: 66px;
-  max-height: 76px;
+  min-height: 72px;
+  max-height: 72px;
   display: flex;
-  align-items: center;
-  align-content: center;
-  gap: 5px 8px;
-  padding: 6px 12px 6px 14px;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: 2px 6px;
+  padding: 10px 12px 4px 14px;
   border-bottom: 1px solid var(--cafe-border);
   position: relative;
   flex-wrap: wrap;
@@ -393,15 +393,15 @@ body {
 .cafe-product-tabs>button {
   border: none;
   background: white;
-  padding: 7px 10px;
-  border-radius: 18px;
+  padding: 5px 9px;
+  border-radius: 16px;
   font-weight: 700;
   color: #4c5966;
   cursor: pointer;
   white-space: nowrap;
-  font-size: 14px;
-  line-height: 18px;
-  max-width: 210px;
+  font-size: 13px;
+  line-height: 17px;
+  max-width: 190px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -418,8 +418,8 @@ body {
 }
 
 .cafe-product-more>button {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: none;
   background: #f1f5f9;
@@ -430,7 +430,7 @@ body {
 .cafe-product-more-menu {
   display: none;
   position: absolute;
-  top: 44px;
+  top: 32px;
   right: 0;
   width: 230px;
   background: white;
