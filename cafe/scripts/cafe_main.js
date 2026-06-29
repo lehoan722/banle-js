@@ -9,6 +9,7 @@ const state = {
   banList: [],
   hangHoaList: [],
   orderItems: [],
+  selectedBan: null,
   selectedKhuVucId: "all",
   selectedStatus: "all",
 };
@@ -32,6 +33,7 @@ const cafeOrderList = document.getElementById("cafeOrderList");
 const cafeTotalQty = document.getElementById("cafeTotalQty");
 const cafeTotalMoney = document.getElementById("cafeTotalMoney");
 const cafeProductGrid = document.querySelector(".cafe-product-grid");
+const cafeCurrentTable = document.querySelector(".cafe-current-table strong");
 
 function setLeftView(viewName) {
   const isTables = viewName === "tables";
@@ -93,13 +95,34 @@ function renderCounts() {
   if (countEmptyTables) countEmptyTables.textContent = empty;
 }
 
+function getKhuVucName(khuvucId) {
+  const kv = state.khuVucList.find((x) => String(x.id) === String(khuvucId));
+  return kv?.ten_khuvuc || "";
+}
+
+function selectBan(ban) {
+  state.selectedBan = ban;
+
+  if (cafeCurrentTable) {
+    if (ban.id === "takeaway") {
+      cafeCurrentTable.textContent = "▣ Mang về";
+    } else {
+      cafeCurrentTable.textContent = `▣ ${ban.ten_ban} / ${getKhuVucName(ban.khuvuc_id)}`;
+    }
+  }
+
+  renderBan();
+}
+
 function renderBan() {
   if (!cafeTableGrid) return;
 
   const list = getFilteredBanList();
 
+  const isTakeawayActive = state.selectedBan?.id === "takeaway" ? "active" : "";
+
   const mangVeCard = `
-    <div class="cafe-table-card takeaway" data-ban-id="takeaway">
+  <div class="cafe-table-card takeaway ${isTakeawayActive}" data-ban-id="takeaway">
       <div class="cafe-table-icon">🛍️</div>
       <div>Mang về</div>
     </div>
@@ -107,7 +130,8 @@ function renderBan() {
 
   const banCards = list.map((ban) => {
     const isUsing = ban.trang_thai === "dang_dung";
-    const cls = isUsing ? "using" : "";
+    const isActive = state.selectedBan && String(state.selectedBan.id) === String(ban.id);
+    const cls = `${isUsing ? "using" : ""} ${isActive ? "active" : ""}`;
 
     return `
       <div class="cafe-table-card ${cls}" data-ban-id="${ban.id}">
@@ -118,6 +142,23 @@ function renderBan() {
   });
 
   cafeTableGrid.innerHTML = [mangVeCard, ...banCards].join("");
+  cafeTableGrid.querySelectorAll(".cafe-table-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      const banId = card.dataset.banId;
+
+      if (banId === "takeaway") {
+        selectBan({
+          id: "takeaway",
+          ten_ban: "Mang về",
+          khuvuc_id: null,
+        });
+        return;
+      }
+
+      const ban = state.banList.find((x) => String(x.id) === String(banId));
+      if (ban) selectBan(ban);
+    });
+  });
   renderCounts();
 }
 
@@ -253,6 +294,9 @@ async function initTables() {
 
     renderKhuVucTabs();
     renderBan();
+    if (!state.selectedBan && state.banList.length) {
+      selectBan(state.banList[0]);
+    }
     renderProducts();
     renderOrder();
   } catch (error) {
