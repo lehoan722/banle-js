@@ -544,3 +544,13 @@ body {
   font-size: 46px;
   color: var(--cafe-blue);
 }
+
+.btnOrderNote {
+  cursor: pointer;
+  color: var(--cafe-muted);
+}
+
+.btnOrderNote:hover {
+  color: var(--cafe-blue);
+  text-decoration: underline;
+}
