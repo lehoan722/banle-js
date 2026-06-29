@@ -731,7 +731,7 @@ async function showPanel(allRows) {
   }
 
   box.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;font-weight:bold;margin-bottom:4px;">
+   <div id="dhck-header" style="display:flex;justify-content:space-between;align-items:center;font-weight:bold;margin-bottom:4px;position:sticky;top:0;background:#fff4d6;z-index:5;cursor:pointer;">
   <span class="dhck-title-count">ĐẶT HÀNG CHUYỂN KHO | Cần chuyển: ${canMove.length} | Theo dõi: ${onlyView.length}</span>
   <div>
     <button id="dhck-toggle" style="border:none;background:transparent;font-weight:bold;font-size:18px;">▼</button>
@@ -809,6 +809,20 @@ async function showPanel(allRows) {
 
 #dhck-panel tr.dhck-need-stock-check .dhck-masp-link {
   color:#7a4b00 !important;
+}
+
+#dhck-panel thead th {
+  position: sticky;
+  top: 30px;
+  z-index: 4;
+}
+
+#dhck-panel table:first-of-type thead th {
+  background: #f4c985;
+}
+
+#dhck-panel table:last-of-type thead th {
+  background: #ddd;
 }
   
   `;
@@ -898,38 +912,51 @@ async function showPanel(allRows) {
     box.style.setProperty("padding", "4px 6px", "important");
   }
 
-  box.querySelector("#dhck-toggle").onclick = () => {
-    dhckCollapsed = !dhckCollapsed;
+  function toggleDhckPanel() {
 
-    const body = box.querySelector("#dhck-body");
-    const btn = box.querySelector("#dhck-toggle");
+    box.querySelector("#dhck-toggle").onclick = () => {
+      dhckCollapsed = !dhckCollapsed;
 
-    if (dhckCollapsed) {
-      body.style.setProperty("display", "none", "important");
-      body.style.setProperty("height", "0", "important");
-      body.style.setProperty("max-height", "0", "important");
-      body.style.setProperty("overflow", "hidden", "important");
+      const body = box.querySelector("#dhck-body");
+      const btn = box.querySelector("#dhck-toggle");
 
-      btn.textContent = "▲";
+      if (dhckCollapsed) {
+        body.style.setProperty("display", "none", "important");
+        body.style.setProperty("height", "0", "important");
+        body.style.setProperty("max-height", "0", "important");
+        body.style.setProperty("overflow", "hidden", "important");
 
-      placeCollapsedBox();
-    } else {
-      body.style.removeProperty("display");
-      body.style.removeProperty("height");
-      body.style.removeProperty("max-height");
-      body.style.removeProperty("overflow");
+        btn.textContent = "▲";
 
-      btn.textContent = "▼";
+        placeCollapsedBox();
+      } else {
+        body.style.removeProperty("display");
+        body.style.removeProperty("height");
+        body.style.removeProperty("max-height");
+        body.style.removeProperty("overflow");
 
-      box.style.top = oldTop;
-      box.style.bottom = oldBottom;
-      box.style.height = oldHeight;
-      box.style.maxHeight = oldMaxHeight;
-      box.style.overflow = oldOverflow || "auto";
-      box.style.overflowY = oldOverflowY || "auto";
-      box.style.overflowX = oldOverflowX || "auto";
-      box.style.padding = "6px";
-    }
+        btn.textContent = "▼";
+
+        box.style.top = oldTop;
+        box.style.bottom = oldBottom;
+        box.style.height = oldHeight;
+        box.style.maxHeight = oldMaxHeight;
+        box.style.overflow = oldOverflow || "auto";
+        box.style.overflowY = oldOverflowY || "auto";
+        box.style.overflowX = oldOverflowX || "auto";
+        box.style.padding = "6px";
+      }
+    };
+  }
+
+  box.querySelector("#dhck-toggle").onclick = (e) => {
+    e.stopPropagation();
+    toggleDhckPanel();
+  };
+
+  box.querySelector("#dhck-header").onclick = (e) => {
+    if (e.target?.id === "dhck-close") return;
+    toggleDhckPanel();
   };
 
   // Mặc định mở lần đầu thì thu gọn.
