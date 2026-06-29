@@ -318,7 +318,7 @@ async function autoMarkOutdatedNewOrders(rows) {
 
     const newRows = rows
       .filter(r =>
-        String(r.trang_thai || "") === "moi" &&
+        ["moi", "yeu_cau_kiem_kho"].includes(String(r.trang_thai || "")) &&
         String(r.tu_coso || "").toLowerCase() === coso
       )
       .slice(0, 200);
@@ -340,6 +340,7 @@ async function autoMarkOutdatedNewOrders(rows) {
 
     const outdatedIds = [];
     const needCheckIds = [];
+    const restoreCheckIds = [];
 
     newRows.forEach(r => {
       const masp = String(r.masp || "").trim().toUpperCase();
@@ -347,13 +348,26 @@ async function autoMarkOutdatedNewOrders(rows) {
 
       const info = suggestionInfoByMasp.get(masp);
 
+      const status = String(r.trang_thai || "");
+      const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
+
       if (info?.hasNegative) {
-        needCheckIds.push(Number(r.id));
+        if (status === "moi") {
+          needCheckIds.push(Number(r.id));
+        }
         return;
       }
 
-      const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
       const stillNeeded = info.keys.has(key);
+
+      if (status === "yeu_cau_kiem_kho") {
+        if (stillNeeded) {
+          restoreCheckIds.push(Number(r.id));
+        } else {
+          outdatedIds.push(Number(r.id));
+        }
+        return;
+      }
 
       if (!stillNeeded) {
         outdatedIds.push(Number(r.id));
@@ -376,7 +390,23 @@ async function autoMarkOutdatedNewOrders(rows) {
       }
     }
 
-    if (!outdatedIds.length && !needCheckIds.length) return false;
+    if (restoreCheckIds.length) {
+      const { error } = await ctx.supabase
+        .from("dat_hang_chuyen_kho")
+        .update({
+          trang_thai: "moi",
+          chon_chuyen: false,
+          updated_at: new Date().toISOString()
+        })
+        .in("id", restoreCheckIds)
+        .eq("trang_thai", "yeu_cau_kiem_kho");
+
+      if (error) {
+        console.warn("[Đặt hàng CK] Không khôi phục được dòng yêu cầu kiểm kho:", error);
+      }
+    }
+
+    if (!outdatedIds.length && !needCheckIds.length && !restoreCheckIds.length) return false;
     if (!outdatedIds.length) return true;
 
     const { error } = await ctx.supabase
@@ -946,6 +976,68 @@ async function showPanel(allRows) {
   }, true);
 }
 
+async function recheckNeedStockCheckOrders(canMove) {
+  if (!ctx?.supabase) return { restored: 0, outdated: 0 };
+
+  const checkRows = (canMove || []).filter(r =>
+    String(r.trang_thai || "") === "yeu_cau_kiem_kho"
+  );
+
+  if (!checkRows.length) {
+    return { restored: 0, outdated: 0 };
+  }
+
+  const restoreIds = [];
+  const outdatedIds = [];
+
+  for (const r of checkRows) {
+    const masp = String(r.masp || "").trim().toUpperCase();
+    const info = await fetchCurrentSuggestionKeysByMasp(masp);
+
+    // Nếu vẫn còn âm thì giữ cảnh báo vàng
+    if (info?.hasNegative) continue;
+
+    const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
+
+    if (info?.keys?.has(key)) {
+      restoreIds.push(Number(r.id));
+    } else {
+      outdatedIds.push(Number(r.id));
+    }
+  }
+
+  const now = new Date().toISOString();
+
+  if (restoreIds.length) {
+    await ctx.supabase
+      .from("dat_hang_chuyen_kho")
+      .update({
+        trang_thai: "moi",
+        chon_chuyen: false,
+        updated_at: now
+      })
+      .in("id", restoreIds)
+      .eq("trang_thai", "yeu_cau_kiem_kho");
+  }
+
+  if (outdatedIds.length) {
+    await ctx.supabase
+      .from("dat_hang_chuyen_kho")
+      .update({
+        trang_thai: "loi_thoi",
+        chon_chuyen: false,
+        updated_at: now
+      })
+      .in("id", outdatedIds)
+      .eq("trang_thai", "yeu_cau_kiem_kho");
+  }
+
+  return {
+    restored: restoreIds.length,
+    outdated: outdatedIds.length
+  };
+}
+
 async function deleteOutdatedMovingOrders(box, canMove) {
   await flushInlineNotes(box);
 
@@ -962,7 +1054,17 @@ async function deleteOutdatedMovingOrders(box, canMove) {
     .filter(Boolean);
 
   if (!deleteIds.length) {
-    alert("Không có dòng lỗi thời đang chuyển nào của cơ sở mình để xóa.");
+    const checkResult = await recheckNeedStockCheckOrders(canMove);
+
+    alert(
+      "Đã kiểm tra lại dữ liệu.\n" +
+      `Khôi phục dòng yêu cầu kiểm kho: ${checkResult.restored}\n` +
+      `Chuyển lỗi thời: ${checkResult.outdated}`
+    );
+
+    popupOpen = false;
+    document.getElementById("dhck-panel")?.remove();
+    await runDatHangCheck(true);
     return;
   }
 
@@ -985,7 +1087,13 @@ async function deleteOutdatedMovingOrders(box, canMove) {
     return;
   }
 
-  alert("✅ Đã xóa các dòng lỗi thời đang chuyển của cơ sở mình.");
+  const checkResult = await recheckNeedStockCheckOrders(canMove);
+
+  alert(
+    `✅ Đã xóa ${deleteIds.length} dòng lỗi thời.\n` +
+    `Khôi phục dòng yêu cầu kiểm kho: ${checkResult.restored}\n` +
+    `Chuyển lỗi thời: ${checkResult.outdated}`
+  );
 
   popupOpen = false;
   document.getElementById("dhck-panel")?.remove();
