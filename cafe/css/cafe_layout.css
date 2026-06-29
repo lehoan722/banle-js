@@ -554,3 +554,23 @@ body {
   color: var(--cafe-blue);
   text-decoration: underline;
 }
+
+.cafe-order-subline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btnRemoveOrderItem {
+  border: none;
+  background: #fff1f1;
+  color: #c62828;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btnRemoveOrderItem:hover {
+  background: #ffdada;
+}
