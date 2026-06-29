@@ -1483,7 +1483,7 @@ function showBayMauPopup(tasks, context) {
       box.style.height = "34px";
       box.style.overflow = "hidden";
       box.style.padding = "6px 10px";
-      box.style.marginTop = "calc(100vh - 198px)";
+      box.style.marginTop = "calc(100vh - 138px)";
     } else {
       body.style.display = "";
 
