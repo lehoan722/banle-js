@@ -37,7 +37,7 @@ body {
   padding: 0 22px;
   border: none;
   border-radius: 22px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   color: white;
   font-weight: 700;
   cursor: pointer;
@@ -71,7 +71,7 @@ body {
 .cafe-round-btn,
 .cafe-icon-btn {
   border: none;
-  background: rgba(255,255,255,0.18);
+  background: rgba(255, 255, 255, 0.18);
   color: white;
   border-radius: 50%;
   width: 38px;
@@ -131,15 +131,15 @@ body {
 .cafe-table-grid {
   flex: 1;
   overflow: auto;
-  padding: 14px 20px;
+  padding: 14px 18px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  grid-template-columns: repeat(6, 1fr);
   align-content: start;
   gap: 14px;
 }
 
 .cafe-table-card {
-  height: 126px;
+  height: 112px;
   border-radius: 10px;
   background: white;
   border: 1px solid transparent;
@@ -387,7 +387,7 @@ body {
   flex-wrap: nowrap;
 }
 
-.cafe-product-tabs > button {
+.cafe-product-tabs>button {
   border: none;
   background: white;
   padding: 10px 13px;
@@ -398,7 +398,7 @@ body {
   white-space: nowrap;
 }
 
-.cafe-product-tabs > button.active {
+.cafe-product-tabs>button.active {
   background: var(--cafe-blue);
   color: white;
 }
@@ -408,7 +408,7 @@ body {
   margin-left: auto;
 }
 
-.cafe-product-more > button {
+.cafe-product-more>button {
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -454,15 +454,15 @@ body {
 .cafe-product-grid {
   flex: 1;
   overflow: auto;
-  padding: 18px;
+  padding: 14px 18px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  grid-template-columns: repeat(6, 1fr);
   align-content: start;
-  gap: 14px;
+  gap: 12px;
 }
 
 .cafe-product-card {
-  height: 170px;
+  height: 128px;
   border-radius: 10px;
   overflow: hidden;
   background: #f4f6f8;
@@ -477,7 +477,7 @@ body {
 }
 
 .cafe-product-image {
-  height: 105px;
+  height: 72px;
   background: #dfeeff;
   display: flex;
   align-items: center;
@@ -485,14 +485,14 @@ body {
 }
 
 .cafe-product-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
 }
 
 .cafe-product-price {
   position: absolute;
-  top: 92px;
+  top: 62px;
   left: 50%;
   transform: translateX(-50%);
   background: white;
@@ -504,7 +504,7 @@ body {
 }
 
 .cafe-product-name {
-  height: 65px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
