@@ -40,63 +40,18 @@
     <main class="cafe-main">
       <section class="cafe-left-panel">
         <div id="viewTables" class="cafe-view active">
-          <div class="cafe-zone-tabs">
-            <button class="active">Tất cả</button>
-            <button>tầng 1</button>
-            <button>tầng 2</button>
-            <button>sân vườn</button>
-            <button>lầu trái</button>
-            <button>lầu phải</button>
-          </div>
+          <div id="cafeZoneTabs" class="cafe-zone-tabs"></div>
 
           <div class="cafe-table-filter">
-            <label><input type="radio" checked /> Tất cả (68)</label>
-            <label><input type="radio" /> Sử dụng (6)</label>
-            <label><input type="radio" /> Còn trống (62)</label>
+            <label><input type="radio" name="tableStatus" value="all" checked /> Tất cả (<span
+                id="countAllTables">0</span>)</label>
+            <label><input type="radio" name="tableStatus" value="using" /> Sử dụng (<span
+                id="countUsingTables">0</span>)</label>
+            <label><input type="radio" name="tableStatus" value="empty" /> Còn trống (<span
+                id="countEmptyTables">0</span>)</label>
           </div>
 
-          <div class="cafe-table-grid">
-            <div class="cafe-table-card takeaway">
-              <div class="cafe-table-icon">🛍️</div>
-              <div>Mang về</div>
-            </div>
-
-            <div class="cafe-table-card active">
-              <div class="cafe-table-icon">▭</div>
-              <div>Bàn 01</div>
-              <small>Nhập ghi chú...</small>
-            </div>
-
-            <div class="cafe-table-card using">
-              <div class="cafe-table-icon">▭</div>
-              <div>Bàn 02</div>
-            </div>
-
-            <div class="cafe-table-card">
-              <div class="cafe-table-icon">▭</div>
-              <div>Bàn 03</div>
-            </div>
-
-            <div class="cafe-table-card">
-              <div class="cafe-table-icon">▭</div>
-              <div>Bàn 04</div>
-            </div>
-
-            <div class="cafe-table-card">
-              <div class="cafe-table-icon">▭</div>
-              <div>Bàn 05</div>
-            </div>
-
-            <div class="cafe-table-card">
-              <div class="cafe-table-icon">▭</div>
-              <div>Bàn 06</div>
-            </div>
-
-            <div class="cafe-table-card">
-              <div class="cafe-table-icon">▭</div>
-              <div>Bàn 07</div>
-            </div>
-          </div>
+          <div id="cafeTableGrid" class="cafe-table-grid"></div>
 
           <div class="cafe-left-footer">
             <label><input type="checkbox" /> Mở thực đơn khi chọn bàn</label>
