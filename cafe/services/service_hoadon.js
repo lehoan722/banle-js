@@ -8,34 +8,62 @@ function taoSoHoaDonCafe() {
   return `CF${ymd}-${time}`;
 }
 
-export async function luuHoaDonCafe({ ban, orderItems, manv = null, tennv = null }) {
+export async function luuHoaDonCafe({ hoaDonId = null, ban, orderItems, manv = null, tennv = null }) {
   if (!ban) throw new Error("Chưa chọn bàn.");
   if (!orderItems?.length) throw new Error("Chưa có món trong đơn.");
 
   const tongTien = orderItems.reduce((sum, item) => sum + Number(item.thanh_tien || 0), 0);
 
-  const hoaDonPayload = {
-    so_hoadon: taoSoHoaDonCafe(),
-    ban_id: ban.id === "takeaway" ? null : ban.id,
-    khuvuc_id: ban.id === "takeaway" ? null : ban.khuvuc_id,
-    loai_don: ban.id === "takeaway" ? "mang_ve" : "tai_ban",
-    trang_thai: "dang_mo",
-    tong_tien: tongTien,
-    giam_gia: 0,
-    thanh_toan: tongTien,
-    ghi_chu: null,
-    manv,
-    tennv,
-  };
+  let hoaDon;
 
-  const { data: hoaDon, error: hdError } = await supabase
-    .schema(CAFE_SCHEMA)
-    .from(CAFE_TABLES.HOADON)
-    .insert(hoaDonPayload)
-    .select("id, so_hoadon")
-    .single();
+  if (hoaDonId) {
+    const { data, error } = await supabase
+      .schema(CAFE_SCHEMA)
+      .from(CAFE_TABLES.HOADON)
+      .update({
+        tong_tien: tongTien,
+        thanh_toan: tongTien,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", hoaDonId)
+      .select("id, so_hoadon")
+      .single();
 
-  if (hdError) throw hdError;
+    if (error) throw error;
+    hoaDon = data;
+
+    const { error: deleteError } = await supabase
+      .schema(CAFE_SCHEMA)
+      .from(CAFE_TABLES.HOADON_CT)
+      .delete()
+      .eq("hoadon_id", hoaDonId);
+
+    if (deleteError) throw deleteError;
+  } else {
+    const hoaDonPayload = {
+      so_hoadon: taoSoHoaDonCafe(),
+      ban_id: ban.id === "takeaway" ? null : ban.id,
+      khuvuc_id: ban.id === "takeaway" ? null : ban.khuvuc_id,
+      loai_don: ban.id === "takeaway" ? "mang_ve" : "tai_ban",
+      trang_thai: "dang_mo",
+      tong_tien: tongTien,
+      giam_gia: 0,
+      thanh_toan: tongTien,
+      ghi_chu: null,
+      manv,
+      tennv,
+    };
+
+    const { data, error } = await supabase
+      .schema(CAFE_SCHEMA)
+      .from(CAFE_TABLES.HOADON)
+      .insert(hoaDonPayload)
+      .select("id, so_hoadon")
+      .single();
+
+    if (error) throw error;
+    hoaDon = data;
+  }
 
   const ctPayload = orderItems.map((item) => ({
     hoadon_id: hoaDon.id,
