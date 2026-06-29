@@ -1,0 +1,193 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 18px;
+  font-family: Arial, sans-serif;
+  background: #f3f7fb;
+  color: #17212b;
+}
+
+.report-app {
+  width: 100%;
+}
+
+h2 {
+  margin: 0 0 14px;
+  color: #005fbd;
+}
+
+.filter-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+  background: #fff;
+  border: 1px solid #dce5ee;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 4px 14px rgba(15, 60, 120, 0.08);
+}
+
+.filter-box label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #435160;
+}
+
+input,
+select {
+  height: 34px;
+  min-width: 130px;
+  border: 1px solid #cfd9e3;
+  border-radius: 6px;
+  padding: 0 8px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.primary-btn,
+.secondary-btn {
+  height: 36px;
+  border: none;
+  border-radius: 7px;
+  padding: 0 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-btn {
+  background: #0573d9;
+  color: #fff;
+}
+
+.secondary-btn {
+  background: #eef5fb;
+  color: #005fbd;
+  border: 1px solid #bcd5ef;
+}
+
+.summary-box {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: #e9f4ff;
+  border: 1px solid #c9e4ff;
+  border-radius: 8px;
+  color: #005fbd;
+  font-size: 17px;
+}
+
+.table-wrap {
+  background: #fff;
+  border: 1px solid #dce5ee;
+  border-radius: 10px;
+  overflow: auto;
+  max-height: calc(100vh - 210px);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  border: 1px solid #e1e8ef;
+  padding: 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: #f7fbff;
+  z-index: 2;
+}
+
+tbody tr:hover {
+  background: #fff4ce;
+  cursor: pointer;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.status-dang_mo {
+  color: #d97706;
+  font-weight: 700;
+}
+
+.status-da_thanh_toan {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.status-da_huy {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.popup {
+  display: none;
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  width: 720px;
+  height: 360px;
+  background: #fff;
+  border: 2px solid #0573d9;
+  border-radius: 9px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+  padding: 14px;
+  overflow: auto;
+  resize: both;
+  z-index: 9999;
+}
+
+.popup-header {
+  cursor: move;
+  background: #eef6ff;
+  margin: -14px -14px 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #bcd5ef;
+  font-weight: 700;
+  color: #005fbd;
+  user-select: none;
+}
+
+#btnClosePopup {
+  float: right;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.copy-detail {
+  float: right;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 800px) {
+  body {
+    padding: 8px;
+  }
+
+  .popup {
+    width: 94vw;
+    left: 3vw;
+  }
+
+  input,
+  select {
+    min-width: 150px;
+  }
+}
