@@ -8,7 +8,7 @@ const state = {
   khuVucList: [],
   banList: [],
   hangHoaList: [],
-  orderItems: [],
+  ordersByBan: {},
   selectedBan: null,
   selectedKhuVucId: "all",
   selectedStatus: "all",
@@ -112,6 +112,7 @@ function selectBan(ban) {
   }
 
   renderBan();
+  renderOrder();
 }
 
 function renderBan() {
@@ -120,16 +121,18 @@ function renderBan() {
   const list = getFilteredBanList();
 
   const isTakeawayActive = state.selectedBan?.id === "takeaway" ? "active" : "";
+  const takeawayHasOrder = (state.ordersByBan["takeaway"] || []).length > 0 ? "using" : "";
 
   const mangVeCard = `
-  <div class="cafe-table-card takeaway ${isTakeawayActive}" data-ban-id="takeaway">
+  <div class="cafe-table-card takeaway ${takeawayHasOrder} ${isTakeawayActive}" data-ban-id="takeaway">
       <div class="cafe-table-icon">🛍️</div>
       <div>Mang về</div>
     </div>
   `;
 
   const banCards = list.map((ban) => {
-    const isUsing = ban.trang_thai === "dang_dung";
+    const orderOfBan = state.ordersByBan[String(ban.id)] || [];
+    const isUsing = ban.trang_thai === "dang_dung" || orderOfBan.length > 0;
     const isActive = state.selectedBan && String(state.selectedBan.id) === String(ban.id);
     const cls = `${isUsing ? "using" : ""} ${isActive ? "active" : ""}`;
 
@@ -196,8 +199,31 @@ function renderProducts() {
   });
 }
 
+function getSelectedBanKey() {
+  if (!state.selectedBan) return null;
+  return String(state.selectedBan.id);
+}
+
+function getCurrentOrderItems() {
+  const key = getSelectedBanKey();
+  if (!key) return [];
+
+  if (!state.ordersByBan[key]) {
+    state.ordersByBan[key] = [];
+  }
+
+  return state.ordersByBan[key];
+}
+
 function addProductToOrder(product) {
-  const found = state.orderItems.find((x) => Number(x.id) === Number(product.id));
+  if (!state.selectedBan) {
+    alert("Vui lòng chọn bàn trước khi chọn món.");
+    return;
+  }
+
+  const orderItems = getCurrentOrderItems();
+
+  const found = orderItems.find((x) => Number(x.id) === Number(product.id));
 
   if (found) {
     found.so_luong += 1;
@@ -205,7 +231,7 @@ function addProductToOrder(product) {
   } else {
     const donGia = Number(product.gia_ban || 0);
 
-    state.orderItems.push({
+    orderItems.push({
       id: product.id,
       ma_hang: product.ma_hang,
       ten_hang: product.ten_hang,
@@ -217,27 +243,33 @@ function addProductToOrder(product) {
   }
 
   renderOrder();
+  renderBan();
 }
 
 function updateOrderQty(productId, change) {
-  const item = state.orderItems.find((x) => Number(x.id) === Number(productId));
+  const orderItems = getCurrentOrderItems();
+
+  const item = orderItems.find((x) => Number(x.id) === Number(productId));
   if (!item) return;
 
   item.so_luong += change;
 
   if (item.so_luong <= 0) {
-    state.orderItems = state.orderItems.filter((x) => Number(x.id) !== Number(productId));
+    const key = getSelectedBanKey();
+    state.ordersByBan[key] = orderItems.filter((x) => Number(x.id) !== Number(productId));
   } else {
     item.thanh_tien = item.so_luong * item.don_gia;
   }
 
   renderOrder();
+  renderBan();
 }
 
 function renderOrder() {
   if (!cafeOrderList) return;
+  const orderItems = getCurrentOrderItems();
 
-  if (!state.orderItems.length) {
+  if (!orderItems.length) {
     cafeOrderList.innerHTML = `
       <div class="cafe-empty-order">
         <div class="cafe-empty-icon">🧾</div>
@@ -246,7 +278,7 @@ function renderOrder() {
       </div>
     `;
   } else {
-    cafeOrderList.innerHTML = state.orderItems.map((item, index) => {
+    cafeOrderList.innerHTML = orderItems.map((item, index) => {
       return `
         <div class="cafe-order-row" data-product-id="${item.id}">
           <div class="cafe-order-info">
@@ -267,8 +299,8 @@ function renderOrder() {
     }).join("");
   }
 
-  const totalQty = state.orderItems.reduce((sum, item) => sum + item.so_luong, 0);
-  const totalMoney = state.orderItems.reduce((sum, item) => sum + item.thanh_tien, 0);
+  const totalQty = orderItems.reduce((sum, item) => sum + item.so_luong, 0);
+  const totalMoney = orderItems.reduce((sum, item) => sum + item.thanh_tien, 0);
 
   if (cafeTotalQty) cafeTotalQty.textContent = totalQty;
   if (cafeTotalMoney) cafeTotalMoney.textContent = formatMoney(totalMoney);
