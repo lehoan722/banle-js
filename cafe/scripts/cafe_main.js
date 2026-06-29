@@ -334,6 +334,18 @@ function updateOrderQty(productId, change) {
   renderBan();
 }
 
+function updateOrderNote(productId) {
+  const orderItems = getCurrentOrderItems();
+  const item = orderItems.find((x) => Number(x.id) === Number(productId));
+  if (!item) return;
+
+  const note = prompt("Nhập ghi chú cho món:", item.ghi_chu || "");
+  if (note === null) return;
+
+  item.ghi_chu = note.trim();
+  renderOrder();
+}
+
 function renderOrder() {
   if (!cafeOrderList) return;
   const orderItems = getCurrentOrderItems();
@@ -352,7 +364,9 @@ function renderOrder() {
         <div class="cafe-order-row" data-product-id="${item.id}">
           <div class="cafe-order-info">
             <strong>${index + 1}. ${item.ten_hang}</strong>
-            <small>▧ Ghi chú/Món thêm</small>
+            <small class="btnOrderNote" data-id="${item.id}">
+  ▧ ${item.ghi_chu ? item.ghi_chu : "Ghi chú/Món thêm"}
+</small>
           </div>
 
           <div class="cafe-qty-box">
@@ -385,6 +399,13 @@ function renderOrder() {
       updateOrderQty(btn.dataset.id, 1);
     });
   });
+
+  cafeOrderList.querySelectorAll(".btnOrderNote").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      updateOrderNote(btn.dataset.id);
+    });
+  });
+
 }
 
 async function handleLuuHoaDonTam() {
