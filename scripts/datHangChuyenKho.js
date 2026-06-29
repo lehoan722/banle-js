@@ -356,14 +356,7 @@ async function autoMarkOutdatedNewOrders(rows) {
       const stillNeeded = info.keys.has(key);
 
       if (!stillNeeded) {
-        console.warn("DHCK BỎ QUA DÒNG KHÔNG CÒN GỢI Ý - KHÔNG ĐÁNH LỖI THỜI", {
-          id: r.id,
-          masp: r.masp,
-          size: r.size,
-          huong: r.huong_chuyen,
-          key,
-          suggestionKeys: [...info.keys]
-        });
+        outdatedIds.push(Number(r.id));
       }
     });
 
