@@ -136,23 +136,7 @@
           <button class="cafe-icon-btn">＋</button>
         </div>
 
-        <div class="cafe-order-list">
-          <div class="cafe-order-row">
-            <div class="cafe-order-info">
-              <strong>1. NƯỚC CHANH</strong>
-              <small>▧ Ghi chú/Món thêm</small>
-            </div>
-
-            <div class="cafe-qty-box">
-              <button>−</button>
-              <span>1</span>
-              <button>＋</button>
-            </div>
-
-            <div class="cafe-price">20,000</div>
-            <div class="cafe-price bold">20,000</div>
-          </div>
-        </div>
+        <div id="cafeOrderList" class="cafe-order-list"></div>
 
         <div class="cafe-order-notice">
           🔔 Bạn vừa cập nhật đơn hàng. Click <b>Thông báo</b> để gửi thông tin chế biến đến bar bếp.
@@ -167,7 +151,7 @@
           </div>
 
           <div class="cafe-total">
-            Tổng tiền <span>1</span> <strong>20,000</strong>
+            Tổng tiền <span id="cafeTotalQty">0</span> <strong id="cafeTotalMoney">0</strong>
           </div>
 
           <div class="cafe-action-row">
