@@ -149,8 +149,17 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
     }
 
     if (!stillValid) {
-    outdatedIds.push(Number(row.id));
-}
+      console.warn("STOCK BALANCE BỎ QUA DÒNG KHÔNG CÒN GỢI Ý - KHÔNG ĐÁNH LỖI THỜI", {
+        id: row.id,
+        masp: row.masp,
+        size: row.size,
+        huong: row.huong_chuyen,
+        key,
+        suggestionKeySet: [...suggestionKeySet]
+      });
+
+      continue;
+    }
   }
 
   if (needCheckIds.length) {
