@@ -365,3 +365,151 @@ body {
   color: white;
   border: none;
 }
+
+.cafe-view {
+  display: none;
+  height: 100%;
+  flex-direction: column;
+}
+
+.cafe-view.active {
+  display: flex;
+}
+
+.cafe-product-tabs {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--cafe-border);
+  position: relative;
+  flex-wrap: nowrap;
+}
+
+.cafe-product-tabs > button {
+  border: none;
+  background: white;
+  padding: 10px 13px;
+  border-radius: 20px;
+  font-weight: 700;
+  color: #4c5966;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cafe-product-tabs > button.active {
+  background: var(--cafe-blue);
+  color: white;
+}
+
+.cafe-product-more {
+  position: relative;
+  margin-left: auto;
+}
+
+.cafe-product-more > button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.cafe-product-more-menu {
+  display: none;
+  position: absolute;
+  top: 44px;
+  right: 0;
+  width: 230px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: var(--cafe-shadow);
+  padding: 8px;
+  z-index: 20;
+}
+
+.cafe-product-more-menu.open {
+  display: flex;
+  flex-direction: column;
+}
+
+.cafe-product-more-menu button {
+  border: none;
+  background: white;
+  text-align: left;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.cafe-product-more-menu button:hover {
+  background: var(--cafe-blue-soft);
+  color: var(--cafe-blue);
+}
+
+.cafe-product-grid {
+  flex: 1;
+  overflow: auto;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  align-content: start;
+  gap: 14px;
+}
+
+.cafe-product-card {
+  height: 170px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f4f6f8;
+  border: 1px solid #e2ebf3;
+  cursor: pointer;
+  position: relative;
+}
+
+.cafe-product-card:hover {
+  box-shadow: var(--cafe-shadow);
+  transform: translateY(-1px);
+}
+
+.cafe-product-image {
+  height: 105px;
+  background: #dfeeff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cafe-product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cafe-product-price {
+  position: absolute;
+  top: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  color: var(--cafe-blue);
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+
+.cafe-product-name {
+  height: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8px;
+  font-weight: 700;
+  font-size: 14px;
+}
