@@ -86,3 +86,23 @@ export async function luuHoaDonCafe({ hoaDonId = null, ban, orderItems, manv = n
 
   return hoaDon;
 }
+
+export async function thanhToanHoaDonCafe(hoaDonId) {
+  if (!hoaDonId) throw new Error("Thiếu ID hóa đơn.");
+
+  const { data, error } = await supabase
+    .schema(CAFE_SCHEMA)
+    .from(CAFE_TABLES.HOADON)
+    .update({
+      trang_thai: "da_thanh_toan",
+      gio_thanh_toan: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", hoaDonId)
+    .select("id, so_hoadon")
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
