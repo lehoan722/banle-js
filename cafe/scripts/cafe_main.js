@@ -2,6 +2,7 @@ import { loadKhuVuc } from "../services/service_khuvuc.js";
 import { loadBan } from "../services/service_ban.js";
 import { loadHangHoa } from "../services/service_hanghoa.js";
 import { luuHoaDonCafe, thanhToanHoaDonCafe, loadHoaDonDangMo } from "../services/service_hoadon.js";
+import { loadNhomHang } from "../services/service_nhomhang.js";
 
 console.log("Cafe bán hàng loaded");
 
@@ -9,11 +10,14 @@ const state = {
   khuVucList: [],
   banList: [],
   hangHoaList: [],
+  nhomHangList: [],
+
   ordersByBan: {},
   hoaDonByBan: {},
   selectedBan: null,
   selectedKhuVucId: "all",
   selectedStatus: "all",
+  selectedNhomId: "all",
 };
 
 const btnViewTables = document.getElementById("btnViewTables");
@@ -38,6 +42,7 @@ const cafeProductGrid = document.querySelector(".cafe-product-grid");
 const cafeCurrentTable = document.querySelector(".cafe-current-table strong");
 const btnThongBao = document.querySelector(".cafe-outline-btn");
 const btnThanhToan = document.querySelector(".cafe-primary-btn");
+const cafeProductTabs = document.querySelector(".cafe-product-tabs");
 
 function setLeftView(viewName) {
   const isTables = viewName === "tables";
@@ -174,10 +179,60 @@ function formatMoney(value) {
   return number.toLocaleString("vi-VN");
 }
 
+function renderProductTabs() {
+  if (!cafeProductTabs) return;
+
+  const visibleGroups = state.nhomHangList.slice(0, 6);
+  const hiddenGroups = state.nhomHangList.slice(6);
+
+  const mainButtons = [
+    `<button class="${state.selectedNhomId === "all" ? "active" : ""}" data-nhom-id="all">Tất cả</button>`,
+    ...visibleGroups.map((nhom) => {
+      const active = String(state.selectedNhomId) === String(nhom.id) ? "active" : "";
+      return `<button class="${active}" data-nhom-id="${nhom.id}">${nhom.ten_nhom}</button>`;
+    }),
+  ];
+
+  const moreButtons = hiddenGroups.map((nhom) => {
+    const active = String(state.selectedNhomId) === String(nhom.id) ? "active" : "";
+    return `<button class="${active}" data-nhom-id="${nhom.id}">${nhom.ten_nhom}</button>`;
+  });
+
+  cafeProductTabs.innerHTML = `
+    ${mainButtons.join("")}
+    <div class="cafe-product-more">
+      <button id="btnProductMore">⌄</button>
+      <div id="productMoreMenu" class="cafe-product-more-menu">
+        ${moreButtons.join("")}
+      </div>
+    </div>
+  `;
+
+  cafeProductTabs.querySelectorAll("[data-nhom-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.selectedNhomId = btn.dataset.nhomId;
+      renderProductTabs();
+      renderProducts();
+    });
+  });
+
+  const btnMore = document.getElementById("btnProductMore");
+  const moreMenu = document.getElementById("productMoreMenu");
+
+  btnMore?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    moreMenu?.classList.toggle("open");
+  });
+}
+
 function renderProducts() {
   if (!cafeProductGrid) return;
 
-  const products = state.hangHoaList.slice(0, 24);
+  let products = [...state.hangHoaList];
+
+  if (state.selectedNhomId !== "all") {
+    products = products.filter((item) => String(item.nhom_id) === String(state.selectedNhomId));
+  }
 
   cafeProductGrid.innerHTML = products.map((item) => {
     const imageUrl = item.hinh_anh_url || "./assets/images/default-food.jpg";
@@ -432,6 +487,7 @@ async function initTables() {
     state.khuVucList = await loadKhuVuc();
     state.banList = await loadBan();
     state.hangHoaList = await loadHangHoa();
+    state.nhomHangList = await loadNhomHang();
 
     await restoreHoaDonDangMo();
 
@@ -440,6 +496,7 @@ async function initTables() {
     if (!state.selectedBan && state.banList.length) {
       selectBan(state.banList[0]);
     }
+    renderProductTabs();
     renderProducts();
     renderOrder();
   } catch (error) {
@@ -456,11 +513,6 @@ btnViewTables?.addEventListener("click", () => {
 
 btnViewProducts?.addEventListener("click", () => {
   setLeftView("products");
-});
-
-btnProductMore?.addEventListener("click", (event) => {
-  event.stopPropagation();
-  productMoreMenu?.classList.toggle("open");
 });
 
 document.addEventListener("click", () => {
