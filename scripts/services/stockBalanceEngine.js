@@ -67,8 +67,6 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
 
   if (!masps.length) return { ok: true, skipped: true };
 
-  console.log("[StockBalance] sync:", { masps, meta });
-
   const { data: pendingRows, error: pendingErr } = await supabase
     .from("dat_hang_chuyen_kho")
     .select("*")
@@ -92,12 +90,7 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
     }
 
     const suggestions = calcSuggestionsFromRows(rows, masp);
-    console.log("[StockBalance DEBUG]", {
-      masp,
-      rows,
-      suggestions,
-      suggestionKeys: suggestions.map(makeKey)
-    });
+
     allSuggestions = allSuggestions.concat(suggestions);
   }
 
@@ -122,42 +115,15 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
     }
 
     const stillValid = suggestionKeySet.has(key);
-    console.log("[StockBalance CHECK]", {
-      id: row.id,
-      masp: row.masp,
-      size: row.size,
-      huong: row.huong_chuyen,
-      key,
-      stillValid,
-      suggestionKeySet: Array.from(suggestionKeySet)
-    });
 
     if (status === "yeu_cau_kiem_kho") {
       if (stillValid) {
         restoreFromCheckIds.push(Number(row.id));
-      } else {
-        console.warn("STOCK BALANCE GIỮ DÒNG YÊU CẦU KIỂM KHO - KHÔNG ĐÁNH LỖI THỜI", {
-          id: row.id,
-          masp: row.masp,
-          size: row.size,
-          huong: row.huong_chuyen,
-          key,
-          suggestionKeySet: [...suggestionKeySet]
-        });
       }
       continue;
     }
 
     if (!stillValid) {
-      console.warn("STOCK BALANCE BỎ QUA DÒNG KHÔNG CÒN GỢI Ý - KHÔNG ĐÁNH LỖI THỜI", {
-        id: row.id,
-        masp: row.masp,
-        size: row.size,
-        huong: row.huong_chuyen,
-        key,
-        suggestionKeySet: [...suggestionKeySet]
-      });
-
       continue;
     }
   }
@@ -194,41 +160,9 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
     }
   }
 
-  if (outdatedIds.length) {
-
-    console.warn("========== STOCK BALANCE ĐÁNH LỖI THỜI ==========");
-    console.table(
-      (pendingRows || [])
-        .filter(r => outdatedIds.includes(Number(r.id)))
-        .map(r => ({
-          id: r.id,
-          masp: r.masp,
-          size: r.size,
-          huong: r.huong_chuyen,
-          trang_thai: r.trang_thai
-        }))
-    );
-
-    const { error } = await supabase
-      .from("dat_hang_chuyen_kho")
-      .update({
-        trang_thai: "loi_thoi",
-        chon_chuyen: false,
-        updated_at: new Date().toISOString()
-      })
-      .in("id", outdatedIds);
-
-    if (error) {
-      console.error("[StockBalance] Lỗi đánh lỗi thời:", error);
-    }
-  }
-
   const activeKeySet = new Set(
     (pendingRows || [])
-      .filter(r =>
-        !outdatedIds.includes(Number(r.id)) &&
-        !needCheckIds.includes(Number(r.id))
-      )
+      .filter(r => !needCheckIds.includes(Number(r.id)))
       .map(makeKey)
   );
 
@@ -270,7 +204,6 @@ export async function syncStockBalanceByMasps(maspsInput = [], meta = {}) {
     negative: Array.from(negativeMasps),
     need_check: needCheckIds.length,
     restored_from_check: restoreFromCheckIds.length,
-    outdated: outdatedIds.length,
     inserted: rowsToInsert.length
   };
 }
