@@ -1,7 +1,7 @@
 import { loadKhuVuc } from "../services/service_khuvuc.js";
 import { loadBan } from "../services/service_ban.js";
 import { loadHangHoa } from "../services/service_hanghoa.js";
-import { luuHoaDonCafe } from "../services/service_hoadon.js";
+import { luuHoaDonCafe, thanhToanHoaDonCafe } from "../services/service_hoadon.js";
 
 console.log("Cafe bán hàng loaded");
 
@@ -37,6 +37,7 @@ const cafeTotalMoney = document.getElementById("cafeTotalMoney");
 const cafeProductGrid = document.querySelector(".cafe-product-grid");
 const cafeCurrentTable = document.querySelector(".cafe-current-table strong");
 const btnThongBao = document.querySelector(".cafe-outline-btn");
+const btnThanhToan = document.querySelector(".cafe-primary-btn");
 
 function setLeftView(viewName) {
   const isTables = viewName === "tables";
@@ -355,6 +356,54 @@ async function handleLuuHoaDonTam() {
   }
 }
 
+async function handleThanhToan() {
+  try {
+    const banKey = getSelectedBanKey();
+    const orderItems = getCurrentOrderItems();
+
+    if (!state.selectedBan) {
+      alert("Vui lòng chọn bàn.");
+      return;
+    }
+
+    if (!orderItems.length) {
+      alert("Chưa có món trong đơn.");
+      return;
+    }
+
+    let hoaDon = state.hoaDonByBan[banKey];
+
+    if (!hoaDon?.id) {
+      hoaDon = await luuHoaDonCafe({
+        hoaDonId: null,
+        ban: state.selectedBan,
+        orderItems,
+        manv: null,
+        tennv: "admin",
+      });
+
+      state.hoaDonByBan[banKey] = hoaDon;
+    }
+
+    const ok = confirm(`Thanh toán hóa đơn ${hoaDon.so_hoadon}?`);
+    if (!ok) return;
+
+    await thanhToanHoaDonCafe(hoaDon.id);
+
+    delete state.ordersByBan[banKey];
+    delete state.hoaDonByBan[banKey];
+
+    renderOrder();
+    renderBan();
+
+    alert("Đã thanh toán hóa đơn.");
+
+  } catch (error) {
+    console.error("Lỗi thanh toán cafe:", error);
+    alert("Không thanh toán được hóa đơn. Xem Console để kiểm tra lỗi.");
+  }
+}
+
 async function initTables() {
   try {
     state.khuVucList = await loadKhuVuc();
@@ -401,4 +450,5 @@ document.querySelectorAll('input[name="tableStatus"]').forEach((radio) => {
 });
 
 btnThongBao?.addEventListener("click", handleLuuHoaDonTam);
+btnThanhToan?.addEventListener("click", handleThanhToan);
 initTables();
