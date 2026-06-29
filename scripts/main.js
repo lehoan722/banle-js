@@ -1229,7 +1229,7 @@ function showBayMauPopup(tasks, context) {
   const box = document.createElement("div");
   box.id = "baymau-popup";
   Object.assign(box.style, {
-    marginTop: "96px",
+    marginTop: "calc(100vh - 138px)",
     marginLeft: "6px",
     minWidth: "320px",
     maxWidth: "520px",
@@ -1251,6 +1251,11 @@ function showBayMauPopup(tasks, context) {
     justifyContent: "space-between",
     marginBottom: "4px",
     fontWeight: "600",
+    cursor: "pointer",
+    position: "sticky",
+    top: "0",
+    background: "#f7e0b3",
+    zIndex: "2",
   });
   const yesterdayCount = tasks.filter(x => x.task_age === "YESTERDAY").length;
   const todayCount = tasks.filter(x => x.task_age === "TODAY").length;
@@ -1459,10 +1464,48 @@ function showBayMauPopup(tasks, context) {
     });
   });
 
+  const body = document.createElement("div");
+  body.id = "baymau-body";
+  body.appendChild(table);
+
   box.appendChild(header);
-  box.appendChild(table);
+  box.appendChild(body);
   overlay.appendChild(box);
   document.body.appendChild(overlay);
+
+  let bayMauCollapsed = true;
+
+  function applyBayMauCollapsed() {
+    if (bayMauCollapsed) {
+      body.style.display = "none";
+
+      box.style.maxHeight = "34px";
+      box.style.height = "34px";
+      box.style.overflow = "hidden";
+      box.style.padding = "6px 10px";
+      box.style.marginTop = "calc(100vh - 138px)";
+    } else {
+      body.style.display = "";
+
+      box.style.height = "auto";
+      box.style.maxHeight = "45vh";
+      box.style.overflow = "auto";
+      box.style.padding = "8px 10px";
+      box.style.marginTop = "96px";
+    }
+  }
+
+  function toggleBayMauPopup() {
+    bayMauCollapsed = !bayMauCollapsed;
+    applyBayMauCollapsed();
+  }
+
+  header.addEventListener("click", (e) => {
+    if (e.target === btnClose) return;
+    toggleBayMauPopup();
+  });
+
+  applyBayMauCollapsed();
 
   // === Hàm đóng popup: lưu bày mẫu + ghi chú + xác nhận ===
   async function closePopup() {
