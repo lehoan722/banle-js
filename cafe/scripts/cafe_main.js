@@ -182,8 +182,8 @@ function formatMoney(value) {
 function renderProductTabs() {
   if (!cafeProductTabs) return;
 
-  const visibleGroups = state.nhomHangList.slice(0, 6);
-  const hiddenGroups = state.nhomHangList.slice(6);
+  const visibleGroups = state.nhomHangList.slice(0, 12);
+const hiddenGroups = state.nhomHangList.slice(12);
 
   const mainButtons = [
     `<button class="${state.selectedNhomId === "all" ? "active" : ""}" data-nhom-id="all">Tất cả</button>`,
