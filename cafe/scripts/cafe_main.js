@@ -18,6 +18,7 @@ const state = {
   selectedKhuVucId: "all",
   selectedStatus: "all",
   selectedNhomId: "all",
+  productSearchText: "",
 };
 
 const btnViewTables = document.getElementById("btnViewTables");
@@ -43,6 +44,7 @@ const cafeCurrentTable = document.querySelector(".cafe-current-table strong");
 const btnThongBao = document.querySelector(".cafe-outline-btn");
 const btnThanhToan = document.querySelector(".cafe-primary-btn");
 const cafeProductTabs = document.querySelector(".cafe-product-tabs");
+const cafeSearchInput = document.querySelector(".cafe-search-box input");
 
 function setLeftView(viewName) {
   const isTables = viewName === "tables";
@@ -183,7 +185,7 @@ function renderProductTabs() {
   if (!cafeProductTabs) return;
 
   const visibleGroups = state.nhomHangList.slice(0, 12);
-const hiddenGroups = state.nhomHangList.slice(12);
+  const hiddenGroups = state.nhomHangList.slice(12);
 
   const mainButtons = [
     `<button class="${state.selectedNhomId === "all" ? "active" : ""}" data-nhom-id="all">Tất cả</button>`,
@@ -230,7 +232,15 @@ function renderProducts() {
 
   let products = [...state.hangHoaList];
 
-  if (state.selectedNhomId !== "all") {
+  const searchText = state.productSearchText.trim().toLowerCase();
+
+  if (searchText) {
+    products = products.filter((item) => {
+      const tenHang = String(item.ten_hang || "").toLowerCase();
+      const maHang = String(item.ma_hang || "").toLowerCase();
+      return tenHang.includes(searchText) || maHang.includes(searchText);
+    });
+  } else if (state.selectedNhomId !== "all") {
     products = products.filter((item) => String(item.nhom_id) === String(state.selectedNhomId));
   }
 
@@ -528,4 +538,19 @@ document.querySelectorAll('input[name="tableStatus"]').forEach((radio) => {
 
 btnThongBao?.addEventListener("click", handleLuuHoaDonTam);
 btnThanhToan?.addEventListener("click", handleThanhToan);
+cafeSearchInput?.addEventListener("input", () => {
+  state.productSearchText = cafeSearchInput.value || "";
+  setLeftView("products");
+  renderProducts();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "F3") {
+    event.preventDefault();
+    setLeftView("products");
+    cafeSearchInput?.focus();
+    cafeSearchInput?.select();
+  }
+});
+
 initTables();
