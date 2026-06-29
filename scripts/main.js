@@ -1229,7 +1229,7 @@ function showBayMauPopup(tasks, context) {
   const box = document.createElement("div");
   box.id = "baymau-popup";
   Object.assign(box.style, {
-    marginTop: "calc(100vh - 178px)",
+    marginTop: "calc(100vh - 138px)",
     marginLeft: "6px",
     minWidth: "320px",
     maxWidth: "520px",
