@@ -106,3 +106,29 @@ export async function thanhToanHoaDonCafe(hoaDonId) {
 
   return data;
 }
+
+export async function loadHoaDonDangMo() {
+  const { data: hoaDons, error: hdError } = await supabase
+    .schema(CAFE_SCHEMA)
+    .from(CAFE_TABLES.HOADON)
+    .select("id, so_hoadon, ban_id, khuvuc_id, loai_don, trang_thai")
+    .eq("trang_thai", "dang_mo");
+
+  if (hdError) throw hdError;
+
+  const ids = (hoaDons || []).map((x) => x.id);
+  if (!ids.length) return [];
+
+  const { data: chiTiet, error: ctError } = await supabase
+    .schema(CAFE_SCHEMA)
+    .from(CAFE_TABLES.HOADON_CT)
+    .select("id, hoadon_id, hanghoa_id, ma_hang, ten_hang, so_luong, don_gia, thanh_tien, ghi_chu")
+    .in("hoadon_id", ids);
+
+  if (ctError) throw ctError;
+
+  return hoaDons.map((hd) => ({
+    ...hd,
+    chi_tiet: (chiTiet || []).filter((ct) => ct.hoadon_id === hd.id),
+  }));
+}
