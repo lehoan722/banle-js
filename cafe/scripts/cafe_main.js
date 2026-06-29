@@ -1,7 +1,7 @@
 import { loadKhuVuc } from "../services/service_khuvuc.js";
 import { loadBan } from "../services/service_ban.js";
 import { loadHangHoa } from "../services/service_hanghoa.js";
-import { luuHoaDonCafe, thanhToanHoaDonCafe } from "../services/service_hoadon.js";
+import { luuHoaDonCafe, thanhToanHoaDonCafe, loadHoaDonDangMo } from "../services/service_hoadon.js";
 
 console.log("Cafe bán hàng loaded");
 
@@ -404,11 +404,36 @@ async function handleThanhToan() {
   }
 }
 
+async function restoreHoaDonDangMo() {
+  const hoaDons = await loadHoaDonDangMo();
+
+  hoaDons.forEach((hd) => {
+    const banKey = hd.loai_don === "mang_ve" ? "takeaway" : String(hd.ban_id);
+
+    state.hoaDonByBan[banKey] = {
+      id: hd.id,
+      so_hoadon: hd.so_hoadon,
+    };
+
+    state.ordersByBan[banKey] = (hd.chi_tiet || []).map((ct) => ({
+      id: ct.hanghoa_id,
+      ma_hang: ct.ma_hang,
+      ten_hang: ct.ten_hang,
+      so_luong: Number(ct.so_luong || 0),
+      don_gia: Number(ct.don_gia || 0),
+      thanh_tien: Number(ct.thanh_tien || 0),
+      ghi_chu: ct.ghi_chu || "",
+    }));
+  });
+}
+
 async function initTables() {
   try {
     state.khuVucList = await loadKhuVuc();
     state.banList = await loadBan();
     state.hangHoaList = await loadHangHoa();
+
+    await restoreHoaDonDangMo();
 
     renderKhuVucTabs();
     renderBan();
