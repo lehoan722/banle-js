@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Báo cáo hóa đơn Cafe</title>
+
+  <link rel="stylesheet" href="./css/cafe_report.css" />
+</head>
+
+<body>
+  <div id="app-container" class="report-app">
+    <h2>📋 Báo cáo hóa đơn Cafe</h2>
+
+    <div class="filter-box">
+      <label>Từ ngày <input type="date" id="tuNgay" /></label>
+      <label>Đến ngày <input type="date" id="denNgay" /></label>
+      <label>Số HĐ <input type="text" id="locSoHD" placeholder="CF20260629..." /></label>
+      <label>NV <input type="text" id="locNV" placeholder="Mã/Tên NV" /></label>
+      <label>Bàn <input type="text" id="locBan" placeholder="Bàn 01" /></label>
+      <label>Khu vực <input type="text" id="locKhuVuc" placeholder="tầng 1" /></label>
+      <label>Món <input type="text" id="locMon" placeholder="NƯỚC CHANH" /></label>
+
+      <label>
+        Trạng thái
+        <select id="locTrangThai">
+          <option value="">Tất cả</option>
+          <option value="dang_mo">Đang mở</option>
+          <option value="da_thanh_toan">Đã thanh toán</option>
+          <option value="da_huy">Đã hủy</option>
+        </select>
+      </label>
+
+      <label>
+        Loại đơn
+        <select id="locLoaiDon">
+          <option value="">Tất cả</option>
+          <option value="tai_ban">Tại bàn</option>
+          <option value="mang_ve">Mang về</option>
+        </select>
+      </label>
+
+      <button id="btnLoc" class="primary-btn">🔍 Lọc hóa đơn</button>
+      <button id="btnCopyTable" class="secondary-btn">📋 Copy bảng</button>
+    </div>
+
+    <div class="summary-box">
+      Tổng hóa đơn: <b id="tongHoaDon">0</b> |
+      Tổng SL món: <b id="tongSoLuong">0</b> |
+      Tổng tiền: <b id="tongTien">0</b>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Số HĐ</th>
+            <th>Giờ vào</th>
+            <th>Giờ thanh toán</th>
+            <th>Khu vực</th>
+            <th>Bàn</th>
+            <th>Loại đơn</th>
+            <th>Trạng thái</th>
+            <th>NV</th>
+            <th>Tổng SL</th>
+            <th>Tổng tiền</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody id="dsHoaDon"></tbody>
+      </table>
+    </div>
+
+    <div id="popupChiTiet" class="popup">
+      <div class="popup-header" id="popupHeader">
+        Chi tiết hóa đơn: <span id="popupSoHD"></span>
+        <button id="btnClosePopup">✖</button>
+      </div>
+
+      <button id="btnCopyChiTiet" class="secondary-btn copy-detail">Copy chi tiết</button>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Mã món</th>
+            <th>Tên món</th>
+            <th>SL</th>
+            <th>Đơn giá</th>
+            <th>Thành tiền</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody id="dsChiTiet"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/cafe_xemhoadon.js"></script>
+</body>
+</html>
