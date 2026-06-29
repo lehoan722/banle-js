@@ -1229,7 +1229,7 @@ function showBayMauPopup(tasks, context) {
   const box = document.createElement("div");
   box.id = "baymau-popup";
   Object.assign(box.style, {
-    marginTop: "calc(100vh - 138px)",
+    marginTop: "calc(100vh - 105px)",
     marginLeft: "6px",
     minWidth: "320px",
     maxWidth: "520px",
@@ -1491,7 +1491,7 @@ function showBayMauPopup(tasks, context) {
       box.style.maxHeight = "45vh";
       box.style.overflow = "auto";
       box.style.padding = "8px 10px";
-      box.style.marginTop = "76px";
+      box.style.marginTop = "96px";
     }
   }
 
