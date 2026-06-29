@@ -78,6 +78,11 @@ function renderKhuVucTabs() {
   });
 }
 
+function isBanDangSuDung(ban) {
+  const orderOfBan = state.ordersByBan[String(ban.id)] || [];
+  return ban.trang_thai === "dang_dung" || orderOfBan.length > 0;
+}
+
 function getFilteredBanList() {
   let list = [...state.banList];
 
@@ -86,11 +91,11 @@ function getFilteredBanList() {
   }
 
   if (state.selectedStatus === "using") {
-    list = list.filter((ban) => ban.trang_thai === "dang_dung");
+    list = list.filter((ban) => isBanDangSuDung(ban));
   }
 
   if (state.selectedStatus === "empty") {
-    list = list.filter((ban) => ban.trang_thai === "trong");
+    list = list.filter((ban) => !isBanDangSuDung(ban));
   }
 
   return list;
@@ -98,8 +103,8 @@ function getFilteredBanList() {
 
 function renderCounts() {
   const all = state.banList.length;
-  const using = state.banList.filter((ban) => ban.trang_thai === "dang_dung").length;
-  const empty = state.banList.filter((ban) => ban.trang_thai === "trong").length;
+  const using = state.banList.filter((ban) => isBanDangSuDung(ban)).length;
+  const empty = state.banList.filter((ban) => !isBanDangSuDung(ban)).length;
 
   if (countAllTables) countAllTables.textContent = all;
   if (countUsingTables) countUsingTables.textContent = using;
@@ -142,8 +147,7 @@ function renderBan() {
   `;
 
   const banCards = list.map((ban) => {
-    const orderOfBan = state.ordersByBan[String(ban.id)] || [];
-    const isUsing = ban.trang_thai === "dang_dung" || orderOfBan.length > 0;
+    const isUsing = isBanDangSuDung(ban);
     const isActive = state.selectedBan && String(state.selectedBan.id) === String(ban.id);
     const cls = `${isUsing ? "using" : ""} ${isActive ? "active" : ""}`;
 
