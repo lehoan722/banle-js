@@ -3,6 +3,7 @@
 import {
   normSize,
   calcSuggestionsFromPayload,
+  calcSuggestionsFromRows,
   hasNegativeStockRows
 } from "./services/luatChuyenKho.js";
 
