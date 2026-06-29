@@ -131,6 +131,29 @@ function selectBan(ban) {
   renderOrder();
 }
 
+function formatThoiGianSuDung(gioVao) {
+  if (!gioVao) return "";
+
+  const start = new Date(gioVao);
+  const now = new Date();
+  const diffMs = now - start;
+
+  if (diffMs < 0) return "";
+
+  const totalMinutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours <= 0) return `${minutes} phút`;
+  return `${hours} giờ ${minutes} phút`;
+}
+
+function getThoiGianSuDungBan(banId) {
+  const hd = state.hoaDonByBan[String(banId)];
+  if (!hd?.gio_vao) return "";
+  return formatThoiGianSuDung(hd.gio_vao);
+}
+
 function renderBan() {
   if (!cafeTableGrid) return;
 
@@ -151,12 +174,15 @@ function renderBan() {
     const isActive = state.selectedBan && String(state.selectedBan.id) === String(ban.id);
     const cls = `${isUsing ? "using" : ""} ${isActive ? "active" : ""}`;
 
+    const usedTime = getThoiGianSuDungBan(ban.id);
+    const titleText = usedTime ? `${ban.ten_ban} đã sử dụng ${usedTime}` : ban.ten_ban;
+
     return `
-      <div class="cafe-table-card ${cls}" data-ban-id="${ban.id}">
-        <div class="cafe-table-icon">▭</div>
-        <div>${ban.ten_ban}</div>
-      </div>
-    `;
+  <div class="cafe-table-card ${cls}" data-ban-id="${ban.id}" title="${titleText}">
+    <div class="cafe-table-icon">▭</div>
+    <div>${ban.ten_ban}</div>
+  </div>
+`;
   });
 
   cafeTableGrid.innerHTML = [mangVeCard, ...banCards].join("");
@@ -463,6 +489,9 @@ async function handleLuuHoaDonTam() {
     });
 
     state.hoaDonByBan[banKey] = hoaDon;
+    if (!state.hoaDonByBan[banKey].gio_vao) {
+      state.hoaDonByBan[banKey].gio_vao = new Date().toISOString();
+    }
 
     alert(`Đã lưu hóa đơn ${hoaDon.so_hoadon}`);
 
@@ -529,6 +558,7 @@ async function restoreHoaDonDangMo() {
     state.hoaDonByBan[banKey] = {
       id: hd.id,
       so_hoadon: hd.so_hoadon,
+      gio_vao: hd.gio_vao,
     };
 
     state.ordersByBan[banKey] = (hd.chi_tiet || []).map((ct) => ({
@@ -603,5 +633,9 @@ document.addEventListener("keydown", (event) => {
     cafeSearchInput?.select();
   }
 });
+
+setInterval(() => {
+  renderBan();
+}, 60000);
 
 initTables();
