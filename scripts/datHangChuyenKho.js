@@ -913,40 +913,37 @@ async function showPanel(allRows) {
   }
 
   function toggleDhckPanel() {
+    dhckCollapsed = !dhckCollapsed;
 
-    box.querySelector("#dhck-toggle").onclick = () => {
-      dhckCollapsed = !dhckCollapsed;
+    const body = box.querySelector("#dhck-body");
+    const btn = box.querySelector("#dhck-toggle");
 
-      const body = box.querySelector("#dhck-body");
-      const btn = box.querySelector("#dhck-toggle");
+    if (dhckCollapsed) {
+      body.style.setProperty("display", "none", "important");
+      body.style.setProperty("height", "0", "important");
+      body.style.setProperty("max-height", "0", "important");
+      body.style.setProperty("overflow", "hidden", "important");
 
-      if (dhckCollapsed) {
-        body.style.setProperty("display", "none", "important");
-        body.style.setProperty("height", "0", "important");
-        body.style.setProperty("max-height", "0", "important");
-        body.style.setProperty("overflow", "hidden", "important");
+      btn.textContent = "▲";
 
-        btn.textContent = "▲";
+      placeCollapsedBox();
+    } else {
+      body.style.removeProperty("display");
+      body.style.removeProperty("height");
+      body.style.removeProperty("max-height");
+      body.style.removeProperty("overflow");
 
-        placeCollapsedBox();
-      } else {
-        body.style.removeProperty("display");
-        body.style.removeProperty("height");
-        body.style.removeProperty("max-height");
-        body.style.removeProperty("overflow");
+      btn.textContent = "▼";
 
-        btn.textContent = "▼";
-
-        box.style.top = oldTop;
-        box.style.bottom = oldBottom;
-        box.style.height = oldHeight;
-        box.style.maxHeight = oldMaxHeight;
-        box.style.overflow = oldOverflow || "auto";
-        box.style.overflowY = oldOverflowY || "auto";
-        box.style.overflowX = oldOverflowX || "auto";
-        box.style.padding = "6px";
-      }
-    };
+      box.style.top = oldTop;
+      box.style.bottom = oldBottom;
+      box.style.height = oldHeight;
+      box.style.maxHeight = oldMaxHeight;
+      box.style.overflow = oldOverflow || "auto";
+      box.style.overflowY = oldOverflowY || "auto";
+      box.style.overflowX = oldOverflowX || "auto";
+      box.style.padding = "6px";
+    }
   }
 
   box.querySelector("#dhck-toggle").onclick = (e) => {
@@ -956,6 +953,7 @@ async function showPanel(allRows) {
 
   box.querySelector("#dhck-header").onclick = (e) => {
     if (e.target?.id === "dhck-close") return;
+    if (e.target?.id === "dhck-toggle") return;
     toggleDhckPanel();
   };
 
