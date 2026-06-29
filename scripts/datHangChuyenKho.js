@@ -3,7 +3,6 @@
 import {
   normSize,
   calcSuggestionsFromPayload,
-  calcSuggestionsFromRows,
   hasNegativeStockRows
 } from "./services/luatChuyenKho.js";
 
@@ -356,14 +355,7 @@ async function autoMarkOutdatedNewOrders(rows) {
       const stillNeeded = info.keys.has(key);
 
       if (!stillNeeded) {
-        console.warn("DHCK BỎ QUA DÒNG KHÔNG CÒN GỢI Ý - KHÔNG ĐÁNH LỖI THỜI", {
-          id: r.id,
-          masp: r.masp,
-          size: r.size,
-          huong: r.huong_chuyen,
-          key,
-          suggestionKeys: [...info.keys]
-        });
+        outdatedIds.push(Number(r.id));
       }
     });
 
@@ -386,17 +378,6 @@ async function autoMarkOutdatedNewOrders(rows) {
     if (!outdatedIds.length && !needCheckIds.length) return false;
     if (!outdatedIds.length) return true;
 
-    console.warn("========== DHCK ĐÁNH LỖI THỜI ==========");
-    console.table(
-      newRows.filter(r => outdatedIds.includes(Number(r.id))).map(r => ({
-        id: r.id,
-        masp: r.masp,
-        size: r.size,
-        huong: r.huong_chuyen,
-        trang_thai: r.trang_thai
-      }))
-    );
-
     const { error } = await ctx.supabase
       .from("dat_hang_chuyen_kho")
       .update({
@@ -412,7 +393,6 @@ async function autoMarkOutdatedNewOrders(rows) {
       return false;
     }
 
-    console.log("[Đặt hàng CK] Đã tự chuyển lỗi thời:", outdatedIds);
     return true;
 
   } finally {
@@ -1318,27 +1298,15 @@ function setupDatHangRealtime() {
         schema: "public",
         table: "dat_hang_chuyen_kho"
       },
-      async (payload) => {
-        console.warn("[DHCK REALTIME EVENT TEXT]",
-          JSON.stringify({
-            eventType: payload.eventType,
-            old: payload.old,
-            new: payload.new
-          }, null, 2)
-        );
+      async () => {
         if (Date.now() < suppressRealtimeUntil) {
-          console.log("[Đặt hàng CK] Bỏ qua realtime do chính mình vừa lưu ghi chú/đóng popup");
           return;
         }
-
-        console.log("[Đặt hàng CK] Realtime thay đổi, tải lại panel");
 
         await refreshPanelSmooth();
       }
     )
-    .subscribe((status) => {
-      console.log("[Đặt hàng CK] realtime status:", status);
-    });
+    .subscribe();
 }
 
 export function initDatHangChuyenKho(options = {}) {
@@ -1441,8 +1409,6 @@ async function afterCcnSaved(result) {
         .filter(Boolean);
     }
   }
-
-  console.log("[Đặt hàng CK] afterCcnSaved ids:", ids, "result:", result);
 
   const dir =
     payload?.dir ||
