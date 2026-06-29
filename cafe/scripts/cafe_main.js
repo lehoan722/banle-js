@@ -10,6 +10,7 @@ const state = {
   banList: [],
   hangHoaList: [],
   ordersByBan: {},
+  hoaDonByBan: {},
   selectedBan: null,
   selectedKhuVucId: "all",
   selectedStatus: "all",
@@ -334,12 +335,17 @@ async function handleLuuHoaDonTam() {
       return;
     }
 
+    const banKey = getSelectedBanKey();
+
     const hoaDon = await luuHoaDonCafe({
+      hoaDonId: state.hoaDonByBan[banKey]?.id || null,
       ban: state.selectedBan,
       orderItems,
       manv: null,
       tennv: "admin",
     });
+
+    state.hoaDonByBan[banKey] = hoaDon;
 
     alert(`Đã lưu hóa đơn ${hoaDon.so_hoadon}`);
 
