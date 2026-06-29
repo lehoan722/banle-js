@@ -111,7 +111,7 @@ export async function loadHoaDonDangMo() {
   const { data: hoaDons, error: hdError } = await supabase
     .schema(CAFE_SCHEMA)
     .from(CAFE_TABLES.HOADON)
-    .select("id, so_hoadon, ban_id, khuvuc_id, loai_don, trang_thai")
+    .select("id, so_hoadon, ban_id, khuvuc_id, loai_don, trang_thai, gio_vao")
     .eq("trang_thai", "dang_mo");
 
   if (hdError) throw hdError;
