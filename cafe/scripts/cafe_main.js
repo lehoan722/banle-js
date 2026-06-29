@@ -346,6 +346,23 @@ function updateOrderNote(productId) {
   renderOrder();
 }
 
+function removeOrderItem(productId) {
+  const key = getSelectedBanKey();
+  if (!key) return;
+
+  const orderItems = getCurrentOrderItems();
+  const item = orderItems.find((x) => Number(x.id) === Number(productId));
+  if (!item) return;
+
+  const ok = confirm(`Xóa món "${item.ten_hang}" khỏi đơn?`);
+  if (!ok) return;
+
+  state.ordersByBan[key] = orderItems.filter((x) => Number(x.id) !== Number(productId));
+
+  renderOrder();
+  renderBan();
+}
+
 function renderOrder() {
   if (!cafeOrderList) return;
   const orderItems = getCurrentOrderItems();
@@ -364,9 +381,12 @@ function renderOrder() {
         <div class="cafe-order-row" data-product-id="${item.id}">
           <div class="cafe-order-info">
             <strong>${index + 1}. ${item.ten_hang}</strong>
-            <small class="btnOrderNote" data-id="${item.id}">
-  ▧ ${item.ghi_chu ? item.ghi_chu : "Ghi chú/Món thêm"}
-</small>
+            <div class="cafe-order-subline">
+  <small class="btnOrderNote" data-id="${item.id}">
+    ▧ ${item.ghi_chu ? item.ghi_chu : "Ghi chú/Món thêm"}
+  </small>
+  <button class="btnRemoveOrderItem" data-id="${item.id}">Xóa</button>
+ </div>
           </div>
 
           <div class="cafe-qty-box">
@@ -403,6 +423,12 @@ function renderOrder() {
   cafeOrderList.querySelectorAll(".btnOrderNote").forEach((btn) => {
     btn.addEventListener("click", () => {
       updateOrderNote(btn.dataset.id);
+    });
+  });
+
+  cafeOrderList.querySelectorAll(".btnRemoveOrderItem").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      removeOrderItem(btn.dataset.id);
     });
   });
 
