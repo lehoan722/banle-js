@@ -1,7 +1,7 @@
 import { loadKhuVuc } from "../services/service_khuvuc.js";
 import { loadBan } from "../services/service_ban.js";
 import { loadHangHoa } from "../services/service_hanghoa.js";
-import { luuHoaDonCafe, thanhToanHoaDonCafe, loadHoaDonDangMo } from "../services/service_hoadon.js";
+import { luuHoaDonCafe, thanhToanHoaDonCafe, loadHoaDonDangMo, guiBepHoaDonCafe } from "../services/service_hoadon.js";
 import { loadNhomHang } from "../services/service_nhomhang.js";
 import { setupCafeRealtime } from "./cafe_realtime.js";
 import { createCafeOrderSync } from "./cafe_orderSync.js";
@@ -703,9 +703,30 @@ document.querySelectorAll('input[name="tableStatus"]').forEach((radio) => {
 });
 
 btnThongBao?.addEventListener("click", async () => {
-  await orderSync.saveNow();
-  hideKitchenNotice();
-  showToast("Đã chốt món / gửi bếp.");
+  try {
+    await orderSync.saveNow();
+
+    const banKey = getSelectedBanKey();
+    const hoaDon = state.hoaDonByBan[banKey];
+
+    if (!hoaDon?.id) {
+      alert("Chưa có hóa đơn để gửi bếp.");
+      return;
+    }
+
+    const result = await guiBepHoaDonCafe(hoaDon.id);
+
+    state.hoaDonByBan[banKey] = {
+      ...state.hoaDonByBan[banKey],
+      ...result,
+    };
+
+    hideKitchenNotice();
+    showToast(`Đã gửi bếp hóa đơn ${result.so_hoadon}`);
+  } catch (error) {
+    console.error("Lỗi gửi bếp:", error);
+    alert("Không gửi được bếp. Xem Console để kiểm tra lỗi.");
+  }
 });
 
 btnThanhToan?.addEventListener("click", handleThanhToan);
