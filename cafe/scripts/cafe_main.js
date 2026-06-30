@@ -663,6 +663,26 @@ setInterval(() => {
   renderBan();
 }, 60000);
 
+const btnHeaderMenu = document.getElementById("btnHeaderMenu");
+const headerMenuPopup = document.getElementById("headerMenuPopup");
+
+btnHeaderMenu?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  headerMenuPopup?.classList.toggle("open");
+});
+
+headerMenuPopup?.addEventListener("click", (event) => {
+  const link = event.target.closest("[data-soon]");
+  if (!link) return;
+
+  event.preventDefault();
+  alert("Chức năng này sẽ phát triển ở bước tiếp theo.");
+});
+
+document.addEventListener("click", () => {
+  headerMenuPopup?.classList.remove("open");
+});
+
 initTables().then(() => {
   setupCafeRealtime({
     onReload: async () => {
