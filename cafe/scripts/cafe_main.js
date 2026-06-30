@@ -376,6 +376,7 @@ function updateOrderQty(productId, change) {
 
   renderOrder();
   renderBan();
+  showKitchenNotice();
 }
 
 function updateOrderNote(productId) {
@@ -388,6 +389,7 @@ function updateOrderNote(productId) {
 
   item.ghi_chu = note.trim();
   renderOrder();
+  showKitchenNotice();
 }
 
 function removeOrderItem(productId) {
@@ -405,6 +407,7 @@ function removeOrderItem(productId) {
 
   renderOrder();
   renderBan();
+  showKitchenNotice();
 }
 
 function renderOrder() {
@@ -507,8 +510,7 @@ async function handleLuuHoaDonTam() {
       state.hoaDonByBan[banKey].gio_vao = new Date().toISOString();
     }
 
-    alert(`Đã lưu hóa đơn ${hoaDon.so_hoadon}`);
-    showKitchenNotice();
+    alert(`Đã gửi thông báo bếp cho hóa đơn ${hoaDon.so_hoadon}`);
 
   } catch (error) {
     console.error("Lỗi lưu hóa đơn cafe:", error);
@@ -690,8 +692,9 @@ initTables().then(() => {
         state.banList = await loadBan();
         await restoreHoaDonDangMo();
 
-        renderBan();
         renderOrder();
+        renderBan();
+        showKitchenNotice();
       } catch (error) {
         console.error("Lỗi reload realtime cafe:", error);
       }
