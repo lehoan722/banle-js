@@ -8,6 +8,70 @@ function taoSoHoaDonCafe() {
   return `CF${ymd}-${time}`;
 }
 
+async function syncChiTietHoaDonCafe(hoaDonId, orderItems) {
+  const { data: oldItems, error: oldError } = await supabase
+    .schema(CAFE_SCHEMA)
+    .from(CAFE_TABLES.HOADON_CT)
+    .select("id, hoadon_id, hanghoa_id, so_luong, don_gia, thanh_tien, ghi_chu")
+    .eq("hoadon_id", hoaDonId);
+
+  if (oldError) throw oldError;
+
+  const oldMap = new Map(
+    (oldItems || []).map((item) => [String(item.hanghoa_id), item])
+  );
+
+  const newIds = new Set(orderItems.map((item) => String(item.id)));
+
+  const itemsToDelete = (oldItems || []).filter(
+    (oldItem) => !newIds.has(String(oldItem.hanghoa_id))
+  );
+
+  for (const oldItem of itemsToDelete) {
+    const { error } = await supabase
+      .schema(CAFE_SCHEMA)
+      .from(CAFE_TABLES.HOADON_CT)
+      .delete()
+      .eq("id", oldItem.id);
+
+    if (error) throw error;
+  }
+
+  for (const item of orderItems) {
+    const oldItem = oldMap.get(String(item.id));
+
+    const payload = {
+      hoadon_id: hoaDonId,
+      hanghoa_id: item.id,
+      ma_hang: item.ma_hang,
+      ten_hang: item.ten_hang,
+      so_luong: item.so_luong,
+      don_gia: item.don_gia,
+      thanh_tien: item.thanh_tien,
+      ghi_chu: item.ghi_chu || null,
+      trang_thai: "binh_thuong",
+      updated_at: new Date().toISOString(),
+    };
+
+    if (oldItem) {
+      const { error } = await supabase
+        .schema(CAFE_SCHEMA)
+        .from(CAFE_TABLES.HOADON_CT)
+        .update(payload)
+        .eq("id", oldItem.id);
+
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .schema(CAFE_SCHEMA)
+        .from(CAFE_TABLES.HOADON_CT)
+        .insert(payload);
+
+      if (error) throw error;
+    }
+  }
+}
+
 export async function luuHoaDonCafe({ hoaDonId = null, ban, orderItems, manv = null, tennv = null }) {
   if (!ban) throw new Error("Chưa chọn bàn.");
   if (!orderItems?.length) throw new Error("Chưa có món trong đơn.");
@@ -32,13 +96,6 @@ export async function luuHoaDonCafe({ hoaDonId = null, ban, orderItems, manv = n
     if (error) throw error;
     hoaDon = data;
 
-    const { error: deleteError } = await supabase
-      .schema(CAFE_SCHEMA)
-      .from(CAFE_TABLES.HOADON_CT)
-      .delete()
-      .eq("hoadon_id", hoaDonId);
-
-    if (deleteError) throw deleteError;
   } else {
     const hoaDonPayload = {
       so_hoadon: taoSoHoaDonCafe(),
@@ -65,24 +122,7 @@ export async function luuHoaDonCafe({ hoaDonId = null, ban, orderItems, manv = n
     hoaDon = data;
   }
 
-  const ctPayload = orderItems.map((item) => ({
-    hoadon_id: hoaDon.id,
-    hanghoa_id: item.id,
-    ma_hang: item.ma_hang,
-    ten_hang: item.ten_hang,
-    so_luong: item.so_luong,
-    don_gia: item.don_gia,
-    thanh_tien: item.thanh_tien,
-    ghi_chu: item.ghi_chu || null,
-    trang_thai: "binh_thuong",
-  }));
-
-  const { error: ctError } = await supabase
-    .schema(CAFE_SCHEMA)
-    .from(CAFE_TABLES.HOADON_CT)
-    .insert(ctPayload);
-
-  if (ctError) throw ctError;
+  await syncChiTietHoaDonCafe(hoaDon.id, orderItems);
 
   return hoaDon;
 }
