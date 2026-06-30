@@ -5,3 +5,40 @@ button {
 input {
   font-family: inherit;
 }
+
+.cafe-header-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.cafe-header-dropdown {
+  display: none;
+  position: absolute;
+  top: 48px;
+  right: 0;
+  min-width: 230px;
+  background: #fff;
+  border: 1px solid #d8e0ee;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  z-index: 9999;
+  padding: 8px;
+}
+
+.cafe-header-dropdown.open {
+  display: block;
+}
+
+.cafe-header-dropdown a {
+  display: block;
+  padding: 11px 12px;
+  color: #12376b;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.cafe-header-dropdown a:hover {
+  background: #eef5ff;
+}
