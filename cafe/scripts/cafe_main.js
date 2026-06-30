@@ -48,6 +48,35 @@ const btnThanhToan = document.querySelector(".cafe-primary-btn");
 const cafeProductTabs = document.querySelector(".cafe-product-tabs");
 const cafeSearchInput = document.querySelector(".cafe-search-box input");
 
+function showToast(message) {
+  let toast = document.getElementById("cafeToast");
+
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "cafeToast";
+    toast.style.position = "fixed";
+    toast.style.top = "90px";
+    toast.style.left = "50%";
+    toast.style.transform = "translateX(-50%)";
+    toast.style.zIndex = "99999";
+    toast.style.background = "#1f7a35";
+    toast.style.color = "#fff";
+    toast.style.padding = "14px 22px";
+    toast.style.borderRadius = "14px";
+    toast.style.fontWeight = "700";
+    toast.style.boxShadow = "0 10px 30px rgba(0,0,0,0.25)";
+    document.body.appendChild(toast);
+  }
+
+  toast.textContent = message;
+  toast.style.display = "block";
+
+  clearTimeout(window.__cafeToastTimer);
+  window.__cafeToastTimer = setTimeout(() => {
+    toast.style.display = "none";
+  }, 3000);
+}
+
 function showKitchenNotice() {
   if (cafeKitchenNotice) {
     cafeKitchenNotice.style.display = "block";
@@ -511,7 +540,7 @@ async function handleLuuHoaDonTam() {
       state.hoaDonByBan[banKey].gio_vao = new Date().toISOString();
     }
 
-    alert(`Đã gửi thông báo bếp cho hóa đơn ${hoaDon.so_hoadon}`);
+    showToast(`Đã gửi thông báo bếp cho hóa đơn ${hoaDon.so_hoadon}`);
 
   } catch (error) {
     console.error("Lỗi lưu hóa đơn cafe:", error);
