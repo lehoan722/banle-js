@@ -3,6 +3,8 @@ import { loadBan } from "../services/service_ban.js";
 import { loadHangHoa } from "../services/service_hanghoa.js";
 import { luuHoaDonCafe, thanhToanHoaDonCafe, loadHoaDonDangMo } from "../services/service_hoadon.js";
 import { loadNhomHang } from "../services/service_nhomhang.js";
+import { supabase } from "../../scripts/supabaseClient.js";
+import { CAFE_SCHEMA, CAFE_TABLES } from "./cafe_config.js";
 
 console.log("Cafe bán hàng loaded");
 
@@ -549,7 +551,15 @@ async function handleThanhToan() {
   }
 }
 
+function clearHoaDonDangMoLocal() {
+  state.ordersByBan = {};
+  state.hoaDonByBan = {};
+}
+
 async function restoreHoaDonDangMo() {
+  clearHoaDonDangMoLocal();
+
+  const hoaDons = await loadHoaDonDangMo();
   const hoaDons = await loadHoaDonDangMo();
 
   hoaDons.forEach((hd) => {
@@ -638,4 +648,59 @@ setInterval(() => {
   renderBan();
 }, 60000);
 
-initTables();
+let realtimeReloadTimer = null;
+
+function scheduleRealtimeReload() {
+  clearTimeout(realtimeReloadTimer);
+
+  realtimeReloadTimer = setTimeout(async () => {
+    try {
+      state.banList = await loadBan();
+      await restoreHoaDonDangMo();
+
+      renderBan();
+      renderOrder();
+    } catch (error) {
+      console.error("Lỗi reload realtime cafe:", error);
+    }
+  }, 300);
+}
+
+function setupCafeRealtime() {
+  supabase
+    .channel("cafe-ban-hang-realtime")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: CAFE_SCHEMA,
+        table: CAFE_TABLES.BAN,
+      },
+      scheduleRealtimeReload
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: CAFE_SCHEMA,
+        table: CAFE_TABLES.HOADON,
+      },
+      scheduleRealtimeReload
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: CAFE_SCHEMA,
+        table: CAFE_TABLES.HOADON_CT,
+      },
+      scheduleRealtimeReload
+    )
+    .subscribe((status) => {
+      console.log("Cafe realtime status:", status);
+    });
+}
+
+initTables().then(() => {
+  setupCafeRealtime();
+});
