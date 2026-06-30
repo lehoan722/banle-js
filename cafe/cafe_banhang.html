@@ -33,8 +33,24 @@
         <button class="cafe-icon-btn">🔔</button>
         <button class="cafe-icon-btn">⟳</button>
         <span class="cafe-user">admin</span>
-        <button class="cafe-icon-btn">☰</button>
+
+        <div class="cafe-header-menu">
+          <button id="btnHeaderMenu" class="cafe-icon-btn">☰</button>
+
+          <div id="headerMenuPopup" class="cafe-header-dropdown">
+            <a href="/cafe/cafe_xemhoadon.html" target="_blank">📊 Báo cáo hóa đơn</a>
+            <a href="#" data-soon="1">📈 Báo cáo doanh thu</a>
+            <a href="#" data-soon="1">🍳 Màn hình bếp</a>
+            <a href="#" data-soon="1">🛎 Quản lý bàn</a>
+            <a href="#" data-soon="1">📦 Danh mục hàng hóa</a>
+            <a href="#" data-soon="1">👨‍🍳 Danh mục món</a>
+            <a href="#" data-soon="1">👤 Người dùng</a>
+            <a href="#" data-soon="1">⚙ Thiết lập</a>
+            <a href="#" data-soon="1">🚪 Đăng xuất</a>
+          </div>
+        </div>
       </div>
+
     </header>
 
     <main class="cafe-main">
@@ -138,7 +154,7 @@
 
         <div id="cafeOrderList" class="cafe-order-list"></div>
 
-        <div class="cafe-order-notice">
+        <div class="cafe-kitchen-notice" style="display:none;">
           🔔 Bạn vừa cập nhật đơn hàng. Click <b>Thông báo</b> để gửi thông tin chế biến đến bar bếp.
         </div>
 
