@@ -357,6 +357,7 @@ function addProductToOrder(product) {
 
   renderOrder();
   renderBan();
+  showKitchenNotice();
 }
 
 function updateOrderQty(productId, change) {
@@ -694,7 +695,6 @@ initTables().then(() => {
 
         renderOrder();
         renderBan();
-        showKitchenNotice();
       } catch (error) {
         console.error("Lỗi reload realtime cafe:", error);
       }
