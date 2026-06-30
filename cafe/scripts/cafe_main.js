@@ -559,8 +559,7 @@ function clearHoaDonDangMoLocal() {
 async function restoreHoaDonDangMo() {
   clearHoaDonDangMoLocal();
 
-  const hoaDons = await loadHoaDonDangMo();
-  const hoaDons = await loadHoaDonDangMo();
+  const hoaDons = await loadHoaDonDangMo();  
 
   hoaDons.forEach((hd) => {
     const banKey = hd.loai_don === "mang_ve" ? "takeaway" : String(hd.ban_id);
