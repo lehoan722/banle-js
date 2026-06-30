@@ -4,6 +4,7 @@ import { loadHangHoa } from "../services/service_hanghoa.js";
 import { luuHoaDonCafe, thanhToanHoaDonCafe, loadHoaDonDangMo } from "../services/service_hoadon.js";
 import { loadNhomHang } from "../services/service_nhomhang.js";
 import { setupCafeRealtime } from "./cafe_realtime.js";
+import { createCafeOrderSync } from "./cafe_orderSync.js";
 
 console.log("Cafe bán hàng loaded");
 
@@ -88,6 +89,36 @@ function hideKitchenNotice() {
     cafeKitchenNotice.style.display = "none";
   }
 }
+
+const orderSync = createCafeOrderSync({
+  getSelectedBan: () => state.selectedBan,
+
+  getHoaDonByBan: (banKey) => state.hoaDonByBan[banKey],
+
+  getOrderItems: () => getCurrentOrderItems(),
+
+  setHoaDonForBan: (banKey, hoaDon) => {
+    state.hoaDonByBan[banKey] = {
+      ...state.hoaDonByBan[banKey],
+      ...hoaDon,
+      gio_vao: state.hoaDonByBan[banKey]?.gio_vao || new Date().toISOString(),
+    };
+  },
+
+  saveOrder: luuHoaDonCafe,
+
+  showSaving: () => {
+    showKitchenNotice();
+  },
+
+  showSaved: () => {
+    showToast("Đơn đã tự động lưu.");
+  },
+
+  showError: () => {
+    alert("Không tự động lưu được đơn. Vui lòng kiểm tra kết nối.");
+  },
+});
 
 function setLeftView(viewName) {
   const isTables = viewName === "tables";
@@ -386,7 +417,7 @@ function addProductToOrder(product) {
 
   renderOrder();
   renderBan();
-  showKitchenNotice();
+  orderSync.scheduleSave();
 }
 
 function updateOrderQty(productId, change) {
@@ -406,7 +437,7 @@ function updateOrderQty(productId, change) {
 
   renderOrder();
   renderBan();
-  showKitchenNotice();
+  orderSync.scheduleSave();
 }
 
 function updateOrderNote(productId) {
@@ -419,7 +450,7 @@ function updateOrderNote(productId) {
 
   item.ghi_chu = note.trim();
   renderOrder();
-  showKitchenNotice();
+  orderSync.scheduleSave();
 }
 
 function removeOrderItem(productId) {
@@ -437,7 +468,7 @@ function removeOrderItem(productId) {
 
   renderOrder();
   renderBan();
-  showKitchenNotice();
+  orderSync.scheduleSave();
 }
 
 function renderOrder() {
@@ -672,9 +703,11 @@ document.querySelectorAll('input[name="tableStatus"]').forEach((radio) => {
 });
 
 btnThongBao?.addEventListener("click", async () => {
-  await handleLuuHoaDonTam();
+  await orderSync.saveNow();
   hideKitchenNotice();
+  showToast("Đã chốt món / gửi bếp.");
 });
+
 btnThanhToan?.addEventListener("click", handleThanhToan);
 cafeSearchInput?.addEventListener("input", () => {
   state.productSearchText = cafeSearchInput.value || "";
