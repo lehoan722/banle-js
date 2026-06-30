@@ -172,3 +172,23 @@ export async function loadHoaDonDangMo() {
     chi_tiet: (chiTiet || []).filter((ct) => ct.hoadon_id === hd.id),
   }));
 }
+
+export async function guiBepHoaDonCafe(hoaDonId) {
+  if (!hoaDonId) throw new Error("Thiếu ID hóa đơn.");
+
+  const { data, error } = await supabase
+    .schema(CAFE_SCHEMA)
+    .from(CAFE_TABLES.HOADON)
+    .update({
+      kitchen_status: "sent",
+      kitchen_sent_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", hoaDonId)
+    .select("id, so_hoadon, kitchen_status, kitchen_sent_at")
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
