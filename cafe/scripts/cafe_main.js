@@ -43,9 +43,22 @@ const cafeTotalMoney = document.getElementById("cafeTotalMoney");
 const cafeProductGrid = document.querySelector(".cafe-product-grid");
 const cafeCurrentTable = document.querySelector(".cafe-current-table strong");
 const btnThongBao = document.querySelector(".cafe-outline-btn");
+const cafeKitchenNotice = document.querySelector(".cafe-kitchen-notice");
 const btnThanhToan = document.querySelector(".cafe-primary-btn");
 const cafeProductTabs = document.querySelector(".cafe-product-tabs");
 const cafeSearchInput = document.querySelector(".cafe-search-box input");
+
+function showKitchenNotice() {
+  if (cafeKitchenNotice) {
+    cafeKitchenNotice.style.display = "block";
+  }
+}
+
+function hideKitchenNotice() {
+  if (cafeKitchenNotice) {
+    cafeKitchenNotice.style.display = "none";
+  }
+}
 
 function setLeftView(viewName) {
   const isTables = viewName === "tables";
@@ -495,6 +508,7 @@ async function handleLuuHoaDonTam() {
     }
 
     alert(`Đã lưu hóa đơn ${hoaDon.so_hoadon}`);
+    showKitchenNotice();
 
   } catch (error) {
     console.error("Lỗi lưu hóa đơn cafe:", error);
@@ -625,7 +639,10 @@ document.querySelectorAll('input[name="tableStatus"]').forEach((radio) => {
   });
 });
 
-btnThongBao?.addEventListener("click", handleLuuHoaDonTam);
+btnThongBao?.addEventListener("click", async () => {
+  await handleLuuHoaDonTam();
+  hideKitchenNotice();
+});
 btnThanhToan?.addEventListener("click", handleThanhToan);
 cafeSearchInput?.addEventListener("input", () => {
   state.productSearchText = cafeSearchInput.value || "";
