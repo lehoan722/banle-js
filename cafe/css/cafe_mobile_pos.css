@@ -1,4 +1,11 @@
-/* Mobile POS layout - iPhone dọc */
+@media (min-width: 769px) {
+  .cafe-mobile-only,
+  .mobile-order-bar,
+  .mobile-sheet-backdrop {
+    display: none !important;
+  }
+}
+
 @media (max-width: 768px) {
   html,
   body {
@@ -6,85 +13,97 @@
     padding: 0;
     height: 100%;
     overflow: hidden;
-    background: #f4f7fb;
+    background: #f4f6f8;
   }
 
   .cafe-app {
     height: 100dvh;
-    display: flex;
-    flex-direction: column;
     overflow: hidden;
+    background: #f4f6f8;
   }
 
   .cafe-header {
-    height: 64px;
-    min-height: 64px;
-    padding: 8px 10px;
-    gap: 8px;
-    border-radius: 0;
+    height: 58px;
+    min-height: 58px;
+    padding: 8px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
   }
 
   .cafe-header-left {
-    width: 100%;
     display: grid;
-    grid-template-columns: 86px 86px 1fr;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .cafe-header-right {
-    display: none;
+    grid-template-columns: 1fr 1fr 1fr;
+    width: 100%;
+    gap: 6px;
   }
 
   .cafe-header-tab {
-    height: 44px;
-    border-radius: 22px;
+    height: 42px;
+    border-radius: 14px;
     font-size: 15px;
-    font-weight: 800;
+    font-weight: 900;
     padding: 0;
   }
 
-  .cafe-search-box {
-    height: 44px;
-    min-width: 0;
-    border-radius: 22px;
-  }
-
-  .cafe-search-box input {
-    font-size: 15px;
-  }
-
-  .cafe-round-btn {
-    display: none;
+  .cafe-search-box,
+  .cafe-round-btn,
+  .cafe-header-right {
+    display: none !important;
   }
 
   .cafe-main {
-    flex: 1;
-    display: grid;
-    grid-template-rows: 48% 52%;
-    gap: 8px;
-    padding: 8px;
+    height: calc(100dvh - 58px);
+    display: block;
+    padding: 0;
+    background: #f4f6f8;
     overflow: hidden;
-    background: #0b3f78;
   }
 
   .cafe-left-panel,
   .cafe-right-panel {
     width: 100%;
-    min-width: 0;
     height: 100%;
-    border-radius: 16px;
-    overflow: hidden;
     background: #fff;
+    border-radius: 0;
+    overflow: hidden;
   }
 
-  .cafe-left-panel {
-    display: flex;
-    flex-direction: column;
+  body[data-mobile-view="tables"] .cafe-left-panel {
+    display: block;
   }
 
-  .cafe-right-panel {
-    display: flex;
+  body[data-mobile-view="tables"] .cafe-right-panel,
+  body[data-mobile-view="tables"] #viewProducts {
+    display: none !important;
+  }
+
+  body[data-mobile-view="tables"] #viewTables {
+    display: flex !important;
+  }
+
+  body[data-mobile-view="products"] .cafe-left-panel {
+    display: block;
+  }
+
+  body[data-mobile-view="products"] .cafe-right-panel,
+  body[data-mobile-view="products"] #viewTables {
+    display: none !important;
+  }
+
+  body[data-mobile-view="products"] #viewProducts {
+    display: flex !important;
+  }
+
+  body[data-mobile-view="order"] .cafe-left-panel {
+    display: none !important;
+  }
+
+  body[data-mobile-view="order"] .cafe-right-panel {
+    display: flex !important;
+  }
+
+  .cafe-view {
+    height: 100%;
     flex-direction: column;
   }
 
@@ -93,167 +112,231 @@
     display: flex;
     gap: 8px;
     overflow-x: auto;
-    padding: 8px;
+    padding: 10px;
+    background: #fff;
     white-space: nowrap;
-    flex-shrink: 0;
   }
 
   .cafe-zone-tabs button,
   .cafe-product-tabs button {
     height: 38px;
-    min-width: 72px;
     border-radius: 20px;
-    font-size: 14px;
-    font-weight: 800;
-    padding: 0 14px;
+    padding: 0 16px;
+    font-size: 15px;
+    font-weight: 900;
     flex-shrink: 0;
   }
 
   .cafe-table-filter {
     display: flex;
-    gap: 14px;
+    gap: 12px;
     overflow-x: auto;
     padding: 8px 12px;
-    font-size: 15px;
+    background: #fff;
+    font-size: 16px;
     flex-shrink: 0;
   }
 
   .cafe-table-grid {
     flex: 1;
     overflow-y: auto;
-    padding: 10px;
+    padding: 12px;
     display: grid;
-    grid-template-columns: repeat(4, minmax(70px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
     align-content: start;
+    background: #f4f6f8;
   }
 
   .cafe-table-card {
-    min-height: 92px;
-    border-radius: 14px;
-    padding: 8px 4px;
-    font-size: 18px;
+    min-height: 118px;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid #d6d6d6;
+    box-shadow: none;
+    padding: 14px;
+    font-size: 22px;
     font-weight: 900;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .cafe-table-card.using,
+  .cafe-table-card.active {
+    background: #cfe8ff;
+    border-color: #0875d1;
   }
 
   .cafe-table-icon {
-    font-size: 24px;
-    margin-bottom: 4px;
+    display: none;
   }
 
   .cafe-left-footer {
-    height: 38px;
-    padding: 0 12px;
-    font-size: 14px;
-    flex-shrink: 0;
+    display: none;
   }
 
   .cafe-product-grid {
     flex: 1;
     overflow-y: auto;
-    padding: 8px;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(96px, 1fr));
-    gap: 8px;
-    align-content: start;
+    padding: 0 10px 92px;
+    display: block;
+    background: #fff;
   }
 
   .cafe-product-card {
-    min-height: 132px;
-    border-radius: 12px;
-    padding: 6px;
+    display: grid;
+    grid-template-columns: 76px 1fr 44px;
+    gap: 12px;
+    align-items: center;
+    min-height: 96px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
   }
 
   .cafe-product-image {
-    height: 64px;
-    border-radius: 10px;
-  }
-
-  .cafe-product-price {
-    font-size: 13px;
-    font-weight: 900;
-    margin-top: -8px;
+    width: 72px;
+    height: 72px;
+    border-radius: 12px;
+    background: #e8f2ff;
   }
 
   .cafe-product-name {
-    font-size: 13px;
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 20px;
+    font-weight: 900;
     line-height: 1.2;
-    font-weight: 800;
   }
 
-  .cafe-order-header {
-    height: 48px;
-    min-height: 48px;
-    padding: 0 12px;
-    background: #083b73;
+  .cafe-product-price {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    margin-top: 48px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #111827;
+    background: transparent;
   }
 
-  .cafe-bill-tab {
-    height: 44px;
-    min-width: 116px;
-    border-radius: 16px 16px 0 0;
+  .cafe-product-card::after {
+    content: "+";
+    grid-column: 3;
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    border: 1px solid #d7dde6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    color: #111827;
+  }
+
+  .mobile-order-bar {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    z-index: 9999;
+  }
+
+  .mobile-order-bar.show {
+    display: grid;
+  }
+
+  .mobile-order-bar button {
+    height: 58px;
+    border: none;
+    border-radius: 14px;
     font-size: 18px;
     font-weight: 900;
   }
 
+  #btnMobileChooseAgain {
+    background: #f1f3f5;
+    color: #111827;
+  }
+
+  #btnMobileViewOrder {
+    background: #0875d1;
+    color: #fff;
+  }
+
+  #mobileOrderQty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    margin-left: 8px;
+    border-radius: 12px;
+    background: #005bb5;
+  }
+
+  .cafe-order-header {
+    display: none;
+  }
+
   .cafe-current-table {
-    height: 54px;
-    min-height: 54px;
-    padding: 0 12px;
-    gap: 8px;
-    border-bottom: 1px solid #e6edf5;
+    height: 62px;
+    padding: 0 14px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
   }
 
   .cafe-current-table strong {
-    font-size: 18px;
-    white-space: nowrap;
+    font-size: 22px;
+    font-weight: 900;
   }
 
   .cafe-customer-search {
-    height: 38px;
-    min-width: 0;
-    flex: 1;
+    display: none;
   }
 
-  .cafe-customer-search input {
-    font-size: 14px;
+  .cafe-current-table .cafe-icon-btn {
+    margin-left: auto;
+    width: 42px;
+    height: 42px;
+    border-radius: 21px;
   }
 
   .cafe-order-list {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 12px;
+    padding: 8px 14px 180px;
+    background: #fff;
   }
 
   .cafe-order-row {
     display: grid;
-    grid-template-columns: 1fr 110px;
-    gap: 6px;
-    padding: 10px 0;
-    border-bottom: 1px solid #e8eef6;
+    grid-template-columns: 1fr 116px;
+    gap: 10px;
+    padding: 14px 0;
+    border-bottom: 1px solid #e5e7eb;
   }
 
   .cafe-order-info strong {
-    font-size: 17px;
-    line-height: 1.25;
+    font-size: 20px;
+    font-weight: 900;
   }
 
   .cafe-order-subline {
-    font-size: 13px;
-    margin-top: 5px;
+    margin-top: 8px;
+    font-size: 14px;
   }
 
   .cafe-qty-box {
-    justify-self: end;
-    width: 104px;
-    height: 38px;
-    border-radius: 19px;
-  }
-
-  .cafe-qty-box button {
-    width: 32px;
-    height: 32px;
-    font-size: 20px;
+    width: 116px;
+    height: 40px;
+    border-radius: 12px;
+    align-self: center;
   }
 
   .cafe-price {
@@ -261,54 +344,46 @@
   }
 
   .cafe-kitchen-notice {
-    margin: 0 12px 6px;
+    margin: 0 14px 8px;
     padding: 8px 10px;
-    border-radius: 10px;
     background: #fff0f0;
     color: #b00020;
+    border: 1px solid #ffb6b6;
+    border-radius: 10px;
     font-size: 13px;
     font-weight: 800;
-    border: 1px solid #ffb7b7;
   }
 
   .cafe-order-footer {
-    flex-shrink: 0;
-    padding: 8px 12px calc(10px + env(safe-area-inset-bottom));
-    border-top: 1px solid #e4ebf5;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
     background: #fff;
+    border-top: 1px solid #e5e7eb;
+    z-index: 9998;
   }
 
   .cafe-footer-left {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-
-  .cafe-small-btn {
-    height: 36px;
-    min-width: 54px;
-    border-radius: 18px;
-    font-size: 13px;
-    font-weight: 800;
+    display: none;
   }
 
   .cafe-total {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    font-size: 16px;
-    margin-bottom: 8px;
+    font-size: 18px;
+    margin-bottom: 10px;
   }
 
   .cafe-total strong {
-    font-size: 26px;
-    color: #111827;
+    font-size: 24px;
   }
 
   .cafe-action-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1.4fr 1.6fr;
     gap: 8px;
   }
 
@@ -317,170 +392,74 @@
     border-radius: 14px;
     font-size: 16px;
     font-weight: 900;
-  }
-
-  .cafe-primary-btn {
-    grid-column: span 2;
-    height: 56px !important;
-  }
-
-  .cafe-empty-order {
-    padding: 20px 10px;
-    font-size: 15px;
-  }
-}
-@media (max-width: 768px) {
-  .cafe-header {
-    height: 40px;
-    min-height: 40px;
-    padding: 4px 8px;
-  }
-
-  .cafe-header-left {
-    grid-template-columns: 72px 72px 1fr;
-    gap: 6px;
-  }
-
-  .cafe-header-tab,
-  .cafe-search-box {
-    height: 32px;
-    border-radius: 16px;
-    font-size: 13px;
-  }
-
-  .cafe-main {
-    grid-template-rows: 28% 72%;
-    gap: 6px;
-    padding: 6px;
-  }
-
-  .cafe-zone-tabs,
-  .cafe-product-tabs {
-    padding: 4px 6px;
-    gap: 6px;
-  }
-
-  .cafe-zone-tabs button,
-  .cafe-product-tabs button {
-    height: 28px;
-    min-width: 58px;
-    font-size: 12px;
-    padding: 0 10px;
-  }
-
-  .cafe-table-filter {
-    padding: 3px 8px;
-    gap: 10px;
-    font-size: 13px;
-  }
-
-  .cafe-table-grid {
-    padding: 5px 8px;
-    grid-template-columns: repeat(5, minmax(52px, 1fr));
-    gap: 6px;
-  }
-
-  .cafe-table-card {
-    min-height: 54px;
-    border-radius: 10px;
-    font-size: 13px;
-    padding: 4px 2px;
-  }
-
-  .cafe-table-icon {
-    font-size: 14px;
-    margin-bottom: 1px;
-  }
-
-  .cafe-left-footer {
-    height: 26px;
-    font-size: 12px;
-    padding: 0 8px;
-  }
-
-  .cafe-order-header {
-    height: 0;
-    min-height: 0;
-    padding: 0;
-    overflow: hidden;
-  }
-
-  .cafe-bill-tab {
-    display: none;
-  }
-
-  .cafe-current-table {
-    height: 44px;
-    min-height: 44px;
-    padding: 0 8px;
-  }
-
-  .cafe-current-table strong {
-    font-size: 16px;
-  }
-
-  .cafe-current-table strong::before {
-    content: "225-274 · ";
-  }
-
-  .cafe-customer-search {
-    height: 32px;
-  }
-
-  .cafe-order-list {
-    padding: 6px 10px;
-  }
-
-  .cafe-order-row {
-    grid-template-columns: 1fr 96px;
-    padding: 7px 0;
-  }
-
-  .cafe-order-info strong {
-    font-size: 15px;
-  }
-
-  .cafe-qty-box {
-    width: 92px;
-    height: 34px;
-  }
-
-  .cafe-order-footer {
-    padding: 5px 8px calc(6px + env(safe-area-inset-bottom));
-  }
-
-  .cafe-footer-left {
-    margin-bottom: 4px;
-  }
-
-  .cafe-small-btn {
-    height: 30px;
-    min-width: 46px;
-    font-size: 12px;
-  }
-
-  .cafe-total {
-    font-size: 14px;
-    margin-bottom: 5px;
-  }
-
-  .cafe-total strong {
-    font-size: 22px;
-  }
-
-  .cafe-action-row {
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 6px;
-  }
-
-  .cafe-action-row button {
-    height: 40px !important;
-    border-radius: 12px;
-    font-size: 13px;
     padding: 0 4px;
   }
 
   .cafe-primary-btn {
     grid-column: auto;
+  }
+
+  .mobile-sheet-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 10000;
+    align-items: flex-end;
+  }
+
+  .mobile-sheet-backdrop.show {
+    display: flex;
+  }
+
+  .mobile-sheet {
+    width: 100%;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    padding: 16px;
+  }
+
+  .mobile-sheet-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 22px;
+    font-weight: 900;
+    margin-bottom: 12px;
+  }
+
+  .mobile-sheet-title button {
+    border: none;
+    background: transparent;
+    font-size: 22px;
+    font-weight: 900;
+  }
+
+  .mobile-sheet > button {
+    width: 100%;
+    min-height: 52px;
+    border: none;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .mobile-sheet > button.danger,
+  .danger {
+    color: #e11d48 !important;
+  }
+
+  .mobile-sheet input {
+    width: 100%;
+    height: 46px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 0 12px;
+    font-size: 16px;
+    margin-bottom: 10px;
   }
 }
