@@ -798,3 +798,70 @@
     background: transparent !important;
   }
 }
+
+@media (max-width: 768px) {
+  /* THỰC ĐƠN: tên món + giá hiện rõ */
+  .cafe-product-card {
+    grid-template-columns: 46px 1fr 34px !important;
+    height: 62px !important;
+    min-height: 62px !important;
+    align-items: center !important;
+    padding: 4px 8px !important;
+  }
+
+  .cafe-product-info {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+    min-width: 0 !important;
+  }
+
+  .cafe-product-name {
+    width: 100% !important;
+    text-align: left !important;
+    font-size: 14px !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .cafe-product-price {
+    display: block !important;
+    position: static !important;
+    margin: 3px 0 0 0 !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    color: #0875d1 !important;
+    line-height: 1.1 !important;
+    background: transparent !important;
+  }
+
+  /* HÓA ĐƠN: hiện đơn giá dưới tên món */
+  .cafe-order-row {
+    grid-template-columns: 1fr 112px !important;
+  }
+
+  .cafe-order-row .cafe-price {
+    display: block !important;
+    grid-column: 1 !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    color: #111827 !important;
+    margin-top: -8px !important;
+  }
+
+  .cafe-order-row .cafe-price.bold {
+    display: none !important;
+  }
+
+  .cafe-order-info {
+    grid-column: 1 !important;
+  }
+
+  .cafe-qty-box {
+    grid-column: 2 !important;
+    grid-row: 1 / span 3 !important;
+  }
+}
