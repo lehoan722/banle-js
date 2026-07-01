@@ -242,7 +242,23 @@
     </div>
   </div>
 
-  <script type="module" src="./scripts/cafe_main.js?v=20260701-7"></script>
+  <div id="cafeReceiptPopup" class="receipt-popup-backdrop">
+    <div class="receipt-popup">
+      <div class="receipt-popup-head">
+        <strong>🖨 In hóa đơn</strong>
+        <button id="btnCloseReceiptPopup">×</button>
+      </div>
+
+      <div id="receiptPrintArea" class="receipt-paper"></div>
+
+      <div class="receipt-actions">
+        <button id="btnReceiptClose">Đóng</button>
+        <button id="btnReceiptPrint">In hóa đơn ↵</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/cafe_main.js?v=20260701-8"></script>
 </body>
 
 </html>
