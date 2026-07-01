@@ -415,15 +415,20 @@ function buildReceiptHtml({ hoaDon, orderItems }) {
   }).join("");
 
   return `
-    <div class="receipt-head-simple">
-  <div>HÓA ĐƠN BÁN HÀNG</div>
-  <div>${soHoaDon || ""}</div>
-  <div>Ngày bán: ${nowText}</div>
-  <div>Người bán: QUẢN LÝ</div>
-</div>
-
-<div class="receipt-line"></div>
-
+    <div class="receipt-center">
+      <div class="receipt-title">GREEN SPACES</div>
+      <div>Địa chỉ: 80 Hà huy Tập. </div>
+      <div>Điện thoại: 090 5264180 </div>
+    </div>
+    <div class="receipt-line"></div>
+    <div>Ngày bán: ${nowText}</div>
+    <div class="receipt-center">
+      <div class="receipt-bold" style="font-size:18px;margin-top:8px;">HÓA ĐƠN BÁN HÀNG</div>
+      <div class="receipt-bold">${soHoaDon}</div>
+    </div>
+    <div style="margin-top:14px;">
+      <b>Người bán:</b> QUẢN LÝ
+    </div>
     <div class="receipt-line"></div>
 
     <div class="receipt-row receipt-bold">
