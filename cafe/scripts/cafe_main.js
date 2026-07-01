@@ -446,14 +446,17 @@ function renderProducts() {
     const giaBan = Number(item.gia_ban || 0);
 
     return `
-      <div class="cafe-product-card" data-hanghoa-id="${item.id}">
-        <div class="cafe-product-image">
-          <img src="${imageUrl}" alt="${item.ten_hang}" />
-        </div>
-        <div class="cafe-product-price">${formatMoney(giaBan)}</div>
-        <div class="cafe-product-name">${item.ten_hang}</div>
-      </div>
-    `;
+  <div class="cafe-product-card" data-hanghoa-id="${item.id}">
+    <div class="cafe-product-image">
+      <img src="${imageUrl}" alt="${item.ten_hang}" />
+    </div>
+
+    <div class="cafe-product-info">
+      <div class="cafe-product-name">${item.ten_hang}</div>
+      <div class="cafe-product-price">${formatMoney(giaBan)}</div>
+    </div>
+  </div>
+`;
   }).join("");
 
   cafeProductGrid.querySelectorAll(".cafe-product-card").forEach((card) => {
@@ -631,20 +634,20 @@ function renderOrder() {
   });
 
   cafeOrderList.querySelectorAll(".btnOrderNote").forEach((btn) => {
-  btn.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    updateOrderNote(btn.dataset.id);
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      updateOrderNote(btn.dataset.id);
+    });
   });
-});
 
   cafeOrderList.querySelectorAll(".btnRemoveOrderItem").forEach((btn) => {
-  btn.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    removeOrderItem(btn.dataset.id);
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      removeOrderItem(btn.dataset.id);
+    });
   });
-});
 
 }
 
