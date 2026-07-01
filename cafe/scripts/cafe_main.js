@@ -1034,8 +1034,17 @@ btnInTamTinh?.addEventListener("click", () => {
   showToast("Tính năng in tạm tính sẽ phát triển sau.");
 });
 
-document.querySelector(".cafe-current-table .cafe-icon-btn")?.addEventListener("click", () => {
-  mobileOrderMenuSheet?.classList.add("show");
+document.addEventListener("click", (event) => {
+  const btn = event.target.closest(".cafe-current-table .cafe-icon-btn");
+  if (!btn) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const sheet = document.getElementById("mobileOrderMenuSheet");
+  if (sheet) {
+    sheet.classList.add("show");
+  }
 });
 
 btnCloseOrderMenu?.addEventListener("click", () => {
