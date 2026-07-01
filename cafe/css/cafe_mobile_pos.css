@@ -800,6 +800,7 @@
 }
 
 @media (max-width: 768px) {
+
   /* THỰC ĐƠN: tên món + giá hiện rõ */
   .cafe-product-card {
     grid-template-columns: 46px 1fr 34px !important;
@@ -911,5 +912,143 @@
     line-height: 16px !important;
     color: #0875d1 !important;
     background: transparent !important;
+  }
+}
+
+.receipt-popup-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  background: rgba(0, 0, 0, 0.55);
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.receipt-popup-backdrop.show {
+  display: flex;
+}
+
+.receipt-popup {
+  width: min(420px, 100%);
+  max-height: 94vh;
+  background: #f3f4f6;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.receipt-popup-head {
+  height: 54px;
+  padding: 0 14px;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.receipt-popup-head button {
+  border: none;
+  background: transparent;
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.receipt-paper {
+  width: 80mm;
+  max-width: 100%;
+  margin: 12px auto;
+  padding: 8px 10px;
+  background: #fff;
+  color: #000;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.32;
+  overflow-wrap: break-word;
+}
+
+.receipt-center {
+  text-align: center;
+}
+
+.receipt-title {
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.receipt-bold {
+  font-weight: 900;
+}
+
+.receipt-line {
+  border-top: 1px dashed #000;
+  margin: 8px 0;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.receipt-item-name {
+  font-weight: 700;
+  margin-top: 7px;
+}
+
+.receipt-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+  padding: 12px;
+  background: #fff;
+  border-top: 1px solid #ddd;
+}
+
+.receipt-actions button {
+  height: 50px;
+  border-radius: 12px;
+  border: none;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+#btnReceiptClose {
+  background: #e5e7eb;
+}
+
+#btnReceiptPrint {
+  background: #0875d1;
+  color: #fff;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #receiptPrintArea,
+  #receiptPrintArea * {
+    visibility: visible !important;
+  }
+
+  #receiptPrintArea {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    box-shadow: none !important;
+  }
+
+  @page {
+    size: 80mm auto;
+    margin: 0;
   }
 }
