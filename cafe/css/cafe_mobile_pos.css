@@ -329,3 +329,158 @@
     font-size: 15px;
   }
 }
+@media (max-width: 768px) {
+  .cafe-header {
+    height: 40px;
+    min-height: 40px;
+    padding: 4px 8px;
+  }
+
+  .cafe-header-left {
+    grid-template-columns: 72px 72px 1fr;
+    gap: 6px;
+  }
+
+  .cafe-header-tab,
+  .cafe-search-box {
+    height: 32px;
+    border-radius: 16px;
+    font-size: 13px;
+  }
+
+  .cafe-main {
+    grid-template-rows: 28% 72%;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .cafe-zone-tabs,
+  .cafe-product-tabs {
+    padding: 4px 6px;
+    gap: 6px;
+  }
+
+  .cafe-zone-tabs button,
+  .cafe-product-tabs button {
+    height: 28px;
+    min-width: 58px;
+    font-size: 12px;
+    padding: 0 10px;
+  }
+
+  .cafe-table-filter {
+    padding: 3px 8px;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .cafe-table-grid {
+    padding: 5px 8px;
+    grid-template-columns: repeat(5, minmax(52px, 1fr));
+    gap: 6px;
+  }
+
+  .cafe-table-card {
+    min-height: 54px;
+    border-radius: 10px;
+    font-size: 13px;
+    padding: 4px 2px;
+  }
+
+  .cafe-table-icon {
+    font-size: 14px;
+    margin-bottom: 1px;
+  }
+
+  .cafe-left-footer {
+    height: 26px;
+    font-size: 12px;
+    padding: 0 8px;
+  }
+
+  .cafe-order-header {
+    height: 0;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .cafe-bill-tab {
+    display: none;
+  }
+
+  .cafe-current-table {
+    height: 44px;
+    min-height: 44px;
+    padding: 0 8px;
+  }
+
+  .cafe-current-table strong {
+    font-size: 16px;
+  }
+
+  .cafe-current-table strong::before {
+    content: "225-274 · ";
+  }
+
+  .cafe-customer-search {
+    height: 32px;
+  }
+
+  .cafe-order-list {
+    padding: 6px 10px;
+  }
+
+  .cafe-order-row {
+    grid-template-columns: 1fr 96px;
+    padding: 7px 0;
+  }
+
+  .cafe-order-info strong {
+    font-size: 15px;
+  }
+
+  .cafe-qty-box {
+    width: 92px;
+    height: 34px;
+  }
+
+  .cafe-order-footer {
+    padding: 5px 8px calc(6px + env(safe-area-inset-bottom));
+  }
+
+  .cafe-footer-left {
+    margin-bottom: 4px;
+  }
+
+  .cafe-small-btn {
+    height: 30px;
+    min-width: 46px;
+    font-size: 12px;
+  }
+
+  .cafe-total {
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+
+  .cafe-total strong {
+    font-size: 22px;
+  }
+
+  .cafe-action-row {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  .cafe-action-row button {
+    height: 40px !important;
+    border-radius: 12px;
+    font-size: 13px;
+    padding: 0 4px;
+  }
+
+  .cafe-primary-btn {
+    grid-column: auto;
+  }
+}
