@@ -48,7 +48,7 @@
             <a href="#" data-soon="1">👨‍🍳 Danh mục món</a>
             <a href="#" data-soon="1">👤 Người dùng</a>
             <a href="#" data-soon="1">⚙ Thiết lập</a>
-            <a href="#" data-soon="1">🚪 Đăng xuất</a>
+            <a href="#" data-logout="1">🚪 Đăng xuất</a>
           </div>
         </div>
       </div>
@@ -258,7 +258,25 @@
     </div>
   </div>
 
-  <script type="module" src="./scripts/cafe_main.js?v=20260701-8"></script>
+  <script type="module" src="./scripts/cafe_main.js?v=20260701-9"></script>
+
+  <script type="module">
+    import { khoiTaoDangNhapCafe, dangXuatCafe } from "./scripts/cafe_auth.js?v=1";
+
+    khoiTaoDangNhapCafe({
+      loginContainerId: "cafeLogin",
+      appContainerId: "cafeApp",
+      macDinhDiaDiem: "cs1",
+      onLoginSuccess: async () => {
+        if (typeof window.initCafeApp === "function") {
+          await window.initCafeApp();
+        }
+      },
+    });
+
+    window.dangXuatCafe = dangXuatCafe;
+  </script>
+
 </body>
 
 </html>
