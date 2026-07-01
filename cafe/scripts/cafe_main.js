@@ -1035,9 +1035,7 @@ btnInTamTinh?.addEventListener("click", () => {
 });
 
 document.querySelector(".cafe-current-table .cafe-icon-btn")?.addEventListener("click", () => {
-  if (isMobileView()) {
-    mobileOrderMenuSheet?.classList.add("show");
-  }
+  mobileOrderMenuSheet?.classList.add("show");
 });
 
 btnCloseOrderMenu?.addEventListener("click", () => {
