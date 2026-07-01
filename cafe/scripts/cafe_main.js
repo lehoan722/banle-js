@@ -415,33 +415,14 @@ function buildReceiptHtml({ hoaDon, orderItems }) {
   }).join("");
 
   return `
-    <div class="receipt-center">
-      <div class="receipt-title">HOÀN TUYẾT CAFE</div>
-      <div>Địa chỉ: ................................</div>
-      <div>Điện thoại: ............................</div>
-    </div>
+    <div class="receipt-head-simple">
+  <div>HÓA ĐƠN BÁN HÀNG</div>
+  <div>${soHoaDon || ""}</div>
+  <div>Ngày bán: ${nowText}</div>
+  <div>Người bán: QUẢN LÝ</div>
+</div>
 
-    <div class="receipt-line"></div>
-
-    <div>Liên số: Liên 1</div>
-    <div>Ngày bán: ${nowText}</div>
-
-    <div class="receipt-center">
-      <div class="receipt-bold" style="font-size:18px;margin-top:8px;">HÓA ĐƠN BÁN HÀNG</div>
-      <div class="receipt-bold">${soHoaDon}</div>
-    </div>
-
-    <div style="margin-top:8px;">
-      <div><b>Khách hàng:</b> Khách lẻ</div>
-      <div><b>Địa chỉ:</b></div>
-      <div><b>Khu vực:</b> ${khuText}</div>
-      <div><b>Thời gian giao hàng:</b></div>
-      <div><b>Điện thoại:</b></div>
-    </div>
-
-    <div style="margin-top:14px;">
-      <b>Người bán:</b> QUẢN LÝ
-    </div>
+<div class="receipt-line"></div>
 
     <div class="receipt-line"></div>
 
