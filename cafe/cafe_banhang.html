@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="./css/cafe_layout.css" />
   <link rel="stylesheet" href="./css/cafe_mobile.css" />
   <link rel="stylesheet" href="./css/cafe.css" />
-  <link rel="stylesheet" href="./css/cafe_mobile_pos.css?v=1" />
+  <link rel="stylesheet" href="./css/cafe_mobile_pos.css?v=2" />
 </head>
 
 <body>
@@ -20,6 +20,7 @@
       <div class="cafe-header-left">
         <button id="btnViewTables" class="cafe-header-tab active">Phòng bàn</button>
         <button id="btnViewProducts" class="cafe-header-tab">Thực đơn</button>
+        <button id="btnViewOrder" class="cafe-header-tab cafe-mobile-only">Hóa đơn</button>
 
         <div class="cafe-search-box">
           <span>🔍</span>
@@ -172,16 +173,62 @@
           </div>
 
           <div class="cafe-action-row">
-            <button class="cafe-outline-btn">🍳 Gửi bếp (F10)</button>
-            <button class="cafe-outline-btn">▤ In tạm tính</button>
-            <button class="cafe-primary-btn">💵 Thanh toán (F9)</button>
+            <button id="btnGuiBep" class="cafe-outline-btn">🍳 Gửi bếp</button>
+            <button id="btnInTamTinh" class="cafe-outline-btn">▤ Tạm tính</button>
+            <button id="btnThanhToan" class="cafe-primary-btn">💵 Thanh toán</button>
           </div>
         </div>
       </section>
     </main>
   </div>
 
-  <script type="module" src="./scripts/cafe_main.js?v=20260630-2"></script>
+  <div id="mobileOrderBar" class="mobile-order-bar">
+    <button id="btnMobileChooseAgain">Chọn lại</button>
+    <button id="btnMobileViewOrder">
+      Xem đơn <span id="mobileOrderQty">0</span>
+    </button>
+  </div>
+
+  <div id="mobileOrderMenuSheet" class="mobile-sheet-backdrop">
+    <div class="mobile-sheet">
+      <div class="mobile-sheet-title">
+        <strong>Tùy chọn</strong>
+        <button id="btnCloseOrderMenu">×</button>
+      </div>
+
+      <button data-soon="1">▤ In phiếu tạm tính</button>
+      <button data-soon="1">🔔 Lịch sử báo bếp</button>
+      <button data-soon="1">✅ Kiểm đồ</button>
+      <button data-soon="1">🔗 Gộp bàn</button>
+      <button data-soon="1">⇄ Chuyển bàn</button>
+      <button data-soon="1">⧉ Tách đơn</button>
+      <button data-soon="1">▣ Ghép đơn</button>
+      <button data-soon="1">ℹ️ Thông tin đơn hàng</button>
+      <button id="btnOpenCancelOrder" class="danger">🗑 Hủy đơn hàng</button>
+    </div>
+  </div>
+
+  <div id="mobileCancelSheet" class="mobile-sheet-backdrop">
+    <div class="mobile-sheet">
+      <div class="mobile-sheet-title">
+        <button id="btnCloseCancelOrder">×</button>
+        <strong>Hủy đơn</strong>
+        <button id="btnConfirmCancelOrder">CHẮC CHẮN</button>
+      </div>
+
+      <p>Chọn lý do hủy đơn:</p>
+      <input id="cancelReasonInput" placeholder="Nhập lý do hủy" />
+
+      <button data-reason="Khách đợi lâu">Khách đợi lâu</button>
+      <button data-reason="Khách không hài lòng">Khách không hài lòng</button>
+      <button data-reason="Khách đổi món">Khách đổi món</button>
+      <button data-reason="Khách hủy món">Khách hủy món</button>
+      <button data-reason="Hết nguyên vật liệu">Hết nguyên vật liệu</button>
+      <button data-reason="Nhân viên ghi sai đơn">Nhân viên ghi sai đơn</button>
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/cafe_main.js?v=20260701-1"></script>
 </body>
 
 </html>
