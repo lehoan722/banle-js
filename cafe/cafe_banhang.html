@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="./css/cafe_layout.css" />
   <link rel="stylesheet" href="./css/cafe_mobile.css" />
   <link rel="stylesheet" href="./css/cafe.css" />
-  <link rel="stylesheet" href="./css/cafe_mobile_pos.css?v=2" />
+  <link rel="stylesheet" href="./css/cafe_mobile_pos.css?v=3" />
 </head>
 
 <body>
@@ -78,6 +78,18 @@
         </div>
 
         <div id="viewProducts" class="cafe-view">
+
+          <div class="mobile-product-header">
+            <button id="btnMobileBackTables">×</button>
+            <strong id="mobileProductTitle">Thực đơn</strong>
+            <button id="btnMobileProductSearch">🔍</button>
+            <button id="btnMobileAddCategory">＋</button>
+          </div>
+
+          <div id="mobileProductSearchRow" class="mobile-product-search-row">
+            <input id="mobileProductSearchInput" type="text" placeholder="Tìm mã / tên món..." />
+          </div>
+
           <div class="cafe-product-tabs">
             <button class="active">Tất cả</button>
             <button>BONG TUYẾT</button>
@@ -185,7 +197,9 @@
   <div id="mobileOrderBar" class="mobile-order-bar">
     <button id="btnMobileChooseAgain">Chọn lại</button>
     <button id="btnMobileViewOrder">
-      Xem đơn <span id="mobileOrderQty">0</span>
+      <span>Xem đơn</span>
+      <small id="mobileOrderSummary">0 món • 0</small>
+      <span id="mobileOrderQty">0</span>
     </button>
   </div>
 
@@ -228,7 +242,7 @@
     </div>
   </div>
 
-  <script type="module" src="./scripts/cafe_main.js?v=20260701-1"></script>
+  <script type="module" src="./scripts/cafe_main.js?v=20260701-3"></script>
 </body>
 
 </html>
