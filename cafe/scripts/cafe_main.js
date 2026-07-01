@@ -631,16 +631,20 @@ function renderOrder() {
   });
 
   cafeOrderList.querySelectorAll(".btnOrderNote").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      updateOrderNote(btn.dataset.id);
-    });
+  btn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    updateOrderNote(btn.dataset.id);
   });
+});
 
   cafeOrderList.querySelectorAll(".btnRemoveOrderItem").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      removeOrderItem(btn.dataset.id);
-    });
+  btn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    removeOrderItem(btn.dataset.id);
   });
+});
 
 }
 
