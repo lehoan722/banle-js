@@ -762,3 +762,39 @@
     color: #111827 !important;
   }
 }
+
+@media (max-width: 768px) {
+  .cafe-product-card {
+    grid-template-columns: 42px 1fr 34px !important;
+    align-items: center !important;
+  }
+
+  .cafe-product-info {
+    grid-column: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+  }
+
+  .cafe-product-name {
+    font-size: 14px !important;
+    line-height: 1.15 !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .cafe-product-price {
+    display: block !important;
+    margin: 3px 0 0 0 !important;
+    padding: 0 !important;
+    position: static !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
+    font-weight: 800 !important;
+    color: #0875d1 !important;
+    background: transparent !important;
+  }
+}
