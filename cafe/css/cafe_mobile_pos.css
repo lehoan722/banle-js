@@ -1,0 +1,331 @@
+/* Mobile POS layout - iPhone dọc */
+@media (max-width: 768px) {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #f4f7fb;
+  }
+
+  .cafe-app {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .cafe-header {
+    height: 64px;
+    min-height: 64px;
+    padding: 8px 10px;
+    gap: 8px;
+    border-radius: 0;
+  }
+
+  .cafe-header-left {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 86px 86px 1fr;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .cafe-header-right {
+    display: none;
+  }
+
+  .cafe-header-tab {
+    height: 44px;
+    border-radius: 22px;
+    font-size: 15px;
+    font-weight: 800;
+    padding: 0;
+  }
+
+  .cafe-search-box {
+    height: 44px;
+    min-width: 0;
+    border-radius: 22px;
+  }
+
+  .cafe-search-box input {
+    font-size: 15px;
+  }
+
+  .cafe-round-btn {
+    display: none;
+  }
+
+  .cafe-main {
+    flex: 1;
+    display: grid;
+    grid-template-rows: 48% 52%;
+    gap: 8px;
+    padding: 8px;
+    overflow: hidden;
+    background: #0b3f78;
+  }
+
+  .cafe-left-panel,
+  .cafe-right-panel {
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .cafe-left-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cafe-right-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cafe-zone-tabs,
+  .cafe-product-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .cafe-zone-tabs button,
+  .cafe-product-tabs button {
+    height: 38px;
+    min-width: 72px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 0 14px;
+    flex-shrink: 0;
+  }
+
+  .cafe-table-filter {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding: 8px 12px;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .cafe-table-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(70px, 1fr));
+    gap: 10px;
+    align-content: start;
+  }
+
+  .cafe-table-card {
+    min-height: 92px;
+    border-radius: 14px;
+    padding: 8px 4px;
+    font-size: 18px;
+    font-weight: 900;
+  }
+
+  .cafe-table-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .cafe-left-footer {
+    height: 38px;
+    padding: 0 12px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .cafe-product-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(96px, 1fr));
+    gap: 8px;
+    align-content: start;
+  }
+
+  .cafe-product-card {
+    min-height: 132px;
+    border-radius: 12px;
+    padding: 6px;
+  }
+
+  .cafe-product-image {
+    height: 64px;
+    border-radius: 10px;
+  }
+
+  .cafe-product-price {
+    font-size: 13px;
+    font-weight: 900;
+    margin-top: -8px;
+  }
+
+  .cafe-product-name {
+    font-size: 13px;
+    line-height: 1.2;
+    font-weight: 800;
+  }
+
+  .cafe-order-header {
+    height: 48px;
+    min-height: 48px;
+    padding: 0 12px;
+    background: #083b73;
+  }
+
+  .cafe-bill-tab {
+    height: 44px;
+    min-width: 116px;
+    border-radius: 16px 16px 0 0;
+    font-size: 18px;
+    font-weight: 900;
+  }
+
+  .cafe-current-table {
+    height: 54px;
+    min-height: 54px;
+    padding: 0 12px;
+    gap: 8px;
+    border-bottom: 1px solid #e6edf5;
+  }
+
+  .cafe-current-table strong {
+    font-size: 18px;
+    white-space: nowrap;
+  }
+
+  .cafe-customer-search {
+    height: 38px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .cafe-customer-search input {
+    font-size: 14px;
+  }
+
+  .cafe-order-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+  }
+
+  .cafe-order-row {
+    display: grid;
+    grid-template-columns: 1fr 110px;
+    gap: 6px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e8eef6;
+  }
+
+  .cafe-order-info strong {
+    font-size: 17px;
+    line-height: 1.25;
+  }
+
+  .cafe-order-subline {
+    font-size: 13px;
+    margin-top: 5px;
+  }
+
+  .cafe-qty-box {
+    justify-self: end;
+    width: 104px;
+    height: 38px;
+    border-radius: 19px;
+  }
+
+  .cafe-qty-box button {
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+  }
+
+  .cafe-price {
+    display: none;
+  }
+
+  .cafe-kitchen-notice {
+    margin: 0 12px 6px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: #fff0f0;
+    color: #b00020;
+    font-size: 13px;
+    font-weight: 800;
+    border: 1px solid #ffb7b7;
+  }
+
+  .cafe-order-footer {
+    flex-shrink: 0;
+    padding: 8px 12px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid #e4ebf5;
+    background: #fff;
+  }
+
+  .cafe-footer-left {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .cafe-small-btn {
+    height: 36px;
+    min-width: 54px;
+    border-radius: 18px;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .cafe-total {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+
+  .cafe-total strong {
+    font-size: 26px;
+    color: #111827;
+  }
+
+  .cafe-action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .cafe-action-row button {
+    height: 52px;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 900;
+  }
+
+  .cafe-primary-btn {
+    grid-column: span 2;
+    height: 56px !important;
+  }
+
+  .cafe-empty-order {
+    padding: 20px 10px;
+    font-size: 15px;
+  }
+}
