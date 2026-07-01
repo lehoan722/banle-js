@@ -73,6 +73,14 @@ const btnThanhToan = btnThanhToanNew || document.querySelector(".cafe-primary-bt
 const cafeProductTabs = document.querySelector(".cafe-product-tabs");
 const cafeSearchInput = document.querySelector(".cafe-search-box input");
 
+const btnMobileBackTables = document.getElementById("btnMobileBackTables");
+const mobileProductTitle = document.getElementById("mobileProductTitle");
+const btnMobileProductSearch = document.getElementById("btnMobileProductSearch");
+const btnMobileAddCategory = document.getElementById("btnMobileAddCategory");
+const mobileProductSearchRow = document.getElementById("mobileProductSearchRow");
+const mobileProductSearchInput = document.getElementById("mobileProductSearchInput");
+const mobileOrderSummary = document.getElementById("mobileOrderSummary");
+
 function showToast(message) {
   let toast = document.getElementById("cafeToast");
 
@@ -188,6 +196,17 @@ function updateMobileOrderBar() {
   if (mobileOrderBar) {
     mobileOrderBar.classList.toggle("show", showBar);
   }
+
+  const totalMoney = items.reduce((sum, item) => sum + Number(item.thanh_tien || 0), 0);
+
+  if (mobileOrderSummary) {
+    const banName = state.selectedBan?.id === "takeaway"
+      ? "Mang về"
+      : state.selectedBan?.ten_ban || "Chưa chọn bàn";
+
+    mobileOrderSummary.textContent = `${banName} • ${qty} món • ${formatMoney(totalMoney)}`;
+  }
+
 }
 
 function renderKhuVucTabs() {
@@ -259,6 +278,13 @@ function selectBan(ban) {
     } else {
       cafeCurrentTable.textContent = `▣ ${ban.ten_ban} / ${getKhuVucName(ban.khuvuc_id)}`;
     }
+  }
+
+  if (mobileProductTitle) {
+    mobileProductTitle.textContent =
+      ban.id === "takeaway"
+        ? "Mang về"
+        : `${ban.ten_ban} / ${getKhuVucName(ban.khuvuc_id)}`;
   }
 
   renderBan();
@@ -485,7 +511,12 @@ function addProductToOrder(product) {
   renderOrder();
   renderBan();
   orderSync.scheduleSave();
-  showToast(`Đã thêm ${product.ten_hang}`);
+
+  const banName = state.selectedBan?.id === "takeaway"
+    ? "Mang về"
+    : state.selectedBan?.ten_ban || "";
+
+  showToast(`Đã thêm ${product.ten_hang} vào ${banName}`);
   updateMobileOrderBar();
 }
 
@@ -817,6 +848,24 @@ cafeSearchInput?.addEventListener("input", () => {
   state.productSearchText = cafeSearchInput.value || "";
   setLeftView("products");
   renderProducts();
+});
+
+btnMobileBackTables?.addEventListener("click", () => {
+  setMobileView("tables");
+});
+
+btnMobileProductSearch?.addEventListener("click", () => {
+  mobileProductSearchRow?.classList.toggle("show");
+  mobileProductSearchInput?.focus();
+});
+
+mobileProductSearchInput?.addEventListener("input", () => {
+  state.productSearchText = mobileProductSearchInput.value || "";
+  renderProducts();
+});
+
+btnMobileAddCategory?.addEventListener("click", () => {
+  showToast("Chức năng thêm danh mục sẽ phát triển sau.");
 });
 
 document.addEventListener("keydown", (event) => {
