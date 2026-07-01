@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Bán hàng Cafe - Hoàn Tuyết</title>
+
+  <link rel="stylesheet" href="./css/cafe_theme.css" />
+  <link rel="stylesheet" href="./css/cafe_layout.css" />
+  <link rel="stylesheet" href="./css/cafe_mobile.css" />
+  <link rel="stylesheet" href="./css/cafe.css" />
+  <link rel="stylesheet" href="./css/cafe_mobile_pos.css?v=1" />
+</head>
+
+<body>
+  <div id="cafeApp" class="cafe-app">
+    <header class="cafe-header">
+      <div class="cafe-header-left">
+        <button id="btnViewTables" class="cafe-header-tab active">Phòng bàn</button>
+        <button id="btnViewProducts" class="cafe-header-tab">Thực đơn</button>
+
+        <div class="cafe-search-box">
+          <span>🔍</span>
+          <input type="text" placeholder="Tìm món (F3)" />
+        </div>
+
+        <button class="cafe-round-btn">⚡</button>
+        <button class="cafe-round-btn">＋</button>
+      </div>
+
+      <div class="cafe-header-right">
+        <button class="cafe-icon-btn">🔔</button>
+        <button class="cafe-icon-btn">⟳</button>
+        <span class="cafe-user">admin</span>
+
+        <div class="cafe-header-menu">
+          <button id="btnHeaderMenu" class="cafe-icon-btn">☰</button>
+
+          <div id="headerMenuPopup" class="cafe-header-dropdown">
+            <a href="/cafe/cafe_xemhoadon.html" target="_blank">📊 Báo cáo hóa đơn</a>
+            <a href="#" data-soon="1">📈 Báo cáo doanh thu</a>
+            <a href="#" data-soon="1">🍳 Màn hình bếp</a>
+            <a href="#" data-soon="1">🛎 Quản lý bàn</a>
+            <a href="#" data-soon="1">📦 Danh mục hàng hóa</a>
+            <a href="#" data-soon="1">👨‍🍳 Danh mục món</a>
+            <a href="#" data-soon="1">👤 Người dùng</a>
+            <a href="#" data-soon="1">⚙ Thiết lập</a>
+            <a href="#" data-soon="1">🚪 Đăng xuất</a>
+          </div>
+        </div>
+      </div>
+
+    </header>
+
+    <main class="cafe-main">
+      <section class="cafe-left-panel">
+        <div id="viewTables" class="cafe-view active">
+          <div id="cafeZoneTabs" class="cafe-zone-tabs"></div>
+
+          <div class="cafe-table-filter">
+            <label><input type="radio" name="tableStatus" value="all" checked /> Tất cả (<span
+                id="countAllTables">0</span>)</label>
+            <label><input type="radio" name="tableStatus" value="using" /> Sử dụng (<span
+                id="countUsingTables">0</span>)</label>
+            <label><input type="radio" name="tableStatus" value="empty" /> Còn trống (<span
+                id="countEmptyTables">0</span>)</label>
+          </div>
+
+          <div id="cafeTableGrid" class="cafe-table-grid"></div>
+
+          <div class="cafe-left-footer">
+            <label><input type="checkbox" /> Mở thực đơn khi chọn bàn</label>
+            <span>1/3 ›</span>
+          </div>
+        </div>
+
+        <div id="viewProducts" class="cafe-view">
+          <div class="cafe-product-tabs">
+            <button class="active">Tất cả</button>
+            <button>BONG TUYẾT</button>
+            <button>CAFÉ Ý / YTALY COFFEE</button>
+            <button>COFEE VIET NAM</button>
+            <button>ĐÁ XAY / ICE BLEND</button>
+            <button>GELATO</button>
+
+            <div class="cafe-product-more">
+              <button id="btnProductMore">⌄</button>
+              <div id="productMoreMenu" class="cafe-product-more-menu">
+                <button>SODA</button>
+                <button>SPECIAL</button>
+                <button>SỮA CHUA / GOGURT</button>
+                <button>TRÀ SỮA ĐÀI LOAN / MILK TEA</button>
+                <button>TRÀ TRÁI CÂY / FRUIT TEA</button>
+                <button>TRÀ XANH NHẬT / JAPAN GREEN TEA</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="cafe-product-grid">
+            <div class="cafe-product-card">
+              <div class="cafe-product-image">
+                <img src="./assets/images/default-food.jpg" alt="Món" />
+              </div>
+              <div class="cafe-product-price">30,000</div>
+              <div class="cafe-product-name">NƯỚC CHANH</div>
+            </div>
+
+            <div class="cafe-product-card">
+              <div class="cafe-product-image">
+                <img src="./assets/images/default-food.jpg" alt="Món" />
+              </div>
+              <div class="cafe-product-price">30,000</div>
+              <div class="cafe-product-name">ÉP ỔI</div>
+            </div>
+
+            <div class="cafe-product-card">
+              <div class="cafe-product-image">
+                <img src="./assets/images/default-food.jpg" alt="Món" />
+              </div>
+              <div class="cafe-product-price">35,000</div>
+              <div class="cafe-product-name">CAPPUCCINO</div>
+            </div>
+
+            <div class="cafe-product-card">
+              <div class="cafe-product-image">
+                <img src="./assets/images/default-food.jpg" alt="Món" />
+              </div>
+              <div class="cafe-product-price">40,000</div>
+              <div class="cafe-product-name">SINH TỐ XOÀI</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cafe-right-panel">
+        <div class="cafe-order-header">
+          <div class="cafe-bill-tab">
+            <span>225-274</span>
+            <button>×</button>
+          </div>
+
+          <button class="cafe-round-btn">＋</button>
+        </div>
+
+        <div class="cafe-current-table">
+          <strong>▣ Bàn 01 / tầng 1</strong>
+          <div class="cafe-customer-search">
+            <span>🔍</span>
+            <input type="text" placeholder="Tìm khách hàng (F4)" />
+          </div>
+          <button class="cafe-icon-btn">＋</button>
+        </div>
+
+        <div id="cafeOrderList" class="cafe-order-list"></div>
+
+        <div class="cafe-kitchen-notice" style="display:none;">
+          🔴 Đơn đã tự lưu. Bấm <b>Gửi bếp (F10)</b> để báo bar/bếp bắt đầu làm món.
+        </div>
+
+        <div class="cafe-order-footer">
+          <div class="cafe-footer-left">
+            <button class="cafe-small-btn">QUẢN LÝ ▾</button>
+            <button class="cafe-small-btn active">👥 1</button>
+            <button class="cafe-small-btn">✎</button>
+            <button class="cafe-small-btn">↶</button>
+          </div>
+
+          <div class="cafe-total">
+            Tổng tiền <span id="cafeTotalQty">0</span> <strong id="cafeTotalMoney">0</strong>
+          </div>
+
+          <div class="cafe-action-row">
+            <button class="cafe-outline-btn">🍳 Gửi bếp (F10)</button>
+            <button class="cafe-outline-btn">▤ In tạm tính</button>
+            <button class="cafe-primary-btn">💵 Thanh toán (F9)</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./scripts/cafe_main.js?v=20260630-2"></script>
+</body>
+
+</html>
