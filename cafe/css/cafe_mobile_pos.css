@@ -463,3 +463,130 @@
     margin-bottom: 10px;
   }
 }
+
+@media (max-width: 768px) {
+  .mobile-product-header {
+    height: 48px;
+    display: grid;
+    grid-template-columns: 44px 1fr 44px 44px;
+    align-items: center;
+    padding: 0 10px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .mobile-product-header strong {
+    font-size: 20px;
+    font-weight: 900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-product-header button {
+    border: none;
+    background: #f3f4f6;
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    font-size: 20px;
+    font-weight: 900;
+  }
+
+  .mobile-product-search-row {
+    display: none;
+    padding: 8px 10px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .mobile-product-search-row.show {
+    display: block;
+  }
+
+  .mobile-product-search-row input {
+    width: 100%;
+    height: 38px;
+    border: 1px solid #d1d5db;
+    border-radius: 19px;
+    padding: 0 14px;
+    font-size: 16px;
+  }
+
+  .cafe-product-tabs {
+    height: 46px;
+    min-height: 46px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+  }
+
+  .cafe-product-tabs button {
+    height: 34px;
+    font-size: 14px;
+    padding: 0 12px;
+  }
+
+  .cafe-product-grid {
+    padding: 0 8px 86px;
+  }
+
+  .cafe-product-card {
+    grid-template-columns: 46px 1fr 38px;
+    min-height: 54px;
+    height: 54px;
+    padding: 5px 0;
+    gap: 8px;
+  }
+
+  .cafe-product-image {
+    width: 42px;
+    height: 42px;
+    border-radius: 9px;
+  }
+
+  .cafe-product-name {
+    font-size: 15px;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cafe-product-price {
+    font-size: 13px;
+    margin-top: 28px;
+  }
+
+  .cafe-product-card::after {
+    width: 30px;
+    height: 30px;
+    font-size: 22px;
+  }
+
+  #btnMobileViewOrder {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 1fr 1fr;
+    align-items: center;
+    text-align: left;
+    padding: 6px 14px;
+  }
+
+  #btnMobileViewOrder span:first-child {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  #btnMobileViewOrder small {
+    font-size: 12px;
+    opacity: 0.95;
+    grid-column: 1;
+  }
+
+  #mobileOrderQty {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+}
