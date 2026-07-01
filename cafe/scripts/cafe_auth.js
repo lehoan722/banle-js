@@ -257,7 +257,7 @@ export function khoiTaoDangNhapCafe(options = {}) {
       <form id="formCafeLogin">
         <input id="cafeLoginCs" type="hidden" value="" />
 
-        <label>Mã nhân viên / Email admin</label>
+        <label>Mã nhân viên </label>
         <input id="cafeLoginUser" type="text" autocomplete="off"
           placeholder="NV01 hoặc email admin"
           style="width:100%;height:42px;margin:6px 0 12px;padding:0 10px;box-sizing:border-box;" />
