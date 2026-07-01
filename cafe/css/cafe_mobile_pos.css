@@ -1,9 +1,16 @@
 @media (min-width: 769px) {
 
   .cafe-mobile-only,
-  .mobile-order-bar,
-  .mobile-sheet-backdrop {
+  .mobile-order-bar {
     display: none !important;
+  }
+
+  .mobile-sheet-backdrop {
+    display: none;
+  }
+
+  .mobile-sheet-backdrop.show {
+    display: flex !important;
   }
 }
 
@@ -1137,6 +1144,7 @@
 }
 
 @media print {
+
   html,
   body {
     width: 80mm !important;
@@ -1172,6 +1180,7 @@
 }
 
 @media (min-width: 769px) {
+
   .mobile-product-header,
   .mobile-product-search-row,
   .mobile-order-bar {
@@ -1197,14 +1206,14 @@
     font-size: 24px !important;
   }
 
-  .mobile-sheet > button {
+  .mobile-sheet>button {
     min-height: 54px !important;
     font-size: 20px !important;
     font-weight: 900 !important;
     color: #0875d1 !important;
   }
 
-  .mobile-sheet > button.danger {
+  .mobile-sheet>button.danger {
     color: #e11d48 !important;
   }
 }
