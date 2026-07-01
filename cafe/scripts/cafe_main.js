@@ -397,18 +397,17 @@ function getBanInfoText() {
 function buildReceiptHtml({ hoaDon, orderItems }) {
   const nowText = formatDateTimeVN(new Date());
   const soHoaDon = hoaDon?.so_hoadon || "";
-  const banText = getBanInfoText();
-  const khuText = state.selectedBan?.khuvuc_id ? getKhuVucName(state.selectedBan.khuvuc_id) : "";
-
   const total = orderItems.reduce((sum, item) => sum + Number(item.thanh_tien || 0), 0);
 
   const itemHtml = orderItems.map((item) => {
     return `
-      <div class="receipt-item-name">${item.ten_hang}</div>
-      <div class="receipt-row">
-        <span>${formatMoney(item.don_gia)}</span>
-        <span>${item.so_luong}</span>
-        <span>${formatMoney(item.thanh_tien)}</span>
+      <div class="receipt-item">
+        <div class="receipt-item-name">${item.ten_hang}</div>
+        <div class="receipt-row receipt-item-money">
+          <span>${formatMoney(item.don_gia)}</span>
+          <span>${item.so_luong}</span>
+          <span>${formatMoney(item.thanh_tien)}</span>
+        </div>
       </div>
       <div class="receipt-line"></div>
     `;
@@ -416,22 +415,25 @@ function buildReceiptHtml({ hoaDon, orderItems }) {
 
   return `
     <div class="receipt-center">
-      <div class="receipt-title">GREEN SPACES</div>
-      <div>Địa chỉ: 80 Hà huy Tập. </div>
-      <div>Điện thoại: 090 5264180 </div>
+      <div class="receipt-shop-name">GREEN SPACES</div>
+      <div>Địa chỉ: 80 Hà Huy Tập</div>
+      <div>Điện thoại: 090 5264180</div>
     </div>
-    <div class="receipt-line"></div>
-    <div>Ngày bán: ${nowText}</div>
-    <div class="receipt-center">
-      <div class="receipt-bold" style="font-size:18px;margin-top:8px;">HÓA ĐƠN BÁN HÀNG</div>
-      <div class="receipt-bold">${soHoaDon}</div>
-    </div>
-    <div style="margin-top:14px;">
-      <b>Người bán:</b> QUẢN LÝ
-    </div>
+
     <div class="receipt-line"></div>
 
-    <div class="receipt-row receipt-bold">
+    <div>Ngày bán: ${nowText}</div>
+
+    <div class="receipt-center receipt-bill-title">
+      <div>HÓA ĐƠN BÁN HÀNG</div>
+      <div>${soHoaDon}</div>
+    </div>
+
+    <div class="receipt-seller">Người bán: QUẢN LÝ</div>
+
+    <div class="receipt-line"></div>
+
+    <div class="receipt-row receipt-table-head">
       <span>Đơn giá</span>
       <span>SL</span>
       <span>Thành tiền</span>
@@ -447,15 +449,17 @@ function buildReceiptHtml({ hoaDon, orderItems }) {
       <span>Chiết khấu:</span>
       <span>0</span>
     </div>
+
     <div class="receipt-line"></div>
-    <div class="receipt-row receipt-bold" style="font-size:18px;">
+
+    <div class="receipt-row receipt-grand-total">
       <span>Tổng cộng:</span>
       <span>${formatMoney(total)}</span>
     </div>
 
     <div class="receipt-line"></div>
 
-    <div class="receipt-center" style="margin-top:14px;">
+    <div class="receipt-center receipt-thanks">
       Xin cảm ơn Quý khách!
     </div>
   `;
