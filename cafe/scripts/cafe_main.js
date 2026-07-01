@@ -25,6 +25,30 @@ const state = {
 
 const btnViewTables = document.getElementById("btnViewTables");
 const btnViewProducts = document.getElementById("btnViewProducts");
+
+
+
+const btnViewOrder = document.getElementById("btnViewOrder");
+const mobileOrderBar = document.getElementById("mobileOrderBar");
+const btnMobileViewOrder = document.getElementById("btnMobileViewOrder");
+const btnMobileChooseAgain = document.getElementById("btnMobileChooseAgain");
+const mobileOrderQty = document.getElementById("mobileOrderQty");
+
+const btnGuiBep = document.getElementById("btnGuiBep");
+const btnInTamTinh = document.getElementById("btnInTamTinh");
+const btnThanhToanNew = document.getElementById("btnThanhToan");
+
+const mobileOrderMenuSheet = document.getElementById("mobileOrderMenuSheet");
+const btnCloseOrderMenu = document.getElementById("btnCloseOrderMenu");
+const btnOpenCancelOrder = document.getElementById("btnOpenCancelOrder");
+
+const mobileCancelSheet = document.getElementById("mobileCancelSheet");
+const btnCloseCancelOrder = document.getElementById("btnCloseCancelOrder");
+const btnConfirmCancelOrder = document.getElementById("btnConfirmCancelOrder");
+const cancelReasonInput = document.getElementById("cancelReasonInput");
+
+
+
 const viewTables = document.getElementById("viewTables");
 const viewProducts = document.getElementById("viewProducts");
 
@@ -43,9 +67,9 @@ const cafeTotalQty = document.getElementById("cafeTotalQty");
 const cafeTotalMoney = document.getElementById("cafeTotalMoney");
 const cafeProductGrid = document.querySelector(".cafe-product-grid");
 const cafeCurrentTable = document.querySelector(".cafe-current-table strong");
-const btnThongBao = document.querySelector(".cafe-outline-btn");
+const btnThongBao = btnGuiBep || document.querySelector(".cafe-outline-btn");
 const cafeKitchenNotice = document.querySelector(".cafe-kitchen-notice");
-const btnThanhToan = document.querySelector(".cafe-primary-btn");
+const btnThanhToan = btnThanhToanNew || document.querySelector(".cafe-primary-btn");
 const cafeProductTabs = document.querySelector(".cafe-product-tabs");
 const cafeSearchInput = document.querySelector(".cafe-search-box input");
 
@@ -128,6 +152,42 @@ function setLeftView(viewName) {
 
   viewTables?.classList.toggle("active", isTables);
   viewProducts?.classList.toggle("active", !isTables);
+}
+
+function isMobileView() {
+  return window.matchMedia("(max-width: 768px)").matches;
+}
+
+function setMobileView(viewName) {
+  if (!isMobileView()) {
+    if (viewName === "tables") setLeftView("tables");
+    if (viewName === "products") setLeftView("products");
+    return;
+  }
+
+  document.body.dataset.mobileView = viewName;
+
+  btnViewTables?.classList.toggle("active", viewName === "tables");
+  btnViewProducts?.classList.toggle("active", viewName === "products");
+  btnViewOrder?.classList.toggle("active", viewName === "order");
+
+  updateMobileOrderBar();
+}
+
+function updateMobileOrderBar() {
+  const items = getCurrentOrderItems();
+  const qty = items.reduce((sum, item) => sum + Number(item.so_luong || 0), 0);
+
+  if (mobileOrderQty) mobileOrderQty.textContent = qty;
+
+  const showBar =
+    isMobileView() &&
+    qty > 0 &&
+    document.body.dataset.mobileView === "products";
+
+  if (mobileOrderBar) {
+    mobileOrderBar.classList.toggle("show", showBar);
+  }
 }
 
 function renderKhuVucTabs() {
@@ -275,6 +335,13 @@ function renderBan() {
 
       const ban = state.banList.find((x) => String(x.id) === String(banId));
       if (ban) selectBan(ban);
+
+      if (ban) {
+        selectBan(ban);
+        if (isMobileView()) setMobileView("products");
+
+      }
+
     });
   });
   renderCounts();
@@ -418,6 +485,8 @@ function addProductToOrder(product) {
   renderOrder();
   renderBan();
   orderSync.scheduleSave();
+  showToast(`Đã thêm ${product.ten_hang}`);
+  updateMobileOrderBar();
 }
 
 function updateOrderQty(productId, change) {
@@ -515,6 +584,8 @@ function renderOrder() {
 
   if (cafeTotalQty) cafeTotalQty.textContent = totalQty;
   if (cafeTotalMoney) cafeTotalMoney.textContent = formatMoney(totalMoney);
+
+  updateMobileOrderBar();
 
   cafeOrderList.querySelectorAll(".btnQtyMinus").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -684,11 +755,23 @@ async function initTables() {
 }
 
 btnViewTables?.addEventListener("click", () => {
-  setLeftView("tables");
+  setMobileView("tables");
 });
 
 btnViewProducts?.addEventListener("click", () => {
-  setLeftView("products");
+  setMobileView("products");
+});
+
+btnViewOrder?.addEventListener("click", () => {
+  setMobileView("order");
+});
+
+btnMobileViewOrder?.addEventListener("click", () => {
+  setMobileView("order");
+});
+
+btnMobileChooseAgain?.addEventListener("click", () => {
+  setMobileView("tables");
 });
 
 document.addEventListener("click", () => {
@@ -767,6 +850,70 @@ headerMenuPopup?.addEventListener("click", (event) => {
 
 document.addEventListener("click", () => {
   headerMenuPopup?.classList.remove("open");
+});
+
+btnInTamTinh?.addEventListener("click", () => {
+  showToast("Tính năng in tạm tính sẽ phát triển sau.");
+});
+
+document.querySelector(".cafe-current-table .cafe-icon-btn")?.addEventListener("click", () => {
+  if (isMobileView()) {
+    mobileOrderMenuSheet?.classList.add("show");
+  }
+});
+
+btnCloseOrderMenu?.addEventListener("click", () => {
+  mobileOrderMenuSheet?.classList.remove("show");
+});
+
+mobileOrderMenuSheet?.addEventListener("click", (event) => {
+  if (event.target === mobileOrderMenuSheet) {
+    mobileOrderMenuSheet.classList.remove("show");
+  }
+
+  if (event.target.closest("[data-soon]")) {
+    showToast("Chức năng này sẽ phát triển sau.");
+  }
+});
+
+btnOpenCancelOrder?.addEventListener("click", () => {
+  mobileOrderMenuSheet?.classList.remove("show");
+  mobileCancelSheet?.classList.add("show");
+});
+
+btnCloseCancelOrder?.addEventListener("click", () => {
+  mobileCancelSheet?.classList.remove("show");
+});
+
+mobileCancelSheet?.querySelectorAll("[data-reason]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (cancelReasonInput) cancelReasonInput.value = btn.dataset.reason;
+  });
+});
+
+btnConfirmCancelOrder?.addEventListener("click", () => {
+  const reason = cancelReasonInput?.value?.trim();
+
+  if (!reason) {
+    alert("Vui lòng chọn hoặc nhập lý do hủy.");
+    return;
+  }
+
+  const ok = confirm(`Hủy đơn với lý do: ${reason}?`);
+  if (!ok) return;
+
+  const banKey = getSelectedBanKey();
+  if (banKey) {
+    delete state.ordersByBan[banKey];
+    delete state.hoaDonByBan[banKey];
+  }
+
+  renderOrder();
+  renderBan();
+  hideKitchenNotice();
+  mobileCancelSheet?.classList.remove("show");
+  showToast("Đã hủy đơn trên giao diện. Bước sau sẽ cập nhật xuống database.");
+  setMobileView("tables");
 });
 
 initTables().then(() => {
