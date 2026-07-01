@@ -1008,6 +1008,13 @@ btnHeaderMenu?.addEventListener("click", (event) => {
 });
 
 headerMenuPopup?.addEventListener("click", (event) => {
+  const logoutLink = event.target.closest("[data-logout]");
+  if (logoutLink) {
+    event.preventDefault();
+    window.dangXuatCafe?.();
+    return;
+  }
+
   const link = event.target.closest("[data-soon]");
   if (!link) return;
 
@@ -1110,7 +1117,9 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-initTables().then(() => {
+window.initCafeApp = async function () {
+  await initTables();
+
   setupCafeRealtime({
     onReload: async () => {
       try {
@@ -1124,4 +1133,4 @@ initTables().then(() => {
       }
     },
   });
-});
+};
