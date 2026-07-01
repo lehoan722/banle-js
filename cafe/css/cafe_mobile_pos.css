@@ -1,4 +1,5 @@
 @media (min-width: 769px) {
+
   .cafe-mobile-only,
   .mobile-order-bar,
   .mobile-sheet-backdrop {
@@ -7,6 +8,7 @@
 }
 
 @media (max-width: 768px) {
+
   html,
   body {
     margin: 0;
@@ -403,7 +405,7 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.45);
+    background: rgba(0, 0, 0, 0.45);
     z-index: 10000;
     align-items: flex-end;
   }
@@ -437,7 +439,7 @@
     font-weight: 900;
   }
 
-  .mobile-sheet > button {
+  .mobile-sheet>button {
     width: 100%;
     min-height: 52px;
     border: none;
@@ -448,7 +450,7 @@
     font-weight: 700;
   }
 
-  .mobile-sheet > button.danger,
+  .mobile-sheet>button.danger,
   .danger {
     color: #e11d48 !important;
   }
@@ -693,5 +695,70 @@
   .btnOrderNote {
     display: inline-block;
     padding: 6px 8px;
+  }
+}
+
+@media (max-width: 768px) {
+
+  /* Luôn hiện đủ 3 tab: Phòng bàn / Thực đơn / Hóa đơn */
+  .cafe-header {
+    display: flex !important;
+  }
+
+  .cafe-header-left {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    width: 100% !important;
+  }
+
+  .cafe-header-tab {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.55;
+    background: #eef3f8 !important;
+    color: #0f3766 !important;
+  }
+
+  .cafe-header-tab.active {
+    opacity: 1;
+    background: #0875d1 !important;
+    color: #fff !important;
+  }
+
+  .cafe-mobile-only {
+    display: flex !important;
+  }
+
+  /* Ẩn các phần phụ, không ẩn tab */
+  .cafe-search-box,
+  .cafe-round-btn,
+  .cafe-header-right {
+    display: none !important;
+  }
+
+  /* Giá món hiện rõ trong thực đơn */
+  .cafe-product-price {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: #0875d1 !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    margin-top: 22px !important;
+    background: transparent !important;
+    z-index: 2;
+  }
+
+  .cafe-product-name {
+    padding-right: 4px;
+  }
+
+  /* Ô nhập ghi chú/prompt rõ hơn trên mobile */
+  input,
+  textarea {
+    border: 2px solid #0875d1 !important;
+    background: #fff !important;
+    color: #111827 !important;
   }
 }
