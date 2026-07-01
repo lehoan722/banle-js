@@ -865,3 +865,51 @@
     grid-row: 1 / span 3 !important;
   }
 }
+
+@media (max-width: 768px) {
+  body[data-mobile-view="products"] .cafe-product-card {
+    display: grid !important;
+    grid-template-columns: 46px minmax(0, 1fr) 36px !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    padding: 5px 8px !important;
+    align-items: center !important;
+  }
+
+  body[data-mobile-view="products"] .cafe-product-info {
+    display: grid !important;
+    grid-template-rows: 1fr 1fr !important;
+    align-items: center !important;
+    justify-content: start !important;
+    min-width: 0 !important;
+    height: 52px !important;
+    grid-column: 2 !important;
+  }
+
+  body[data-mobile-view="products"] .cafe-product-name {
+    display: block !important;
+    text-align: left !important;
+    font-size: 14px !important;
+    font-weight: 900 !important;
+    line-height: 18px !important;
+    width: 100% !important;
+  }
+
+  body[data-mobile-view="products"] .cafe-product-price {
+    display: block !important;
+    position: static !important;
+    transform: none !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: left !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    line-height: 16px !important;
+    color: #0875d1 !important;
+    background: transparent !important;
+  }
+}
