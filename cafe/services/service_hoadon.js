@@ -8,11 +8,20 @@ function taoSoHoaDonCafe() {
   return `CF${ymd}-${time}`;
 }
 
-async function syncChiTietHoaDonCafe(hoaDonId, orderItems) {
+async function ghiLogHoaDonCafe(payload) {
+  const { error } = await supabase
+    .schema(CAFE_SCHEMA)
+    .from("cafe_hoadon_log")
+    .insert(payload);
+
+  if (error) throw error;
+}
+
+async function syncChiTietHoaDonCafe(hoaDonId, orderItems, { manv = null, tennv = null } = {}) {
   const { data: oldItems, error: oldError } = await supabase
     .schema(CAFE_SCHEMA)
     .from(CAFE_TABLES.HOADON_CT)
-    .select("id, hoadon_id, hanghoa_id, so_luong, don_gia, thanh_tien, ghi_chu")
+    .select("id, hoadon_id, hanghoa_id, ma_hang, ten_hang, so_luong, don_gia, thanh_tien, ghi_chu, trang_thai")
     .eq("hoadon_id", hoaDonId);
 
   if (oldError) throw oldError;
@@ -28,13 +37,36 @@ async function syncChiTietHoaDonCafe(hoaDonId, orderItems) {
   );
 
   for (const oldItem of itemsToDelete) {
+    if (oldItem.trang_thai === "da_huy") continue;
+
     const { error } = await supabase
       .schema(CAFE_SCHEMA)
       .from(CAFE_TABLES.HOADON_CT)
-      .delete()
+      .update({
+        trang_thai: "da_huy",
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", oldItem.id);
 
     if (error) throw error;
+
+    await ghiLogHoaDonCafe({
+      hoadon_id: hoaDonId,
+      hoadon_ct_id: oldItem.id,
+      hanh_dong: "xoa_mem_mon",
+      ma_hang: oldItem.ma_hang,
+      ten_hang: oldItem.ten_hang,
+      so_luong_cu: oldItem.so_luong,
+      so_luong_moi: 0,
+      don_gia: oldItem.don_gia,
+      thanh_tien_cu: oldItem.thanh_tien,
+      thanh_tien_moi: 0,
+      trang_thai_cu: oldItem.trang_thai,
+      trang_thai_moi: "da_huy",
+      manv,
+      tennv,
+      ghi_chu: "Bớt/xóa món khỏi hóa đơn đang mở",
+    });
   }
 
   for (const item of orderItems) {
@@ -54,6 +86,12 @@ async function syncChiTietHoaDonCafe(hoaDonId, orderItems) {
     };
 
     if (oldItem) {
+      const coThayDoi =
+        Number(oldItem.so_luong) !== Number(item.so_luong) ||
+        Number(oldItem.don_gia) !== Number(item.don_gia) ||
+        Number(oldItem.thanh_tien) !== Number(item.thanh_tien) ||
+        oldItem.trang_thai !== "binh_thuong";
+
       const { error } = await supabase
         .schema(CAFE_SCHEMA)
         .from(CAFE_TABLES.HOADON_CT)
@@ -61,13 +99,48 @@ async function syncChiTietHoaDonCafe(hoaDonId, orderItems) {
         .eq("id", oldItem.id);
 
       if (error) throw error;
+
+      if (coThayDoi) {
+        await ghiLogHoaDonCafe({
+          hoadon_id: hoaDonId,
+          hoadon_ct_id: oldItem.id,
+          hanh_dong: oldItem.trang_thai === "da_huy" ? "khoi_phuc_mon" : "cap_nhat_mon",
+          ma_hang: item.ma_hang,
+          ten_hang: item.ten_hang,
+          so_luong_cu: oldItem.so_luong,
+          so_luong_moi: item.so_luong,
+          don_gia: item.don_gia,
+          thanh_tien_cu: oldItem.thanh_tien,
+          thanh_tien_moi: item.thanh_tien,
+          trang_thai_cu: oldItem.trang_thai,
+          trang_thai_moi: "binh_thuong",
+          manv,
+          tennv,
+        });
+      }
     } else {
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .schema(CAFE_SCHEMA)
         .from(CAFE_TABLES.HOADON_CT)
-        .insert(payload);
+        .insert(payload)
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      await ghiLogHoaDonCafe({
+        hoadon_id: hoaDonId,
+        hoadon_ct_id: inserted.id,
+        hanh_dong: "them_mon",
+        ma_hang: item.ma_hang,
+        ten_hang: item.ten_hang,
+        so_luong_moi: item.so_luong,
+        don_gia: item.don_gia,
+        thanh_tien_moi: item.thanh_tien,
+        trang_thai_moi: "binh_thuong",
+        manv,
+        tennv,
+      });
     }
   }
 }
@@ -122,7 +195,7 @@ export async function luuHoaDonCafe({ hoaDonId = null, ban, orderItems, manv = n
     hoaDon = data;
   }
 
-  await syncChiTietHoaDonCafe(hoaDon.id, orderItems);
+  await syncChiTietHoaDonCafe(hoaDon.id, orderItems, { manv, tennv });
 
   return hoaDon;
 }
@@ -162,8 +235,9 @@ export async function loadHoaDonDangMo() {
   const { data: chiTiet, error: ctError } = await supabase
     .schema(CAFE_SCHEMA)
     .from(CAFE_TABLES.HOADON_CT)
-    .select("id, hoadon_id, hanghoa_id, ma_hang, ten_hang, so_luong, don_gia, thanh_tien, ghi_chu")
-    .in("hoadon_id", ids);
+    .select("id, hoadon_id, hanghoa_id, ma_hang, ten_hang, so_luong, don_gia, thanh_tien, ghi_chu, trang_thai")
+    .in("hoadon_id", ids)
+    .eq("trang_thai", "binh_thuong");
 
   if (ctError) throw ctError;
 
