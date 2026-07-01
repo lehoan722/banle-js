@@ -255,11 +255,7 @@ export function khoiTaoDangNhapCafe(options = {}) {
       <h2 style="margin:0 0 18px;text-align:center;">Đăng nhập Cafe</h2>
 
       <form id="formCafeLogin">
-        <label>Cơ sở</label>
-        <select id="cafeLoginCs" style="width:100%;height:42px;margin:6px 0 12px;padding:0 10px;">
-          <option value="cs1">Cơ sở 1</option>
-          <option value="cs2">Cơ sở 2</option>
-        </select>
+        <input id="cafeLoginCs" type="hidden" value="" />
 
         <label>Mã nhân viên / Email admin</label>
         <input id="cafeLoginUser" type="text" autocomplete="off"
@@ -293,7 +289,8 @@ export function khoiTaoDangNhapCafe(options = {}) {
   const errorEl = document.getElementById("cafeLoginError");
   const formEl = document.getElementById("formCafeLogin");
 
-  csEl.value = localStorage.getItem("diadiem") || macDinhDiaDiem || "cs1";
+  csEl.value = "cs1";
+localStorage.setItem("diadiem", "");
   userEl.value = localStorage.getItem("last_login_identifier") || localStorage.getItem("manv") || "";
 
   function showApp(user) {
