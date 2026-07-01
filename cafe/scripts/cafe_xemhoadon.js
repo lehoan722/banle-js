@@ -87,6 +87,16 @@ function loaiDonText(value) {
   return value || "";
 }
 
+function trangThaiMonText(value) {
+  if (value === "binh_thuong") return "Bình thường";
+  if (value === "da_huy") return "Đã hủy";
+  return value || "";
+}
+
+function getChiTietTinhTien(hd) {
+  return (hd.cafe_hoadon_ct || []).filter((ct) => ct.trang_thai !== "da_huy");
+}
+
 async function taiHoaDonCafe() {
   el.dsHoaDon.innerHTML = `<tr><td colspan="12">Đang tải dữ liệu...</td></tr>`;
 
@@ -115,14 +125,16 @@ async function taiHoaDonCafe() {
         ten_khuvuc
       ),
       cafe_hoadon_ct (
-        id,
-        ma_hang,
-        ten_hang,
-        so_luong,
-        don_gia,
-        thanh_tien,
-        ghi_chu
-      )
+  id,
+  ma_hang,
+  ten_hang,
+  so_luong,
+  don_gia,
+  thanh_tien,
+  ghi_chu,
+  trang_thai,
+  updated_at
+)
     `)
     .order("gio_vao", { ascending: false })
     .limit(1000);
@@ -185,7 +197,9 @@ function renderHoaDon(rows) {
   }
 
   el.dsHoaDon.innerHTML = rows.map((hd, index) => {
-    const tongSl = (hd.cafe_hoadon_ct || []).reduce((sum, ct) => sum + Number(ct.so_luong || 0), 0);
+    const chiTietTinhTien = getChiTietTinhTien(hd);
+    const tongSl = chiTietTinhTien.reduce((sum, ct) => sum + Number(ct.so_luong || 0), 0);
+    const tongTienTinhLai = chiTietTinhTien.reduce((sum, ct) => sum + Number(ct.thanh_tien || 0), 0);
 
     return `
       <tr data-id="${hd.id}">
@@ -199,7 +213,7 @@ function renderHoaDon(rows) {
         <td class="status-${hd.trang_thai}">${trangThaiText(hd.trang_thai)}</td>
         <td>${hd.tennv || hd.manv || ""}</td>
         <td class="text-right">${formatMoney(tongSl)}</td>
-        <td class="text-right">${formatMoney(hd.thanh_toan || hd.tong_tien)}</td>
+        <td class="text-right">${formatMoney(tongTienTinhLai)}</td>
         <td>${hd.ghi_chu || ""}</td>
       </tr>
     `;
@@ -219,9 +233,12 @@ function renderHoaDon(rows) {
 function renderSummary(rows) {
   const tongHoaDon = rows.length;
   const tongSl = rows.reduce((sum, hd) => {
-    return sum + (hd.cafe_hoadon_ct || []).reduce((s, ct) => s + Number(ct.so_luong || 0), 0);
+    return sum + getChiTietTinhTien(hd).reduce((s, ct) => s + Number(ct.so_luong || 0), 0);
   }, 0);
-  const tongTien = rows.reduce((sum, hd) => sum + Number(hd.thanh_toan || hd.tong_tien || 0), 0);
+
+  const tongTien = rows.reduce((sum, hd) => {
+    return sum + getChiTietTinhTien(hd).reduce((s, ct) => s + Number(ct.thanh_tien || 0), 0);
+  }, 0);
 
   el.tongHoaDon.textContent = formatMoney(tongHoaDon);
   el.tongSoLuong.textContent = formatMoney(tongSl);
@@ -242,7 +259,10 @@ function showChiTiet(hd) {
       <td class="text-right">${formatMoney(ct.so_luong)}</td>
       <td class="text-right">${formatMoney(ct.don_gia)}</td>
       <td class="text-right">${formatMoney(ct.thanh_tien)}</td>
-      <td>${ct.ghi_chu || ""}</td>
+<td class="${ct.trang_thai === "da_huy" ? "status-da_huy" : ""}">
+  ${trangThaiMonText(ct.trang_thai)}
+</td>
+<td>${ct.ghi_chu || ""}</td>
     </tr>
   `).join("");
 }
