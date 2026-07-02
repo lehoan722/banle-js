@@ -1297,8 +1297,9 @@
 .cafe-table-card {
   justify-content: flex-start;
   align-items: center;
-  padding-top: 14px;
-  gap: 10px;
+  padding: 10px 8px 6px;
+  gap: 6px;
+  overflow: hidden;
 }
 
 .cafe-table-card .cafe-table-icon {
@@ -1306,28 +1307,43 @@
 }
 
 .cafe-table-name {
-  font-size: 22px;
+  width: 100%;
+  font-size: 18px;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.05;
   text-align: center;
+  white-space: nowrap;
 }
 
 .cafe-table-meta {
-  width: calc(100% - 18px);
+  width: 100%;
+  box-sizing: border-box;
   margin-top: 4px;
-  padding: 6px 7px;
-  background: rgba(255, 255, 255, 0.35);
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 5px 6px;
+  background: rgba(255, 255, 255, 0.42);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 650;
   text-align: left;
-  line-height: 1.45;
+  line-height: 1.25;
+  overflow: hidden;
+}
+
+.cafe-table-meta div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cafe-table-card.using .cafe-table-name {
-  font-size: 24px;
+  font-size: 19px;
+}
+
+.cafe-table-card.active .cafe-table-name {
+  color: #fff;
 }
 
 .cafe-table-card.active .cafe-table-meta {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
 }
