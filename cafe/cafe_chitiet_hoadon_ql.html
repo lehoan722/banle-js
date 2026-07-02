@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Báo cáo chi tiết hóa đơn - Quản lý</title>
+
+  <link rel="stylesheet" href="./css/cafe_report.css" />
+</head>
+
+<body>
+  <div id="app-container" class="report-app">
+    <h2>🔎 Báo cáo chi tiết hóa đơn - Quản lý</h2>
+
+    <div class="filter-box">
+      <label>Từ ngày <input type="date" id="tuNgay" /></label>
+      <label>Đến ngày <input type="date" id="denNgay" /></label>
+      <label>Số HĐ <input type="text" id="locSoHD" /></label>
+      <label>NV <input type="text" id="locNV" /></label>
+      <label>Bàn <input type="text" id="locBan" /></label>
+      <label>Khu vực <input type="text" id="locKhuVuc" /></label>
+      <label>Món <input type="text" id="locMon" /></label>
+
+      <label>
+        Trạng thái món
+        <select id="locTrangThaiMon">
+          <option value="">Tất cả</option>
+          <option value="binh_thuong">Bình thường</option>
+          <option value="da_huy">Đã hủy</option>
+        </select>
+      </label>
+
+      <label>
+        Trạng thái HĐ
+        <select id="locTrangThaiHD">
+          <option value="">Tất cả</option>
+          <option value="dang_mo">Đang mở</option>
+          <option value="da_thanh_toan">Đã thanh toán</option>
+          <option value="da_huy">Đã hủy</option>
+        </select>
+      </label>
+
+      <label>
+        <input type="checkbox" id="chiHoaDonCoMonHuy" />
+        Chỉ HĐ có món hủy
+      </label>
+
+      <button id="btnLoc" class="primary-btn">🔍 Lọc</button>
+      <button id="btnCopyTable" class="secondary-btn">📋 Copy bảng</button>
+    </div>
+
+    <div class="summary-box">
+      Tổng dòng món: <b id="tongDongMon">0</b> |
+      Món bình thường: <b id="tongMonBinhThuong">0</b> |
+      Món đã hủy: <b id="tongMonHuy">0</b> |
+      Tiền bình thường: <b id="tongTienBinhThuong">0</b> |
+      Tiền món hủy: <b id="tongTienHuy">0</b> |
+      HĐ có món hủy: <b id="tongHoaDonCoHuy">0</b>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Giờ vào</th>
+            <th>Số HĐ</th>
+            <th>Khu vực</th>
+            <th>Bàn</th>
+            <th>NV</th>
+            <th>Mã món</th>
+            <th>Tên món</th>
+            <th>SL</th>
+            <th>Đơn giá</th>
+            <th>Thành tiền</th>
+            <th>Trạng thái món</th>
+            <th>Trạng thái HĐ</th>
+            <th>Ghi chú món</th>
+            <th>Lý do/log gần nhất</th>
+            <th>Cập nhật món</th>
+          </tr>
+        </thead>
+        <tbody id="dsChiTiet"></tbody>
+      </table>
+    </div>
+
+    <h3>⚠️ Hóa đơn có nhiều món hủy</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Số HĐ</th>
+            <th>Bàn</th>
+            <th>NV</th>
+            <th>Số món hủy</th>
+            <th>Tiền món hủy</th>
+          </tr>
+        </thead>
+        <tbody id="dsHoaDonCanhBao"></tbody>
+      </table>
+    </div>
+
+    <h3>📌 Món hay bị hủy</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Mã món</th>
+            <th>Tên món</th>
+            <th>Số lần hủy</th>
+            <th>Tiền hủy</th>
+          </tr>
+        </thead>
+        <tbody id="dsMonHayHuy"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module" src="./scripts/cafe_chitiet_hoadon_ql.js"></script>
+</body>
+</html>
