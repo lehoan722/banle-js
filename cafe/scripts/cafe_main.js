@@ -1,7 +1,7 @@
 import { loadKhuVuc } from "../services/service_khuvuc.js";
 import { loadBan } from "../services/service_ban.js";
 import { loadHangHoa } from "../services/service_hanghoa.js";
-import { luuHoaDonCafe, thanhToanHoaDonCafe, loadHoaDonDangMo, guiBepHoaDonCafe } from "../services/service_hoadon.js";
+import { luuHoaDonCafe, thanhToanHoaDonCafe, loadHoaDonDangMo, guiBepHoaDonCafe, huyHoaDonCafe } from "../services/service_hoadon.js";
 import { loadNhomHang } from "../services/service_nhomhang.js";
 import { setupCafeRealtime } from "./cafe_realtime.js";
 import { createCafeOrderSync } from "./cafe_orderSync.js";
@@ -676,7 +676,14 @@ function removeOrderItem(productId) {
   const ok = confirm(`Xóa món "${item.ten_hang}" khỏi đơn?`);
   if (!ok) return;
 
-  state.ordersByBan[key] = orderItems.filter((x) => Number(x.id) !== Number(productId));
+  const conLai = orderItems.filter((x) => Number(x.id) !== Number(productId));
+
+  if (!conLai.length) {
+    alert("Đây là món cuối cùng. Muốn bỏ hết món thì hãy dùng chức năng Hủy đơn để lưu lý do và hủy mềm hóa đơn.");
+    return;
+  }
+
+  state.ordersByBan[key] = conLai;
 
   renderOrder();
   renderBan();
@@ -1076,7 +1083,7 @@ mobileCancelSheet?.querySelectorAll("[data-reason]").forEach((btn) => {
   });
 });
 
-btnConfirmCancelOrder?.addEventListener("click", () => {
+btnConfirmCancelOrder?.addEventListener("click", async () => {
   const reason = cancelReasonInput?.value?.trim();
 
   if (!reason) {
@@ -1088,17 +1095,32 @@ btnConfirmCancelOrder?.addEventListener("click", () => {
   if (!ok) return;
 
   const banKey = getSelectedBanKey();
-  if (banKey) {
-    delete state.ordersByBan[banKey];
-    delete state.hoaDonByBan[banKey];
-  }
+  const hoaDon = banKey ? state.hoaDonByBan[banKey] : null;
 
-  renderOrder();
-  renderBan();
-  hideKitchenNotice();
-  mobileCancelSheet?.classList.remove("show");
-  showToast("Đã hủy đơn trên giao diện. Bước sau sẽ cập nhật xuống database.");
-  setMobileView("tables");
+  try {
+    if (hoaDon?.id) {
+      await huyHoaDonCafe(hoaDon.id, {
+        lyDo: reason,
+        manv: null,
+        tennv: "admin",
+      });
+    }
+
+    if (banKey) {
+      delete state.ordersByBan[banKey];
+      delete state.hoaDonByBan[banKey];
+    }
+
+    renderOrder();
+    renderBan();
+    hideKitchenNotice();
+    mobileCancelSheet?.classList.remove("show");
+    showToast("Đã hủy đơn và cập nhật xuống database.");
+    setMobileView("tables");
+  } catch (error) {
+    console.error("Lỗi hủy hóa đơn:", error);
+    alert("Không hủy được hóa đơn. Xem Console để kiểm tra lỗi.");
+  }
 });
 
 document.getElementById("btnReceiptPrint")?.addEventListener("click", printReceipt);
