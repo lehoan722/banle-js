@@ -626,6 +626,7 @@ function addProductToOrder(product) {
       don_gia: donGia,
       thanh_tien: donGia,
       ghi_chu: "",
+      thu_tu: orderItems.length + 1,
     });
   }
 
@@ -886,15 +887,18 @@ async function restoreHoaDonDangMo() {
       gio_vao: hd.gio_vao,
     };
 
-    state.ordersByBan[banKey] = (hd.chi_tiet || []).map((ct) => ({
-      id: ct.hanghoa_id,
-      ma_hang: ct.ma_hang,
-      ten_hang: ct.ten_hang,
-      so_luong: Number(ct.so_luong || 0),
-      don_gia: Number(ct.don_gia || 0),
-      thanh_tien: Number(ct.thanh_tien || 0),
-      ghi_chu: ct.ghi_chu || "",
-    }));
+    state.ordersByBan[banKey] = (hd.chi_tiet || [])
+      .sort((a, b) => Number(a.thu_tu || 0) - Number(b.thu_tu || 0) || Number(a.id || 0) - Number(b.id || 0))
+      .map((ct) => ({
+        id: ct.hanghoa_id,
+        ma_hang: ct.ma_hang,
+        ten_hang: ct.ten_hang,
+        so_luong: Number(ct.so_luong || 0),
+        don_gia: Number(ct.don_gia || 0),
+        thanh_tien: Number(ct.thanh_tien || 0),
+        ghi_chu: ct.ghi_chu || "",
+        thu_tu: Number(ct.thu_tu || 0),
+      }));
   });
 }
 
