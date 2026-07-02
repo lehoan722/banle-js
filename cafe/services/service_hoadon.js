@@ -21,7 +21,7 @@ async function syncChiTietHoaDonCafe(hoaDonId, orderItems, { manv = null, tennv 
   const { data: oldItems, error: oldError } = await supabase
     .schema(CAFE_SCHEMA)
     .from(CAFE_TABLES.HOADON_CT)
-    .select("id, hoadon_id, hanghoa_id, ma_hang, ten_hang, so_luong, don_gia, thanh_tien, ghi_chu, trang_thai")
+    .select("id, hoadon_id, hanghoa_id, ma_hang, ten_hang, so_luong, don_gia, thanh_tien, ghi_chu, trang_thai, thu_tu")
     .eq("hoadon_id", hoaDonId);
 
   if (oldError) throw oldError;
@@ -82,6 +82,7 @@ async function syncChiTietHoaDonCafe(hoaDonId, orderItems, { manv = null, tennv 
       thanh_tien: item.thanh_tien,
       ghi_chu: item.ghi_chu || null,
       trang_thai: "binh_thuong",
+      thu_tu: item.thu_tu || 0,
       updated_at: new Date().toISOString(),
     };
 
@@ -312,9 +313,11 @@ export async function loadHoaDonDangMo() {
   const { data: chiTiet, error: ctError } = await supabase
     .schema(CAFE_SCHEMA)
     .from(CAFE_TABLES.HOADON_CT)
-    .select("id, hoadon_id, hanghoa_id, ma_hang, ten_hang, so_luong, don_gia, thanh_tien, ghi_chu, trang_thai")
+    .select("id, hoadon_id, hanghoa_id, ma_hang, ten_hang, so_luong, don_gia, thanh_tien, ghi_chu, trang_thai, thu_tu")
     .in("hoadon_id", ids)
-    .eq("trang_thai", "binh_thuong");
+    .eq("trang_thai", "binh_thuong")
+    .order("thu_tu", { ascending: true })
+    .order("id", { ascending: true });
 
   if (ctError) throw ctError;
 
