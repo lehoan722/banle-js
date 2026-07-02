@@ -121,7 +121,7 @@ async function taiBaoCao() {
         created_at,
         updated_at,
         thu_tu
-      ),
+      )
       
     `)
         .order("gio_vao", { ascending: false })
@@ -180,8 +180,7 @@ async function taiBaoCao() {
 
     let detailRows = [];
 
-    for (const hd of data || []) {
-        const logs = [];
+    for (const hd of data || []) {        
 
         for (const ct of hd.cafe_hoadon_ct || []) {
             const logGanNhat =
