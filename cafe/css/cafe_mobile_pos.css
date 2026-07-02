@@ -1319,14 +1319,46 @@
   width: 100%;
   box-sizing: border-box;
   margin-top: 4px;
-  padding: 5px 6px;
-  background: rgba(255, 255, 255, 0.42);
+  padding: 5px;
+  background: rgba(255, 255, 255, .35);
   border-radius: 6px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 6px;
+
+  font-size: 11px;
+}
+
+.table-money {
+  flex: 1;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+}
+
+.table-time {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.table-time div:first-child {
+  opacity: .75;
+  margin-bottom: 2px;
+}
+
+.table-time div:last-child {
   font-size: 12px;
-  font-weight: 650;
-  text-align: left;
-  line-height: 1.25;
-  overflow: hidden;
+  font-weight: 700;
 }
 
 .cafe-table-meta div {
