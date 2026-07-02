@@ -360,8 +360,14 @@ function renderBan() {
     ${isUsing
         ? `
           <div class="cafe-table-meta">
-            <div>tổng tiền: ${formatMoney(tongTienBan)}</div>
-            <div>Thời gian: ${usedTime}</div>
+            <div class="table-money">
+    ${formatMoneyShort(tongTienBan)}
+</div>
+
+<div class="table-time">
+    <div>Thời gian</div>
+    <div>${usedTime}</div>
+</div>
           </div>
         `
         : ``
@@ -401,6 +407,14 @@ function renderBan() {
 function formatMoney(value) {
   const number = Number(value || 0);
   return number.toLocaleString("vi-VN");
+}
+
+function formatMoneyShort(value) {
+  const n = Number(value || 0);
+
+  if (n < 1000) return `${n}`;
+
+  return `${Math.round(n / 1000).toLocaleString("vi-VN")}k`;
 }
 
 function formatDateTimeVN(date = new Date()) {
