@@ -679,7 +679,7 @@ function removeOrderItem(productId) {
   const conLai = orderItems.filter((x) => Number(x.id) !== Number(productId));
 
   if (!conLai.length) {
-    alert("Đây là món cuối cùng. Muốn bỏ hết món thì hãy dùng chức năng Hủy đơn để lưu lý do và hủy mềm hóa đơn.");
+    alert("Đây là món cuối cùng. Muốn bỏ hết món thì hãy dùng chức năng Hủy đơn để lưu lý do và hủy hóa đơn.");
     return;
   }
 
