@@ -313,20 +313,19 @@ async function autoMarkOutdatedNewOrders(rows) {
   autoRecheckRunning = true;
 
   try {
-
     const coso = getCurrentCoso();
 
-    const newRows = rows
+    const openRows = rows
       .filter(r =>
-        ["moi", "yeu_cau_kiem_kho"].includes(String(r.trang_thai || "")) &&
+        ["moi", "dang_chuyen", "da_tao_phieu", "yeu_cau_kiem_kho"].includes(String(r.trang_thai || "")) &&
         String(r.tu_coso || "").toLowerCase() === coso
       )
       .slice(0, 200);
 
-    if (!newRows.length) return false;
+    if (!openRows.length) return false;
 
     const masps = Array.from(
-      new Set(newRows.map(r => String(r.masp || "").trim().toUpperCase()).filter(Boolean))
+      new Set(openRows.map(r => String(r.masp || "").trim().toUpperCase()).filter(Boolean))
     ).slice(0, 200);
 
     if (!masps.length) return false;
@@ -338,55 +337,130 @@ async function autoMarkOutdatedNewOrders(rows) {
       suggestionInfoByMasp.set(masp, info);
     }
 
-    const outdatedIds = [];
-    const needCheckIds = [];
+    const deleteNewIds = [];
+    const outdatedMovingIds = [];
+    const needCheckNewIds = [];
+    const needCheckMovingIds = [];
     const restoreCheckIds = [];
 
-    newRows.forEach(r => {
+    openRows.forEach(r => {
+      const id = Number(r.id);
       const masp = String(r.masp || "").trim().toUpperCase();
-      if (!suggestionInfoByMasp.has(masp)) return;
-
-      const info = suggestionInfoByMasp.get(masp);
-
       const status = String(r.trang_thai || "");
       const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
 
+      if (!id || !suggestionInfoByMasp.has(masp)) return;
+
+      const info = suggestionInfoByMasp.get(masp);
+
+      // Nếu tồn đang âm: không kết luận lỗi thời, bắt kiểm kho
       if (info?.hasNegative) {
         if (status === "moi") {
-          needCheckIds.push(Number(r.id));
+          needCheckNewIds.push(id);
         }
+
+        if (["dang_chuyen", "da_tao_phieu"].includes(status)) {
+          needCheckMovingIds.push(id);
+        }
+
         return;
       }
 
       const stillNeeded = info.keys.has(key);
 
+      // Dòng yêu cầu kiểm kho: sau khi hết âm thì kiểm lại
       if (status === "yeu_cau_kiem_kho") {
         if (stillNeeded) {
-          restoreCheckIds.push(Number(r.id));
+          restoreCheckIds.push(id);
         } else {
-          outdatedIds.push(Number(r.id));
+          deleteNewIds.push(id);
         }
         return;
       }
 
-      if (!stillNeeded) {
-        outdatedIds.push(Number(r.id));
+      if (stillNeeded) return;
+
+      // Yêu cầu mới của bạn:
+      // Dòng mới lỗi thời thì xóa hẳn để đỡ rác
+      if (status === "moi") {
+        deleteNewIds.push(id);
+        return;
+      }
+
+      // Dòng đã thao tác chuyển thì giữ lại để cảnh báo
+      if (["dang_chuyen", "da_tao_phieu"].includes(status)) {
+        outdatedMovingIds.push(id);
       }
     });
 
-    if (needCheckIds.length) {
+    const now = new Date().toISOString();
+    let changed = false;
+
+    if (deleteNewIds.length) {
+      const { error } = await ctx.supabase
+        .from("dat_hang_chuyen_kho")
+        .delete()
+        .in("id", deleteNewIds)
+        .in("trang_thai", ["moi", "yeu_cau_kiem_kho"]);
+
+      if (error) {
+        console.warn("[Đặt hàng CK] Không xóa được dòng mới lỗi thời:", error);
+      } else {
+        changed = true;
+      }
+    }
+
+    if (outdatedMovingIds.length) {
+      const { error } = await ctx.supabase
+        .from("dat_hang_chuyen_kho")
+        .update({
+          trang_thai: "loi_thoi",
+          chon_chuyen: true,
+          updated_at: now
+        })
+        .in("id", outdatedMovingIds)
+        .in("trang_thai", ["dang_chuyen", "da_tao_phieu"]);
+
+      if (error) {
+        console.warn("[Đặt hàng CK] Không cập nhật được dòng đang chuyển lỗi thời:", error);
+      } else {
+        changed = true;
+      }
+    }
+
+    if (needCheckNewIds.length) {
       const { error } = await ctx.supabase
         .from("dat_hang_chuyen_kho")
         .update({
           trang_thai: "yeu_cau_kiem_kho",
           chon_chuyen: false,
-          updated_at: new Date().toISOString()
+          updated_at: now
         })
-        .in("id", needCheckIds)
+        .in("id", needCheckNewIds)
         .eq("trang_thai", "moi");
 
       if (error) {
         console.warn("[Đặt hàng CK] Không cập nhật được dòng yêu cầu kiểm kho:", error);
+      } else {
+        changed = true;
+      }
+    }
+
+    if (needCheckMovingIds.length) {
+      const { error } = await ctx.supabase
+        .from("dat_hang_chuyen_kho")
+        .update({
+          trang_thai: "yeu_cau_kiem_kho",
+          chon_chuyen: true,
+          updated_at: now
+        })
+        .in("id", needCheckMovingIds)
+        .in("trang_thai", ["dang_chuyen", "da_tao_phieu"]);
+
+      if (error) {
+        console.warn("[Đặt hàng CK] Không cập nhật được dòng đang chuyển yêu cầu kiểm kho:", error);
+      } else {
+        changed = true;
       }
     }
 
@@ -396,40 +470,23 @@ async function autoMarkOutdatedNewOrders(rows) {
         .update({
           trang_thai: "moi",
           chon_chuyen: false,
-          updated_at: new Date().toISOString()
+          updated_at: now
         })
         .in("id", restoreCheckIds)
         .eq("trang_thai", "yeu_cau_kiem_kho");
 
       if (error) {
         console.warn("[Đặt hàng CK] Không khôi phục được dòng yêu cầu kiểm kho:", error);
+      } else {
+        changed = true;
       }
     }
 
-    if (!outdatedIds.length && !needCheckIds.length && !restoreCheckIds.length) return false;
-    if (!outdatedIds.length) return true;
-
-    const { error } = await ctx.supabase
-      .from("dat_hang_chuyen_kho")
-      .update({
-        trang_thai: "loi_thoi",
-        chon_chuyen: false,
-        updated_at: new Date().toISOString()
-      })
-      .in("id", outdatedIds)
-      .eq("trang_thai", "moi");
-
-    if (error) {
-      console.warn("[Đặt hàng CK] Không cập nhật được dòng mới lỗi thời:", error);
-      return false;
-    }
-
-    return true;
+    return changed;
 
   } finally {
     autoRecheckRunning = false;
   }
-
 }
 
 async function fetchOrders() {
