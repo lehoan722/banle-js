@@ -23,6 +23,9 @@ const state = {
   productSearchText: "",
 };
 
+let isLocalSaving = false;
+let realtimeReloadTimerLocal = null;
+
 const btnViewTables = document.getElementById("btnViewTables");
 const btnViewProducts = document.getElementById("btnViewProducts");
 
@@ -140,14 +143,20 @@ const orderSync = createCafeOrderSync({
   saveOrder: luuHoaDonCafe,
 
   showSaving: () => {
+    isLocalSaving = true;
     showKitchenNotice();
   },
 
   showSaved: () => {
+    setTimeout(() => {
+      isLocalSaving = false;
+    }, 1200);
+
     showToast("Đơn đã tự động lưu.");
   },
 
   showError: () => {
+    isLocalSaving = false;
     alert("Không tự động lưu được đơn. Vui lòng kiểm tra kết nối.");
   },
 });
@@ -1155,15 +1164,36 @@ window.initCafeApp = async function () {
 
   setupCafeRealtime({
     onReload: async () => {
-      try {
-        state.banList = await loadBan();
-        await restoreHoaDonDangMo();
+      clearTimeout(realtimeReloadTimerLocal);
 
-        renderOrder();
-        renderBan();
-      } catch (error) {
-        console.error("Lỗi reload realtime cafe:", error);
-      }
+      realtimeReloadTimerLocal = setTimeout(async () => {
+        if (isLocalSaving) {
+          return;
+        }
+
+        try {
+          const selectedKey = getSelectedBanKey();
+
+          state.banList = await loadBan();
+          await restoreHoaDonDangMo();
+
+          if (selectedKey && state.banList.length) {
+            const oldSelectedBan = state.selectedBan;
+
+            if (oldSelectedBan?.id === "takeaway") {
+              state.selectedBan = oldSelectedBan;
+            } else {
+              const freshBan = state.banList.find((x) => String(x.id) === String(selectedKey));
+              if (freshBan) state.selectedBan = freshBan;
+            }
+          }
+
+          renderOrder();
+          renderBan();
+        } catch (error) {
+          console.error("Lỗi reload realtime cafe:", error);
+        }
+      }, 1200);
     },
   });
 };
