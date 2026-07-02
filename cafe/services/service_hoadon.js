@@ -1,11 +1,14 @@
 import { supabase } from "../scripts/cafe_supabaseClient.js";
 import { CAFE_SCHEMA, CAFE_TABLES } from "../scripts/cafe_config.js";
 
-function taoSoHoaDonCafe() {
-  const now = new Date();
-  const ymd = now.toISOString().slice(0, 10).replaceAll("-", "");
-  const time = String(now.getTime()).slice(-6);
-  return `CF${ymd}-${time}`;
+function taoSoHoaDonTamCafe() {
+  return `TMP-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+}
+
+function taoSoHoaDonCafeTheoId(id, createdAt = null) {
+  const d = createdAt ? new Date(createdAt) : new Date();
+  const ymd = d.toISOString().slice(0, 10).replaceAll("-", "");
+  return `CF${ymd}-${String(id).padStart(6, "0")}`;
 }
 
 async function ghiLogHoaDonCafe(payload) {
@@ -172,7 +175,7 @@ export async function luuHoaDonCafe({ hoaDonId = null, ban, orderItems, manv = n
 
   } else {
     const hoaDonPayload = {
-      so_hoadon: taoSoHoaDonCafe(),
+      so_hoadon: taoSoHoaDonTamCafe(),
       ban_id: ban.id === "takeaway" ? null : ban.id,
       khuvuc_id: ban.id === "takeaway" ? null : ban.khuvuc_id,
       loai_don: ban.id === "takeaway" ? "mang_ve" : "tai_ban",
@@ -189,11 +192,27 @@ export async function luuHoaDonCafe({ hoaDonId = null, ban, orderItems, manv = n
       .schema(CAFE_SCHEMA)
       .from(CAFE_TABLES.HOADON)
       .insert(hoaDonPayload)
-      .select("id, so_hoadon")
+      .select("id, so_hoadon, created_at")
       .single();
 
     if (error) throw error;
-    hoaDon = data;
+
+    const soHoaDonChinhThuc = taoSoHoaDonCafeTheoId(data.id, data.created_at);
+
+    const { data: updatedHoaDon, error: updateSoHdError } = await supabase
+      .schema(CAFE_SCHEMA)
+      .from(CAFE_TABLES.HOADON)
+      .update({
+        so_hoadon: soHoaDonChinhThuc,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id)
+      .select("id, so_hoadon")
+      .single();
+
+    if (updateSoHdError) throw updateSoHdError;
+
+    hoaDon = updatedHoaDon;
   }
 
   await syncChiTietHoaDonCafe(hoaDon.id, orderItems, { manv, tennv });
