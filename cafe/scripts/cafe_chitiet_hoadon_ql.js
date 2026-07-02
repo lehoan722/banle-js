@@ -56,6 +56,23 @@ function formatDateTime(value) {
     return `${datePart} ${timePart.replace(":", "h")}`;
 }
 
+function formatDuration(fromValue, toValue) {
+    if (!fromValue || !toValue) return "";
+
+    const from = new Date(fromValue);
+    const to = new Date(toValue);
+    const diffMs = to - from;
+
+    if (diffMs < 0) return "";
+
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours <= 0) return `${minutes} phút`;
+    return `${hours} giờ ${minutes} phút`;
+}
+
 function getToday() {
     return new Date().toISOString().slice(0, 10);
 }
@@ -155,6 +172,8 @@ async function taiBaoCao() {
       hoadon_ct_id,
       hanh_dong,
       ghi_chu,
+      trang_thai_cu,
+      trang_thai_moi,
       created_at
     `)
             .in("hoadon_id", hoaDonIds);
@@ -180,15 +199,26 @@ async function taiBaoCao() {
 
     let detailRows = [];
 
-    for (const hd of data || []) {        
+    for (const hd of data || []) {
 
         for (const ct of hd.cafe_hoadon_ct || []) {
-            const logGanNhat =
+            const logsCuaMon = logMap.get(Number(ct.id)) || [];
 
-                (logMap.get(Number(ct.id)) || [])
-                    .sort((a, b) =>
-                        new Date(b.created_at) - new Date(a.created_at)
-                    )[0];
+            const logGanNhat = logsCuaMon
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+            const logXoaMon = logsCuaMon
+                .filter((log) =>
+                    log.hanh_dong === "xoa_mem_mon" ||
+                    log.hanh_dong === "huy_mon_theo_hoa_don" ||
+                    log.trang_thai_moi === "da_huy"
+                )
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+            const thoiDiemXoaMon =
+                ct.trang_thai === "da_huy"
+                    ? (logXoaMon?.created_at || ct.updated_at)
+                    : null;
 
             detailRows.push({
                 hoadon_id: hd.id,
@@ -209,7 +239,10 @@ async function taiBaoCao() {
                 thanh_tien: Number(ct.thanh_tien || 0),
                 ghi_chu_mon: ct.ghi_chu || "",
                 trang_thai_mon: ct.trang_thai,
+                created_at: ct.created_at,
                 updated_at: ct.updated_at,
+                thoi_diem_xoa_mon: thoiDiemXoaMon,
+                thoi_gian_ton_tai: formatDuration(ct.created_at, thoiDiemXoaMon),
                 thu_tu: ct.thu_tu || 0,
                 log_gan_nhat: logGanNhat?.ghi_chu || logGanNhat?.hanh_dong || "",
             });
@@ -289,16 +322,15 @@ function renderChiTiet(rows) {
       <td>${r.ten_khuvuc || ""}</td>
       <td>${r.ten_ban || ""}</td>
       <td>${r.tennv || r.manv || ""}</td>
-      <td>${r.ma_hang || ""}</td>
       <td>${r.ten_hang || ""}</td>
-      <td class="text-right">${formatMoney(r.so_luong)}</td>
-      <td class="text-right">${formatMoney(r.don_gia)}</td>
-      <td class="text-right">${formatMoney(r.thanh_tien)}</td>
-      <td>${trangThaiMonText(r.trang_thai_mon)}</td>
-      <td>${trangThaiHDText(r.trang_thai_hd)}</td>
-      <td>${r.ghi_chu_mon || ""}</td>
-      <td>${r.log_gan_nhat || ""}</td>
-      <td>${formatDateTime(r.updated_at)}</td>
+<td class="text-right">${formatMoney(r.so_luong)}</td>
+<td class="text-right">${formatMoney(r.thanh_tien)}</td>
+<td>${trangThaiMonText(r.trang_thai_mon)}</td>
+<td>${trangThaiHDText(r.trang_thai_hd)}</td>
+<td>${formatDateTime(r.created_at)}</td>
+<td>${formatDateTime(r.thoi_diem_xoa_mon)}</td>
+<td>${r.thoi_gian_ton_tai || ""}</td>
+<td>${r.log_gan_nhat || ""}</td>
     </tr>
   `).join("");
 }
