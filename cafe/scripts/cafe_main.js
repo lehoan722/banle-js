@@ -323,6 +323,11 @@ function getThoiGianSuDungBan(banId) {
   return formatThoiGianSuDung(hd.gio_vao);
 }
 
+function getTongTienBan(banId) {
+  const items = state.ordersByBan[String(banId)] || [];
+  return items.reduce((sum, item) => sum + Number(item.thanh_tien || 0), 0);
+}
+
 function renderBan() {
   if (!cafeTableGrid) return;
 
@@ -346,10 +351,21 @@ function renderBan() {
     const usedTime = getThoiGianSuDungBan(ban.id);
     const titleText = usedTime ? `${ban.ten_ban} đã sử dụng ${usedTime}` : ban.ten_ban;
 
+    const tongTienBan = getTongTienBan(ban.id);
+
     return `
   <div class="cafe-table-card ${cls}" data-ban-id="${ban.id}" title="${titleText}">
-    <div class="cafe-table-icon">▭</div>
-    <div>${ban.ten_ban}</div>
+    <div class="cafe-table-name">${ban.ten_ban}</div>
+
+    ${isUsing
+        ? `
+          <div class="cafe-table-meta">
+            <div>tổng tiền: ${formatMoney(tongTienBan)}</div>
+            <div>Thời gian: ${usedTime}</div>
+          </div>
+        `
+        : ``
+      }
   </div>
 `;
   });
