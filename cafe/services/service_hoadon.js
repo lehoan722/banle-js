@@ -220,6 +220,83 @@ export async function thanhToanHoaDonCafe(hoaDonId) {
   return data;
 }
 
+export async function huyHoaDonCafe(hoaDonId, { lyDo = "", manv = null, tennv = null } = {}) {
+  if (!hoaDonId) throw new Error("Thiếu ID hóa đơn.");
+
+  const nowIso = new Date().toISOString();
+
+  const { data: oldItems, error: oldItemsError } = await supabase
+    .schema(CAFE_SCHEMA)
+    .from(CAFE_TABLES.HOADON_CT)
+    .select("id, ma_hang, ten_hang, so_luong, don_gia, thanh_tien, trang_thai")
+    .eq("hoadon_id", hoaDonId);
+
+  if (oldItemsError) throw oldItemsError;
+
+  const { data, error } = await supabase
+    .schema(CAFE_SCHEMA)
+    .from(CAFE_TABLES.HOADON)
+    .update({
+      trang_thai: "da_huy",
+      ghi_chu: lyDo ? `Hủy đơn: ${lyDo}` : "Hủy đơn",
+      tong_tien: 0,
+      thanh_toan: 0,
+      updated_at: nowIso,
+    })
+    .eq("id", hoaDonId)
+    .eq("trang_thai", "dang_mo")
+    .select("id, so_hoadon")
+    .single();
+
+  if (error) throw error;
+
+  const { error: ctError } = await supabase
+    .schema(CAFE_SCHEMA)
+    .from(CAFE_TABLES.HOADON_CT)
+    .update({
+      trang_thai: "da_huy",
+      updated_at: nowIso,
+    })
+    .eq("hoadon_id", hoaDonId)
+    .neq("trang_thai", "da_huy");
+
+  if (ctError) throw ctError;
+
+  await ghiLogHoaDonCafe({
+    hoadon_id: hoaDonId,
+    hanh_dong: "huy_hoa_don",
+    trang_thai_cu: "dang_mo",
+    trang_thai_moi: "da_huy",
+    manv,
+    tennv,
+    ghi_chu: lyDo || "Hủy hóa đơn",
+  });
+
+  for (const item of oldItems || []) {
+    if (item.trang_thai === "da_huy") continue;
+
+    await ghiLogHoaDonCafe({
+      hoadon_id: hoaDonId,
+      hoadon_ct_id: item.id,
+      hanh_dong: "huy_mon_theo_hoa_don",
+      ma_hang: item.ma_hang,
+      ten_hang: item.ten_hang,
+      so_luong_cu: item.so_luong,
+      so_luong_moi: 0,
+      don_gia: item.don_gia,
+      thanh_tien_cu: item.thanh_tien,
+      thanh_tien_moi: 0,
+      trang_thai_cu: item.trang_thai,
+      trang_thai_moi: "da_huy",
+      manv,
+      tennv,
+      ghi_chu: lyDo || "Hủy hóa đơn",
+    });
+  }
+
+  return data;
+}
+
 export async function loadHoaDonDangMo() {
   const { data: hoaDons, error: hdError } = await supabase
     .schema(CAFE_SCHEMA)
