@@ -1236,6 +1236,7 @@
 }
 
 @media (min-width: 769px) {
+
   #mobileOrderMenuSheet.mobile-sheet-backdrop.show,
   #mobileCancelSheet.mobile-sheet-backdrop.show {
     display: flex !important;
@@ -1273,8 +1274,8 @@
     margin-bottom: 12px !important;
   }
 
-  #mobileOrderMenuSheet .mobile-sheet > button,
-  #mobileCancelSheet .mobile-sheet > button {
+  #mobileOrderMenuSheet .mobile-sheet>button,
+  #mobileCancelSheet .mobile-sheet>button {
     display: block !important;
     width: 100% !important;
     min-height: 54px !important;
@@ -1287,8 +1288,46 @@
     color: #0875d1 !important;
   }
 
-  #mobileOrderMenuSheet .mobile-sheet > button.danger,
-  #mobileCancelSheet .mobile-sheet > button.danger {
+  #mobileOrderMenuSheet .mobile-sheet>button.danger,
+  #mobileCancelSheet .mobile-sheet>button.danger {
     color: #e11d48 !important;
   }
+}
+
+.cafe-table-card {
+  justify-content: flex-start;
+  align-items: center;
+  padding-top: 14px;
+  gap: 10px;
+}
+
+.cafe-table-card .cafe-table-icon {
+  display: none;
+}
+
+.cafe-table-name {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.cafe-table-meta {
+  width: calc(100% - 18px);
+  margin-top: 4px;
+  padding: 6px 7px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  line-height: 1.45;
+}
+
+.cafe-table-card.using .cafe-table-name {
+  font-size: 24px;
+}
+
+.cafe-table-card.active .cafe-table-meta {
+  background: rgba(255, 255, 255, 0.22);
 }
