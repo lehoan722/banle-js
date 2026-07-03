@@ -633,32 +633,41 @@ async function fetchChungLoaiMap(masps) {
 function buildSuggestionRows({ xntRows }) {
   const useKiemTon = isUseKiemTonEnabled();
 
-  const rowsForRule = (xntRows || []).map(r => {
+  const groupedByMasp = new Map();
+
+  (xntRows || []).forEach(r => {
+    const masp = normalizeMasp(r.masp);
+    if (!masp) return;
+
     const tonTinhCs1 = useKiemTon ? r.ton_thuc_cs1 : r.ton_cs1;
     const tonTinhCs2 = useKiemTon ? r.ton_thuc_cs2 : r.ton_cs2;
 
-    return {
-      masp: r.masp,
+    const rowForRule = {
+      masp,
       size: r.size,
-
-      // đưa tồn đã tính vào luật chung
       ton_cs1: Number(tonTinhCs1 || 0),
       ton_cs2: Number(tonTinhCs2 || 0),
-
-      // vì đã cộng kiểm tồn rồi nên để lech = 0
       lech_cs1: 0,
       lech_cs2: 0,
-
       ban_cs1: Number(r.ban_cs1 || 0),
       ban_cs2: Number(r.ban_cs2 || 0),
       tong_ban: Number(r.tong_ban || 0),
       tong_nhap: Number(r.tong_nhap || 0),
       tong_ton: Number(r.tong_ton || 0)
     };
+
+    if (!groupedByMasp.has(masp)) groupedByMasp.set(masp, []);
+    groupedByMasp.get(masp).push(rowForRule);
   });
 
-  const suggestions = calcSuggestionsFromRows(rowsForRule)
-    .filter(x => x.huong_chuyen === PAGE_CFG.dir);
+  const suggestions = [];
+
+  groupedByMasp.forEach((rows, masp) => {
+    const arr = calcSuggestionsFromRows(rows, masp)
+      .filter(x => x.huong_chuyen === PAGE_CFG.dir);
+
+    suggestions.push(...arr);
+  });
 
   const stockMap = new Map();
   (xntRows || []).forEach(r => {
@@ -689,7 +698,6 @@ function buildSuggestionRows({ xntRows }) {
       sl_duyet: 0,
       sl_thuc: 0,
       manv_phutrach: "",
-
       trang_thai_dong: "",
       ghi_chu: "",
 
