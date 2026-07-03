@@ -282,10 +282,8 @@
     <script src="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.js"></script>
 
     <!-- Nếu trang này chưa có Supabase global thì phải có dòng này -->
-    <script type="module" src="/scripts/supabaseClient.js"></script>
-
-    <!-- Module popup tồn nhanh -->
-    <script src="/scripts/stockQuickPopup.js?v=55"></script>
+    <script type="module" src="/scripts/supabaseClient.js?v=56"></script>
+    <script defer src="/scripts/stockQuickPopup.js?v=56"></script>
 
     <script>
 
@@ -782,28 +780,44 @@
             });
         }
 
+        let isLoading4Cols = false;
+
         async function load4ColsFromSheet(sheetName) {
-            // ✅ đóng dropdown ngay khi bấm
             closeAllDropdowns();
 
-            // Abort request trước nếu còn đang chạy
-            if (currentAbortController) currentAbortController.abort();
-            currentAbortController = new AbortController();
+            if (isLoading4Cols) return;
+            isLoading4Cols = true;
 
-            const url = `${GAS_BASE_URL}?sheet=${encodeURIComponent(sheetName)}`;
-
+            const url = `${GAS_BASE_URL}?sheet=${encodeURIComponent(sheetName)}&_=${Date.now()}`;
             const statusLoad = document.getElementById("statusLoad");
 
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 25000);
+
             try {
-                // ✅ hiện dòng đang tải ngay trên bảng
                 statusLoad.style.display = "block";
                 statusLoad.textContent = "Đang tải dữ liệu...";
 
-                const response = await fetch(url, { signal: currentAbortController.signal });
+                const response = await fetch(url, {
+                    signal: controller.signal,
+                    cache: "no-store"
+                });
+
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
+
                 const json = await response.json();
 
+                if (!Array.isArray(json)) {
+                    throw new Error("Dữ liệu trả về không phải dạng mảng");
+                }
+
                 const formattedData = json.map(row => [
-                    row.ten || "", row.nhap || "", row.ban || "", row.ton || ""
+                    row.ten || "",
+                    row.nhap || "",
+                    row.ban || "",
+                    row.ton || ""
                 ]);
 
                 const emptyRows = Array.from(
@@ -811,19 +825,29 @@
                     () => ["", "", "", ""]
                 );
 
-                // Update layout trước, rồi load data
-                apply4ColsLayout();
-                hot.loadData([...formattedData, ...emptyRows]);
+                hot.batch(() => {
+                    apply4ColsLayout();
+                    hot.loadData([...formattedData, ...emptyRows]);
+                });
 
+                statusLoad.textContent = `✅ Đã tải ${formattedData.length} dòng`;
+                setTimeout(() => {
+                    statusLoad.style.display = "none";
+                }, 1500);
 
             } catch (err) {
-                if (err.name !== "AbortError") {
-                    console.error("Lỗi khi tải dữ liệu:", err);
+                console.error("Lỗi khi tải dữ liệu:", err);
+
+                if (err.name === "AbortError") {
+                    alert("❌ Tải dữ liệu quá lâu. Bạn thử bấm lại sau vài giây.");
+                } else {
                     alert("❌ Không thể tải dữ liệu từ Google Sheet.");
                 }
-            } finally {
-                // ✅ ẩn dòng đang tải
+
                 statusLoad.style.display = "none";
+            } finally {
+                clearTimeout(timeoutId);
+                isLoading4Cols = false;
             }
         }
 
