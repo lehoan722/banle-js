@@ -2,7 +2,10 @@ import { supabase, startSessionKeeper } from "./supabaseClient.js";
 import { khoiTaoDangNhapDungChung, getCurrentUserInfo } from "./authModule.js";
 import { capNhatSoHoaDonTuDong } from "./sohoadon.js";
 
-import { calcGoiy, calcMoveQty } from "./services/luatChuyenKho.js";
+import {
+  calcSuggestionsFromRows,
+  normSize
+} from "./services/luatChuyenKho.js";
 
 /* =========================================================
    1) CẤU HÌNH TRANG
@@ -570,6 +573,12 @@ async function fetchXntRows(masps) {
         ton_thuc_cs1: tonThucCs1,
         ton_thuc_cs2: tonThucCs2,
 
+        ban_cs1: Number(r.ban_cs1 || 0),
+        ban_cs2: Number(r.ban_cs2 || 0),
+        tong_ban: Number(r.tong_ban || 0),
+        tong_nhap: Number(r.tong_nhap || 0),
+        tong_ton: Number(r.tong_ton || 0),
+
         co_kiemton: useKiemTon && (lechCs1 !== 0 || lechCs2 !== 0)
       };
     })
@@ -622,32 +631,61 @@ async function fetchChungLoaiMap(masps) {
 
 
 function buildSuggestionRows({ xntRows }) {
-  const out = [];
+  const useKiemTon = isUseKiemTonEnabled();
 
-  for (const r of xntRows) {
-    if (isInvalidTransferSize(r.size)) continue;
+  const rowsForRule = (xntRows || []).map(r => {
+    const tonTinhCs1 = useKiemTon ? r.ton_thuc_cs1 : r.ton_cs1;
+    const tonTinhCs2 = useKiemTon ? r.ton_thuc_cs2 : r.ton_cs2;
 
-    const tonTinhCs1 = isUseKiemTonEnabled() ? r.ton_thuc_cs1 : r.ton_cs1;
-    const tonTinhCs2 = isUseKiemTonEnabled() ? r.ton_thuc_cs2 : r.ton_cs2;
-
-    const goiy = calcGoiy(tonTinhCs1, tonTinhCs2);
-    const slGoiy = calcMoveQty(tonTinhCs1, tonTinhCs2, goiy);
-
-    if (!goiy || goiy === "cân bằng" || goiy !== PAGE_CFG.dir) continue;
-    if (slGoiy <= 0) continue;
-
-    const tonNguon = PAGE_CFG.tuCoso === "cs1" ? tonTinhCs1 : tonTinhCs2;
-    const tonDich = PAGE_CFG.denCoso === "cs1" ? tonTinhCs1 : tonTinhCs2;
-
-    out.push({
-      selected: false,
-      done: false,
+    return {
       masp: r.masp,
       size: r.size,
+
+      // đưa tồn đã tính vào luật chung
+      ton_cs1: Number(tonTinhCs1 || 0),
+      ton_cs2: Number(tonTinhCs2 || 0),
+
+      // vì đã cộng kiểm tồn rồi nên để lech = 0
+      lech_cs1: 0,
+      lech_cs2: 0,
+
+      ban_cs1: Number(r.ban_cs1 || 0),
+      ban_cs2: Number(r.ban_cs2 || 0),
+      tong_ban: Number(r.tong_ban || 0),
+      tong_nhap: Number(r.tong_nhap || 0),
+      tong_ton: Number(r.tong_ton || 0)
+    };
+  });
+
+  const suggestions = calcSuggestionsFromRows(rowsForRule)
+    .filter(x => x.huong_chuyen === PAGE_CFG.dir);
+
+  const stockMap = new Map();
+  (xntRows || []).forEach(r => {
+    stockMap.set(`${normalizeMasp(r.masp)}__${normSize(r.size)}`, r);
+  });
+
+  const out = suggestions.map(s => {
+    const key = `${normalizeMasp(s.masp)}__${normSize(s.size)}`;
+    const old = stockMap.get(key) || {};
+
+    const tonNguon = PAGE_CFG.tuCoso === "cs1"
+      ? s.ton_sau_kiem_cs1
+      : s.ton_sau_kiem_cs2;
+
+    const tonDich = PAGE_CFG.denCoso === "cs1"
+      ? s.ton_sau_kiem_cs1
+      : s.ton_sau_kiem_cs2;
+
+    return {
+      selected: false,
+      done: false,
+      masp: s.masp,
+      size: s.size,
       ton_nguon: tonNguon,
       ton_dich: tonDich,
-      huong_goiy: goiy,
-      sl_goiy: slGoiy,
+      huong_goiy: s.huong_chuyen,
+      sl_goiy: s.soluong,
       sl_duyet: 0,
       sl_thuc: 0,
       manv_phutrach: "",
@@ -655,20 +693,22 @@ function buildSuggestionRows({ xntRows }) {
       trang_thai_dong: "",
       ghi_chu: "",
 
-      ton_may_cs1: r.ton_cs1,
-      ton_may_cs2: r.ton_cs2,
-      lech_cs1: r.lech_cs1,
-      lech_cs2: r.lech_cs2,
-      ton_thuc_cs1: r.ton_thuc_cs1,
-      ton_thuc_cs2: r.ton_thuc_cs2,
-      co_kiemton: !!r.co_kiemton,
+      ton_may_cs1: old.ton_cs1,
+      ton_may_cs2: old.ton_cs2,
+      lech_cs1: old.lech_cs1,
+      lech_cs2: old.lech_cs2,
+      ton_thuc_cs1: old.ton_thuc_cs1,
+      ton_thuc_cs2: old.ton_thuc_cs2,
+      co_kiemton: !!old.co_kiemton,
 
-    });
-  }
+      ban_cs1: s.ban_cs1,
+      ban_cs2: s.ban_cs2
+    };
+  });
 
   out.sort((a, b) => {
     if (a.masp !== b.masp) return a.masp.localeCompare(b.masp, "vi");
-    return a.size.localeCompare(b.size, "vi", { numeric: true });
+    return String(a.size).localeCompare(String(b.size), "vi", { numeric: true });
   });
 
   return out;
