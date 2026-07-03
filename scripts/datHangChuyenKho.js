@@ -1358,7 +1358,7 @@ async function filterSuggestionsNotPending(items) {
   const { data, error } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
     .select("masp, size, huong_chuyen, trang_thai")
-    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu"])
+    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu", "yeu_cau_kiem_kho", "loi_thoi"])
     .in("masp", masps)
     .in("size", sizes);
 
@@ -1549,13 +1549,11 @@ export function attachStockQuickPopup(popup, payload) {
   thSize.style.color = "#d00000";
   thSize.title = "Bấm để tạo gợi ý đặt hàng chuyển kho";
 
-  thSize.addEventListener("click", (e) => {
+  thSize.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const masp = String(popup.dataset.masp || payload?.masp || "").toUpperCase();
-    const suggestions = calcSuggestionsFromPayload(masp, payload);
-    showCreateConfirm(suggestions);
+    await openFromStockQuick(popup, payload);
   });
 }
 
