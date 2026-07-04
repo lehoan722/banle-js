@@ -1,6 +1,6 @@
 // /scripts/services/ccnTransferRuleGuard.js
 
-import { supabase } from './supabaseClient.js';
+import { supabase } from '../supabaseClient.js';
 import {
     normSize,
     calcSuggestionsFromRows,
