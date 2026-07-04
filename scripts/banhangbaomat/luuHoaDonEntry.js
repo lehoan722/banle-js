@@ -3,6 +3,7 @@
 import { taoDuLieuLuuBaoMat } from "./taoDuLieuLuu.js";
 import { guiDuLieuLuuBaoMat } from "./dichVuLuuHoaDon.js";
 import { xuLyKetQuaLuuBaoMat } from "./xuLyKetQuaLuu.js";
+import { inHoaDonBaoMat } from "./inHoaDonBaoMat.js";
 
 let dangLuuBaoMat = false;
 
@@ -24,6 +25,10 @@ export async function luuHoaDonBaoMat() {
     const result = await guiDuLieuLuuBaoMat(payload);
 
     const ketQuaDaXuLy = xuLyKetQuaLuuBaoMat(result);
+
+    if (ketQuaDaXuLy?.ok && ketQuaDaXuLy?.mode === "SAVE_REAL_V1") {
+      inHoaDonBaoMat(ketQuaDaXuLy, payload);
+    }
 
     console.log("[BAO MAT] TEST HOAN TAT");
 
