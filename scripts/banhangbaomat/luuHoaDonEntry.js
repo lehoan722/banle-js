@@ -23,9 +23,11 @@ export async function luuHoaDonBaoMat() {
 
     const result = await guiDuLieuLuuBaoMat(payload);
 
-    xuLyKetQuaLuuBaoMat(result);
+    const ketQuaDaXuLy = xuLyKetQuaLuuBaoMat(result);
 
     console.log("[BAO MAT] TEST HOAN TAT");
+
+    return ketQuaDaXuLy;
   } catch (error) {
     console.error("[BAO MAT] TEST THAT BAI:", error);
 
