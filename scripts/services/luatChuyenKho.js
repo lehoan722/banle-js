@@ -162,7 +162,6 @@ export function calcMoveQty(cs1, cs2, goiy = "", ban1 = 0, ban2 = 0) {
   }
 
   const salesWinner = getSalesWinner(ban1, ban2);
-  const salesWinner = getSalesWinner(ban1, ban2);
 
   // Nếu không có cơ sở bán vượt trội thì giữ luật cân bằng cũ
   if (!salesWinner && isAcceptedStock(total, n1, n2)) return 0;
