@@ -1726,32 +1726,54 @@
         });
     </script>
 
-
     <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+        import { luuHoaDonBaoMat } from "./scripts/banhangbaomat/luuHoaDonEntry.js";
 
-        document.getElementById('btn-luu').onclick = async function () {
+        document.getElementById("btn-luu").onclick = async function () {
             if (window.dangLuu) return;
 
+            const btn = this;
+
             window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
+            btn.disabled = true;
+            btn.innerText = "Đang lưu bảo mật...";
 
             try {
-                const result = await saveBanLe111("BTN-LUU");
+                console.log("🔐 BẮT ĐẦU LUỒNG LƯU BẢO MẬT");
+
+                const result = await luuHoaDonBaoMat({
+                    source: "BTN-LUU"
+                });
+
+                console.log("🔐 KẾT QUẢ LƯU BẢO MẬT:", result);
 
                 if (result?.ok) {
-                    // alert("✅ Lưu thành công (banlemtcs111)");
+                    alert(
+                        "LƯU BẢO MẬT THÀNH CÔNG\n\n" +
+                        "Request ID:\n" +
+                        (result.requestId || result.request_id || "")
+                    );
                 } else {
-                    console.warn("saveBanLe111 không trả về ok=true:", result);
+                    console.warn(
+                        "⚠️ luuHoaDonBaoMat không trả về ok=true:",
+                        result
+                    );
+
+                    alert("Luồng bảo mật đã chạy nhưng kết quả chưa thành công.");
                 }
+
             } catch (e) {
-                console.error(e);
-                alert("❌ Lỗi lưu: " + (e?.message || e));
+                console.error("❌ LỖI LUỒNG LƯU BẢO MẬT:", e);
+
+                alert(
+                    "❌ LỖI LƯU BẢO MẬT\n\n" +
+                    (e?.message || e)
+                );
+
             } finally {
                 window.dangLuu = false;
-                this.disabled = false;
-                this.innerText = "💾 Lưu";
+                btn.disabled = false;
+                btn.innerText = "💾 Lưu";
             }
         };
     </script>
