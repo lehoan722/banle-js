@@ -176,7 +176,7 @@ export function taoDuLieuLuuBaoMat() {
       window.location.pathname,
 
     client_mode:
-      "SECURE_SHADOW_V1",
+  "SECURE_SAVE_REAL_V1",
 
     action:
       isEdit ? "EDIT" : "NEW",
