@@ -162,12 +162,17 @@ export function taoDuLieuLuuBaoMat() {
   const thanhToan = Math.max(
     0,
     tongThanhTien -
-      chietKhau -
-      tienDoiDiem
+    chietKhau -
+    tienDoiDiem
   );
 
   const details =
     taoChiTiet(bangKetQua);
+
+  // TEST LỖI SERVER - chỉ dùng tạm
+  if (window.__TEST_SAI_THANHTIEN__ === true && details[0]) {
+    details[0].thanhtien = details[0].thanhtien + 1;
+  }
 
   return {
     request_id: requestId,
