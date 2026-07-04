@@ -169,11 +169,6 @@ export function taoDuLieuLuuBaoMat() {
   const details =
     taoChiTiet(bangKetQua);
 
-  // TEST LỖI SERVER - chỉ dùng tạm
-  if (window.__TEST_SAI_THANHTIEN__ === true && details[0]) {
-    details[0].thanhtien = details[0].thanhtien + 1;
-  }
-
   return {
     request_id: requestId,
 
