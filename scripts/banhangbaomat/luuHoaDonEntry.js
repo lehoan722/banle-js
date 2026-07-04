@@ -26,7 +26,13 @@ export async function luuHoaDonBaoMat() {
 
     const ketQuaDaXuLy = xuLyKetQuaLuuBaoMat(result);
 
-    if (ketQuaDaXuLy?.ok && ketQuaDaXuLy?.mode === "SAVE_REAL_V1") {
+    if (
+      ketQuaDaXuLy?.ok &&
+      (
+        ketQuaDaXuLy?.mode === "SAVE_REAL_V1" ||
+        ketQuaDaXuLy?.mode === "EDIT_REAL_V1"
+      )
+    ) {
       inHoaDonBaoMat(ketQuaDaXuLy, payload);
 
       setTimeout(() => {
