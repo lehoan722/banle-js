@@ -6,7 +6,7 @@ import { xuLyKetQuaLuuBaoMat } from "./xuLyKetQuaLuu.js";
 
 let dangLuuBaoMat = false;
 
-export async function testLuuHoaDonBaoMat() {
+export async function luuHoaDonBaoMat() {
   if (dangLuuBaoMat) {
     console.warn("[BAO MAT] Đang có yêu cầu lưu.");
     return;
@@ -38,4 +38,5 @@ export async function testLuuHoaDonBaoMat() {
   }
 }
 
-window.testLuuHoaDonBaoMat = testLuuHoaDonBaoMat;
+window.luuHoaDonBaoMat = luuHoaDonBaoMat;
+window.testLuuHoaDonBaoMat = luuHoaDonBaoMat;
