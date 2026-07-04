@@ -1030,9 +1030,31 @@
 
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+        import { checkCCNTransferRuleBeforeSave } from "./scripts/services/ccnTransferRuleGuard.js";
+
+        async function canhBaoLuatCCNTruocKhiLuu() {
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            const result = await checkCCNTransferRuleBeforeSave(window.bangKetQua || {});
+
+            if (!result?.hasErrors) return true;
+
+            return confirm(
+                "⚠️ Có mã sản phẩm đang chuyển chi nhánh VI PHẠM luật chuyển kho.\n\n" +
+                "Các dòng sai đã được tô màu đỏ.\n\n" +
+                "Bạn có chắc chắn vẫn muốn lưu dữ liệu chuyển chi nhánh này không?"
+            );
+        }
+
+        window.canhBaoLuatCCNTruocKhiLuu = canhBaoLuatCCNTruocKhiLuu;
 
         setTimeout(function () {
             window.LUU_HOADON_F2 = async () => {
+                const ok = await canhBaoLuatCCNTruocKhiLuu();
+                if (!ok) return { ok: false, cancelled_by_user: true };
+
                 return await saveBanLe111("F2-CCN");
             };
         }, 1000);
@@ -1536,15 +1558,37 @@
 
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+        import { checkCCNTransferRuleBeforeSave } from "./scripts/services/ccnTransferRuleGuard.js";
+
+        async function canhBaoLuatCCNTruocKhiLuu() {
+            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            const result = await checkCCNTransferRuleBeforeSave(window.bangKetQua || {});
+
+            if (!result?.hasErrors) return true;
+
+            return confirm(
+                "⚠️ Có mã sản phẩm đang chuyển chi nhánh VI PHẠM luật chuyển kho.\n\n" +
+                "Các dòng sai đã được tô màu đỏ.\n\n" +
+                "Bạn có chắc chắn vẫn muốn lưu dữ liệu chuyển chi nhánh này không?"
+            );
+        }
 
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
 
             window.dangLuu = true;
             this.disabled = true;
-            this.innerText = "Đang lưu...";
+            this.innerText = "Đang kiểm tra luật...";
 
             try {
+                const okCanhBao = await canhBaoLuatCCNTruocKhiLuu();
+                if (!okCanhBao) return;
+
+                this.innerText = "Đang lưu...";
+
                 const result = await saveBanLe111("BTN-LUU-CCN");
 
                 if (result?.ok) {
