@@ -204,4 +204,4 @@ export async function checkCCNTransferRuleBeforeSave(bangKetQua) {
     };
 }
 
-window.validateCCNTransferRuleBeforeSave = validateCCNTransferRuleBeforeSave;
+window.checkCCNTransferRuleBeforeSave = checkCCNTransferRuleBeforeSave;
