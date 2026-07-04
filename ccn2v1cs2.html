@@ -1364,9 +1364,6 @@
                     localStorage.removeItem('ccn_prefill_payload');
                     console.log('[CCN 2v1] Đã render qua hàm chính & xóa payload.');
 
-                    setTimeout(() => {
-                        tryAutoSaveFromNhapTamCCN('2v1');
-                    }, 800);
                     return;
                 }
 
@@ -1381,9 +1378,6 @@
                     localStorage.removeItem('ccn_prefill_payload');
                     console.log('[CCN 2v1] Render Fallback ok & đã xoá payload.');
 
-                    setTimeout(() => {
-                        tryAutoSaveFromNhapTamCCN('2v1');
-                    }, 800);
                 } else {
                     console.warn('[CCN 2v1] Fallback render không thành công.');
                 }
@@ -1429,43 +1423,10 @@
         }
 
         function tryAutoSaveFromNhapTamCCN(dirExpected) {
-            // ❌ Đã chạy rồi thì không chạy lại
-            if (window.__AUTO_SAVE_CCN_DONE__) {
-                console.log('[CCN] Auto-save đã chạy trước đó, bỏ qua.');
-                return;
-            }
-
-            const info = hasRequiredInfoForAutoSave();
-
-            console.log('[CCN] Kiểm tra điều kiện auto-save:', {
-                dirExpected,
-                ...info
-            });
-
-            if (!info.ok) return;
-
-            // ✅ DÙNG LUỒNG MỚI (KHÔNG gọi trực tiếp hàm cũ nữa)
-            if (typeof window.saveHoaDonCCN !== 'function') {
-                console.warn('[CCN] Chưa có window.saveHoaDonCCN, bỏ qua auto-save.');
-                return;
-            }
-
-            // ✅ Đánh dấu đã chạy
-            window.__AUTO_SAVE_CCN_DONE__ = true;
-
-            console.log('[CCN] Đủ điều kiện, bắt đầu auto-save từ nhập tạm...');
-
-            setTimeout(async () => {
-                try {
-                    await window.saveHoaDonCCN(); // 🔥 LUỒNG MỚI
-                } catch (err) {
-                    console.error('[CCN] Lỗi auto-save:', err);
-
-                    // ❗ Nếu lỗi thì cho phép retry
-                    window.__AUTO_SAVE_CCN_DONE__ = false;
-                }
-            }, 300);
+            console.log('[CCN] Auto-save từ nhập tạm đã tắt. Chỉ nạp dữ liệu lên bảng, không tự lưu.', dirExpected);
+            return;
         }
+
         document.addEventListener('DOMContentLoaded', () => tryPrefillFromStorage(true));
         window.addEventListener('load', () => setTimeout(() => tryPrefillFromStorage(true), 600));
     </script>
