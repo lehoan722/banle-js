@@ -28,6 +28,10 @@ export async function luuHoaDonBaoMat() {
 
     if (ketQuaDaXuLy?.ok && ketQuaDaXuLy?.mode === "SAVE_REAL_V1") {
       inHoaDonBaoMat(ketQuaDaXuLy, payload);
+
+      setTimeout(() => {
+        document.getElementById("them")?.click();
+      }, 500);
     }
 
     console.log("[BAO MAT] TEST HOAN TAT");
