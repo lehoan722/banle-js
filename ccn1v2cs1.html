@@ -1557,18 +1557,6 @@
     </script>
 
     <script type="module">
-        import { initDatHangChuyenKho } from "./scripts/datHangChuyenKho.js?v=101";
-
-        initDatHangChuyenKho({
-            supabase: window.supabase,
-            diadiem: localStorage.getItem("diadiem") || "cs1",
-            manvDangNhap: localStorage.getItem("manv") || ""
-        });
-
-        console.log("✅ CCN đã nạp DatHangChuyenKho:", !!window.DatHangChuyenKho);
-    </script>
-
-    <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
         import { checkCCNTransferRuleBeforeSave } from "./scripts/services/ccnTransferRuleGuard.js";
 
@@ -1603,9 +1591,7 @@
 
                 const result = await saveBanLe111("BTN-LUU-CCN");
 
-                if (result?.ok) {
-                    await window.DatHangChuyenKho?.afterCcnSaved?.(result);
-                } else {
+                if (!result?.ok) {
                     console.warn("saveBanLe111 không trả về ok=true:", result);
                 }
             } catch (e) {
