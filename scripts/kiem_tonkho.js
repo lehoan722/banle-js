@@ -110,7 +110,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
         return `https://docs.google.com/spreadsheets/d/${cfg.spreadsheetId}/gviz/tq?tqx=out:csv&gid=${cfg.gid}`;
     }
 
-    const VALID_BAY_MAU_SIZES = new Set(["38", "39", "40", "41", "42", "43", "44", "45"]);
+    const VALID_BAY_MAU_SIZES = new Set(["38", "39", "40", "41", "42", "43", "44", "45", "46"]);
 
     function isValidBayMauSheetSize(v) {
         return VALID_BAY_MAU_SIZES.has(String(v || "").trim());
@@ -337,7 +337,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
     function normalizeSize(v) {
         return String(v || "").trim();
     }
-    const VALID_SIZES = new Set(["0", "38", "39", "40", "41", "42", "43", "44", "45"]);
+    const VALID_SIZES = new Set(["0", "38", "39", "40", "41", "42", "43", "44", "45", "46"]);
 
     function isValidSize(size) {
         return VALID_SIZES.has(normalizeSize(size));
@@ -485,7 +485,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
         if (!isValidSize(sizeVal)) {
             phatAmThanhLoi();
-            alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
+            alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45, 46");
             return;
         }
 
@@ -1631,7 +1631,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
                 `Đã tải dữ liệu bày mẫu từ Google Sheet (${cfgSheet.sheetName}).\n` +
                 `- Số mã khớp: ${soMaKhop}\n` +
                 `- Số dòng sheet đã lấy: ${soDongSheetKhop}\n` +
-                `- Dòng đúng size 38-45: ${soDongDungSize}\n` +
+                `- Dòng đúng size 38-46: ${soDongDungSize}\n` +
                 `- Dòng mặc định 0/1: ${soDongMacDinh0}`
             );
         } catch (err) {
@@ -1759,7 +1759,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
                 `Đã tải dữ liệu kiểm kho từ Google Sheet (${cfgSheet.sheetName}).\n` +
                 `- Số mã đã lấy: ${soMa}\n` +
                 `- Số dòng sheet đã lấy: ${soDongSheet}\n` +
-                `- Dòng đúng size 38-45: ${soDongDungSize}\n` +
+                `- Dòng đúng size 38-46: ${soDongDungSize}\n` +
                 `- Dòng mặc định 0/1: ${soDongMacDinh0}`
             );
         } catch (err) {
@@ -1808,7 +1808,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
         if (!isValidSize(size)) {
             phatAmThanhLoi();
-            alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
+            alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45,46");
             if (sizeEl) sizeEl.focus();
             return;
         }
