@@ -451,14 +451,12 @@ async function autoMarkOutdatedNewOrders(rows) {
     let changed = false;
 
     if (deleteNewIds.length) {
-      const { error } = await ctx.supabase
-        .from("dat_hang_chuyen_kho")
-        .delete()
-        .in("id", deleteNewIds)
-        .in("trang_thai", ["moi", "yeu_cau_kiem_kho"]);
+      const { error } = await ctx.supabase.rpc("dhck_mark_outdated", {
+        p_ids: deleteNewIds
+      });
 
       if (error) {
-        console.warn("[Đặt hàng CK] Không xóa được dòng mới lỗi thời:", error);
+        console.warn("[Đặt hàng CK] Không đánh dấu lỗi thời:", error);
       } else {
         changed = true;
       }
@@ -661,13 +659,10 @@ async function saveInlineNote(id, value, input = null) {
 
   suppressRealtimeUntil = Date.now() + 2000;
 
-  const { error } = await ctx.supabase
-    .from("dat_hang_chuyen_kho")
-    .update({
-      ghichu_dat: String(value || ""),
-      updated_at: new Date().toISOString()
-    })
-    .eq("id", Number(id));
+  const { error } = await ctx.supabase.rpc("dhck_update_note", {
+    p_id: Number(id),
+    p_note: String(value || "")
+  });
 
   if (input) {
     input.dataset.saving = "0";
@@ -738,11 +733,10 @@ async function saveMoveCheck(id, checked) {
 
   suppressRealtimeUntil = Date.now() + 800;
 
-  const { error } = await ctx.supabase
-    .from("dat_hang_chuyen_kho")
-    .update(patch)
-    .eq("id", Number(id))
-    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu", "loi_thoi"]);
+  const { error } = await ctx.supabase.rpc("dhck_set_move_check", {
+    p_id: Number(id),
+    p_checked: checked
+  });
 
   if (error) {
     console.error("[Đặt hàng CK] Lỗi lưu tick chuyển:", error);
@@ -1210,12 +1204,9 @@ async function deleteOutdatedMovingOrders(box, canMove) {
 
   suppressRealtimeUntil = Date.now() + 1500;
 
-  const { error } = await ctx.supabase
-    .from("dat_hang_chuyen_kho")
-    .delete()
-    .in("id", deleteIds)
-    .eq("trang_thai", "loi_thoi")
-    .eq("chon_chuyen", true);
+  const { error } = await ctx.supabase.rpc("dhck_admin_delete_orders", {
+    p_ids: deleteIds
+  });
 
   if (error) {
     console.error("[Đặt hàng CK] Lỗi xóa dòng lỗi thời:", error);
@@ -1266,10 +1257,9 @@ async function deleteCheckedOrders(box, canMove) {
     return;
   }
 
-  const { error } = await ctx.supabase
-    .from("dat_hang_chuyen_kho")
-    .delete()
-    .in("id", deleteIds);
+  const { error } = await ctx.supabase.rpc("dhck_admin_delete_orders", {
+    p_ids: deleteIds
+  });
 
   if (error) {
     console.error("[Đặt hàng CK] Lỗi xóa:", error);
