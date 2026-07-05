@@ -123,6 +123,13 @@ export function calcGoiy(cs1, cs2, ban1 = 0, ban2 = 0) {
 
   if (total <= 0) return "cân bằng";
 
+  // LUẬT CỨNG:
+  // Tổng tồn = 3, CS1 = 2, CS2 = 1
+  // => luôn cân bằng, tuyệt đối không chuyển kho
+  if (total === 3 && n1 === 2 && n2 === 1) {
+    return "cân bằng";
+  }
+
   const salesWinner = getSalesWinner(ban1, ban2);
 
   // Nếu không có cơ sở bán vượt trội thì dùng luật chấp nhận cũ
@@ -146,6 +153,13 @@ export function calcMoveQty(cs1, cs2, goiy = "", ban1 = 0, ban2 = 0) {
   const total = n1 + n2;
 
   if (total <= 0) return 0;
+
+  // LUẬT CỨNG:
+  // Tổng tồn = 3, CS1 = 2, CS2 = 1
+  // => số lượng chuyển luôn bằng 0
+  if (total === 3 && n1 === 2 && n2 === 1) {
+    return 0;
+  }
 
   const salesWinner = getSalesWinner(ban1, ban2);
 
@@ -206,14 +220,8 @@ export function calcSuggestionFromRow(row, maspInput = "", salesContext = null) 
 export function calcSuggestionsFromRows(rows = [], maspInput = "") {
   if (hasNegativeStockRows(rows)) return [];
 
-  const ban1Total = (rows || []).reduce((s, r) => s + Number(r?.ban_cs1 || 0), 0);
-  const ban2Total = (rows || []).reduce((s, r) => s + Number(r?.ban_cs2 || 0), 0);
-
   return (rows || [])
-    .map(r => calcSuggestionFromRow(r, maspInput, {
-      ban_cs1: ban1Total,
-      ban_cs2: ban2Total
-    }))
+    .map(r => calcSuggestionFromRow(r, maspInput))
     .filter(Boolean);
 }
 
