@@ -57,23 +57,77 @@ function escAttr(v) {
     .replaceAll(">", "&gt;");
 }
 
+function makeOrderKey(x) {
+  return [
+    String(x.masp || "").trim().toUpperCase(),
+    normSize(x.size),
+    String(x.huong_chuyen || "").trim().toLowerCase()
+  ].join("|");
+}
+
 async function insertOrders(items, note = "") {
   if (!ctx?.supabase || !items.length) return false;
 
   const manv = getManv();
 
-  const rows = items.map(x => ({
-    masp: String(x.masp || "").toUpperCase(),
-    size: String(x.size || ""),
-    soluong: Number(x.soluong || 1),
-    huong_chuyen: x.huong_chuyen,
-    tu_coso: x.tu_coso,
-    den_coso: x.den_coso,
-    manv_dat: manv,
-    ghichu_dat: note,
-    trang_thai: "moi",
-    nguon: "stockquick"
-  }));
+  // 1) Chống trùng ngay trong danh sách chuẩn bị insert
+  const uniqueMap = new Map();
+
+  (items || []).forEach(x => {
+    const key = makeOrderKey(x);
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, x);
+    }
+  });
+
+  const uniqueItems = Array.from(uniqueMap.values());
+
+  const masps = Array.from(new Set(
+    uniqueItems.map(x => String(x.masp || "").trim().toUpperCase()).filter(Boolean)
+  ));
+
+  const sizes = Array.from(new Set(
+    uniqueItems.map(x => String(x.size || "").trim()).filter(Boolean)
+  ));
+
+  // 2) Kiểm tra lại trong DB ngay trước khi insert
+  const { data: existed, error: checkErr } = await ctx.supabase
+    .from("dat_hang_chuyen_kho")
+    .select("masp, size, huong_chuyen, trang_thai")
+    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu", "yeu_cau_kiem_kho"])
+    .in("masp", masps)
+    .in("size", sizes);
+
+  if (checkErr) {
+    console.warn("[Đặt hàng CK] Không kiểm tra được dòng trùng:", checkErr);
+    alert("❌ Không kiểm tra được dữ liệu đặt hàng hiện có.");
+    return false;
+  }
+
+  const existedKeys = new Set(
+    (existed || []).map(r => makeOrderKey(r))
+  );
+
+  const rows = uniqueItems
+    .filter(x => !existedKeys.has(makeOrderKey(x)))
+    .map(x => ({
+      masp: String(x.masp || "").trim().toUpperCase(),
+      size: String(x.size || "").trim(),
+      soluong: Number(x.soluong || 1),
+      huong_chuyen: x.huong_chuyen,
+      tu_coso: x.tu_coso,
+      den_coso: x.den_coso,
+      manv_dat: manv,
+      ghichu_dat: note,
+      trang_thai: "moi",
+      chon_chuyen: false,
+      nguon: "stockquick"
+    }));
+
+  if (!rows.length) {
+    alert("Các size này đã có trong hàng đợi, không tạo trùng nữa.");
+    return false;
+  }
 
   const { error } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
@@ -85,7 +139,7 @@ async function insertOrders(items, note = "") {
     return false;
   }
 
-  alert("✅ Đã tạo đặt hàng chuyển kho.");
+  alert(`✅ Đã tạo ${rows.length} dòng đặt hàng chuyển kho.`);
   userClosedPanel = false;
   await runDatHangCheck(true);
   return true;
@@ -1359,8 +1413,7 @@ async function filterSuggestionsNotPending(items) {
     .from("dat_hang_chuyen_kho")
     .select("masp, size, huong_chuyen, trang_thai")
     .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu", "yeu_cau_kiem_kho", "loi_thoi"])
-    .in("masp", masps)
-    .in("size", sizes);
+    .in("masp", masps);
 
   if (error) {
     console.warn("[Đặt hàng CK] Không kiểm tra được dòng đang mở:", error);
