@@ -1203,9 +1203,15 @@ async function deleteOutdatedMovingOrders(box, canMove) {
 
   suppressRealtimeUntil = Date.now() + 1500;
 
-  const { error } = await ctx.supabase.rpc("dhck_admin_delete_orders", {
-    p_ids: deleteIds
-  });
+  const { error } = await ctx.supabase
+    .from("dat_hang_chuyen_kho")
+    .update({
+      trang_thai: "loi_thoi",
+      chon_chuyen: false,
+      updated_at: new Date().toISOString()
+    })
+    .in("id", deleteIds)
+    .eq("trang_thai", "loi_thoi");
 
   if (error) {
     console.error("[Đặt hàng CK] Lỗi xóa dòng lỗi thời:", error);
@@ -1216,7 +1222,7 @@ async function deleteOutdatedMovingOrders(box, canMove) {
   const checkResult = await recheckNeedStockCheckOrders(canMove);
 
   alert(
-    `✅ Đã xóa ${deleteIds.length} dòng lỗi thời.\n` +
+    `✅ Đã ẩn ${deleteIds.length} dòng lỗi thời.\n` +
     `Khôi phục dòng yêu cầu kiểm kho: ${checkResult.restored}\n` +
     `Chuyển lỗi thời: ${checkResult.outdated}`
   );
@@ -1256,9 +1262,14 @@ async function deleteCheckedOrders(box, canMove) {
     return;
   }
 
-  const { error } = await ctx.supabase.rpc("dhck_admin_delete_orders", {
-    p_ids: deleteIds
-  });
+  const { error } = await ctx.supabase
+    .from("dat_hang_chuyen_kho")
+    .update({
+      trang_thai: "loi_thoi",
+      chon_chuyen: false,
+      updated_at: new Date().toISOString()
+    })
+    .in("id", deleteIds);
 
   if (error) {
     console.error("[Đặt hàng CK] Lỗi xóa:", error);
@@ -1266,7 +1277,7 @@ async function deleteCheckedOrders(box, canMove) {
     return;
   }
 
-  alert("✅ Đã xóa đặt hàng.");
+  alert("✅ Đã chuyển đặt hàng sang lỗi thời và ẩn khỏi giao diện.");
 
   popupOpen = false;
   document.getElementById("dhck-panel")?.remove();
@@ -1401,7 +1412,7 @@ async function filterSuggestionsNotPending(items) {
   const { data, error } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
     .select("masp, size, huong_chuyen, trang_thai")
-    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu", "yeu_cau_kiem_kho", "loi_thoi"])
+    .in("trang_thai", ["moi", "dang_chuyen", "da_tao_phieu", "yeu_cau_kiem_kho"])
     .in("masp", masps);
 
   if (error) {
@@ -1576,7 +1587,7 @@ export function initDatHangChuyenKho(options = {}) {
   setupDatHangRealtime();
 
   if (timer) clearInterval(timer);
-  timer = setInterval(() => runDatHangCheck(), 1 * 60 * 1000);
+  timer = setInterval(() => runDatHangCheck(), 5 * 60 * 1000);
 }
 
 export function attachStockQuickPopup(popup, payload) {
