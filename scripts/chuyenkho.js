@@ -583,17 +583,34 @@ async function fetchMaspsByDateRange() {
 async function fetchXntRows(masps) {
   if (!masps?.length) return [];
 
-  const rpcParams = {
-    p_masps: masps,
-    p_den_ngay: $("den_ngay").value || getTodayYmd(),
-    p_tonghop_size: false
-  };
+  const BATCH_SIZE = 30;
+  const allRows = [];
 
-  const { data, error } = await supabase.rpc("xntnhanh", rpcParams);
+  for (let i = 0; i < masps.length; i += BATCH_SIZE) {
+    const batch = masps.slice(i, i + BATCH_SIZE);
 
-  if (error) throw error;
+    const rpcParams = {
+      p_masps: batch,
+      p_den_ngay: $("den_ngay").value || getTodayYmd(),
+      p_tonghop_size: false
+    };
 
-  return (data || [])
+    console.log("[ChuyenKho] Gọi xntnhanh batch:", i / BATCH_SIZE + 1, batch);
+
+    const { data, error } = await supabase.rpc("xntnhanh", rpcParams);
+
+    if (error) throw error;
+
+    allRows.push(...(data || []));
+  }
+
+  console.log("[ChuyenKho] Tổng dòng xntRows:", allRows.length);
+  console.log(
+    "[ChuyenKho] Có 483 trong xntRows không:",
+    allRows.some(r => normalizeMasp(r.masp) === "483-APMDM.TIMT")
+  );
+
+  return allRows
     .map(r => {
       const tonCs1 = Number(r.ton_cs1 || 0);
       const tonCs2 = Number(r.ton_cs2 || 0);
