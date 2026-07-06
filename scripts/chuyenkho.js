@@ -488,33 +488,93 @@ async function fetchMaspsByDateRange() {
   const tuNgay = $("tu_ngay").value || getYesterdayYmd();
   const denNgay = $("den_ngay").value || getTodayYmd();
 
-  const { data: headers, error: errHd } = await supabase
-    .from("hoadon_banle")
-    .select("sohd, ngay")
-    .gte("ngay", tuNgay)
-    .lte("ngay", denNgay);
+  const PAGE_SIZE = 1000;
 
-  if (errHd) throw errHd;
+  // =====================================================
+  // 1. LẤY TOÀN BỘ HEADER HÓA ĐƠN - CÓ PHÂN TRANG
+  // =====================================================
+  const headers = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const to = from + PAGE_SIZE - 1;
+
+    const { data, error } = await supabase
+      .from("hoadon_banle")
+      .select("sohd, ngay")
+      .gte("ngay", tuNgay)
+      .lte("ngay", denNgay)
+      .order("sohd", { ascending: true })
+      .range(from, to);
+
+    if (error) throw error;
+
+    headers.push(...(data || []));
+
+    if (!data || data.length < PAGE_SIZE) {
+      break;
+    }
+  }
 
   const sohds = uniq(
-    (headers || [])
+    headers
       .map((x) => String(x.sohd || "").trim())
       .filter((sohd) => {
         const s = sohd.toLowerCase();
-        return SALES_PREFIXES.some((prefix) => s.startsWith(prefix));
+
+        return SALES_PREFIXES.some((prefix) =>
+          s.startsWith(prefix)
+        );
       })
   );
 
+  console.log("[ChuyenKho] Tổng header:", headers.length);
+  console.log("[ChuyenKho] Tổng hóa đơn bán:", sohds.length);
+
   if (!sohds.length) return [];
 
-  const { data: details, error: errCt } = await supabase
-    .from("ct_hoadon_banle")
-    .select("sohd, masp")
-    .in("sohd", sohds);
+  // =====================================================
+  // 2. CHIA NHỎ DANH SÁCH SOHD
+  // =====================================================
+  const SOHD_BATCH_SIZE = 100;
 
-  if (errCt) throw errCt;
+  const allDetails = [];
 
-  return uniq((details || []).map((x) => normalizeMasp(x.masp)).filter(Boolean));
+  for (let i = 0; i < sohds.length; i += SOHD_BATCH_SIZE) {
+    const sohdBatch = sohds.slice(i, i + SOHD_BATCH_SIZE);
+
+    // ===================================================
+    // 3. MỖI BATCH TIẾP TỤC PHÂN TRANG CHI TIẾT
+    // ===================================================
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error } = await supabase
+        .from("ct_hoadon_banle")
+        .select("sohd, masp")
+        .in("sohd", sohdBatch)
+        .order("sohd", { ascending: true })
+        .range(from, to);
+
+      if (error) throw error;
+
+      allDetails.push(...(data || []));
+
+      if (!data || data.length < PAGE_SIZE) {
+        break;
+      }
+    }
+  }
+
+  const masps = uniq(
+    allDetails
+      .map((x) => normalizeMasp(x.masp))
+      .filter(Boolean)
+  );
+
+  console.log("[ChuyenKho] Tổng dòng chi tiết:", allDetails.length);
+  console.log("[ChuyenKho] Tổng mã SP duy nhất:", masps.length);
+
+  return masps;
 }
 
 /* =========================================================
