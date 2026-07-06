@@ -219,17 +219,50 @@ export function calcSuggestionFromRow(row, maspInput = "", salesContext = null) 
 export function calcSuggestionsFromRows(rows = [], maspInput = "") {
   if (hasNegativeStockRows(rows)) return [];
 
-  const totalBanCs1 = (rows || []).reduce((s, r) => s + Number(r?.ban_cs1 || 0), 0);
-  const totalBanCs2 = (rows || []).reduce((s, r) => s + Number(r?.ban_cs2 || 0), 0);
+  const safeRows = rows || [];
+
+  const totalBanCs1 = safeRows.reduce((s, r) => s + Number(r?.ban_cs1 || 0), 0);
+  const totalBanCs2 = safeRows.reduce((s, r) => s + Number(r?.ban_cs2 || 0), 0);
 
   const salesContext = {
     ban_cs1: totalBanCs1,
     ban_cs2: totalBanCs2
   };
 
-  return (rows || [])
+  const suggestions = safeRows
     .map(r => calcSuggestionFromRow(r, maspInput, salesContext))
     .filter(Boolean);
+
+  if (!suggestions.length) return [];
+
+  const tongTonCs1 = safeRows.reduce((s, r) => s + getTonSauKiem(r, "cs1"), 0);
+  const tongTonCs2 = safeRows.reduce((s, r) => s + getTonSauKiem(r, "cs2"), 0);
+
+  const out = [];
+
+  ["1v2", "2v1"].forEach((huong) => {
+    const group = suggestions.filter(s => s.huong_chuyen === huong);
+    if (!group.length) return;
+
+    const destTotalTon = huong === "1v2" ? tongTonCs2 : tongTonCs1;
+
+    // Nếu tổng tồn cơ sở đích > 0 thì giữ luật cũ, không chặn
+    if (destTotalTon > 0) {
+      out.push(...group);
+      return;
+    }
+
+    // Nếu tổng tồn cơ sở đích = 0:
+    // chỉ cho chuyển khi có >= 2 sản phẩm và >= 2 size khác nhau
+    const totalMoveQty = group.reduce((s, r) => s + Number(r.soluong || 0), 0);
+    const sizeCount = new Set(group.map(r => normSize(r.size))).size;
+
+    if (totalMoveQty >= 2 && sizeCount >= 2) {
+      out.push(...group);
+    }
+  });
+
+  return out;
 }
 
 export function calcSuggestionsFromPayload(masp, payload) {
