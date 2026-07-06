@@ -1576,7 +1576,7 @@ export function initDatHangChuyenKho(options = {}) {
   setupDatHangRealtime();
 
   if (timer) clearInterval(timer);
-  timer = setInterval(() => runDatHangCheck(), 5 * 60 * 1000);
+  timer = setInterval(() => runDatHangCheck(), 1 * 60 * 1000);
 }
 
 export function attachStockQuickPopup(popup, payload) {
