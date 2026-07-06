@@ -43,12 +43,11 @@ export function getSalesWinner(ban1, ban2) {
   const b1 = Number(ban1 || 0);
   const b2 = Number(ban2 || 0);
 
-  if (b1 <= 0 && b2 <= 0) return "";
-
-  // Một bên bán hơn bên kia ít nhất 2 sản phẩm
-  // và đồng thời phải có sức bán vượt trội rõ ràng.
-  if (b1 >= b2 + 2 && (b2 === 0 || b1 >= b2 * 2)) return "cs1";
-  if (b2 >= b1 + 2 && (b1 === 0 || b2 >= b1 * 2)) return "cs2";
+  // Chỉ ưu tiên bán mạnh cho CS1.
+  // Điều kiện:
+  // 1) CS1 bán từ 3 sản phẩm trở lên
+  // 2) CS1 bán ít nhất gấp 2 lần CS2
+  if (b1 >= 3 && b1 >= b2 * 2) return "cs1";
 
   return "";
 }
@@ -220,8 +219,16 @@ export function calcSuggestionFromRow(row, maspInput = "", salesContext = null) 
 export function calcSuggestionsFromRows(rows = [], maspInput = "") {
   if (hasNegativeStockRows(rows)) return [];
 
+  const totalBanCs1 = (rows || []).reduce((s, r) => s + Number(r?.ban_cs1 || 0), 0);
+  const totalBanCs2 = (rows || []).reduce((s, r) => s + Number(r?.ban_cs2 || 0), 0);
+
+  const salesContext = {
+    ban_cs1: totalBanCs1,
+    ban_cs2: totalBanCs2
+  };
+
   return (rows || [])
-    .map(r => calcSuggestionFromRow(r, maspInput))
+    .map(r => calcSuggestionFromRow(r, maspInput, salesContext))
     .filter(Boolean);
 }
 
