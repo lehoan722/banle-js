@@ -523,25 +523,13 @@ async function fetchMaspsByDateRange() {
 async function fetchXntRows(masps) {
   if (!masps?.length) return [];
 
-  const useKiemTon = isUseKiemTonEnabled();
+  const rpcParams = {
+    p_masps: masps,
+    p_den_ngay: $("den_ngay").value || getTodayYmd(),
+    p_tonghop_size: false
+  };
 
-  const rpcName = useKiemTon
-    ? "rpc_chuyenkho_ton_thuc"
-    : "xntnhanh";
-
-  const rpcParams = useKiemTon
-    ? {
-      p_masps: masps,
-      p_den_ngay: $("den_ngay").value || getTodayYmd(),
-      p_tonghop_size: false
-    }
-    : {
-      p_masps: masps,
-      p_den_ngay: $("den_ngay").value || getTodayYmd(),
-      p_tonghop_size: false
-    };
-
-  const { data, error } = await supabase.rpc(rpcName, rpcParams);
+  const { data, error } = await supabase.rpc("xntnhanh", rpcParams);
 
   if (error) throw error;
 
@@ -549,16 +537,6 @@ async function fetchXntRows(masps) {
     .map(r => {
       const tonCs1 = Number(r.ton_cs1 || 0);
       const tonCs2 = Number(r.ton_cs2 || 0);
-      const lechCs1 = Number(r.lech_cs1 || 0);
-      const lechCs2 = Number(r.lech_cs2 || 0);
-
-      const tonThucCs1 = useKiemTon
-        ? Number(r.ton_thuc_cs1 ?? (tonCs1 + lechCs1))
-        : tonCs1;
-
-      const tonThucCs2 = useKiemTon
-        ? Number(r.ton_thuc_cs2 ?? (tonCs2 + lechCs2))
-        : tonCs2;
 
       return {
         masp: normalizeMasp(r.masp),
@@ -567,11 +545,11 @@ async function fetchXntRows(masps) {
         ton_cs1: tonCs1,
         ton_cs2: tonCs2,
 
-        lech_cs1: lechCs1,
-        lech_cs2: lechCs2,
+        lech_cs1: 0,
+        lech_cs2: 0,
 
-        ton_thuc_cs1: tonThucCs1,
-        ton_thuc_cs2: tonThucCs2,
+        ton_thuc_cs1: tonCs1,
+        ton_thuc_cs2: tonCs2,
 
         ban_cs1: Number(r.ban_cs1 || 0),
         ban_cs2: Number(r.ban_cs2 || 0),
@@ -579,7 +557,7 @@ async function fetchXntRows(masps) {
         tong_nhap: Number(r.tong_nhap || 0),
         tong_ton: Number(r.tong_ton || 0),
 
-        co_kiemton: useKiemTon && (lechCs1 !== 0 || lechCs2 !== 0)
+        co_kiemton: false
       };
     })
     .filter(r => !isInvalidTransferSize(r.size));
@@ -639,8 +617,8 @@ function buildSuggestionRows({ xntRows }) {
     const masp = normalizeMasp(r.masp);
     if (!masp) return;
 
-    const tonTinhCs1 = useKiemTon ? r.ton_thuc_cs1 : r.ton_cs1;
-    const tonTinhCs2 = useKiemTon ? r.ton_thuc_cs2 : r.ton_cs2;
+    const tonTinhCs1 = r.ton_cs1;
+    const tonTinhCs2 = r.ton_cs2;
 
     const rowForRule = {
       masp,
