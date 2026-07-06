@@ -437,7 +437,6 @@ async function autoMarkOutdatedNewOrders(rows) {
       // Yêu cầu mới của bạn:
       // Dòng mới lỗi thời thì xóa hẳn để đỡ rác
       if (status === "moi") {
-        deleteNewIds.push(id);
         return;
       }
 
