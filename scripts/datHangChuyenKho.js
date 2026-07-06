@@ -434,9 +434,10 @@ async function autoMarkOutdatedNewOrders(rows) {
 
       if (stillNeeded) return;
 
-      // Yêu cầu mới của bạn:
-      // Dòng mới lỗi thời thì xóa hẳn để đỡ rác
+      // Dòng mới không còn cần chuyển nữa:
+      // không xóa thật, chỉ chuyển lỗi thời + ẩn khỏi giao diện
       if (status === "moi") {
+        deleteNewIds.push(id);
         return;
       }
 
