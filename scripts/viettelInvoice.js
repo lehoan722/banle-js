@@ -2,8 +2,8 @@ function taoDuLieuHoaDon(hoadon, chitiet) {
   let tongTien = Number(hoadon.thanhtoan) || chitiet.reduce((sum, item) => sum + Number(item.thanhtien), 0);
 
   // Nhận diện cơ sở từ số hóa đơn
-  let isCs2 = hoadon.sohd.startsWith('bancs2T_'); // Cơ sở 2
-  let isCs1 = hoadon.sohd.startsWith('bancs1T_'); // Cơ sở 1
+  let isCs2 = hoadon.sohd.startsWith('bancs2T_') || hoadon.sohd.startsWith('bancs2_');
+  let isCs1 = hoadon.sohd.startsWith('bancs1T_') || hoadon.sohd.startsWith('bancs1_');
 
   if (!isCs1 && !isCs2) {
     throw new Error("❌ Không xác định được cơ sở phát hành hóa đơn từ số hóa đơn: " + hoadon.sohd + ". Vui lòng kiểm tra lại!");
@@ -186,9 +186,9 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
       }
 
       const { data: chitietData, error: e2 } = await supabase
-  .from('ct_hoadon_banle')
-  .select('*')
-  .eq('sohd', mahoadon);
+        .from('ct_hoadon_banle')
+        .select('*')
+        .eq('sohd', mahoadon);
 
       if (e1 || e2 || !hoadonData || !Array.isArray(chitietData) || chitietData.length === 0) {
         alert("❌ Không tìm thấy dữ liệu hóa đơn.\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
@@ -252,7 +252,7 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
 
         // Đọc text trước, rồi thử parse JSON để lấy message lỗi nếu có
         const raw = await response.text();
-        
+
         let result;
         try { result = JSON.parse(raw); } catch (_) { }
 
