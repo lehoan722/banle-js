@@ -3419,19 +3419,10 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
             return null;
         }
 
-        if (dsMasp.length > 1) {
-            phatAmThanhLoi();
-            alert(
-                "Mỗi phiếu kiểm tồn chỉ được kiểm 1 mã sản phẩm.\n\n" +
-                "Phiếu hiện tại đang có nhiều mã:\n" +
-                dsMasp.join(", ") +
-                "\n\nVui lòng tách ra mỗi mã một phiếu."
-            );
-            return null;
-        }
-
         const manv = String(byId("manv")?.value || localStorage.getItem("manv") || "").trim().toUpperCase();
-        const masp = dsMasp[0];
+        const masp = dsMasp.length === 1
+            ? dsMasp[0]
+            : `NHIEU_MA_${dsMasp.length}`;
 
         const anh = await uploadAnhBayMauKiemTon({
             masp,
