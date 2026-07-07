@@ -11,7 +11,6 @@ import { getLoaiFromSoHDInput } from "../luuhoadon/builders.js";
 import { calcTongThanhTienFromBangKetQua } from "../luuhoadon/pricing.js";
 import { validateKhachHangBatBuoc } from "../services/validateKhachHangTichDiem.js";
 import { emitInventoryChangedByBangKetQua } from "../services/inventoryEvents.js";
-import { xuLyDiemKhachHangSauLuu } from "../services/khachhangDiemService.js";
 import { capNhatUsedTuVanSauKhiLuuCT } from "../luuhoadon/api.js";
 
 let dangLuuBaoMat = false;
@@ -277,38 +276,6 @@ async function xuLyNghiepVuSauLuuBaoMat(
     );
   }
 
-  try {
-    if (
-      loai === "bancs1" ||
-      loai === "bancs2"
-    ) {
-      const thanhtoan = Number(
-        payload?.thanhtoan ||
-        payload?.header?.thanhtoan ||
-        0
-      );
-
-      await xuLyDiemKhachHangSauLuu(
-        sohd,
-        thanhtoan
-      );
-
-      console.log(
-        "[BAO MAT] Đã xử lý điểm khách hàng:",
-        sohd
-      );
-    }
-  } catch (e) {
-    console.error(
-      "[BAO MAT] xử lý điểm khách hàng lỗi:",
-      e
-    );
-
-    alert(
-      "⚠️ Hóa đơn đã lưu thành công nhưng xử lý điểm khách hàng có lỗi. Vui lòng kiểm tra."
-    );
-  }
-
   console.log(
     "[BAO MAT] HOÀN TẤT NGHIỆP VỤ SAU LƯU"
   );
@@ -350,6 +317,29 @@ export async function luuHoaDonBaoMat() {
         ketQuaDaXuLy,
         payload
       );
+
+      const pointResult =
+        ketQuaDaXuLy?.point_result?.new_process ||
+        ketQuaDaXuLy?.point_result ||
+        null;
+
+      if (pointResult?.ok) {
+        const diemEl = document.getElementById("diem_hientai");
+        const hangEl = document.getElementById("hang_khach");
+
+        if (diemEl && pointResult.diem_sau != null) {
+          diemEl.value = pointResult.diem_sau;
+        }
+
+        if (hangEl && pointResult.hang_khach != null) {
+          hangEl.value = pointResult.hang_khach;
+        }
+
+        console.log(
+          "[BAO MAT] Điểm khách hàng đã được RPC xử lý:",
+          pointResult
+        );
+      }
 
       inHoaDonBaoMat(ketQuaDaXuLy, payload);
 
