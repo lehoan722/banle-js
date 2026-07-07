@@ -31,21 +31,20 @@ export async function luuHoaDonBaoMat() {
       ketQuaDaXuLy?.ok &&
       (
         ketQuaDaXuLy?.mode === "SAVE_REAL_V1" ||
-        ketQuaDaXuLy?.mode === "EDIT_REAL_V1" ||
-        ketQuaDaXuLy?.mode === "SAVE_2_BAN_REAL_V1"
+        ketQuaDaXuLy?.mode === "EDIT_REAL_V1"
       )
     ) {
       inHoaDonBaoMat(ketQuaDaXuLy, payload);
+
       if (
-        ketQuaDaXuLy?.mode === "SAVE_2_BAN_REAL_V1" &&
-        ketQuaDaXuLy?.viettel_should_send === true &&
-        ketQuaDaXuLy?.sohd_t
+        ketQuaDaXuLy?.external_send === true &&
+        ketQuaDaXuLy?.sohd
       ) {
         try {
-          await guiHoaDonViettel(ketQuaDaXuLy.sohd_t);
+          await guiHoaDonViettel(ketQuaDaXuLy.sohd);
         } catch (e) {
-          console.error("[BAO MAT] Gửi Viettel thất bại:", e);
-          alert("⚠️ Đã lưu hóa đơn 2 bản nhưng gửi Viettel thất bại. Có thể gửi lại sau.");
+          console.error("[BAO MAT] Gửi tác vụ ngoài thất bại:", e);
+          alert("⚠️ Đã lưu hóa đơn nhưng gửi hóa đơn điện tử thất bại. Có thể gửi lại sau.");
         }
       }
 
