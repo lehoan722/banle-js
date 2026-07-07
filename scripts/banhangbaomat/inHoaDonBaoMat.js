@@ -9,12 +9,23 @@ export function inHoaDonBaoMat(result, payload) {
   }
 
   const sohd = result.sohd || payload.invoice?.sohd;
-  if (!sohd) {
-    alert("❌ Không có số hóa đơn để in.");
-    return;
-  }
 
-  const url = `${location.origin}/in-hoadon-db.html?sohd=${encodeURIComponent(sohd)}`;
+  const data = {
+    hoadon: {
+      ...(payload.invoice || {}),
+      sohd
+    },
+    chitiet: (payload.details || []).map((x) => ({
+      ...x,
+      sohd,
+      diadiem: payload.invoice?.diadiem,
+      ngay: payload.invoice?.ngay
+    }))
+  };
+
+  localStorage.setItem("data_hoadon_in", JSON.stringify(data));
+
+  const url = `${location.origin}/in-hoadon.html`;
 
   if (typeof window.openPrintOverlay === "function") {
     window.openPrintOverlay(url, { autoPrint: false });
