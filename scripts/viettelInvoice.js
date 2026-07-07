@@ -175,7 +175,7 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
       json = duLieuHoaDonCu;
     } else {
       const { data: hoadonData, error: e1 } = await supabase
-        .from('hoadon_banleT')
+        .from('hoadon_banle')
         .select('*')
         .eq('sohd', mahoadon)
         .single();
@@ -186,9 +186,9 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
       }
 
       const { data: chitietData, error: e2 } = await supabase
-        .from('ct_hoadon_banleT')
-        .select('*')
-        .eq('sohd', mahoadon);
+  .from('ct_hoadon_banle')
+  .select('*')
+  .eq('sohd', mahoadon);
 
       if (e1 || e2 || !hoadonData || !Array.isArray(chitietData) || chitietData.length === 0) {
         alert("❌ Không tìm thấy dữ liệu hóa đơn.\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
@@ -252,23 +252,13 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
 
         // Đọc text trước, rồi thử parse JSON để lấy message lỗi nếu có
         const raw = await response.text();
-
-        // if (!response.ok) {
-        // Nếu backend lỗi nhưng bên Viettel đã tạo bản nháp (raw chứa 'success' hay 'invoiceNo')
-        //if (/\b(success|invoice|created|draft)\b/i.test(raw)) {
-        //await supabase.from('hoadon_banleT')
-        //   .update({ trang_thai_gui: 'Đã gửi' })
-        //   .eq('sohd', mahoadon);
-        // alert("✅ Gửi hóa đơn thành công (backend báo 500 nhưng Viettel đã nhận).");
-        // return;
-        // }
-        // }
+        
         let result;
         try { result = JSON.parse(raw); } catch (_) { }
 
         if (response.ok) {
           await supabase
-            .from('hoadon_banleT')
+            .from('hoadon_banle')
             .update({ trang_thai_gui: 'Đã gửi' })
             .eq('sohd', mahoadon);
 
@@ -288,7 +278,7 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
     // 3) Nếu chạy tới đây nghĩa là cả 3 lần đều thất bại
     const errorMsg = lastErrorText || "Không rõ";
     await supabase
-      .from('hoadon_banleT')
+      .from('hoadon_banle')
       .update({ trang_thai_gui: 'Lỗi: ' + errorMsg })
       .eq('sohd', mahoadon);
 
@@ -314,7 +304,7 @@ export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
 
   } catch (outerError) {
     await supabase
-      .from('hoadon_banleT')
+      .from('hoadon_banle')
       .update({ trang_thai_gui: 'Lỗi: ' + (outerError?.message || 'Không rõ') })
       .eq('sohd', mahoadon);
 
