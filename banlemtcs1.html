@@ -1580,16 +1580,6 @@
         });
     </script>
 
-    <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
-
-        setTimeout(function () {
-            window.LUU_HOADON_F2 = async () => {
-                return await saveBanLe111("F2");
-            };
-        }, 1000);
-    </script>
-
 
     <script>  //<!-- banlemobile -->
 
@@ -1621,7 +1611,7 @@
     </script>
 
     <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
 
         // Mở popup xác thực + focus ngay vào #xacmanv
         window.moPopupXacThucSua = function () {
@@ -1683,9 +1673,15 @@
 
             closePopup();
 
-            console.log("🛠️ BANLE111 OVERRIDE: đang gọi LUỒNG SỬA MỚI");
+            console.log("🛠️ Đã xác thực sửa hóa đơn. Bây giờ bấm Lưu để chạy EDIT_REAL_V1.");
 
-            await saveBanLe111("EDIT-CONFIRM");
+            const hdState = document.getElementById("hd_state");
+            if (hdState) {
+                hdState.value = "sua";
+                hdState.setAttribute("data-state", "sua");
+            }
+
+            alert("✅ Đã mở quyền sửa hóa đơn. Sau khi chỉnh xong, bấm Lưu để lưu bằng luồng bảo mật.");
         };
 
         // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
