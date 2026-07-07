@@ -1865,8 +1865,10 @@
                 const isTMT = String(hinhThucTT?.value || "").trim().toLowerCase() === "tmt";
 
                 if (isTMT) {
-                    sohdEl.setAttribute("data-mod3", "yes");
-                    console.log("🚀 TMT: tô đỏ trực tiếp, bỏ qua kiểm tra rule config");
+                    if (sohdEl.getAttribute("data-mod3") !== "yes") {
+                        sohdEl.setAttribute("data-mod3", "yes");
+                        console.log("🚀 TMT: tô đỏ trực tiếp, bỏ qua kiểm tra rule config");
+                    }
                     return;
                 }
 
@@ -1935,7 +1937,15 @@
             });
 
             // fallback: nhiều chỗ set .value bằng JS
-            setInterval(checkViettelEligibility, 500);
+            setInterval(() => {
+                const isTMT = String(document.getElementById("hinhthuctt")?.value || "")
+                    .trim()
+                    .toLowerCase() === "tmt";
+
+                if (isTMT) return;
+
+                checkViettelEligibility();
+            }, 1000);
 
             // chạy lần đầu
             checkViettelEligibility();
