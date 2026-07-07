@@ -10,6 +10,9 @@ import { capNhatThongTinTong } from "../utils.js";
 import { getLoaiFromSoHDInput } from "../luuhoadon/builders.js";
 import { calcTongThanhTienFromBangKetQua } from "../luuhoadon/pricing.js";
 import { validateKhachHangBatBuoc } from "../services/validateKhachHangTichDiem.js";
+import { emitInventoryChangedByBangKetQua } from "../services/inventoryEvents.js";
+import { xuLyDiemKhachHangSauLuu } from "../services/khachhangDiemService.js";
+import { capNhatUsedTuVanSauKhiLuuCT } from "../luuhoadon/api.js";
 
 let dangLuuBaoMat = false;
 
@@ -105,6 +108,212 @@ async function validateBeforeSecureSave() {
   return true;
 }
 
+function layLoaiHoaDonSauLuu(ketQuaDaXuLy, payload) {
+  const sohd = String(
+    ketQuaDaXuLy?.sohd ||
+    payload?.sohd ||
+    ""
+  ).trim().toLowerCase();
+
+  return sohd.split("_")[0] || "";
+}
+
+function layDiaDiemSauLuu(loai, payload) {
+  return (
+    payload?.diadiem ||
+    (String(loai).includes("cs2") ? "cs2" : "cs1")
+  );
+}
+
+function layChiTietSauLuu(payload) {
+  if (Array.isArray(payload?.chitiet)) {
+    return payload.chitiet;
+  }
+
+  if (Array.isArray(payload?.chi_tiet)) {
+    return payload.chi_tiet;
+  }
+
+  if (Array.isArray(payload?.details)) {
+    return payload.details;
+  }
+
+  return [];
+}
+
+function laTrangNhapXuatKiem(loai, sohd) {
+  const path = String(window.location.pathname || "").toLowerCase();
+  const l = String(loai || "").toLowerCase();
+  const s = String(sohd || "").toLowerCase();
+
+  return (
+    path.includes("nhapkiemcs1") ||
+    path.includes("nhapkiemcs2") ||
+    path.includes("xuatkiemcs1") ||
+    path.includes("xuatkiemcs2") ||
+
+    l.startsWith("nhapkiemcs1") ||
+    l.startsWith("nhapkiemcs2") ||
+    l.startsWith("xuatkiemcs1") ||
+    l.startsWith("xuatkiemcs2") ||
+
+    s.startsWith("nhapkiemcs1_") ||
+    s.startsWith("nhapkiemcs2_") ||
+    s.startsWith("xuatkiemcs1_") ||
+    s.startsWith("xuatkiemcs2_")
+  );
+}
+
+async function markKiemTonLoiThoiSauNhapXuat(
+  sohd,
+  loai,
+  diadiem,
+  bangKetQua
+) {
+  try {
+    if (!laTrangNhapXuatKiem(loai, sohd)) return;
+
+    const dsMasp = Array.from(
+      new Set(
+        Object.values(bangKetQua || {})
+          .map(x => String(x.masp || "").trim().toUpperCase())
+          .filter(Boolean)
+      )
+    );
+
+    if (!dsMasp.length) return;
+
+    const { data, error } = await window.supabase.rpc(
+      "rpc_mark_ct_kiem_ton_loi_thoi_by_masp",
+      {
+        p_diadiem: diadiem,
+        p_ds_masp: dsMasp,
+        p_nguon: sohd
+      }
+    );
+
+    if (error) {
+      console.error("[BAO MAT] mark kiểm tồn lỗi:", error);
+    } else {
+      console.log("[BAO MAT] Đã đánh dấu kiểm tồn lỗi thời:", data);
+    }
+  } catch (e) {
+    console.error("[BAO MAT] lỗi mark kiểm tồn:", e);
+  }
+}
+
+async function xuLyNghiepVuSauLuuBaoMat(
+  ketQuaDaXuLy,
+  payload
+) {
+  const sohd = ketQuaDaXuLy?.sohd;
+
+  if (!sohd) {
+    console.warn("[BAO MAT] Không có sohd để chạy nghiệp vụ sau lưu.");
+    return;
+  }
+
+  const loai = layLoaiHoaDonSauLuu(
+    ketQuaDaXuLy,
+    payload
+  );
+
+  const diadiem = layDiaDiemSauLuu(
+    loai,
+    payload
+  );
+
+  const bangKetQua = getBangKetQua();
+
+  const chitiet = layChiTietSauLuu(payload);
+
+  console.log("[BAO MAT] BẮT ĐẦU NGHIỆP VỤ SAU LƯU", {
+    sohd,
+    loai,
+    diadiem,
+    soDongChiTiet: chitiet.length
+  });
+
+  try {
+    if (chitiet.length) {
+      await capNhatUsedTuVanSauKhiLuuCT(
+        chitiet,
+        loai,
+        diadiem
+      );
+    }
+  } catch (e) {
+    console.error(
+      "[BAO MAT] capNhatUsedTuVanSauKhiLuuCT lỗi:",
+      e
+    );
+  }
+
+  await markKiemTonLoiThoiSauNhapXuat(
+    sohd,
+    loai,
+    diadiem,
+    bangKetQua
+  );
+
+  try {
+    emitInventoryChangedByBangKetQua(
+      bangKetQua,
+      {
+        source: "hoadon_secure_save",
+        sohd,
+        loai,
+        diadiem,
+        manv:
+          payload?.manv ||
+          document.getElementById("manv")?.value ||
+          ""
+      }
+    );
+  } catch (e) {
+    console.error(
+      "[BAO MAT] emit tồn kho lỗi:",
+      e
+    );
+  }
+
+  try {
+    if (
+      loai === "bancs1" ||
+      loai === "bancs2"
+    ) {
+      const thanhtoan = Number(
+        payload?.thanhtoan ||
+        payload?.header?.thanhtoan ||
+        0
+      );
+
+      await xuLyDiemKhachHangSauLuu(
+        sohd,
+        thanhtoan
+      );
+
+      console.log(
+        "[BAO MAT] Đã xử lý điểm khách hàng:",
+        sohd
+      );
+    }
+  } catch (e) {
+    console.error(
+      "[BAO MAT] xử lý điểm khách hàng lỗi:",
+      e
+    );
+
+    alert(
+      "⚠️ Hóa đơn đã lưu thành công nhưng xử lý điểm khách hàng có lỗi. Vui lòng kiểm tra."
+    );
+  }
+
+  console.log(
+    "[BAO MAT] HOÀN TẤT NGHIỆP VỤ SAU LƯU"
+  );
+}
+
 export async function luuHoaDonBaoMat() {
   if (dangLuuBaoMat) {
     console.warn("[BAO MAT] Đang có yêu cầu lưu.");
@@ -137,6 +346,11 @@ export async function luuHoaDonBaoMat() {
         ketQuaDaXuLy?.mode === "EDIT_REAL_V1"
       )
     ) {
+      await xuLyNghiepVuSauLuuBaoMat(
+        ketQuaDaXuLy,
+        payload
+      );
+
       inHoaDonBaoMat(ketQuaDaXuLy, payload);
 
       if (
