@@ -25,7 +25,24 @@ export function inHoaDonBaoMat(result, payload) {
 
   localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
-  const url = `${location.origin}/in-hoadon.html`;
+  const isHoaDonDacBiet =
+    result?.external_send === true ||
+    payload?.flags?.is_special_tmt === true ||
+    payload?.flags?.is_special_mod3 === true ||
+    payload?.flags?.save_2_ban === true ||
+    payload?.invoice?.hinhthuctt?.toLowerCase?.() === "tmt";
+
+  const url = isHoaDonDacBiet
+    ? `${location.origin}/in-hoadon-db.html`
+    : `${location.origin}/in-hoadon.html`;
+
+  console.log("[BAO MAT] URL IN HÓA ĐƠN:", {
+    sohd,
+    isHoaDonDacBiet,
+    url,
+    external_send: result?.external_send,
+    flags: payload?.flags
+  });
 
   if (typeof window.openPrintOverlay === "function") {
     window.openPrintOverlay(url, { autoPrint: false });
