@@ -3,7 +3,7 @@
 export function inHoaDonBaoMat(result, payload) {
     if (
         !result?.ok ||
-        !["SAVE_REAL_V1", "EDIT_REAL_V1"].includes(result?.mode)
+        !["SAVE_REAL_V1", "EDIT_REAL_V1", "SAVE_2_BAN_REAL_V1"].includes(result?.mode)
     ) {
         return;
     }
@@ -25,7 +25,9 @@ export function inHoaDonBaoMat(result, payload) {
 
     localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
-    const url = `${location.origin}/in-hoadon.html`;
+    const url = result?.save_2_ban
+        ? `${location.origin}/in-hoadon-db.html`
+        : `${location.origin}/in-hoadon.html`;
 
     if (typeof window.openPrintOverlay === "function") {
         window.openPrintOverlay(url, { autoPrint: false });
