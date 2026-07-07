@@ -1726,32 +1726,50 @@
         });
     </script>
 
-
     <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+        import { luuHoaDonBaoMat } from "./scripts/banhangbaomat/luuHoaDonEntry.js";
 
-        document.getElementById('btn-luu').onclick = async function () {
+        document.getElementById("btn-luu").onclick = async function () {
             if (window.dangLuu) return;
 
+            const btn = this;
+
             window.dangLuu = true;
-            this.disabled = true;
-            this.innerText = "Đang lưu...";
+            btn.disabled = true;
+            btn.innerText = "Đang lưu bảo mật...";
 
             try {
-                const result = await saveBanLe111("BTN-LUU");
+                console.log("🔐 BẮT ĐẦU LUỒNG LƯU BẢO MẬT");
+
+                const result = await luuHoaDonBaoMat({
+                    source: "BTN-LUU"
+                });
+
+                console.log("🔐 KẾT QUẢ LƯU BẢO MẬT:", result);
 
                 if (result?.ok) {
-                    // alert("✅ Lưu thành công (banlemtcs111)");
+                    console.log("[BAO MAT] Lưu thành công:", result);
                 } else {
-                    console.warn("saveBanLe111 không trả về ok=true:", result);
+                    console.warn(
+                        "⚠️ luuHoaDonBaoMat không trả về ok=true:",
+                        result
+                    );
+
+                    alert("Luồng bảo mật đã chạy nhưng kết quả chưa thành công.");
                 }
+
             } catch (e) {
-                console.error(e);
-                alert("❌ Lỗi lưu: " + (e?.message || e));
+                console.error("❌ LỖI LUỒNG LƯU BẢO MẬT:", e);
+
+                alert(
+                    "❌ LỖI LƯU BẢO MẬT\n\n" +
+                    (e?.message || e)
+                );
+
             } finally {
                 window.dangLuu = false;
-                this.disabled = false;
-                this.innerText = "💾 Lưu";
+                btn.disabled = false;
+                btn.innerText = "💾 Lưu";
             }
         };
     </script>
@@ -1830,11 +1848,13 @@
                     return;
                 }
 
-                // F2: chỉ xử lý tại đây
+                // F2: lưu giống nút Lưu bảo mật
+                // F2: CHỈ chạy đúng nút Lưu bảo mật
                 if (e.key === 'F2') {
                     e.preventDefault();
-                    e.stopPropagation();
-                    await luuTheoHinhThucThanhToan();
+                    e.stopImmediatePropagation();
+
+                    document.getElementById("btn-luu")?.click();
                     return;
                 }
             }, true);
@@ -2707,6 +2727,26 @@ Shop chân thành cảm ơn!`;
             });
         });
     </script>
+
+    <script type="module">
+        import "../scripts/banhangbaomat/luuHoaDonEntry.js";
+    </script>
+
+    <button id="btnTestBaoMat" type="button" onclick="testLuuHoaDonBaoMat()" style="
+    position: fixed;
+    right: 15px;
+    bottom: 15px;
+    z-index: 999999;
+    padding: 12px 16px;
+    background: #111;
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+  ">
+        TEST BẢO MẬT
+    </button>
 
 </body>
 
