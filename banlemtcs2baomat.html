@@ -1808,12 +1808,12 @@
                     toggleTienMatMode();
                     return;
                 }
-
-                // F2: chỉ xử lý tại đây
+                
+                // F2: lưu giống nút Lưu bảo mật
                 if (e.key === 'F2') {
                     e.preventDefault();
                     e.stopPropagation();
-                    await luuTheoHinhThucThanhToan();
+                    document.getElementById("btn-luu")?.click();
                     return;
                 }
             }, true);
