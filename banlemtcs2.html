@@ -1808,11 +1808,13 @@
                     toggleTienMatMode();
                     return;
                 }
-                
+
                 // F2: lưu giống nút Lưu bảo mật
+                // F2: CHỈ chạy đúng nút Lưu bảo mật
                 if (e.key === 'F2') {
                     e.preventDefault();
-                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+
                     document.getElementById("btn-luu")?.click();
                     return;
                 }
