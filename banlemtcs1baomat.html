@@ -1748,11 +1748,7 @@
                 console.log("🔐 KẾT QUẢ LƯU BẢO MẬT:", result);
 
                 if (result?.ok) {
-                    alert(
-                        "LƯU BẢO MẬT THÀNH CÔNG\n\n" +
-                        "Request ID:\n" +
-                        (result.requestId || result.request_id || "")
-                    );
+                    console.log("[BAO MAT] Lưu thành công:", result);
                 } else {
                     console.warn(
                         "⚠️ luuHoaDonBaoMat không trả về ok=true:",
