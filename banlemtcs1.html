@@ -1830,27 +1830,12 @@
             async function luuTheoHinhThucThanhToan() {
                 if (window.dangLuu) return;
 
-                const isTienMatT = hinhThucTT.value === 'tmt';
-
-                if (isTienMatT) {
-                    // Tiền mặtt => chạy đúng kiểu của nút Lưu hiện tại
-                    if (!btnLuu) return;
-                    btnLuu.click();
+                if (!btnLuu) {
+                    alert("Không tìm thấy nút Lưu.");
                     return;
                 }
 
-                // Các trường hợp còn lại => chạy F2 cũ
-                try {
-                    if (typeof window.LUU_HOADON_F2 === 'function') {
-                        await window.LUU_HOADON_F2();
-                    } else if (typeof window.luuHoaDonQuaAPI === 'function') {
-                        await window.luuHoaDonQuaAPI();
-                    } else {
-                        alert('Không tìm thấy hàm lưu F2 hiện tại.');
-                    }
-                } catch (e) {
-                    alert('Lỗi lưu hóa đơn: ' + (e?.message || e));
-                }
+                btnLuu.click();
             }
 
             // Cho phép chỗ khác gọi nếu cần
@@ -2759,26 +2744,6 @@ Shop chân thành cảm ơn!`;
             });
         });
     </script>
-
-    <script type="module">
-        import "../scripts/banhangbaomat/luuHoaDonEntry.js";
-    </script>
-
-    <button id="btnTestBaoMat" type="button" onclick="testLuuHoaDonBaoMat()" style="
-    position: fixed;
-    right: 15px;
-    bottom: 15px;
-    z-index: 999999;
-    padding: 12px 16px;
-    background: #111;
-    color: #fff;
-    border: 0;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-  ">
-        TEST BẢO MẬT
-    </button>
 
 </body>
 
