@@ -610,23 +610,60 @@ async function fetchXntRows(masps) {
     allRows.some(r => normalizeMasp(r.masp) === "483-APMDM.TIMT")
   );
 
+  const kiemTonMap = new Map();
+
+  if (isUseKiemTonEnabled()) {
+    for (const masp of masps) {
+      const code = normalizeMasp(masp);
+      if (!code) continue;
+
+      const { data, error } = await supabase.rpc("rpc_stockquick_kiemton", {
+        p_masp: code
+      });
+
+      if (error) {
+        console.warn("[ChuyenKho] Không lấy được kiểm tồn:", code, error);
+        continue;
+      }
+
+      kiemTonMap.set(code, data || { cs1: {}, cs2: {} });
+    }
+  }
+
   return allRows
     .map(r => {
+      const masp = normalizeMasp(r.masp);
+      const size = normalizeSize(r.size);
+      const sizeKey = String(size || "").replace(/^size\s+/i, "").trim();
+
       const tonCs1 = Number(r.ton_cs1 || 0);
       const tonCs2 = Number(r.ton_cs2 || 0);
 
+      const kt = kiemTonMap.get(masp) || { cs1: {}, cs2: {} };
+
+      const lechCs1 = isUseKiemTonEnabled()
+        ? Number(kt?.cs1?.lech?.[sizeKey] || 0)
+        : 0;
+
+      const lechCs2 = isUseKiemTonEnabled()
+        ? Number(kt?.cs2?.lech?.[sizeKey] || 0)
+        : 0;
+
+      const tonThucCs1 = tonCs1 + lechCs1;
+      const tonThucCs2 = tonCs2 + lechCs2;
+
       return {
-        masp: normalizeMasp(r.masp),
-        size: normalizeSize(r.size),
+        masp,
+        size,
 
-        ton_cs1: tonCs1,
-        ton_cs2: tonCs2,
+        ton_cs1: tonThucCs1,
+        ton_cs2: tonThucCs2,
 
-        lech_cs1: 0,
-        lech_cs2: 0,
+        lech_cs1: lechCs1,
+        lech_cs2: lechCs2,
 
-        ton_thuc_cs1: tonCs1,
-        ton_thuc_cs2: tonCs2,
+        ton_thuc_cs1: tonThucCs1,
+        ton_thuc_cs2: tonThucCs2,
 
         ban_cs1: Number(r.ban_cs1 || 0),
         ban_cs2: Number(r.ban_cs2 || 0),
@@ -634,7 +671,7 @@ async function fetchXntRows(masps) {
         tong_nhap: Number(r.tong_nhap || 0),
         tong_ton: Number(r.tong_ton || 0),
 
-        co_kiemton: false
+        co_kiemton: lechCs1 !== 0 || lechCs2 !== 0
       };
     })
     .filter(r => !isInvalidTransferSize(r.size));
