@@ -1157,10 +1157,8 @@
 
         window.resetQLMK = resetQLMK;
 
-        // lay co so theo trang
+        // Trang banlemtcs1 luôn cố định bán tại cơ sở 1
         function layPrefixBanLeTheoTrang() {
-            const path = String(location.pathname || "").toLowerCase();
-            if (path.includes("cs2")) return "bancs2_";
             return "bancs1_";
         }
 
@@ -1409,7 +1407,7 @@
         // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
         khoiTaoDangNhapDungChung({
             macDinhDiaDiem: "cs1",          // cố định cơ sở 1
-            tuDongKhoaCoSo: false,
+            tuDongKhoaCoSo: true,
             loginApiPath: "/api/login-cs1", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
@@ -1563,7 +1561,7 @@
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
+        const cs = "cs1";
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -2309,10 +2307,9 @@
                 });
             });
 
-            // Lấy cơ sở động theo input #diadiem (cs1/cs2). File bạn đang là cs1 nên sẽ ra cs1.  co so
-            const csRaw = (document.getElementById("diadiem")?.value || "cs1").toLowerCase();
-            const cs = (csRaw.includes("2")) ? "cs2" : "cs1";
-            const page = (cs === "cs2") ? "inmavachcs2.html" : "inmavachcs1.html";
+            // Lấy cơ sở động theo input #diadiem (cs1). File bạn đang là cs1 nên sẽ ra cs1.  co so
+            const cs = "cs1";
+            const page = "inmavachcs1.html";
 
             const payload = { source: "banle", cs, items };
             const json = JSON.stringify(payload);
