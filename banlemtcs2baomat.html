@@ -7,10 +7,18 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>BAN LE cs2</title>
 
+    <link rel="manifest" href="/manifest-banlecs2.json?v=app1">
+    <meta name="theme-color" content="#0078d7">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Bán lẻ cs2">
+
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
 
@@ -632,8 +640,9 @@
         }
     </style>
 
+
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
-    <link rel="stylesheet" href="banlemobilecs1.css?v=100">
+    <link rel="stylesheet" href="banlemobilecs1.css?v=101">
 
 </head>
 
@@ -1011,7 +1020,7 @@
         });
     </script>
 
-    <script src="/scripts/stockQuickPopup.js?v=100"></script>
+    <script src="/scripts/stockQuickPopup.js?v=101"></script>
 
     <script type="module">
         import { mountKhachHangSuggest } from "./scripts/dmkhachhang_diem.js";
@@ -1148,10 +1157,8 @@
 
         window.resetQLMK = resetQLMK;
 
-        // lay co so theo trang
+        // Trang banlemtcs2 luôn cố định bán tại cơ sở 1
         function layPrefixBanLeTheoTrang() {
-            const path = String(location.pathname || "").toLowerCase();
-            if (path.includes("cs2")) return "bancs2_";
             return "bancs2_";
         }
 
@@ -1313,9 +1320,26 @@
                 .then(() => alert('Đã copy dữ liệu ra clipboard'));
         };
 
+        // ✅ Nút Dán: đọc clipboard rồi dán vào bảng bán hàng
+        document.getElementById('btnDanExcel')?.addEventListener('click', async function () {
+            try {
+                const text = await navigator.clipboard.readText();
 
+                if (!text || !text.trim()) {
+                    alert('Clipboard đang trống hoặc chưa copy dữ liệu Excel.');
+                    return;
+                }
+
+                danDuLieuExcelVaoBang(text);
+
+            } catch (err) {
+                console.error('Không đọc được clipboard:', err);
+                alert('Trình duyệt không cho đọc clipboard. Hãy bấm vào bảng rồi Ctrl+V.');
+            }
+        });
 
         // Dán từ clipboard (Excel) vào bảng web
+
         function danDuLieuExcelVaoBang(text) {
             const rows = String(text || '').trim().split('\n').map(r => r.split('\t'));
             const tbody = document.querySelector('#bangketqua tbody');
@@ -1344,24 +1368,6 @@
 
             console.log('window.bangKetQua:', window.bangKetQua);
         }
-
-        // ✅ Nút Dán: đọc clipboard rồi dán vào bảng bán hàng
-        document.getElementById('btnDanExcel')?.addEventListener('click', async function () {
-            try {
-                const text = await navigator.clipboard.readText();
-
-                if (!text || !text.trim()) {
-                    alert('Clipboard đang trống hoặc chưa copy dữ liệu Excel.');
-                    return;
-                }
-
-                danDuLieuExcelVaoBang(text);
-
-            } catch (err) {
-                console.error('Không đọc được clipboard:', err);
-                alert('Trình duyệt không cho đọc clipboard. Hãy bấm vào bảng rồi Ctrl+V.');
-            }
-        });
 
         // Dán từ clipboard bằng Ctrl+V vào bảng
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
@@ -1401,7 +1407,7 @@
         // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
         khoiTaoDangNhapDungChung({
             macDinhDiaDiem: "cs2",          // cố định cơ sở 1
-            tuDongKhoaCoSo: false,
+            tuDongKhoaCoSo: true,
             loginApiPath: "/api/login-cs2", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
@@ -1448,7 +1454,7 @@
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
                 try {
-                    const module = await import("./scripts/main.js?v=100");
+                    const module = await import("./scripts/main.js?v=101");
                     if (typeof module.khoiTaoUngDung === "function") {
                         module.khoiTaoUngDung();
                     }
@@ -1551,11 +1557,11 @@
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
 
 
-    <script src="scripts/menu-component.js"></script>
+    <script src="/scripts/menu-component.js?v=9"></script>
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = (localStorage.diadiem || "cs2");       // vd: "cs2" / "cs2"
+        const cs = "cs2";
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -1570,33 +1576,6 @@
             manv,
             cacheTtlMin: 30 // TTL cache 30 phút
         });
-    </script>
-
-    <script type="module">
-        import { luuHoaDonBaoMat } from "./scripts/banhangbaomat/luuHoaDonEntry.js";
-
-        document.getElementById("btn-luu").onclick = async function () {
-            if (window.dangLuu) return;
-
-            const btn = this;
-            window.dangLuu = true;
-            btn.disabled = true;
-            btn.innerText = "Đang lưu bảo mật...";
-
-            try {
-                const result = await luuHoaDonBaoMat({ source: "BTN-LUU-CS2" });
-
-                if (result?.ok) {
-                    console.log("[BAO MAT] Lưu thành công:", result);
-                }
-            } catch (e) {
-                alert("❌ LỖI LƯU BẢO MẬT\n\n" + (e?.message || e));
-            } finally {
-                window.dangLuu = false;
-                btn.disabled = false;
-                btn.innerText = "💾 Lưu";
-            }
-        };
     </script>
 
 
@@ -1630,7 +1609,7 @@
     </script>
 
     <script type="module">
-        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
 
         // Mở popup xác thực + focus ngay vào #xacmanv
         window.moPopupXacThucSua = function () {
@@ -1648,7 +1627,7 @@
             }, 0);
         };
 
-        // OVERRIDE RIÊNG CHO TRANG TEST banlemtcs111 
+        // OVERRIDE RIÊNG CHO TRANG TEST
         window.xacNhanSuaHoaDon1 = async function () {
             const popup = document.getElementById("popupXacThucSua");
             const closePopup = () => {
@@ -1692,9 +1671,25 @@
 
             closePopup();
 
-            console.log("🛠️ BANLE111 OVERRIDE: đang gọi LUỒNG SỬA MỚI");
+            console.log("🛠️ Đã xác thực sửa hóa đơn. Gọi lưu EDIT_REAL_V1 ngay.");
 
-            await saveBanLe111("EDIT-CONFIRM");
+            window.__xacNhanSuaBaoMat_OK = true;
+            window.dangSuaHoaDon = true;
+            window.choPhepSua = true;
+            window.HD_CTX = {
+                ...(window.HD_CTX || {}),
+                mode: "EDIT",
+                fromConfirm: true,
+                edit_at: new Date().toISOString()
+            };
+
+            const hdState = document.getElementById("hd_state");
+            if (hdState) {
+                hdState.value = "sua";
+                hdState.setAttribute("data-state", "sua");
+            }
+
+            document.getElementById("btn-luu")?.click();
         };
 
         // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
@@ -1735,6 +1730,70 @@
         });
     </script>
 
+    <script type="module">
+        import { luuHoaDonBaoMat } from "./scripts/banhangbaomat/luuHoaDonEntry.js";
+
+        function laTrangThaiXemHoaDon() {
+            const hdState = String(document.getElementById("hd_state")?.value || "")
+                .trim()
+                .toLowerCase();
+
+            return (
+                hdState === "xem" ||
+                hdState === "chua xem" ||
+                hdState === "chưa xem" ||
+                hdState === "chuaxem"
+            );
+        }
+
+        document.getElementById("btn-luu").onclick = async function () {
+            const btn = this;
+
+            // Nếu đang xem hóa đơn cũ: bấm Lưu => mở popup xác nhận sửa
+            if (laTrangThaiXemHoaDon() && window.__xacNhanSuaBaoMat_OK !== true) {
+                if (typeof window.moPopupXacThucSua === "function") {
+                    window.moPopupXacThucSua();
+                } else {
+                    alert("❌ Chưa nạp được popup xác thực sửa hóa đơn.");
+                }
+                return;
+            }
+
+            if (window.dangLuu) return;
+
+            window.dangLuu = true;
+            btn.disabled = true;
+            btn.innerText = "Đang lưu bảo mật...";
+
+            try {
+                console.log("🔐 BẮT ĐẦU LUỒNG LƯU BẢO MẬT");
+
+                const result = await luuHoaDonBaoMat({
+                    source: window.__xacNhanSuaBaoMat_OK ? "EDIT-CONFIRM" : "BTN-LUU"
+                });
+
+                console.log("🔐 KẾT QUẢ LƯU BẢO MẬT:", result);
+
+                if (result?.ok) {
+                    console.log("[BAO MAT] Lưu thành công:", result);
+                    window.__xacNhanSuaBaoMat_OK = false;
+                } else {
+                    console.warn("⚠️ luuHoaDonBaoMat không trả về ok=true:", result);
+                    alert("Luồng bảo mật đã chạy nhưng kết quả chưa thành công.");
+                }
+
+            } catch (e) {
+                console.error("❌ LỖI LUỒNG LƯU BẢO MẬT:", e);
+                alert("❌ LỖI LƯU BẢO MẬT\n\n" + (e?.message || e));
+
+            } finally {
+                window.dangLuu = false;
+                btn.disabled = false;
+                btn.innerText = "💾 Lưu";
+            }
+        };
+    </script>
+
     <script>
         // ===== Điều khiển riêng cho Hình thức thanh toán: tm / tmt / ck =====
         document.addEventListener('DOMContentLoaded', () => {
@@ -1769,27 +1828,12 @@
             async function luuTheoHinhThucThanhToan() {
                 if (window.dangLuu) return;
 
-                const isTienMatT = hinhThucTT.value === 'tmt';
-
-                if (isTienMatT) {
-                    // Tiền mặtt => chạy đúng kiểu của nút Lưu hiện tại
-                    if (!btnLuu) return;
-                    btnLuu.click();
+                if (!btnLuu) {
+                    alert("Không tìm thấy nút Lưu.");
                     return;
                 }
 
-                // Các trường hợp còn lại => chạy F2 cũ
-                try {
-                    if (typeof window.LUU_HOADON_F2 === 'function') {
-                        await window.LUU_HOADON_F2();
-                    } else if (typeof window.luuHoaDonQuaAPI === 'function') {
-                        await window.luuHoaDonQuaAPI();
-                    } else {
-                        alert('Không tìm thấy hàm lưu F2 hiện tại.');
-                    }
-                } catch (e) {
-                    alert('Lỗi lưu hóa đơn: ' + (e?.message || e));
-                }
+                btnLuu.click();
             }
 
             // Cho phép chỗ khác gọi nếu cần
@@ -1860,8 +1904,10 @@
                 const isTMT = String(hinhThucTT?.value || "").trim().toLowerCase() === "tmt";
 
                 if (isTMT) {
-                    sohdEl.setAttribute("data-mod3", "yes");
-                    console.log("🚀 TMT: tô đỏ trực tiếp, bỏ qua kiểm tra rule config");
+                    if (sohdEl.getAttribute("data-mod3") !== "yes") {
+                        sohdEl.setAttribute("data-mod3", "yes");
+                        console.log("🚀 TMT: tô đỏ trực tiếp, bỏ qua kiểm tra rule config");
+                    }
                     return;
                 }
 
@@ -1902,7 +1948,7 @@
                     const row = data;
                     const eligible = !!row?.eligible;
 
-                    console.log("✅ Viettel rule check:", row);
+                    console.log("✅ Viettel rule check cs2:", row);
 
                     if (eligible) sohdEl.setAttribute("data-mod3", "yes");
                     else sohdEl.removeAttribute("data-mod3");
@@ -1930,7 +1976,15 @@
             });
 
             // fallback: nhiều chỗ set .value bằng JS
-            setInterval(checkViettelEligibility, 500);
+            setInterval(() => {
+                const isTMT = String(document.getElementById("hinhthuctt")?.value || "")
+                    .trim()
+                    .toLowerCase() === "tmt";
+
+                if (isTMT) return;
+
+                checkViettelEligibility();
+            }, 1000);
 
             // chạy lần đầu
             checkViettelEligibility();
@@ -2253,10 +2307,9 @@
                 });
             });
 
-            // Lấy cơ sở động theo input #diadiem (cs1/cs2). File bạn đang là cs1 nên sẽ ra cs1.  co so
-            const csRaw = (document.getElementById("diadiem")?.value || "cs1").toLowerCase();
-            const cs = (csRaw.includes("2")) ? "cs2" : "cs1";
-            const page = (cs === "cs2") ? "inmavachcs2.html" : "inmavachcs1.html";
+            // Lấy cơ sở động theo input #diadiem (cs2). File bạn đang là cs2 nên sẽ ra cs2.  co so
+            const cs = "cs2";
+            const page = "inmavachcs2.html";
 
             const payload = { source: "banle", cs, items };
             const json = JSON.stringify(payload);
