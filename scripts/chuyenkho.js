@@ -117,6 +117,39 @@ function isUseKiemTonEnabled() {
   return el ? !!el.checked : true;
 }
 
+function getTyLeBanDichNguonFilter() {
+  const el = $("input-tyle-ban-dich");
+  if (!el) return 0;
+
+  const n = Number(String(el.value || "").replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function passTyLeBanDichNguon(row) {
+  const minPercent = getTyLeBanDichNguonFilter();
+  if (minPercent <= 0) return true;
+
+  const banNguon = PAGE_CFG.tuCoso === "cs1"
+    ? toNumber(row.ban_cs1)
+    : toNumber(row.ban_cs2);
+
+  const banDich = PAGE_CFG.denCoso === "cs1"
+    ? toNumber(row.ban_cs1)
+    : toNumber(row.ban_cs2);
+
+  const tonDich = toNumber(row.ton_dich);
+
+  if (banNguon <= 0) return true;
+
+  const percent = (banDich / banNguon) * 100;
+
+  if (percent >= minPercent) return true;
+
+  if (banDich > 0 && tonDich <= 0) return true;
+
+  return false;
+}
+
 function uniq(arr) {
   return [...new Set(arr)];
 }
@@ -880,7 +913,10 @@ async function layGoiY() {
     STATE.chungLoaiMap = dmhhInfo.chungLoaiMap || new Map();
     STATE.allChungLoaiSet = dmhhInfo.allChungLoaiSet || new Set();
 
-    STATE.rows = dedupeRowsByMaspSize(buildSuggestionRows({ xntRows }));
+    const rawSuggestionRows = buildSuggestionRows({ xntRows });
+    const filteredBySaleRatio = rawSuggestionRows.filter(passTyLeBanDichNguon);
+
+    STATE.rows = dedupeRowsByMaspSize(filteredBySaleRatio);
 
     renderBang();
     capNhatTong();
@@ -1875,6 +1911,13 @@ function ganSuKien() {
   $("btn-logout")?.addEventListener("click", dangXuatApp);
   $("btn-stock-selected")?.addEventListener("dblclick", xemTonDongDangChon);
   $("btnReloadSP")?.addEventListener("click", () => location.reload());
+
+  $("input-tyle-ban-dich")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      layGoiY();
+    }
+  });
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "F1") {
