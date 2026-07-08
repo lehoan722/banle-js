@@ -93,9 +93,18 @@
     .nhomhang-picker {
       position: relative;
       display: grid;
-      grid-template-columns: 150px 1fr;
+      grid-template-columns: 150px 1fr 160px;
       gap: 6px;
       align-items: start;
+    }
+
+    #input-nhomhang-search,
+    #input-nhomhang-selected,
+    #input-tyle-ban-dich {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px;
+      font-size: 15px;
     }
 
     #input-nhomhang-search,
@@ -365,6 +374,10 @@
         <div class="nhomhang-picker">
           <input id="input-nhomhang-search" placeholder="Gõ/chọn nhóm..." autocomplete="off">
           <input id="input-nhomhang-selected" placeholder="VD: AP,SM,QV">
+
+          <input id="input-tyle-ban-dich" type="number" min="0" max="999" step="1" placeholder="% bán đích/nguồn"
+            title="Ví dụ 50 = chỉ chuyển nếu bán cơ sở đích / cơ sở nguồn từ 50% trở lên">
+
           <div id="nhomhang-dropdown" class="nhomhang-dropdown"></div>
           <div id="goiy-status" class="goiy-status"></div>
         </div>
