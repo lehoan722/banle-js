@@ -874,14 +874,24 @@ async function layGoiY() {
       masps = maspsFromText;
       sourceLabel = `theo ${maspsFromText.length} mã sản phẩm nhập tay`;
     } else if (nhomHangs.length) {
-      masps = await fetchMaspsByNhomHang(nhomHangs);
-      sourceLabel = `theo nhóm hàng: ${nhomHangs.join(",")}`;
+      const maspsByDate = await fetchMaspsByDateRange();
+      const maspsByGroup = await fetchMaspsByNhomHang(nhomHangs);
+      const groupSet = new Set(maspsByGroup);
+
+      masps = maspsByDate.filter(masp => groupSet.has(normalizeMasp(masp)));
+
+      sourceLabel =
+        `theo khoảng ngày ${$("tu_ngay").value} đến ${$("den_ngay").value}, ` +
+        `lọc nhóm hàng: ${nhomHangs.join(",")}`;
 
       if (!masps.length) {
         STATE.rows = [];
         renderBang();
         capNhatTong();
-        setGoiYStatus(`Không tìm thấy mã sản phẩm nào thuộc nhóm: ${nhomHangs.join(",")}`, "warning");
+        setGoiYStatus(
+          `Không có mã nào vừa bán trong khoảng ngày ${$("tu_ngay").value} đến ${$("den_ngay").value} vừa thuộc nhóm: ${nhomHangs.join(",")}`,
+          "warning"
+        );
         return;
       }
     } else {
