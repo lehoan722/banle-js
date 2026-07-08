@@ -15,10 +15,8 @@ export async function guiDuLieuLuuBaoMat(payload) {
   );
 
   if (error) {
-    console.error("[BAO MAT] RPC ERROR:", error);
-    throw error;
-  }
-
+    throw new Error("SECURE_SAVE_FAILED");
+}
   if (!data) {
     throw new Error("SECURE_RPC_EMPTY_RESULT");
   }
