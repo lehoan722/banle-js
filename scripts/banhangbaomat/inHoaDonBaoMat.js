@@ -34,15 +34,7 @@ export function inHoaDonBaoMat(result, payload) {
 
   const url = isHoaDonDacBiet
     ? `${location.origin}/in-hoadon-db.html`
-    : `${location.origin}/in-hoadon.html`;
-
-  console.log("[BAO MAT] URL IN HÓA ĐƠN:", {
-    sohd,
-    isHoaDonDacBiet,
-    url,
-    external_send: result?.external_send,
-    flags: payload?.flags
-  });
+    : `${location.origin}/in-hoadon.html`;  
 
   if (typeof window.openPrintOverlay === "function") {
     window.openPrintOverlay(url, { autoPrint: false });
