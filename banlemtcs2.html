@@ -1152,7 +1152,6 @@
         function resetQLMK() {
             dsQLMK = [];
             indexQLMK = -1;
-            console.log("✅ Đã reset QLMK.");
         }
 
         window.resetQLMK = resetQLMK;
@@ -1365,8 +1364,6 @@
             if (typeof capNhatThongTinTong === 'function') {
                 capNhatThongTinTong(window.bangKetQua || {});
             }
-
-            console.log('window.bangKetQua:', window.bangKetQua);
         }
 
         // Dán từ clipboard bằng Ctrl+V vào bảng
@@ -1671,8 +1668,6 @@
 
             closePopup();
 
-            console.log("🛠️ Đã xác thực sửa hóa đơn. Gọi lưu EDIT_REAL_V1 ngay.");
-
             window.__xacNhanSuaBaoMat_OK = true;
             window.dangSuaHoaDon = true;
             window.choPhepSua = true;
@@ -1766,25 +1761,19 @@
             btn.innerText = "Đang lưu bảo mật...";
 
             try {
-                console.log("🔐 BẮT ĐẦU LUỒNG LƯU BẢO MẬT");
 
                 const result = await luuHoaDonBaoMat({
                     source: window.__xacNhanSuaBaoMat_OK ? "EDIT-CONFIRM" : "BTN-LUU"
                 });
 
-                console.log("🔐 KẾT QUẢ LƯU BẢO MẬT:", result);
-
                 if (result?.ok) {
-                    console.log("[BAO MAT] Lưu thành công:", result);
                     window.__xacNhanSuaBaoMat_OK = false;
                 } else {
-                    console.warn("⚠️ luuHoaDonBaoMat không trả về ok=true:", result);
-                    alert("Luồng bảo mật đã chạy nhưng kết quả chưa thành công.");
+                    alert("Không thể hoàn tất lưu hóa đơn. Vui lòng thử lại.");
                 }
 
             } catch (e) {
-                console.error("❌ LỖI LUỒNG LƯU BẢO MẬT:", e);
-                alert("❌ LỖI LƯU BẢO MẬT\n\n" + (e?.message || e));
+                alert("❌ Không thể lưu hóa đơn. Vui lòng thử lại hoặc báo quản lý.");
 
             } finally {
                 window.dangLuu = false;
@@ -1906,7 +1895,6 @@
                 if (isTMT) {
                     if (sohdEl.getAttribute("data-mod3") !== "yes") {
                         sohdEl.setAttribute("data-mod3", "yes");
-                        console.log("🚀 TMT: tô đỏ trực tiếp, bỏ qua kiểm tra rule config");
                     }
                     return;
                 }
@@ -1947,8 +1935,6 @@
                     // data là array 1 dòng (returns table)
                     const row = data;
                     const eligible = !!row?.eligible;
-
-                    console.log("✅ Viettel rule check cs2:", row);
 
                     if (eligible) sohdEl.setAttribute("data-mod3", "yes");
                     else sohdEl.removeAttribute("data-mod3");
@@ -2278,7 +2264,7 @@
             });
 
             window.bangKetQua = bangObj;
-            console.log("✅ [BanLe] Fallback capNhatBangKetQuaTuDOM ->", bangObj);
+
             return bangObj;
         }
 
@@ -2319,13 +2305,13 @@
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
             const url = `${location.origin}/${page}#imp=${b64}`;
-            console.log("[BANLE] Mở trang in với dữ liệu:", items);
+
             window.open(url, "_blank");
         }
 
         // ===== GẮN NÚT "In mã vạch" =====
         document.getElementById("btnOpenInTem")?.addEventListener("click", () => {
-            console.log("🔎 [BanLe In mã vạch] Bắt đầu thu thập dữ liệu...");
+
 
             // 1) Ưu tiên dùng hàm sẵn có của bạn (nếu banlemt đã có)
             if (typeof window.capNhatBangKetQuaTuDOM === "function") {
