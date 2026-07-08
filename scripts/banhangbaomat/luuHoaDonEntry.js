@@ -349,22 +349,12 @@ export async function luuHoaDonBaoMat() {
         try {
           const sendResult = await guiHoaDonViettel(ketQuaDaXuLy.sohd);
 
-          await window.supabase.rpc("rpc_mark_external_send_result", {
-            p_sohd: ketQuaDaXuLy.sohd,
-            p_ok: true,
-            p_message: "sent",
-            p_invoice_no: sendResult?.invoiceNo || sendResult?.invoice_no || null
-          });
+          if (!sendResult?.ok) {
+            alert("⚠️ Đã lưu hóa đơn nhưng gửi hóa đơn điện tử chưa thành công. Có thể kiểm tra và gửi lại sau.");
+          }
 
         } catch (e) {
           console.error("[BAO MAT] Gửi tác vụ ngoài thất bại:", e);
-
-          await window.supabase.rpc("rpc_mark_external_send_result", {
-            p_sohd: ketQuaDaXuLy.sohd,
-            p_ok: false,
-            p_message: String(e?.message || e || "send_error"),
-            p_invoice_no: null
-          });
 
           alert("⚠️ Đã lưu hóa đơn nhưng gửi hóa đơn điện tử thất bại. Có thể gửi lại sau.");
         }
