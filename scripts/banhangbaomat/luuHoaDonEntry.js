@@ -365,8 +365,6 @@ export async function luuHoaDonBaoMat() {
       }, 500);
     }
 
-    console.log("[BAO MAT] TEST HOAN TAT");
-
     return ketQuaDaXuLy;
   } catch (error) {
     alert(
