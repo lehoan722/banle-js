@@ -137,17 +137,11 @@ function passTyLeBanDichNguon(row) {
     ? toNumber(row.ban_cs1)
     : toNumber(row.ban_cs2);
 
-  const tonDich = toNumber(row.ton_dich);
-
   if (banNguon <= 0) return true;
 
   const percent = (banDich / banNguon) * 100;
 
-  if (percent >= minPercent) return true;
-
-  if (banDich > 0 && tonDich <= 0) return true;
-
-  return false;
+  return percent >= minPercent;
 }
 
 function uniq(arr) {
