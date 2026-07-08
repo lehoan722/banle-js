@@ -1673,7 +1673,17 @@
 
             closePopup();
 
-            console.log("🛠️ Đã xác thực sửa hóa đơn. Bây giờ bấm Lưu để chạy EDIT_REAL_V1.");
+            console.log("🛠️ Đã xác thực sửa hóa đơn. Gọi lưu EDIT_REAL_V1 ngay.");
+
+            window.__xacNhanSuaBaoMat_OK = true;
+            window.dangSuaHoaDon = true;
+            window.choPhepSua = true;
+            window.HD_CTX = {
+                ...(window.HD_CTX || {}),
+                mode: "EDIT",
+                fromConfirm: true,
+                edit_at: new Date().toISOString()
+            };
 
             const hdState = document.getElementById("hd_state");
             if (hdState) {
@@ -1681,7 +1691,7 @@
                 hdState.setAttribute("data-state", "sua");
             }
 
-            alert("✅ Đã mở quyền sửa hóa đơn. Sau khi chỉnh xong, bấm Lưu để lưu bằng luồng bảo mật.");
+            document.getElementById("btn-luu")?.click();
         };
 
         // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
@@ -1725,10 +1735,33 @@
     <script type="module">
         import { luuHoaDonBaoMat } from "./scripts/banhangbaomat/luuHoaDonEntry.js";
 
-        document.getElementById("btn-luu").onclick = async function () {
-            if (window.dangLuu) return;
+        function laTrangThaiXemHoaDon() {
+            const hdState = String(document.getElementById("hd_state")?.value || "")
+                .trim()
+                .toLowerCase();
 
+            return (
+                hdState === "xem" ||
+                hdState === "chua xem" ||
+                hdState === "chưa xem" ||
+                hdState === "chuaxem"
+            );
+        }
+
+        document.getElementById("btn-luu").onclick = async function () {
             const btn = this;
+
+            // Nếu đang xem hóa đơn cũ: bấm Lưu => mở popup xác nhận sửa
+            if (laTrangThaiXemHoaDon() && window.__xacNhanSuaBaoMat_OK !== true) {
+                if (typeof window.moPopupXacThucSua === "function") {
+                    window.moPopupXacThucSua();
+                } else {
+                    alert("❌ Chưa nạp được popup xác thực sửa hóa đơn.");
+                }
+                return;
+            }
+
+            if (window.dangLuu) return;
 
             window.dangLuu = true;
             btn.disabled = true;
@@ -1738,29 +1771,22 @@
                 console.log("🔐 BẮT ĐẦU LUỒNG LƯU BẢO MẬT");
 
                 const result = await luuHoaDonBaoMat({
-                    source: "BTN-LUU"
+                    source: window.__xacNhanSuaBaoMat_OK ? "EDIT-CONFIRM" : "BTN-LUU"
                 });
 
                 console.log("🔐 KẾT QUẢ LƯU BẢO MẬT:", result);
 
                 if (result?.ok) {
                     console.log("[BAO MAT] Lưu thành công:", result);
+                    window.__xacNhanSuaBaoMat_OK = false;
                 } else {
-                    console.warn(
-                        "⚠️ luuHoaDonBaoMat không trả về ok=true:",
-                        result
-                    );
-
+                    console.warn("⚠️ luuHoaDonBaoMat không trả về ok=true:", result);
                     alert("Luồng bảo mật đã chạy nhưng kết quả chưa thành công.");
                 }
 
             } catch (e) {
                 console.error("❌ LỖI LUỒNG LƯU BẢO MẬT:", e);
-
-                alert(
-                    "❌ LỖI LƯU BẢO MẬT\n\n" +
-                    (e?.message || e)
-                );
+                alert("❌ LỖI LƯU BẢO MẬT\n\n" + (e?.message || e));
 
             } finally {
                 window.dangLuu = false;
