@@ -1,333 +1,53 @@
-function taoDuLieuHoaDon(hoadon, chitiet) {
-  let tongTien = Number(hoadon.thanhtoan) || chitiet.reduce((sum, item) => sum + Number(item.thanhtien), 0);
+// scripts/viettelInvoice.js
 
-  // Nhận diện cơ sở từ số hóa đơn
-  let isCs2 = hoadon.sohd.startsWith('bancs2T_') || hoadon.sohd.startsWith('bancs2_');
-  let isCs1 = hoadon.sohd.startsWith('bancs1T_') || hoadon.sohd.startsWith('bancs1_');
+export async function guiHoaDonViettel(sohd) {
+  sohd = String(sohd || "").trim();
 
-  if (!isCs1 && !isCs2) {
-    throw new Error("❌ Không xác định được cơ sở phát hành hóa đơn từ số hóa đơn: " + hoadon.sohd + ". Vui lòng kiểm tra lại!");
-  }
-
-  // Cập nhật thông tin từng chủ CƠ SỞ tại đây
-  const sellers = {
-    cs1: {
-      sellerLegalName: "ĐẶNG LÊ HOÀN",
-      sellerTaxCode: "4600370592",
-      sellerAddressLine: "Số nhà 540, đường 3/2, tổ 8, Phường Tích Lương, Tỉnh Thái Nguyên, Việt Nam",
-      sellerPhoneNumber: "0916747401",
-      sellerEmail: "lehoan722@gmail.com",
-      sellerBankAccount: "555445725",
-      sellerBankName: "VPBank"
-    },
-    cs2: {
-      sellerLegalName: "NGUYỄN ÁNH TUYẾT",
-      sellerTaxCode: "4600960665",
-      sellerAddressLine: "Số 561, Tổ 11, Phường Phan Đình Phùng, Tỉnh Thái Nguyên, Việt Nam",
-      sellerPhoneNumber: "0763424342",
-      sellerEmail: "nguyenanhtuyet140175@gmail.com",
-      sellerBankAccount: "554758266",
-      sellerBankName: "VPBank"
-    }
-  };
-
-  // Chọn seller theo cơ sở
-  const sellerInfo = isCs2 ? sellers.cs2 : sellers.cs1;
-  // Ưu tiên override từ dmkhachhang
-  const b = hoadon.__buyerOverride || null;
-
-  // Kiểm tra khách có mã số thuế hay không
-  const _buyerTaxCode = String(b?.buyerTaxCode || "").trim();
-  const _hasTax = !!_buyerTaxCode;
-
-  // Nếu không có MST thì coi là khách lẻ, không truyền tên thật lên Viettel
-  const _buyerName = _hasTax
-    ? String(b?.buyerName || hoadon.khachhang || "Khách lẻ").trim()
-    : "Khách lẻ";
-  return {
-    generalInvoiceInfo: {
-      sohd: hoadon.sohd,
-      invoiceType: "02GTTT",
-      templateCode: isCs2 ? "2/001" : "2/001",
-      invoiceSeries: isCs2 ? "C25MAT" : "C25MLH",
-      invoiceIssuedDate: new Date().getTime(),
-      currencyCode: "VND",
-      adjustmentType: "1",
-      paymentStatus: true,
-      paymentType: "TM/CK",
-      paymentTypeName: "TM/CK",
-      cusGetInvoiceRight: true
-    },
-
-    buyerInfo: {
-      sohd: hoadon.sohd,
-
-      // Nếu có MST: truyền đầy đủ tên + MST.
-      // Nếu không có MST: chỉ truyền khách lẻ, không truyền tên thật lên Viettel.
-      buyerName: _hasTax ? _buyerName : "KL",
-      buyerLegalName: _hasTax ? _buyerName : "Khách lẻ",
-      buyerTaxCode: _hasTax ? _buyerTaxCode : "",
-      buyerAddressLine: _hasTax ? String(b?.buyerAddressLine || "").trim() : "",
-      buyerPhoneNumber: _hasTax ? String(b?.buyerPhoneNumber || "").trim() : "",
-      buyerEmail: _hasTax ? String(b?.buyerEmail || "").trim() : "",
-
-      buyerIdNo: "",
-      buyerIdType: "",
-      buyerBudgetCode: ""
-    },
-
-    sellerInfo: sellerInfo,
-    payments: [
-      { paymentMethodName: "TM/CK", paymentAmount: Number(hoadon.thanhtoan) || 0 }
-    ],
-    itemInfo: chitiet.map((item, index) => ({
-      lineNumber: index + 1,
-      // itemCode: item.masp,
-      itemName: item.tensp,
-      unitName: item.dvt || "",
-      quantity: Number(item.soluong),
-      unitPrice: Number(item.gia) - Number(item.km || 0),
-      itemTotalAmountWithoutTax: Number(item.thanhtien),
-      taxPercentage: 0,
-      taxAmount: 0,
-      discount: 0,
-      itemDiscount: Number(item.km) || 0
-    })),
-    summarizeInfo: {
-      totalAmountWithoutTax: chitiet.reduce((s, i) => s + Number(i.thanhtien || 0), 0),
-      totalTaxAmount: 0,
-      totalAmountWithTax: chitiet.reduce((s, i) => s + Number(i.thanhtien || 0), 0),
-      totalAmountWithTaxInWords: "", // (nếu cần mình thêm hàm đọc tiền bằng chữ sau)
-      discountAmount: Number(hoadon.chietkhau) || 0
-    },
-    taxBreakdowns: [],
-    metadata: [],
-    customFields: [],
-    deliveryInfo: {},
-    meterReading: []
-  };
-
-}
-
-
-// ===== Retry helpers & flags =====
-// ===== Retry helpers & flags =====
-const RETRY_LIMIT = 1;                        // chỉ thử 1 lần để tránh phát hành trùng
-const RETRY_BACKOFF_MS = [0];                 // không cần backoff nhiều lần nữa
-const ENABLE_MANUAL_RETRY_POPUP = false;      // tắt popup gửi lại ngay trên luồng phát hành thật
-const __sendingInvoices = new Set();
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Lấy thông tin KH từ dmkhachhang theo makh hoặc tên (fallback)
-async function fetchBuyerFromDMKH(makhOrName) {
-  try {
-    const key = String(makhOrName || "").trim();
-    if (!key || /^kh(á|a)ch\s*l(ẻ|e)$/i.test(key)) return null;
-
-    // Ưu tiên coi #khachhang là MÃ KH
-    let { data: kh, error } = await supabase
-      .from('dmkhachhang')
-      .select('makh, tenkh, diachi, dienthoai, email, mst')
-      .eq('makh', key)
-      .maybeSingle();
-
-    // Nếu không có, thử khớp theo tên (nới lỏng)
-    if ((!kh || error) && key.length >= 2) {
-      const { data: list } = await supabase
-        .from('dmkhachhang')
-        .select('makh, tenkh, diachi, dienthoai, email, mst')
-        .ilike('tenkh', key);
-      kh = Array.isArray(list) && list.length === 1 ? list[0] : null;
-    }
-
-    if (!kh) return null;
-
+  if (!sohd) {
     return {
-      buyerName: kh.tenkh || 'Khách lẻ',
-      buyerAddressLine: kh.diachi || '',
-      buyerTaxCode: kh.mst || '',
-      buyerPhoneNumber: kh.dienthoai || '',
-      buyerEmail: kh.email || ''
+      ok: false,
+      code: "NO_SOHD"
     };
-  } catch {
-    return null;
-  }
-}
-
-
-// Hàm gửi hóa đơn từ Web (có retry tối đa 3 lần, giữ popup gửi lại)
-export async function guiHoaDonViettel(mahoadon, duLieuHoaDonCu = null) {
-  let json; // payload gửi Viettel
-
-  if (__sendingInvoices.has(mahoadon)) {
-    console.warn("Hóa đơn đang được gửi, chặn gọi lặp:", mahoadon);
-    return;
   }
 
-  __sendingInvoices.add(mahoadon);
+  const { data } = await window.supabase.auth.getSession();
+  const token = data?.session?.access_token;
 
+  if (!token) {
+    return {
+      ok: false,
+      code: "NO_AUTH"
+    };
+  }
+
+  const response = await fetch("/api/guiHDDT", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      sohd
+    })
+  });
+
+  let result = null;
   try {
-    // 1) Chuẩn bị dữ liệu (dùng lại duLieuHoaDonCu nếu có)
-    if (duLieuHoaDonCu) {
-      json = duLieuHoaDonCu;
-    } else {
-      const { data: hoadonData, error: e1 } = await supabase
-        .from('hoadon_banle')
-        .select('*')
-        .eq('sohd', mahoadon)
-        .single();
-
-      if (hoadonData?.trang_thai_gui === 'Đang gửi') {
-        alert("⏳ Hóa đơn này đang được gửi. Vui lòng chờ, không bấm gửi lại.");
-        return;
-      }
-
-      const { data: chitietData, error: e2 } = await supabase
-        .from('ct_hoadon_banle')
-        .select('*')
-        .eq('sohd', mahoadon);
-
-      if (e1 || e2 || !hoadonData || !Array.isArray(chitietData) || chitietData.length === 0) {
-        alert("❌ Không tìm thấy dữ liệu hóa đơn.\nBạn có thể vào 'xemhoadonT.html' để gửi lại sau.");
-        return;
-      }
-
-      // Tra thông tin KH từ dmkhachhang (nếu không phải “Khách lẻ”)
-      let buyerOverride = null;
-      if (hoadonData?.khachhang && !/^kh(á|a)ch\s*l(ẻ|e)$/i.test(hoadonData.khachhang)) {
-        buyerOverride = await fetchBuyerFromDMKH(hoadonData.khachhang);
-      }
-
-      json = taoDuLieuHoaDon({ ...hoadonData, __buyerOverride: buyerOverride }, chitietData);
-    }
-
-    // 2) Gửi với retry
-    // 2) Đánh dấu đang gửi để chặn gọi lặp
-    const { data: claimData, error: claimError } = await supabase.rpc('claim_viettel_send', {
-      p_sohd: mahoadon
-    });
-
-    if (claimError) {
-      throw new Error('Không khóa được quyền gửi: ' + claimError.message);
-    }
-
-    const claim = Array.isArray(claimData) ? claimData[0] : claimData;
-
-    if (!claim?.ok) {
-      if (claim?.status === 'already_sent') {
-        alert("✅ Hóa đơn này đã gửi rồi, không gửi lại.");
-        return;
-      }
-      if (claim?.status === 'locked') {
-        alert("⏳ Hóa đơn này đang được gửi ở nơi khác, bỏ qua để tránh trùng.");
-        return;
-      }
-      if (claim?.status === 'not_found') {
-        alert("❌ Không tìm thấy hóa đơn để gửi.");
-        return;
-      }
-      throw new Error(claim?.message || 'Không claim được quyền gửi');
-    }
-
-    // 3) Gửi với retry
-    let lastErrorText = "";
-    for (let attempt = 1; attempt <= RETRY_LIMIT; attempt++) {
-      try {
-        if (attempt > 1) {
-          await sleep(RETRY_BACKOFF_MS[attempt - 1] || 0);
-        }
-
-        // Gợi ý backend refresh token ở các lần thử > 1 (nếu backend hỗ trợ)
-        const body = { data: json };
-        if (attempt > 1) body.forceRefreshToken = true;
-
-        const response = await fetch('/api/guiHDDT', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-
-        // Đọc text trước, rồi thử parse JSON để lấy message lỗi nếu có
-        const raw = await response.text();
-
-        let result;
-        try { result = JSON.parse(raw); } catch (_) { }
-
-        if (response.ok) {
-          await supabase
-            .from('hoadon_banle')
-            .update({ trang_thai_gui: 'Đã gửi' })
-            .eq('sohd', mahoadon);
-
-          // alert("✅ Gửi hóa đơn thành công!");
-          return;
-        }
-
-        // Không ok -> lưu thông tin lỗi để hiển thị sau cùng và thử lại
-        lastErrorText = (result?.message || raw || response.statusText || "Không rõ lỗi");
-        // Tiếp tục vòng lặp để thử lại
-      } catch (err) {
-        lastErrorText = err?.message || String(err) || "Không rõ lỗi";
-        // Tiếp tục vòng lặp để thử lại
-      }
-    }
-
-    // 3) Nếu chạy tới đây nghĩa là cả 3 lần đều thất bại
-    const errorMsg = lastErrorText || "Không rõ";
-    await supabase
-      .from('hoadon_banle')
-      .update({ trang_thai_gui: 'Lỗi: ' + errorMsg })
-      .eq('sohd', mahoadon);
-
-    if (ENABLE_MANUAL_RETRY_POPUP && typeof hienThiThongBaoLoiVoiGuiLai === 'function') {
-      // Gọi popup cho phép người dùng chủ động bấm "Gửi lại"
-      // Truyền luôn JSON đã build sẵn để không phải build lại lần nữa
-      hienThiThongBaoLoiVoiGuiLai(
-        "❌ Không gửi được hóa đơn sau 1 lần thử.\nLý do gần nhất: " + errorMsg +
-        "\nKhông tự gửi lại để tránh phát hành trùng.",
-        json,     // duLieuHoaDonCu
-        mahoadon, // số hóa đơn
-        errorMsg  // cho mục đích hiển thị/log nếu cần
-      );
-      return;
-    }
-
-    // Nếu không bật popup thì mới báo lỗi như cũ
-    alert(
-      "❌ Không gửi được hóa đơn sau 1 lần thử.\n" +
-      "Lý do gần nhất: " + errorMsg + "\n" +
-      "Vui lòng vào 'xemhoadonT.html' để kiểm tra và gửi lại thủ công."
-    );
-
-  } catch (outerError) {
-    await supabase
-      .from('hoadon_banle')
-      .update({ trang_thai_gui: 'Lỗi: ' + (outerError?.message || 'Không rõ') })
-      .eq('sohd', mahoadon);
-
-    if (ENABLE_MANUAL_RETRY_POPUP && typeof hienThiThongBaoLoiVoiGuiLai === 'function') {
-      hienThiThongBaoLoiVoiGuiLai(
-        "❌ Gửi hóa đơn điện tử thất bại: " + (outerError?.message || 'Không rõ') +
-        "\nVui lòng vào 'xemhoadonT.html' để gửi lại sau.",
-        duLieuHoaDonCu || json,
-        mahoadon,
-        outerError?.message || 'Không rõ'
-      );
-    } else {
-      alert("❌ Gửi hóa đơn điện tử thất bại: " + (outerError?.message || 'Không rõ'));
-    }
-  } finally {
-    __sendingInvoices.delete(mahoadon);
+    result = await response.json();
+  } catch {
+    result = null;
   }
-}
 
-// Giữ nguyên hàm popup gửi lại; có thể nhận thêm tham số nhưng không bắt buộc
-function hienThiThongBaoLoiVoiGuiLai(message, duLieuHoaDonCu, mahoadon /*, errorText */) {
-  alert(
-    `${message}\n\n` +
-    `Vui lòng vào trang 'xemhoadonT.html' để kiểm tra và gửi lại thủ công nếu thật sự cần.`
-  );
+  if (!response.ok || !result?.ok) {
+    return {
+      ok: false,
+      code: result?.code || "SEND_FAILED"
+    };
+  }
+
+  return {
+    ok: true,
+    code: result.code || "SENT",
+    sohd: result.sohd || sohd
+  };
 }
