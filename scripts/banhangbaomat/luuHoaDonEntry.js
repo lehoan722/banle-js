@@ -300,7 +300,6 @@ export async function luuHoaDonBaoMat() {
 
     const payload = taoDuLieuLuuBaoMat();
 
-    console.log("[BAO MAT] PAYLOAD:", payload);
 
     const result = await guiDuLieuLuuBaoMat(payload);
 
@@ -380,12 +379,15 @@ export async function luuHoaDonBaoMat() {
 
     return ketQuaDaXuLy;
   } catch (error) {
-    console.error("[BAO MAT] TEST THAT BAI:", error);
-
     alert(
-      "TEST BẢO MẬT THẤT BẠI\n\n" +
-      String(error?.message || error)
+      "❌ Không thể hoàn tất lưu hóa đơn.\n\n" +
+      "Vui lòng thử lại hoặc báo quản lý."
     );
+
+    return {
+      ok: false,
+      code: "SAVE_FAILED"
+    };
   } finally {
     dangLuuBaoMat = false;
   }
