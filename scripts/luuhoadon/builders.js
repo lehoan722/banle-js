@@ -166,7 +166,7 @@ export async function handleSpecialSoHoaDon(sb, sohd) {
 
     // sb là supabase client truyền từ luuhoadon.js
     if (!sb?.rpc) {
-        console.error("handleSpecialSoHoaDon: missing supabase client (sb.rpc)");
+
         return false;
     }
 
@@ -179,7 +179,7 @@ export async function handleSpecialSoHoaDon(sb, sohd) {
     });
 
     if (error) {
-        console.error("preview_viettel_eligibility error:", error);
+
         return false;
     }
 
