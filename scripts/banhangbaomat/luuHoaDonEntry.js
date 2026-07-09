@@ -106,7 +106,7 @@ async function validateBeforeSecureSave() {
   const isToDo = getInput("sohd")?.getAttribute("data-mod3") === "yes";
 
   if (!isEditInvoice && (isTmt || isToDo)) {
-    const ok = confirm("Bạn có chắc chắn muốn lưu hóa đơn này?\nHóa đơn này có thể được gửi hóa đơn điện tử.");
+    const ok = confirm("Bạn có chắc chắn muốn lưu hóa đơn này?\n.");
     if (!ok) return false;
   }
   return true;
