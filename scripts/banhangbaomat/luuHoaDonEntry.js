@@ -343,9 +343,10 @@ export async function luuHoaDonBaoMat() {
       inHoaDonBaoMat(ketQuaDaXuLy, payload);
 
       if (
-        ketQuaDaXuLy?.external_send === true &&
-        ketQuaDaXuLy?.sohd
-      ) {
+  ketQuaDaXuLy?.mode === "SAVE_REAL_V1" &&
+  ketQuaDaXuLy?.external_send === true &&
+  ketQuaDaXuLy?.sohd
+) {
         try {
           const sendResult = await guiHoaDonViettel(ketQuaDaXuLy.sohd);
 
