@@ -25,16 +25,27 @@ export function inHoaDonBaoMat(result, payload) {
 
   localStorage.setItem("data_hoadon_in", JSON.stringify(data));
 
+  const isEditInvoice =
+    result?.mode === "EDIT_REAL_V1" ||
+    payload?.action === "EDIT" ||
+    payload?.flags?.is_edit === true ||
+    String(document.getElementById("hd_state")?.value || "").toLowerCase() === "sua" ||
+    window.HD_CTX?.mode === "EDIT";
+
   const isHoaDonDacBiet =
-    result?.external_send === true ||
-    payload?.flags?.is_special_tmt === true ||
-    payload?.flags?.is_special_mod3 === true ||
-    payload?.flags?.save_2_ban === true ||
-    payload?.invoice?.hinhthuctt?.toLowerCase?.() === "tmt";
+    !isEditInvoice &&
+    result?.mode === "SAVE_REAL_V1" &&
+    (
+      result?.external_send === true ||
+      payload?.flags?.is_special_tmt === true ||
+      payload?.flags?.is_special_mod3 === true ||
+      payload?.flags?.save_2_ban === true ||
+      payload?.invoice?.hinhthuctt?.toLowerCase?.() === "tmt"
+    );
 
   const url = isHoaDonDacBiet
     ? `${location.origin}/in-hoadon-db.html`
-    : `${location.origin}/in-hoadon.html`;  
+    : `${location.origin}/in-hoadon.html`;
 
   if (typeof window.openPrintOverlay === "function") {
     window.openPrintOverlay(url, { autoPrint: false });
