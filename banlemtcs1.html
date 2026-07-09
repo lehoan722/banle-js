@@ -1960,12 +1960,13 @@
                 const thanhtoan = getMoney(totalEl);
 
                 const hinhThucTT = document.getElementById("hinhthuctt");
-                const isTMT = String(hinhThucTT?.value || "").trim().toLowerCase() === "tmt";
+                const isTMT = String(hinhThucTT?.value || "")
+                    .trim()
+                    .toLowerCase() === "tmt";
 
                 if (isTMT) {
-                    if (sohdEl.getAttribute("data-mod3") !== "yes") {
-                        sohdEl.setAttribute("data-mod3", "yes");
-                    }
+                    sohdEl.setAttribute("data-mod3", "yes");
+                    lastKey = "";
                     return;
                 }
 
@@ -2033,12 +2034,6 @@
 
             // fallback: nhiều chỗ set .value bằng JS
             setInterval(() => {
-                const isTMT = String(document.getElementById("hinhthuctt")?.value || "")
-                    .trim()
-                    .toLowerCase() === "tmt";
-
-                if (isTMT) return;
-
                 checkViettelEligibility();
             }, 1000);
 
