@@ -350,10 +350,12 @@ export async function luuHoaDonBaoMat() {
       if (
         ketQuaDaXuLy?.mode === "SAVE_REAL_V1" &&
         ketQuaDaXuLy?.external_send === true &&
-        ketQuaDaXuLy?.sohd
+        ketQuaDaXuLy?.sohdT
       ) {
         try {
-          const sendResult = await guiHoaDonViettel(ketQuaDaXuLy.sohd);
+          const sendResult = await guiHoaDonViettel(
+            ketQuaDaXuLy.sohdT
+          );
 
           if (!sendResult?.ok) {
             alert("⚠️ Đã lưu hóa đơn nhưng gửi hóa đơn điện tử chưa thành công. Có thể kiểm tra và gửi lại sau.");
