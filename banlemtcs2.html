@@ -640,6 +640,59 @@
 
 <body class="popupnhanh">
 
+    <script>
+        (function () {
+            const PAGE_DIADIEM = "cs2";
+
+            function forceBanLeDiaDiem() {
+                window.diadiem = PAGE_DIADIEM;
+                window.DIADIEM = PAGE_DIADIEM;
+
+                try {
+                    localStorage.setItem("diadiem", PAGE_DIADIEM);
+                    sessionStorage.setItem("diadiem", PAGE_DIADIEM);
+                } catch (e) { }
+
+                const el = document.getElementById("diadiem");
+                if (el) {
+                    el.value = PAGE_DIADIEM;
+                    el.readOnly = true;
+                    el.disabled = false;
+                }
+            }
+
+            window.__BANLE_PAGE_DIADIEM = PAGE_DIADIEM;
+            window.__forceBanLeDiaDiem = forceBanLeDiaDiem;
+
+            const oldGetItem = Storage.prototype.getItem;
+            const oldSetItem = Storage.prototype.setItem;
+
+            if (!Storage.prototype.__banleDiaDiemLocked) {
+                Storage.prototype.__banleDiaDiemLocked = true;
+
+                Storage.prototype.getItem = function (key) {
+                    if (key === "diadiem") {
+                        return window.__BANLE_PAGE_DIADIEM || oldGetItem.call(this, key);
+                    }
+                    return oldGetItem.call(this, key);
+                };
+
+                Storage.prototype.setItem = function (key, value) {
+                    if (key === "diadiem") {
+                        value = window.__BANLE_PAGE_DIADIEM || value;
+                    }
+                    return oldSetItem.call(this, key, value);
+                };
+            }
+
+            forceBanLeDiaDiem();
+            document.addEventListener("DOMContentLoaded", forceBanLeDiaDiem);
+            window.addEventListener("focus", forceBanLeDiaDiem);
+            document.addEventListener("visibilitychange", forceBanLeDiaDiem);
+        })();
+    </script>
+
+
     <style>
         .menu-bar {
             background: #0088cc;
@@ -1770,8 +1823,11 @@
 
             try {
 
+                window.__forceBanLeDiaDiem?.();
+
                 const result = await luuHoaDonBaoMat({
-                    source: window.__xacNhanSuaBaoMat_OK ? "EDIT-CONFIRM" : "BTN-LUU"
+                    source: window.__xacNhanSuaBaoMat_OK ? "EDIT-CONFIRM" : "BTN-LUU",
+                    diadiem: window.__BANLE_PAGE_DIADIEM
                 });
 
                 if (result?.ok) {
