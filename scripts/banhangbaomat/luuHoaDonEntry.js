@@ -96,14 +96,19 @@ async function validateBeforeSecureSave() {
     return false;
   }
 
+  const hdState2 = (getText("hd_state") || "moi").toLowerCase();
+  const isEditInvoice =
+    hdState2 === "sua" ||
+    window.HD_CTX?.mode === "EDIT" ||
+    window.__xacNhanSuaBaoMat_OK === true;
+
   const isTmt = getText("hinhthuctt").toLowerCase() === "tmt";
   const isToDo = getInput("sohd")?.getAttribute("data-mod3") === "yes";
 
-  if (isTmt || isToDo) {
+  if (!isEditInvoice && (isTmt || isToDo)) {
     const ok = confirm("Bạn có chắc chắn muốn lưu hóa đơn này?\nHóa đơn này có thể được gửi hóa đơn điện tử.");
     if (!ok) return false;
   }
-
   return true;
 }
 
@@ -343,10 +348,10 @@ export async function luuHoaDonBaoMat() {
       inHoaDonBaoMat(ketQuaDaXuLy, payload);
 
       if (
-  ketQuaDaXuLy?.mode === "SAVE_REAL_V1" &&
-  ketQuaDaXuLy?.external_send === true &&
-  ketQuaDaXuLy?.sohd
-) {
+        ketQuaDaXuLy?.mode === "SAVE_REAL_V1" &&
+        ketQuaDaXuLy?.external_send === true &&
+        ketQuaDaXuLy?.sohd
+      ) {
         try {
           const sendResult = await guiHoaDonViettel(ketQuaDaXuLy.sohd);
 
