@@ -750,279 +750,76 @@
     };
 
 
-
-
-    // T2: gửi lại HĐĐT Viettel (chỉ dùng cho hoadon_banleT)
-
-
     // ====== T2: lấy buyer từ dmkhachhang + gửi lại + cập nhật trang_thai_gui ======
-    async function fetchBuyerFromDMKH(makhOrName) {
-      const key = String(makhOrName || "").trim();
-      if (!key || /^kh(á|a)ch\s*l(ẻ|e)$/i.test(key)) return null;
-
-      let { data: kh } = await window.supabase
-        .from('dmkhachhang')
-        .select('makh, tenkh, diachi, dienthoai, email, mst')
-        .eq('makh', key)
-        .maybeSingle();
-
-      if (!kh && key.length >= 2) {
-        const { data: list } = await window.supabase
-          .from('dmkhachhang')
-          .select('makh, tenkh, diachi, dienthoai, email, mst')
-          .ilike('tenkh', key);
-        kh = Array.isArray(list) && list.length === 1 ? list[0] : null;
-      }
-
-      if (!kh) return null;
-      return {
-        buyerName: kh.tenkh || 'Khách lẻ',
-        buyerAddressLine: kh.diachi || '',
-        buyerTaxCode: kh.mst || '',
-        buyerPhoneNumber: kh.dienthoai || '',
-        buyerEmail: kh.email || ''
-      };
-    }
 
     async function guiLaiHoaDonDaChon() {
-      // Lấy danh sách các checkbox được chọn
       const checkboxes = document.querySelectorAll(".chonHD:checked");
-      const sohdList = Array.from(checkboxes).map(cb => cb.dataset.sohd);
+      const sohdList = Array.from(checkboxes)
+        .map(cb => cb.dataset.sohd)
+        .filter(Boolean);
 
-      if (sohdList.length === 0) {
+      if (!sohdList.length) {
         alert("Vui lòng tick chọn ít nhất 1 hóa đơn chưa gửi/lỗi để gửi lại!");
         return;
       }
 
-      // Lấy trạng thái gửi của từng hóa đơn
-      // => Đọc thẳng từ DOM bảng hiện tại cho đơn giản
-      const rows = Array.from(document.querySelectorAll("#dsHoaDon tr"));
-      const hoadonToSend = [];
-      for (let sohd of sohdList) {
-        const row = rows.find(tr => {
-          const td = tr.querySelector("td:nth-child(3)");
-          return td && td.textContent.trim() === sohd;
-        });
-        if (!row) continue;
-        // Lấy trạng thái gửi ở cột cuối cùng (thứ 9)
-        const trangThai = row.querySelector("td:last-child").textContent.trim();
-        if (trangThai === "Chưa gửi" || trangThai.startsWith("Lỗi")) {
-          hoadonToSend.push(sohd);
-        }
-      }
-
-      if (hoadonToSend.length === 0) {
-        alert("Chỉ gửi lại các hóa đơn chưa gửi hoặc báo lỗi. Không có hóa đơn nào hợp lệ để gửi lại!");
+      if (!confirm(`Bạn có chắc chắn muốn gửi lại ${sohdList.length} hóa đơn này lên Viettel?`)) {
         return;
       }
 
-      if (!confirm(`Bạn có chắc chắn muốn gửi lại ${hoadonToSend.length} hóa đơn chưa gửi/lỗi này lên Viettel?`)) return;
+      const { data: sessionData } = await window.supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
 
-      let thanhCong = 0, thatBai = 0, loiList = [];
+      if (!token) {
+        alert("Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.");
+        return;
+      }
 
-      for (const sohd of hoadonToSend) {
-        // Lấy lại dữ liệu hóa đơn & chi tiết
-        const { data: hoadon } = await window.supabase
-          .from('hoadon_banleT')
-          .select('*')
-          .eq('sohd', sohd)
-          .single();
+      let thanhCong = 0;
+      let thatBai = 0;
+      const loiList = [];
 
-        if (hoadon?.trang_thai_gui === 'Đang gửi') {
-          loiList.push(`HĐ [${sohd}]: Đang gửi, bỏ qua để tránh trùng.`);
-          thatBai++;
-          continue;
-        }
-
-        const { data: chitiet } = await window.supabase
-          .from('ct_hoadon_banleT')
-          .select('*')
-          .eq('sohd', sohd);
-
-        if (!hoadon || !chitiet || chitiet.length === 0) {
-          loiList.push(`HĐ [${sohd}]: Không tìm thấy dữ liệu!`);
-          await window.supabase
-            .from('hoadon_banleT')
-            .update({ trang_thai_gui: 'Lỗi: Không tìm thấy dữ liệu' })
-            .eq('sohd', sohd);
-          thatBai++;
-          continue;
-        }
-
-        let buyerOverride = null;
-        if (hoadon?.khachhang && !/^kh(á|a)ch\s*l(ẻ|e)$/i.test(hoadon.khachhang)) {
-          buyerOverride = await fetchBuyerFromDMKH(hoadon.khachhang);
-        }
-        const json = taoDuLieuHoaDon({ ...hoadon, __buyerOverride: buyerOverride }, chitiet);
-
+      for (const sohd of sohdList) {
         try {
-          const { data: claimData, error: claimError } = await window.supabase.rpc('claim_viettel_send', {
-            p_sohd: sohd
+          const response = await fetch("/api/guiHDDT", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ sohd })
           });
 
-          if (claimError) {
-            loiList.push(`HĐ [${sohd}]: Không khóa được quyền gửi - ${claimError.message}`);
-            thatBai++;
-            continue;
-          }
-
-          const claim = Array.isArray(claimData) ? claimData[0] : claimData;
-
-          if (!claim?.ok) {
-            if (claim?.status === 'already_sent') {
-              loiList.push(`HĐ [${sohd}]: Đã gửi rồi, bỏ qua.`);
-            } else if (claim?.status === 'locked') {
-              loiList.push(`HĐ [${sohd}]: Đang được gửi ở nơi khác, bỏ qua.`);
-            } else {
-              loiList.push(`HĐ [${sohd}]: ${claim?.message || 'Không claim được quyền gửi'}`);
-            }
-            thatBai++;
-            continue;
-          }
-
-          const response = await fetch('/api/guiHDDT', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: json })
-          });
-
-          let result;
+          let result = null;
           try {
             result = await response.json();
-          } catch (err) {
-            loiList.push(`HĐ [${sohd}]: Lỗi phản hồi từ server.`);
-            await window.supabase
-              .from('hoadon_banleT')
-              .update({ trang_thai_gui: 'Lỗi: Lỗi phản hồi server' })
-              .eq('sohd', sohd);
-            thatBai++;
-            continue;
+          } catch {
+            result = null;
           }
 
-          if (!response.ok) {
-            loiList.push(`HĐ [${sohd}]: ${result?.message || "Gửi thất bại!"}`);
-            await window.supabase
-              .from('hoadon_banleT')
-              .update({ trang_thai_gui: 'Lỗi: ' + (result?.message || "Gửi thất bại!") })
-              .eq('sohd', sohd);
+          if (!response.ok || !result?.ok) {
             thatBai++;
+            loiList.push(`HĐ [${sohd}]: ${result?.code || "Gửi thất bại"}`);
             continue;
           }
-
-          // Thành công
-          await window.supabase
-            .from('hoadon_banleT')
-            .update({ trang_thai_gui: 'Đã gửi' })
-            .eq('sohd', sohd);
 
           thanhCong++;
-        } catch (error) {
-          loiList.push(`HĐ [${sohd}]: ${error.message}`);
-          await window.supabase
-            .from('hoadon_banleT')
-            .update({ trang_thai_gui: 'Lỗi: ' + error.message })
-            .eq('sohd', sohd);
+        } catch (e) {
           thatBai++;
+          loiList.push(`HĐ [${sohd}]: ${e.message || "Lỗi gửi lại"}`);
         }
       }
 
-      alert(`Gửi lại hóa đơn hoàn tất.\nThành công: ${thanhCong}\nThất bại: ${thatBai}\n${loiList.length ? "Chi tiết lỗi:\n" + loiList.join("\n") : ""}`);
-      taiDanhSachHoaDon();
+      alert(
+        `Gửi lại hóa đơn hoàn tất.\n` +
+        `Thành công: ${thanhCong}\n` +
+        `Thất bại: ${thatBai}` +
+        (loiList.length ? `\nChi tiết lỗi:\n${loiList.join("\n")}` : "")
+      );
+
+      await taiDanhSachHoaDon();
     }
 
-    function taoDuLieuHoaDon(hoadon, chitiet) {
-      let tongTien = Number(hoadon.thanhtoan) || chitiet.reduce((sum, item) => sum + Number(item.thanhtien), 0);
-
-      // Nhận diện cơ sở từ số hóa đơn
-      let isCs2 = hoadon.sohd.startsWith('bancs2T_');
-      let isCs1 = hoadon.sohd.startsWith('bancs1T_');
-
-      if (!isCs1 && !isCs2) {
-        throw new Error(" Không xác định được cơ sở phát hành hóa đơn từ số hóa đơn: " + hoadon.sohd + ". Vui lòng kiểm tra lại!");
-      }
-
-      // Thông tin người bán tách biệt cho từng CS
-      const sellers = {
-        cs1: {
-          sellerLegalName: "ĐẶNG LÊ HOÀN",
-          sellerTaxCode: "4600370592",
-          sellerAddressLine: "Số nhà 540, đường 3/2, tổ 8, Phường Tích Lương, Tỉnh Thái Nguyên, Việt Nam",
-          sellerPhoneNumber: "0916747401",
-          sellerEmail: "huel31@viettel.com.vn",
-          sellerBankAccount: "",
-          sellerBankName: ""
-        },
-        cs2: {
-          sellerLegalName: "NGUYỄN ÁNH TUYẾT",
-          sellerTaxCode: "4600960665",
-          sellerAddressLine: "Số 561, Tổ 23, Phường Phan Đình Phùng, Tỉnh Thái Nguyên, Việt Nam",
-          sellerPhoneNumber: "0916747401",
-          sellerEmail: "cskh.viettelhue@gmail.com",
-          sellerBankAccount: "",
-          sellerBankName: ""
-        }
-      };
-
-      // Chọn thông tin người bán
-      const sellerInfo = isCs2 ? sellers.cs2 : sellers.cs1;
-      const b = hoadon.__buyerOverride || null;
-
-      return {
-        generalInvoiceInfo: {
-          sohd: hoadon.sohd,
-          invoiceType: "02GTTT",
-          templateCode: isCs2 ? "2/001" : "2/001",
-          invoiceSeries: isCs2 ? "C25MAT" : "C25MLH",
-          invoiceIssuedDate: new Date().getTime(),
-          currencyCode: "VND",
-          adjustmentType: "1",
-          paymentStatus: true,
-          paymentType: "TM/CK",
-          paymentTypeName: "TM/CK",
-          cusGetInvoiceRight: true
-        },
-        buyerInfo: {
-          sohd: hoadon.sohd,
-          buyerName: b?.buyerName || hoadon.khachhang || "Khách lẻ",
-          buyerTaxCode: b?.buyerTaxCode || "",
-          buyerAddressLine: b?.buyerAddressLine || "",
-          buyerPhoneNumber: b?.buyerPhoneNumber || "",
-          buyerEmail: b?.buyerEmail || "",
-          buyerIdNo: "",
-          buyerIdType: "",
-          buyerBudgetCode: ""
-        },
-        sellerInfo: sellerInfo, // Đã tách biệt CS1/CS2
-        payments: [
-          { paymentMethodName: "TM/CK", paymentAmount: tongTien }
-        ],
-        itemInfo: chitiet.map((item, index) => ({
-          lineNumber: index + 1,
-          itemCode: item.masp,
-          itemName: item.tensp,
-          unitName: item.dvt,
-          quantity: Number(item.soluong),
-          unitPrice: Number(item.gia) - Number(item.km || 0),
-          itemTotalAmountWithoutTax: Number(item.thanhtien),
-          taxPercentage: 0,
-          taxAmount: 0,
-          discount: 0,
-          itemDiscount: Number(item.km) || 0
-        })),
-        summarizeInfo: {
-          totalAmountWithoutTax: tongTien,
-          totalTaxAmount: 0,
-          totalAmountWithTax: tongTien,
-          totalAmountWithTaxInWords: "Bốn trăm nghìn đồng chẵn",
-          discountAmount: Number(hoadon.chietkhau) || 0
-        },
-        taxBreakdowns: [],
-        metadata: [],
-        customFields: [],
-        deliveryInfo: {},
-        meterReading: []
-      };
-    }
 
     document.getElementById('btnGuiLai').onclick = guiLaiHoaDonDaChon;
     document.getElementById('btnCopyTable').onclick = function () {
