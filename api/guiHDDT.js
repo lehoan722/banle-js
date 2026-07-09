@@ -51,11 +51,11 @@ const viettelAccounts = {
     invoiceSeries: "C25MAT",
     templateCode: "2/001",
     endpoint:
-    //  process.env.VIETTEL_CS2_ENDPOINT ||
-   //   "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600960665",
+      process.env.VIETTEL_CS2_ENDPOINT ||
+      "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600960665",
 
-     process.env.VIETTEL_CS2_ENDPOINT ||
-     "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
+    // process.env.VIETTEL_CS2_ENDPOINT ||
+    // "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
 
 
     sellerInfo: {
@@ -75,6 +75,17 @@ function getCoSoFromSohd(sohd = "") {
   if (s.startsWith("bancs1_") || s.startsWith("bancs1t_")) return "cs1";
   if (s.startsWith("bancs2_") || s.startsWith("bancs2t_")) return "cs2";
   return null;
+}
+
+function isTaxSohd(sohd = "") {
+  const s = String(sohd || "")
+    .trim()
+    .toLowerCase();
+
+  return (
+    s.startsWith("bancs1t_") ||
+    s.startsWith("bancs2t_")
+  );
 }
 
 function safeNumber(v) {
@@ -97,25 +108,49 @@ async function requireAuth(req) {
   return data.user;
 }
 
-async function markResult(sohd, ok, message = null, invoiceNo = null) {
-  const update = ok
-    ? {
-      external_status: "sent",
-      external_sent_at: new Date().toISOString(),
-      external_error: null,
-      external_invoice_no: invoiceNo || null,
-      updated_at: new Date().toISOString()
+async function markResult(
+  sohd,
+  ok,
+  message = null,
+  invoiceNo = null
+) {
+  const { data, error } = await supabaseAdmin.rpc(
+    "rpc_mark_external_send_result",
+    {
+      p_sohd: sohd,
+      p_ok: ok,
+      p_message: message,
+      p_invoice_no: invoiceNo
     }
-    : {
-      external_status: "error",
-      external_error: String(message || "send_error").slice(0, 500),
-      updated_at: new Date().toISOString()
-    };
+  );
 
-  await supabaseAdmin
-    .from("hoadon_banle")
-    .update(update)
-    .eq("sohd", sohd);
+  if (error) {
+    console.error(
+      "[VIETTEL] RPC cập nhật kết quả gửi lỗi:",
+      error
+    );
+
+    return {
+      ok: false,
+      code: "MARK_RESULT_RPC_ERROR"
+    };
+  }
+
+  if (!data?.ok) {
+    console.error(
+      "[VIETTEL] RPC từ chối cập nhật kết quả:",
+      data
+    );
+
+    return (
+      data || {
+        ok: false,
+        code: "MARK_RESULT_EMPTY"
+      }
+    );
+  }
+
+  return data;
 }
 
 async function claimSend(sohd) {
@@ -132,40 +167,74 @@ async function claimSend(sohd) {
 }
 
 async function loadInvoice(sohd) {
+  const isTax = isTaxSohd(sohd);
+
+  const invoiceTable = isTax
+    ? "hoadon_banleT"
+    : "hoadon_banle";
+
+  const detailTable = isTax
+    ? "ct_hoadon_banleT"
+    : "ct_hoadon_banle";
+
   const { data: hoadon, error: e1 } = await supabaseAdmin
-    .from("hoadon_banle")
+    .from(invoiceTable)
     .select("*")
     .eq("sohd", sohd)
     .maybeSingle();
 
   if (e1 || !hoadon) {
-    return { hoadon: null, chitiet: [], khach: null };
+    return {
+      hoadon: null,
+      chitiet: [],
+      khach: null,
+      isTax
+    };
   }
 
   const { data: chitiet, error: e2 } = await supabaseAdmin
-    .from("ct_hoadon_banle")
+    .from(detailTable)
     .select("*")
     .eq("sohd", sohd)
     .order("id", { ascending: true });
 
-  if (e2 || !Array.isArray(chitiet) || chitiet.length === 0) {
-    return { hoadon, chitiet: [], khach: null };
+  if (
+    e2 ||
+    !Array.isArray(chitiet) ||
+    chitiet.length === 0
+  ) {
+    return {
+      hoadon,
+      chitiet: [],
+      khach: null,
+      isTax
+    };
   }
 
   let khach = null;
-  const makh = String(hoadon.makh || "").trim();
+
+  const makh = String(
+    hoadon.makh || ""
+  ).trim();
 
   if (makh) {
     const { data } = await supabaseAdmin
       .from("dmkhachhang")
-      .select("makh, tenkh, diachi, dienthoai, email, mst")
+      .select(
+        "makh, tenkh, diachi, dienthoai, email, mst"
+      )
       .eq("makh", makh)
       .maybeSingle();
 
     khach = data || null;
   }
 
-  return { hoadon, chitiet, khach };
+  return {
+    hoadon,
+    chitiet,
+    khach,
+    isTax
+  };
 }
 
 function buildBuyerInfo(hoadon, khach) {
@@ -312,6 +381,7 @@ async function sendToViettel(acc, payload) {
 }
 
 export default async function handler(req, res) {
+  let viettelAccepted = false;
   if (req.method !== "POST") {
     return res.status(405).json({
       ok: false,
@@ -342,6 +412,13 @@ export default async function handler(req, res) {
       return res.status(400).json({
         ok: false,
         code: "INVALID_SOHD"
+      });
+    }
+
+    if (!isTaxSohd(sohd)) {
+      return res.status(400).json({
+        ok: false,
+        code: "TAX_SOHD_REQUIRED"
       });
     }
 
@@ -376,22 +453,6 @@ export default async function handler(req, res) {
       });
     }
 
-    if (hoadon.external_send !== true) {
-      await supabaseAdmin
-        .from("hoadon_banle")
-        .update({
-          external_status: "not_required",
-          external_error: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq("sohd", sohd);
-
-      return res.status(200).json({
-        ok: false,
-        code: "NOT_REQUIRED"
-      });
-    }
-
     const acc = viettelAccounts[dbCoSo];
 
     if (!acc || !acc.password) {
@@ -406,6 +467,7 @@ export default async function handler(req, res) {
     const payload = buildViettelPayload(hoadon, chitiet, khach, acc);
 
     const viettelResult = await sendToViettel(acc, payload);
+    viettelAccepted = true;
 
     const invoiceNo =
       viettelResult?.result?.invoiceNo ||
@@ -413,23 +475,50 @@ export default async function handler(req, res) {
       viettelResult?.invoice_no ||
       null;
 
-    await markResult(sohd, true, null, invoiceNo);
+    const markResultData = await markResult(
+      sohd,
+      true,
+      null,
+      invoiceNo
+    );
+
+    if (!markResultData?.ok) {
+      return res.status(500).json({
+        ok: false,
+        code:
+          markResultData?.code ||
+          "MARK_SEND_RESULT_FAILED"
+      });
+    }
 
     return res.status(200).json({
       ok: true,
       code: "SENT",
-      sohd
+      sohd,
+      source_sohd: markResultData.source_sohd
     });
   } catch (e) {
     const sohd = String(req.body?.sohd || "").trim();
 
-    if (sohd) {
-      await markResult(sohd, false, "SEND_FAILED");
+    console.error("[VIETTEL] guiHDDT error:", {
+      sohd,
+      viettelAccepted,
+      error: e?.message || String(e)
+    });
+
+    if (sohd && !viettelAccepted) {
+      await markResult(
+        sohd,
+        false,
+        e?.message || "SEND_FAILED"
+      );
     }
 
     return res.status(500).json({
       ok: false,
-      code: "SEND_FAILED"
+      code: viettelAccepted
+        ? "VIETTEL_ACCEPTED_DB_RESULT_UNKNOWN"
+        : "SEND_FAILED"
     });
   }
 }
