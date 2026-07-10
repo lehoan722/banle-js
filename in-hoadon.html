@@ -555,9 +555,9 @@
             <div class="payqr-title">QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN</div>
             <canvas id="vietqr_canvas" class="vietqr-img"></canvas>
             <div class="payqr-info">
-              <div><b id="qr_bank_label">Techcombank</b> - <span id="qr_account_no">2662222333</span>
+              <div><b id="qr_bank_label"></b> - <span id="qr_account_no"></span>
               </div>
-              <div id="qr_account_name">DANG LE HOAN</div>
+              <div id="qr_account_name"></div>
               <div class="payqr-amount">Số tiền: <span id="qr_amount">0</span> đ</div>
             </div>
           </div>
@@ -586,7 +586,6 @@
         // ========== Trạng thái QR ==========
         // ========== Trạng thái QR ==========
         let qrManualAmountMode = false; // F1: false = QR theo tổng phải trả, true = QR để 0 đồng cho khách tự nhập
-        let qrF2TechcombankMode = false; // F2: QR 0 đồng + ép tài khoản Techcombank theo cơ sở
         let qrCustomAmount = null; // số tiền nhập tay
 
         function formatSo(val) {
@@ -678,73 +677,30 @@
           const canvas = document.getElementById("vietqr_canvas");
           if (!canvas) return;
 
-          const rawDiaDiem = (hoadon.diadiem ?? hoadon.dia_diem ?? hoadon.coso ?? hoadon.macoso ?? hoadon.loaihd ?? "").toString().toLowerCase();
-          const isCS2 = rawDiaDiem.includes("cs2") || rawDiaDiem.includes("cơ sở 2") || rawDiaDiem.includes("co so 2");
+          // Tài khoản đã được RPC chọn và truyền sang trang in.
+          const taiKhoan = hoadon.tai_khoan_nhan_tien || {};
 
-          let bankBin;
-          let bankLabel;
-          let accountNo;
-          let accountName;
+          const bankBin = String(taiKhoan.bank_bin || "").trim();
+          const bankLabel = String(taiKhoan.bank_label || "").trim();
+          const accountNo = String(taiKhoan.so_tk || "").trim();
+          const accountName = String(taiKhoan.ten_tk || "").trim();
 
-          const sohdText = (hoadon.sohd || "").toString().trim();
-          const soCuoiMatch = sohdText.match(/(\d+)\s*$/);
-          const soCuoiHoaDon = soCuoiMatch ? Number(soCuoiMatch[1]) : 0;
-          const laSoChan = soCuoiHoaDon % 2 === 0;
+          // Không tự dùng tài khoản ghi cứng nếu dữ liệu bị thiếu.
+          if (!bankBin || !bankLabel || !accountNo || !accountName) {
+            console.error("Thiếu thông tin tài khoản nhận tiền:", taiKhoan);
 
-          if (isCS2) {
-
-            // ===== CS2 =====
-            if (laSoChan) {
-              bankBin = "970422";
-              bankLabel = "MB";
-              accountNo = "0963486775";
-              accountName = "--";
-            } else {
-              bankBin = "970436";
-              bankLabel = "Vietcombank";
-              accountNo = "1068146050";
-              accountName = "--";
+            const payqr = document.getElementById("payqr");
+            if (payqr) {
+              payqr.innerHTML = `
+                <div class="payqr-title" style="color:red;">
+                  KHÔNG TẠO ĐƯỢC MÃ QR
+                </div>
+                <div style="color:red; font-size:13px;">
+                  Hóa đơn chưa nhận được đầy đủ thông tin tài khoản từ cơ sở dữ liệu.
+                </div>
+              `;
             }
-
-          } else {
-
-            // ===== CS1 =====
-            if (laSoChan) {
-
-              // Hóa đơn chẵn
-              bankBin = "970418";      // BIDV
-              bankLabel = "BIDV";
-              accountNo = "8848543915";
-              accountName = "--";
-
-            } else {
-
-              // Hóa đơn chẵn
-              bankBin = "970418";      // BIDV
-              bankLabel = "BIDV";
-              accountNo = "8848543915";
-              accountName = "--";
-
-              // Hóa đơn lẻ
-              //bankBin = "970415";      // VietinBank
-              //bankLabel = "VietinBank";
-              //accountNo = "101880222833";
-              //accountName = "DANG LE HOAN";
-
-            }
-          }
-
-          if (qrF2TechcombankMode) {
-            bankBin = "970432";
-            bankLabel = "VPBank";
-
-            if (isCS2) {
-              accountNo = "AGBHENO60402090454";
-              accountName = "NGUYEN ANH TUYET";
-            } else {
-              accountNo = "AGBHENO60402150836";
-              accountName = "DANG LE HOAN";
-            }
+            return;
           }
 
           const addInfo = "CK";
@@ -758,10 +714,15 @@
             amount = Math.round(Number(thanhtoan) || 0);
           }
 
-          if (document.getElementById("qr_bank_label")) document.getElementById("qr_bank_label").textContent = bankLabel;
-          if (document.getElementById("qr_account_no")) document.getElementById("qr_account_no").textContent = accountNo;
-          if (document.getElementById("qr_account_name")) document.getElementById("qr_account_name").textContent = accountName;
-          if (document.getElementById("qr_amount")) document.getElementById("qr_amount").textContent = formatSo(amount);
+          const elBankLabel = document.getElementById("qr_bank_label");
+          const elAccountNo = document.getElementById("qr_account_no");
+          const elAccountName = document.getElementById("qr_account_name");
+          const elAmount = document.getElementById("qr_amount");
+
+          if (elBankLabel) elBankLabel.textContent = bankLabel;
+          if (elAccountNo) elAccountNo.textContent = accountNo;
+          if (elAccountName) elAccountName.textContent = accountName;
+          if (elAmount) elAmount.textContent = formatSo(amount);
 
           const payload = taoVietQRPayload({
             bankBin,
@@ -798,26 +759,15 @@
 
           if (!isPreview && !inIframe) return;
 
-          // Đợi ảnh QR load xong để scroll chính xác
           const target = document.getElementById('payqr') || document.querySelector('.payqr');
-          const img = document.getElementById('vietqr_img');
 
           function doScroll() {
             if (printing) return;
-            // cuộn xuống cho QR nằm giữa/ cuối màn hình
             (target || document.body).scrollIntoView({ behavior: 'auto', block: 'end' });
           }
 
-          // Nếu ảnh đã có src thì chờ load, còn không thì cứ setTimeout
-          if (img) {
-            img.addEventListener('load', () => setTimeout(doScroll, 50), { once: true });
-            // fallback: nếu load quá nhanh / cache
-            setTimeout(doScroll, 150);
-            setTimeout(doScroll, 350);
-          } else {
-            setTimeout(doScroll, 150);
-            setTimeout(doScroll, 350);
-          }
+          setTimeout(doScroll, 150);
+          setTimeout(doScroll, 350);
         })();
 
         function formatNumber(n) {
@@ -935,21 +885,6 @@
             return;
           }
 
-          // F2: chuyển đổi tài khoản QR sang Techcombank theo cơ sở
-          if (e.key === "F2") {
-            e.preventDefault();
-            e.stopPropagation();
-
-            qrF2TechcombankMode = !qrF2TechcombankMode;
-
-            // Khi bật F2 thì ưu tiên chế độ QR = 0 để khách tự nhập
-            if (qrF2TechcombankMode) {
-              qrCustomAmount = null;
-            }
-
-            renderVietQR();
-            return;
-          }
 
         });
 
