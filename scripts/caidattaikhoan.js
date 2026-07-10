@@ -324,13 +324,24 @@ async function initializeAdminPage() {
   if (!isAdmin) {
     const errorEl = document.getElementById("login-error");
     if (errorEl) errorEl.textContent = "Trang này chỉ dành cho tài khoản ADMIN.";
-    await supabase.auth.signOut().catch(() => {});
+    await supabase.auth.signOut().catch(() => { });
     return false;
   }
 
   const info = getCurrentUserInfo();
-  els.adminName.textContent = `${info.tennv || "ADMIN"}${info.manv ? ` (${info.manv})` : ""}`;
-  await loadData();
+
+  els.adminName.textContent =
+    `${info.tennv || "ADMIN"}${info.manv ? ` (${info.manv})` : ""}`;
+
+  // Chờ authModule hiện app-container rồi mới khởi tạo Handsontable
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      loadData().catch((error) => {
+        console.error("Lỗi khởi tạo dữ liệu:", error);
+      });
+    });
+  });
+
   return true;
 }
 
