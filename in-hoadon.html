@@ -302,23 +302,6 @@
       margin-bottom: 6px;
     }
 
-    .payqr-status {
-      font-size: 12px;
-      line-height: 1.35;
-      margin: 4px 0 8px;
-      color: #555;
-    }
-
-    .payqr-status.error {
-      color: #c62828;
-      font-weight: 700;
-    }
-
-    .payqr-status.ok {
-      color: #1b5e20;
-      font-weight: 700;
-    }
-
     .vietqr-img {
       width: 220px;
       max-width: 100%;
@@ -570,7 +553,6 @@
         <div class="invoice-right">
           <div class="payqr" id="payqr">
             <div class="payqr-title">QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN</div>
-            <div id="qr_account_mode" class="payqr-status"></div>
             <canvas id="vietqr_canvas" class="vietqr-img"></canvas>
             <div class="payqr-info">
               <div><b id="qr_bank_label"></b> - <span id="qr_account_no"></span>
@@ -584,11 +566,6 @@
       </div>
 
       <script src="/scripts/qrious.min.js"></script>
-
-      <script type="module">
-        import { supabase } from "/scripts/supabaseClient.js";
-        window.__supabaseInHoaDon = supabase;
-      </script>
 
       <script>
         // Lấy dữ liệu từ localStorage
@@ -611,13 +588,9 @@
         let qrManualAmountMode = false; // F1: false = QR theo tổng phải trả, true = QR để 0 đồng cho khách tự nhập
         let qrCustomAmount = null; // số tiền nhập tay
 
-        // Tài khoản nhận từ RPC khi lưu hóa đơn mới.
-        // Với hóa đơn cũ chưa có tài khoản, F2 sẽ tải hai tài khoản chính từ DB.
-        let taiKhoanHienTai = hoadon.tai_khoan_nhan_tien || null;
-        let taiKhoanChinhThuong = null;
-        let taiKhoanChinhDacBiet = null;
-        let loaiTaiKhoanDangXem = null; // "thuong" | "dac_biet"
-        let dangTaiTaiKhoan = false;
+        // Chỉ dùng cho luồng xem lại hóa đơn cũ khi không có tài khoản từ RPC.
+        // Mặc định hiển thị tài khoản chính; F2 chuyển qua lại chính <-> đặc biệt.
+        let qrFallbackSpecialMode = false;
 
         function formatSo(val) {
           if (isNaN(val)) return '0';
@@ -704,7 +677,7 @@
           return payloadForCRC + crc16ccitt(payloadForCRC);
         }
 
-        function taiKhoanHopLe(taiKhoan) {
+        function taiKhoanRpcHopLe(taiKhoan) {
           return !!(
             taiKhoan &&
             String(taiKhoan.bank_bin || "").trim() &&
@@ -714,56 +687,111 @@
           );
         }
 
-        function capNhatTrangThaiQR(message, type = "") {
-          const el = document.getElementById("qr_account_mode");
-          if (!el) return;
-          el.textContent = message || "";
-          el.className = `payqr-status${type ? " " + type : ""}`;
+        function laCoSo2() {
+          const rawDiaDiem = String(
+            hoadon.diadiem ??
+            hoadon.dia_diem ??
+            hoadon.coso ??
+            hoadon.macoso ??
+            ""
+          ).trim().toLowerCase();
+
+          return (
+            rawDiaDiem.includes("cs2") ||
+            rawDiaDiem.includes("cơ sở 2") ||
+            rawDiaDiem.includes("co so 2")
+          );
         }
 
-        function anThongTinQR() {
-          const canvas = document.getElementById("vietqr_canvas");
-          const info = document.querySelector(".payqr-info");
+        function layTaiKhoanCoDinhChoHoaDonCu() {
+          const isCS2 = laCoSo2();
 
-          if (canvas) {
-            const ctx = canvas.getContext?.("2d");
-            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-            canvas.style.display = "none";
+          // F2 đang bật: tài khoản đặc biệt theo cơ sở.
+          if (qrFallbackSpecialMode) {
+            if (isCS2) {
+              return {
+                bank_bin: "970432",
+                bank_label: "VPBank",
+                so_tk: "AGBHENO60402090454",
+                ten_tk: "NGUYEN ANH TUYET",
+                nguon_chon: "fallback_dac_biet_cs2"
+              };
+            }
+
+            return {
+              bank_bin: "970432",
+              bank_label: "VPBank",
+              so_tk: "AGBHENO60402150836",
+              ten_tk: "DANG LE HOAN",
+              nguon_chon: "fallback_dac_biet_cs1"
+            };
           }
 
-          if (info) info.style.display = "none";
+          // Mặc định: tài khoản chính thông thường theo cơ sở.
+          if (isCS2) {
+            return {
+              bank_bin: "970422",
+              bank_label: "MB",
+              so_tk: "0963486775",
+              ten_tk: "--",
+              nguon_chon: "fallback_chinh_cs2"
+            };
+          }
+
+          return {
+            bank_bin: "970418",
+            bank_label: "BIDV",
+            so_tk: "8848543915",
+            ten_tk: "--",
+            nguon_chon: "fallback_chinh_cs1"
+          };
         }
 
-        function hienThongTinQR() {
-          const canvas = document.getElementById("vietqr_canvas");
-          const info = document.querySelector(".payqr-info");
+        function layTaiKhoanDangHienThi() {
+          const taiKhoanTuRPC = hoadon.tai_khoan_nhan_tien || null;
 
-          if (canvas) canvas.style.display = "block";
-          if (info) info.style.display = "block";
+          // Hóa đơn mới: luôn ưu tiên đúng tài khoản do RPC truyền sang.
+          if (taiKhoanRpcHopLe(taiKhoanTuRPC)) {
+            return {
+              taiKhoan: taiKhoanTuRPC,
+              laFallbackHoaDonCu: false
+            };
+          }
+
+          // Hóa đơn cũ: dùng tài khoản cố định theo cơ sở.
+          return {
+            taiKhoan: layTaiKhoanCoDinhChoHoaDonCu(),
+            laFallbackHoaDonCu: true
+          };
         }
 
         function renderVietQR() {
           const canvas = document.getElementById("vietqr_canvas");
           if (!canvas) return;
 
-          const taiKhoan = taiKhoanHienTai;
+          const { taiKhoan, laFallbackHoaDonCu } = layTaiKhoanDangHienThi();
 
-          // Hóa đơn cũ có thể chưa được truyền tài khoản.
-          // Không báo lỗi; chờ người dùng nhấn F2 để tải từ DB.
-          if (!taiKhoanHopLe(taiKhoan)) {
-            anThongTinQR();
-            capNhatTrangThaiQR(
-              "Hóa đơn chưa có tài khoản. Nhấn F2 để tải tài khoản chính thông thường; nhấn F2 lần nữa để chuyển sang tài khoản đặc biệt."
-            );
+          const bankBin = String(taiKhoan.bank_bin || "").trim();
+          const bankLabel = String(taiKhoan.bank_label || "").trim();
+          const accountNo = String(taiKhoan.so_tk || "").trim();
+          const accountName = String(taiKhoan.ten_tk || "").trim();
+
+          if (!bankBin || !bankLabel || !accountNo || !accountName) {
+            console.error("Thiếu thông tin tài khoản nhận tiền:", taiKhoan);
+
+            const payqr = document.getElementById("payqr");
+            if (payqr) {
+              payqr.innerHTML = `
+                <div class="payqr-title" style="color:red;">
+                  KHÔNG TẠO ĐƯỢC MÃ QR
+                </div>
+                <div style="color:red; font-size:13px;">
+                  Hóa đơn chưa có đầy đủ thông tin tài khoản nhận tiền.
+                </div>
+              `;
+            }
             return;
           }
-
-          hienThongTinQR();
-
-          const bankBin = String(taiKhoan.bank_bin).trim();
-          const bankLabel = String(taiKhoan.bank_label).trim();
-          const accountNo = String(taiKhoan.so_tk).trim();
-          const accountName = String(taiKhoan.ten_tk).trim();
 
           const addInfo = "CK";
           let amount;
@@ -780,18 +808,22 @@
           const elAccountNo = document.getElementById("qr_account_no");
           const elAccountName = document.getElementById("qr_account_name");
           const elAmount = document.getElementById("qr_amount");
+          const elTitle = document.querySelector(".payqr-title");
 
           if (elBankLabel) elBankLabel.textContent = bankLabel;
           if (elAccountNo) elAccountNo.textContent = accountNo;
           if (elAccountName) elAccountName.textContent = accountName;
           if (elAmount) elAmount.textContent = formatSo(amount);
 
-          if (loaiTaiKhoanDangXem === "dac_biet") {
-            capNhatTrangThaiQR("Đang hiển thị: TÀI KHOẢN ĐẶC BIỆT", "ok");
-          } else if (loaiTaiKhoanDangXem === "thuong") {
-            capNhatTrangThaiQR("Đang hiển thị: TÀI KHOẢN CHÍNH THÔNG THƯỜNG", "ok");
-          } else {
-            capNhatTrangThaiQR("Tài khoản đã được chọn khi lưu hóa đơn.", "ok");
+          // Chỉ bổ sung nhãn hướng dẫn ở luồng xem lại hóa đơn cũ.
+          if (elTitle) {
+            if (laFallbackHoaDonCu) {
+              elTitle.textContent = qrFallbackSpecialMode
+                ? "QR TÀI KHOẢN ĐẶC BIỆT - NHẤN F2 ĐỂ ĐỔI"
+                : "QR TÀI KHOẢN CHÍNH - NHẤN F2 ĐỂ ĐỔI";
+            } else {
+              elTitle.textContent = "QUÉT MÃ QR ĐỂ CHUYỂN KHOẢN";
+            }
           }
 
           const payload = taoVietQRPayload({
@@ -808,142 +840,6 @@
             size: 320,
             level: "M"
           });
-        }
-
-        function layDiaDiemHoaDon() {
-          const raw = String(
-            hoadon.diadiem ??
-            hoadon.dia_diem ??
-            hoadon.coso ??
-            hoadon.macoso ??
-            ""
-          ).trim().toLowerCase();
-
-          if (
-            raw.includes("cs2") ||
-            raw.includes("cơ sở 2") ||
-            raw.includes("co so 2")
-          ) {
-            return "cs2";
-          }
-
-          if (
-            raw.includes("cs1") ||
-            raw.includes("cơ sở 1") ||
-            raw.includes("co so 1")
-          ) {
-            return "cs1";
-          }
-
-          return "";
-        }
-
-        async function doiTaiKhoanBangF2() {
-          if (dangTaiTaiKhoan) return;
-
-          const diaDiem = layDiaDiemHoaDon();
-          if (!diaDiem) {
-            capNhatTrangThaiQR(
-              "Không xác định được cơ sở của hóa đơn nên không thể tải tài khoản.",
-              "error"
-            );
-            return;
-          }
-
-          // Nếu đã tải đủ hai loại thì chỉ đổi qua lại, không gọi DB lần nữa.
-          if (taiKhoanChinhThuong || taiKhoanChinhDacBiet) {
-            if (
-              loaiTaiKhoanDangXem !== "thuong" &&
-              taiKhoanChinhThuong
-            ) {
-              loaiTaiKhoanDangXem = "thuong";
-              taiKhoanHienTai = taiKhoanChinhThuong;
-            } else if (taiKhoanChinhDacBiet) {
-              loaiTaiKhoanDangXem = "dac_biet";
-              taiKhoanHienTai = taiKhoanChinhDacBiet;
-            } else if (taiKhoanChinhThuong) {
-              loaiTaiKhoanDangXem = "thuong";
-              taiKhoanHienTai = taiKhoanChinhThuong;
-            }
-
-            renderVietQR();
-            return;
-          }
-
-          dangTaiTaiKhoan = true;
-          capNhatTrangThaiQR("Đang tải tài khoản nhận tiền từ cơ sở dữ liệu...");
-
-          try {
-            // Chờ module supabaseClient.js được nạp.
-            let supabaseClient = window.__supabaseInHoaDon;
-            for (let i = 0; i < 30 && !supabaseClient; i++) {
-              await new Promise(resolve => setTimeout(resolve, 100));
-              supabaseClient = window.__supabaseInHoaDon;
-            }
-
-            if (!supabaseClient) {
-              throw new Error("Không khởi tạo được Supabase client.");
-            }
-
-            const { data: dsTaiKhoan, error } = await supabaseClient
-              .from("tai_khoan_nhan_tien")
-              .select(`
-                id,
-                dia_diem,
-                loai_hoa_don,
-                so_cuoi_hd,
-                so_tk,
-                ten_hien_thi,
-                ten_tk,
-                bank_bin,
-                bank_label,
-                tk_chinh,
-                ghi_chu
-              `)
-              .eq("dia_diem", diaDiem)
-              .eq("tk_chinh", true)
-              .in("loai_hoa_don", ["thuong", "dac_biet"]);
-
-            if (error) throw error;
-
-            taiKhoanChinhThuong =
-              (dsTaiKhoan || []).find(
-                x => String(x.loai_hoa_don || "").toLowerCase() === "thuong"
-              ) || null;
-
-            taiKhoanChinhDacBiet =
-              (dsTaiKhoan || []).find(
-                x => String(x.loai_hoa_don || "").toLowerCase() === "dac_biet"
-              ) || null;
-
-            if (!taiKhoanChinhThuong && !taiKhoanChinhDacBiet) {
-              throw new Error(
-                `Không tìm thấy tài khoản chính nào cho ${diaDiem}.`
-              );
-            }
-
-            // Lần nhấn đầu tiên luôn ưu tiên tài khoản chính thông thường.
-            if (taiKhoanChinhThuong) {
-              loaiTaiKhoanDangXem = "thuong";
-              taiKhoanHienTai = taiKhoanChinhThuong;
-            } else {
-              loaiTaiKhoanDangXem = "dac_biet";
-              taiKhoanHienTai = taiKhoanChinhDacBiet;
-            }
-
-            renderVietQR();
-
-          } catch (error) {
-            console.error("Không tải được tài khoản nhận tiền:", error);
-            anThongTinQR();
-            capNhatTrangThaiQR(
-              "Không tải được tài khoản nhận tiền: " +
-              (error?.message || error),
-              "error"
-            );
-          } finally {
-            dangTaiTaiKhoan = false;
-          }
         }
 
         // render lần đầu
@@ -1078,14 +974,21 @@
             return;
           }
 
-          // F2:
-          // - lần đầu: tải đồng thời TK chính thường + TK chính đặc biệt từ DB,
-          //   rồi hiển thị TK thường;
-          // - các lần tiếp theo: chuyển qua lại thường <-> đặc biệt.
+          // F2 chỉ đổi tài khoản ở luồng xem lại hóa đơn cũ
+          // (khi không có tài khoản do RPC truyền sang).
           if (e.key === "F2") {
             e.preventDefault();
             e.stopPropagation();
-            doiTaiKhoanBangF2();
+
+            const taiKhoanTuRPC = hoadon.tai_khoan_nhan_tien || null;
+
+            // Hóa đơn mới có tài khoản RPC: không cho F2 ghi đè.
+            if (taiKhoanRpcHopLe(taiKhoanTuRPC)) {
+              return;
+            }
+
+            qrFallbackSpecialMode = !qrFallbackSpecialMode;
+            renderVietQR();
             return;
           }
 
