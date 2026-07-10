@@ -328,26 +328,23 @@ export function ganSuKienNutLenh() {
       // =====================================================
       // 5. KIỂM TRA TÀI KHOẢN TRƯỚC KHI MỞ TRANG IN
       // =====================================================
-      if (
-        !taiKhoanNhanTien ||
-        !taiKhoanNhanTien.so_tk ||
-        !taiKhoanNhanTien.ten_tk ||
-        !taiKhoanNhanTien.bank_bin ||
-        !taiKhoanNhanTien.bank_label
-      ) {
-        console.error(
-          "❌ Không xác định được tài khoản nhận tiền:",
+      const taiKhoanHopLe =
+        taiKhoanNhanTien &&
+        taiKhoanNhanTien.so_tk &&
+        taiKhoanNhanTien.ten_tk &&
+        taiKhoanNhanTien.bank_bin &&
+        taiKhoanNhanTien.bank_label;
+
+      if (!taiKhoanHopLe) {
+        console.warn(
+          "⚠️ Hóa đơn không có tài khoản nhận tiền, vẫn mở bản in không QR:",
           {
             sohd,
-            hoadon,
-            taiKhoanNhanTien
+            hoadon
           }
         );
 
-        alert(
-          "❌ Không tìm thấy tài khoản nhận tiền phù hợp cho hóa đơn này."
-        );
-        return;
+        taiKhoanNhanTien = null;
       }
 
       // =====================================================
