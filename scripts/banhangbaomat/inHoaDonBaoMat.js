@@ -11,10 +11,13 @@ export function inHoaDonBaoMat(result, payload) {
   const sohd = result.sohd || payload.invoice?.sohd;
 
   const data = {
-    hoadon: {
-      ...(payload.invoice || {}),
-      sohd
-    },
+  hoadon: {
+    ...(payload.invoice || {}),
+    sohd,
+
+    tai_khoan_nhan_tien:
+      result?.tai_khoan_nhan_tien || null
+  },
     chitiet: (payload.details || []).map((x) => ({
       ...x,
       sohd,
@@ -43,9 +46,7 @@ export function inHoaDonBaoMat(result, payload) {
       payload?.invoice?.hinhthuctt?.toLowerCase?.() === "tmt"
     );
 
-  const url = isHoaDonDacBiet
-    ? `${location.origin}/in-hoadon-db.html`
-    : `${location.origin}/in-hoadon.html`;
+  const url = `${location.origin}/in-hoadon.html`;
 
   if (typeof window.openPrintOverlay === "function") {
     window.openPrintOverlay(url, { autoPrint: false });
