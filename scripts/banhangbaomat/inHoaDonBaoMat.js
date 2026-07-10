@@ -9,6 +9,11 @@ export function inHoaDonBaoMat(result, payload) {
   }
 
   const sohd = result.sohd || payload.invoice?.sohd;
+  console.log("=== RESULT RPC ===", result);
+console.log(
+  "=== TAI KHOAN NHAN TIEN RPC ===",
+  result?.tai_khoan_nhan_tien
+);
 
   const data = {
   hoadon: {
