@@ -139,51 +139,299 @@ export function ganSuKienNutLenh() {
 
 
   // Gắn lại sự kiện cho nút "xemin"
+  // Gắn sự kiện cho nút "Xem in"
+  // Dùng được cho:
+  // 1. Hóa đơn mới đã có snapshot tài khoản
+  // 2. Hóa đơn cũ chưa có snapshot: tự tìm lại cấu hình tài khoản
   document.getElementById("xemin")?.addEventListener("click", async () => {
-    const sohd = document.getElementById("sohd").value.trim();
-    if (!sohd) {
-      alert("❌ Bạn chưa nhập số hóa đơn cần in.");
-      return;
-    }
-    // Truy vấn chi tiết hóa đơn từ Supabase về
-    await napLaiChiTietHoaDon(sohd);
+    try {
+      const sohd = String(
+        document.getElementById("sohd")?.value || ""
+      ).trim();
 
-    // Lấy lại dữ liệu vừa nạp
-    const { getBangKetQua } = await import('./hoadon.js');
-    const bang = getBangKetQua();
+      if (!sohd) {
+        alert("❌ Bạn chưa nhập số hóa đơn cần in.");
+        return;
+      }
 
-    // Lấy các thông tin hóa đơn (đầy đủ nhất từ DB nếu cần)
-    // Nếu cần truy vấn thêm bảng hoadon_banle thì làm như sau:
-    const { data: hoadon } = await window.supabase
-      .from("hoadon_banle")
-      .select("*")
-      .eq("sohd", sohd)
-      .maybeSingle();
+      if (!window.supabase) {
+        alert("❌ Chưa kết nối được cơ sở dữ liệu.");
+        return;
+      }
 
-    // Lấy chi tiết:
-    const chitiet = [];
-    Object.values(bang).forEach(item => {
-      item.sizes.forEach((sz, i) => {
-        chitiet.push({
-          sohd,
-          masp: item.masp,
-          tensp: item.tensp,
-          size: sz,
-          soluong: item.soluongs[i],
-          gia: item.gia,
-          km: item.km,
-          thanhtien: (item.gia - item.km) * item.soluongs[i],
-          dvt: item.dvt || '',
-          diadiem: hoadon?.diadiem || "",
+      // =====================================================
+      // 1. NẠP CHI TIẾT HÓA ĐƠN VÀO BẢNG GIAO DIỆN
+      // =====================================================
+      await napLaiChiTietHoaDon(sohd);
+
+      const { getBangKetQua } = await import("./hoadon.js");
+      const bang = getBangKetQua() || {};
+
+      // =====================================================
+      // 2. ĐỌC HÓA ĐƠN GỐC TỪ DATABASE
+      // =====================================================
+      const { data: hoadon, error: hdError } = await window.supabase
+        .from("hoadon_banle")
+        .select("*")
+        .eq("sohd", sohd)
+        .maybeSingle();
+
+      if (hdError) {
+        console.error("❌ Lỗi đọc hóa đơn:", hdError);
+        alert("❌ Không đọc được dữ liệu hóa đơn.");
+        return;
+      }
+
+      if (!hoadon) {
+        alert("❌ Không tìm thấy hóa đơn " + sohd);
+        return;
+      }
+
+      // =====================================================
+      // 3. TẠO OBJECT TÀI KHOẢN TỪ SNAPSHOT TRÊN HÓA ĐƠN
+      // =====================================================
+      let taiKhoanNhanTien = null;
+
+      const snapshotDayDu =
+        hoadon.qr_so_tk &&
+        hoadon.qr_ten_tk &&
+        hoadon.qr_bank_bin &&
+        hoadon.qr_bank_label;
+
+      if (snapshotDayDu) {
+        taiKhoanNhanTien = {
+          id: hoadon.tai_khoan_nhan_id || null,
+          dia_diem: hoadon.diadiem || "",
+          loai_hoa_don: hoadon.qr_loai_hoa_don || "thuong",
+          so_cuoi_hd: null,
+
+          so_tk: hoadon.qr_so_tk,
+          ten_hien_thi: hoadon.qr_ten_hien_thi || "",
+          ten_tk: hoadon.qr_ten_tk,
+          bank_bin: hoadon.qr_bank_bin,
+          bank_label: hoadon.qr_bank_label,
+
+          tk_chinh:
+            hoadon.qr_nguon_chon === "tai_khoan_chinh",
+
+          nguon_chon:
+            hoadon.qr_nguon_chon || "snapshot_hoa_don"
+        };
+      }
+
+      // =====================================================
+      // 4. HÓA ĐƠN CŨ CHƯA CÓ SNAPSHOT:
+      //    TỰ XÁC ĐỊNH LOẠI TÀI KHOẢN
+      // =====================================================
+      if (!taiKhoanNhanTien) {
+        const hinhThucTT = String(
+          hoadon.hinhthuctt || ""
+        ).toLowerCase();
+
+        const laHoaDonDacBiet =
+          hoadon.external_send === true ||
+          hoadon.save_2_ban === true ||
+          hinhThucTT === "tmt";
+
+        const loaiHoaDon = laHoaDonDacBiet
+          ? "dac_biet"
+          : "thuong";
+
+        const diaDiem = String(
+          hoadon.diadiem || ""
+        ).trim().toLowerCase();
+
+        const chuoiSo = String(sohd).replace(/\D/g, "");
+        const soCuoiHoaDon = chuoiSo
+          ? Number(chuoiSo.slice(-1))
+          : 0;
+
+        // ===================================================
+        // 4A. TÌM TÀI KHOẢN ĐÚNG SỐ CUỐI
+        // ===================================================
+        const { data: tkTheoSo, error: tkTheoSoError } =
+          await window.supabase
+            .from("tai_khoan_nhan_tien")
+            .select(`
+            id,
+            dia_diem,
+            loai_hoa_don,
+            so_cuoi_hd,
+            so_tk,
+            ten_hien_thi,
+            ten_tk,
+            bank_bin,
+            bank_label,
+            tk_chinh,
+            ghi_chu
+          `)
+            .eq("dia_diem", diaDiem)
+            .eq("loai_hoa_don", loaiHoaDon)
+            .eq("so_cuoi_hd", soCuoiHoaDon)
+            .maybeSingle();
+
+        if (tkTheoSoError) {
+          console.warn(
+            "⚠️ Không tìm được tài khoản theo số cuối:",
+            tkTheoSoError
+          );
+        }
+
+        if (tkTheoSo) {
+          taiKhoanNhanTien = {
+            ...tkTheoSo,
+            nguon_chon: "theo_so_cuoi"
+          };
+        }
+
+        // ===================================================
+        // 4B. KHÔNG CÓ SỐ CUỐI → LẤY TÀI KHOẢN CHÍNH
+        // ===================================================
+        if (!taiKhoanNhanTien) {
+          const { data: tkChinh, error: tkChinhError } =
+            await window.supabase
+              .from("tai_khoan_nhan_tien")
+              .select(`
+              id,
+              dia_diem,
+              loai_hoa_don,
+              so_cuoi_hd,
+              so_tk,
+              ten_hien_thi,
+              ten_tk,
+              bank_bin,
+              bank_label,
+              tk_chinh,
+              ghi_chu
+            `)
+              .eq("dia_diem", diaDiem)
+              .eq("loai_hoa_don", loaiHoaDon)
+              .eq("tk_chinh", true)
+              .maybeSingle();
+
+          if (tkChinhError) {
+            console.error(
+              "❌ Lỗi tìm tài khoản chính:",
+              tkChinhError
+            );
+          }
+
+          if (tkChinh) {
+            taiKhoanNhanTien = {
+              ...tkChinh,
+              nguon_chon: "tai_khoan_chinh"
+            };
+          }
+        }
+      }
+
+      // =====================================================
+      // 5. KIỂM TRA TÀI KHOẢN TRƯỚC KHI MỞ TRANG IN
+      // =====================================================
+      if (
+        !taiKhoanNhanTien ||
+        !taiKhoanNhanTien.so_tk ||
+        !taiKhoanNhanTien.ten_tk ||
+        !taiKhoanNhanTien.bank_bin ||
+        !taiKhoanNhanTien.bank_label
+      ) {
+        console.error(
+          "❌ Không xác định được tài khoản nhận tiền:",
+          {
+            sohd,
+            hoadon,
+            taiKhoanNhanTien
+          }
+        );
+
+        alert(
+          "❌ Không tìm thấy tài khoản nhận tiền phù hợp cho hóa đơn này."
+        );
+        return;
+      }
+
+      // =====================================================
+      // 6. TẠO CHI TIẾT HÓA ĐƠN ĐỂ IN
+      // =====================================================
+      const chitiet = [];
+
+      Object.values(bang).forEach((item) => {
+        const sizes = Array.isArray(item.sizes)
+          ? item.sizes
+          : [];
+
+        const soluongs = Array.isArray(item.soluongs)
+          ? item.soluongs
+          : [];
+
+        sizes.forEach((size, i) => {
+          const soluong = Number(soluongs[i] || 0);
+          const gia = Number(item.gia || 0);
+          const km = Number(item.km || 0);
+
+          chitiet.push({
+            sohd,
+            masp: item.masp || "",
+            tensp: item.tensp || "",
+            size,
+            soluong,
+            gia,
+            km,
+            thanhtien: (gia - km) * soluong,
+            dvt: item.dvt || "",
+            diadiem: hoadon.diadiem || ""
+          });
         });
       });
-    });
 
-    // Lưu vào localStorage như logic in bình thường
-    localStorage.setItem("data_hoadon_in", JSON.stringify({ hoadon, chitiet }));
+      // =====================================================
+      // 7. GHÉP TÀI KHOẢN VÀO DỮ LIỆU TRANG IN
+      // =====================================================
+      const hoadonDeIn = {
+        ...hoadon,
+        tai_khoan_nhan_tien: taiKhoanNhanTien
+      };
 
-    // Mở tab in hóa đơn (hoặc reload lại nếu đã mở)
-    window.open("/in-hoadon.html", "_blank");
+      const dataIn = {
+        hoadon: hoadonDeIn,
+        chitiet
+      };
+
+      console.log(
+        "✅ Dữ liệu xem in hóa đơn cũ:",
+        dataIn
+      );
+
+      localStorage.setItem(
+        "data_hoadon_in",
+        JSON.stringify(dataIn)
+      );
+
+      // =====================================================
+      // 8. MỞ CÙNG MỘT TRANG IN
+      // =====================================================
+      const url = `${location.origin}/in-hoadon.html`;
+
+      if (typeof window.openPrintOverlay === "function") {
+        window.openPrintOverlay(url, {
+          autoPrint: false
+        });
+        return;
+      }
+
+      window.open(url, "_blank");
+
+    } catch (error) {
+      console.error(
+        "❌ Lỗi xem in hóa đơn:",
+        error
+      );
+
+      alert(
+        "❌ Không mở được hóa đơn để in: " +
+        (error?.message || error)
+      );
+    }
   });
 
 
