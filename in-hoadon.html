@@ -456,7 +456,6 @@
       }
 
     }
-    
   </style>
 </head>
 
@@ -730,19 +729,20 @@
           // Mặc định: tài khoản chính thông thường theo cơ sở.
           if (isCS2) {
             return {
-              bank_bin: "970422",
-              bank_label: "MB",
-              so_tk: "0963486775",
-              ten_tk: "--",
+              bank_bin: "970407",
+              bank_label: "Techcombank",
+              so_tk: "MS00P00000000635573",
+              ten_tk: "NGUYEN ANH TUYET",
               nguon_chon: "fallback_chinh_cs2"
             };
+
           }
 
           return {
             bank_bin: "970418",
             bank_label: "BIDV",
-            so_tk: "8848543915",
-            ten_tk: "--",
+            so_tk: "39011029588",
+            ten_tk: "DANG LE HOAN",
             nguon_chon: "fallback_chinh_cs1"
           };
         }
