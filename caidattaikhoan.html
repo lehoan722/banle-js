@@ -1,146 +1,254 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cài đặt tài khoản nhận tiền</title>
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.6.1/dist/handsontable.full.min.css" />
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nhập danh mục tài khoản ngân hàng</title>
   <style>
-    :root {
-      --border: #d8dde6;
-      --bg: #f4f6f9;
-      --card: #ffffff;
-      --text: #172033;
-      --muted: #657087;
-      --primary: #1769aa;
-      --danger: #b42318;
-      --success: #067647;
-      --warning-bg: #fff7e6;
-    }
-
     * { box-sizing: border-box; }
     body {
       margin: 0;
+      padding: 32px 16px;
       font-family: Arial, Helvetica, sans-serif;
-      color: var(--text);
-      background: var(--bg);
-    }   
-
-    .page {
-      width: min(1500px, calc(100% - 24px));
-      margin: 12px auto;
+      background: #f8f9fc;
+      color: #111827;
     }
-
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      padding: 12px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(16, 24, 40, 0.05);
-    }
-
-    .toolbar h1 {
-      margin: 0 auto 0 0;
-      font-size: 21px;
-    }
-
-    button {
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 8px 12px;
+    .center-box {
+      width: min(590px, 100%);
+      margin: 18px auto;
+      padding: 28px 28px 20px;
       background: #fff;
-      cursor: pointer;
-      font-weight: 600;
+      border: 1.5px solid #e3e9f1;
+      border-radius: 18px;
+      box-shadow: 0 3px 18px rgba(54, 87, 122, .10);
     }
-    button:hover:not(:disabled) { background: #f2f4f7; }
-    button:disabled { opacity: 0.55; cursor: not-allowed; }
-    button.primary { color: white; background: var(--primary); border-color: var(--primary); }
-    button.danger { color: white; background: var(--danger); border-color: var(--danger); }
-
-    .info-row {
+    .form-title {
+      margin-bottom: 24px;
+      text-align: center;
+      color: #163163;
+      font-size: 21px;
+      font-weight: 700;
+    }
+    .admin-line {
+      margin: -12px 0 20px;
+      text-align: center;
+      color: #667085;
+      font-size: 13px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .row label {
+      width: 145px;
+      flex: 0 0 145px;
+      line-height: 1.25;
+    }
+    .field-wrap { position: relative; flex: 1; min-width: 0; }
+    input, select, textarea {
+      width: 100%;
+      padding: 9px 11px;
+      font: inherit;
+      border: 1.2px solid #b5bed5;
+      border-radius: 7px;
+      background: #fcfcfe;
+    }
+    textarea { min-height: 72px; resize: vertical; }
+    input:focus, select:focus, textarea:focus {
+      border-color: #1164be;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(17, 100, 190, .10);
+    }
+    input:disabled { background: #eef1f5; color: #667085; }
+    .required { color: #e23a1b; font-weight: 700; }
+    .hint {
+      margin: -6px 0 13px 157px;
+      color: #667085;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .actions {
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin: 10px 0;
-      padding: 10px 12px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 22px;
     }
-
-    #save-status { font-weight: 700; }
-    #save-status.dirty { color: #b54708; }
-    #save-status.saved { color: var(--success); }
-    #save-status.error { color: var(--danger); }
-
-    #table-wrap {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
+    button {
+      border: 0;
+      border-radius: 7px;
+      padding: 9px 20px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .save { background: #18804f; color: #fff; }
+    .new { background: #eaeaec; color: #111827; }
+    .delete { background: #d13f3f; color: #fff; }
+    .logout { background: #efebfa; color: #45427b; }
+    button:hover:not(:disabled) { filter: brightness(.96); }
+    .msg {
+      min-height: 40px;
+      margin-top: 15px;
+      padding: 10px;
+      text-align: center;
+      border-radius: 7px;
+      line-height: 1.35;
+    }
+    .msg:empty { padding: 0; min-height: 20px; }
+    .msg.error { color: #fff; background: #c44736; }
+    .msg.success { color: #176b3a; background: #e6f4e7; }
+    .msg.info { color: #664d03; background: #fff3cd; }
+    .suggest {
+      display: none;
+      position: absolute;
+      z-index: 1000;
+      top: 42px;
+      left: 0;
+      right: 0;
+      max-height: 250px;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid #cdd5e1;
+      border-radius: 8px;
+      box-shadow: 0 8px 22px rgba(31, 42, 68, .16);
+    }
+    .suggest .item { padding: 8px 10px; cursor: pointer; font-size: 13px; line-height: 1.35; }
+    .suggest .item:hover, .suggest .item.active { background: #eef5ff; }
+    .suggest .empty { padding: 10px; color: #667085; }
+    .pick-list {
+      display: none;
+      margin: 2px 0 15px 157px;
+      border: 1px solid #d8e0eb;
+      border-radius: 8px;
       overflow: hidden;
-      min-height: 520px;
     }
-
-    #account-table { width: 100%; height: calc(100vh - 175px); min-height: 500px; }
-
-    .help {
-      margin-top: 10px;
-      padding: 10px 12px;
-      border: 1px solid #fedf89;
-      border-radius: 8px;
-      background: var(--warning-bg);
-      color: #7a2e0e;
-      line-height: 1.45;
-      font-size: 14px;
+    .pick-list button {
+      display: block;
+      width: 100%;
+      padding: 9px 11px;
+      text-align: left;
+      border-radius: 0;
+      border-bottom: 1px solid #e7ebf1;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 400;
     }
-
-    .htInvalid { background: #fee4e2 !important; }
-
-    @media (max-width: 760px) {
-      .toolbar h1 { width: 100%; }
-      .toolbar button { flex: 1 1 auto; }
-      #account-table { height: calc(100vh - 260px); }
+    .pick-list button:last-child { border-bottom: 0; }
+    .pick-list button:hover { background: #eef5ff; }
+    .record-badge {
+      display: none;
+      margin: -4px 0 15px 157px;
+      padding: 7px 9px;
+      color: #175cd3;
+      background: #eff8ff;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    @media (max-width: 620px) {
+      body { padding: 12px 8px; }
+      .center-box { padding: 22px 16px 18px; }
+      .row { display: block; }
+      .row label { display: block; width: auto; margin-bottom: 6px; }
+      .hint, .pick-list, .record-badge { margin-left: 0; }
+      .actions button { flex: 1 1 42%; }
     }
   </style>
 </head>
 <body>
   <div id="login-container"></div>
 
-  <main id="app-container">
-    <div class="page">
-      <section class="toolbar">
-        <h1>Cài đặt tài khoản nhận tiền</h1>
-        <button id="btn-add" type="button">+ Thêm dòng</button>
-        <button id="btn-delete" type="button" class="danger">Xóa dòng đã chọn</button>
-        <button id="btn-reload" type="button">Tải lại</button>
-        <button id="btn-save" type="button" class="primary" disabled>Lưu thay đổi</button>
-        <button id="btn-logout" type="button">Đăng xuất</button>
-      </section>
+  <main id="app-container" style="display:none">
+    <section class="center-box">
+      <div class="form-title">NHẬP DANH MỤC TÀI KHOẢN NGÂN HÀNG</div>
+      <div class="admin-line">ADMIN: <strong id="admin-name">—</strong></div>
 
-      <section class="info-row">
-        <div>ADMIN: <strong id="admin-name">—</strong></div>
-        <div id="save-status" class="saved">Dữ liệu đã đồng bộ</div>
-      </section>
-
-      <section id="table-wrap">
-        <div id="account-table"></div>
-      </section>
-
-      <div class="help">
-        Tài khoản chính phải để trống “Số cuối hóa đơn”. Tài khoản không phải tài khoản chính bắt buộc nhập số cuối từ 0 đến 9. Mỗi địa điểm và loại hóa đơn chỉ có một tài khoản chính, đồng thời không được trùng số cuối hóa đơn.
+      <div class="row">
+        <label class="required" for="so_tk">Số tài khoản *</label>
+        <div class="field-wrap">
+          <input id="so_tk" inputmode="numeric" autocomplete="off" placeholder="Nhập số tài khoản rồi nhấn Enter">
+          <div id="account-suggest" class="suggest"></div>
+        </div>
       </div>
-    </div>
+      <div class="hint">Một số tài khoản có thể có nhiều cấu hình. Khi đó hãy chọn đúng cơ sở và loại hóa đơn.</div>
+      <div id="record-badge" class="record-badge"></div>
+      <div id="record-pick-list" class="pick-list"></div>
+
+      <div class="row">
+        <label class="required" for="dia_diem">Địa điểm *</label>
+        <select id="dia_diem">
+          <option value="cs1">Cơ sở 1</option>
+          <option value="cs2">Cơ sở 2</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label class="required" for="loai_hoa_don">Loại hóa đơn *</label>
+        <select id="loai_hoa_don">
+          <option value="thuong">Hóa đơn thường</option>
+          <option value="dac_biet">Hóa đơn đặc biệt</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label class="required" for="tk_chinh">Tài khoản chính *</label>
+        <select id="tk_chinh">
+          <option value="false">Không</option>
+          <option value="true">Có</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="so_cuoi_hd">Số cuối hóa đơn</label>
+        <input id="so_cuoi_hd" type="number" min="0" max="9" step="1" placeholder="Từ 0 đến 9">
+      </div>
+
+      <div class="row">
+        <label for="ten_hien_thi">Tên hiển thị</label>
+        <input id="ten_hien_thi" placeholder="Ví dụ: Vietcombank - Hoàn Tuyết">
+      </div>
+
+      <div class="row">
+        <label class="required" for="ten_tk">Tên chủ tài khoản *</label>
+        <input id="ten_tk" autocomplete="off">
+      </div>
+
+      <div class="row">
+        <label for="bank_select">Chọn ngân hàng</label>
+        <select id="bank_select">
+          <option value="">-- Chọn để tự điền BIN --</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label class="required" for="bank_bin">Bank BIN *</label>
+        <input id="bank_bin" inputmode="numeric" autocomplete="off">
+      </div>
+
+      <div class="row">
+        <label class="required" for="bank_label">Bank Label *</label>
+        <input id="bank_label" autocomplete="off">
+      </div>
+
+      <div class="row">
+        <label for="ghi_chu">Ghi chú</label>
+        <textarea id="ghi_chu"></textarea>
+      </div>
+
+      <div class="actions">
+        <button id="btn-save" class="save" type="button">Lưu dữ liệu</button>
+        <button id="btn-new" class="new" type="button">Thêm mới</button>
+        <button id="btn-delete" class="delete" type="button" disabled>Xóa tài khoản</button>
+        <button id="btn-logout" class="logout" type="button">Đăng xuất</button>
+      </div>
+
+      <div id="msg-box" class="msg"></div>
+    </section>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.6.1/dist/handsontable.full.min.js"></script>
   <script type="module" src="./scripts/caidattaikhoan.js"></script>
 </body>
 </html>
