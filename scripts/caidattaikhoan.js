@@ -1,1018 +1,1004 @@
-// ====== dau ======
-
-// Khai báo các biến lưu dữ liệu sản phẩm, nhân viên, bảng kết quả
-let sanPhamData = {};
-let nhanVienData = {};
-let bangKetQua = {};
-let maspDangChon = null;
-// === SUPABASE CONFIG ===
-const SUPABASE_URL = 'https://rddjrmbyftlcvrgzlyby.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-
-// =========================
-
-// Hàm chuyển focus khi nhấn Enter trong các ô nhập liệu
-
-function chuyenFocus(e) {
-  if (e.key === "Enter") {
-    const nhapNhanh = document.getElementById("nhapnhanh").checked;
-    const size45 = document.getElementById("size45").checked;
-
-    if (e.target.id === "masp") {
-      const maspVal = document.getElementById("masp").value.trim().toUpperCase();
-      const spData = sanPhamData[maspVal];
-
-      if (spData) {
-        document.getElementById("gia").value = spData.gia || "";
-        document.getElementById("khuyenmai").value = spData.km || "";
-
-        const cs = document.getElementById("diadiem").value;
-        const vitri = cs === "cs1" ? spData.vitriCS1 : spData.vitriCS2;
-        document.getElementById("vitri").value = vitri || "";
-      }
-
-      if (size45) {
-        document.getElementById("soluong").value = "1";
-        console.log("Thêm size 45 nhanh");
-        themVaoBang("45");
-      } else {
-        const nextId = nhapNhanh ? "size" : "soluong";
-        const nextInput = document.getElementById(nextId);
-        nextInput.focus();
-        if (nextId === "soluong") nextInput.select();
-      }
-
-    } else if (e.target.id === "soluong") {
-      document.getElementById("size").focus();
-
-    } else if (e.target.id === "size") {
-      themVaoBang();
-    }
-  }
-}
-
-
-
-// Hàm thêm dữ liệu vào bảng kết quả
-function themVaoBang(forcedSize = null) {
-  const masp = document.getElementById("masp").value.trim().toUpperCase();
-  const size = forcedSize || document.getElementById("size").value.trim();
-  const soluong = parseInt(document.getElementById("soluong").value.trim()) || 1;
-  const manv = document.getElementById("manv").value.trim().toUpperCase();
-
-  console.log(`Thêm SP: ${masp}, size: ${size}, SL: ${soluong}, NV: ${manv}`);
-
-  if (!masp || !size || isNaN(soluong)) return;
-
-  const sp = sanPhamData[masp];
-  if (!sp) {
-    alert("Mã sản phẩm không tồn tại trong dữ liệu!");
-    console.warn(`Không tìm thấy mã SP: ${masp}`);
-    return;
-  }
-
-  const gia = parseFloat(document.getElementById("gia").value) || 0;
-  let km = parseFloat(document.getElementById("khuyenmai").value) || 0;
-
-  if (!km) {
-    if (gia < 100000) km = 5000;
-    else if (gia < 500000) km = 10000;
-    else km = 20000;
-  }
-
-
-  const key = masp;
-  const bang = bangKetQua[key] || {
-    masp,
-    tensp: sp.tensp,
-    sizes: [],
-    soluongs: [],
-    tong: 0,
-    gia: gia,
-    km: km,
-    dvt: ""
-  };
-
-  const index = bang.sizes.indexOf(size);
-  if (index !== -1) {
-    bang.soluongs[index] += soluong;
-  } else {
-    bang.sizes.push(size);
-    bang.soluongs.push(soluong);
-    const combined = bang.sizes.map((sz, i) => ({ sz, qty: bang.soluongs[i] }));
-    combined.sort((a, b) => parseFloat(a.sz) - parseFloat(b.sz));
-    bang.sizes = combined.map(x => x.sz);
-    bang.soluongs = combined.map(x => x.qty);
-  }
-
-  bang.tong += soluong;
-  bang.dvt = "";
-  bangKetQua[key] = bang;
-
-  console.log("Dữ liệu bảng cập nhật:", bangKetQua);
-  capNhatBangHTML();
-  resetForm();
-}
-
-// Hàm cập nhật lại bảng HTML sau khi thêm dữ liệu
-function capNhatBangHTML() {
-  const tbody = document.querySelector("#bangketqua tbody");
-  tbody.innerHTML = "";
-
-  Object.values(bangKetQua).forEach(item => {
-    const thanhtien = (item.gia - item.km) * item.tong;
-    const row = tbody.insertRow();
-    row.innerHTML = `
-<td>${item.masp}</td>
-<td>${item.tensp}</td>
-<td>${item.sizes.join(",")}</td>
-<td>${item.soluongs.join(",")}</td>
-<td>${item.tong}</td>
-<td>${item.gia}</td>
-<td>${item.km}</td>
-<td>${thanhtien.toFixed(1)}</td>
-<td>${item.dvt}</td>`;
-  });
-  capNhatThongTinTong();
-
-  // Gắn sự kiện click cho từng dòng để chọn dòng cần xóa
-  document.querySelectorAll("#bangketqua tbody tr").forEach(row => {
-    row.addEventListener("click", () => {
-      maspDangChon = row.cells[0].textContent.trim();
-      console.log("Đã chọn dòng với mã SP:", maspDangChon);
-      row.style.backgroundColor = "#e6f3ff"; // Highlight dòng
-      // Reset các dòng khác
-      document.querySelectorAll("#bangketqua tbody tr").forEach(r => {
-        if (r !== row) r.style.backgroundColor = "";
-      });
-    });
-  });
-
-
-}
-
-// Reset lại form nhập liệu sau mỗi lần thêm
-function resetForm() {
-  document.getElementById("masp").value = "";
-  document.getElementById("soluong").value = "1";
-  document.getElementById("size").value = "";
-  document.getElementById("masp").focus();
-}
-
-// Hàm tải dữ liệu sản phẩm và nhân viên từ Google Apps Script
-async function loadData() {
-  const urlBase =
-    "https://script.google.com/macros/s/AKfycbwzFuA2f51Rkg5UV2dwySxtd3y8iDBtpX7LMq_z_ftE5cnQ6_HIRCHeCm-bteLChvUC/exec";
-
-  const [spRes, nvRes] = await Promise.all([
-    fetch(`${urlBase}?action=getSP`).then(r => r.json()),
-    fetch(`${urlBase}?action=getNV`).then(r => r.json())
-  ]);
-
-  // Đổ dữ liệu sản phẩm vào sanPhamData
-
-  spRes.forEach(sp => {
-    sanPhamData[sp.masp] = {
-      masp: sp.masp,
-      tensp: sp.tensp,
-      gia: Number(sp.gia),
-      km: typeof sp.km === 'number' ? sp.km : 0,
-      vitriCS1: sp.vitriCS1 || "",
-      vitriCS2: sp.vitriCS2 || ""
-    };
-  });
-
-
-  // Đổ dữ liệu nhân viên
-  nvRes.forEach(nv => nhanVienData[nv.manv] = nv.tennv);
-
-  // 🔍 Log kiểm tra
-  console.group("📦 Kết quả tải dữ liệu:");
-  console.log("🧾 Tổng số mã sản phẩm:", spRes.length);
-  console.log("👨‍💼 Tổng số nhân viên:", nvRes.length);
-  const sanPhamDataSize = new TextEncoder().encode(JSON.stringify(sanPhamData)).length / 1024;
-  console.log(`🧠 Ước tính bộ nhớ RAM bị chiếm bởi sanPhamData: ~${sanPhamDataSize.toFixed(1)} KB`);
-  console.log("🔍 Mẫu 5 mã SP đầu tiên:", Object.values(sanPhamData).slice(0, 5));
-  console.groupEnd();
-}
-
-// Gán tên nhân viên sau khi nhập mã nhân viên
-function ganTenNV() {
-  const manv = document.getElementById("manv").value.trim();
-  document.getElementById("tennv").value = nhanVienData[manv] || "";
-}
-
-// Khi trang được tải
-window.onload = () => {
-  loadData();
-  capNhatSoHoaDonTuDong();
-  document.getElementById("masp").focus();
-  document.getElementById("nhapnhanh").checked = true;
-  document.getElementById("chietkhau").addEventListener("blur", capNhatThongTinTong);
-  document.getElementById("khachtra").addEventListener("input", (e) => {
-    e.target.dataset.modified = true;
-    capNhatThongTinTong();
-  });
-
-  document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
-
-  document.getElementById("them").addEventListener("click", async () => {
-    // Xóa dữ liệu cũ (giữ lại mã NV, địa điểm...)
-    const diadiemVal = document.getElementById("diadiem").value;
-    const manvVal = document.getElementById("manv").value;
-    const tennvVal = document.getElementById("tennv").value;
-
-    document.querySelectorAll("input").forEach(input => {
-      if (!["diadiem", "manv", "tennv"].includes(input.id)) {
-        input.value = "";
-      }
-    });
-
-    bangKetQua = {};
-    capNhatBangHTML();
-
-    document.getElementById("diadiem").value = diadiemVal;
-    document.getElementById("manv").value = manvVal;
-    document.getElementById("tennv").value = tennvVal;
-    document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
-    document.getElementById("masp").focus();
-
-    // 👉 Cập nhật số hóa đơn mới
-    await capNhatSoHoaDonTuDong();
-  });
-
-
-
-  // Lệnh lưu dữ liệu bằng Supabase
-  document.getElementById("luu").addEventListener("click", async () => {
-    const khachtra = parseFloat(document.getElementById("khachtra").value) || 0;
-    const phaitra = parseFloat(document.getElementById("phaithanhtoan").value) || 0;
-    const conlai = khachtra - phaitra;
-
-    if (conlai < 0) {
-      document.getElementById("khachhang").focus();
-      alert("Khách chưa trả đủ tiền! Vui lòng nhập thông tin khách hàng để ghi sổ nợ.");
-      return;
-    } else if (conlai > 0) {
-      alert("Tiền trả lại cho khách: " + conlai.toLocaleString() + " đ");
-    }
-
-    const manv = document.getElementById("manv").value.trim();
-    const tennv = document.getElementById("tennv").value.trim();
-    const diadiem = document.getElementById("diadiem").value;
-
-    const items = [];
-
-    Object.values(bangKetQua).forEach(item => {
-      item.sizes.forEach((sz, i) => {
-        const sl = item.soluongs[i];
-        items.push({
-          soct: document.getElementById("sohd").value,
-          masp: item.masp,
-          size: sz,
-          soluong: sl,
-          manv,
-          tennv,
-          diadiem
-        });
-      });
-    });
-
-    const { error } = await supabase.from("xuatkho").insert(items);
-
-    if (error) {
-      alert("Lỗi ghi Supabase: " + error.message);
-      console.error(error);
-    } else {
-      alert("Đã lưu hóa đơn thành công!");
-      document.getElementById("them").click();
-    }
-  });
-
-
-  document.getElementById("xoa").addEventListener("click", () => {
-    xoaDongDangChon();
-  });
-
-  document.getElementById("timkiem").addEventListener("click", () => {
-    window.open("https://banle-js.vercel.app/xemhoadon.html", "_blank");
-  });
-
-  document.getElementById("quaylai").addEventListener("click", async () => {
-    const sohd = document.getElementById("sohd").value;
-    const { data, error } = await supabase
-      .from("hoadon_banle")
-      .select("*")
-      .lt("sohd", sohd)
-      .order("sohd", { ascending: false })
-      .limit(1);
-
-    if (!error && data.length) {
-      napHoaDonVaoTrang(data[0]);
-    } else {
-      alert("Không còn hóa đơn trước đó.");
-    }
-  });
-
-  document.getElementById("sohd").addEventListener("keydown", async (e) => {
-    if (e.key === "Enter") {
-      const sohd = document.getElementById("sohd").value.trim();
-      if (!sohd) return;
-
-      const { data, error } = await supabase
-        .from("hoadon_banle")
-        .select("*")
-        .eq("sohd", sohd)
-        .limit(1);
-
-      if (!error && data.length) {
-        napHoaDonVaoTrang(data[0]);
-      } else {
-        alert("Không tìm thấy hóa đơn: " + sohd);
-      }
-    }
-  });
-
-
-  document.getElementById("tieptuc").addEventListener("click", async () => {
-    const sohd = document.getElementById("sohd").value;
-    const { data, error } = await supabase
-      .from("hoadon_banle")
-      .select("*")
-      .gt("sohd", sohd)
-      .order("sohd", { ascending: true })
-      .limit(1);
-
-    if (!error && data.length) {
-      napHoaDonVaoTrang(data[0]);
-    } else {
-      alert("Không còn hóa đơn tiếp theo.");
-    }
-  });
-
-
-  ["masp", "soluong", "size"].forEach(id => {
-    const input = document.getElementById(id);
-    if (input) {
-      input.addEventListener("keydown", chuyenFocus);
-    }
-  });
-
-  const manvInput = document.getElementById("manv");
-  if (manvInput) {
-    manvInput.addEventListener("change", ganTenNV);
-  }
-
-  document.addEventListener("keydown", function (e) {
-  if (e.key === "F1") {
-    e.preventDefault();
-    moPopupThemMoi();
-
-    const btn = document.getElementById("btnThemMoiCo");
-    btn.onclick = function () {
-      dongTatCaPopup();
-      document.getElementById("them").click();
-    };
-
-    btn.addEventListener("keydown", function onKey(ev) {
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        btn.onclick();
-        btn.removeEventListener("keydown", onKey);
-      }
-    });
-  }
-});
-
-  
-  document.addEventListener("keydown", async function (e) {
-  if (e.key === "F2") {
-    e.preventDefault();
-    const table = document.querySelector("table");
-    const rows = table.querySelectorAll("tbody tr");
-    if (rows.length === 0) {
-      alert("❌ Không có dữ liệu để lưu hóa đơn.");
-      return;
-    }
-    await luuHoaDonQuaAPI();
-  }
-
-    document.addEventListener("keydown", function(e) {
-  if (e.key === "F4") {
-    e.preventDefault();
-    const khachtra = document.getElementById("khachtra");
-    if (khachtra) {
-      khachtra.focus();
-      khachtra.select();
-
-      // Gán sự kiện Enter chỉ một lần
-      khachtra.addEventListener("keydown", async function onEnter(ev) {
-        if (ev.key === "Enter") {
-          ev.preventDefault();
-          // Tránh gán nhiều lần
-          khachtra.removeEventListener("keydown", onEnter);
-
-          const rows = document.querySelectorAll("table tbody tr");
-          if (rows.length === 0) {
-            alert("❌ Không có dữ liệu để lưu.");
-            return;
-          }
-          await luuHoaDonQuaAPI();
-        }
-      }, { once: true }); // chỉ chạy 1 lần
-    }
-  }
-});
-   
-  
-
-  if (e.key === "F3") {
-    e.preventDefault();
-    xoaDongDangChon();
-  }
-
-  if (e.key === "F5") {
-    e.preventDefault();
-    const box = document.getElementById("nhapnhanh");
-    if (box) {
-      box.checked = !box.checked;
-      console.log("Toggle Nhập Nhanh:", box.checked);
-    }
-  }
-
-  if (e.key === "F6") {
-    e.preventDefault();
-    const box = document.getElementById("size45");
-    if (box) {
-      box.checked = !box.checked;
-      console.log("Toggle Size 45:", box.checked);
-    }
-  }
-});
-
+import {
+  khoiTaoDangNhapDungChung,
+  dangXuatDungChung,
+  getCurrentUserInfo,
+  getSupabaseClient,
+} from "./authModule.js";
+
+const supabase = getSupabaseClient();
+
+const BANKS = [
+  { label: "Vietcombank", bin: "970436" },
+  { label: "VietinBank", bin: "970415" },
+  { label: "BIDV", bin: "970418" },
+  { label: "Agribank", bin: "970405" },
+  { label: "MB Bank", bin: "970422" },
+  { label: "Techcombank", bin: "970407" },
+  { label: "ACB", bin: "970416" },
+  { label: "VPBank", bin: "970432" },
+  { label: "TPBank", bin: "970423" },
+  { label: "Sacombank", bin: "970403" },
+  { label: "HDBank", bin: "970437" },
+  { label: "VIB", bin: "970441" },
+  { label: "SHB", bin: "970443" },
+  { label: "SeABank", bin: "970440" },
+  { label: "OCB", bin: "970448" },
+  { label: "MSB", bin: "970426" },
+  { label: "Eximbank", bin: "970431" },
+  { label: "Nam A Bank", bin: "970428" },
+  { label: "PVcomBank", bin: "970412" },
+  { label: "Bac A Bank", bin: "970409" },
+];
+
+const state = {
+  editingId: null,
+  suggestions: [],
+  suggestIndex: -1,
+  busy: false,
+  dirty: false,
+  initialSnapshot: "",
 };
 
-// ====== Popup MASP Search ======
-document.addEventListener("DOMContentLoaded", () => {
-  const btnClear = document.getElementById("masp-clear");
-  const btnSearch = document.getElementById("masp-search");
+const els = {};
 
-  if (btnClear) {
-    btnClear.addEventListener("click", () => {
-      document.getElementById("masp").value = "";
-    });
-  }
-
-  if (btnSearch) {
-    btnSearch.addEventListener("click", () => {
-      const keyword = document.getElementById("masp").value.trim().toUpperCase();
-      hienThiDanhMucSP(keyword);
-      document.getElementById("popupDanhMuc").style.display = "block";
-    });
-  }
-});
-
-function hienThiDanhMucSP(keyword) {
-  const container = document.getElementById("danhSachSP");
-  container.innerHTML = "";
-
-  const danhSach = Object.values(sanPhamData)
-    .filter(sp => sp.masp.includes(keyword) || sp.tensp.toUpperCase().includes(keyword))
-    .slice(0, 100);
-
-  if (danhSach.length === 0) {
-    container.innerHTML = "<div style='padding:10px; color:#888;'>Không tìm thấy sản phẩm phù hợp</div>";
-    return;
-  }
-
-  danhSach.forEach(sp => {
-    const div = document.createElement("div");
-    div.textContent = `${sp.masp} - ${sp.tensp}`;
-    div.style = "padding:6px; border-bottom:1px solid #eee; cursor:pointer;";
-    div.addEventListener("click", () => {
-      document.getElementById("masp").value = sp.masp;
-
-      // Gán giá và khuyến mãi vào ô nhập liệu
-      const spData = sanPhamData[sp.masp];
-      if (spData) {
-        document.getElementById("gia").value = spData.gia || "";
-        document.getElementById("khuyenmai").value = spData.km || "";
-
-        const cs = document.getElementById("diadiem").value;
-        const vitri = cs === "cs1" ? spData.vitriCS1 : spData.vitriCS2;
-        document.getElementById("vitri").value = vitri || "";
-      }
-
-      dongPopupDM();
-      const evt = new KeyboardEvent("keydown", { key: "Enter" });
-      document.getElementById("masp").dispatchEvent(evt);
-    });
-    container.appendChild(div);
+function cacheElements() {
+  [
+    "so_tk", "dia_diem", "loai_hoa_don", "tk_chinh", "so_cuoi_hd",
+    "ten_hien_thi", "ten_tk", "bank_select", "bank_bin", "bank_label",
+    "ghi_chu", "btn-save", "btn-new", "btn-delete", "btn-logout",
+    "msg-box", "account-suggest", "record-pick-list", "record-badge", "admin-name",
+  ].forEach((id) => {
+    els[id.replaceAll("-", "_")] = document.getElementById(id);
   });
 }
 
-
-
-
-function timLaiSPTrongPopup() {
-  const keyword = document.getElementById("timKiemMaspPopup").value.trim().toUpperCase();
-  hienThiDanhMucSP(keyword);
+function cleanAccountNumber(value) {
+  return String(value ?? "").replace(/\s+/g, "").trim();
 }
 
-// Kích hoạt tìm kiếm khi nhấn Enter trong ô input tìm mã SP popup
-document.addEventListener("DOMContentLoaded", () => {
-  const inputPopup = document.getElementById("timKiemMaspPopup");
-  if (inputPopup) {
-    inputPopup.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        timLaiSPTrongPopup();
-      }
-    });
-  }
-});
-
-function dongPopupDM() {
-  document.getElementById("popupDanhMuc").style.display = "none";
-  const input = document.getElementById("timKiemMaspPopup");
-  if (input) input.value = ""; // Xóa nội dung ô tìm kiếm
-}
-
-// --------------- cap nhat tinh toan tren trang -----------------------------------
-
-function capNhatThongTinTong() {
-  const mathangInput = document.getElementById("mathang");
-  const tongslInput = document.getElementById("tongsl");
-  const tongkmInput = document.getElementById("tongkm");
-  const chietkhauInput = document.getElementById("chietkhau");
-  const phaithanhtoanInput = document.getElementById("phaithanhtoan");
-  const khachtraInput = document.getElementById("khachtra");
-  const conlaiInput = document.getElementById("conlai");
-
-  let tongSoMatHang = Object.keys(bangKetQua).length;
-  let tongSoLuong = 0;
-  let tongKhuyenMai = 0;
-  let tongThanhTien = 0;
-
-  Object.values(bangKetQua).forEach(item => {
-    const sl = item.tong;
-    const km = item.km;
-    const gia = item.gia;
-    tongSoLuong += sl;
-    tongKhuyenMai += km * sl;
-    tongThanhTien += (gia - km) * sl;
-  });
-
-  mathangInput.value = tongSoMatHang;
-  tongslInput.value = tongSoLuong;
-  tongkmInput.value = tongKhuyenMai.toLocaleString();
-
-  // Tính chiết khấu thông minh
-  let ck = parseFloat(chietkhauInput.value.trim()) || 0;
-  if (ck <= 100) {
-    ck = tongThanhTien * (ck / 100);
-    chietkhauInput.value = ck.toLocaleString();
-  }
-
-  // Tính phải trả và còn lại
-  const phaitra = tongThanhTien - ck;
-  phaithanhtoanInput.value = phaitra.toLocaleString();
-
-  // Mặc định khách trả bằng phải trả nếu chưa nhập gì
-  let khachtra = parseFloat(khachtraInput.value.trim());
-  if (!khachtraInput.dataset.modified) {
-    khachtra = phaitra;
-    khachtraInput.value = phaitra.toLocaleString();
-  }
-
-  const conlai = khachtra - phaitra;
-  conlaiInput.value = conlai.toLocaleString();
-  document.getElementById("phaithanhtoan_text").textContent = phaitra.toLocaleString();
-  document.getElementById("khachtra_text").textContent = khachtra.toLocaleString();
-  document.getElementById("conlai_text").textContent = conlai.toLocaleString();
-
-
-}
-
-
-function xoaDongDangChon() {
-  if (!maspDangChon) {
-    alert("Vui lòng chọn dòng cần xóa.");
-    return;
-  }
-
-  if (confirm(`Bạn có chắc muốn xóa mã sản phẩm "${maspDangChon}"?`)) {
-    delete bangKetQua[maspDangChon];
-    maspDangChon = null;
-    capNhatBangHTML();
-  }
-}
-
-let choPhepSua = false; // cờ xác nhận sau khi nhập mật khẩu
-
-async function luuHoaDonQuaAPI() {
-  try {
-    const sohd = document.getElementById("sohd").value.trim();
-    if (!sohd) {
-      alert("Không có số hóa đơn.");
-      return;
-    }
-
-    // Kiểm tra hóa đơn đã tồn tại chưa
-    const { data: tonTai } = await supabase
-      .from("hoadon_banle")
-      .select("sohd")
-      .eq("sohd", sohd)
-      .maybeSingle();
-
-    if (tonTai && !choPhepSua) {
-      // Nếu hóa đơn tồn tại nhưng chưa xác thực → mở popup xác thực
-      document.getElementById("popupXacThucSua").style.display = "block";
-      return;
-    }
-
-    // Nếu xác thực rồi hoặc là hóa đơn mới → tiếp tục
-    if (tonTai && choPhepSua) {
-      await supabase.from("ct_hoadon_banle").delete().eq("sohd", sohd);
-      await supabase.from("hoadon_banle").delete().eq("sohd", sohd);
-    }
-
-    // Chuẩn bị dữ liệu hóa đơn
-    const hoadon = {
-      sohd: sohd,
-      ngay: document.getElementById("ngay").value,
-      manv: document.getElementById("manv").value,
-      tennv: document.getElementById("tennv").value,
-      diadiem: document.getElementById("diadiem").value,
-      khachhang: document.getElementById("khachhang").value,
-      tongsl: parseInt(document.getElementById("tongsl").value || "0"),
-      tongkm: parseFloat(document.getElementById("tongkm").value || "0"),
-      chietkhau: parseFloat(document.getElementById("chietkhau").value || "0"),
-      //thanhtoan: parseFloat(document.getElementById("thanhtoan").value || "0"),
-      hinhthuctt: document.getElementById("hinhthuctt").value,
-      ghichu: document.getElementById("ghichu")?.value || ""
-    };
-
-    // Chuẩn bị dữ liệu chi tiết hóa đơn
-    const table = document.querySelector("table");
-    const rows = table.querySelectorAll("tbody tr");
-    
-  const chitiet = [];
-
-rows.forEach(row => {
-  const cells = row.querySelectorAll("td");
-  if (cells.length >= 7) {
-    const masp = cells[0].innerText.trim();
-    const tensp = cells[1].innerText.trim();
-    const sizeText = cells[2].innerText.trim();
-    const soluongText = cells[3].innerText.trim();
-    const gia = parseFloat(cells[5].innerText.trim()) || 0;
-    const km = parseFloat(cells[6].innerText.trim()) || 0;
-
-    const sizes = sizeText.split(",");
-    const soluongs = soluongText.split(",");
-
-    sizes.forEach((sz, i) => {
-      const sl = parseInt(soluongs[i] || "0");
-      if (sz.trim() && sl > 0) {
-        chitiet.push({
-          sohd: sohd,
-          masp: masp,
-          tensp: tensp,
-          size: sz.trim(),
-          soluong: sl,
-          gia: gia,
-          km: km,
-          thanhtien: sl * gia - km
-        });
-      }
-    });
-  }
-});
-
-
-    // Gửi dữ liệu lên Supabase
-    const { error: errHD } = await supabase.from("hoadon_banle").insert([hoadon]);
-    const { error: errCT } = await supabase.from("ct_hoadon_banle").insert(chitiet);
-
-    if (!errHD && !errCT) {
-      alert("✅ Đã lưu hóa đơn thành công!");
-      const khachtraVal = document.querySelector("input#khachtra")?.value || "0";
-      const phaithanhtoanVal = document.querySelector("input#phaithanhtoan")?.value || "0";
-
-      const hoadonIn = {
-        diadiem: hoadon.diadiem,
-        khachhang: hoadon.khachhang,
-        sohd: hoadon.sohd,
-        ngay: hoadon.ngay,
-        gio: new Date().toLocaleTimeString(),
-        khachtra: khachtraVal,
-        tongkm: hoadon.tongkm,
-        thanhtoan: hoadon.thanhtoan,
-        tralai: (parseFloat(khachtraVal) - parseFloat(phaithanhtoanVal)).toLocaleString(),
-        tongsl: hoadon.tongsl,
-        phaithanhtoan: phaithanhtoanVal
-      };
-
-      inHoaDon(hoadonIn, chitiet);
-
-      choPhepSua = false;
-
-      // === Làm mới giao diện
-      const diadiemVal = document.getElementById("diadiem").value;
-      const manvVal = document.getElementById("manv").value;
-      const tennvVal = document.getElementById("tennv").value;
-
-      document.querySelectorAll("input").forEach(input => {
-        if (!["diadiem", "manv", "tennv"].includes(input.id)) {
-          input.value = "";
-        }
-      });
-
-      bangKetQua = {};
-      capNhatBangHTML();
-      capNhatThongTinTong();
-
-      document.getElementById("diadiem").value = diadiemVal;
-      document.getElementById("manv").value = manvVal;
-      document.getElementById("tennv").value = tennvVal;
-      document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
-
-      // ✅ Cập nhật số hóa đơn mới
-      await capNhatSoHoaDonTuDong();
-
-      // ✅ Focus lại vào ô mã sản phẩm
-      setTimeout(() => {
-        document.getElementById("masp").focus();
-      }, 100);
-    } else {
-      alert("❌ Lỗi khi ghi hóa đơn.");
-      console.error(errHD || errCT);
-    }
-  } catch (err) {
-    alert("❌ Lỗi hệ thống khi lưu hóa đơn.");
-    console.error(err);
-  }
-}
-
-// === Popup tìm mã sản phẩm gợi ý theo ký tự gõ ===
-(function () {
-  const inputMaSP = document.getElementById("masp");
-  const popup = document.getElementById("popup_masp");
-
-  inputMaSP.addEventListener("input", () => {
-    const keyword = inputMaSP.value.trim().toUpperCase();
-    if (!keyword) return (popup.style.display = "none");
-
-    const danhSach = Object.values(sanPhamData)
-      .filter(sp =>
-        sp.masp.includes(keyword) || (sp.tensp || "").toUpperCase().includes(keyword)
-      )
-      .slice(0, 100);
-
-    if (danhSach.length === 0) {
-      popup.style.display = "none";
-      return;
-    }
-
-    popup.innerHTML = danhSach.map(sp => `
-      <div class="popup-masp-item" data-masp="${sp.masp}" style="padding:6px; border-bottom:1px solid #eee; cursor:pointer;">
-        ${sp.masp} - ${sp.tensp}
-      </div>
-    `).join("");
-
-    popup.style.display = "block";
-  });
-
-  popup.addEventListener("click", (e) => {
-    const item = e.target.closest(".popup-masp-item");
-    if (!item) return;
-    const masp = item.dataset.masp;
-    inputMaSP.value = masp;
-    popup.style.display = "none";
-
-    // Tự động xử lý khi chọn mã SP như bấm Enter
-    const evt = new KeyboardEvent("keydown", { key: "Enter" });
-    inputMaSP.dispatchEvent(evt);
-  });
-
-  inputMaSP.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-
-    const keyword = inputMaSP.value.trim().toUpperCase();
-    const sp = window.sanPhamData?.[keyword];
-
-    if (sp) {
-      // ✅ Có trong danh mục → xử lý như bình thường
-      xuLyKhiChonMaSanPham(keyword);  // điền thông tin
-      // ➝ Tự chuyển focus giống chuyenFocus
-      const nhapNhanh = document.getElementById("nhapnhanh").checked;
-      const size45 = document.getElementById("size45").checked;
-
-      if (size45) {
-        document.getElementById("soluong").value = "1";
-        window.themVaoBang("45");
-      } else {
-        const nextId = nhapNhanh ? "size" : "soluong";
-        const nextInput = document.getElementById(nextId);
-        nextInput?.focus();
-        if (nextId === "soluong") nextInput?.select();
-      }
-
-    } else {
-      // ❌ Không có trong danh mục → mở popup bảng danh mục để tạo mới
-      window.moBangDanhMucHangHoa(keyword);
-    }
-  }
-});
-
-
-
-  document.addEventListener("click", (e) => {
-    if (!popup.contains(e.target) && e.target !== inputMaSP) {
-      popup.style.display = "none";
-    }
-  });
-})();
-
-
-// ====== het ======
-
-// === Tự động cập nhật số hóa đơn mới nhất ===
-
-async function capNhatSoHoaDonTuDong() {
-  const { data, error } = await supabase
-    .from("hoadon_banle")
-    .select("sohd")
-    .like("sohd", "bancs1_%")
-    .order("sohd", { ascending: false })
-    .limit(1);
-
-  if (!error && data.length > 0) {
-    const lastSohd = data[0].sohd;
-    const parts = lastSohd.split("_");
-    const so = parseInt(parts[1]) + 1;
-    const newSohd = "bancs1_" + so.toString().padStart(5, "0");
-    document.getElementById("sohd").value = newSohd;
-  } else {
-    document.getElementById("sohd").value = "bancs1_00001";
-  }
-}
-
-
-// Tự động lọc theo input người dùng trong popup
-document.addEventListener("DOMContentLoaded", () => {
-  const inputPopup = document.getElementById("timKiemMaspPopup");
-  if (inputPopup) {
-    inputPopup.addEventListener("input", function () {
-      const keyword = inputPopup.value.trim().toUpperCase();
-      hienThiDanhMucSP(keyword);
-    });
-  }
-});
-//-------------------------------------------------------------------------------
-async function xacNhanSuaHoaDon() {
-  const manv = document.getElementById("xacmanv").value.trim();
-  const mk = document.getElementById("xacmatkhau").value.trim();
-  const sohd = document.getElementById("sohd").value.trim();
-  const loai = sohd.startsWith("bancs1") ? "hdbl" : "khac"; // tự điều chỉnh nếu cần
-
-  const { data, error } = await supabase
-    .from("dmnhanvien")
-    .select("matkhau, sua_hoadon, loai_duoc_sua")
-    .eq("manv", manv)
-    .maybeSingle();
-
-  if (error || !data || data.matkhau !== mk) {
-    alert("❌ Sai mã nhân viên hoặc mật khẩu.");
-    return;
-  }
-
-  const duocSua = data.sua_hoadon === true &&
-    (data.loai_duoc_sua || []).includes(loai);
-
-  if (!duocSua) {
-    alert("🚫 Bạn không có quyền sửa loại chứng từ này.");
-    return;
-  }
-
-  choPhepSua = true;
-  document.getElementById("popupXacThucSua").style.display = "none";
-  alert("✅ Xác thực thành công. Tiếp tục lưu lại hóa đơn.");
-  luuHoaDonQuaAPI(); // gọi lại
-}
-
-
-function inHoaDon(hoadon, chitiet) {
-  const data = { hoadon, chitiet };
-  localStorage.setItem("data_hoadon_in", JSON.stringify(data));
-
-  // Tạo iframe ẩn
-  const iframe = document.createElement("iframe");
-  iframe.style.display = "none";
-  iframe.src = "/in-hoadon.html"; // Đường dẫn đến trang in
-  document.body.appendChild(iframe);
-
-  iframe.onload = () => {
-    setTimeout(() => {
-      try {
-        iframe.contentWindow.print();
-      } catch (e) {
-        console.error("Không thể gọi print() từ iframe:", e);
-      }
-      // Sau khi in, xóa iframe khỏi DOM
-      document.body.removeChild(iframe);
-    }, 500); // Đợi load nội dung xong rồi mới in
+function getFormData() {
+  const isMain = els.tk_chinh.value === "true";
+
+  return {
+    id: state.editingId,
+    dia_diem: els.dia_diem.value,
+    loai_hoa_don: els.loai_hoa_don.value,
+    so_cuoi_hd:
+      isMain || els.so_cuoi_hd.value === ""
+        ? null
+        : Number(els.so_cuoi_hd.value),
+    so_tk: cleanAccountNumber(els.so_tk.value),
+    ten_hien_thi: els.ten_hien_thi.value.trim() || null,
+    ten_tk: els.ten_tk.value.trim(),
+    bank_bin: els.bank_bin.value.trim(),
+    bank_label: els.bank_label.value.trim(),
+    tk_chinh: isMain,
+    ghi_chu: els.ghi_chu.value.trim() || null,
   };
 }
 
+function snapshotForm() {
+  return JSON.stringify(getFormData());
+}
 
+function setSnapshot() {
+  state.initialSnapshot = snapshotForm();
+  state.dirty = false;
+}
 
-async function napHoaDonVaoTrang(hoadon) {
-  if (!hoadon) return;
+function updateDirty() {
+  state.dirty = snapshotForm() !== state.initialSnapshot;
+}
 
-  // Gán các trường hóa đơn tổng
-  document.getElementById("sohd").value = hoadon.sohd || "";
-  document.getElementById("ngay").value = hoadon.ngay || "";
-  document.getElementById("manv").value = hoadon.manv || "";
-  document.getElementById("tennv").value = hoadon.tennv || "";
-  document.getElementById("diadiem").value = hoadon.diadiem || "";
-  document.getElementById("khachhang").value = hoadon.khachhang || "";
-  document.getElementById("hinhthuctt").value = hoadon.hinhthuctt || "";
-  document.getElementById("chietkhau").value = hoadon.chietkhau || "0";
-  document.getElementById("tongkm").value = hoadon.tongkm || "0";
-  //document.getElementById("thanhtoan").value = hoadon.thanhtoan || "0";
-  document.getElementById("phaithanhtoan").value = hoadon.phaithanhtoan || "0";
-  document.getElementById("khachtra").value = hoadon.khachtra || hoadon.phaithanhtoan || "0";
-  document.getElementById("conlai").value = hoadon.conlai || "0";
-  document.getElementById("tongsl").value = hoadon.tongsl || "0";
+function showMsg(message = "", type = "") {
+  els.msg_box.textContent = message;
+  els.msg_box.className = `msg${type ? ` ${type}` : ""}`;
+}
 
-  // Reset bảng kết quả
-  bangKetQua = {};
+function setBusy(busy) {
+  state.busy = busy;
 
-  // Truy vấn bảng chi tiết ct_hoadon_banle
-  const { data: chiTiet, error } = await supabase
-    .from("ct_hoadon_banle")
-    .select("*")
-    .eq("sohd", hoadon.sohd);
+  els.btn_save.disabled = busy;
+  els.btn_new.disabled = busy;
+  els.btn_delete.disabled = busy || state.editingId === null;
+  els.btn_logout.disabled = busy;
+}
 
-  if (!error && chiTiet.length > 0) {
-    chiTiet.forEach(row => {
-      const masp = row.masp;
-      const size = row.size;
-      const sl = row.soluong;
+function updateMainAccountUI() {
+  const isMain = els.tk_chinh.value === "true";
 
-      if (!bangKetQua[masp]) {
-        bangKetQua[masp] = {
-          masp,
-          tensp: row.tensp || "",
-          sizes: [],
-          soluongs: [],
-          tong: 0,
-          gia: row.gia || 0,
-          km: row.km || 0,
-          dvt: ""
-        };
-      }
+  els.so_cuoi_hd.disabled = isMain;
 
-      const item = bangKetQua[masp];
-      item.sizes.push(size);
-      item.soluongs.push(sl);
-      item.tong += sl;
-    });
-
-    capNhatBangHTML();
-    capNhatThongTinTong();
-  } else {
-    alert("Không tìm thấy chi tiết hóa đơn.");
+  if (isMain) {
+    els.so_cuoi_hd.value = "";
   }
+
+  els.so_cuoi_hd.placeholder = isMain
+    ? "Tài khoản chính không dùng số cuối"
+    : "Từ 0 đến 9";
+
+  updateDirty();
 }
 
+function populateBankSelect() {
+  BANKS.forEach((bank) => {
+    const option = document.createElement("option");
 
-function moPopupThemMoi() {
-  const popup = document.getElementById("popupThemMoi");
-  popup.style.display = "block";
+    option.value = bank.bin;
+    option.textContent = `${bank.label} — ${bank.bin}`;
+    option.dataset.label = bank.label;
 
-  setTimeout(() => {
-    const btnCo = document.getElementById("btnThemMoiCo");
-    if (btnCo) btnCo.focus();
-  }, 50); // đợi 1 chút để DOM render xong
-}
-
-function dongTatCaPopup() {
-  document.querySelectorAll(".popup-confirm").forEach(popup => {
-    popup.style.display = "none";
+    els.bank_select.appendChild(option);
   });
 }
 
-document.addEventListener("keydown", function (e) {
-  if (e.key === "Escape") {
-    dongTatCaPopup();
+function syncBankSelectFromFields() {
+  const bin = els.bank_bin.value.trim();
+  const match = BANKS.find((bank) => bank.bin === bin);
+
+  els.bank_select.value = match?.bin || "";
+}
+
+function resetForm({ focus = true } = {}) {
+  state.editingId = null;
+
+  els.so_tk.value = "";
+  els.dia_diem.value = "cs1";
+  els.loai_hoa_don.value = "thuong";
+  els.tk_chinh.value = "false";
+  els.so_cuoi_hd.value = "";
+  els.ten_hien_thi.value = "";
+  els.ten_tk.value = "";
+  els.bank_select.value = "";
+  els.bank_bin.value = "";
+  els.bank_label.value = "";
+  els.ghi_chu.value = "";
+
+  els.record_badge.style.display = "none";
+  els.record_badge.textContent = "";
+
+  hidePickList();
+  hideSuggestions();
+
+  updateMainAccountUI();
+
+  els.btn_delete.disabled = true;
+
+  showMsg("Đang ở chế độ thêm mới.", "info");
+
+  setSnapshot();
+
+  if (focus) {
+    els.so_tk.focus();
   }
+}
+
+function fillForm(row) {
+  state.editingId = Number(row.id);
+
+  els.so_tk.value = row.so_tk ?? "";
+  els.dia_diem.value = row.dia_diem ?? "cs1";
+  els.loai_hoa_don.value = row.loai_hoa_don ?? "thuong";
+  els.tk_chinh.value = row.tk_chinh ? "true" : "false";
+  els.so_cuoi_hd.value = row.so_cuoi_hd ?? "";
+  els.ten_hien_thi.value = row.ten_hien_thi ?? "";
+  els.ten_tk.value = row.ten_tk ?? "";
+  els.bank_bin.value = row.bank_bin ?? "";
+  els.bank_label.value = row.bank_label ?? "";
+  els.ghi_chu.value = row.ghi_chu ?? "";
+
+  updateMainAccountUI();
+  syncBankSelectFromFields();
+
+  els.btn_delete.disabled = false;
+
+  els.record_badge.textContent =
+    `Đang sửa bản ghi ID ${state.editingId}: ${describeRecord(row)}`;
+
+  els.record_badge.style.display = "block";
+
+  hidePickList();
+  hideSuggestions();
+
+  showMsg("Đã tải thông tin tài khoản.", "success");
+
+  setSnapshot();
+}
+
+function describeRecord(row) {
+  const place =
+    row.dia_diem === "cs2"
+      ? "Cơ sở 2"
+      : "Cơ sở 1";
+
+  const type =
+    row.loai_hoa_don === "dac_biet"
+      ? "Hóa đơn đặc biệt"
+      : "Hóa đơn thường";
+
+  const role =
+    row.tk_chinh
+      ? "Tài khoản chính"
+      : `Số cuối ${row.so_cuoi_hd}`;
+
+  return `${place} — ${type} — ${role}`;
+}
+
+function validateForm(data) {
+  if (!data.so_tk) {
+    throw new Error("Số tài khoản không được bỏ trống.");
+  }
+
+  if (!/^\d{4,30}$/.test(data.so_tk)) {
+    throw new Error(
+      "Số tài khoản chỉ được chứa chữ số, từ 4 đến 30 số."
+    );
+  }
+
+  if (!data.ten_tk) {
+    throw new Error(
+      "Tên chủ tài khoản không được bỏ trống."
+    );
+  }
+
+  if (!data.bank_bin) {
+    throw new Error(
+      "Bank BIN không được bỏ trống."
+    );
+  }
+
+  if (!/^\d{6}$/.test(data.bank_bin)) {
+    throw new Error(
+      "Bank BIN phải gồm đúng 6 chữ số."
+    );
+  }
+
+  if (!data.bank_label) {
+    throw new Error(
+      "Bank Label không được bỏ trống."
+    );
+  }
+
+  if (
+    !data.tk_chinh &&
+    (
+      !Number.isInteger(data.so_cuoi_hd) ||
+      data.so_cuoi_hd < 0 ||
+      data.so_cuoi_hd > 9
+    )
+  ) {
+    throw new Error(
+      "Tài khoản phụ phải nhập số cuối hóa đơn từ 0 đến 9."
+    );
+  }
+}
+
+async function loadSuggestionCache() {
+  const { data, error } = await supabase.rpc(
+    "admin_list_tai_khoan_nhan_tien_goi_y"
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  state.suggestions = Array.isArray(data)
+    ? data
+    : [];
+}
+
+function renderSuggestions() {
+  const q = cleanAccountNumber(
+    els.so_tk.value
+  ).toLowerCase();
+
+  const matches = state.suggestions
+    .filter((row) => {
+      if (!q) {
+        return true;
+      }
+
+      return (
+        String(row.so_tk ?? "").includes(q) ||
+        String(row.ten_tk ?? "")
+          .toLowerCase()
+          .includes(q) ||
+        String(row.ten_hien_thi ?? "")
+          .toLowerCase()
+          .includes(q)
+      );
+    })
+    .slice(0, 100);
+
+  state.suggestIndex = -1;
+
+  if (!matches.length) {
+    els.account_suggest.innerHTML =
+      '<div class="empty">Không có kết quả</div>';
+  } else {
+    els.account_suggest.innerHTML = matches
+      .map(
+        (row, index) => `
+          <div
+            class="item"
+            data-index="${index}"
+            data-id="${row.id}"
+          >
+            <strong>${escapeHtml(row.so_tk)}</strong>
+            —
+            ${escapeHtml(
+              row.ten_tk ||
+              row.ten_hien_thi ||
+              ""
+            )}
+
+            <br>
+
+            <span>
+              ${escapeHtml(describeRecord(row))}
+            </span>
+          </div>
+        `
+      )
+      .join("");
+
+    els.account_suggest
+      .querySelectorAll(".item")
+      .forEach((item) => {
+        item.addEventListener(
+          "mousedown",
+          (event) => {
+            event.preventDefault();
+
+            const id = Number(
+              item.dataset.id
+            );
+
+            const row =
+              state.suggestions.find(
+                (x) =>
+                  Number(x.id) === id
+              );
+
+            if (row) {
+              els.so_tk.value = row.so_tk;
+
+              findExactAccount(
+                row.so_tk,
+                id
+              );
+            }
+          }
+        );
+      });
+  }
+
+  els.account_suggest.style.display = "block";
+}
+
+function hideSuggestions() {
+  els.account_suggest.style.display = "none";
+  state.suggestIndex = -1;
+}
+
+function hidePickList() {
+  els.record_pick_list.style.display = "none";
+  els.record_pick_list.innerHTML = "";
+}
+
+function renderPickList(rows) {
+  els.record_pick_list.innerHTML = rows
+    .map(
+      (row) => `
+        <button
+          type="button"
+          data-id="${row.id}"
+        >
+          <strong>
+            ${escapeHtml(row.so_tk)}
+          </strong>
+
+          —
+
+          ${escapeHtml(
+            describeRecord(row)
+          )}
+
+          ${
+            row.ten_tk
+              ? `<br>${escapeHtml(row.ten_tk)}`
+              : ""
+          }
+        </button>
+      `
+    )
+    .join("");
+
+  els.record_pick_list.style.display = "block";
+
+  els.record_pick_list
+    .querySelectorAll("button")
+    .forEach((button) => {
+      button.addEventListener(
+        "click",
+        () => {
+          const row = rows.find(
+            (x) =>
+              Number(x.id) ===
+              Number(button.dataset.id)
+          );
+
+          if (row) {
+            fillForm(row);
+          }
+        }
+      );
+    });
+}
+
+async function findExactAccount(
+  accountNumber = els.so_tk.value,
+  preferredId = null
+) {
+  const soTk =
+    cleanAccountNumber(accountNumber);
+
+  els.so_tk.value = soTk;
+
+  hideSuggestions();
+  hidePickList();
+
+  if (!soTk) {
+    return;
+  }
+
+  setBusy(true);
+
+  showMsg(
+    "Đang tìm tài khoản…",
+    "info"
+  );
+
+  try {
+    const { data, error } =
+      await supabase.rpc(
+        "admin_find_tai_khoan_nhan_tien",
+        {
+          p_so_tk: soTk,
+        }
+      );
+
+    if (error) {
+      throw error;
+    }
+
+    const rows =
+      Array.isArray(data)
+        ? data
+        : [];
+
+    if (!rows.length) {
+      state.editingId = null;
+
+      els.btn_delete.disabled = true;
+
+      els.record_badge.style.display =
+        "none";
+
+      showMsg(
+        "Số tài khoản mới. Hãy nhập thông tin rồi bấm Lưu dữ liệu.",
+        "info"
+      );
+
+      setSnapshot();
+
+      return;
+    }
+
+    const preferred =
+      preferredId === null
+        ? null
+        : rows.find(
+            (row) =>
+              Number(row.id) ===
+              Number(preferredId)
+          );
+
+    if (preferred) {
+      fillForm(preferred);
+    } else if (rows.length === 1) {
+      fillForm(rows[0]);
+    } else {
+      state.editingId = null;
+
+      els.btn_delete.disabled = true;
+
+      renderPickList(rows);
+
+      showMsg(
+        `Tìm thấy ${rows.length} cấu hình. Hãy chọn đúng dòng cần sửa.`,
+        "info"
+      );
+    }
+  } catch (error) {
+    console.error(error);
+
+    showMsg(
+      `Lỗi tìm tài khoản: ${
+        error.message || error
+      }`,
+      "error"
+    );
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function saveAccount() {
+  if (state.busy) {
+    return;
+  }
+
+  try {
+    const form = getFormData();
+
+    validateForm(form);
+
+    const isNew =
+      state.editingId === null;
+
+    const action =
+      isNew
+        ? "thêm mới"
+        : "cập nhật";
+
+    const role =
+      form.tk_chinh
+        ? "Tài khoản chính"
+        : `Số cuối hóa đơn ${form.so_cuoi_hd}`;
+
+    const ok = window.confirm(
+      `Xác nhận ${action} cấu hình này?\n\n`
+      +
+      `Số tài khoản: ${form.so_tk}\n`
+      +
+      `Địa điểm: ${form.dia_diem.toUpperCase()}\n`
+      +
+      `Loại hóa đơn: ${form.loai_hoa_don}\n`
+      +
+      `Phân loại: ${role}`
+    );
+
+    if (!ok) {
+      return;
+    }
+
+    setBusy(true);
+
+    showMsg(
+      "Đang lưu dữ liệu…",
+      "info"
+    );
+
+    const { data, error } =
+      await supabase.rpc(
+        "admin_save_one_tai_khoan_nhan_tien",
+        {
+          p_id: form.id,
+          p_dia_diem: form.dia_diem,
+          p_loai_hoa_don:
+            form.loai_hoa_don,
+          p_so_cuoi_hd:
+            form.so_cuoi_hd,
+          p_so_tk: form.so_tk,
+          p_ten_hien_thi:
+            form.ten_hien_thi,
+          p_ten_tk: form.ten_tk,
+          p_bank_bin: form.bank_bin,
+          p_bank_label:
+            form.bank_label,
+          p_tk_chinh: form.tk_chinh,
+          p_ghi_chu: form.ghi_chu,
+        }
+      );
+
+    if (error) {
+      throw error;
+    }
+
+    fillForm(data);
+
+    await loadSuggestionCache();
+
+    showMsg(
+      isNew
+        ? "Đã thêm tài khoản mới."
+        : "Đã cập nhật tài khoản thành công.",
+      "success"
+    );
+  } catch (error) {
+    console.error(error);
+
+    showMsg(
+      `Không lưu được: ${
+        error.message || error
+      }`,
+      "error"
+    );
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function deleteAccount() {
+  if (
+    state.busy ||
+    state.editingId === null
+  ) {
+    showMsg(
+      "Chưa tải bản ghi để xóa.",
+      "error"
+    );
+
+    return;
+  }
+
+  const form = getFormData();
+
+  const ok = window.confirm(
+    `Bạn có chắc chắn muốn xóa cấu hình này?\n\n`
+    +
+    `Số tài khoản: ${form.so_tk}\n`
+    +
+    `Địa điểm: ${form.dia_diem.toUpperCase()}\n`
+    +
+    `Loại hóa đơn: ${form.loai_hoa_don}\n`
+    +
+    `Phân loại: ${
+      form.tk_chinh
+        ? "Tài khoản chính"
+        : `Số cuối ${form.so_cuoi_hd}`
+    }`
+  );
+
+  if (!ok) {
+    return;
+  }
+
+  setBusy(true);
+
+  showMsg(
+    "Đang xóa dữ liệu…",
+    "info"
+  );
+
+  try {
+    const { error } =
+      await supabase.rpc(
+        "admin_delete_one_tai_khoan_nhan_tien",
+        {
+          p_id: state.editingId,
+        }
+      );
+
+    if (error) {
+      throw error;
+    }
+
+    await loadSuggestionCache();
+
+    resetForm({
+      focus: false,
+    });
+
+    showMsg(
+      "Đã xóa tài khoản thành công.",
+      "success"
+    );
+  } catch (error) {
+    console.error(error);
+
+    showMsg(
+      `Không xóa được: ${
+        error.message || error
+      }`,
+      "error"
+    );
+  } finally {
+    setBusy(false);
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function bindEvents() {
+  els.tk_chinh.addEventListener(
+    "change",
+    updateMainAccountUI
+  );
+
+  els.bank_select.addEventListener(
+    "change",
+    () => {
+      const bank = BANKS.find(
+        (x) =>
+          x.bin ===
+          els.bank_select.value
+      );
+
+      if (bank) {
+        els.bank_bin.value = bank.bin;
+        els.bank_label.value = bank.label;
+      }
+
+      updateDirty();
+    }
+  );
+
+  els.bank_bin.addEventListener(
+    "input",
+    () => {
+      syncBankSelectFromFields();
+      updateDirty();
+    }
+  );
+
+  document
+    .querySelectorAll(
+      "input, select, textarea"
+    )
+    .forEach((el) => {
+      el.addEventListener(
+        "input",
+        updateDirty
+      );
+
+      el.addEventListener(
+        "change",
+        updateDirty
+      );
+    });
+
+  els.so_tk.addEventListener(
+    "input",
+    () => {
+      els.so_tk.value =
+        cleanAccountNumber(
+          els.so_tk.value
+        );
+
+      renderSuggestions();
+
+      updateDirty();
+    }
+  );
+
+  els.so_tk.addEventListener(
+    "focus",
+    renderSuggestions
+  );
+
+  els.so_tk.addEventListener(
+    "keydown",
+    (event) => {
+      const items = Array.from(
+        els.account_suggest
+          .querySelectorAll(".item")
+      );
+
+      if (
+        event.key === "ArrowDown" &&
+        items.length
+      ) {
+        event.preventDefault();
+
+        state.suggestIndex =
+          (
+            state.suggestIndex + 1
+          ) % items.length;
+      } else if (
+        event.key === "ArrowUp" &&
+        items.length
+      ) {
+        event.preventDefault();
+
+        state.suggestIndex =
+          state.suggestIndex <= 0
+            ? items.length - 1
+            : state.suggestIndex - 1;
+      } else if (
+        event.key === "Enter"
+      ) {
+        event.preventDefault();
+
+        if (
+          state.suggestIndex >= 0 &&
+          items[state.suggestIndex]
+        ) {
+          items[
+            state.suggestIndex
+          ].dispatchEvent(
+            new MouseEvent(
+              "mousedown",
+              {
+                bubbles: true,
+              }
+            )
+          );
+        } else {
+          findExactAccount();
+        }
+
+        return;
+      } else if (
+        event.key === "Escape"
+      ) {
+        hideSuggestions();
+
+        return;
+      } else {
+        return;
+      }
+
+      items.forEach(
+        (item, index) =>
+          item.classList.toggle(
+            "active",
+            index ===
+              state.suggestIndex
+          )
+      );
+
+      items[
+        state.suggestIndex
+      ]?.scrollIntoView({
+        block: "nearest",
+      });
+    }
+  );
+
+  els.btn_save.addEventListener(
+    "click",
+    saveAccount
+  );
+
+  els.btn_new.addEventListener(
+    "click",
+    () => {
+      if (
+        state.dirty &&
+        !window.confirm(
+          "Dữ liệu đang nhập chưa lưu. Vẫn chuyển sang thêm mới?"
+        )
+      ) {
+        return;
+      }
+
+      resetForm();
+    }
+  );
+
+  els.btn_delete.addEventListener(
+    "click",
+    deleteAccount
+  );
+
+  els.btn_logout.addEventListener(
+    "click",
+    async () => {
+      if (
+        state.dirty &&
+        !window.confirm(
+          "Dữ liệu đang nhập chưa lưu. Vẫn đăng xuất?"
+        )
+      ) {
+        return;
+      }
+
+      await dangXuatDungChung({
+        appContainerId:
+          "app-container",
+      });
+    }
+  );
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (
+        !event.target.closest(
+          ".field-wrap"
+        )
+      ) {
+        hideSuggestions();
+      }
+    }
+  );
+
+  window.addEventListener(
+    "beforeunload",
+    (event) => {
+      if (!state.dirty) {
+        return;
+      }
+
+      event.preventDefault();
+
+      event.returnValue = "";
+    }
+  );
+}
+
+async function initializeAdminPage() {
+  const {
+    data: isAdmin,
+    error,
+  } = await supabase.rpc("is_admin");
+
+  if (error) {
+    throw error;
+  }
+
+  if (isAdmin !== true) {
+    alert(
+      "Trang này chỉ dành cho tài khoản ADMIN."
+    );
+
+    await dangXuatDungChung({
+      appContainerId:
+        "app-container",
+    });
+
+    return false;
+  }
+
+  const info = getCurrentUserInfo();
+
+  els.admin_name.textContent =
+    `${info.tennv || "ADMIN"}${
+      info.manv
+        ? ` (${info.manv})`
+        : ""
+    }`;
+
+  document
+    .getElementById("app-container")
+    .style.display = "";
+
+  try {
+    await loadSuggestionCache();
+
+    resetForm();
+  } catch (loadError) {
+    console.error(loadError);
+
+    showMsg(
+      `Không tải được danh sách tài khoản: ${
+        loadError.message ||
+        loadError
+      }`,
+      "error"
+    );
+  }
+
+  return true;
+}
+
+cacheElements();
+populateBankSelect();
+bindEvents();
+
+khoiTaoDangNhapDungChung({
+  loginContainerId: "login-container",
+  appContainerId: "app-container",
+  macDinhDiaDiem: "cs1",
+  tuDongKhoaCoSo: false,
+  onLoginSuccess: initializeAdminPage,
 });
-
-
-
