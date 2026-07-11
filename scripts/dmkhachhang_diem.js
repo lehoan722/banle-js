@@ -509,7 +509,7 @@ export function mountKhachHangSuggest(options = {}) {
 
     makhInput.value = chiLaySo(kh.makh || "");
     setVal(tenInputId, kh.tenkh || "");
-   // copyMakhNeuDu10So();
+    // copyMakhNeuDu10So();
     suggestBox.style.display = "none";
 
     dangTaoKhachMoi = false;
@@ -583,67 +583,35 @@ export function mountKhachHangSuggest(options = {}) {
   }
 
   function chuanHoaThangNamSinh(raw) {
-    let s = String(raw || "").trim().toLowerCase();
-    if (!s) return { thangsinh: null, namsinh: null };
+    const s = String(raw || "").trim();
+
+    // Không bắt buộc nhập tuổi
+    if (!s) {
+      return {
+        thangsinh: null,
+        namsinh: null
+      };
+    }
+
+    // Chỉ cho phép nhập số nguyên
+    if (!/^\d+$/.test(s)) {
+      alert("❌ Tuổi chỉ được nhập bằng số từ 16 đến 80.");
+      return false;
+    }
+
+    const tuoi = Number(s);
+
+    if (!Number.isInteger(tuoi) || tuoi < 16 || tuoi > 80) {
+      alert("❌ Tuổi chỉ được nhập trong khoảng từ 16 đến 80.");
+      return false;
+    }
 
     const namHienTai = new Date().getFullYear();
 
-    // Cách 1: nhập 2 chữ số = tuổi
-    // Ví dụ: 30 => năm sinh = năm hiện tại - 30
-    let m = s.match(/^(\d{2})$/);
-    if (m) {
-      const tuoi = Number(m[1]);
-
-      if (tuoi < 10 || tuoi > 90) {
-        alert("❌ Tuổi chỉ nhận từ 10 đến 90.");
-        return false;
-      }
-
-      return {
-        thangsinh: null,
-        namsinh: namHienTai - tuoi
-      };
-    }
-
-    // Cách 2: nhập tháng/năm sinh đầy đủ
-    // Ví dụ: 3/1979, 05-2002
-    m = s.match(/^(\d{1,2})[\/\-](\d{4})$/);
-    if (m) {
-      const thangsinh = Number(m[1]);
-      const namsinh = Number(m[2]);
-
-      if (thangsinh < 1 || thangsinh > 12) {
-        alert("❌ Tháng sinh không hợp lệ. Chỉ nhập từ 1 đến 12.");
-        return false;
-      }
-
-      if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
-        alert("❌ Năm sinh không hợp lệ.");
-        return false;
-      }
-
-      return { thangsinh, namsinh };
-    }
-
-    // Cách 3: nhập năm sinh đầy đủ 4 chữ số
-    // Ví dụ: 1974, 2000
-    m = s.match(/^(\d{4})$/);
-    if (m) {
-      const namsinh = Number(m[1]);
-
-      if (!namsinh || namsinh < 1900 || namsinh > namHienTai) {
-        alert("❌ Năm sinh không hợp lệ.");
-        return false;
-      }
-
-      return {
-        thangsinh: null,
-        namsinh
-      };
-    }
-
-    alert("❌ Dữ liệu sinh không hợp lệ. Chỉ nhập tuổi 2 số, ví dụ 30; hoặc tháng/năm như 3/1979; hoặc năm sinh như 1974.");
-    return false;
+    return {
+      thangsinh: null,
+      namsinh: namHienTai - tuoi
+    };
   }
 
   function damBaoPopupKhachMoi() {
@@ -679,8 +647,15 @@ export function mountKhachHangSuggest(options = {}) {
       </div>
 
       <div style="margin-bottom:16px;">
-        <label>Tháng/Năm sinh</label>
-<input id="popup_thangsinh" style="width:100%;padding:9px;font-size:16px;" placeholder="Ví dụ: 30, 3/1979, 5-2002 hoặc 1974">
+        <label>Tuổi</label>
+<input
+  id="popup_thangsinh"
+  type="text"
+  inputmode="numeric"
+  maxlength="2"
+  autocomplete="off"
+  style="width:100%;padding:9px;font-size:16px;"
+  placeholder="Nhập tuổi từ 16 đến 80">
       </div>
 
       <div style="display:flex;gap:12px;justify-content:center;">
@@ -707,6 +682,36 @@ export function mountKhachHangSuggest(options = {}) {
 
     const popupMakhEl = document.getElementById("popup_makh");
     const popupDienThoaiEl = document.getElementById("popup_dienthoai");
+
+    const popupTuoiEl = document.getElementById("popup_thangsinh");
+
+    popupTuoiEl?.addEventListener("input", () => {
+      // Chỉ giữ lại chữ số và tối đa 2 số
+      let tuoi = String(popupTuoiEl.value || "")
+        .replace(/\D/g, "")
+        .slice(0, 2);
+
+      popupTuoiEl.value = tuoi;
+    });
+
+    popupTuoiEl?.addEventListener("blur", () => {
+      const tuoiText = String(popupTuoiEl.value || "").trim();
+
+      // Cho phép bỏ trống
+      if (!tuoiText) return;
+
+      const tuoi = Number(tuoiText);
+
+      if (tuoi < 16 || tuoi > 80) {
+        alert("❌ Tuổi chỉ được nhập trong khoảng từ 16 đến 80.");
+
+        popupTuoiEl.value = "";
+
+        setTimeout(() => {
+          popupTuoiEl.focus();
+        }, 50);
+      }
+    });
 
     async function timKhachHangTrongPopup(keyword) {
       const kw = String(keyword || "").trim();
@@ -1206,7 +1211,7 @@ export function mountKhachHangSuggest(options = {}) {
 
           makhInput.value = chiLaySo(kh.makh || "");
           setVal(tenInputId, kh.tenkh || "");
-         // copyMakhNeuDu10So();
+          // copyMakhNeuDu10So();
 
           suggestBox.style.display = "none";
           dangTaoKhachMoi = false;
