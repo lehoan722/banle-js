@@ -987,21 +987,33 @@ export function mountKhachHangSuggest(options = {}) {
     }
 
     function capNhatTongTheoDiem(diemTru) {
-      const tongGoc =
-        Number(window.__tongPhaiTraGoc || 0) ||
-        layTongGocHoaDon();
+
       const tienMoiDiem = layTienMoiDiem();
 
       const tienGiam = diemTru * tienMoiDiem;
-      const tongSauDiem = Math.max(0, tongGoc - tienGiam);
 
-      setVal(tienDoiDiemInputId, tienGiam.toLocaleString("vi-VN"));
-      setVal("km_diem_hienthi", tienGiam.toLocaleString("vi-VN"));
-      setVal("phaithanhtoan", tongSauDiem.toLocaleString("vi-VN"));
-      setVal("khachtra", tongSauDiem.toLocaleString("vi-VN"));
-      setVal("conlai", "0");
+      // Chỉ cập nhật tiền giảm điểm
+      setVal(
+        tienDoiDiemInputId,
+        tienGiam.toLocaleString("vi-VN")
+      );
 
-      window.__tongPhaiTraGoc = tongGoc;
+      setVal(
+        "km_diem_hienthi",
+        tienGiam.toLocaleString("vi-VN")
+      );
+
+      // Không tính tổng tiền ở đây nữa
+      if (
+        typeof window.capNhatThongTinTong === "function"
+      ) {
+
+        window.capNhatThongTinTong(
+          window.bangKetQua || {}
+        );
+
+      }
+
     }
 
     diemTruEl.addEventListener("input", () => {
