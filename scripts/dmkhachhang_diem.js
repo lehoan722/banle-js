@@ -358,15 +358,47 @@ export function mountKhachHangSuggest(options = {}) {
     return !!tbody && tbody.querySelectorAll("tr").length > 0;
   }
 
+  function dangChiXemHoaDonCu() {
+    const hdState = String(
+      getEl("hd_state")?.value || ""
+    ).trim().toLowerCase();
+
+    const dangEdit =
+      window.HD_CTX?.mode === "EDIT" ||
+      window.choPhepSua === true ||
+      window.__xacNhanSuaBaoMat_OK === true;
+
+    return hdState === "xem" && !dangEdit;
+  }
+
   function khoiPhucTongGocTruocKhiDoiKhach() {
 
-    // Khi đổi hoặc xóa khách:
-    // chỉ xóa thông tin điểm đang sử dụng
+    /*
+     * Khi chỉ đang XEM hóa đơn cũ:
+     * không được gọi tính lại từ window.bangKetQua,
+     * vì state này có thể chưa đồng bộ với bảng đang hiển thị.
+     */
+    if (dangChiXemHoaDonCu()) {
+      const tongDangHienThi =
+        parseMoneyInput("phaithanhtoan");
+
+      const tienDoiDiemDangCo =
+        parseMoneyInput(tienDoiDiemInputId);
+
+      const tongGoc =
+        tongDangHienThi + tienDoiDiemDangCo;
+
+      window.__tongPhaiTraGoc = tongGoc;
+
+      // Không đụng tới tổng tiền đang hiển thị
+      return tongGoc;
+    }
+
+    // Chỉ xóa thông tin điểm khi đang ở hóa đơn mới hoặc đã vào chế độ sửa
     setVal(diemTruInputId, "0");
     setVal(tienDoiDiemInputId, "0");
     setVal("km_diem_hienthi", "0");
 
-    // Nếu không có hàng thì reset tổng gốc
     if (!coHangTrongBangKetQua()) {
       window.__tongPhaiTraGoc = 0;
 
@@ -381,8 +413,6 @@ export function mountKhachHangSuggest(options = {}) {
       return 0;
     }
 
-    // Không tự ghi phaithanhtoan, khachtra, conlai ở đây.
-    // Giao lại toàn bộ việc tính tổng cho utils.js.
     if (
       typeof window.capNhatThongTinTong === "function"
     ) {
@@ -1155,8 +1185,16 @@ export function mountKhachHangSuggest(options = {}) {
 
       const kw = makhInput.value.trim();
 
-      khoiPhucTongGocTruocKhiDoiKhach();
-      clearThongTinKhachHang();
+      if (dangChiXemHoaDonCu()) {
+        /*
+         * Người dùng mới đang gõ để tìm khách khi xem hóa đơn.
+         * Không xóa điểm và không tính lại tổng hóa đơn.
+         */
+        suggestBox.style.display = "none";
+      } else {
+        khoiPhucTongGocTruocKhiDoiKhach();
+        clearThongTinKhachHang();
+      }
 
       if (String(kw).trim().toUpperCase() === "KL") {
         setVal(tenInputId, "KHACH LE");
