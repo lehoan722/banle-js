@@ -61,18 +61,42 @@ export function capNhatThongTinTong(bangKetQua) {
 
   // Phải thanh toán
   const phaitra = tongThanhTien - ck;
-  phaithanhtoanInput.value = phaitra.toLocaleString();
 
-  // Khách trả
-  let khachtra = parseFloat(khachtraInput.value.replace(/,/g, "").trim());
+  // ===============================
+  // Đồng bộ lại tổng gốc cho module điểm
+  // ===============================
+  window.__tongPhaiTraGoc = phaitra;
+
+  // Lấy số tiền giảm theo điểm đang sử dụng
+  const tienGiamDiem =
+    Number(
+      (document.getElementById("tien_doi_diem")?.value || "0")
+        .replace(/\D/g, "")
+    ) || 0;
+
+  // Tổng sau khi trừ điểm
+  const phaiTraSauDiem = Math.max(0, phaitra - tienGiamDiem);
+
+  phaithanhtoanInput.value = phaiTraSauDiem.toLocaleString();
+
+  // Nếu người dùng chưa nhập tiền khách trả
+  // thì luôn cập nhật theo tổng mới
+  let khachtra;
+
   if (!khachtraInput.dataset.modified) {
-    khachtra = phaitra;
-    khachtraInput.value = phaitra.toLocaleString();
+
+    khachtra = phaiTraSauDiem;
+    khachtraInput.value = phaiTraSauDiem.toLocaleString();
+
+  } else {
+
+    khachtra =
+      Number(khachtraInput.value.replace(/\D/g, "")) || 0;
+
   }
 
-  // Còn lại
-  const conlai = khachtra - phaitra;
-  conlaiInput.value = conlai.toLocaleString();
+  conlaiInput.value =
+    (khachtra - phaiTraSauDiem).toLocaleString();
 
 }
 
