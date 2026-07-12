@@ -359,35 +359,41 @@ export function mountKhachHangSuggest(options = {}) {
   }
 
   function khoiPhucTongGocTruocKhiDoiKhach() {
-    const tienDoiDiemDangCo = parseMoneyInput(tienDoiDiemInputId);
 
-    // Nếu chưa có hàng trong hóa đơn thì tuyệt đối không lấy tổng cũ
+    // Khi đổi hoặc xóa khách:
+    // chỉ xóa thông tin điểm đang sử dụng
+    setVal(diemTruInputId, "0");
+    setVal(tienDoiDiemInputId, "0");
+    setVal("km_diem_hienthi", "0");
+
+    // Nếu không có hàng thì reset tổng gốc
     if (!coHangTrongBangKetQua()) {
       window.__tongPhaiTraGoc = 0;
 
-      setVal(diemTruInputId, "0");
-      setVal(tienDoiDiemInputId, "0");
-      setVal("km_diem_hienthi", "0");
-      setVal("phaithanhtoan", "0");
-      setVal("khachtra", "0");
-      setVal("conlai", "0");
+      if (
+        typeof window.capNhatThongTinTong === "function"
+      ) {
+        window.capNhatThongTinTong(
+          window.bangKetQua || {}
+        );
+      }
 
       return 0;
     }
 
-    const tongDangHienThi = parseMoneyInput("phaithanhtoan");
-    const tongGoc = tongDangHienThi + tienDoiDiemDangCo;
+    // Không tự ghi phaithanhtoan, khachtra, conlai ở đây.
+    // Giao lại toàn bộ việc tính tổng cho utils.js.
+    if (
+      typeof window.capNhatThongTinTong === "function"
+    ) {
+      window.capNhatThongTinTong(
+        window.bangKetQua || {}
+      );
+    }
 
-    window.__tongPhaiTraGoc = tongGoc;
-
-    setVal(diemTruInputId, "0");
-    setVal(tienDoiDiemInputId, "0");
-    setVal("km_diem_hienthi", "0");
-    setVal("phaithanhtoan", tongGoc.toLocaleString("vi-VN"));
-    setVal("khachtra", tongGoc.toLocaleString("vi-VN"));
-    setVal("conlai", "0");
-
-    return tongGoc;
+    return Number(
+      window.__tongPhaiTraGoc || 0
+    );
   }
 
   function clearThongTinKhachHang() {
