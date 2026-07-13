@@ -258,7 +258,7 @@ function patchAlertWithBeep() {
   function normalizeSize(v) {
     return String(v || "").trim();
   }
-  const VALID_SIZES = new Set(["0", "38", "39", "40", "41", "42", "43", "44", "45"]);
+  const VALID_SIZES = new Set(["0", "38", "39", "40", "41", "42", "43", "44", "45", "46"]);
 
   function isValidSize(size) {
     return VALID_SIZES.has(normalizeSize(size));
@@ -386,7 +386,7 @@ function patchAlertWithBeep() {
 
     if (!isValidSize(sizeVal)) {
       phatAmThanhLoi();
-      alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
+      alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45", "46");
       return;
     }
 
@@ -1811,7 +1811,7 @@ function patchAlertWithBeep() {
 
     if (!isValidSize(size)) {
       phatAmThanhLoi();
-      alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45");
+      alert("Size không hợp lệ. Chỉ được nhập: 0, 38, 39, 40, 41, 42, 43, 44, 45", "46");
       if (sizeEl) sizeEl.focus();
       return;
     }
