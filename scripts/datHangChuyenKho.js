@@ -16,6 +16,13 @@ let userClosedPanel = false;
 let restorePanelExpandedOnce = false;
 let autoRecheckRunning = false;
 
+// =========================================================
+// CHẾ ĐỘ ĐẶT HÀNG CHUYỂN KHO THỦ CÔNG
+// false = chỉ nhận đặt hàng chủ động từ StockQuickPopup
+// true  = bật lại tự động kiểm tra/gợi ý như trước
+// =========================================================
+const ENABLE_DHCK_AUTO_MODE = false;
+
 function getCurrentCoso() {
   return String(
     ctx?.diadiem ||
@@ -362,6 +369,13 @@ async function fetchCurrentSuggestionKeysByMasp(masp) {
 }
 
 async function autoMarkOutdatedNewOrders(rows) {
+
+  // Chế độ thủ công: không tự kiểm tra, không tự đổi trạng thái,
+  // không tự đánh lỗi thời các đặt hàng người dùng đã tạo.
+  if (!ENABLE_DHCK_AUTO_MODE) {
+    return false;
+  }
+
   if (!ctx?.supabase || !Array.isArray(rows) || !rows.length) return false;
   if (autoRecheckRunning) return false;
   autoRecheckRunning = true;
@@ -1586,8 +1600,18 @@ export function initDatHangChuyenKho(options = {}) {
   runDatHangCheck();
   setupDatHangRealtime();
 
-  if (timer) clearInterval(timer);
-  timer = setInterval(() => runDatHangCheck(), 5 * 60 * 1000);
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+
+  // Chỉ bật kiểm tra định kỳ khi chế độ tự động được bật lại
+  if (ENABLE_DHCK_AUTO_MODE) {
+    timer = setInterval(
+      () => runDatHangCheck(),
+      5 * 60 * 1000
+    );
+  }
 }
 
 export function attachStockQuickPopup(popup, payload) {
