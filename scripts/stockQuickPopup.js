@@ -274,6 +274,11 @@
     color: #dc2626;
     font-weight: 700;
   }
+    .sq-ton-result {
+  color: #15803d;
+  font-weight: 800;
+  margin-left: 1px;
+}
 
     .sq-stock-popup tr.sum-row td {
   font-weight: 700;
@@ -1331,21 +1336,47 @@ data-color-masp="${targetMasp}"
 
     function renderTonLech(tonRaw, lechRaw, coManocanh = false, dangChuyenQty = 0) {
       const ton = Number(tonRaw || 0);
-      const lech = lechRaw === null || lechRaw === undefined ? null : Number(lechRaw);
+      const lech = lechRaw === null || lechRaw === undefined
+        ? null
+        : Number(lechRaw);
+
       const dc = Number(dangChuyenQty || 0);
 
-      if ((ton === 0 || !ton) && (lech === null || lech === 0) && !coManocanh && !dc) return "";
+      if (
+        (ton === 0 || !ton) &&
+        (lech === null || lech === 0) &&
+        !coManocanh &&
+        !dc
+      ) {
+        return "";
+      }
 
       const tonText = ton !== 0 ? String(ton) : "0";
-      const cText = coManocanh ? `<span class="sq-mc">C</span>` : "";
-      const dText = dc > 0 ? `<span class="sq-dc" title="Đang chuyển: ${dc}">D</span>` : "";
+      const cText = coManocanh
+        ? `<span class="sq-mc">C</span>`
+        : "";
 
+      const dText = dc > 0
+        ? `<span class="sq-dc" title="Đang chuyển: ${dc}">D</span>`
+        : "";
+
+      // Không có chênh lệch kiểm tồn thì giữ nguyên cách hiển thị cũ
       if (lech === null || lech === 0) {
-        return ton !== 0 || coManocanh || dc ? `${cText}${dText}${tonText}` : "";
+        return ton !== 0 || coManocanh || dc
+          ? `${cText}${dText}${tonText}`
+          : "";
       }
 
       const sign = lech > 0 ? "+" : "";
-      return `${cText}${dText}${tonText}<span class="sq-lech">${sign}${lech}</span>`;
+
+      // Kết quả sau kiểm tồn
+      const tonSauKiem = ton + lech;
+
+      return `
+    ${cText}${dText}${tonText}
+    <span class="sq-lech">${sign}${lech}</span>
+    <span class="sq-ton-result">=${tonSauKiem}</span>
+  `;
     }
 
     function renderSumTonLech(tonRaw, lechRaw) {
@@ -1355,10 +1386,19 @@ data-color-masp="${targetMasp}"
       if (!ton && !lech) return "";
 
       const tonText = ton ? String(ton) : "0";
-      if (!lech) return tonText;
+
+      if (!lech) {
+        return tonText;
+      }
 
       const sign = lech > 0 ? "+" : "";
-      return `${tonText}<span class="sq-lech">${sign}${lech}</span>`;
+      const tonSauKiem = ton + lech;
+
+      return `
+    ${tonText}
+    <span class="sq-lech">${sign}${lech}</span>
+    <span class="sq-ton-result">=${tonSauKiem}</span>
+  `;
     }
 
     if (!rows.length && !vitri_cs1 && !vitri_cs2) {
@@ -1381,7 +1421,7 @@ data-color-masp="${targetMasp}"
       sumTongTon = 0;
 
     // ===== Luôn hiển thị đủ các dòng size: 0, 38..45 (kể cả không có dữ liệu) =====
-    const SIZE_ORDER = ["0", "38", "39", "40", "41", "42", "43", "44", "45",, "46"];
+    const SIZE_ORDER = ["0", "38", "39", "40", "41", "42", "43", "44", "45", , "46"];
 
     // Map dữ liệu trả về theo số size (0/38/39...)
     const bySizeNum = new Map();
@@ -1484,36 +1524,36 @@ data-color-masp="${targetMasp}"
         const tonSauKiem2 = getTonSauKiemLocal(r.ton_cs2, r.lech_cs2);
         const totalSauKiem = tonSauKiem1 + tonSauKiem2;
         function normSizeForDhck(v) {
-  const s = String(v || "").replace(/^size\s+/i, "").trim();
-  const m = s.match(/\d{1,2}/);
-  return m ? m[0] : s;
-}
+          const s = String(v || "").replace(/^size\s+/i, "").trim();
+          const m = s.match(/\d{1,2}/);
+          return m ? m[0] : s;
+        }
 
-const dhckSuggestions = (() => {
-  try {
-    if (window.DatHangChuyenKho?.calcSuggestionsFromPayloadForView) {
-      return window.DatHangChuyenKho.calcSuggestionsFromPayloadForView(upper, payload) || [];
-    }
-  } catch (e) {
-    console.warn("[StockQuickPopup] Không tính được gợi ý tô xanh:", e);
-  }
-  return [];
-})();
+        const dhckSuggestions = (() => {
+          try {
+            if (window.DatHangChuyenKho?.calcSuggestionsFromPayloadForView) {
+              return window.DatHangChuyenKho.calcSuggestionsFromPayloadForView(upper, payload) || [];
+            }
+          } catch (e) {
+            console.warn("[StockQuickPopup] Không tính được gợi ý tô xanh:", e);
+          }
+          return [];
+        })();
 
-const dhckSuggestKeySet = new Set(
-  dhckSuggestions.map(x =>
-    `${String(x.masp || upper).toUpperCase()}|${normSizeForDhck(x.size)}|${x.huong_chuyen}`
-  )
-);
+        const dhckSuggestKeySet = new Set(
+          dhckSuggestions.map(x =>
+            `${String(x.masp || upper).toUpperCase()}|${normSizeForDhck(x.size)}|${x.huong_chuyen}`
+          )
+        );
 
-const rowKey1v2 = `${upper}|${normSizeForDhck(sizeNum)}|1v2`;
-const rowKey2v1 = `${upper}|${normSizeForDhck(sizeNum)}|2v1`;
+        const rowKey1v2 = `${upper}|${normSizeForDhck(sizeNum)}|1v2`;
+        const rowKey2v1 = `${upper}|${normSizeForDhck(sizeNum)}|2v1`;
 
-const coGoiYChuyen =
-  sizeNum !== "0" &&
-  (dhckSuggestKeySet.has(rowKey1v2) || dhckSuggestKeySet.has(rowKey2v1));
+        const coGoiYChuyen =
+          sizeNum !== "0" &&
+          (dhckSuggestKeySet.has(rowKey1v2) || dhckSuggestKeySet.has(rowKey2v1));
 
-const suggestClass = coGoiYChuyen ? " sq-dhck-suggest-row" : "";
+        const suggestClass = coGoiYChuyen ? " sq-dhck-suggest-row" : "";
 
         return `
         <tr class="sq-open-similar-row${suggestClass}" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
