@@ -122,10 +122,16 @@ export function calcGoiy(cs1, cs2, ban1 = 0, ban2 = 0) {
 
   if (total <= 0) return "cân bằng";
 
-  // LUẬT CỨNG:
-  // Tổng tồn = 3, CS1 = 2, CS2 = 1
-  // => luôn cân bằng, tuyệt đối không chuyển kho
-  if (total === 3 && n1 === 2 && n2 === 1) {
+  // LUẬT CỨNG GIẢM LUÂN CHUYỂN:
+  // Tổng tồn = 3 và hai cơ sở đang phân bố 2-1 hoặc 1-2
+  // => luôn cân bằng, không chuyển kho dù một cơ sở bán mạnh hơn.
+  if (
+    total === 3 &&
+    (
+      (n1 === 2 && n2 === 1) ||
+      (n1 === 1 && n2 === 2)
+    )
+  ) {
     return "cân bằng";
   }
 
@@ -153,10 +159,16 @@ export function calcMoveQty(cs1, cs2, goiy = "", ban1 = 0, ban2 = 0) {
 
   if (total <= 0) return 0;
 
-  // LUẬT CỨNG:
-  // Tổng tồn = 3, CS1 = 2, CS2 = 1
-  // => số lượng chuyển luôn bằng 0
-  if (total === 3 && n1 === 2 && n2 === 1) {
+  // LUẬT CỨNG GIẢM LUÂN CHUYỂN:
+  // Tổng tồn = 3 và phân bố 2-1 hoặc 1-2
+  // => số lượng chuyển luôn bằng 0.
+  if (
+    total === 3 &&
+    (
+      (n1 === 2 && n2 === 1) ||
+      (n1 === 1 && n2 === 2)
+    )
+  ) {
     return 0;
   }
 
