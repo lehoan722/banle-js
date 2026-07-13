@@ -236,7 +236,7 @@
 
         .card-title .meta {
             margin-top: 4px;
-            font-size: 13px;
+            font-size: 14px;
             color: var(--muted);
             line-height: 1.45;
         }
@@ -284,16 +284,21 @@
         }
 
         .stock-wrap {
+            width: 100%;
+            max-width: 100%;
             overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x pan-y;
             border: 1px solid var(--line);
             border-radius: 12px;
             background: #fff;
         }
 
         table.stock-table {
-            width: 100%;
+            width: max-content;
+            min-width: 760px;
             border-collapse: collapse;
-            min-width: 560px;
             font-size: 14px;
         }
 
@@ -1817,7 +1822,17 @@
             document.getElementById('closeToolsBtn').onclick = () => toggleTools(false);
             document.getElementById('popupBtn').onclick = openPopupSearch;
             document.getElementById('closePopupBtn').onclick = closePopupSearch;
-            document.getElementById('searchBtn').onclick = triggerSearch;
+            document.getElementById('searchBtn').onclick = async e => {
+                e.preventDefault();
+
+                await triggerSearch();
+
+                maspInput.focus();
+
+                requestAnimationFrame(() => {
+                    maspInput.select();
+                });
+            };
             document.getElementById('searchBulkBtn').onclick = () => {
                 toggleTools(true);
                 maspInput.value = '';
@@ -1855,10 +1870,19 @@
                 }
             });
 
-            maspInput.addEventListener('keydown', e => {
+            maspInput.addEventListener('keydown', async e => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    triggerSearch();
+
+                    await triggerSearch();
+
+                    // Sau khi tìm xong, đưa con trỏ về ô mã
+                    // và bôi đen toàn bộ mã cũ để nhập mã tiếp theo
+                    maspInput.focus();
+
+                    requestAnimationFrame(() => {
+                        maspInput.select();
+                    });
                 }
             });
         }
