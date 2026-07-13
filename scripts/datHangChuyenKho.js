@@ -775,6 +775,91 @@ function bindMoveCheck(box) {
   });
 }
 
+function updateDeleteCheckAllState(box) {
+  if (!box) return;
+
+  const checkAll = box.querySelector("#dhck-delete-check-all");
+
+  if (!checkAll) return;
+
+  // Chỉ lấy các checkbox xóa được phép thao tác.
+  // Checkbox của bảng theo dõi cơ sở khác đang disabled nên không tính.
+  const rowChecks = Array.from(
+    box.querySelectorAll(
+      '.dhck-delete-check:not(:disabled)'
+    )
+  );
+
+  if (!rowChecks.length) {
+    checkAll.checked = false;
+    checkAll.indeterminate = false;
+    checkAll.disabled = true;
+    return;
+  }
+
+  checkAll.disabled = false;
+
+  const checkedCount = rowChecks.filter(
+    checkbox => checkbox.checked
+  ).length;
+
+  checkAll.checked =
+    checkedCount === rowChecks.length;
+
+  checkAll.indeterminate =
+    checkedCount > 0 &&
+    checkedCount < rowChecks.length;
+}
+
+function bindDeleteCheckAll(box) {
+  if (!box) return;
+
+  const checkAll = box.querySelector(
+    "#dhck-delete-check-all"
+  );
+
+  if (!checkAll) return;
+
+  // Chỉ gắn sự kiện cho checkbox đầu cột một lần
+  if (checkAll.dataset.bound !== "1") {
+    checkAll.dataset.bound = "1";
+
+    checkAll.addEventListener("click", e => {
+      e.stopPropagation();
+    });
+
+    checkAll.addEventListener("change", () => {
+      const checked = !!checkAll.checked;
+
+      box.querySelectorAll(
+        ".dhck-delete-check:not(:disabled)"
+      ).forEach(checkbox => {
+        checkbox.checked = checked;
+      });
+
+      checkAll.indeterminate = false;
+    });
+  }
+
+  // Các dòng tbody có thể bị tạo lại bởi realtime,
+  // nên phải gắn lại sự kiện cho checkbox dòng mới.
+  box.querySelectorAll(
+    ".dhck-delete-check:not(:disabled)"
+  ).forEach(checkbox => {
+    if (checkbox.dataset.deleteBound === "1") {
+      return;
+    }
+
+    checkbox.dataset.deleteBound = "1";
+
+    checkbox.addEventListener("change", () => {
+      updateDeleteCheckAllState(box);
+    });
+  });
+
+  updateDeleteCheckAllState(box);
+}
+
 async function showPanel(allRows) {
   const coso = getCurrentCoso();
   if (!coso || !allRows.length || popupOpen) return;
@@ -848,8 +933,27 @@ async function showPanel(allRows) {
     <table style="width:100%;border-collapse:collapse;background:#fff;">
       <thead>
         <tr style="background:#f4c985;">
-          <th>Xóa</th><th>Chuyển</th><th>mã sp</th><th>SL</th><th>size</th><th>hướng</th><th>NV đặt</th><th>ghi chú</th><th>trạng thái</th>
-        </tr>
+  <th style="text-align:center;">
+    <label
+      title="Chọn hoặc bỏ chọn toàn bộ dòng để xóa"
+      style="display:flex;align-items:center;justify-content:center;gap:3px;cursor:pointer;"
+    >
+      <input
+        type="checkbox"
+        id="dhck-delete-check-all"
+      >
+      <span>Xóa</span>
+    </label>
+  </th>
+  <th>Chuyển</th>
+  <th>mã sp</th>
+  <th>SL</th>
+  <th>size</th>
+  <th>hướng</th>
+  <th>NV đặt</th>
+  <th>ghi chú</th>
+  <th>trạng thái</th>
+</tr>
       </thead>
       <tbody>${renderRows(canMove, true)}</tbody>
     </table>
@@ -948,6 +1052,7 @@ async function showPanel(allRows) {
 
   bindInlineNoteAutosave(box);
   bindMoveCheck(box);
+  bindDeleteCheckAll(box);
 
   box.querySelector("#dhck-close").onclick = async () => {
     userClosedPanel = true;
@@ -1233,7 +1338,11 @@ async function deleteOutdatedMovingOrders(box, canMove) {
 }
 
 async function deleteCheckedOrders(box, canMove) {
-  await flushInlineNotes(box);
+  if (!ctx?.supabase) {
+    alert("Supabase chưa sẵn sàng.");
+    return;
+  }
+
   const isAdmin = await isAdminUser();
 
   if (!isAdmin) {
@@ -1241,47 +1350,137 @@ async function deleteCheckedOrders(box, canMove) {
     return;
   }
 
-  const ids = Array.from(box.querySelectorAll(".dhck-delete-check:checked"))
-    .map(c => Number(c.dataset.id))
+  const checkedIds = Array.from(
+    box.querySelectorAll(
+      ".dhck-delete-check:checked:not(:disabled)"
+    )
+  )
+    .map(checkbox => Number(checkbox.dataset.id))
     .filter(Boolean);
 
-  if (!ids.length) {
+  if (!checkedIds.length) {
     alert("Bạn chưa tick dòng nào để xóa.");
     return;
   }
 
-  const allowedIds = canMove.map(r => Number(r.id));
-  const deleteIds = ids.filter(id => allowedIds.includes(id));
+  // Chỉ cho phép xóa các dòng thuộc cơ sở hiện tại
+  const allowedIdSet = new Set(
+    (canMove || [])
+      .map(row => Number(row.id))
+      .filter(Boolean)
+  );
+
+  const deleteIds = checkedIds.filter(
+    id => allowedIdSet.has(id)
+  );
 
   if (!deleteIds.length) {
     alert("Bạn chỉ được xóa dòng đặt hàng của cơ sở mình.");
     return;
   }
 
-  if (!confirm(`Bạn chắc chắn muốn xóa ${deleteIds.length} dòng đặt hàng này?`)) {
-    return;
+  const selectedRows = (canMove || []).filter(
+    row => deleteIds.includes(Number(row.id))
+  );
+
+  const previewLines = selectedRows
+    .slice(0, 10)
+    .map(row =>
+      `${row.masp || ""} | size ${row.size || ""} | ${row.huong_chuyen || ""}`
+    )
+    .join("\n");
+
+  const moreText =
+    selectedRows.length > 10
+      ? `\n... và ${selectedRows.length - 10} dòng khác`
+      : "";
+
+  const confirmed = confirm(
+    `Bạn chắc chắn muốn XÓA THẬT ${deleteIds.length} dòng đặt hàng?\n\n` +
+    `${previewLines}${moreText}\n\n` +
+    `Dữ liệu sẽ bị xóa khỏi bảng và không còn hiển thị.`
+  );
+
+  if (!confirmed) return;
+
+  suppressRealtimeUntil = Date.now() + 2500;
+
+  const deleteButton = box.querySelector("#dhck-delete");
+  const oldButtonText = deleteButton?.textContent || "Xóa đặt hàng";
+
+  if (deleteButton) {
+    deleteButton.disabled = true;
+    deleteButton.textContent = "Đang xóa...";
   }
 
-  const { error } = await ctx.supabase
-    .from("dat_hang_chuyen_kho")
-    .update({
-      trang_thai: "loi_thoi",
-      chon_chuyen: false,
-      updated_at: new Date().toISOString()
-    })
-    .in("id", deleteIds);
+  try {
+    const { data, error } = await ctx.supabase.rpc(
+      "dhck_delete_orders",
+      {
+        p_ids: deleteIds
+      }
+    );
 
-  if (error) {
-    console.error("[Đặt hàng CK] Lỗi xóa:", error);
-    alert("❌ Không xóa được đặt hàng.");
-    return;
+    if (error) {
+      console.error(
+        "[Đặt hàng CK] Lỗi xóa thật:",
+        error
+      );
+
+      alert(
+        "❌ Không xóa được đặt hàng.\n\n" +
+        (error.message || "Lỗi không xác định")
+      );
+
+      return;
+    }
+
+    const result =
+      data && typeof data === "object"
+        ? data
+        : {};
+
+    if (result.ok === false) {
+      alert(
+        "❌ " +
+        (
+          result.message ||
+          "Không xóa được đặt hàng."
+        )
+      );
+
+      return;
+    }
+
+    const deletedCount = Number(
+      result.deleted_count ?? deleteIds.length
+    );
+
+    alert(
+      `✅ Đã xóa thật ${deletedCount} dòng đặt hàng chuyển kho.`
+    );
+
+    popupOpen = false;
+    document.getElementById("dhck-panel")?.remove();
+
+    await runDatHangCheck(true);
+
+  } catch (error) {
+    console.error(
+      "[Đặt hàng CK] Exception khi xóa thật:",
+      error
+    );
+
+    alert(
+      "❌ Có lỗi khi xóa đặt hàng chuyển kho."
+    );
+
+  } finally {
+    if (deleteButton?.isConnected) {
+      deleteButton.disabled = false;
+      deleteButton.textContent = oldButtonText;
+    }
   }
-
-  alert("✅ Đã chuyển đặt hàng sang lỗi thời và ẩn khỏi giao diện.");
-
-  popupOpen = false;
-  document.getElementById("dhck-panel")?.remove();
-  await runDatHangCheck(true);
 }
 
 async function validateOrderIdsBeforeCreate(ids) {
@@ -1520,6 +1719,7 @@ async function refreshPanelSmooth() {
 
   bindMoveCheck(panel);
   bindInlineNoteAutosave(panel);
+  bindDeleteCheckAll(panel);
 
   panel.querySelectorAll(".dhck-masp-link").forEach(el => {
     el.addEventListener("click", (e) => {
