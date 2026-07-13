@@ -610,25 +610,47 @@ async function fetchMaspsByDateRange() {
 async function fetchXntRows(masps) {
   if (!masps?.length) return [];
 
-  const BATCH_SIZE = 30;
+  const BATCH_SIZE = 100;
+  const PARALLEL_BATCHES = 3;
   const allRows = [];
 
+  const batches = [];
+
   for (let i = 0; i < masps.length; i += BATCH_SIZE) {
-    const batch = masps.slice(i, i + BATCH_SIZE);
+    batches.push(masps.slice(i, i + BATCH_SIZE));
+  }
 
-    const rpcParams = {
-      p_masps: batch,
-      p_den_ngay: $("den_ngay").value || getTodayYmd(),
-      p_tonghop_size: false
-    };
+  for (let i = 0; i < batches.length; i += PARALLEL_BATCHES) {
+    const group = batches.slice(i, i + PARALLEL_BATCHES);
 
-    console.log("[ChuyenKho] Gọi xntnhanh batch:", i / BATCH_SIZE + 1, batch);
+    const results = await Promise.all(
+      group.map(async (batch, groupIndex) => {
+        const batchNo = i + groupIndex + 1;
 
-    const { data, error } = await supabase.rpc("xntnhanh", rpcParams);
+        console.log(
+          "[ChuyenKho] Gọi xntnhanh batch:",
+          batchNo,
+          batch.length
+        );
 
-    if (error) throw error;
+        const { data, error } = await supabase.rpc(
+          "xntnhanh",
+          {
+            p_masps: batch,
+            p_den_ngay: $("den_ngay").value || getTodayYmd(),
+            p_tonghop_size: false
+          }
+        );
 
-    allRows.push(...(data || []));
+        if (error) throw error;
+
+        return data || [];
+      })
+    );
+
+    results.forEach(rows => {
+      allRows.push(...rows);
+    });
   }
 
   console.log("[ChuyenKho] Tổng dòng xntRows:", allRows.length);
@@ -640,20 +662,62 @@ async function fetchXntRows(masps) {
   const kiemTonMap = new Map();
 
   if (isUseKiemTonEnabled()) {
-    for (const masp of masps) {
-      const code = normalizeMasp(masp);
-      if (!code) continue;
+    const codes = uniq(
+      masps
+        .map(normalizeMasp)
+        .filter(Boolean)
+    );
 
-      const { data, error } = await supabase.rpc("rpc_stockquick_kiemton", {
-        p_masp: code
+    const KIEMTON_BATCH_SIZE = 10;
+
+    for (let i = 0; i < codes.length; i += KIEMTON_BATCH_SIZE) {
+      const batch = codes.slice(i, i + KIEMTON_BATCH_SIZE);
+
+      const results = await Promise.all(
+        batch.map(async (code) => {
+          try {
+            const { data, error } = await supabase.rpc(
+              "rpc_stockquick_kiemton",
+              {
+                p_masp: code
+              }
+            );
+
+            if (error) {
+              console.warn(
+                "[ChuyenKho] Không lấy được kiểm tồn:",
+                code,
+                error
+              );
+
+              return {
+                code,
+                data: { cs1: {}, cs2: {} }
+              };
+            }
+
+            return {
+              code,
+              data: data || { cs1: {}, cs2: {} }
+            };
+          } catch (error) {
+            console.warn(
+              "[ChuyenKho] Lỗi kiểm tồn:",
+              code,
+              error
+            );
+
+            return {
+              code,
+              data: { cs1: {}, cs2: {} }
+            };
+          }
+        })
+      );
+
+      results.forEach(({ code, data }) => {
+        kiemTonMap.set(code, data);
       });
-
-      if (error) {
-        console.warn("[ChuyenKho] Không lấy được kiểm tồn:", code, error);
-        continue;
-      }
-
-      kiemTonMap.set(code, data || { cs1: {}, cs2: {} });
     }
   }
 
