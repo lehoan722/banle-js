@@ -274,10 +274,11 @@
     color: #dc2626;
     font-weight: 700;
   }
-    .sq-ton-result {
+    
+  .sq-ton-result {
   color: #15803d;
-  font-weight: 800;
-  margin-left: 1px;
+  font-weight: 400;
+  margin-left: 0;
 }
 
     .sq-stock-popup tr.sum-row td {
@@ -1372,11 +1373,7 @@ data-color-masp="${targetMasp}"
       // Kết quả sau kiểm tồn
       const tonSauKiem = ton + lech;
 
-      return `
-    ${cText}${dText}${tonText}
-    <span class="sq-lech">${sign}${lech}</span>
-    <span class="sq-ton-result">=${tonSauKiem}</span>
-  `;
+      return `${cText}${dText}${tonText}<span class="sq-lech">${sign}${lech}</span><span class="sq-ton-result">=${tonSauKiem}</span>`;
     }
 
     function renderSumTonLech(tonRaw, lechRaw) {
@@ -1394,11 +1391,7 @@ data-color-masp="${targetMasp}"
       const sign = lech > 0 ? "+" : "";
       const tonSauKiem = ton + lech;
 
-      return `
-    ${tonText}
-    <span class="sq-lech">${sign}${lech}</span>
-    <span class="sq-ton-result">=${tonSauKiem}</span>
-  `;
+      return `${tonText}<span class="sq-lech">${sign}${lech}</span><span class="sq-ton-result">=${tonSauKiem}</span>`;
     }
 
     if (!rows.length && !vitri_cs1 && !vitri_cs2) {
