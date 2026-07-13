@@ -198,6 +198,9 @@
         }
 
         .result-list {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
             margin-top: 10px;
             display: flex;
             flex-direction: column;
@@ -205,6 +208,9 @@
         }
 
         .product-card {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
             background: var(--card);
             border: 1px solid var(--line);
             border-radius: 16px;
@@ -236,7 +242,7 @@
 
         .card-title .meta {
             margin-top: 4px;
-            font-size: 14px;
+            font-size: 18px;
             color: var(--muted);
             line-height: 1.45;
         }
@@ -254,6 +260,13 @@
             display: grid;
             grid-template-columns: 1fr;
             gap: 10px;
+        }
+
+        .main-pane {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
         }
 
         .meta-grid {
@@ -284,20 +297,28 @@
         }
 
         .stock-wrap {
+            display: block;
             width: 100%;
             max-width: 100%;
-            overflow-x: auto;
+            min-width: 0;
+
+            overflow-x: scroll;
             overflow-y: hidden;
+
             -webkit-overflow-scrolling: touch;
-            touch-action: pan-x pan-y;
+            touch-action: pan-x;
+            overscroll-behavior-x: contain;
+
             border: 1px solid var(--line);
             border-radius: 12px;
             background: #fff;
         }
 
         table.stock-table {
-            width: max-content;
-            min-width: 760px;
+            width: 820px;
+            min-width: 820px;
+            max-width: none;
+            table-layout: auto;
             border-collapse: collapse;
             font-size: 14px;
         }
