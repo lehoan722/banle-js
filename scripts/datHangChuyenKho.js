@@ -964,10 +964,18 @@ async function showPanel(allRows) {
     </table>
 
     <div style="text-align:right;margin:6px 0;">
+  <button
+    id="dhck-recheck-outdated"
+    title="Tính lại toàn bộ đặt hàng theo tồn kho hiện tại và ẩn các dòng không còn cần chuyển"
+  >
+    Kiểm tra lỗi thời ngay
+  </button>
+
   ${isAdmin ? `<button id="dhck-delete-outdated">Xóa lỗi thời</button>` : ""}
   ${isAdmin ? `<button id="dhck-delete">Xóa đặt hàng</button>` : ""}
+
   <button id="dhck-create-ccn">Tạo hóa đơn CCN</button>
- </div>
+</div>
 
     <table style="width:100%;border-collapse:collapse;background:#f7f7f7;">
       <thead>
@@ -1197,7 +1205,17 @@ async function showPanel(allRows) {
     placeCollapsedBox();
   }, 0);
 
-  box.querySelector("#dhck-create-ccn").onclick = () => createCcnFromChecked(box, canMove);
+  box.querySelector("#dhck-create-ccn").onclick = () => {
+    createCcnFromChecked(box, canMove);
+  };
+
+  box.querySelector("#dhck-recheck-outdated")?.addEventListener(
+    "click",
+    async () => {
+      await manualRecheckOutdatedOrders(box, canMove);
+    }
+  );
+
   box.querySelector("#dhck-delete")?.addEventListener("click", () => {
     deleteCheckedOrders(box, canMove);
   });
@@ -1340,6 +1358,93 @@ async function deleteOutdatedMovingOrders(box, canMove) {
   popupOpen = false;
   document.getElementById("dhck-panel")?.remove();
   await runDatHangCheck(true);
+}
+
+async function manualRecheckOutdatedOrders(box, canMove) {
+  if (!ctx?.supabase) {
+    alert("Supabase chưa sẵn sàng.");
+    return;
+  }
+
+  if (autoRecheckRunning) {
+    alert("Hệ thống đang kiểm tra lỗi thời. Vui lòng chờ một chút.");
+    return;
+  }
+
+  await flushInlineNotes(box);
+
+  const button = box.querySelector("#dhck-recheck-outdated");
+  const oldText = button?.textContent || "Kiểm tra lỗi thời ngay";
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Đang kiểm tra...";
+  }
+
+  const oldCount = Array.isArray(canMove)
+    ? canMove.length
+    : 0;
+
+  try {
+    // fetchOrders đã tự gọi:
+    // autoMarkOutdatedNewOrders()
+    // và tải lại dữ liệu nếu có dòng bị đổi trạng thái.
+    const rowsAfterCheck = await fetchOrders();
+
+    const coso = getCurrentCoso();
+
+    const canMoveAfter = (rowsAfterCheck || []).filter(
+      row =>
+        String(row.tu_coso || "")
+          .trim()
+          .toLowerCase() === coso
+    );
+
+    const hiddenCount = Math.max(
+      0,
+      oldCount - canMoveAfter.length
+    );
+
+    // Đóng bảng cũ và dựng lại bằng dữ liệu mới nhất
+    popupOpen = false;
+    document.getElementById("dhck-panel")?.remove();
+
+    userClosedPanel = false;
+    restorePanelExpandedOnce = true;
+
+    if (rowsAfterCheck.length) {
+      await showPanel(rowsAfterCheck);
+    }
+
+    if (hiddenCount > 0) {
+      alert(
+        `✅ Đã kiểm tra xong.\n` +
+        `Đã phát hiện và ẩn ${hiddenCount} dòng không còn cần chuyển kho.`
+      );
+    } else {
+      alert(
+        "✅ Đã kiểm tra xong.\n" +
+        "Không phát hiện thêm dòng đặt hàng lỗi thời."
+      );
+    }
+
+  } catch (error) {
+    console.error(
+      "[Đặt hàng CK] Lỗi kiểm tra lỗi thời thủ công:",
+      error
+    );
+
+    alert(
+      "❌ Không thể kiểm tra lỗi thời lúc này.\n" +
+      "Vui lòng thử lại."
+    );
+
+  } finally {
+    if (button?.isConnected) {
+      button.disabled = false;
+      button.textContent = oldText;
+    }
+  }
 }
 
 async function deleteCheckedOrders(box, canMove) {
