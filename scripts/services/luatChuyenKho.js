@@ -203,10 +203,23 @@ export function calcSuggestionFromRow(row, maspInput = "", salesContext = null) 
   const ton1 = getTonSauKiem(row, "cs1");
   const ton2 = getTonSauKiem(row, "cs2");
 
-  const ban1 = Number(salesContext?.ban_cs1 ?? row?.ban_cs1 ?? 0);
-  const ban2 = Number(salesContext?.ban_cs2 ?? row?.ban_cs2 ?? 0);
+  // Tổng số bán của toàn bộ mã hàng tại từng cơ sở.
+  // Khi calcSuggestionFromRow được gọi từ calcSuggestionsFromRows,
+  // salesContext chứa tổng bán của tất cả size.
+  const ban1 = Number(
+    salesContext?.ban_cs1 ??
+    row?.ban_cs1 ??
+    0
+  );
+
+  const ban2 = Number(
+    salesContext?.ban_cs2 ??
+    row?.ban_cs2 ??
+    0
+  );
 
   const huong = calcGoiy(ton1, ton2, ban1, ban2);
+
   if (huong === "cân bằng") return null;
 
   const soluong = calcMoveQty(ton1, ton2, huong, ban1, ban2);
@@ -247,13 +260,65 @@ export function calcSuggestionsFromRows(rows = [], maspInput = "") {
 
   if (!suggestions.length) return [];
 
-  const tongTonCs1 = safeRows.reduce((s, r) => s + getTonSauKiem(r, "cs1"), 0);
-  const tongTonCs2 = safeRows.reduce((s, r) => s + getTonSauKiem(r, "cs2"), 0);
+  const tongTonCs1 = safeRows.reduce(
+    (s, r) => s + getTonSauKiem(r, "cs1"),
+    0
+  );
+
+  const tongTonCs2 = safeRows.reduce(
+    (s, r) => s + getTonSauKiem(r, "cs2"),
+    0
+  );
+
+  // =========================================================
+  // LUẬT CỨNG GIẢM LUÂN CHUYỂN 2V1
+  //
+  // Chỉ chặn size 0-2 khi:
+  // - đang gợi ý chuyển 2v1;
+  // - toàn mã chưa bán tại CS1;
+  // - CS1 đã có hàng của mã này;
+  // - tổng tồn CS1 đạt ít nhất 30% tổng tồn CS2.
+  //
+  // Nếu tổng tồn CS1 = 0 thì không chặn,
+  // vì có thể là hàng mới nhập toàn bộ về CS2 và cần phân hàng sang CS1.
+  // =========================================================
+  const tyLeTonCs1SoVoiCs2 =
+    tongTonCs2 > 0
+      ? tongTonCs1 / tongTonCs2
+      : 0;
+
+  const shouldBlockZeroTwoToCs1 =
+    totalBanCs1 === 0 &&
+    tongTonCs1 > 0 &&
+    tongTonCs2 > 0 &&
+    tyLeTonCs1SoVoiCs2 >= 0.30;
+
+  const filteredSuggestions = suggestions.filter(s => {
+    const isZeroTwoToCs1 =
+      s.huong_chuyen === "2v1" &&
+      Number(s.ton_sau_kiem_cs1 || 0) === 0 &&
+      Number(s.ton_sau_kiem_cs2 || 0) === 2;
+
+    if (
+      shouldBlockZeroTwoToCs1 &&
+      isZeroTwoToCs1
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  if (!filteredSuggestions.length) {
+    return [];
+  }
 
   const out = [];
 
   ["1v2", "2v1"].forEach((huong) => {
-    const group = suggestions.filter(s => s.huong_chuyen === huong);
+    const group = filteredSuggestions.filter(
+      s => s.huong_chuyen === huong
+    );
     if (!group.length) return;
 
     const destTotalTon = huong === "1v2" ? tongTonCs2 : tongTonCs1;
