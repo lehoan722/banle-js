@@ -511,95 +511,46 @@ function splitTextareaKeywords() {
 /* =========================================================
    6) NẾU TEXTAREA RỖNG -> LẤY MÃ THEO KHOẢNG NGÀY
 ========================================================= */
-async function fetchMaspsByDateRange() {
+
+async function fetchMaspsByDateRange(nhomHangs = []) {
   const tuNgay = $("tu_ngay").value || getYesterdayYmd();
   const denNgay = $("den_ngay").value || getTodayYmd();
 
-  const PAGE_SIZE = 1000;
+  const groups = (nhomHangs || [])
+    .map(v => String(v || "").trim().toUpperCase())
+    .filter(Boolean);
 
-  // =====================================================
-  // 1. LẤY TOÀN BỘ HEADER HÓA ĐƠN - CÓ PHÂN TRANG
-  // =====================================================
-  const headers = [];
+  console.time("[ChuyenKho] rpc_chuyenkho_masps_by_filter");
 
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const to = from + PAGE_SIZE - 1;
-
-    const { data, error } = await supabase
-      .from("hoadon_banle")
-      .select("sohd, ngay")
-      .gte("ngay", tuNgay)
-      .lte("ngay", denNgay)
-      .order("sohd", { ascending: true })
-      .range(from, to);
-
-    if (error) throw error;
-
-    headers.push(...(data || []));
-
-    if (!data || data.length < PAGE_SIZE) {
-      break;
+  const { data, error } = await supabase.rpc(
+    "rpc_chuyenkho_masps_by_filter",
+    {
+      p_tu_ngay: tuNgay,
+      p_den_ngay: denNgay,
+      p_nhomhangs: groups.length ? groups : null
     }
-  }
-
-  const sohds = uniq(
-    headers
-      .map((x) => String(x.sohd || "").trim())
-      .filter((sohd) => {
-        const s = sohd.toLowerCase();
-
-        return SALES_PREFIXES.some((prefix) =>
-          s.startsWith(prefix)
-        );
-      })
   );
 
-  console.log("[ChuyenKho] Tổng header:", headers.length);
-  console.log("[ChuyenKho] Tổng hóa đơn bán:", sohds.length);
+  console.timeEnd("[ChuyenKho] rpc_chuyenkho_masps_by_filter");
 
-  if (!sohds.length) return [];
-
-  // =====================================================
-  // 2. CHIA NHỎ DANH SÁCH SOHD
-  // =====================================================
-  const SOHD_BATCH_SIZE = 100;
-
-  const allDetails = [];
-
-  for (let i = 0; i < sohds.length; i += SOHD_BATCH_SIZE) {
-    const sohdBatch = sohds.slice(i, i + SOHD_BATCH_SIZE);
-
-    // ===================================================
-    // 3. MỖI BATCH TIẾP TỤC PHÂN TRANG CHI TIẾT
-    // ===================================================
-    for (let from = 0; ; from += PAGE_SIZE) {
-      const to = from + PAGE_SIZE - 1;
-
-      const { data, error } = await supabase
-        .from("ct_hoadon_banle")
-        .select("sohd, masp")
-        .in("sohd", sohdBatch)
-        .order("sohd", { ascending: true })
-        .range(from, to);
-
-      if (error) throw error;
-
-      allDetails.push(...(data || []));
-
-      if (!data || data.length < PAGE_SIZE) {
-        break;
-      }
-    }
+  if (error) {
+    console.error(
+      "[ChuyenKho] rpc_chuyenkho_masps_by_filter error:",
+      error
+    );
+    throw error;
   }
 
   const masps = uniq(
-    allDetails
-      .map((x) => normalizeMasp(x.masp))
+    (data || [])
+      .map(r => normalizeMasp(r.masp))
       .filter(Boolean)
   );
 
-  console.log("[ChuyenKho] Tổng dòng chi tiết:", allDetails.length);
-  console.log("[ChuyenKho] Tổng mã SP duy nhất:", masps.length);
+  console.log(
+    "[ChuyenKho] Tổng mã từ RPC ngày/nhóm:",
+    masps.length
+  );
 
   return masps;
 }
@@ -607,8 +558,15 @@ async function fetchMaspsByDateRange() {
 /* =========================================================
    7) RPC TỒN KHO
 ========================================================= */
+
 async function fetchXntRows(masps) {
   if (!masps?.length) return [];
+
+  const cleanMasps = uniq(
+    masps
+      .map(normalizeMasp)
+      .filter(Boolean)
+  );
 
   const BATCH_SIZE = 100;
   const PARALLEL_BATCHES = 3;
@@ -616,21 +574,24 @@ async function fetchXntRows(masps) {
 
   const batches = [];
 
-  for (let i = 0; i < masps.length; i += BATCH_SIZE) {
-    batches.push(masps.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < cleanMasps.length; i += BATCH_SIZE) {
+    batches.push(cleanMasps.slice(i, i + BATCH_SIZE));
   }
 
+  console.time("[ChuyenKho] Tổng thời gian xntnhanh");
+
+  // Mỗi lượt chạy tối đa 3 batch song song
   for (let i = 0; i < batches.length; i += PARALLEL_BATCHES) {
     const group = batches.slice(i, i + PARALLEL_BATCHES);
 
     const results = await Promise.all(
-      group.map(async (batch, groupIndex) => {
-        const batchNo = i + groupIndex + 1;
+      group.map(async (batch, offset) => {
+        const batchNo = i + offset + 1;
 
         console.log(
-          "[ChuyenKho] Gọi xntnhanh batch:",
-          batchNo,
-          batch.length
+          `[ChuyenKho] Gọi xntnhanh batch ${batchNo}/${batches.length}:`,
+          batch.length,
+          "mã"
         );
 
         const { data, error } = await supabase.rpc(
@@ -642,7 +603,13 @@ async function fetchXntRows(masps) {
           }
         );
 
-        if (error) throw error;
+        if (error) {
+          console.error(
+            `[ChuyenKho] xntnhanh batch ${batchNo} lỗi:`,
+            error
+          );
+          throw error;
+        }
 
         return data || [];
       })
@@ -653,84 +620,84 @@ async function fetchXntRows(masps) {
     });
   }
 
-  console.log("[ChuyenKho] Tổng dòng xntRows:", allRows.length);
+  console.timeEnd("[ChuyenKho] Tổng thời gian xntnhanh");
+
   console.log(
-    "[ChuyenKho] Có 483 trong xntRows không:",
-    allRows.some(r => normalizeMasp(r.masp) === "483-APMDM.TIMT")
+    "[ChuyenKho] Tổng dòng xntRows:",
+    allRows.length
   );
 
+  // =====================================================
+  // KIỂM TỒN: CHỈ GỌI 1 RPC CHO TOÀN BỘ DANH SÁCH MÃ
+  // =====================================================
   const kiemTonMap = new Map();
 
   if (isUseKiemTonEnabled()) {
-    const codes = uniq(
-      masps
-        .map(normalizeMasp)
-        .filter(Boolean)
+    setGoiYStatus(
+      `Đang ghép kiểm tồn gần nhất cho ${cleanMasps.length} mã...`,
+      "loading"
     );
 
-    const KIEMTON_BATCH_SIZE = 10;
+    console.time("[ChuyenKho] Kiểm tồn hàng loạt");
 
-    for (let i = 0; i < codes.length; i += KIEMTON_BATCH_SIZE) {
-      const batch = codes.slice(i, i + KIEMTON_BATCH_SIZE);
-
-      const results = await Promise.all(
-        batch.map(async (code) => {
-          try {
-            const { data, error } = await supabase.rpc(
-              "rpc_stockquick_kiemton",
-              {
-                p_masp: code
-              }
-            );
-
-            if (error) {
-              console.warn(
-                "[ChuyenKho] Không lấy được kiểm tồn:",
-                code,
-                error
-              );
-
-              return {
-                code,
-                data: { cs1: {}, cs2: {} }
-              };
-            }
-
-            return {
-              code,
-              data: data || { cs1: {}, cs2: {} }
-            };
-          } catch (error) {
-            console.warn(
-              "[ChuyenKho] Lỗi kiểm tồn:",
-              code,
-              error
-            );
-
-            return {
-              code,
-              data: { cs1: {}, cs2: {} }
-            };
-          }
-        })
+    const { data: kiemTonData, error: kiemTonError } =
+      await supabase.rpc(
+        "rpc_stockquick_kiemton_bulk",
+        {
+          p_masps: cleanMasps
+        }
       );
 
-      results.forEach(({ code, data }) => {
-        kiemTonMap.set(code, data);
-      });
+    console.timeEnd("[ChuyenKho] Kiểm tồn hàng loạt");
+
+    if (kiemTonError) {
+      console.error(
+        "[ChuyenKho] rpc_stockquick_kiemton_bulk error:",
+        kiemTonError
+      );
+      throw kiemTonError;
     }
+
+    (kiemTonData || []).forEach(item => {
+      const code = normalizeMasp(item.masp);
+      if (!code) return;
+
+      kiemTonMap.set(code, {
+        cs1: item.cs1 || {
+          nguoi_kiem: null,
+          ngay_kiem: null,
+          lech: {}
+        },
+        cs2: item.cs2 || {
+          nguoi_kiem: null,
+          ngay_kiem: null,
+          lech: {}
+        }
+      });
+    });
+
+    console.log(
+      "[ChuyenKho] Tổng mã nhận kiểm tồn:",
+      kiemTonMap.size
+    );
   }
 
   return allRows
     .map(r => {
       const masp = normalizeMasp(r.masp);
       const size = normalizeSize(r.size);
-      const sizeKey = String(size || "").replace(/^size\s+/i, "").trim();
 
-      const tonCs1 = Number(r.ton_cs1 || 0);
-      const tonCs2 = Number(r.ton_cs2 || 0);
+      const sizeKey = String(size || "")
+        .replace(/^size\s+/i, "")
+        .trim();
 
-      const kt = kiemTonMap.get(masp) || { cs1: {}, cs2: {} };
+      const tonMayCs1 = Number(r.ton_cs1 || 0);
+      const tonMayCs2 = Number(r.ton_cs2 || 0);
+
+      const kt = kiemTonMap.get(masp) || {
+        cs1: { lech: {} },
+        cs2: { lech: {} }
+      };
 
       const lechCs1 = isUseKiemTonEnabled()
         ? Number(kt?.cs1?.lech?.[sizeKey] || 0)
@@ -740,18 +707,23 @@ async function fetchXntRows(masps) {
         ? Number(kt?.cs2?.lech?.[sizeKey] || 0)
         : 0;
 
-      const tonThucCs1 = tonCs1 + lechCs1;
-      const tonThucCs2 = tonCs2 + lechCs2;
+      const tonThucCs1 = tonMayCs1 + lechCs1;
+      const tonThucCs2 = tonMayCs2 + lechCs2;
 
       return {
         masp,
         size,
 
+        // Giữ đúng cách hoạt động hiện tại:
+        // ton_cs1/2 đã là tồn sau kiểm
         ton_cs1: tonThucCs1,
         ton_cs2: tonThucCs2,
 
         lech_cs1: lechCs1,
         lech_cs2: lechCs2,
+
+        ton_may_cs1: tonMayCs1,
+        ton_may_cs2: tonMayCs2,
 
         ton_thuc_cs1: tonThucCs1,
         ton_thuc_cs2: tonThucCs2,
@@ -936,31 +908,28 @@ async function layGoiY() {
 
     if (maspsFromText.length) {
       masps = maspsFromText;
-      sourceLabel = `theo ${maspsFromText.length} mã sản phẩm nhập tay`;
-    } else if (nhomHangs.length) {
-      const maspsByDate = await fetchMaspsByDateRange();
-      const maspsByGroup = await fetchMaspsByNhomHang(nhomHangs);
-      const groupSet = new Set(maspsByGroup);
-
-      masps = maspsByDate.filter(masp => groupSet.has(normalizeMasp(masp)));
 
       sourceLabel =
-        `theo khoảng ngày ${$("tu_ngay").value} đến ${$("den_ngay").value}, ` +
-        `lọc nhóm hàng: ${nhomHangs.join(",")}`;
+        `theo ${maspsFromText.length} mã sản phẩm nhập tay`;
 
-      if (!masps.length) {
-        STATE.rows = [];
-        renderBang();
-        capNhatTong();
-        setGoiYStatus(
-          `Không có mã nào vừa bán trong khoảng ngày ${$("tu_ngay").value} đến ${$("den_ngay").value} vừa thuộc nhóm: ${nhomHangs.join(",")}`,
-          "warning"
-        );
-        return;
-      }
     } else {
-      masps = await fetchMaspsByDateRange();
-      sourceLabel = `theo khoảng ngày ${$("tu_ngay").value} đến ${$("den_ngay").value}`;
+      setGoiYStatus(
+        nhomHangs.length
+          ? `Đang lọc mã đã bán thuộc nhóm ${nhomHangs.join(", ")}...`
+          : "Đang lấy mã đã bán theo khoảng ngày...",
+        "loading"
+      );
+
+      masps = await fetchMaspsByDateRange(nhomHangs);
+
+      sourceLabel =
+        `theo khoảng ngày ${$("tu_ngay").value} ` +
+        `đến ${$("den_ngay").value}` +
+        (
+          nhomHangs.length
+            ? `, lọc nhóm hàng: ${nhomHangs.join(",")}`
+            : ""
+        );
     }
 
     if (!masps.length) {
