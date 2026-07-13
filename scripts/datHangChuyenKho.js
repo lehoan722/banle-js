@@ -379,8 +379,12 @@ async function autoMarkOutdatedNewOrders(rows) {
     if (!openRows.length) return false;
 
     const masps = Array.from(
-      new Set(openRows.map(r => String(r.masp || "").trim().toUpperCase()).filter(Boolean))
-    ).slice(0, 200);
+      new Set(
+        openRows
+          .map(r => String(r.masp || "").trim().toUpperCase())
+          .filter(Boolean)
+      )
+    );
 
     if (!masps.length) return false;
 
@@ -434,9 +438,10 @@ async function autoMarkOutdatedNewOrders(rows) {
 
       if (stillNeeded) return;
 
-      // Yêu cầu mới của bạn:
-      // Dòng mới lỗi thời thì xóa hẳn để đỡ rác
+      // Dòng trạng thái "moi" không còn nằm trong danh sách gợi ý hiện tại
+      // thì đánh dấu lỗi thời để ẩn khỏi bảng.
       if (status === "moi") {
+        deleteNewIds.push(id);
         return;
       }
 
