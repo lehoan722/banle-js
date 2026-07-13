@@ -315,8 +315,8 @@
         }
 
         table.stock-table {
-            width: 820px;
-            min-width: 820px;
+            width: 560px;
+            min-width: 560px;
             max-width: none;
             table-layout: auto;
             border-collapse: collapse;
@@ -326,9 +326,23 @@
         .stock-table th,
         .stock-table td {
             border-bottom: 1px solid #edf2f7;
-            padding: 7px 8px;
+            padding: 3px 3px;
             text-align: center;
             white-space: nowrap;
+        }
+
+        .stock-table th:first-child,
+        .stock-table td:first-child {
+            width: 155px;
+            min-width: 155px;
+            padding-left: 4px;
+            padding-right: 4px;
+        }
+
+        .stock-table th:not(:first-child),
+        .stock-table td:not(:first-child) {
+            width: 48px;
+            min-width: 48px;
         }
 
         .stock-table th {
