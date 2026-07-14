@@ -8,10 +8,29 @@ function isAllowedUrl(url) {
   try {
     const parsedUrl = new URL(url);
 
-    return (
+    if (
       parsedUrl.protocol === "https:" &&
       ALLOWED_ORIGINS.has(parsedUrl.origin)
-    );
+    ) {
+      return true;
+    }
+
+    if (parsedUrl.protocol === "file:") {
+      const normalizedPath = decodeURIComponent(parsedUrl.pathname)
+        .replace(/\\/g, "/")
+        .toLowerCase();
+
+      return normalizedPath.endsWith("/offline.html");
+    }
+
+    if (
+      parsedUrl.protocol === "data:" &&
+      parsedUrl.href.startsWith("data:text/html")
+    ) {
+      return true;
+    }
+
+    return false;
   } catch {
     return false;
   }
@@ -36,9 +55,17 @@ export function applySecurity(mainWindow) {
     event.preventDefault();
 
     try {
-      shell.openExternal(url);
+      const parsedUrl = new URL(url);
+
+      // Chỉ mở bằng trình duyệt ngoài đối với HTTP/HTTPS.
+      if (
+        parsedUrl.protocol === "http:" ||
+        parsedUrl.protocol === "https:"
+      ) {
+        shell.openExternal(url);
+      }
     } catch (error) {
-      console.error("Không thể mở liên kết ngoài:", error);
+      console.error("Không thể xử lý liên kết:", error);
     }
   });
 

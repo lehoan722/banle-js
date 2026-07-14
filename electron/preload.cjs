@@ -1,3 +1,5 @@
+"use strict";
+
 const {
   contextBridge,
   ipcRenderer
@@ -7,10 +9,14 @@ contextBridge.exposeInMainWorld("superPOS", {
   isElectron: true,
 
   getAppInfo: () => {
-    return ipcRenderer.invoke("superpos:get-app-info");
+    return ipcRenderer.invoke(
+      "superpos:get-app-info"
+    );
   },
 
   openLogsFolder: () => {
-    return ipcRenderer.invoke("superpos:open-logs-folder");
+    return ipcRenderer.invoke(
+      "superpos:open-logs-folder"
+    );
   }
 });

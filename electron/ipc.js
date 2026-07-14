@@ -33,6 +33,25 @@ export function registerIpcHandlers() {
   // Tránh đăng ký trùng nếu cửa sổ được tạo lại.
   ipcMain.removeHandler("superpos:get-app-info");
   ipcMain.removeHandler("superpos:open-logs-folder");
+  ipcMain.removeHandler("superpos:connection-lost");
+
+  ipcMain.handle(
+    "superpos:connection-lost",
+    async (event, payload) => {
+
+      assertTrustedSender(event);
+
+      writeLog(
+        "WARN",
+        "Website mất kết nối",
+        payload
+      );
+
+      return {
+        ok: true
+      };
+    }
+  );
 
   ipcMain.handle("superpos:get-app-info", async (event) => {
     assertTrustedSender(event);

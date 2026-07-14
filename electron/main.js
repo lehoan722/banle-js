@@ -1,34 +1,53 @@
-import { app, BrowserWindow, session } from "electron";
+import {
+  app,
+  BrowserWindow,
+  session
+} from "electron";
+
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { applySecurity } from "./security.js";
-import { createApplicationMenu } from "./menu.js";
+import { applySecurity }
+  from "./security.js";
+
+import { createApplicationMenu }
+  from "./menu.js";
+
 import {
   initializeLogger,
   writeLog
 } from "./logger.js";
 
-import { registerIpcHandlers } from "./ipc.js";
+import { registerIpcHandlers }
+  from "./ipc.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { createConnectionManager }
+  from "./connectionManager.js";
 
-const APP_ORIGIN = "https://app.hoantuyet.vn";
+const __filename =
+  fileURLToPath(import.meta.url);
+
+const __dirname =
+  path.dirname(__filename);
+
+const APP_ORIGIN =
+  "https://app.hoantuyet.vn";
+
 const APP_NAME = "SuperPOS";
 
-// Phải cấu hình trước app.whenReady().
 app.setName(APP_NAME);
 
-const superPosUserDataPath = path.join(
-  app.getPath("appData"),
-  APP_NAME
+app.setPath(
+  "userData",
+  path.join(
+    app.getPath("appData"),
+    APP_NAME
+  )
 );
 
-app.setPath("userData", superPosUserDataPath);
-
 let mainWindow = null;
+let connectionManager = null;
 
 async function repairCacheOnce() {
   const markerFile = path.join(
@@ -36,18 +55,25 @@ async function repairCacheOnce() {
     "cache-repair-v1.done"
   );
 
-  // Đã sửa trước đó thì không xóa cache thêm lần nữa.
   if (fs.existsSync(markerFile)) {
-    writeLog("INFO", "Không cần sửa CacheStorage");
+    writeLog(
+      "INFO",
+      "Không cần sửa CacheStorage"
+    );
     return;
   }
 
   try {
-    await session.defaultSession.clearCache();
+    await session.defaultSession
+      .clearCache();
 
-    await session.defaultSession.clearStorageData({
-      storages: ["cachestorage", "serviceworkers"]
-    });
+    await session.defaultSession
+      .clearStorageData({
+        storages: [
+          "cachestorage",
+          "serviceworkers"
+        ]
+      });
 
     fs.writeFileSync(
       markerFile,
@@ -55,16 +81,25 @@ async function repairCacheOnce() {
       "utf8"
     );
 
-    writeLog("INFO", "Đã sửa CacheStorage lần đầu thành công");
+    writeLog(
+      "INFO",
+      "Đã sửa CacheStorage lần đầu thành công"
+    );
   } catch (error) {
-    writeLog("ERROR", "Sửa CacheStorage không thành công", error);
+    writeLog(
+      "ERROR",
+      "Sửa CacheStorage không thành công",
+      error
+    );
   }
 }
 
 function getStartUrl() {
-  const siteArgument = process.argv.find((argument) =>
-    argument.startsWith("--site=")
-  );
+  const siteArgument =
+    process.argv.find(
+      (argument) =>
+        argument.startsWith("--site=")
+    );
 
   const site = siteArgument
     ?.split("=")[1]
@@ -72,36 +107,44 @@ function getStartUrl() {
     .toLowerCase();
 
   if (site === "cs2") {
-    return `${APP_ORIGIN}/banlemtcs2.html`;
+    return (
+      `${APP_ORIGIN}/banlemtcs2.html`
+    );
   }
 
-  return `${APP_ORIGIN}/banlemtcs1.html`;
+  return (
+    `${APP_ORIGIN}/banlemtcs1.html`
+  );
 }
 
 function createMainWindow() {
+  const targetUrl = getStartUrl();
 
-  writeLog("INFO", `Đang mở trang: ${getStartUrl()}`);
+  writeLog(
+    "INFO",
+    `Đang mở trang: ${targetUrl}`
+  );
+
   mainWindow = new BrowserWindow({
     width: 1600,
     height: 950,
     minWidth: 1100,
     minHeight: 700,
 
-    show: false,
+    show: true,
     autoHideMenuBar: true,
     backgroundColor: "#ffffff",
 
     webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
+      preload: path.join(
+        __dirname,
+        "preload.cjs"
+      ),
 
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-
-      // Không cho nội dung web tự mở DevTools.
       devTools: false,
-
-      // Không cho website bật webview.
       webviewTag: false
     }
   });
@@ -111,55 +154,115 @@ function createMainWindow() {
 
   mainWindow.maximize();
 
-  mainWindow.once("ready-to-show", () => {
-    mainWindow.show();
-  });
+  connectionManager =
+    createConnectionManager({
+      mainWindow,
+      targetUrl,
 
-  mainWindow.webContents.on("did-finish-load", () => {
-    writeLog("INFO", "Trang bán hàng đã tải hoàn tất");
-  });
+      offlineHtmlPath: path.join(
+        __dirname,
+        "offline.html"
+      ),
+
+      offlinePreloadPath: path.join(
+        __dirname,
+        "offline-preload.cjs"
+      ),
+
+      writeLog,
+      intervalMs: 5000,
+      timeoutMs: 8000
+    });
 
   mainWindow.webContents.on(
-    "did-fail-load",
-    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-      if (!isMainFrame) {
-        return;
-      }
-
-      writeLog("ERROR", "Không tải được trang bán hàng", {
-        errorCode,
-        errorDescription,
-        validatedURL
-      });
+    "did-finish-load",
+    () => {
+      writeLog(
+        "INFO",
+        "Trang bán hàng đã tải hoàn tất",
+        mainWindow.webContents.getURL()
+      );
     }
   );
 
-  mainWindow.webContents.on("unresponsive", () => {
-    writeLog("ERROR", "Giao diện Electron không phản hồi");
-  });
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (
+      _event,
+      errorCode,
+      errorDescription,
+      validatedURL,
+      isMainFrame
+    ) => {
+      if (
+        !isMainFrame ||
+        errorCode === -3
+      ) {
+        return;
+      }
 
-  mainWindow.webContents.on("responsive", () => {
-    writeLog("INFO", "Giao diện Electron đã phản hồi trở lại");
-  });
+      connectionManager
+        ?.reportLoadFailure({
+          errorCode,
+          errorDescription,
+          validatedURL
+        });
+    }
+  );
+
+  mainWindow.webContents.on(
+    "unresponsive",
+    () => {
+      writeLog(
+        "ERROR",
+        "Giao diện Electron không phản hồi"
+      );
+    }
+  );
+
+  mainWindow.webContents.on(
+    "responsive",
+    () => {
+      writeLog(
+        "INFO",
+        "Giao diện Electron đã phản hồi trở lại"
+      );
+    }
+  );
 
   mainWindow.webContents.on(
     "render-process-gone",
     (_event, details) => {
-      writeLog("ERROR", "Tiến trình giao diện Electron đã dừng", details);
+      writeLog(
+        "ERROR",
+        "Tiến trình giao diện đã dừng",
+        details
+      );
     }
   );
 
   mainWindow.on("closed", () => {
+    connectionManager?.stop();
+    connectionManager = null;
     mainWindow = null;
   });
 
-  mainWindow.loadURL(getStartUrl()).catch((error) => {
-    console.error("Không thể tải trang bán hàng:", error);
-  });
+  connectionManager.start();
+
+  mainWindow
+    .loadURL(targetUrl)
+    .catch((error) => {
+      connectionManager
+        ?.reportLoadFailure({
+          message:
+            error?.message ||
+            String(error)
+        });
+    });
 }
 
-// Ngăn người dùng mở nhiều phiên bản phần mềm cùng lúc.
-const hasSingleInstanceLock = app.requestSingleInstanceLock();
+const hasSingleInstanceLock =
+  app.requestSingleInstanceLock();
 
 if (!hasSingleInstanceLock) {
   app.quit();
@@ -179,16 +282,23 @@ if (!hasSingleInstanceLock) {
 
   app.whenReady().then(async () => {
     initializeLogger();
-    writeLog("INFO", "Electron đã sẵn sàng");
+
+    writeLog(
+      "INFO",
+      "Electron đã sẵn sàng"
+    );
 
     await repairCacheOnce();
 
     registerIpcHandlers();
-
     createMainWindow();
 
     app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
+      if (
+        BrowserWindow
+          .getAllWindows()
+          .length === 0
+      ) {
         createMainWindow();
       }
     });
@@ -196,15 +306,31 @@ if (!hasSingleInstanceLock) {
 }
 
 app.on("window-all-closed", () => {
+  connectionManager?.stop();
+
   if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
-process.on("uncaughtException", (error) => {
-  writeLog("FATAL", "Lỗi chưa được xử lý trong tiến trình chính", error);
-});
+process.on(
+  "uncaughtException",
+  (error) => {
+    writeLog(
+      "FATAL",
+      "Lỗi chưa xử lý trong tiến trình chính",
+      error
+    );
+  }
+);
 
-process.on("unhandledRejection", (reason) => {
-  writeLog("ERROR", "Promise bị từ chối nhưng chưa được xử lý", reason);
-});
+process.on(
+  "unhandledRejection",
+  (reason) => {
+    writeLog(
+      "ERROR",
+      "Promise bị từ chối chưa xử lý",
+      reason
+    );
+  }
+);
