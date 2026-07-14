@@ -1306,13 +1306,24 @@
 
           const prefix = (sohd.split("_")[0] || "").toLowerCase();
 
-          // ✅ CHẶN XÓA HÓA ĐƠN BÁN LẺ CÓ LIÊN QUAN TÍCH ĐIỂM
+          // Chỉ chặn hóa đơn bán lẻ khi có tên khách hàng
           if (prefix === "bancs1" || prefix === "bancs2") {
-            alert(
-              "❌ Hóa đơn " + sohd + " liên quan đến tích điểm của khách hàng.\n\n" +
-              "Hóa đơn bán lẻ chỉ được SỬA, không được XÓA."
-            );
-            return;
+            const tr = cb.closest("tr");
+
+            // Cột thứ 7 của bảng là cột Khách, chỉ số cells[6]
+            const tenKhach = String(
+              tr?.cells?.[6]?.textContent || ""
+            ).trim();
+
+            if (tenKhach) {
+              alert(
+                "❌ Không thể xóa hóa đơn " + sohd + ".\n\n" +
+                "Hóa đơn này có tên khách hàng: " + tenKhach + "\n" +
+                "Việc xóa có thể ảnh hưởng đến lịch sử tích điểm.\n\n" +
+                "Bạn chỉ được SỬA hóa đơn này."
+              );
+              return;
+            }
           }
 
           if (prefix.startsWith("xcn") || prefix.startsWith("ncn")) {
