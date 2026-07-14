@@ -1,0 +1,36 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Biến môi trường và dữ liệu bí mật
+.env
+.env.local
+.env.*.local
+
+# Electron build
+dist/
+release/
+out/
+build-electron/
+
+# Log và tệp tạm
+logs/
+*.log
+tmp/
+temp/
+*.tmp
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# VS Code
+.vscode/
+
+# Khóa và chứng thư riêng
+*.pfx
+*.p12
+*.pem
+*.key

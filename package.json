@@ -3,15 +3,20 @@
   "version": "1.0.0",
   "description": "Hệ thống bán lẻ và gửi hóa đơn điện tử",
   "type": "module",
-  "main": "index.js",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "vercel dev",
-    "start": "node index.js"
+    "start": "node index.js",
+    "electron": "electron .",
+    "electron:cs1": "electron . --site=cs1",
+    "electron:cs2": "electron . --site=cs2"
   },
   "dependencies": {
-    "node-fetch": "^3.3.2",
     "@supabase/supabase-js": "^2.48.0",
+    "node-fetch": "^3.3.2",
     "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "electron": "^43.1.0"
   }
 }
-
