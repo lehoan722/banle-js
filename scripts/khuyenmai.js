@@ -1,52 +1,145 @@
 // khuyenmai.js
 
 /**
- * Hàm xác định giá trị khuyến mại cho một sản phẩm
- * @param {object} sp - Thông tin sản phẩm (có thể là object từ bảng danh mục hàng hóa)
- * @param {number} gia - Giá bán thực tế
- * @param {number|string} khuyenMaiNhapTay - Giá trị khuyến mại nhập tay (tùy chọn, nếu không nhập thì truyền "" hoặc undefined)
- * @returns {number} - Số tiền khuyến mại tính được
+ * Đọc giá trị khuyến mại an toàn.
+ *
+ * Quy ước:
+ * - 10       → 10%
+ * - "10"     → 10%
+ * - "10,5"   → 10,5%
+ * - "10.5"   → 10,5%
+ * - "10.000" → 10.000 đồng
+ * - "10,000" → 10.000 đồng
+ * - 10000    → 10.000 đồng
+ */
+function parseKhuyenMai(value) {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return NaN;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : NaN;
+  }
+
+  let raw = String(value)
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/[₫đ]/gi, "");
+
+  if (!raw) return NaN;
+
+  const hasDot = raw.includes(".");
+  const hasComma = raw.includes(",");
+
+  // Có cả dấu chấm và dấu phẩy
+  if (hasDot && hasComma) {
+    const lastDot = raw.lastIndexOf(".");
+    const lastComma = raw.lastIndexOf(",");
+
+    if (lastDot > lastComma) {
+      // Ví dụ 1,234.50
+      raw = raw.replace(/,/g, "");
+    } else {
+      // Ví dụ 1.234,50
+      raw = raw
+        .replace(/\./g, "")
+        .replace(",", ".");
+    }
+
+    const result = Number(raw);
+    return Number.isFinite(result) ? result : NaN;
+  }
+
+  const separator = hasDot
+    ? "."
+    : hasComma
+      ? ","
+      : null;
+
+  if (separator) {
+    const parts = raw.split(separator);
+
+    // Ví dụ 1.000.000
+    if (parts.length > 2) {
+      const result = Number(parts.join(""));
+      return Number.isFinite(result) ? result : NaN;
+    }
+
+    const tail = parts[1] || "";
+
+    // Đúng 3 chữ số sau dấu:
+    // coi là phân cách hàng nghìn
+    // 10.000 hoặc 10,000 → 10000
+    if (/^\d{3}$/.test(tail)) {
+      const result = Number(parts.join(""));
+      return Number.isFinite(result) ? result : NaN;
+    }
+
+    // 10.5 hoặc 10,5 → phần trăm thập phân
+    raw = parts[0] + "." + tail;
+  }
+
+  const result = Number(raw);
+  return Number.isFinite(result) ? result : NaN;
+}
+
+/**
+ * Xác định số tiền khuyến mại cho sản phẩm.
  */
 export function tinhKhuyenMai(sp, gia, khuyenMaiNhapTay) {
-  // --- ƯU TIÊN XỬ LÝ KHUYẾN MẠI NHẬP TAY ---
+  const giaBan = Number(gia) || 0;
+
+  // Khuyến mại nhập tay
   if (
     khuyenMaiNhapTay !== undefined &&
     khuyenMaiNhapTay !== null &&
     khuyenMaiNhapTay !== ""
   ) {
-    let soKM = Number(khuyenMaiNhapTay);
-    if (!isNaN(soKM) && soKM > 0) {
+    const soKM = parseKhuyenMai(khuyenMaiNhapTay);
+
+    if (Number.isFinite(soKM) && soKM > 0) {
       if (soKM > 100) {
-        // Trừ trực tiếp số tiền
-        return soKM;
-      } else {
-        // Trừ theo phần trăm
-        return Math.round((gia * soKM) / 100);
+        return Math.round(soKM);
       }
+
+      return Math.round((giaBan * soKM) / 100);
     }
-    // Nếu người dùng nhập text không hợp lệ (NaN), vẫn dùng logic cũ
   }
 
-  // --- LOGIC KHUYẾN MẠI MẶC ĐỊNH ---
-  let km = sp && sp.khuyenmai !== undefined && sp.khuyenmai !== null && sp.khuyenmai !== ''
-    ? parseFloat(sp.khuyenmai)
-    : NaN;
+  // Khuyến mại từ danh mục hàng hóa
+  const rawKM =
+    sp &&
+    sp.khuyenmai !== undefined &&
+    sp.khuyenmai !== null &&
+    sp.khuyenmai !== ""
+      ? sp.khuyenmai
+      : null;
+
+  const km = parseKhuyenMai(rawKM);
+
   if (km === 0) {
     return 0;
   }
 
-  if (isNaN(km)) {
-    // Không có khuyến mại trong danh mục: Quy tắc cũ
-    return gia < 100000 ? 5000 : gia < 500000 ? 10000 : 20000;
+  if (!Number.isFinite(km)) {
+    return giaBan < 100000
+      ? 5000
+      : giaBan < 500000
+        ? 10000
+        : 20000;
   }
-  if (km >= 1 && km < 100) {
-    // % khuyến mại
-    return Math.round((gia * km) / 100);
+
+  if (km > 0 && km <= 100) {
+    return Math.round((giaBan * km) / 100);
   }
-  if (km >= 1000) {
-    // Số tiền khuyến mại trực tiếp
-    return km;
+
+  if (km > 100) {
+    return Math.round(km);
   }
-  // Nếu giá trị linh tinh, về mặc định
-  return gia < 100000 ? 5000 : gia < 500000 ? 10000 : 20000;
+
+  return 0;
 }
