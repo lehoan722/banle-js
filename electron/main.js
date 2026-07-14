@@ -10,6 +10,8 @@ import {
   writeLog
 } from "./logger.js";
 
+import { registerIpcHandlers } from "./ipc.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -180,6 +182,8 @@ if (!hasSingleInstanceLock) {
     writeLog("INFO", "Electron đã sẵn sàng");
 
     await repairCacheOnce();
+
+    registerIpcHandlers();
 
     createMainWindow();
 

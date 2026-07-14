@@ -1,7 +1,16 @@
-const { contextBridge } = require("electron");
+const {
+  contextBridge,
+  ipcRenderer
+} = require("electron");
 
-contextBridge.exposeInMainWorld("hoanTuyetDesktop", {
+contextBridge.exposeInMainWorld("superPOS", {
   isElectron: true,
-  platform: process.platform,
-  electronVersion: process.versions.electron
+
+  getAppInfo: () => {
+    return ipcRenderer.invoke("superpos:get-app-info");
+  },
+
+  openLogsFolder: () => {
+    return ipcRenderer.invoke("superpos:open-logs-folder");
+  }
 });
