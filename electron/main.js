@@ -1,15 +1,26 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { applySecurity } from "./security.js";
+import { createApplicationMenu } from "./menu.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const APP_ORIGIN = "https://app.hoantuyet.vn";
 
+let mainWindow = null;
+
 function getStartUrl() {
-  const siteArg = process.argv.find((arg) => arg.startsWith("--site="));
-  const site = siteArg?.split("=")[1]?.trim().toLowerCase();
+  const siteArgument = process.argv.find((argument) =>
+    argument.startsWith("--site=")
+  );
+
+  const site = siteArgument
+    ?.split("=")[1]
+    ?.trim()
+    .toLowerCase();
 
   if (site === "cs2") {
     return `${APP_ORIGIN}/banlemtcs2.html`;
@@ -19,22 +30,33 @@ function getStartUrl() {
 }
 
 function createMainWindow() {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1600,
     height: 950,
     minWidth: 1100,
     minHeight: 700,
+
     show: false,
     autoHideMenuBar: true,
     backgroundColor: "#ffffff",
 
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
+
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true
+      sandbox: true,
+
+      // Không cho nội dung web tự mở DevTools.
+      devTools: false,
+
+      // Không cho website bật webview.
+      webviewTag: false
     }
   });
+
+  createApplicationMenu(mainWindow);
+  applySecurity(mainWindow);
 
   mainWindow.maximize();
 
@@ -42,34 +64,8 @@ function createMainWindow() {
     mainWindow.show();
   });
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      const targetUrl = new URL(url);
-
-      if (targetUrl.origin === APP_ORIGIN) {
-        return { action: "allow" };
-      }
-
-      shell.openExternal(url);
-    } catch (error) {
-      console.error("Không thể xử lý liên kết:", error);
-    }
-
-    return { action: "deny" };
-  });
-
-  mainWindow.webContents.on("will-navigate", (event, url) => {
-    try {
-      const targetUrl = new URL(url);
-
-      if (targetUrl.origin !== APP_ORIGIN) {
-        event.preventDefault();
-        shell.openExternal(url);
-      }
-    } catch (error) {
-      event.preventDefault();
-      console.error("URL không hợp lệ:", error);
-    }
+  mainWindow.on("closed", () => {
+    mainWindow = null;
   });
 
   mainWindow.loadURL(getStartUrl()).catch((error) => {
@@ -77,15 +73,35 @@ function createMainWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  createMainWindow();
+// Ngăn người dùng mở nhiều phiên bản phần mềm cùng lúc.
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (!mainWindow) {
+      return;
     }
+
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+
+    mainWindow.show();
+    mainWindow.focus();
   });
-});
+
+  app.whenReady().then(() => {
+    createMainWindow();
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createMainWindow();
+      }
+    });
+  });
+}
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
