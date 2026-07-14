@@ -314,14 +314,14 @@
     background: #dbeafe;
   }
 
-  .sq-stock-popup tr.sq-dhck-suggest-row td {
+  /* Gợi ý chuyển từ CS1 sang CS2: nền xanh nhạt */
+.sq-stock-popup tr.sq-dhck-suggest-1v2 td {
   background: #d9fbe6 !important;
 }
 
-.sq-stock-popup tr.sq-dhck-suggest-row td:first-child::after {
-  content: " ⇄";
-  color: #15803d;
-  font-weight: 900;
+/* Gợi ý chuyển từ CS2 sang CS1: nền tím nhạt */
+.sq-stock-popup tr.sq-dhck-suggest-2v1 td {
+  background: #eee5ff !important;
 }
 
   .sq-stock-popup tr.sq-hide-row td:first-child {
@@ -1542,14 +1542,27 @@ data-color-masp="${targetMasp}"
         const rowKey1v2 = `${upper}|${normSizeForDhck(sizeNum)}|1v2`;
         const rowKey2v1 = `${upper}|${normSizeForDhck(sizeNum)}|2v1`;
 
-        const coGoiYChuyen =
+        const goiY1v2 =
           sizeNum !== "0" &&
-          (dhckSuggestKeySet.has(rowKey1v2) || dhckSuggestKeySet.has(rowKey2v1));
+          dhckSuggestKeySet.has(rowKey1v2);
 
-        const suggestClass = coGoiYChuyen ? " sq-dhck-suggest-row" : "";
+        const goiY2v1 =
+          sizeNum !== "0" &&
+          dhckSuggestKeySet.has(rowKey2v1);
+
+        let suggestClass = "";
+        let suggestTitle = "Bấm để xem mã cùng nhóm cùng size";
+
+        if (goiY1v2) {
+          suggestClass = " sq-dhck-suggest-1v2";
+          suggestTitle = "Gợi ý chuyển từ CS1 sang CS2";
+        } else if (goiY2v1) {
+          suggestClass = " sq-dhck-suggest-2v1";
+          suggestTitle = "Gợi ý chuyển từ CS2 sang CS1";
+        }
 
         return `
-        <tr class="sq-open-similar-row${suggestClass}" data-size="${sizeNum}" title="Bấm để xem mã cùng nhóm cùng size">
+        <tr class="sq-open-similar-row${suggestClass}" data-size="${sizeNum}" title="${suggestTitle}">
           <td>${sizeLabel}</td>
           <td class="num sq-col-k1">
   ${renderTonLech(r.ton_cs1, r.lech_cs1, hasManocanh("cs1", sizeNum), getDangChuyenQty("cs1", sizeNum))}
