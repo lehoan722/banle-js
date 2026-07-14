@@ -1,16 +1,63 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, session } from "electron";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { applySecurity } from "./security.js";
 import { createApplicationMenu } from "./menu.js";
+import {
+  initializeLogger,
+  writeLog
+} from "./logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const APP_ORIGIN = "https://app.hoantuyet.vn";
+const APP_NAME = "SuperPOS";
+
+// Phải cấu hình trước app.whenReady().
+app.setName(APP_NAME);
+
+const superPosUserDataPath = path.join(
+  app.getPath("appData"),
+  APP_NAME
+);
+
+app.setPath("userData", superPosUserDataPath);
 
 let mainWindow = null;
+
+async function repairCacheOnce() {
+  const markerFile = path.join(
+    app.getPath("userData"),
+    "cache-repair-v1.done"
+  );
+
+  // Đã sửa trước đó thì không xóa cache thêm lần nữa.
+  if (fs.existsSync(markerFile)) {
+    writeLog("INFO", "Không cần sửa CacheStorage");
+    return;
+  }
+
+  try {
+    await session.defaultSession.clearCache();
+
+    await session.defaultSession.clearStorageData({
+      storages: ["cachestorage", "serviceworkers"]
+    });
+
+    fs.writeFileSync(
+      markerFile,
+      new Date().toISOString(),
+      "utf8"
+    );
+
+    writeLog("INFO", "Đã sửa CacheStorage lần đầu thành công");
+  } catch (error) {
+    writeLog("ERROR", "Sửa CacheStorage không thành công", error);
+  }
+}
 
 function getStartUrl() {
   const siteArgument = process.argv.find((argument) =>
@@ -30,6 +77,8 @@ function getStartUrl() {
 }
 
 function createMainWindow() {
+
+  writeLog("INFO", `Đang mở trang: ${getStartUrl()}`);
   mainWindow = new BrowserWindow({
     width: 1600,
     height: 950,
@@ -64,6 +113,40 @@ function createMainWindow() {
     mainWindow.show();
   });
 
+  mainWindow.webContents.on("did-finish-load", () => {
+    writeLog("INFO", "Trang bán hàng đã tải hoàn tất");
+  });
+
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (!isMainFrame) {
+        return;
+      }
+
+      writeLog("ERROR", "Không tải được trang bán hàng", {
+        errorCode,
+        errorDescription,
+        validatedURL
+      });
+    }
+  );
+
+  mainWindow.webContents.on("unresponsive", () => {
+    writeLog("ERROR", "Giao diện Electron không phản hồi");
+  });
+
+  mainWindow.webContents.on("responsive", () => {
+    writeLog("INFO", "Giao diện Electron đã phản hồi trở lại");
+  });
+
+  mainWindow.webContents.on(
+    "render-process-gone",
+    (_event, details) => {
+      writeLog("ERROR", "Tiến trình giao diện Electron đã dừng", details);
+    }
+  );
+
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
@@ -92,7 +175,12 @@ if (!hasSingleInstanceLock) {
     mainWindow.focus();
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    initializeLogger();
+    writeLog("INFO", "Electron đã sẵn sàng");
+
+    await repairCacheOnce();
+
     createMainWindow();
 
     app.on("activate", () => {
@@ -107,4 +195,12 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+process.on("uncaughtException", (error) => {
+  writeLog("FATAL", "Lỗi chưa được xử lý trong tiến trình chính", error);
+});
+
+process.on("unhandledRejection", (reason) => {
+  writeLog("ERROR", "Promise bị từ chối nhưng chưa được xử lý", reason);
 });

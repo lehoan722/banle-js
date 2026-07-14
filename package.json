@@ -1,5 +1,6 @@
 {
   "name": "banle-js",
+  "productName": "SuperPOS",
   "version": "1.0.0",
   "description": "Hệ thống bán lẻ và gửi hóa đơn điện tử",
   "type": "module",
