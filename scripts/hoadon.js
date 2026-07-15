@@ -208,6 +208,92 @@ function parseMoneyInt(v) {
     return isNaN(n) ? 0 : n;
 }
 
+function parseKhuyenMaiInput(v) {
+    if (
+        v === undefined ||
+        v === null ||
+        v === ""
+    ) {
+        return 0;
+    }
+
+    if (typeof v === "number") {
+        return Number.isFinite(v) ? v : 0;
+    }
+
+    let raw = String(v)
+        .trim()
+        .replace(/\s+/g, "")
+        .replace(/[₫đ]/gi, "");
+
+    if (!raw) return 0;
+
+    const hasDot = raw.includes(".");
+    const hasComma = raw.includes(",");
+
+    if (hasDot && hasComma) {
+        const lastDot = raw.lastIndexOf(".");
+        const lastComma = raw.lastIndexOf(",");
+
+        if (lastDot > lastComma) {
+            // 1,234.50
+            raw = raw.replace(/,/g, "");
+        } else {
+            // 1.234,50
+            raw = raw
+                .replace(/\./g, "")
+                .replace(",", ".");
+        }
+
+        const result = Number(raw);
+        return Number.isFinite(result)
+            ? result
+            : 0;
+    }
+
+    const separator = hasDot
+        ? "."
+        : hasComma
+            ? ","
+            : null;
+
+    if (separator) {
+        const parts = raw.split(separator);
+
+        if (parts.length > 2) {
+            const result = Number(
+                parts.join("")
+            );
+
+            return Number.isFinite(result)
+                ? result
+                : 0;
+        }
+
+        const tail = parts[1] || "";
+
+        // 10.000 hoặc 10,000
+        if (/^\d{3}$/.test(tail)) {
+            const result = Number(
+                parts.join("")
+            );
+
+            return Number.isFinite(result)
+                ? result
+                : 0;
+        }
+
+        // 10.5 hoặc 10,5
+        raw = parts[0] + "." + tail;
+    }
+
+    const result = Number(raw);
+
+    return Number.isFinite(result)
+        ? result
+        : 0;
+}
+
 // ===== Phân quyền UI: chỉ ADMIN được sửa giá/khuyến mại/thành tiền =====
 function isAdminUser() {
     // Ưu tiên key riêng (tránh cache để không bị sai khi đăng nhập đổi tài khoản mà không reload)
@@ -285,9 +371,7 @@ function chuanHoaKhuyenMaiNhapTay() {
         return 0;
     }
 
-    let kmNhap = parseFloat(
-        raw.replace(/\./g, "").replace(/,/g, ".").replace(/\s/g, "")
-    );
+    let kmNhap = parseKhuyenMaiInput(raw);
 
     if (!isFinite(kmNhap) || kmNhap < 0) kmNhap = 0;
 
@@ -603,7 +687,9 @@ export async function chuyenFocus(e) {
     } else if (e.target.id === "khuyenmai") {
         // Chuẩn hoá khuyến mại: <=100 coi là %, >100 là tiền; cập nhật lại #thanhtien 
         const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
-        let km = parseFloat(String(document.getElementById("khuyenmai").value).replace(/\./g, "").replace(/,/g, "."));
+        let km = parseKhuyenMaiInput(
+            document.getElementById("khuyenmai").value
+        );
         if (!isFinite(km)) km = 0;
         km = km <= 100 ? Math.round(gia * (km / 100)) : Math.round(km);
         document.getElementById("khuyenmai").value = km.toLocaleString();
@@ -622,8 +708,9 @@ export async function chuyenFocus(e) {
         const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
         document.getElementById("gia").value = gia.toLocaleString();
 
-        let kmIn = String(document.getElementById("khuyenmai").value).trim();
-        let km = parseFloat(kmIn.replace(/\./g, "").replace(/,/g, "."));
+        let km = parseKhuyenMaiInput(
+            document.getElementById("khuyenmai").value
+        );
         if (!isFinite(km)) km = 0;
         km = km <= 100 ? Math.round(gia * (km / 100)) : Math.round(km);
         document.getElementById("khuyenmai").value = km.toLocaleString();
@@ -1096,6 +1183,20 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         kmForm = chuanHoaKhuyenMaiNhapTay();
     }
 
+    console.log(
+        "=== THEM VAO BANG ===",
+        {
+            masp,
+            giaForm,
+            kmForm,
+            giaTrenForm:
+                document.getElementById("gia")?.value,
+            kmTrenForm:
+                document.getElementById("khuyenmai")?.value,
+            isAdmin: isAdminUser()
+        }
+    );
+
     const key = masp;
     const bang = bangKetQua[key] || {
         masp,
@@ -1113,21 +1214,55 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     // - Khuyến mại: nếu người dùng đã có giá trị > 0 trong ô khuyến mại thì GIỮ NGUYÊN
     // - Chỉ tự tính km hệ thống khi ô khuyến mại đang trống hoặc = 0
     if (!isAdminUser()) {
-        const giaNguonSys = isNhapMode() ? (sp.gianhap || 0) : (sp.giale || 0);
-        const giaSys = Math.round(parseMoneyInt(giaNguonSys));
+        const giaNguonSys = isNhapMode()
+            ? (sp.gianhap || 0)
+            : (sp.giale || 0);
 
-        let kmSys = 0;
-        if (!isNhapMode()) {
-            kmSys = tinhKhuyenMai(sp, giaSys) || 0;
+        const giaSys = Math.round(
+            parseMoneyInt(giaNguonSys)
+        );
+
+        // Giá của nhân viên luôn lấy từ danh mục hệ thống.
+        giaForm = giaSys;
+
+        /*
+         * QUAN TRỌNG:
+         * Giữ nguyên khuyến mại đã được tính đúng
+         * và đang hiển thị trong ô #khuyenmai.
+         *
+         * Chỉ tính lại khi ô khuyến mại thực sự
+         * trống hoặc không hợp lệ.
+         */
+        if (
+            !Number.isFinite(kmForm) ||
+            kmForm < 0
+        ) {
+            kmForm = 0;
         }
 
-        giaForm = giaSys;
-        kmForm = kmSys;
+        if (
+            kmForm === 0 &&
+            !isNhapMode()
+        ) {
+            kmForm =
+                tinhKhuyenMai(sp, giaSys) || 0;
+        }
 
-        const _giaEl = document.getElementById('gia');
-        const _kmEl = document.getElementById('khuyenmai');
-        if (_giaEl) _giaEl.value = giaForm.toLocaleString();
-        if (_kmEl) _kmEl.value = (kmForm || 0).toLocaleString();
+        const _giaEl =
+            document.getElementById("gia");
+
+        const _kmEl =
+            document.getElementById("khuyenmai");
+
+        if (_giaEl) {
+            _giaEl.value =
+                giaForm.toLocaleString("vi-VN");
+        }
+
+        if (_kmEl) {
+            _kmEl.value =
+                kmForm.toLocaleString("vi-VN");
+        }
     }
 
     // Cập nhật giá/km cho nhóm
