@@ -1183,6 +1183,20 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         kmForm = chuanHoaKhuyenMaiNhapTay();
     }
 
+    console.log(
+        "=== THEM VAO BANG ===",
+        {
+            masp,
+            giaForm,
+            kmForm,
+            giaTrenForm:
+                document.getElementById("gia")?.value,
+            kmTrenForm:
+                document.getElementById("khuyenmai")?.value,
+            isAdmin: isAdminUser()
+        }
+    );
+
     const key = masp;
     const bang = bangKetQua[key] || {
         masp,
@@ -1200,21 +1214,55 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     // - Khuyến mại: nếu người dùng đã có giá trị > 0 trong ô khuyến mại thì GIỮ NGUYÊN
     // - Chỉ tự tính km hệ thống khi ô khuyến mại đang trống hoặc = 0
     if (!isAdminUser()) {
-        const giaNguonSys = isNhapMode() ? (sp.gianhap || 0) : (sp.giale || 0);
-        const giaSys = Math.round(parseMoneyInt(giaNguonSys));
+        const giaNguonSys = isNhapMode()
+            ? (sp.gianhap || 0)
+            : (sp.giale || 0);
 
-        let kmSys = 0;
-        if (!isNhapMode()) {
-            kmSys = tinhKhuyenMai(sp, giaSys) || 0;
+        const giaSys = Math.round(
+            parseMoneyInt(giaNguonSys)
+        );
+
+        // Giá của nhân viên luôn lấy từ danh mục hệ thống.
+        giaForm = giaSys;
+
+        /*
+         * QUAN TRỌNG:
+         * Giữ nguyên khuyến mại đã được tính đúng
+         * và đang hiển thị trong ô #khuyenmai.
+         *
+         * Chỉ tính lại khi ô khuyến mại thực sự
+         * trống hoặc không hợp lệ.
+         */
+        if (
+            !Number.isFinite(kmForm) ||
+            kmForm < 0
+        ) {
+            kmForm = 0;
         }
 
-        giaForm = giaSys;
-        kmForm = kmSys;
+        if (
+            kmForm === 0 &&
+            !isNhapMode()
+        ) {
+            kmForm =
+                tinhKhuyenMai(sp, giaSys) || 0;
+        }
 
-        const _giaEl = document.getElementById('gia');
-        const _kmEl = document.getElementById('khuyenmai');
-        if (_giaEl) _giaEl.value = giaForm.toLocaleString();
-        if (_kmEl) _kmEl.value = (kmForm || 0).toLocaleString();
+        const _giaEl =
+            document.getElementById("gia");
+
+        const _kmEl =
+            document.getElementById("khuyenmai");
+
+        if (_giaEl) {
+            _giaEl.value =
+                giaForm.toLocaleString("vi-VN");
+        }
+
+        if (_kmEl) {
+            _kmEl.value =
+                kmForm.toLocaleString("vi-VN");
+        }
     }
 
     // Cập nhật giá/km cho nhóm
