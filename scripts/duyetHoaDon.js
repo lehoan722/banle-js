@@ -121,6 +121,10 @@ export async function napHoaDonVaoTrang(hoadon) {
   const tienDoiDiem = Number(hoadon.tien_doi_diem || 0);
   const diemTru = Number(hoadon.diem_tru || 0);
 
+  // Khôi phục tổng gốc hóa đơn để chức năng đổi điểm hoạt động đúng
+  window.__tongPhaiTraGoc =
+    thanhToan + tienDoiDiem;
+
   document.getElementById("chietkhau").value = hoadon.chietkhau || "0";
   document.getElementById("tongkm").value = Number(hoadon.tongkm || 0).toLocaleString("vi-VN");
 
@@ -210,4 +214,20 @@ export async function napHoaDonVaoTrang(hoadon) {
     const el = document.getElementById(id);
     if (el) el.value = tienDoiDiem.toLocaleString("vi-VN");
   });
+
+  // Đồng bộ lại tổng tiền nội bộ
+  if (typeof window.capNhatThongTinTong === "function") {
+    window.capNhatThongTinTong(window.bangKetQua || {});
+  }
+
+  // Khôi phục lại tổng đang hiển thị,
+  // tránh capNhatThongTinTong ghi đè
+  document.getElementById("phaithanhtoan").value =
+    thanhToan.toLocaleString("vi-VN");
+
+  document.getElementById("khachtra").value =
+    thanhToan.toLocaleString("vi-VN");
+
+  document.getElementById("conlai").value = "0";
+
 }
