@@ -1,8 +1,9 @@
 {
   "name": "banle-js",
   "productName": "SuperPOS",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "Hệ thống bán lẻ và gửi hóa đơn điện tử",
+  "author": "Shop Hoàn Tuyết",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -10,7 +11,9 @@
     "start": "node index.js",
     "electron": "electron .",
     "electron:cs1": "electron . --site=cs1",
-    "electron:cs2": "electron . --site=cs2"
+    "electron:cs2": "electron . --site=cs2",
+    "pack:win": "electron-builder --win --dir",
+    "dist:win": "electron-builder --win nsis"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.48.0",
@@ -18,6 +21,39 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "electron": "^43.1.0"
+    "electron": "^43.1.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "vn.hoantuyet.superpos",
+    "productName": "SuperPOS",
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "SuperPOS-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SuperPOS",
+      "uninstallDisplayName": "SuperPOS"
+    }
   }
 }

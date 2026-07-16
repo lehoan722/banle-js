@@ -11,6 +11,10 @@ import {
   writeLog
 } from "./logger.js";
 
+import {
+  openChangeSiteWindow
+} from "./windows/changeSite/changeSiteWindow.js";
+
 const SYSTEM_URL = "https://app.hoantuyet.vn/banlemtcs1.html";
 
 async function openLogsFolder(mainWindow) {
@@ -168,13 +172,26 @@ export function createApplicationMenu(mainWindow) {
         {
           label: "Kiểm tra kết nối hệ thống",
           click: async () => {
-            await checkSystemConnection(mainWindow);
+            await checkSystemConnection(
+              mainWindow
+            );
           }
         },
         {
+          label: "Đổi cơ sở sử dụng...",
+          click: async () => {
+            await openChangeSiteWindow(
+              mainWindow
+            );
+          }
+        },
+        { type: "separator" },
+        {
           label: "Mở thư mục nhật ký",
           click: async () => {
-            await openLogsFolder(mainWindow);
+            await openLogsFolder(
+              mainWindow
+            );
           }
         }
       ]

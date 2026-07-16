@@ -25,6 +25,15 @@ import { registerIpcHandlers }
 import { createConnectionManager }
   from "./connectionManager.js";
 
+import {
+  readAppConfig,
+  isValidSite
+} from "./configManager.js";
+
+import {
+  openInitialSetup
+} from "./setupWindow.js";
+
 const __filename =
   fileURLToPath(import.meta.url);
 
@@ -94,7 +103,7 @@ async function repairCacheOnce() {
   }
 }
 
-function getStartUrl() {
+function getSiteFromCommandLine() {
   const siteArgument =
     process.argv.find(
       (argument) =>
@@ -106,6 +115,12 @@ function getStartUrl() {
     ?.trim()
     .toLowerCase();
 
+  return isValidSite(site)
+    ? site
+    : null;
+}
+
+function getStartUrl(site) {
   if (site === "cs2") {
     return (
       `${APP_ORIGIN}/banlemtcs2.html`
@@ -117,8 +132,64 @@ function getStartUrl() {
   );
 }
 
-function createMainWindow() {
-  const targetUrl = getStartUrl();
+async function resolveApplicationConfig() {
+  // Dùng cho quá trình phát triển bằng:
+  // npm run electron:cs1 hoặc electron:cs2.
+  const commandLineSite =
+    getSiteFromCommandLine();
+
+  if (commandLineSite) {
+    writeLog(
+      "INFO",
+      "Sử dụng cơ sở từ tham số dòng lệnh",
+      {
+        site: commandLineSite
+      }
+    );
+
+    return {
+      site: commandLineSite,
+      source: "command-line"
+    };
+  }
+
+  const existingConfig =
+    readAppConfig();
+
+  if (existingConfig) {
+    writeLog(
+      "INFO",
+      "Đã đọc cấu hình SuperPOS",
+      {
+        site: existingConfig.site
+      }
+    );
+
+    return existingConfig;
+  }
+
+  writeLog(
+    "INFO",
+    "Chưa có cấu hình, mở thiết lập ban đầu"
+  );
+
+  return openInitialSetup({
+    preloadPath: path.join(
+      __dirname,
+      "setup-preload.cjs"
+    ),
+
+    htmlPath: path.join(
+      __dirname,
+      "setup.html"
+    ),
+
+    writeLog
+  });
+}
+
+function createMainWindow(site) {
+  const targetUrl = getStartUrl(site);
 
   writeLog(
     "INFO",
@@ -291,15 +362,43 @@ if (!hasSingleInstanceLock) {
     await repairCacheOnce();
 
     registerIpcHandlers();
-    createMainWindow();
 
-    app.on("activate", () => {
+    try {
+      const config =
+        await resolveApplicationConfig();
+
+      createMainWindow(config.site);
+    } catch (error) {
+      writeLog(
+        "ERROR",
+        "Không thể hoàn tất thiết lập SuperPOS",
+        error
+      );
+
+      app.quit();
+      return;
+    }
+
+    app.on("activate", async () => {
       if (
         BrowserWindow
           .getAllWindows()
-          .length === 0
+          .length !== 0
       ) {
-        createMainWindow();
+        return;
+      }
+
+      try {
+        const config =
+          await resolveApplicationConfig();
+
+        createMainWindow(config.site);
+      } catch (error) {
+        writeLog(
+          "ERROR",
+          "Không thể mở lại SuperPOS",
+          error
+        );
       }
     });
   });

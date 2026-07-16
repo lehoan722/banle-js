@@ -91,55 +91,25 @@ function parseKhuyenMai(value) {
  * Xác định số tiền khuyến mại cho sản phẩm.
  */
 export function tinhKhuyenMai(sp, gia, khuyenMaiNhapTay) {
-  const giaBan = Number(gia) || 0;
+  console.warn("=== TEST KHUYEN MAI LOCAL 1.0.4 ===", {
+    gia,
+    khuyenMaiNhapTay,
+    sanPham: sp?.masp
+  });
 
-  // Khuyến mại nhập tay
-  if (
-    khuyenMaiNhapTay !== undefined &&
-    khuyenMaiNhapTay !== null &&
-    khuyenMaiNhapTay !== ""
-  ) {
-    const soKM = parseKhuyenMai(khuyenMaiNhapTay);
+  // Chỉ đọc khuyến mại là số tiền.
+  // Bỏ hoàn toàn cách hiểu theo phần trăm trong bản thử nghiệm.
+  const raw = String(khuyenMaiNhapTay ?? sp?.khuyenmai ?? "")
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/[₫đ]/gi, "")
+    .replace(/[.,]/g, "");
 
-    if (Number.isFinite(soKM) && soKM > 0) {
-      if (soKM > 100) {
-        return Math.round(soKM);
-      }
+  const soTien = Number(raw);
 
-      return Math.round((giaBan * soKM) / 100);
-    }
-  }
-
-  // Khuyến mại từ danh mục hàng hóa
-  const rawKM =
-    sp &&
-    sp.khuyenmai !== undefined &&
-    sp.khuyenmai !== null &&
-    sp.khuyenmai !== ""
-      ? sp.khuyenmai
-      : null;
-
-  const km = parseKhuyenMai(rawKM);
-
-  if (km === 0) {
+  if (!Number.isFinite(soTien) || soTien <= 0) {
     return 0;
   }
 
-  if (!Number.isFinite(km)) {
-    return giaBan < 100000
-      ? 5000
-      : giaBan < 500000
-        ? 10000
-        : 20000;
-  }
-
-  if (km > 0 && km <= 100) {
-    return Math.round((giaBan * km) / 100);
-  }
-
-  if (km > 100) {
-    return Math.round(km);
-  }
-
-  return 0;
+  return Math.round(soTien);
 }

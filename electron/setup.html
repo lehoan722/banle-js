@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="
+      default-src 'self';
+      style-src 'self' 'unsafe-inline';
+      script-src 'self' 'unsafe-inline';
+    "
+  >
+
+  <title>Thiết lập SuperPOS</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #eef3f7;
+      color: #1f2937;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 590px;
+      padding: 38px;
+      background: #ffffff;
+      border: 1px solid #e4e7ec;
+      border-radius: 18px;
+      box-shadow: 0 18px 50px rgba(16, 24, 40, 0.16);
+    }
+
+    .logo {
+      width: 82px;
+      height: 82px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 20px;
+      background: #087db8;
+      color: #ffffff;
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0;
+      text-align: center;
+      font-size: 28px;
+      color: #101828;
+    }
+
+    .description {
+      margin: 12px 0 28px;
+      text-align: center;
+      color: #667085;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .site-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .site-option {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 18px;
+      border: 2px solid #d0d5dd;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .site-option:hover {
+      border-color: #087db8;
+      background: #f5fbff;
+    }
+
+    .site-option.selected {
+      border-color: #087db8;
+      background: #eef9ff;
+    }
+
+    .site-option input {
+      width: 21px;
+      height: 21px;
+      margin: 0;
+      accent-color: #087db8;
+    }
+
+    .site-information {
+      flex: 1;
+    }
+
+    .site-name {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    .site-detail {
+      color: #667085;
+      font-size: 14px;
+    }
+
+    .status {
+      min-height: 22px;
+      margin: 18px 0 10px;
+      text-align: center;
+      color: #b42318;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px 20px;
+      border: 0;
+      border-radius: 10px;
+      background: #087db8;
+      color: #ffffff;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #066b9e;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .note {
+      margin-top: 18px;
+      text-align: center;
+      color: #667085;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="card">
+    <div class="logo">SP</div>
+
+    <h1>Thiết lập SuperPOS</h1>
+
+    <p class="description">
+      Chọn cơ sở sử dụng trên máy tính này.
+      SuperPOS sẽ ghi nhớ lựa chọn cho những lần mở sau.
+    </p>
+
+    <section class="site-list">
+      <label
+        id="optionCs1"
+        class="site-option"
+      >
+        <input
+          type="radio"
+          name="site"
+          value="cs1"
+          checked
+        >
+
+        <span class="site-information">
+          <span class="site-name">
+            Cơ sở 1
+          </span>
+
+          <span class="site-detail">
+            Mở trang bán lẻ cơ sở 1
+          </span>
+        </span>
+      </label>
+
+      <label
+        id="optionCs2"
+        class="site-option"
+      >
+        <input
+          type="radio"
+          name="site"
+          value="cs2"
+        >
+
+        <span class="site-information">
+          <span class="site-name">
+            Cơ sở 2
+          </span>
+
+          <span class="site-detail">
+            Mở trang bán lẻ cơ sở 2
+          </span>
+        </span>
+      </label>
+    </section>
+
+    <div id="status" class="status"></div>
+
+    <button
+      id="saveButton"
+      type="button"
+    >
+      Lưu và mở SuperPOS
+    </button>
+
+    <div class="note">
+      Có thể thay đổi cơ sở sau trong phần
+      thiết lập hệ thống của SuperPOS.
+    </div>
+  </main>
+
+  <script>
+    const saveButton =
+      document.getElementById("saveButton");
+
+    const statusElement =
+      document.getElementById("status");
+
+    const options =
+      Array.from(
+        document.querySelectorAll(".site-option")
+      );
+
+    function updateSelectedStyle() {
+      options.forEach((option) => {
+        const radio =
+          option.querySelector(
+            'input[name="site"]'
+          );
+
+        option.classList.toggle(
+          "selected",
+          radio.checked
+        );
+      });
+    }
+
+    options.forEach((option) => {
+      option.addEventListener(
+        "click",
+        updateSelectedStyle
+      );
+    });
+
+    updateSelectedStyle();
+
+    saveButton.addEventListener(
+      "click",
+      async () => {
+        const selectedRadio =
+          document.querySelector(
+            'input[name="site"]:checked'
+          );
+
+        if (!selectedRadio) {
+          statusElement.textContent =
+            "Hãy chọn một cơ sở.";
+
+          return;
+        }
+
+        saveButton.disabled = true;
+        saveButton.textContent =
+          "Đang lưu cấu hình...";
+
+        statusElement.textContent = "";
+
+        try {
+          const result =
+            await window.superPOSSetup.saveSite(
+              selectedRadio.value
+            );
+
+          if (!result?.success) {
+            throw new Error(
+              result?.message ||
+              "Không thể lưu cấu hình"
+            );
+          }
+
+          statusElement.style.color =
+            "#067647";
+
+          statusElement.textContent =
+            "Đã lưu cấu hình. Đang mở SuperPOS...";
+
+          saveButton.textContent =
+            "Đang mở SuperPOS...";
+        } catch (error) {
+          statusElement.style.color =
+            "#b42318";
+
+          statusElement.textContent =
+            error?.message ||
+            "Không thể lưu cấu hình.";
+
+          saveButton.disabled = false;
+          saveButton.textContent =
+            "Lưu và mở SuperPOS";
+        }
+      }
+    );
+  </script>
+</body>
+</html>

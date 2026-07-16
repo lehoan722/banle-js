@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="
+      default-src 'self';
+      style-src 'self' 'unsafe-inline';
+      script-src 'self' 'unsafe-inline';
+    "
+  >
+
+  <title>Đổi cơ sở sử dụng</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      background: #eef3f7;
+      color: #1f2937;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .card {
+      width: 100%;
+      padding: 30px;
+      background: #ffffff;
+      border: 1px solid #e4e7ec;
+      border-radius: 16px;
+      box-shadow:
+        0 16px 45px rgba(16, 24, 40, 0.16);
+    }
+
+    .logo {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      background: #087db8;
+      color: #ffffff;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0;
+      text-align: center;
+      color: #101828;
+      font-size: 25px;
+    }
+
+    .description {
+      margin: 10px 0 24px;
+      text-align: center;
+      color: #667085;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .site-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .site-option {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      border: 2px solid #d0d5dd;
+      border-radius: 11px;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .site-option:hover {
+      border-color: #087db8;
+      background: #f5fbff;
+    }
+
+    .site-option.selected {
+      border-color: #087db8;
+      background: #eef9ff;
+    }
+
+    .site-option input {
+      width: 21px;
+      height: 21px;
+      margin: 0;
+      accent-color: #087db8;
+    }
+
+    .site-information {
+      flex: 1;
+    }
+
+    .site-name {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .site-detail {
+      color: #667085;
+      font-size: 13px;
+    }
+
+    .current-label {
+      display: none;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #dcfae6;
+      color: #067647;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .site-option.current .current-label {
+      display: inline-block;
+    }
+
+    .status {
+      min-height: 21px;
+      margin: 16px 0 8px;
+      text-align: center;
+      color: #b42318;
+      font-size: 14px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 10px;
+    }
+
+    button {
+      padding: 13px 16px;
+      border-radius: 9px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #cancelButton {
+      border: 1px solid #d0d5dd;
+      background: #ffffff;
+      color: #344054;
+    }
+
+    #saveButton {
+      border: 0;
+      background: #087db8;
+      color: #ffffff;
+    }
+
+    #saveButton:hover {
+      background: #066b9e;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .note {
+      margin-top: 16px;
+      text-align: center;
+      color: #667085;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="card">
+    <div class="logo">SP</div>
+
+    <h1>Đổi cơ sở sử dụng</h1>
+
+    <p class="description">
+      Chọn cơ sở hoạt động trên máy tính này.
+      SuperPOS sẽ khởi động lại sau khi lưu.
+    </p>
+
+    <section class="site-list">
+      <label
+        id="optionCs1"
+        class="site-option"
+      >
+        <input
+          type="radio"
+          name="site"
+          value="cs1"
+        >
+
+        <span class="site-information">
+          <span class="site-name">
+            Cơ sở 1
+          </span>
+
+          <span class="site-detail">
+            Mở trang bán lẻ cơ sở 1
+          </span>
+        </span>
+
+        <span class="current-label">
+          Hiện tại
+        </span>
+      </label>
+
+      <label
+        id="optionCs2"
+        class="site-option"
+      >
+        <input
+          type="radio"
+          name="site"
+          value="cs2"
+        >
+
+        <span class="site-information">
+          <span class="site-name">
+            Cơ sở 2
+          </span>
+
+          <span class="site-detail">
+            Mở trang bán lẻ cơ sở 2
+          </span>
+        </span>
+
+        <span class="current-label">
+          Hiện tại
+        </span>
+      </label>
+    </section>
+
+    <div id="status" class="status"></div>
+
+    <div class="actions">
+      <button
+        id="cancelButton"
+        type="button"
+      >
+        Hủy
+      </button>
+
+      <button
+        id="saveButton"
+        type="button"
+      >
+        Lưu và khởi động lại
+      </button>
+    </div>
+
+    <div class="note">
+      Việc đổi cơ sở không xóa dữ liệu,
+      tài khoản đăng nhập hoặc nhật ký.
+    </div>
+  </main>
+
+  <script>
+    const saveButton =
+      document.getElementById("saveButton");
+
+    const cancelButton =
+      document.getElementById("cancelButton");
+
+    const statusElement =
+      document.getElementById("status");
+
+    const options =
+      Array.from(
+        document.querySelectorAll(".site-option")
+      );
+
+    let currentSite = null;
+
+    function updateSelectedStyle() {
+      options.forEach((option) => {
+        const radio =
+          option.querySelector(
+            'input[name="site"]'
+          );
+
+        option.classList.toggle(
+          "selected",
+          radio.checked
+        );
+      });
+    }
+
+    function markCurrentSite(site) {
+      options.forEach((option) => {
+        const radio =
+          option.querySelector(
+            'input[name="site"]'
+          );
+
+        const isCurrent =
+          radio.value === site;
+
+        option.classList.toggle(
+          "current",
+          isCurrent
+        );
+
+        if (isCurrent) {
+          radio.checked = true;
+        }
+      });
+
+      updateSelectedStyle();
+    }
+
+    options.forEach((option) => {
+      option.addEventListener(
+        "click",
+        updateSelectedStyle
+      );
+    });
+
+    cancelButton.addEventListener(
+      "click",
+      () => {
+        window.superPOSChangeSite.cancel();
+      }
+    );
+
+    saveButton.addEventListener(
+      "click",
+      async () => {
+        const selectedRadio =
+          document.querySelector(
+            'input[name="site"]:checked'
+          );
+
+        if (!selectedRadio) {
+          statusElement.textContent =
+            "Hãy chọn một cơ sở.";
+
+          return;
+        }
+
+        if (selectedRadio.value === currentSite) {
+          statusElement.textContent =
+            "Máy tính đang sử dụng cơ sở này.";
+
+          return;
+        }
+
+        saveButton.disabled = true;
+        cancelButton.disabled = true;
+
+        saveButton.textContent =
+          "Đang lưu cấu hình...";
+
+        statusElement.textContent = "";
+
+        try {
+          const result =
+            await window.superPOSChangeSite
+              .saveSite(selectedRadio.value);
+
+          if (!result?.success) {
+            throw new Error(
+              result?.message ||
+              "Không thể lưu cơ sở"
+            );
+          }
+
+          statusElement.style.color =
+            "#067647";
+
+          statusElement.textContent =
+            "Đã lưu. SuperPOS đang khởi động lại...";
+
+          saveButton.textContent =
+            "Đang khởi động lại...";
+        } catch (error) {
+          statusElement.style.color =
+            "#b42318";
+
+          statusElement.textContent =
+            error?.message ||
+            "Không thể lưu cơ sở.";
+
+          saveButton.disabled = false;
+          cancelButton.disabled = false;
+
+          saveButton.textContent =
+            "Lưu và khởi động lại";
+        }
+      }
+    );
+
+    async function initialize() {
+      try {
+        const config =
+          await window.superPOSChangeSite
+            .getCurrentConfig();
+
+        currentSite =
+          config?.site === "cs2"
+            ? "cs2"
+            : "cs1";
+
+        markCurrentSite(currentSite);
+      } catch (error) {
+        currentSite = "cs1";
+        markCurrentSite(currentSite);
+
+        statusElement.textContent =
+          "Không đọc được cấu hình hiện tại.";
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>

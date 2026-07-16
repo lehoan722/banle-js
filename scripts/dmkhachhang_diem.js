@@ -87,6 +87,16 @@ export function mountKhachHangSuggest(options = {}) {
     return document.getElementById(id);
   }
 
+  function getBangKetQuaAnToan() {
+    const bang =
+      window.bangKetQua &&
+        typeof window.bangKetQua === "object"
+        ? window.bangKetQua
+        : {};
+
+    return bang;
+  }
+
   async function taiCauHinhDiemKhachHang() {
     try {
       const { data, error } = await window.supabase
@@ -402,23 +412,22 @@ export function mountKhachHangSuggest(options = {}) {
     if (!coHangTrongBangKetQua()) {
       window.__tongPhaiTraGoc = 0;
 
-      if (
-        typeof window.capNhatThongTinTong === "function"
-      ) {
-        window.capNhatThongTinTong(
-          window.bangKetQua || {}
-        );
-      }
-
+      /*
+       * Không cần gọi tính tổng với bảng rỗng.
+       * Hóa đơn không có hàng thì trả về 0 là đủ.
+       */
       return 0;
     }
 
+    const bang =
+      getBangKetQuaAnToan();
+
     if (
-      typeof window.capNhatThongTinTong === "function"
+      typeof window.capNhatThongTinTong ===
+      "function" &&
+      Object.keys(bang).length > 0
     ) {
-      window.capNhatThongTinTong(
-        window.bangKetQua || {}
-      );
+      window.capNhatThongTinTong(bang);
     }
 
     return Number(
@@ -1023,12 +1032,18 @@ export function mountKhachHangSuggest(options = {}) {
     }
 
     function capNhatTongTheoDiem(diemTru) {
+      const tienMoiDiem =
+        layTienMoiDiem();
 
-      const tienMoiDiem = layTienMoiDiem();
+      const diemHopLe =
+        Math.max(
+          0,
+          Math.floor(Number(diemTru) || 0)
+        );
 
-      const tienGiam = diemTru * tienMoiDiem;
+      const tienGiam =
+        diemHopLe * tienMoiDiem;
 
-      // Chỉ cập nhật tiền giảm điểm
       setVal(
         tienDoiDiemInputId,
         tienGiam.toLocaleString("vi-VN")
@@ -1039,17 +1054,60 @@ export function mountKhachHangSuggest(options = {}) {
         tienGiam.toLocaleString("vi-VN")
       );
 
-      // Không tính tổng tiền ở đây nữa
+      const bang =
+        getBangKetQuaAnToan();
+
+      /*
+       * Sau khi sửa hoadon.js, window.bangKetQua
+       * và bangKetQua module luôn là cùng một object.
+       */
       if (
-        typeof window.capNhatThongTinTong === "function"
+        typeof window.capNhatThongTinTong ===
+        "function" &&
+        Object.keys(bang).length > 0
       ) {
-
-        window.capNhatThongTinTong(
-          window.bangKetQua || {}
-        );
-
+        window.capNhatThongTinTong(bang);
+        return;
       }
 
+      /*
+       * Dự phòng: không bao giờ đưa tổng hóa đơn cũ
+       * về 0 chỉ vì state chưa có.
+       */
+      const tongGoc =
+        Math.max(
+          0,
+          layTongGocHoaDon()
+        );
+
+      const phaiTraMoi =
+        Math.max(
+          0,
+          tongGoc - tienGiam
+        );
+
+      setVal(
+        "phaithanhtoan",
+        phaiTraMoi.toLocaleString("vi-VN")
+      );
+
+      setVal(
+        "khachtra",
+        phaiTraMoi.toLocaleString("vi-VN")
+      );
+
+      setVal("conlai", "0");
+
+      console.warn(
+        "[ĐIỂM] Không có state hàng hóa, " +
+        "đã tính từ tổng gốc hóa đơn.",
+        {
+          tongGoc,
+          diemHopLe,
+          tienGiam,
+          phaiTraMoi
+        }
+      );
     }
 
     diemTruEl.addEventListener("input", () => {
