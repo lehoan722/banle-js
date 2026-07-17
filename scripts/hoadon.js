@@ -6,28 +6,13 @@ import { supabase } from './supabaseClient.js';
 import { tinhKhuyenMai } from './khuyenmai.js';
 
 function _data() {
-    /*
-     * bangKetQua của module là nguồn dữ liệu chính.
-     * window.bangKetQua chỉ là tham chiếu tương thích
-     * cho các file cũ và popup.
-     */
-    if (window.bangKetQua !== bangKetQua) {
-        window.bangKetQua = bangKetQua;
-    }
-
-    return bangKetQua;
+    return (window.bangKetQua && Object.keys(window.bangKetQua).length)
+        ? window.bangKetQua
+        : bangKetQua;
 }
-
 function _sync(obj) {
-    const next =
-        obj && typeof obj === "object"
-            ? obj
-            : {};
-
-    bangKetQua = next;
-    window.bangKetQua = next;
-
-    return next;
+    window.bangKetQua = obj;
+    bangKetQua = obj;
 }
 
 // === Ensure: nếu dữ liệu vừa dán/sửa trực tiếp trên bảng DOM, đồng bộ về state trước khi thao tác
@@ -45,24 +30,7 @@ function ensureStateFromDOM() {
 
 // Cho phép module khác (popupNgang) chủ động sync từ window vào biến module
 window.hoadonSyncFromWindow = () => {
-    try {
-        const data =
-            window.bangKetQua &&
-                typeof window.bangKetQua === "object"
-                ? window.bangKetQua
-                : {};
-
-        _sync(data);
-
-        return bangKetQua;
-    } catch (error) {
-        console.error(
-            "[HOADON] Không đồng bộ được state từ window:",
-            error
-        );
-
-        return bangKetQua;
-    }
+    try { _sync(window.bangKetQua || {}); } catch (_) { }
 };
 
 
@@ -215,28 +183,11 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
 }
 
 export let bangKetQua = {};
-
-/*
- * Giữ biến module và biến toàn cục cùng một tham chiếu.
- */
-window.bangKetQua = bangKetQua;
 // Cache gợi ý khách hàng theo size từ bán nhân viên
 window.pendingMTSuggest = null;
 
 // Trong hoadon.js
 let maspDangChon = null;
-
-export function setBangKetQua(data = {}) {
-    const next =
-        data && typeof data === "object"
-            ? data
-            : {};
-
-    _sync(next);
-
-    return bangKetQua;
-}
-
 export function setMaspspDangChon(obj) {
     maspDangChon = obj; // obj = {masp, size}
 }
@@ -1381,38 +1332,21 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
 
 export function getBangKetQua() {
-    /*
-     * Chỉ có một nguồn dữ liệu chính.
-     */
-    if (window.bangKetQua !== bangKetQua) {
-        window.bangKetQua = bangKetQua;
+    if (window.bangKetQua && Object.keys(window.bangKetQua).length > 0) {
+        return window.bangKetQua;
     }
-
     return bangKetQua;
 }
 
-export function resetBangKetQua(options = {}) {
-    const {
-        render = true
-    } = options;
+export function resetBangKetQua() {
+    bangKetQua = {};
+    if (window.bangKetQua) window.bangKetQua = {};
 
-    /*
-     * Tạo đúng một object mới rồi để cả hai biến
-     * cùng trỏ tới object này.
-     */
-    const emptyState = {};
-
-    bangKetQua = emptyState;
-    window.bangKetQua = emptyState;
-
+    // ✅ reset luôn các state điều khiển thứ tự/hiển thị
     window.groupOrder = [];
     window.lastAdded = null;
 
-    if (render) {
-        capNhatBangHTML(bangKetQua, null);
-    }
-
-    return bangKetQua;
+    capNhatBangHTML(bangKetQua, null);
 }
 
 

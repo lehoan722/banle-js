@@ -85,11 +85,6 @@ export function ganSuKienNutLenh() {
     window.choPhepSua = false;
     window.dangSuaHoaDon = false;
 
-    /*
- * Không để tổng gốc hóa đơn cũ
- * tồn tại sang hóa đơn mới.
- */
-    window.__tongPhaiTraGoc = 0;
 
     resetBangKetQua();
     await capNhatSoHoaDonTuDong();
