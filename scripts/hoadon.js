@@ -6,46 +6,13 @@ import { supabase } from './supabaseClient.js';
 import { tinhKhuyenMai } from './khuyenmai.js';
 
 function _data() {
-    /*
-     * Nếu bảng DOM hoặc module ngoài đã cập nhật
-     * window.bangKetQua thì nhập dữ liệu đó về module.
-     */
-    try {
-        const globalData = window.bangKetQua;
-
-        if (
-            globalData &&
-            typeof globalData === "object" &&
-            !Array.isArray(globalData) &&
-            globalData !== bangKetQua
-        ) {
-            _sync(globalData);
-        }
-    } catch (error) {
-        console.warn(
-            "[HOADON] Không lấy được dữ liệu toàn cục:",
-            error
-        );
-    }
-
-    /*
-     * Sau khi đồng bộ, bảo đảm hai biến cùng tham chiếu.
-     */
-    window.bangKetQua = bangKetQua;
-
-    return bangKetQua;
+    return (window.bangKetQua && Object.keys(window.bangKetQua).length)
+        ? window.bangKetQua
+        : bangKetQua;
 }
-
 function _sync(obj) {
-    const next =
-        obj && typeof obj === "object"
-            ? obj
-            : {};
-
-    bangKetQua = next;
-    window.bangKetQua = next;
-
-    return next;
+    window.bangKetQua = obj;
+    bangKetQua = obj;
 }
 
 // === Ensure: nếu dữ liệu vừa dán/sửa trực tiếp trên bảng DOM, đồng bộ về state trước khi thao tác
@@ -63,24 +30,7 @@ function ensureStateFromDOM() {
 
 // Cho phép module khác (popupNgang) chủ động sync từ window vào biến module
 window.hoadonSyncFromWindow = () => {
-    try {
-        const data =
-            window.bangKetQua &&
-                typeof window.bangKetQua === "object"
-                ? window.bangKetQua
-                : {};
-
-        _sync(data);
-
-        return bangKetQua;
-    } catch (error) {
-        console.error(
-            "[HOADON] Không đồng bộ được state từ window:",
-            error
-        );
-
-        return bangKetQua;
-    }
+    try { _sync(window.bangKetQua || {}); } catch (_) { }
 };
 
 
@@ -233,28 +183,11 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
 }
 
 export let bangKetQua = {};
-
-/*
- * Giữ biến module và biến toàn cục cùng một tham chiếu.
- */
-window.bangKetQua = bangKetQua;
 // Cache gợi ý khách hàng theo size từ bán nhân viên
 window.pendingMTSuggest = null;
 
 // Trong hoadon.js
 let maspDangChon = null;
-
-export function setBangKetQua(data = {}) {
-    const next =
-        data && typeof data === "object"
-            ? data
-            : {};
-
-    _sync(next);
-
-    return bangKetQua;
-}
-
 export function setMaspspDangChon(obj) {
     maspDangChon = obj; // obj = {masp, size}
 }
@@ -1399,75 +1332,21 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
 
 export function getBangKetQua() {
-    /*
-     * Trước khi lấy dữ liệu, đọc lại bảng HTML.
-     * Việc này cần thiết cho:
-     * - trang chuyển chi nhánh;
-     * - dữ liệu nạp từ localStorage;
-     * - dữ liệu dán từ Excel;
-     * - popup nhập ngang;
-     * - các trang cũ đang ghi vào window.bangKetQua.
-     */
-    try {
-        if (typeof window.capNhatBangKetQuaTuDOM === "function") {
-            window.capNhatBangKetQuaTuDOM();
-        }
-    } catch (error) {
-        console.warn(
-            "[HOADON] Không đọc được bangKetQua từ DOM:",
-            error
-        );
+    if (window.bangKetQua && Object.keys(window.bangKetQua).length > 0) {
+        return window.bangKetQua;
     }
-
-    /*
-     * Nếu bên ngoài module đã tạo dữ liệu hợp lệ,
-     * đưa dữ liệu đó vào biến module.
-     *
-     * Không được lấy biến module rỗng ghi đè lên
-     * window.bangKetQua như phiên bản trước.
-     */
-    try {
-        const globalData = window.bangKetQua;
-
-        if (
-            globalData &&
-            typeof globalData === "object" &&
-            !Array.isArray(globalData)
-        ) {
-            _sync(globalData);
-        }
-    } catch (error) {
-        console.warn(
-            "[HOADON] Không đồng bộ được window.bangKetQua:",
-            error
-        );
-    }
-
     return bangKetQua;
 }
 
-export function resetBangKetQua(options = {}) {
-    const {
-        render = true
-    } = options;
+export function resetBangKetQua() {
+    bangKetQua = {};
+    if (window.bangKetQua) window.bangKetQua = {};
 
-    /*
-     * Tạo đúng một object mới rồi để cả hai biến
-     * cùng trỏ tới object này.
-     */
-    const emptyState = {};
-
-    bangKetQua = emptyState;
-    window.bangKetQua = emptyState;
-
+    // ✅ reset luôn các state điều khiển thứ tự/hiển thị
     window.groupOrder = [];
     window.lastAdded = null;
 
-    if (render) {
-        capNhatBangHTML(bangKetQua, null);
-    }
-
-    return bangKetQua;
+    capNhatBangHTML(bangKetQua, null);
 }
 
 
