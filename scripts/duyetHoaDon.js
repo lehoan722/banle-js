@@ -196,7 +196,7 @@ export async function napHoaDonVaoTrang(hoadon) {
 
   capNhatBangHTML(bangKetQua);
 
-  // Không cho tính lại từ chi tiết khi đang xem hóa đơn cũ
+  // Không cho tính lại từ chi tiết khi đang xem hóa đơn cũ mmm
   document.getElementById("phaithanhtoan").value = thanhToan.toLocaleString("vi-VN");
   document.getElementById("khachtra").value = thanhToan.toLocaleString("vi-VN");
   document.getElementById("conlai").value = "0";
