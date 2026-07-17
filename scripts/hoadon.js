@@ -7,13 +7,31 @@ import { tinhKhuyenMai } from './khuyenmai.js';
 
 function _data() {
     /*
-     * bangKetQua của module là nguồn dữ liệu chính.
-     * window.bangKetQua chỉ là tham chiếu tương thích
-     * cho các file cũ và popup.
+     * Nếu bảng DOM hoặc module ngoài đã cập nhật
+     * window.bangKetQua thì nhập dữ liệu đó về module.
      */
-    if (window.bangKetQua !== bangKetQua) {
-        window.bangKetQua = bangKetQua;
+    try {
+        const globalData = window.bangKetQua;
+
+        if (
+            globalData &&
+            typeof globalData === "object" &&
+            !Array.isArray(globalData) &&
+            globalData !== bangKetQua
+        ) {
+            _sync(globalData);
+        }
+    } catch (error) {
+        console.warn(
+            "[HOADON] Không lấy được dữ liệu toàn cục:",
+            error
+        );
     }
+
+    /*
+     * Sau khi đồng bộ, bảo đảm hai biến cùng tham chiếu.
+     */
+    window.bangKetQua = bangKetQua;
 
     return bangKetQua;
 }
@@ -1382,10 +1400,47 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
 export function getBangKetQua() {
     /*
-     * Chỉ có một nguồn dữ liệu chính.
+     * Trước khi lấy dữ liệu, đọc lại bảng HTML.
+     * Việc này cần thiết cho:
+     * - trang chuyển chi nhánh;
+     * - dữ liệu nạp từ localStorage;
+     * - dữ liệu dán từ Excel;
+     * - popup nhập ngang;
+     * - các trang cũ đang ghi vào window.bangKetQua.
      */
-    if (window.bangKetQua !== bangKetQua) {
-        window.bangKetQua = bangKetQua;
+    try {
+        if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+            window.capNhatBangKetQuaTuDOM();
+        }
+    } catch (error) {
+        console.warn(
+            "[HOADON] Không đọc được bangKetQua từ DOM:",
+            error
+        );
+    }
+
+    /*
+     * Nếu bên ngoài module đã tạo dữ liệu hợp lệ,
+     * đưa dữ liệu đó vào biến module.
+     *
+     * Không được lấy biến module rỗng ghi đè lên
+     * window.bangKetQua như phiên bản trước.
+     */
+    try {
+        const globalData = window.bangKetQua;
+
+        if (
+            globalData &&
+            typeof globalData === "object" &&
+            !Array.isArray(globalData)
+        ) {
+            _sync(globalData);
+        }
+    } catch (error) {
+        console.warn(
+            "[HOADON] Không đồng bộ được window.bangKetQua:",
+            error
+        );
     }
 
     return bangKetQua;
