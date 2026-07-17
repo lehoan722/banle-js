@@ -2,10 +2,7 @@
 import { supabase } from './supabaseClient.js';
 import { capNhatBangHTML } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
-import {
-  getBangKetQua,
-  setBangKetQua
-} from "./hoadon.js";
+import { bangKetQua, resetBangKetQua } from './hoadon.js';
 
 function formatTimeHHMM(dateInput) {
   const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
@@ -124,10 +121,6 @@ export async function napHoaDonVaoTrang(hoadon) {
   const tienDoiDiem = Number(hoadon.tien_doi_diem || 0);
   const diemTru = Number(hoadon.diem_tru || 0);
 
-  // Khôi phục tổng gốc hóa đơn để chức năng đổi điểm hoạt động đúng
-  window.__tongPhaiTraGoc =
-    thanhToan + tienDoiDiem;
-
   document.getElementById("chietkhau").value = hoadon.chietkhau || "0";
   document.getElementById("tongkm").value = Number(hoadon.tongkm || 0).toLocaleString("vi-VN");
 
@@ -147,93 +140,49 @@ export async function napHoaDonVaoTrang(hoadon) {
     if (el) el.value = tienDoiDiem.toLocaleString("vi-VN");
   });
 
+  resetBangKetQua();
+
   const { data: ct, error } = await supabase
     .from("ct_hoadon_banle")
     .select("*")
     .eq("sohd", hoadon.sohd);
 
-  if (error) {
-    console.error(
-      "[DUYỆT HÓA ĐƠN] Không tải được chi tiết:",
-      error
-    );
+  if (!error && ct.length > 0) {
+    ct.forEach(row => {
+      const masp = String(row.masp || "").trim().toUpperCase();
+      const size = (row.size != null) ? String(row.size).trim() : "";
+      const sl = parseInt(row.soluong || 0, 10) || 0;
 
-    alert(
-      "❌ Không tải được chi tiết hóa đơn " +
-      String(hoadon.sohd || "")
-    );
+      if (!masp || !size || sl === 0) return;
 
-    return;
+      if (!bangKetQua[masp]) {
+        bangKetQua[masp] = {
+          masp,
+          tensp: row.tensp || "",
+          sizes: [],
+          soluongs: [],
+          tong: 0,
+          gia: row.gia || 0,
+          km: row.km || 0,
+          dvt: ""
+        };
+      }
+
+      const item = bangKetQua[masp];
+      const idx = item.sizes.findIndex(s => String(s).trim() === size);
+
+      if (idx === -1) {
+        item.sizes.push(size);
+        item.soluongs.push(sl);
+      } else {
+        const old = parseInt(item.soluongs[idx] || 0, 10) || 0;
+        item.soluongs[idx] = old + sl;   // ✅ gộp nếu trùng size
+      }
+
+      item.tong += sl;
+    });
+
   }
-
-  /*
-   * Xây dựng state mới hoàn chỉnh trước,
-   * sau đó mới đưa vào hoadon.js một lần.
-   */
-  const bangMoi = {};
-
-  (ct || []).forEach(row => {
-    const masp =
-      String(row.masp || "")
-        .trim()
-        .toUpperCase();
-
-    const size =
-      row.size != null
-        ? String(row.size).trim()
-        : "";
-
-    const sl =
-      parseInt(row.soluong || 0, 10) || 0;
-
-    if (!masp || !size || sl === 0) {
-      return;
-    }
-
-    if (!bangMoi[masp]) {
-      bangMoi[masp] = {
-        masp,
-        tensp: row.tensp || "",
-        sizes: [],
-        soluongs: [],
-        tong: 0,
-        gia: Number(row.gia || 0),
-        km: Number(row.km || 0),
-        dvt: row.dvt || ""
-      };
-    }
-
-    const item = bangMoi[masp];
-
-    const idx = item.sizes.findIndex(
-      value =>
-        String(value).trim() === size
-    );
-
-    if (idx === -1) {
-      item.sizes.push(size);
-      item.soluongs.push(sl);
-    } else {
-      const old =
-        parseInt(
-          item.soluongs[idx] || 0,
-          10
-        ) || 0;
-
-      item.soluongs[idx] = old + sl;
-    }
-
-    item.tong += sl;
-  });
-
-  /*
-   * Đây là bước đồng bộ tận gốc:
-   * bangKetQua module và window.bangKetQua
-   * cùng trỏ tới bangMoi.
-   */
-  setBangKetQua(bangMoi);
-
-  const bangHienTai = getBangKetQua();
 
   // ✅ Chuyển sang chế độ XEM khi nạp hóa đơn cũ
   const st = document.getElementById("hd_state");
@@ -245,7 +194,7 @@ export async function napHoaDonVaoTrang(hoadon) {
   window.dangSuaHoaDon = false;
 
 
-  capNhatBangHTML(bangHienTai);
+  capNhatBangHTML(bangKetQua);
 
   // Không cho tính lại từ chi tiết khi đang xem hóa đơn cũ
   document.getElementById("phaithanhtoan").value = thanhToan.toLocaleString("vi-VN");
@@ -261,15 +210,4 @@ export async function napHoaDonVaoTrang(hoadon) {
     const el = document.getElementById(id);
     if (el) el.value = tienDoiDiem.toLocaleString("vi-VN");
   });
-
-  // Khôi phục lại tổng đang hiển thị,
-  // tránh capNhatThongTinTong ghi đè
-  document.getElementById("phaithanhtoan").value =
-    thanhToan.toLocaleString("vi-VN");
-
-  document.getElementById("khachtra").value =
-    thanhToan.toLocaleString("vi-VN");
-
-  document.getElementById("conlai").value = "0";
-
 }
