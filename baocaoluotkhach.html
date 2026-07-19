@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Báo cáo lượt khách</title>
+  <link rel="stylesheet" href="./scripts/camera-report.css" />
+</head>
+<body>
+  <div id="login-view" class="auth-screen" hidden>
+    <div class="auth-card">
+      <div class="brand-mark">HT</div>
+      <h1>Đăng nhập quản trị</h1>
+      <p>Chỉ tài khoản Admin được xem báo cáo lượt khách.</p>
+
+      <form id="admin-login-form">
+        <label for="admin-email">Email Admin</label>
+        <input id="admin-email" type="email" autocomplete="username"
+               placeholder="admin@email.com" required />
+
+        <label for="admin-password">Mật khẩu</label>
+        <input id="admin-password" type="password" autocomplete="current-password"
+               placeholder="Nhập mật khẩu" required />
+
+        <button id="login-button" type="submit">Đăng nhập</button>
+        <div id="login-error" class="form-error" role="alert"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="loading-view" class="loading-screen">
+    <div class="spinner" aria-hidden="true"></div>
+    <div>Đang kiểm tra quyền truy cập…</div>
+  </div>
+
+  <main id="app-view" class="app-shell" hidden>
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">SUPERPOS CAMERA</div>
+        <h1>Báo cáo lượt khách</h1>
+        <p id="report-subtitle">Dữ liệu lượt qua cửa theo thời gian thực</p>
+      </div>
+
+      <div class="topbar-actions">
+        <select id="store-select" aria-label="Chọn cơ sở"></select>
+        <button id="refresh-button" class="icon-button" type="button" title="Làm mới">↻</button>
+        <button id="logout-button" class="text-button" type="button">Đăng xuất</button>
+      </div>
+    </header>
+
+    <section id="permission-error" class="message-card error" hidden>
+      Bạn không có quyền xem báo cáo này.
+    </section>
+
+    <section id="data-error" class="message-card error" hidden></section>
+
+    <section class="status-strip">
+      <div class="status-main">
+        <span id="health-dot" class="health-dot unknown"></span>
+        <div>
+          <strong id="health-title">Đang kiểm tra hệ thống</strong>
+          <div id="health-detail" class="muted">Chưa có dữ liệu trạng thái</div>
+        </div>
+      </div>
+      <div class="sync-time">
+        <span>Cập nhật</span>
+        <strong id="last-refresh">--:--:--</strong>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <article class="metric-card primary">
+        <span class="metric-label">Lượt qua cửa hôm nay</span>
+        <strong id="today-count" class="metric-value">0</strong>
+        <span id="today-date" class="metric-footnote">--/--/----</span>
+      </article>
+
+      <article class="metric-card">
+        <span class="metric-label">Trong giờ hiện tại</span>
+        <strong id="current-hour-count" class="metric-value">0</strong>
+        <span id="current-hour-label" class="metric-footnote">--:00–--:00</span>
+      </article>
+
+      <article class="metric-card">
+        <span class="metric-label">Giờ đông nhất</span>
+        <strong id="peak-hour-count" class="metric-value">0</strong>
+        <span id="peak-hour-label" class="metric-footnote">Chưa có dữ liệu</span>
+      </article>
+
+      <article class="metric-card">
+        <span class="metric-label">Sự kiện gần nhất</span>
+        <strong id="last-event-time" class="metric-value compact">--:--:--</strong>
+        <span id="last-event-age" class="metric-footnote">Chưa có sự kiện</span>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>Lượt theo giờ</h2>
+          <p>Phân bố lượt qua cửa trong ngày</p>
+        </div>
+      </div>
+      <div id="hourly-chart" class="hourly-chart" aria-label="Biểu đồ lượt theo giờ"></div>
+      <div id="hourly-empty" class="empty-state" hidden>Chưa có lượt qua cửa trong ngày.</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>Sự kiện gần nhất</h2>
+          <p>Danh sách các lượt vừa được Camera Sync ghi nhận</p>
+        </div>
+        <span id="event-count-badge" class="badge">0 sự kiện</span>
+      </div>
+      <div id="event-list" class="event-list"></div>
+      <div id="events-empty" class="empty-state" hidden>Chưa có sự kiện để hiển thị.</div>
+    </section>
+
+    <footer class="page-footer">
+      <span>SuperPOS Camera Report v1.0</span>
+      <span id="admin-name"></span>
+    </footer>
+  </main>
+
+  <script type="module" src="./scripts/camera-report.js"></script>
+</body>
+</html>
