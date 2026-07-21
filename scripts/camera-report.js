@@ -188,7 +188,7 @@ async function bootstrapAuth() {
     }
 
     if (!isAdmin) {
-      await supabase.auth.signOut().catch(() => {});
+      await supabase.auth.signOut().catch(() => { });
       setLoginError("Tài khoản hiện tại không có quyền Admin.");
       showOnly("login");
       return;
@@ -225,7 +225,7 @@ async function handleLogin(event) {
     if (adminError) throw adminError;
 
     if (isAdmin !== true) {
-      await supabase.auth.signOut().catch(() => {});
+      await supabase.auth.signOut().catch(() => { });
       throw new Error("Tài khoản này không có quyền Admin.");
     }
 
@@ -244,7 +244,7 @@ async function handleLogin(event) {
 
 async function handleLogout() {
   stopAutoRefresh();
-  await supabase.auth.signOut().catch(() => {});
+  await supabase.auth.signOut().catch(() => { });
   ["manv", "tennv", "is_admin", "quyen_sua_hoadon"].forEach((key) => {
     localStorage.removeItem(key);
     sessionStorage.removeItem(key);
@@ -256,24 +256,57 @@ async function handleLogout() {
 }
 
 async function loadStores() {
-  const { data, error } = await supabase
-    .from("camera_devices")
-    .select("store_code, camera_code, display_name, is_active")
-    .eq("is_active", true)
-    .order("store_code")
-    .order("camera_code");
 
-  if (error) throw error;
+  // Luôn có sẵn CS1 và CS2
+  const stores = [
+    { code: "cs1", name: "Cơ sở 1" },
+    { code: "cs2", name: "Cơ sở 2" }
+  ];
 
-  const stores = [...new Set((data || []).map((row) => row.store_code).filter(Boolean))];
-  if (!stores.length) stores.push("cs1");
+  try {
 
-  if (!stores.includes(currentStore)) currentStore = stores[0];
+    const { data } = await supabase
+      .from("camera_devices")
+      .select("store_code")
+      .eq("is_active", true);
 
-  el.storeSelect.innerHTML = stores
-    .map((store) => `<option value="${escapeHtml(store)}">${storeLabel(store)}</option>`)
-    .join("");
-  el.storeSelect.value = currentStore;
+    if (data) {
+
+      data.forEach(r => {
+
+        if (!stores.find(s => s.code === r.store_code)) {
+
+          stores.push({
+            code: r.store_code,
+            name: r.store_code.toUpperCase()
+          });
+
+        }
+
+      });
+
+    }
+
+  } catch (e) {
+
+    console.log(e);
+
+  }
+
+  storeSelect.innerHTML = "";
+
+  stores.forEach(store => {
+
+    const option = document.createElement("option");
+
+    option.value = store.code;
+
+    option.textContent = store.name;
+
+    storeSelect.appendChild(option);
+
+  });
+
 }
 
 function storeLabel(store) {
