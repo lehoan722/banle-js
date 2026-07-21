@@ -257,30 +257,24 @@ async function handleLogout() {
 
 async function loadStores() {
 
-  // Luôn có sẵn CS1 và CS2
-  const stores = [
-    { code: "cs1", name: "Cơ sở 1" },
-    { code: "cs2", name: "Cơ sở 2" }
-  ];
+  let stores = ["cs1", "cs2"];
 
   try {
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("camera_devices")
       .select("store_code")
       .eq("is_active", true);
 
-    if (data) {
+    if (!error && data) {
 
       data.forEach(r => {
 
-        if (!stores.find(s => s.code === r.store_code)) {
-
-          stores.push({
-            code: r.store_code,
-            name: r.store_code.toUpperCase()
-          });
-
+        if (
+          r.store_code &&
+          !stores.includes(r.store_code)
+        ) {
+          stores.push(r.store_code);
         }
 
       });
@@ -288,24 +282,20 @@ async function loadStores() {
     }
 
   } catch (e) {
-
     console.log(e);
-
   }
 
-  storeSelect.innerHTML = "";
+  if (!stores.includes(currentStore)) {
+    currentStore = stores[0];
+  }
 
-  stores.forEach(store => {
+  el.storeSelect.innerHTML = stores
+    .map(store =>
+      `<option value="${escapeHtml(store)}">${storeLabel(store)}</option>`
+    )
+    .join("");
 
-    const option = document.createElement("option");
-
-    option.value = store.code;
-
-    option.textContent = store.name;
-
-    storeSelect.appendChild(option);
-
-  });
+  el.storeSelect.value = currentStore;
 
 }
 
