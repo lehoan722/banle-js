@@ -335,7 +335,7 @@ async function fetchReportData() {
       .select("id, event_key, camera_code, event_type, event_time, created_at")
       .eq("store_code", currentStore)
       .order("event_time", { ascending: false })
-      .limit(20),
+      .limit(2000),
 
     supabase
       .from("camera_status")
