@@ -14,9 +14,9 @@ const el = {
   storeSelect: $("store-select"), refreshButton: $("refresh-button"), permissionError: $("permission-error"),
   dataError: $("data-error"), healthDot: $("health-dot"), healthTitle: $("health-title"),
   healthDetail: $("health-detail"), lastRefresh: $("last-refresh"), todayCount: $("today-count"),
-  todayDate: $("today-date"), currentHourCount: $("current-hour-count"), currentHourLabel: $("current-hour-label"),
-  peakHourCount: $("peak-hour-count"), peakHourLabel: $("peak-hour-label"), lastEventTime: $("last-event-time"),
-  lastEventAge: $("last-event-age"), hourlyChart: $("hourly-chart"), hourlyEmpty: $("hourly-empty"),
+  todayDate: $("today-date"), invoiceCount: $("invoice-count"), productCount: $("product-count"),
+  revenueTotal: $("revenue-total"), conversionRate: $("conversion-rate"), averageInvoice: $("average-invoice"),
+  hourlyChart: $("hourly-chart"), hourlyEmpty: $("hourly-empty"),
   eventList: $("event-list"), eventsEmpty: $("events-empty"), eventCountBadge: $("event-count-badge"),
   adminName: $("admin-name"), reportDate: $("report-date"), timelineFilter: $("timeline-filter"),
   timelinePageSize: $("timeline-page-size"), timelinePrev: $("timeline-prev"), timelineNext: $("timeline-next"),
@@ -305,39 +305,45 @@ async function refreshReport() {
 
 function renderReport({ nowParts, daily, hourly, events, statuses, invoices }) {
   const todayCount = daily.reduce((sum, row) => sum + Number(row.crossing_count || 0), 0);
+  const invoiceCount = invoices.length;
+  const productCount = invoices.reduce((sum, row) => sum + Number(row.sl_detail || 0), 0);
+  const revenueTotal = invoices.reduce((sum, row) => sum + Number(row.thanhtoan_v2 || 0), 0);
+  const conversionRate = todayCount > 0 ? (invoiceCount / todayCount) * 100 : 0;
+  const averageInvoice = invoiceCount > 0 ? revenueTotal / invoiceCount : 0;
+
   const crossingHourMap = new Map();
   for (const row of hourly) {
     const hour = hourKeyFromView(row.hour_local); if (hour == null) continue;
     crossingHourMap.set(hour, (crossingHourMap.get(hour) || 0) + Number(row.crossing_count || 0));
   }
+
   const invoiceHourMap = new Map();
+  const productHourMap = new Map();
+  const amountHourMap = new Map();
   for (const invoice of invoices) {
     const hour = hourFromTimestamp(invoice.created_at); if (hour == null) continue;
     invoiceHourMap.set(hour, (invoiceHourMap.get(hour) || 0) + 1);
+    productHourMap.set(hour, (productHourMap.get(hour) || 0) + Number(invoice.sl_detail || 0));
+    amountHourMap.set(hour, (amountHourMap.get(hour) || 0) + Number(invoice.thanhtoan_v2 || 0));
   }
 
   const viewingToday = selectedDate === nowParts.dateKey;
-  const currentHourCount = viewingToday ? (crossingHourMap.get(nowParts.hour) || 0) : 0;
-  let peakHour = null; let peakCount = 0;
-  for (const [hour, count] of crossingHourMap.entries()) if (count > peakCount) { peakHour = hour; peakCount = count; }
   const lastEvent = events[0] || null;
 
   el.todayCount.textContent = todayCount.toLocaleString("vi-VN");
   el.todayDate.textContent = formatVietnamDateFromKey(selectedDate);
-  el.currentHourCount.textContent = viewingToday ? currentHourCount.toLocaleString("vi-VN") : "—";
-  el.currentHourLabel.textContent = viewingToday ? `${String(nowParts.hour).padStart(2, "0")}:00–${String((nowParts.hour + 1) % 24).padStart(2, "0")}:00` : "Chỉ áp dụng hôm nay";
-  el.peakHourCount.textContent = peakCount.toLocaleString("vi-VN");
-  el.peakHourLabel.textContent = peakHour == null ? "Chưa có dữ liệu" : `${String(peakHour).padStart(2, "0")}:00–${String((peakHour + 1) % 24).padStart(2, "0")}:00`;
-  el.lastEventTime.textContent = lastEvent ? formatVietnamTime(lastEvent.event_time) : "--:--:--";
-  el.lastEventAge.textContent = lastEvent ? (viewingToday ? relativeTime(lastEvent.event_time) : formatVietnamDateTime(lastEvent.event_time)) : "Chưa có sự kiện";
+  el.invoiceCount.textContent = invoiceCount.toLocaleString("vi-VN");
+  el.productCount.textContent = productCount.toLocaleString("vi-VN");
+  el.revenueTotal.textContent = `${Math.round(revenueTotal).toLocaleString("vi-VN")}đ`;
+  el.conversionRate.textContent = `${conversionRate.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%`;
+  el.averageInvoice.textContent = `${Math.round(averageInvoice).toLocaleString("vi-VN")}đ`;
 
   renderHealth(statuses, lastEvent);
   timelineAll = buildTimeline(events, invoices);
-  renderActiveChart(crossingHourMap, invoiceHourMap, viewingToday ? nowParts.hour : null);
+  renderActiveChart(crossingHourMap, invoiceHourMap, productHourMap, amountHourMap, viewingToday ? nowParts.hour : null);
   timelinePage = 1;
   renderTimeline();
 }
-
 function renderHealth(statuses, lastEvent) {
   const latestHeartbeat = statuses.map((row) => row.last_heartbeat).filter(Boolean).sort((a, b) => new Date(b) - new Date(a))[0];
   const hasConnected = statuses.some((row) => row.connection_status === "connected");
@@ -353,21 +359,28 @@ function renderHealth(statuses, lastEvent) {
   }
 }
 
-function renderActiveChart(crossingMap, invoiceMap, currentHour) {
+function renderActiveChart(crossingMap, invoiceMap, productMap, amountMap, currentHour) {
   if (selectedHour == null) {
-    renderHourlyChart(crossingMap, invoiceMap, currentHour);
+    renderHourlyChart(crossingMap, invoiceMap, productMap, amountMap, currentHour);
   } else {
     renderFiveMinuteChart(selectedHour);
   }
 }
 
-function renderHourlyChart(crossingMap, invoiceMap, currentHour) {
+function warningClass(crossings, invoices) {
+  if (crossings <= 0) return "status-empty";
+  if (invoices > 0) return "status-good";
+  if (crossings >= 10) return "status-danger";
+  return "status-warning";
+}
+
+function renderHourlyChart(crossingMap, invoiceMap, productMap, amountMap, currentHour) {
   el.chartTitle.textContent = "Hóa đơn / lượt khách theo giờ";
-  el.chartDescription.textContent = "Mỗi cột hiển thị số hóa đơn trên số lượt qua cửa, ví dụ 5/20. Bấm một cột giờ để xem chi tiết theo 5 phút.";
+  el.chartDescription.textContent = "Xám: không có khách; xanh: có hóa đơn; vàng: có khách nhưng chưa có hóa đơn; đỏ: từ 10 lượt trở lên nhưng không có hóa đơn. Bấm cột giờ để xem chi tiết 5 phút.";
   el.chartBackDay.hidden = true;
   el.chartBreadcrumb.hidden = true;
   const values = [];
-  for (let hour = 7; hour <= 22; hour++) values.push({ hour, crossings: crossingMap.get(hour) || 0, invoices: invoiceMap.get(hour) || 0 });
+  for (let hour = 7; hour <= 22; hour++) values.push({ hour, crossings: crossingMap.get(hour) || 0, invoices: invoiceMap.get(hour) || 0, products: productMap.get(hour) || 0, amount: amountMap.get(hour) || 0 });
   const max = Math.max(...values.map((item) => item.crossings), 0);
   el.hourlyChart.classList.remove("five-minute-chart");
   el.hourlyChart.innerHTML = "";
@@ -375,13 +388,26 @@ function renderHourlyChart(crossingMap, invoiceMap, currentHour) {
   for (const item of values) {
     const column = document.createElement("button");
     column.type = "button";
-    column.className = `chart-column chart-column-button${item.hour === currentHour ? " current" : ""}`;
+    column.className = `chart-column chart-column-button ${warningClass(item.crossings, item.invoices)}${item.hour === currentHour ? " current" : ""}`;
     column.setAttribute("aria-label", `Xem chi tiết giờ ${String(item.hour).padStart(2, "0")}:00`);
-    const value = document.createElement("span"); value.className = "chart-value ratio-value"; value.textContent = `${item.invoices}/${item.crossings}`;
+    const value = document.createElement("span"); value.className = "chart-value ratio-value";
+    value.textContent = `${item.invoices}/${item.crossings}`;
+    if (item.invoices === 0 && item.crossings > 0) {
+      const alert = document.createElement("span");
+      alert.className = "chart-alert";
+      alert.textContent = item.crossings >= 10 ? "!" : "•";
+      value.prepend(alert);
+    }
     const track = document.createElement("div"); track.className = "chart-track";
     const bar = document.createElement("div"); bar.className = "chart-bar";
     bar.style.height = `${max && item.crossings ? Math.max(4, Math.round((item.crossings / max) * 100)) : 0}%`;
-    bar.title = `${String(item.hour).padStart(2, "0")}:00 — ${item.invoices} hóa đơn / ${item.crossings} lượt qua cửa`;
+    const rate = item.crossings > 0 ? ((item.invoices / item.crossings) * 100).toLocaleString("vi-VN", { maximumFractionDigits: 1 }) : "0";
+    bar.title = `${String(item.hour).padStart(2, "0")}:00–${String((item.hour + 1) % 24).padStart(2, "0")}:00
+${item.crossings} lượt qua cửa
+${item.invoices} hóa đơn
+${item.products} sản phẩm
+${item.amount.toLocaleString("vi-VN")}đ
+Chuyển đổi ${rate}%`;
     const label = document.createElement("span"); label.className = "chart-label"; label.textContent = String(item.hour).padStart(2, "0");
     track.appendChild(bar); column.append(value, track, label);
     column.addEventListener("click", () => enterHourDetail(item.hour));
@@ -404,14 +430,21 @@ function leaveHourDetail() {
   timelinePage = 1;
   const crossingMap = new Map();
   const invoiceMap = new Map();
+  const productMap = new Map();
+  const amountMap = new Map();
   for (const item of timelineAll) {
     const hour = hourFromTimestamp(item.time);
     if (hour == null) continue;
-    const map = item.kind === "invoice" ? invoiceMap : crossingMap;
-    map.set(hour, (map.get(hour) || 0) + 1);
+    if (item.kind === "invoice") {
+      invoiceMap.set(hour, (invoiceMap.get(hour) || 0) + 1);
+      productMap.set(hour, (productMap.get(hour) || 0) + Number(item.quantity || 0));
+      amountMap.set(hour, (amountMap.get(hour) || 0) + Number(item.amount || 0));
+    } else {
+      crossingMap.set(hour, (crossingMap.get(hour) || 0) + 1);
+    }
   }
   const now = vietnamParts();
-  renderHourlyChart(crossingMap, invoiceMap, selectedDate === now.dateKey ? now.hour : null);
+  renderHourlyChart(crossingMap, invoiceMap, productMap, amountMap, selectedDate === now.dateKey ? now.hour : null);
   renderTimeline();
 }
 
@@ -422,14 +455,17 @@ function renderFiveMinuteChart(hour) {
   el.chartBreadcrumb.hidden = false;
   el.chartBreadcrumb.textContent = `${formatVietnamDateFromKey(selectedDate)} › ${String(hour).padStart(2, "0")}:00–${String((hour + 1) % 24).padStart(2, "0")}:00`;
 
-  const buckets = Array.from({ length: 12 }, (_, index) => ({ start: index * 5, crossings: 0, invoices: 0 }));
+  const buckets = Array.from({ length: 12 }, (_, index) => ({ start: index * 5, crossings: 0, invoices: 0, products: 0, amount: 0 }));
   for (const item of timelineAll) {
     if (!isItemInSelectedHour(item)) continue;
     const start = fiveMinuteBucketStart(item.time);
     if (start == null) continue;
     const bucket = buckets[Math.floor(start / 5)];
-    if (item.kind === "invoice") bucket.invoices += 1;
-    else bucket.crossings += 1;
+    if (item.kind === "invoice") {
+      bucket.invoices += 1;
+      bucket.products += Number(item.quantity || 0);
+      bucket.amount += Number(item.amount || 0);
+    } else bucket.crossings += 1;
   }
 
   const max = Math.max(...buckets.map((item) => item.crossings), 0);
@@ -440,14 +476,27 @@ function renderFiveMinuteChart(hour) {
   for (const bucket of buckets) {
     const column = document.createElement("button");
     column.type = "button";
-    column.className = `chart-column chart-column-button${highlightedFiveMinuteStart === bucket.start ? " selected-bucket" : ""}`;
+    column.className = `chart-column chart-column-button ${warningClass(bucket.crossings, bucket.invoices)}${highlightedFiveMinuteStart === bucket.start ? " selected-bucket" : ""}`;
     const end = bucket.start + 5;
     column.setAttribute("aria-label", `Xem ${String(hour).padStart(2, "0")}:${String(bucket.start).padStart(2, "0")} đến ${String(hour).padStart(2, "0")}:${String(end).padStart(2, "0")}`);
-    const value = document.createElement("span"); value.className = "chart-value ratio-value"; value.textContent = `${bucket.invoices}/${bucket.crossings}`;
+    const value = document.createElement("span"); value.className = "chart-value ratio-value";
+    value.textContent = `${bucket.invoices}/${bucket.crossings}`;
+    if (bucket.invoices === 0 && bucket.crossings > 0) {
+      const alert = document.createElement("span");
+      alert.className = "chart-alert";
+      alert.textContent = bucket.crossings >= 10 ? "!" : "•";
+      value.prepend(alert);
+    }
     const track = document.createElement("div"); track.className = "chart-track";
     const bar = document.createElement("div"); bar.className = "chart-bar";
     bar.style.height = `${max && bucket.crossings ? Math.max(4, Math.round((bucket.crossings / max) * 100)) : 0}%`;
-    bar.title = `${String(hour).padStart(2, "0")}:${String(bucket.start).padStart(2, "0")}–${String(hour).padStart(2, "0")}:${String(end).padStart(2, "0")} — ${bucket.invoices} hóa đơn / ${bucket.crossings} lượt qua cửa`;
+    const rate = bucket.crossings > 0 ? ((bucket.invoices / bucket.crossings) * 100).toLocaleString("vi-VN", { maximumFractionDigits: 1 }) : "0";
+    bar.title = `${String(hour).padStart(2, "0")}:${String(bucket.start).padStart(2, "0")}–${String(hour).padStart(2, "0")}:${String(end).padStart(2, "0")}
+${bucket.crossings} lượt qua cửa
+${bucket.invoices} hóa đơn
+${bucket.products} sản phẩm
+${bucket.amount.toLocaleString("vi-VN")}đ
+Chuyển đổi ${rate}%`;
     const label = document.createElement("span"); label.className = "chart-label"; label.textContent = String(bucket.start).padStart(2, "0");
     track.appendChild(bar); column.append(value, track, label);
     column.addEventListener("click", () => selectFiveMinuteBucket(bucket.start));
@@ -487,6 +536,8 @@ function renderTimeline() {
   const scopedAll = timelineAll.filter(isItemInSelectedHour);
   const cameraCount = scopedAll.filter((x) => x.kind === "camera").length;
   const invoiceCount = scopedAll.filter((x) => x.kind === "invoice").length;
+  const productCount = scopedAll.filter((x) => x.kind === "invoice").reduce((sum, x) => sum + Number(x.quantity || 0), 0);
+  const amountTotal = scopedAll.filter((x) => x.kind === "invoice").reduce((sum, x) => sum + Number(x.amount || 0), 0);
   const pageSizeValue = el.timelinePageSize.value;
   const pageSize = pageSizeValue === "all" ? Math.max(filtered.length, 1) : Number(pageSizeValue || 100);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -497,7 +548,7 @@ function renderTimeline() {
   el.eventList.innerHTML = "";
   el.eventsEmpty.hidden = rows.length > 0;
   el.eventCountBadge.textContent = `${filtered.length.toLocaleString("vi-VN")} dòng`;
-  el.timelineSummary.textContent = `${cameraCount.toLocaleString("vi-VN")} lượt qua cửa • ${invoiceCount.toLocaleString("vi-VN")} hóa đơn • ${scopedAll.length.toLocaleString("vi-VN")} dòng`;
+  el.timelineSummary.textContent = `${cameraCount.toLocaleString("vi-VN")} lượt qua cửa • ${invoiceCount.toLocaleString("vi-VN")} hóa đơn • ${productCount.toLocaleString("vi-VN")} sản phẩm • ${amountTotal.toLocaleString("vi-VN")}đ • ${scopedAll.length.toLocaleString("vi-VN")} dòng`;
   if (selectedHour == null) {
     el.timelineContext.hidden = true;
     el.timelineContext.textContent = "";
