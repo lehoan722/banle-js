@@ -831,3 +831,73 @@ button, input, select { font: inherit; }
     font-size: 20px;
   }
 }
+
+
+/* ===== v1.4: biểu đồ HTML ổn định trên Safari/iPhone ===== */
+.hourly-chart,
+.five-minute-chart {
+  height: 224px;
+  min-height: 224px;
+  align-items: flex-start;
+  contain: layout paint;
+}
+
+.hourly-chart .chart-column,
+.five-minute-chart .chart-column {
+  height: 210px;
+  min-height: 210px;
+  display: grid;
+  grid-template-rows: 28px 150px 28px;
+  align-items: stretch;
+}
+
+.chart-track {
+  position: relative;
+  display: block;
+  height: 150px;
+  min-height: 150px;
+  flex: none;
+  border-bottom: 1px solid var(--line);
+  overflow: visible;
+}
+
+.chart-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(74%, 28px);
+  min-height: 0;
+  max-height: 150px;
+  display: block;
+  will-change: height;
+  transition: height .25s ease;
+}
+
+.chart-value,
+.chart-label {
+  display: block;
+  line-height: 1.2;
+}
+
+.chart-value {
+  align-self: end;
+  padding-bottom: 4px;
+  white-space: nowrap;
+}
+
+.chart-label {
+  padding-top: 7px;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .hourly-chart,
+  .five-minute-chart {
+    transform: translateZ(0);
+  }
+
+  .chart-bar {
+    -webkit-transform: translateX(-50%);
+    transform: translateX(-50%);
+  }
+}
