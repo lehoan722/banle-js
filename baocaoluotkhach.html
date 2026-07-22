@@ -57,26 +57,36 @@
       <div class="sync-time"><span>Cập nhật</span><strong id="last-refresh">--:--:--</strong></div>
     </section>
 
-    <section class="summary-grid">
+    <section class="summary-grid summary-grid-business">
       <article class="metric-card primary">
-        <span class="metric-label">Lượt qua cửa trong ngày</span>
+        <span class="metric-label">Lượt qua cửa</span>
         <strong id="today-count" class="metric-value">0</strong>
         <span id="today-date" class="metric-footnote">--/--/----</span>
       </article>
       <article class="metric-card">
-        <span class="metric-label">Trong giờ hiện tại</span>
-        <strong id="current-hour-count" class="metric-value">0</strong>
-        <span id="current-hour-label" class="metric-footnote">--:00–--:00</span>
+        <span class="metric-label">Số hóa đơn</span>
+        <strong id="invoice-count" class="metric-value">0</strong>
+        <span class="metric-footnote">Hóa đơn bán lẻ trong ngày</span>
       </article>
       <article class="metric-card">
-        <span class="metric-label">Giờ đông nhất</span>
-        <strong id="peak-hour-count" class="metric-value">0</strong>
-        <span id="peak-hour-label" class="metric-footnote">Chưa có dữ liệu</span>
+        <span class="metric-label">Số sản phẩm</span>
+        <strong id="product-count" class="metric-value">0</strong>
+        <span class="metric-footnote">Tổng số lượng trên hóa đơn</span>
+      </article>
+      <article class="metric-card revenue-card">
+        <span class="metric-label">Tổng tiền</span>
+        <strong id="revenue-total" class="metric-value money-value">0đ</strong>
+        <span class="metric-footnote">Tổng thanh toán hóa đơn</span>
       </article>
       <article class="metric-card">
-        <span class="metric-label">Sự kiện gần nhất</span>
-        <strong id="last-event-time" class="metric-value compact">--:--:--</strong>
-        <span id="last-event-age" class="metric-footnote">Chưa có sự kiện</span>
+        <span class="metric-label">Tỷ lệ chuyển đổi</span>
+        <strong id="conversion-rate" class="metric-value compact">0%</strong>
+        <span class="metric-footnote">Hóa đơn / lượt qua cửa</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Giá trị trung bình/HĐ</span>
+        <strong id="average-invoice" class="metric-value compact money-value">0đ</strong>
+        <span class="metric-footnote">Tổng tiền / số hóa đơn</span>
       </article>
     </section>
 
@@ -84,7 +94,7 @@
       <div class="panel-header chart-panel-header">
         <div>
           <h2 id="chart-title">Hóa đơn / lượt khách theo giờ</h2>
-          <p id="chart-description">Mỗi cột hiển thị số hóa đơn trên số lượt qua cửa, ví dụ 5/20. Bấm một cột giờ để xem chi tiết theo 5 phút.</p>
+          <p id="chart-description">Mỗi cột hiển thị hóa đơn/lượt qua cửa. Xám: không có khách; xanh: có hóa đơn; vàng: có khách nhưng chưa có hóa đơn; đỏ: từ 10 lượt trở lên nhưng không có hóa đơn.</p>
         </div>
         <button id="chart-back-day" class="secondary-button" type="button" hidden>← Xem cả ngày</button>
       </div>
@@ -140,7 +150,7 @@
     </section>
 
     <footer class="page-footer">
-      <span>SuperPOS Camera Report v1.2</span>
+      <span>SuperPOS Camera Report v1.3</span>
       <span id="admin-name"></span>
     </footer>
   </main>
