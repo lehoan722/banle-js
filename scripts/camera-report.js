@@ -3,121 +3,87 @@ import { supabase, startSessionKeeper } from "./supabaseClient.js";
 const APP_REFRESH_MS = 15000;
 const HEARTBEAT_ONLINE_MS = 2 * 60 * 1000;
 const VIETNAM_TZ = "Asia/Ho_Chi_Minh";
+const INVOICE_BATCH_SIZE = 1000;
+const CAMERA_BATCH_SIZE = 1000;
 
 const $ = (id) => document.getElementById(id);
-
 const el = {
-  loginView: $("login-view"),
-  loadingView: $("loading-view"),
-  appView: $("app-view"),
-  loginForm: $("admin-login-form"),
-  email: $("admin-email"),
-  password: $("admin-password"),
-  loginButton: $("login-button"),
-  loginError: $("login-error"),
-  logoutButton: $("logout-button"),
-  storeSelect: $("store-select"),
-  refreshButton: $("refresh-button"),
-  permissionError: $("permission-error"),
-  dataError: $("data-error"),
-  healthDot: $("health-dot"),
-  healthTitle: $("health-title"),
-  healthDetail: $("health-detail"),
-  lastRefresh: $("last-refresh"),
-  todayCount: $("today-count"),
-  todayDate: $("today-date"),
-  currentHourCount: $("current-hour-count"),
-  currentHourLabel: $("current-hour-label"),
-  peakHourCount: $("peak-hour-count"),
-  peakHourLabel: $("peak-hour-label"),
-  lastEventTime: $("last-event-time"),
-  lastEventAge: $("last-event-age"),
-  hourlyChart: $("hourly-chart"),
-  hourlyEmpty: $("hourly-empty"),
-  eventList: $("event-list"),
-  eventsEmpty: $("events-empty"),
-  eventCountBadge: $("event-count-badge"),
-  adminName: $("admin-name"),
+  loginView: $("login-view"), loadingView: $("loading-view"), appView: $("app-view"),
+  loginForm: $("admin-login-form"), email: $("admin-email"), password: $("admin-password"),
+  loginButton: $("login-button"), loginError: $("login-error"), logoutButton: $("logout-button"),
+  storeSelect: $("store-select"), refreshButton: $("refresh-button"), permissionError: $("permission-error"),
+  dataError: $("data-error"), healthDot: $("health-dot"), healthTitle: $("health-title"),
+  healthDetail: $("health-detail"), lastRefresh: $("last-refresh"), todayCount: $("today-count"),
+  todayDate: $("today-date"), currentHourCount: $("current-hour-count"), currentHourLabel: $("current-hour-label"),
+  peakHourCount: $("peak-hour-count"), peakHourLabel: $("peak-hour-label"), lastEventTime: $("last-event-time"),
+  lastEventAge: $("last-event-age"), hourlyChart: $("hourly-chart"), hourlyEmpty: $("hourly-empty"),
+  eventList: $("event-list"), eventsEmpty: $("events-empty"), eventCountBadge: $("event-count-badge"),
+  adminName: $("admin-name"), reportDate: $("report-date"), timelineFilter: $("timeline-filter"),
+  timelinePageSize: $("timeline-page-size"), timelinePrev: $("timeline-prev"), timelineNext: $("timeline-next"),
+  timelinePageInfo: $("timeline-page-info"), timelineSummary: $("timeline-summary"),
 };
 
 let currentStore = localStorage.getItem("camera_report_store") || "cs1";
+let selectedDate = localStorage.getItem("camera_report_date") || vietnamDateKey();
 let refreshTimer = null;
 let refreshInProgress = false;
 let currentUser = null;
+let timelineAll = [];
+let timelinePage = 1;
+
+function vietnamDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: VIETNAM_TZ, year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(date);
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function vietnamParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: VIETNAM_TZ, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  }).formatToParts(date);
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return {
+    year: +map.year, month: +map.month, day: +map.day, hour: +map.hour,
+    minute: +map.minute, second: +map.second, dateKey: `${map.year}-${map.month}-${map.day}`
+  };
+}
+
+function dateBoundsForVietnam(dateKey) {
+  return {
+    start: `${dateKey}T00:00:00+07:00`,
+    end: `${addDays(dateKey, 1)}T00:00:00+07:00`,
+  };
+}
+
+function addDays(dateKey, days) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d + days));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
 
 function showOnly(view) {
   el.loginView.hidden = view !== "login";
   el.loadingView.hidden = view !== "loading";
   el.appView.hidden = view !== "app";
 }
+function setLoginError(message = "") { el.loginError.textContent = message; }
+function showDataError(message = "") { el.dataError.textContent = message; el.dataError.hidden = !message; }
 
-function setLoginError(message = "") {
-  el.loginError.textContent = message;
+function formatVietnamDateFromKey(dateKey) {
+  const [y, m, d] = dateKey.split("-");
+  return `${d}/${m}/${y}`;
 }
-
-function showDataError(message = "") {
-  el.dataError.textContent = message;
-  el.dataError.hidden = !message;
-}
-
-function vietnamParts(date = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: VIETNAM_TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-
-  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-  return {
-    year: Number(map.year),
-    month: Number(map.month),
-    day: Number(map.day),
-    hour: Number(map.hour),
-    minute: Number(map.minute),
-    second: Number(map.second),
-    dateKey: `${map.year}-${map.month}-${map.day}`,
-  };
-}
-
-function formatVietnamDate(date = new Date()) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    timeZone: VIETNAM_TZ,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
-}
-
 function formatVietnamTime(value) {
   if (!value) return "--:--:--";
-  return new Intl.DateTimeFormat("vi-VN", {
-    timeZone: VIETNAM_TZ,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("vi-VN", { timeZone: VIETNAM_TZ, hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(new Date(value));
 }
-
 function formatVietnamDateTime(value) {
   if (!value) return "";
-  return new Intl.DateTimeFormat("vi-VN", {
-    timeZone: VIETNAM_TZ,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("vi-VN", { timeZone: VIETNAM_TZ, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(new Date(value));
 }
-
 function relativeTime(value) {
   if (!value) return "Chưa có dữ liệu";
   const delta = Date.now() - new Date(value).getTime();
@@ -131,43 +97,45 @@ function relativeTime(value) {
   if (hours < 24) return `${hours} giờ trước`;
   return formatVietnamDateTime(value);
 }
+function hourFromTimestamp(value) {
+  if (!value) return null;
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: VIETNAM_TZ, hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
+  return Number(parts.find((p) => p.type === "hour")?.value);
+}
+function hourKeyFromView(value) {
+  if (!value) return null;
+  const match = String(value).match(/(?:T|\s)(\d{2}):/);
+  return match ? Number(match[1]) : null;
+}
+function storeLabel(store) {
+  const match = String(store).match(/^cs(\d+)$/i);
+  return match ? `Cơ sở ${match[1]}` : String(store).toUpperCase();
+}
+function invoiceTypeForStore(store) { return String(store).toLowerCase() === "cs2" ? "bancs2" : "bancs1"; }
 
 async function checkAdmin() {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   if (sessionError) throw sessionError;
-
   const session = sessionData?.session;
   if (!session) return { session: null, isAdmin: false };
-
   const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin");
   if (adminError) throw adminError;
-
   return { session, isAdmin: isAdmin === true };
 }
 
 async function loadAdminName(userId) {
   try {
-    const { data } = await supabase
-      .from("admin_users")
-      .select("manv, tenadmin, active")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (data?.active === false) {
-      throw new Error("Tài khoản Admin đang bị khóa.");
-    }
-
-    const name = String(data?.tenadmin || data?.manv || currentUser?.email || "Admin");
-    el.adminName.textContent = name;
-  } catch {
-    el.adminName.textContent = currentUser?.email || "Admin";
-  }
+    const { data } = await supabase.from("admin_users").select("manv, tenadmin, active").eq("user_id", userId).maybeSingle();
+    if (data?.active === false) throw new Error("Tài khoản Admin đang bị khóa.");
+    el.adminName.textContent = String(data?.tenadmin || data?.manv || currentUser?.email || "Admin");
+  } catch { el.adminName.textContent = currentUser?.email || "Admin"; }
 }
 
 async function enterApp(session) {
   currentUser = session.user;
   showOnly("app");
   startSessionKeeper();
+  el.reportDate.value = selectedDate;
   await loadAdminName(session.user.id);
   await loadStores();
   await refreshReport(true);
@@ -178,390 +146,271 @@ async function bootstrapAuth() {
   showOnly("loading");
   try {
     const { session, isAdmin } = await checkAdmin();
-
     if (!session) {
       const savedEmail = localStorage.getItem("last_login_identifier") || "";
       if (savedEmail.includes("@")) el.email.value = savedEmail;
-      showOnly("login");
-      el.email.focus();
-      return;
+      showOnly("login"); el.email.focus(); return;
     }
-
     if (!isAdmin) {
       await supabase.auth.signOut().catch(() => { });
-      setLoginError("Tài khoản hiện tại không có quyền Admin.");
-      showOnly("login");
-      return;
+      setLoginError("Tài khoản hiện tại không có quyền Admin."); showOnly("login"); return;
     }
-
     await enterApp(session);
   } catch (error) {
-    console.error(error);
-    setLoginError("Không kiểm tra được phiên đăng nhập. Vui lòng đăng nhập lại.");
-    showOnly("login");
+    console.error(error); setLoginError("Không kiểm tra được phiên đăng nhập. Vui lòng đăng nhập lại."); showOnly("login");
   }
 }
 
 async function handleLogin(event) {
-  event.preventDefault();
-  setLoginError("");
-
-  const email = el.email.value.trim().toLowerCase();
-  const password = el.password.value;
-
-  if (!email || !password) {
-    setLoginError("Vui lòng nhập đầy đủ email và mật khẩu.");
-    return;
-  }
-
-  el.loginButton.disabled = true;
-  el.loginButton.textContent = "Đang xác thực…";
-
+  event.preventDefault(); setLoginError("");
+  const email = el.email.value.trim().toLowerCase(); const password = el.password.value;
+  if (!email || !password) { setLoginError("Vui lòng nhập đầy đủ email và mật khẩu."); return; }
+  el.loginButton.disabled = true; el.loginButton.textContent = "Đang xác thực…";
   try {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data?.session) throw new Error("Email hoặc mật khẩu không đúng.");
-
     const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin");
     if (adminError) throw adminError;
-
-    if (isAdmin !== true) {
-      await supabase.auth.signOut().catch(() => { });
-      throw new Error("Tài khoản này không có quyền Admin.");
-    }
-
-    localStorage.setItem("last_login_identifier", email);
-    localStorage.setItem("is_admin", "true");
-    el.password.value = "";
-    await enterApp(data.session);
-  } catch (error) {
-    console.error(error);
-    setLoginError(error?.message || "Không đăng nhập được.");
-  } finally {
-    el.loginButton.disabled = false;
-    el.loginButton.textContent = "Đăng nhập";
-  }
+    if (isAdmin !== true) { await supabase.auth.signOut().catch(() => { }); throw new Error("Tài khoản này không có quyền Admin."); }
+    localStorage.setItem("last_login_identifier", email); localStorage.setItem("is_admin", "true");
+    el.password.value = ""; await enterApp(data.session);
+  } catch (error) { console.error(error); setLoginError(error?.message || "Không đăng nhập được."); }
+  finally { el.loginButton.disabled = false; el.loginButton.textContent = "Đăng nhập"; }
 }
 
 async function handleLogout() {
-  stopAutoRefresh();
-  await supabase.auth.signOut().catch(() => { });
-  ["manv", "tennv", "is_admin", "quyen_sua_hoadon"].forEach((key) => {
-    localStorage.removeItem(key);
-    sessionStorage.removeItem(key);
-  });
-  currentUser = null;
-  showOnly("login");
-  el.password.value = "";
-  el.email.focus();
+  stopAutoRefresh(); await supabase.auth.signOut().catch(() => { });
+  ["manv", "tennv", "is_admin", "quyen_sua_hoadon"].forEach((key) => { localStorage.removeItem(key); sessionStorage.removeItem(key); });
+  currentUser = null; showOnly("login"); el.password.value = ""; el.email.focus();
 }
 
 async function loadStores() {
-
-  let stores = ["cs1", "cs2"];
-
+  const stores = ["cs1", "cs2"];
   try {
-
-    const { data, error } = await supabase
-      .from("camera_devices")
-      .select("store_code")
-      .eq("is_active", true);
-
-    if (!error && data) {
-
-      data.forEach(r => {
-
-        if (
-          r.store_code &&
-          !stores.includes(r.store_code)
-        ) {
-          stores.push(r.store_code);
-        }
-
-      });
-
-    }
-
-  } catch (e) {
-    console.log(e);
-  }
-
-  if (!stores.includes(currentStore)) {
-    currentStore = stores[0];
-  }
-
-  el.storeSelect.innerHTML = stores
-    .map(store =>
-      `<option value="${escapeHtml(store)}">${storeLabel(store)}</option>`
-    )
-    .join("");
-
+    const { data, error } = await supabase.from("camera_devices").select("store_code").eq("is_active", true);
+    if (!error) (data || []).forEach((r) => { if (r.store_code && !stores.includes(r.store_code)) stores.push(r.store_code); });
+  } catch (error) { console.warn(error); }
+  if (!stores.includes(currentStore)) currentStore = stores[0];
+  el.storeSelect.innerHTML = stores.map((store) => `<option value="${escapeHtml(store)}">${storeLabel(store)}</option>`).join("");
   el.storeSelect.value = currentStore;
-
 }
 
-function storeLabel(store) {
-  const match = String(store).match(/^cs(\d+)$/i);
-  return match ? `Cơ sở ${match[1]}` : String(store).toUpperCase();
+async function fetchAllCameraEvents(dateKey) {
+  const { start, end } = dateBoundsForVietnam(dateKey);
+  const all = [];
+  for (let from = 0; ; from += CAMERA_BATCH_SIZE) {
+    const { data, error } = await supabase.from("camera_events")
+      .select("id, event_key, camera_code, event_type, event_time, created_at")
+      .eq("store_code", currentStore).gte("event_time", start).lt("event_time", end)
+      .order("event_time", { ascending: false }).range(from, from + CAMERA_BATCH_SIZE - 1);
+    if (error) throw error;
+    const rows = data || []; all.push(...rows);
+    if (rows.length < CAMERA_BATCH_SIZE) break;
+  }
+  return all;
 }
 
-function hourKeyFromView(value) {
-  if (!value) return null;
-  const raw = String(value);
-  const match = raw.match(/(?:T|\s)(\d{2}):/);
-  return match ? Number(match[1]) : null;
+function invoiceRpcParams(dateKey) {
+  return {
+    p_tu_ngay: dateKey, p_den_ngay: dateKey,
+    p_loaihd_list: [invoiceTypeForStore(currentStore)], p_manv: null, p_khachhang: null,
+    p_ghichu: null, p_sohd: null, p_tien_tu: null, p_tien_den: null,
+    p_masp_list: null, p_must_contain_all: false,
+  };
+}
+
+async function fetchAllInvoices(dateKey) {
+  const params = invoiceRpcParams(dateKey);
+  const { data: countData, error: countError } = await supabase.rpc("xemhoadon111_v2_count", params);
+  if (countError) throw countError;
+  const totalRows = Number(countData?.[0]?.total_rows || 0);
+  const all = [];
+  for (let offset = 0; offset < totalRows; offset += INVOICE_BATCH_SIZE) {
+    const { data, error } = await supabase.rpc("xemhoadon111_v2_paged", {
+      ...params, p_limit: Math.min(INVOICE_BATCH_SIZE, totalRows - offset), p_offset: offset,
+    });
+    if (error) throw error;
+    const rows = data || []; all.push(...rows);
+    if (!rows.length) break;
+  }
+  return { rows: all, totalRows, totalAmount: Number(countData?.[0]?.total_thanhtoan_v2 || 0) };
 }
 
 async function fetchReportData() {
   const nowParts = vietnamParts();
-  const todayKey = nowParts.dateKey;
-
-  const [dailyRes, hourlyRes, eventsRes, statusRes] = await Promise.all([
-    supabase
-      .from("camera_daily_summary")
-      .select("crossing_count")
-      .eq("store_code", currentStore)
-      .eq("day_local", todayKey),
-
-    supabase
-      .from("camera_hourly_summary")
-      .select("hour_local, crossing_count")
-      .eq("store_code", currentStore)
-      .gte("hour_local", `${todayKey} 00:00:00`)
-      .lt("hour_local", `${todayKey} 23:59:59`)
-      .order("hour_local"),
-
-    supabase
-      .from("camera_events")
-      .select("id, event_key, camera_code, event_type, event_time, created_at")
-      .eq("store_code", currentStore)
-      .order("event_time", { ascending: false })
-      .limit(2000),
-
-    supabase
-      .from("camera_status")
-      .select("store_code, camera_code, connection_status, last_heartbeat, last_event_time, updated_at")
-      .eq("store_code", currentStore),
+  const todayKey = selectedDate;
+  const [dailyRes, hourlyRes, events, statusRes, invoiceResult] = await Promise.all([
+    supabase.from("camera_daily_summary").select("crossing_count").eq("store_code", currentStore).eq("day_local", todayKey),
+    supabase.from("camera_hourly_summary").select("hour_local, crossing_count").eq("store_code", currentStore)
+      .gte("hour_local", `${todayKey} 00:00:00`).lt("hour_local", `${todayKey} 23:59:59`).order("hour_local"),
+    fetchAllCameraEvents(todayKey),
+    supabase.from("camera_status").select("store_code, camera_code, connection_status, last_heartbeat, last_event_time, updated_at").eq("store_code", currentStore),
+    fetchAllInvoices(todayKey),
   ]);
-
-  for (const result of [dailyRes, hourlyRes, eventsRes, statusRes]) {
-    if (result.error) throw result.error;
-  }
-
-  return {
-    nowParts,
-    daily: dailyRes.data || [],
-    hourly: hourlyRes.data || [],
-    events: eventsRes.data || [],
-    statuses: statusRes.data || [],
-  };
+  for (const result of [dailyRes, hourlyRes, statusRes]) if (result.error) throw result.error;
+  return { nowParts, daily: dailyRes.data || [], hourly: hourlyRes.data || [], events, statuses: statusRes.data || [], invoices: invoiceResult.rows };
 }
 
-async function refreshReport(showLoading = false) {
+async function refreshReport() {
   if (refreshInProgress) return;
-  refreshInProgress = true;
-  el.refreshButton.classList.add("spinning");
-  showDataError("");
-
-  try {
-    const data = await fetchReportData();
-    renderReport(data);
-  } catch (error) {
+  refreshInProgress = true; el.refreshButton.classList.add("spinning"); showDataError("");
+  try { renderReport(await fetchReportData()); }
+  catch (error) {
     console.error("Camera report refresh error:", error);
     const message = String(error?.message || "");
-    if (/permission|policy|row-level|rls/i.test(message)) {
-      showDataError("Không có quyền đọc dữ liệu Camera. Hãy kiểm tra RLS dành cho Admin.");
-    } else {
-      showDataError("Không tải được dữ liệu báo cáo. Vui lòng thử lại.");
-    }
+    showDataError(/permission|policy|row-level|rls|quyền/i.test(message)
+      ? "Không có quyền đọc dữ liệu Camera hoặc hóa đơn. Hãy kiểm tra RLS/RPC dành cho Admin."
+      : `Không tải được dữ liệu báo cáo: ${message || "Vui lòng thử lại."}`);
   } finally {
-    el.lastRefresh.textContent = formatVietnamTime(new Date());
-    el.refreshButton.classList.remove("spinning");
-    refreshInProgress = false;
+    el.lastRefresh.textContent = formatVietnamTime(new Date()); el.refreshButton.classList.remove("spinning"); refreshInProgress = false;
   }
 }
 
-function renderReport({ nowParts, daily, hourly, events, statuses }) {
+function renderReport({ nowParts, daily, hourly, events, statuses, invoices }) {
   const todayCount = daily.reduce((sum, row) => sum + Number(row.crossing_count || 0), 0);
-
-  const hourMap = new Map();
+  const crossingHourMap = new Map();
   for (const row of hourly) {
-    const hour = hourKeyFromView(row.hour_local);
-    if (hour == null) continue;
-    hourMap.set(hour, (hourMap.get(hour) || 0) + Number(row.crossing_count || 0));
+    const hour = hourKeyFromView(row.hour_local); if (hour == null) continue;
+    crossingHourMap.set(hour, (crossingHourMap.get(hour) || 0) + Number(row.crossing_count || 0));
+  }
+  const invoiceHourMap = new Map();
+  for (const invoice of invoices) {
+    const hour = hourFromTimestamp(invoice.created_at); if (hour == null) continue;
+    invoiceHourMap.set(hour, (invoiceHourMap.get(hour) || 0) + 1);
   }
 
-  const currentHourCount = hourMap.get(nowParts.hour) || 0;
-  let peakHour = null;
-  let peakCount = 0;
-  for (const [hour, count] of hourMap.entries()) {
-    if (count > peakCount) {
-      peakHour = hour;
-      peakCount = count;
-    }
-  }
-
+  const viewingToday = selectedDate === nowParts.dateKey;
+  const currentHourCount = viewingToday ? (crossingHourMap.get(nowParts.hour) || 0) : 0;
+  let peakHour = null; let peakCount = 0;
+  for (const [hour, count] of crossingHourMap.entries()) if (count > peakCount) { peakHour = hour; peakCount = count; }
   const lastEvent = events[0] || null;
 
   el.todayCount.textContent = todayCount.toLocaleString("vi-VN");
-  el.todayDate.textContent = formatVietnamDate();
-  el.currentHourCount.textContent = currentHourCount.toLocaleString("vi-VN");
-  el.currentHourLabel.textContent =
-    `${String(nowParts.hour).padStart(2, "0")}:00–${String((nowParts.hour + 1) % 24).padStart(2, "0")}:00`;
+  el.todayDate.textContent = formatVietnamDateFromKey(selectedDate);
+  el.currentHourCount.textContent = viewingToday ? currentHourCount.toLocaleString("vi-VN") : "—";
+  el.currentHourLabel.textContent = viewingToday ? `${String(nowParts.hour).padStart(2, "0")}:00–${String((nowParts.hour + 1) % 24).padStart(2, "0")}:00` : "Chỉ áp dụng hôm nay";
   el.peakHourCount.textContent = peakCount.toLocaleString("vi-VN");
-  el.peakHourLabel.textContent =
-    peakHour == null
-      ? "Chưa có dữ liệu"
-      : `${String(peakHour).padStart(2, "0")}:00–${String((peakHour + 1) % 24).padStart(2, "0")}:00`;
+  el.peakHourLabel.textContent = peakHour == null ? "Chưa có dữ liệu" : `${String(peakHour).padStart(2, "0")}:00–${String((peakHour + 1) % 24).padStart(2, "0")}:00`;
   el.lastEventTime.textContent = lastEvent ? formatVietnamTime(lastEvent.event_time) : "--:--:--";
-  el.lastEventAge.textContent = lastEvent ? relativeTime(lastEvent.event_time) : "Chưa có sự kiện";
+  el.lastEventAge.textContent = lastEvent ? (viewingToday ? relativeTime(lastEvent.event_time) : formatVietnamDateTime(lastEvent.event_time)) : "Chưa có sự kiện";
 
   renderHealth(statuses, lastEvent);
-  renderHourlyChart(hourMap, nowParts.hour);
-  renderEvents(events);
+  renderHourlyChart(crossingHourMap, invoiceHourMap, viewingToday ? nowParts.hour : null);
+  timelineAll = buildTimeline(events, invoices);
+  timelinePage = 1;
+  renderTimeline();
 }
 
 function renderHealth(statuses, lastEvent) {
-  const latestHeartbeat = statuses
-    .map((row) => row.last_heartbeat)
-    .filter(Boolean)
-    .sort((a, b) => new Date(b) - new Date(a))[0];
-
+  const latestHeartbeat = statuses.map((row) => row.last_heartbeat).filter(Boolean).sort((a, b) => new Date(b) - new Date(a))[0];
   const hasConnected = statuses.some((row) => row.connection_status === "connected");
-  const heartbeatAge = latestHeartbeat ? Date.now() - new Date(latestHeartbeat).getTime() : Infinity;
-  const online = hasConnected && heartbeatAge <= HEARTBEAT_ONLINE_MS;
-
+  const online = hasConnected && (latestHeartbeat ? Date.now() - new Date(latestHeartbeat).getTime() : Infinity) <= HEARTBEAT_ONLINE_MS;
   el.healthDot.className = `health-dot ${online ? "online" : "offline"}`;
-
   if (online) {
     el.healthTitle.textContent = "Camera Sync đang hoạt động";
-    el.healthDetail.textContent =
-      `Heartbeat ${relativeTime(latestHeartbeat)}${lastEvent ? ` • Sự kiện cuối ${relativeTime(lastEvent.event_time)}` : ""}`;
+    el.healthDetail.textContent = `Heartbeat ${relativeTime(latestHeartbeat)}${lastEvent ? ` • Sự kiện cuối ${relativeTime(lastEvent.event_time)}` : ""}`;
   } else if (latestHeartbeat) {
-    el.healthTitle.textContent = "Camera Sync có thể đang ngoại tuyến";
-    el.healthDetail.textContent = `Heartbeat cuối ${relativeTime(latestHeartbeat)}`;
+    el.healthTitle.textContent = "Camera Sync có thể đang ngoại tuyến"; el.healthDetail.textContent = `Heartbeat cuối ${relativeTime(latestHeartbeat)}`;
   } else {
-    el.healthTitle.textContent = "Chưa nhận được trạng thái Camera";
-    el.healthDetail.textContent = "Không tìm thấy heartbeat cho cơ sở này";
+    el.healthTitle.textContent = "Chưa nhận được trạng thái Camera"; el.healthDetail.textContent = "Không tìm thấy heartbeat cho cơ sở này";
   }
 }
 
-function renderHourlyChart(hourMap, currentHour) {
-  const startHour = 7;
-  const endHour = 22;
+function renderHourlyChart(crossingMap, invoiceMap, currentHour) {
   const values = [];
-  for (let hour = startHour; hour <= endHour; hour++) {
-    values.push({ hour, count: hourMap.get(hour) || 0 });
-  }
-
-  const max = Math.max(...values.map((item) => item.count), 0);
+  for (let hour = 7; hour <= 22; hour++) values.push({ hour, crossings: crossingMap.get(hour) || 0, invoices: invoiceMap.get(hour) || 0 });
+  const max = Math.max(...values.map((item) => item.crossings), 0);
   el.hourlyChart.innerHTML = "";
-  el.hourlyEmpty.hidden = max > 0;
-
+  el.hourlyEmpty.hidden = values.some((item) => item.crossings || item.invoices);
   for (const item of values) {
-    const column = document.createElement("div");
-    column.className = `chart-column${item.hour === currentHour ? " current" : ""}`;
-
-    const value = document.createElement("span");
-    value.className = "chart-value";
-    value.textContent = item.count ? String(item.count) : "";
-
-    const track = document.createElement("div");
-    track.className = "chart-track";
-
-    const bar = document.createElement("div");
-    bar.className = "chart-bar";
-    const percent = max ? Math.max(4, Math.round((item.count / max) * 100)) : 0;
-    bar.style.height = `${percent}%`;
-    bar.title = `${String(item.hour).padStart(2, "0")}:00 — ${item.count} lượt`;
-
-    const label = document.createElement("span");
-    label.className = "chart-label";
-    label.textContent = String(item.hour).padStart(2, "0");
-
-    track.appendChild(bar);
-    column.append(value, track, label);
-    el.hourlyChart.appendChild(column);
+    const column = document.createElement("div"); column.className = `chart-column${item.hour === currentHour ? " current" : ""}`;
+    const value = document.createElement("span"); value.className = "chart-value ratio-value"; value.textContent = `${item.invoices}/${item.crossings}`;
+    const track = document.createElement("div"); track.className = "chart-track";
+    const bar = document.createElement("div"); bar.className = "chart-bar";
+    bar.style.height = `${max && item.crossings ? Math.max(4, Math.round((item.crossings / max) * 100)) : 0}%`;
+    bar.title = `${String(item.hour).padStart(2, "0")}:00 — ${item.invoices} hóa đơn / ${item.crossings} lượt qua cửa`;
+    const label = document.createElement("span"); label.className = "chart-label"; label.textContent = String(item.hour).padStart(2, "0");
+    track.appendChild(bar); column.append(value, track, label); el.hourlyChart.appendChild(column);
   }
 }
 
-function renderEvents(events) {
+function buildTimeline(events, invoices) {
+  const cameraItems = events.map((event) => ({ kind: "camera", time: event.event_time, id: event.id, cameraCode: event.camera_code, eventType: event.event_type }));
+  const invoiceItems = invoices.map((invoice) => ({ kind: "invoice", time: invoice.created_at, sohd: invoice.sohd, manv: invoice.manv, tennv: invoice.tennv, khachhang: invoice.khachhang, quantity: Number(invoice.sl_detail || 0), amount: Number(invoice.thanhtoan_v2 || 0) }));
+  return [...cameraItems, ...invoiceItems].sort((a, b) => new Date(b.time) - new Date(a.time));
+}
+
+function filteredTimeline() {
+  const filter = el.timelineFilter.value;
+  return filter === "all" ? timelineAll : timelineAll.filter((item) => item.kind === filter);
+}
+
+function renderTimeline() {
+  const filtered = filteredTimeline();
+  const cameraCount = timelineAll.filter((x) => x.kind === "camera").length;
+  const invoiceCount = timelineAll.filter((x) => x.kind === "invoice").length;
+  const pageSizeValue = el.timelinePageSize.value;
+  const pageSize = pageSizeValue === "all" ? Math.max(filtered.length, 1) : Number(pageSizeValue || 100);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  timelinePage = Math.min(Math.max(timelinePage, 1), totalPages);
+  const start = (timelinePage - 1) * pageSize;
+  const rows = filtered.slice(start, start + pageSize);
+
   el.eventList.innerHTML = "";
-  el.eventsEmpty.hidden = events.length > 0;
-  el.eventCountBadge.textContent = `${events.length} sự kiện`;
+  el.eventsEmpty.hidden = rows.length > 0;
+  el.eventCountBadge.textContent = `${filtered.length.toLocaleString("vi-VN")} dòng`;
+  el.timelineSummary.textContent = `${cameraCount.toLocaleString("vi-VN")} lượt qua cửa • ${invoiceCount.toLocaleString("vi-VN")} hóa đơn • ${timelineAll.length.toLocaleString("vi-VN")} dòng`;
+  el.timelinePageInfo.textContent = `Trang ${timelinePage}/${totalPages}`;
+  el.timelinePrev.disabled = timelinePage <= 1;
+  el.timelineNext.disabled = timelinePage >= totalPages;
 
-  for (const event of events) {
-    const item = document.createElement("article");
-    item.className = "event-item";
+  for (const item of rows) el.eventList.appendChild(item.kind === "invoice" ? createInvoiceItem(item) : createCameraItem(item));
+}
 
-    const icon = document.createElement("div");
-    icon.className = "event-icon";
-    icon.textContent = "↔";
+function createCameraItem(event) {
+  const item = document.createElement("article"); item.className = "event-item camera-item";
+  const icon = document.createElement("div"); icon.className = "event-icon"; icon.textContent = "↔";
+  const content = document.createElement("div"); content.className = "event-content";
+  const title = document.createElement("strong"); title.textContent = "Lượt qua cửa";
+  const meta = document.createElement("span"); meta.textContent = `${formatVietnamDateTime(event.time)} • ${event.cameraCode || "Camera"}`;
+  const time = document.createElement("time"); time.textContent = formatVietnamTime(event.time); time.dateTime = event.time;
+  content.append(title, meta); item.append(icon, content, time); return item;
+}
 
-    const content = document.createElement("div");
-    content.className = "event-content";
-
-    const title = document.createElement("strong");
-    title.textContent = "Lượt qua cửa";
-
-    const meta = document.createElement("span");
-    meta.textContent = `${formatVietnamDateTime(event.event_time)} • ${event.camera_code || "Camera"}`;
-
-    const time = document.createElement("time");
-    time.textContent = formatVietnamTime(event.event_time);
-    time.dateTime = event.event_time;
-
-    content.append(title, meta);
-    item.append(icon, content, time);
-    el.eventList.appendChild(item);
-  }
+function createInvoiceItem(invoice) {
+  const item = document.createElement("article"); item.className = "event-item invoice-item"; item.tabIndex = 0;
+  item.title = "Bấm để mở hóa đơn";
+  const icon = document.createElement("div"); icon.className = "event-icon invoice-icon"; icon.textContent = "HĐ";
+  const content = document.createElement("div"); content.className = "event-content";
+  const title = document.createElement("strong"); title.textContent = invoice.sohd || "Hóa đơn bán hàng";
+  const employee = invoice.tennv || invoice.manv || "Chưa ghi nhân viên";
+  const customer = invoice.khachhang ? ` • ${invoice.khachhang}` : "";
+  const meta = document.createElement("span");
+  meta.textContent = `${employee}${customer} • ${invoice.quantity.toLocaleString("vi-VN")} SP • ${invoice.amount.toLocaleString("vi-VN")}đ`;
+  const time = document.createElement("time"); time.textContent = formatVietnamTime(invoice.time); time.dateTime = invoice.time;
+  const open = () => window.open(`./xemhoadon111.html?sohd=${encodeURIComponent(invoice.sohd)}`, "_blank", "noopener");
+  item.addEventListener("click", open);
+  item.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } });
+  content.append(title, meta); item.append(icon, content, time); return item;
 }
 
 function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
-
-function startAutoRefresh() {
-  stopAutoRefresh();
-  refreshTimer = window.setInterval(() => refreshReport(false), APP_REFRESH_MS);
-}
-
-function stopAutoRefresh() {
-  if (refreshTimer) {
-    clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
-}
+function startAutoRefresh() { stopAutoRefresh(); refreshTimer = window.setInterval(() => { if (selectedDate === vietnamDateKey()) refreshReport(); }, APP_REFRESH_MS); }
+function stopAutoRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
 
 el.loginForm.addEventListener("submit", handleLogin);
 el.logoutButton.addEventListener("click", handleLogout);
-el.refreshButton.addEventListener("click", () => refreshReport(true));
-el.storeSelect.addEventListener("change", () => {
-  currentStore = el.storeSelect.value;
-  localStorage.setItem("camera_report_store", currentStore);
-  refreshReport(true);
-});
-
-window.addEventListener("focus", () => {
-  if (!el.appView.hidden) refreshReport(false);
-});
-
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && !el.appView.hidden) {
-    refreshReport(false);
-  }
-});
-
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === "SIGNED_OUT" || !session) {
-    stopAutoRefresh();
-    if (!el.loginView.hidden) return;
-    showOnly("login");
-  }
-});
+el.refreshButton.addEventListener("click", () => refreshReport());
+el.storeSelect.addEventListener("change", () => { currentStore = el.storeSelect.value; localStorage.setItem("camera_report_store", currentStore); timelinePage = 1; refreshReport(); });
+el.reportDate.addEventListener("change", () => { selectedDate = el.reportDate.value || vietnamDateKey(); localStorage.setItem("camera_report_date", selectedDate); timelinePage = 1; refreshReport(); });
+el.timelineFilter.addEventListener("change", () => { timelinePage = 1; renderTimeline(); });
+el.timelinePageSize.addEventListener("change", () => { timelinePage = 1; renderTimeline(); });
+el.timelinePrev.addEventListener("click", () => { if (timelinePage > 1) { timelinePage--; renderTimeline(); } });
+el.timelineNext.addEventListener("click", () => { timelinePage++; renderTimeline(); });
+window.addEventListener("focus", () => { if (!el.appView.hidden && selectedDate === vietnamDateKey()) refreshReport(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !el.appView.hidden && selectedDate === vietnamDateKey()) refreshReport(); });
+supabase.auth.onAuthStateChange((event, session) => { if (event === "SIGNED_OUT" || !session) { stopAutoRefresh(); if (!el.loginView.hidden) return; showOnly("login"); } });
 
 bootstrapAuth();
