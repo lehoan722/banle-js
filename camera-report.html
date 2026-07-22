@@ -81,12 +81,14 @@
     </section>
 
     <section class="panel">
-      <div class="panel-header">
+      <div class="panel-header chart-panel-header">
         <div>
-          <h2>Hóa đơn / lượt khách theo giờ</h2>
-          <p>Mỗi cột hiển thị số hóa đơn trên số lượt qua cửa, ví dụ 5/20.</p>
+          <h2 id="chart-title">Hóa đơn / lượt khách theo giờ</h2>
+          <p id="chart-description">Mỗi cột hiển thị số hóa đơn trên số lượt qua cửa, ví dụ 5/20. Bấm một cột giờ để xem chi tiết theo 5 phút.</p>
         </div>
+        <button id="chart-back-day" class="secondary-button" type="button" hidden>← Xem cả ngày</button>
       </div>
+      <div id="chart-breadcrumb" class="chart-breadcrumb" hidden></div>
       <div id="hourly-chart" class="hourly-chart" aria-label="Biểu đồ hóa đơn trên lượt khách theo giờ"></div>
       <div id="hourly-empty" class="empty-state" hidden>Chưa có lượt qua cửa hoặc hóa đơn trong ngày.</div>
     </section>
@@ -125,6 +127,7 @@
         </label>
       </div>
 
+      <div id="timeline-context" class="timeline-context" hidden></div>
       <div id="timeline-summary" class="timeline-summary">0 lượt qua cửa • 0 hóa đơn • 0 dòng</div>
       <div id="event-list" class="event-list"></div>
       <div id="events-empty" class="empty-state" hidden>Chưa có dữ liệu để hiển thị.</div>
@@ -137,7 +140,7 @@
     </section>
 
     <footer class="page-footer">
-      <span>SuperPOS Camera Report v1.1</span>
+      <span>SuperPOS Camera Report v1.2</span>
       <span id="admin-name"></span>
     </footer>
   </main>
