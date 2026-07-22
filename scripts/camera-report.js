@@ -21,6 +21,9 @@ const el = {
   adminName: $("admin-name"), reportDate: $("report-date"), timelineFilter: $("timeline-filter"),
   timelinePageSize: $("timeline-page-size"), timelinePrev: $("timeline-prev"), timelineNext: $("timeline-next"),
   timelinePageInfo: $("timeline-page-info"), timelineSummary: $("timeline-summary"),
+  chartTitle: $("chart-title"), chartDescription: $("chart-description"),
+  chartBackDay: $("chart-back-day"), chartBreadcrumb: $("chart-breadcrumb"),
+  timelineContext: $("timeline-context"),
 };
 
 let currentStore = localStorage.getItem("camera_report_store") || "cs1";
@@ -30,6 +33,8 @@ let refreshInProgress = false;
 let currentUser = null;
 let timelineAll = [];
 let timelinePage = 1;
+let selectedHour = null;
+let highlightedFiveMinuteStart = null;
 
 function vietnamDateKey(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -45,10 +50,8 @@ function vietnamParts(date = new Date()) {
     hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
   }).formatToParts(date);
   const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-  return {
-    year: +map.year, month: +map.month, day: +map.day, hour: +map.hour,
-    minute: +map.minute, second: +map.second, dateKey: `${map.year}-${map.month}-${map.day}`
-  };
+  return { year: +map.year, month: +map.month, day: +map.day, hour: +map.hour,
+    minute: +map.minute, second: +map.second, dateKey: `${map.year}-${map.month}-${map.day}` };
 }
 
 function dateBoundsForVietnam(dateKey) {
@@ -97,6 +100,40 @@ function relativeTime(value) {
   if (hours < 24) return `${hours} giờ trước`;
   return formatVietnamDateTime(value);
 }
+
+function vietnamTimeParts(value) {
+  if (!value) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: VIETNAM_TZ,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date(value));
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return {
+    dateKey: `${map.year}-${map.month}-${map.day}`,
+    hour: Number(map.hour), minute: Number(map.minute), second: Number(map.second),
+  };
+}
+
+function fiveMinuteBucketStart(value) {
+  const parts = vietnamTimeParts(value);
+  if (!parts) return null;
+  return Math.floor(parts.minute / 5) * 5;
+}
+
+function isItemInSelectedHour(item) {
+  if (selectedHour == null) return true;
+  const parts = vietnamTimeParts(item.time);
+  return parts?.dateKey === selectedDate && parts.hour === selectedHour;
+}
+
+function isItemInHighlightedBucket(item) {
+  if (selectedHour == null || highlightedFiveMinuteStart == null) return false;
+  const parts = vietnamTimeParts(item.time);
+  return parts?.dateKey === selectedDate && parts.hour === selectedHour &&
+    Math.floor(parts.minute / 5) * 5 === highlightedFiveMinuteStart;
+}
+
 function hourFromTimestamp(value) {
   if (!value) return null;
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone: VIETNAM_TZ, hour: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
@@ -152,7 +189,7 @@ async function bootstrapAuth() {
       showOnly("login"); el.email.focus(); return;
     }
     if (!isAdmin) {
-      await supabase.auth.signOut().catch(() => { });
+      await supabase.auth.signOut().catch(() => {});
       setLoginError("Tài khoản hiện tại không có quyền Admin."); showOnly("login"); return;
     }
     await enterApp(session);
@@ -171,7 +208,7 @@ async function handleLogin(event) {
     if (error || !data?.session) throw new Error("Email hoặc mật khẩu không đúng.");
     const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin");
     if (adminError) throw adminError;
-    if (isAdmin !== true) { await supabase.auth.signOut().catch(() => { }); throw new Error("Tài khoản này không có quyền Admin."); }
+    if (isAdmin !== true) { await supabase.auth.signOut().catch(() => {}); throw new Error("Tài khoản này không có quyền Admin."); }
     localStorage.setItem("last_login_identifier", email); localStorage.setItem("is_admin", "true");
     el.password.value = ""; await enterApp(data.session);
   } catch (error) { console.error(error); setLoginError(error?.message || "Không đăng nhập được."); }
@@ -179,7 +216,7 @@ async function handleLogin(event) {
 }
 
 async function handleLogout() {
-  stopAutoRefresh(); await supabase.auth.signOut().catch(() => { });
+  stopAutoRefresh(); await supabase.auth.signOut().catch(() => {});
   ["manv", "tennv", "is_admin", "quyen_sua_hoadon"].forEach((key) => { localStorage.removeItem(key); sessionStorage.removeItem(key); });
   currentUser = null; showOnly("login"); el.password.value = ""; el.email.focus();
 }
@@ -295,8 +332,8 @@ function renderReport({ nowParts, daily, hourly, events, statuses, invoices }) {
   el.lastEventAge.textContent = lastEvent ? (viewingToday ? relativeTime(lastEvent.event_time) : formatVietnamDateTime(lastEvent.event_time)) : "Chưa có sự kiện";
 
   renderHealth(statuses, lastEvent);
-  renderHourlyChart(crossingHourMap, invoiceHourMap, viewingToday ? nowParts.hour : null);
   timelineAll = buildTimeline(events, invoices);
+  renderActiveChart(crossingHourMap, invoiceHourMap, viewingToday ? nowParts.hour : null);
   timelinePage = 1;
   renderTimeline();
 }
@@ -316,22 +353,122 @@ function renderHealth(statuses, lastEvent) {
   }
 }
 
+function renderActiveChart(crossingMap, invoiceMap, currentHour) {
+  if (selectedHour == null) {
+    renderHourlyChart(crossingMap, invoiceMap, currentHour);
+  } else {
+    renderFiveMinuteChart(selectedHour);
+  }
+}
+
 function renderHourlyChart(crossingMap, invoiceMap, currentHour) {
+  el.chartTitle.textContent = "Hóa đơn / lượt khách theo giờ";
+  el.chartDescription.textContent = "Mỗi cột hiển thị số hóa đơn trên số lượt qua cửa, ví dụ 5/20. Bấm một cột giờ để xem chi tiết theo 5 phút.";
+  el.chartBackDay.hidden = true;
+  el.chartBreadcrumb.hidden = true;
   const values = [];
   for (let hour = 7; hour <= 22; hour++) values.push({ hour, crossings: crossingMap.get(hour) || 0, invoices: invoiceMap.get(hour) || 0 });
   const max = Math.max(...values.map((item) => item.crossings), 0);
+  el.hourlyChart.classList.remove("five-minute-chart");
   el.hourlyChart.innerHTML = "";
   el.hourlyEmpty.hidden = values.some((item) => item.crossings || item.invoices);
   for (const item of values) {
-    const column = document.createElement("div"); column.className = `chart-column${item.hour === currentHour ? " current" : ""}`;
+    const column = document.createElement("button");
+    column.type = "button";
+    column.className = `chart-column chart-column-button${item.hour === currentHour ? " current" : ""}`;
+    column.setAttribute("aria-label", `Xem chi tiết giờ ${String(item.hour).padStart(2, "0")}:00`);
     const value = document.createElement("span"); value.className = "chart-value ratio-value"; value.textContent = `${item.invoices}/${item.crossings}`;
     const track = document.createElement("div"); track.className = "chart-track";
     const bar = document.createElement("div"); bar.className = "chart-bar";
     bar.style.height = `${max && item.crossings ? Math.max(4, Math.round((item.crossings / max) * 100)) : 0}%`;
     bar.title = `${String(item.hour).padStart(2, "0")}:00 — ${item.invoices} hóa đơn / ${item.crossings} lượt qua cửa`;
     const label = document.createElement("span"); label.className = "chart-label"; label.textContent = String(item.hour).padStart(2, "0");
-    track.appendChild(bar); column.append(value, track, label); el.hourlyChart.appendChild(column);
+    track.appendChild(bar); column.append(value, track, label);
+    column.addEventListener("click", () => enterHourDetail(item.hour));
+    el.hourlyChart.appendChild(column);
   }
+}
+
+function enterHourDetail(hour) {
+  selectedHour = hour;
+  highlightedFiveMinuteStart = null;
+  timelinePage = 1;
+  renderFiveMinuteChart(hour);
+  renderTimeline();
+  el.hourlyChart.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function leaveHourDetail() {
+  selectedHour = null;
+  highlightedFiveMinuteStart = null;
+  timelinePage = 1;
+  const crossingMap = new Map();
+  const invoiceMap = new Map();
+  for (const item of timelineAll) {
+    const hour = hourFromTimestamp(item.time);
+    if (hour == null) continue;
+    const map = item.kind === "invoice" ? invoiceMap : crossingMap;
+    map.set(hour, (map.get(hour) || 0) + 1);
+  }
+  const now = vietnamParts();
+  renderHourlyChart(crossingMap, invoiceMap, selectedDate === now.dateKey ? now.hour : null);
+  renderTimeline();
+}
+
+function renderFiveMinuteChart(hour) {
+  el.chartTitle.textContent = `Chi tiết ${String(hour).padStart(2, "0")}:00–${String((hour + 1) % 24).padStart(2, "0")}:00`;
+  el.chartDescription.textContent = "Mỗi cột là 5 phút và hiển thị hóa đơn/lượt qua cửa. Bấm một cột để cuộn tới các dòng tương ứng.";
+  el.chartBackDay.hidden = false;
+  el.chartBreadcrumb.hidden = false;
+  el.chartBreadcrumb.textContent = `${formatVietnamDateFromKey(selectedDate)} › ${String(hour).padStart(2, "0")}:00–${String((hour + 1) % 24).padStart(2, "0")}:00`;
+
+  const buckets = Array.from({ length: 12 }, (_, index) => ({ start: index * 5, crossings: 0, invoices: 0 }));
+  for (const item of timelineAll) {
+    if (!isItemInSelectedHour(item)) continue;
+    const start = fiveMinuteBucketStart(item.time);
+    if (start == null) continue;
+    const bucket = buckets[Math.floor(start / 5)];
+    if (item.kind === "invoice") bucket.invoices += 1;
+    else bucket.crossings += 1;
+  }
+
+  const max = Math.max(...buckets.map((item) => item.crossings), 0);
+  el.hourlyChart.classList.add("five-minute-chart");
+  el.hourlyChart.innerHTML = "";
+  el.hourlyEmpty.hidden = buckets.some((item) => item.crossings || item.invoices);
+
+  for (const bucket of buckets) {
+    const column = document.createElement("button");
+    column.type = "button";
+    column.className = `chart-column chart-column-button${highlightedFiveMinuteStart === bucket.start ? " selected-bucket" : ""}`;
+    const end = bucket.start + 5;
+    column.setAttribute("aria-label", `Xem ${String(hour).padStart(2, "0")}:${String(bucket.start).padStart(2, "0")} đến ${String(hour).padStart(2, "0")}:${String(end).padStart(2, "0")}`);
+    const value = document.createElement("span"); value.className = "chart-value ratio-value"; value.textContent = `${bucket.invoices}/${bucket.crossings}`;
+    const track = document.createElement("div"); track.className = "chart-track";
+    const bar = document.createElement("div"); bar.className = "chart-bar";
+    bar.style.height = `${max && bucket.crossings ? Math.max(4, Math.round((bucket.crossings / max) * 100)) : 0}%`;
+    bar.title = `${String(hour).padStart(2, "0")}:${String(bucket.start).padStart(2, "0")}–${String(hour).padStart(2, "0")}:${String(end).padStart(2, "0")} — ${bucket.invoices} hóa đơn / ${bucket.crossings} lượt qua cửa`;
+    const label = document.createElement("span"); label.className = "chart-label"; label.textContent = String(bucket.start).padStart(2, "0");
+    track.appendChild(bar); column.append(value, track, label);
+    column.addEventListener("click", () => selectFiveMinuteBucket(bucket.start));
+    el.hourlyChart.appendChild(column);
+  }
+}
+
+function selectFiveMinuteBucket(bucketStart) {
+  highlightedFiveMinuteStart = bucketStart;
+  const filtered = filteredTimeline();
+  const firstIndex = filtered.findIndex(isItemInHighlightedBucket);
+  const pageSizeValue = el.timelinePageSize.value;
+  const pageSize = pageSizeValue === "all" ? Math.max(filtered.length, 1) : Number(pageSizeValue || 100);
+  timelinePage = firstIndex >= 0 ? Math.floor(firstIndex / pageSize) + 1 : 1;
+  renderFiveMinuteChart(selectedHour);
+  renderTimeline();
+  requestAnimationFrame(() => {
+    const target = el.eventList.querySelector(".bucket-highlight");
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+    else el.eventList.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 
 function buildTimeline(events, invoices) {
@@ -342,13 +479,14 @@ function buildTimeline(events, invoices) {
 
 function filteredTimeline() {
   const filter = el.timelineFilter.value;
-  return filter === "all" ? timelineAll : timelineAll.filter((item) => item.kind === filter);
+  return timelineAll.filter((item) => isItemInSelectedHour(item) && (filter === "all" || item.kind === filter));
 }
 
 function renderTimeline() {
   const filtered = filteredTimeline();
-  const cameraCount = timelineAll.filter((x) => x.kind === "camera").length;
-  const invoiceCount = timelineAll.filter((x) => x.kind === "invoice").length;
+  const scopedAll = timelineAll.filter(isItemInSelectedHour);
+  const cameraCount = scopedAll.filter((x) => x.kind === "camera").length;
+  const invoiceCount = scopedAll.filter((x) => x.kind === "invoice").length;
   const pageSizeValue = el.timelinePageSize.value;
   const pageSize = pageSizeValue === "all" ? Math.max(filtered.length, 1) : Number(pageSizeValue || 100);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -359,12 +497,29 @@ function renderTimeline() {
   el.eventList.innerHTML = "";
   el.eventsEmpty.hidden = rows.length > 0;
   el.eventCountBadge.textContent = `${filtered.length.toLocaleString("vi-VN")} dòng`;
-  el.timelineSummary.textContent = `${cameraCount.toLocaleString("vi-VN")} lượt qua cửa • ${invoiceCount.toLocaleString("vi-VN")} hóa đơn • ${timelineAll.length.toLocaleString("vi-VN")} dòng`;
+  el.timelineSummary.textContent = `${cameraCount.toLocaleString("vi-VN")} lượt qua cửa • ${invoiceCount.toLocaleString("vi-VN")} hóa đơn • ${scopedAll.length.toLocaleString("vi-VN")} dòng`;
+  if (selectedHour == null) {
+    el.timelineContext.hidden = true;
+    el.timelineContext.textContent = "";
+  } else {
+    el.timelineContext.hidden = false;
+    const hourLabel = `${String(selectedHour).padStart(2, "0")}:00–${String((selectedHour + 1) % 24).padStart(2, "0")}:00`;
+    if (highlightedFiveMinuteStart == null) {
+      el.timelineContext.textContent = `Đang xem dòng thời gian ${hourLabel}`;
+    } else {
+      const end = highlightedFiveMinuteStart + 5;
+      el.timelineContext.textContent = `Đang làm nổi bật ${String(selectedHour).padStart(2, "0")}:${String(highlightedFiveMinuteStart).padStart(2, "0")}–${String(selectedHour).padStart(2, "0")}:${String(end).padStart(2, "0")}`;
+    }
+  }
   el.timelinePageInfo.textContent = `Trang ${timelinePage}/${totalPages}`;
   el.timelinePrev.disabled = timelinePage <= 1;
   el.timelineNext.disabled = timelinePage >= totalPages;
 
-  for (const item of rows) el.eventList.appendChild(item.kind === "invoice" ? createInvoiceItem(item) : createCameraItem(item));
+  for (const item of rows) {
+    const node = item.kind === "invoice" ? createInvoiceItem(item) : createCameraItem(item);
+    if (isItemInHighlightedBucket(item)) node.classList.add("bucket-highlight");
+    el.eventList.appendChild(node);
+  }
 }
 
 function createCameraItem(event) {
@@ -403,12 +558,13 @@ function stopAutoRefresh() { if (refreshTimer) { clearInterval(refreshTimer); re
 el.loginForm.addEventListener("submit", handleLogin);
 el.logoutButton.addEventListener("click", handleLogout);
 el.refreshButton.addEventListener("click", () => refreshReport());
-el.storeSelect.addEventListener("change", () => { currentStore = el.storeSelect.value; localStorage.setItem("camera_report_store", currentStore); timelinePage = 1; refreshReport(); });
-el.reportDate.addEventListener("change", () => { selectedDate = el.reportDate.value || vietnamDateKey(); localStorage.setItem("camera_report_date", selectedDate); timelinePage = 1; refreshReport(); });
+el.storeSelect.addEventListener("change", () => { currentStore = el.storeSelect.value; localStorage.setItem("camera_report_store", currentStore); selectedHour = null; highlightedFiveMinuteStart = null; timelinePage = 1; refreshReport(); });
+el.reportDate.addEventListener("change", () => { selectedDate = el.reportDate.value || vietnamDateKey(); localStorage.setItem("camera_report_date", selectedDate); selectedHour = null; highlightedFiveMinuteStart = null; timelinePage = 1; refreshReport(); });
 el.timelineFilter.addEventListener("change", () => { timelinePage = 1; renderTimeline(); });
 el.timelinePageSize.addEventListener("change", () => { timelinePage = 1; renderTimeline(); });
 el.timelinePrev.addEventListener("click", () => { if (timelinePage > 1) { timelinePage--; renderTimeline(); } });
 el.timelineNext.addEventListener("click", () => { timelinePage++; renderTimeline(); });
+el.chartBackDay.addEventListener("click", leaveHourDetail);
 window.addEventListener("focus", () => { if (!el.appView.hidden && selectedDate === vietnamDateKey()) refreshReport(); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !el.appView.hidden && selectedDate === vietnamDateKey()) refreshReport(); });
 supabase.auth.onAuthStateChange((event, session) => { if (event === "SIGNED_OUT" || !session) { stopAutoRefresh(); if (!el.loginView.hidden) return; showOnly("login"); } });
