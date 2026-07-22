@@ -667,3 +667,167 @@ button, input, select { font: inherit; }
     margin-top: 3px;
   }
 }
+
+/* ===== v1.3: KPI bán hàng, cảnh báo theo giờ và mobile chart ===== */
+.summary-grid-business {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.money-value {
+  font-size: clamp(25px, 3.4vw, 38px);
+  overflow-wrap: anywhere;
+}
+
+.revenue-card {
+  background: linear-gradient(145deg, #fffbeb, #fff7ed);
+}
+
+/* Dùng flex thay cho grid để biểu đồ không mất chiều rộng trên Safari/iPhone. */
+.hourly-chart,
+.five-minute-chart {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  padding: 8px 3px 8px;
+}
+
+.hourly-chart .chart-column {
+  flex: 1 0 42px;
+  min-width: 42px;
+}
+
+.five-minute-chart .chart-column {
+  flex: 1 0 48px;
+  min-width: 48px;
+}
+
+.chart-column.status-empty .chart-bar {
+  background: #cbd5e1;
+}
+
+.chart-column.status-good .chart-bar {
+  background: #22c55e;
+}
+
+.chart-column.status-warning .chart-bar {
+  background: #f59e0b;
+}
+
+.chart-column.status-danger .chart-bar {
+  background: #dc2626;
+}
+
+.chart-column.status-warning .ratio-value {
+  color: #b45309;
+}
+
+.chart-column.status-danger .ratio-value {
+  color: #b91c1c;
+  font-weight: 900;
+}
+
+.chart-column.current .chart-track {
+  box-shadow: inset 0 -3px 0 var(--primary);
+}
+
+.chart-column.current .chart-label {
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.chart-alert {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-right: 2px;
+  border-radius: 50%;
+  background: currentColor;
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  vertical-align: 1px;
+}
+
+.chart-column.status-warning .chart-alert {
+  background: #f59e0b;
+}
+
+.chart-column.status-danger .chart-alert {
+  background: #dc2626;
+}
+
+.chart-column.selected-bucket .chart-bar {
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, .28);
+}
+
+@media (max-width: 880px) {
+  .summary-grid-business {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .summary-grid-business {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-grid-business .metric-card {
+    min-height: 118px;
+  }
+
+  .summary-grid-business .metric-value {
+    font-size: 34px;
+  }
+
+  .summary-grid-business .money-value {
+    font-size: clamp(21px, 7vw, 29px);
+  }
+
+  .panel {
+    overflow: visible;
+  }
+
+  .hourly-chart,
+  .five-minute-chart {
+    height: 224px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .hourly-chart .chart-column,
+  .five-minute-chart .chart-column {
+    flex: 0 0 46px;
+    min-width: 46px;
+  }
+}
+
+@media (max-width: 390px) {
+  .summary-grid-business {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-grid-business .metric-card {
+    padding: 13px;
+  }
+
+  .summary-grid-business .metric-label,
+  .summary-grid-business .metric-footnote {
+    font-size: 11px;
+  }
+
+  .summary-grid-business .metric-value {
+    font-size: 30px;
+  }
+
+  .summary-grid-business .money-value {
+    font-size: 20px;
+  }
+}
