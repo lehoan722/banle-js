@@ -495,3 +495,59 @@ button, input, select { font: inherit; }
   .summary-grid { grid-template-columns: 1fr; }
   .metric-card { min-height: 122px; }
 }
+
+/* ===== Dòng thời gian Camera + hóa đơn ===== */
+.timeline-heading { margin-bottom: 14px; }
+.timeline-toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 13px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+.toolbar-field { display: grid; gap: 6px; min-width: 0; }
+.toolbar-field span { color: var(--muted); font-size: 12px; font-weight: 700; }
+.toolbar-field input,
+.toolbar-field select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0 10px;
+  background: #fff;
+  color: var(--text);
+}
+.timeline-summary { color: var(--muted); font-size: 13px; padding: 3px 1px 10px; }
+.timeline-paging {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.timeline-paging button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 0 13px;
+  cursor: pointer;
+}
+.timeline-paging button:disabled { opacity: .45; cursor: default; }
+.timeline-paging span { color: var(--muted); font-size: 13px; font-weight: 650; }
+.ratio-value { color: var(--primary-dark); font-size: 11px; }
+.invoice-item { cursor: pointer; border-radius: 12px; padding-left: 6px; padding-right: 6px; }
+.invoice-item:hover, .invoice-item:focus { background: #fffbeb; outline: none; }
+.invoice-icon { background: #fef3c7; color: #92400e; font-size: 11px; }
+.invoice-item time { color: #92400e; }
+
+@media (max-width: 620px) {
+  .timeline-toolbar { grid-template-columns: 1fr; }
+  .timeline-paging { gap: 7px; }
+  .timeline-paging button { padding: 0 9px; font-size: 12px; }
+  .timeline-summary { line-height: 1.5; }
+}
