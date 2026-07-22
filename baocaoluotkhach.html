@@ -13,16 +13,11 @@
       <div class="brand-mark">HT</div>
       <h1>Đăng nhập quản trị</h1>
       <p>Chỉ tài khoản Admin được xem báo cáo lượt khách.</p>
-
       <form id="admin-login-form">
         <label for="admin-email">Email Admin</label>
-        <input id="admin-email" type="email" autocomplete="username"
-               placeholder="admin@email.com" required />
-
+        <input id="admin-email" type="email" autocomplete="username" placeholder="admin@email.com" required />
         <label for="admin-password">Mật khẩu</label>
-        <input id="admin-password" type="password" autocomplete="current-password"
-               placeholder="Nhập mật khẩu" required />
-
+        <input id="admin-password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required />
         <button id="login-button" type="submit">Đăng nhập</button>
         <div id="login-error" class="form-error" role="alert"></div>
       </form>
@@ -39,9 +34,8 @@
       <div>
         <div class="eyebrow">SUPERPOS CAMERA</div>
         <h1>Báo cáo lượt khách</h1>
-        <p id="report-subtitle">Dữ liệu lượt qua cửa theo thời gian thực</p>
+        <p id="report-subtitle">Dữ liệu lượt qua cửa và hóa đơn theo thời gian</p>
       </div>
-
       <div class="topbar-actions">
         <select id="store-select" aria-label="Chọn cơ sở"></select>
         <button id="refresh-button" class="icon-button" type="button" title="Làm mới">↻</button>
@@ -49,10 +43,7 @@
       </div>
     </header>
 
-    <section id="permission-error" class="message-card error" hidden>
-      Bạn không có quyền xem báo cáo này.
-    </section>
-
+    <section id="permission-error" class="message-card error" hidden>Bạn không có quyền xem báo cáo này.</section>
     <section id="data-error" class="message-card error" hidden></section>
 
     <section class="status-strip">
@@ -63,31 +54,25 @@
           <div id="health-detail" class="muted">Chưa có dữ liệu trạng thái</div>
         </div>
       </div>
-      <div class="sync-time">
-        <span>Cập nhật</span>
-        <strong id="last-refresh">--:--:--</strong>
-      </div>
+      <div class="sync-time"><span>Cập nhật</span><strong id="last-refresh">--:--:--</strong></div>
     </section>
 
     <section class="summary-grid">
       <article class="metric-card primary">
-        <span class="metric-label">Lượt qua cửa hôm nay</span>
+        <span class="metric-label">Lượt qua cửa trong ngày</span>
         <strong id="today-count" class="metric-value">0</strong>
         <span id="today-date" class="metric-footnote">--/--/----</span>
       </article>
-
       <article class="metric-card">
         <span class="metric-label">Trong giờ hiện tại</span>
         <strong id="current-hour-count" class="metric-value">0</strong>
         <span id="current-hour-label" class="metric-footnote">--:00–--:00</span>
       </article>
-
       <article class="metric-card">
         <span class="metric-label">Giờ đông nhất</span>
         <strong id="peak-hour-count" class="metric-value">0</strong>
         <span id="peak-hour-label" class="metric-footnote">Chưa có dữ liệu</span>
       </article>
-
       <article class="metric-card">
         <span class="metric-label">Sự kiện gần nhất</span>
         <strong id="last-event-time" class="metric-value compact">--:--:--</strong>
@@ -98,28 +83,61 @@
     <section class="panel">
       <div class="panel-header">
         <div>
-          <h2>Lượt theo giờ</h2>
-          <p>Phân bố lượt qua cửa trong ngày</p>
+          <h2>Hóa đơn / lượt khách theo giờ</h2>
+          <p>Mỗi cột hiển thị số hóa đơn trên số lượt qua cửa, ví dụ 5/20.</p>
         </div>
       </div>
-      <div id="hourly-chart" class="hourly-chart" aria-label="Biểu đồ lượt theo giờ"></div>
-      <div id="hourly-empty" class="empty-state" hidden>Chưa có lượt qua cửa trong ngày.</div>
+      <div id="hourly-chart" class="hourly-chart" aria-label="Biểu đồ hóa đơn trên lượt khách theo giờ"></div>
+      <div id="hourly-empty" class="empty-state" hidden>Chưa có lượt qua cửa hoặc hóa đơn trong ngày.</div>
     </section>
 
-    <section class="panel">
-      <div class="panel-header">
+    <section class="panel timeline-panel">
+      <div class="panel-header timeline-heading">
         <div>
-          <h2>Sự kiện gần nhất</h2>
-          <p>Danh sách các lượt vừa được Camera Sync ghi nhận</p>
+          <h2>Dòng thời gian cửa hàng</h2>
+          <p>Lượt qua cửa và hóa đơn bán hàng được xếp xen kẽ theo thời gian, mới nhất ở trên.</p>
         </div>
-        <span id="event-count-badge" class="badge">0 sự kiện</span>
+        <span id="event-count-badge" class="badge">0 dòng</span>
       </div>
+
+      <div class="timeline-toolbar">
+        <label class="toolbar-field">
+          <span>Ngày xem</span>
+          <input id="report-date" type="date" />
+        </label>
+        <label class="toolbar-field">
+          <span>Hiển thị</span>
+          <select id="timeline-filter">
+            <option value="all">Tất cả</option>
+            <option value="camera">Chỉ lượt qua cửa</option>
+            <option value="invoice">Chỉ hóa đơn</option>
+          </select>
+        </label>
+        <label class="toolbar-field">
+          <span>Số dòng/trang</span>
+          <select id="timeline-page-size">
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+            <option value="all">Tất cả trong ngày</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="timeline-summary" class="timeline-summary">0 lượt qua cửa • 0 hóa đơn • 0 dòng</div>
       <div id="event-list" class="event-list"></div>
-      <div id="events-empty" class="empty-state" hidden>Chưa có sự kiện để hiển thị.</div>
+      <div id="events-empty" class="empty-state" hidden>Chưa có dữ liệu để hiển thị.</div>
+
+      <div class="timeline-paging">
+        <button id="timeline-prev" type="button">← Trang trước</button>
+        <span id="timeline-page-info">Trang 1/1</span>
+        <button id="timeline-next" type="button">Trang sau →</button>
+      </div>
     </section>
 
     <footer class="page-footer">
-      <span>SuperPOS Camera Report v1.0</span>
+      <span>SuperPOS Camera Report v1.1</span>
       <span id="admin-name"></span>
     </footer>
   </main>
