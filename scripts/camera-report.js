@@ -5,6 +5,7 @@ const HEARTBEAT_ONLINE_MS = 2 * 60 * 1000;
 const VIETNAM_TZ = "Asia/Ho_Chi_Minh";
 const INVOICE_BATCH_SIZE = 1000;
 const CAMERA_BATCH_SIZE = 1000;
+const CHART_BAR_MAX_HEIGHT_PX = 150;
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -400,7 +401,7 @@ function renderHourlyChart(crossingMap, invoiceMap, productMap, amountMap, curre
     }
     const track = document.createElement("div"); track.className = "chart-track";
     const bar = document.createElement("div"); bar.className = "chart-bar";
-    bar.style.height = `${max && item.crossings ? Math.max(4, Math.round((item.crossings / max) * 100)) : 0}%`;
+    bar.style.height = `${max && item.crossings ? Math.max(6, Math.round((item.crossings / max) * CHART_BAR_MAX_HEIGHT_PX)) : 0}px`;
     const rate = item.crossings > 0 ? ((item.invoices / item.crossings) * 100).toLocaleString("vi-VN", { maximumFractionDigits: 1 }) : "0";
     bar.title = `${String(item.hour).padStart(2, "0")}:00–${String((item.hour + 1) % 24).padStart(2, "0")}:00
 ${item.crossings} lượt qua cửa
@@ -489,7 +490,7 @@ function renderFiveMinuteChart(hour) {
     }
     const track = document.createElement("div"); track.className = "chart-track";
     const bar = document.createElement("div"); bar.className = "chart-bar";
-    bar.style.height = `${max && bucket.crossings ? Math.max(4, Math.round((bucket.crossings / max) * 100)) : 0}%`;
+    bar.style.height = `${max && bucket.crossings ? Math.max(6, Math.round((bucket.crossings / max) * CHART_BAR_MAX_HEIGHT_PX)) : 0}px`;
     const rate = bucket.crossings > 0 ? ((bucket.invoices / bucket.crossings) * 100).toLocaleString("vi-VN", { maximumFractionDigits: 1 }) : "0";
     bar.title = `${String(hour).padStart(2, "0")}:${String(bucket.start).padStart(2, "0")}–${String(hour).padStart(2, "0")}:${String(end).padStart(2, "0")}
 ${bucket.crossings} lượt qua cửa
