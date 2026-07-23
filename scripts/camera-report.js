@@ -5,6 +5,8 @@ const HEARTBEAT_ONLINE_MS = 2 * 60 * 1000;
 const VIETNAM_TZ = "Asia/Ho_Chi_Minh";
 const INVOICE_BATCH_SIZE = 1000;
 const CAMERA_BATCH_SIZE = 1000;
+const IMAGE_BATCH_SIZE = 500;
+const CAMERA_IMAGE_BUCKET = "anhvaocua";
 const CHART_BAR_MAX_HEIGHT_PX = 150;
 
 const $ = (id) => document.getElementById(id);
@@ -36,6 +38,7 @@ let timelineAll = [];
 let timelinePage = 1;
 let selectedHour = null;
 let highlightedFiveMinuteStart = null;
+let cameraImageModal = null;
 
 function vietnamDateKey(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -233,6 +236,29 @@ async function loadStores() {
   el.storeSelect.value = currentStore;
 }
 
+
+async function fetchCameraEventImages(eventKeys) {
+  const keys = [...new Set((eventKeys || []).filter(Boolean))];
+  const imageMap = new Map();
+  if (!keys.length) return imageMap;
+
+  for (let from = 0; from < keys.length; from += IMAGE_BATCH_SIZE) {
+    const batch = keys.slice(from, from + IMAGE_BATCH_SIZE);
+    const { data, error } = await supabase
+      .from("camera_event_images")
+      .select("event_key, image_path, image_url, uploaded_at")
+      .in("event_key", batch);
+
+    if (error) throw error;
+
+    for (const row of data || []) {
+      if (row.event_key) imageMap.set(row.event_key, row);
+    }
+  }
+
+  return imageMap;
+}
+
 async function fetchAllCameraEvents(dateKey) {
   const { start, end } = dateBoundsForVietnam(dateKey);
   const all = [];
@@ -245,7 +271,19 @@ async function fetchAllCameraEvents(dateKey) {
     const rows = data || []; all.push(...rows);
     if (rows.length < CAMERA_BATCH_SIZE) break;
   }
-  return all;
+  try {
+    const imageMap = await fetchCameraEventImages(all.map((row) => row.event_key));
+    return all.map((row) => ({
+      ...row,
+      image: imageMap.get(row.event_key) || null,
+    }));
+  } catch (error) {
+    console.warn("Không tải được ảnh lượt qua cửa:", error);
+    return all.map((row) => ({
+      ...row,
+      image: null,
+    }));
+  }
 }
 
 function invoiceRpcParams(dateKey) {
@@ -522,8 +560,27 @@ function selectFiveMinuteBucket(bucketStart) {
 }
 
 function buildTimeline(events, invoices) {
-  const cameraItems = events.map((event) => ({ kind: "camera", time: event.event_time, id: event.id, cameraCode: event.camera_code, eventType: event.event_type }));
-  const invoiceItems = invoices.map((invoice) => ({ kind: "invoice", time: invoice.created_at, sohd: invoice.sohd, manv: invoice.manv, tennv: invoice.tennv, khachhang: invoice.khachhang, quantity: Number(invoice.sl_detail || 0), amount: Number(invoice.thanhtoan_v2 || 0) }));
+  const cameraItems = events.map((event) => ({
+    kind: "camera",
+    time: event.event_time,
+    id: event.id,
+    eventKey: event.event_key,
+    cameraCode: event.camera_code,
+    eventType: event.event_type,
+    image: event.image || null,
+  }));
+
+  const invoiceItems = invoices.map((invoice) => ({
+    kind: "invoice",
+    time: invoice.created_at,
+    sohd: invoice.sohd,
+    manv: invoice.manv,
+    tennv: invoice.tennv,
+    khachhang: invoice.khachhang,
+    quantity: Number(invoice.sl_detail || 0),
+    amount: Number(invoice.thanhtoan_v2 || 0),
+  }));
+
   return [...cameraItems, ...invoiceItems].sort((a, b) => new Date(b.time) - new Date(a.time));
 }
 
@@ -574,15 +631,158 @@ function renderTimeline() {
   }
 }
 
-function createCameraItem(event) {
-  const item = document.createElement("article"); item.className = "event-item camera-item";
-  const icon = document.createElement("div"); icon.className = "event-icon"; icon.textContent = "↔";
-  const content = document.createElement("div"); content.className = "event-content";
-  const title = document.createElement("strong"); title.textContent = "Lượt qua cửa";
-  const meta = document.createElement("span"); meta.textContent = `${formatVietnamDateTime(event.time)} • ${event.cameraCode || "Camera"}`;
-  const time = document.createElement("time"); time.textContent = formatVietnamTime(event.time); time.dateTime = event.time;
-  content.append(title, meta); item.append(icon, content, time); return item;
+function createCameraItem(cameraEvent) {
+  const item = document.createElement("article");
+  item.className = "event-item camera-item";
+
+  const hasImage = Boolean(cameraEvent.image?.image_path || cameraEvent.image?.image_url);
+  if (hasImage) {
+    item.classList.add("has-image");
+    item.tabIndex = 0;
+    item.title = "Bấm để xem ảnh lượt qua cửa";
+  }
+
+  const icon = document.createElement("div");
+  icon.className = "event-icon";
+  icon.textContent = hasImage ? "📷" : "↔";
+
+  const content = document.createElement("div");
+  content.className = "event-content";
+
+  const title = document.createElement("strong");
+  title.textContent = "Lượt qua cửa";
+
+  const meta = document.createElement("span");
+  meta.textContent = `${formatVietnamDateTime(cameraEvent.time)} • ${cameraEvent.cameraCode || "Camera"}${hasImage ? " • Có ảnh" : ""}`;
+
+  const time = document.createElement("time");
+  time.textContent = formatVietnamTime(cameraEvent.time);
+  time.dateTime = cameraEvent.time;
+
+  if (hasImage) {
+    const openImage = () => openCameraImage(cameraEvent);
+    item.addEventListener("click", openImage);
+    item.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openImage();
+      }
+    });
+  }
+
+  content.append(title, meta);
+  item.append(icon, content, time);
+  return item;
 }
+
+
+function ensureCameraImageModal() {
+  if (cameraImageModal) return cameraImageModal;
+
+  const overlay = document.createElement("div");
+  overlay.className = "camera-image-modal";
+  overlay.hidden = true;
+
+  overlay.innerHTML = `
+    <div class="camera-image-card" role="dialog" aria-modal="true" aria-labelledby="camera-image-title">
+      <button class="camera-image-close" type="button" aria-label="Đóng">×</button>
+      <div class="camera-image-header">
+        <h3 id="camera-image-title">Ảnh lượt qua cửa</h3>
+        <p class="camera-image-meta"></p>
+      </div>
+      <div class="camera-image-frame">
+        <div class="camera-image-message">Đang tải ảnh…</div>
+        <img class="camera-image-preview" alt="Ảnh lượt qua cửa" hidden />
+      </div>
+      <div class="camera-image-actions">
+        <a class="camera-image-open" href="#" target="_blank" rel="noopener" hidden>Mở ảnh ở tab mới</a>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  cameraImageModal = {
+    overlay,
+    card: overlay.querySelector(".camera-image-card"),
+    closeButton: overlay.querySelector(".camera-image-close"),
+    title: overlay.querySelector("#camera-image-title"),
+    meta: overlay.querySelector(".camera-image-meta"),
+    message: overlay.querySelector(".camera-image-message"),
+    image: overlay.querySelector(".camera-image-preview"),
+    openLink: overlay.querySelector(".camera-image-open"),
+  };
+
+  const close = () => closeCameraImageModal();
+  cameraImageModal.closeButton.addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+
+  return cameraImageModal;
+}
+
+function closeCameraImageModal() {
+  if (!cameraImageModal) return;
+  cameraImageModal.overlay.hidden = true;
+  cameraImageModal.image.removeAttribute("src");
+}
+
+async function resolveCameraImageUrl(image) {
+  if (!image) return "";
+
+  if (image.image_path) {
+    const { data, error } = await supabase
+      .storage
+      .from(CAMERA_IMAGE_BUCKET)
+      .createSignedUrl(image.image_path, 60 * 60);
+
+    if (!error && data?.signedUrl) {
+      return data.signedUrl;
+    }
+
+    console.warn("Không tạo được signed URL cho ảnh lượt qua cửa:", error);
+  }
+
+  return image.image_url || "";
+}
+
+async function openCameraImage(cameraEvent) {
+  const modal = ensureCameraImageModal();
+
+  modal.title.textContent = "Ảnh lượt qua cửa";
+  modal.meta.textContent = `${formatVietnamDateTime(cameraEvent.time)} • ${cameraEvent.cameraCode || "Camera"}`;
+  modal.message.textContent = "Đang tải ảnh…";
+  modal.message.hidden = false;
+  modal.image.hidden = true;
+  modal.openLink.hidden = true;
+  modal.image.removeAttribute("src");
+  modal.overlay.hidden = false;
+
+  try {
+    const imageUrl = await resolveCameraImageUrl(cameraEvent.image);
+    if (!imageUrl) throw new Error("Không có đường dẫn ảnh.");
+
+    modal.image.onload = () => {
+      modal.message.hidden = true;
+      modal.image.hidden = false;
+    };
+
+    modal.image.onerror = () => {
+      modal.image.hidden = true;
+      modal.message.hidden = false;
+      modal.message.textContent = "Không tải được ảnh. Hãy kiểm tra quyền đọc Storage hoặc mở ảnh ở Supabase.";
+    };
+
+    modal.image.src = imageUrl;
+    modal.openLink.href = imageUrl;
+    modal.openLink.hidden = false;
+  } catch (error) {
+    modal.message.hidden = false;
+    modal.message.textContent = `Không mở được ảnh: ${error?.message || error}`;
+  }
+}
+
 
 function createInvoiceItem(invoice) {
   const item = document.createElement("article"); item.className = "event-item invoice-item"; item.tabIndex = 0;
@@ -619,6 +819,7 @@ el.timelineNext.addEventListener("click", () => { timelinePage++; renderTimeline
 el.chartBackDay.addEventListener("click", leaveHourDetail);
 window.addEventListener("focus", () => { if (!el.appView.hidden && selectedDate === vietnamDateKey()) refreshReport(); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !el.appView.hidden && selectedDate === vietnamDateKey()) refreshReport(); });
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeCameraImageModal(); });
 supabase.auth.onAuthStateChange((event, session) => { if (event === "SIGNED_OUT" || !session) { stopAutoRefresh(); if (!el.loginView.hidden) return; showOnly("login"); } });
 
 bootstrapAuth();
