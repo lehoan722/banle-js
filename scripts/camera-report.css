@@ -901,3 +901,134 @@ button, input, select { font: inherit; }
     transform: translateX(-50%);
   }
 }
+
+/* ===== v1.5: xem ảnh lượt qua cửa ===== */
+.camera-item.has-image {
+  cursor: pointer;
+  border-radius: 12px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.camera-item.has-image:hover,
+.camera-item.has-image:focus {
+  background: #eff6ff;
+  outline: none;
+}
+
+.camera-item.has-image .event-icon {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.camera-image-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, .68);
+}
+
+.camera-image-card {
+  width: min(960px, 100%);
+  max-height: min(92vh, 760px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 25px 80px rgba(15, 23, 42, .38);
+  padding: 16px;
+}
+
+.camera-image-close {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.camera-image-header {
+  padding-right: 44px;
+}
+
+.camera-image-header h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.camera-image-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.camera-image-frame {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  background: #020617;
+  border-radius: 14px;
+}
+
+.camera-image-message {
+  color: #e2e8f0;
+  text-align: center;
+  padding: 22px;
+}
+
+.camera-image-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 68vh;
+  object-fit: contain;
+}
+
+.camera-image-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.camera-image-open {
+  color: var(--primary-dark);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.camera-image-open:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 620px) {
+  .camera-image-modal {
+    padding: 8px;
+  }
+
+  .camera-image-card {
+    max-height: 94vh;
+    border-radius: 14px;
+    padding: 12px;
+  }
+
+  .camera-image-frame {
+    min-height: 210px;
+  }
+
+  .camera-image-preview {
+    max-height: 62vh;
+  }
+}
+
