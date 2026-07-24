@@ -16,7 +16,13 @@ export async function safeInsertAuditEvent(event) {
     await insertAuditEvent(event);
     return true;
   } catch (error) {
-    console.warn("Audit offline queue:", error?.message || error);
+    console.error("[AUDIT V2] GHI SUPABASE THẤT BẠI", {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+      event
+    });
     enqueueAudit(event);
     return false;
   }
