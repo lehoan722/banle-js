@@ -1,4 +1,4 @@
-import { supabase } from "../js/supabaseClient.js";
+import { supabase } from "./js/supabaseClient.js";
 
 const $ = id => document.getElementById(id);
 const money = value => Number(value || 0).toLocaleString("vi-VN");
