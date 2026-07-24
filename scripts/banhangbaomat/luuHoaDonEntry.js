@@ -315,6 +315,13 @@ export async function luuHoaDonBaoMat() {
     const auditSoHdTruocLuu =
       getText("sohd");
 
+    const auditTongTienTruocLuu =
+      getIntValue("phaithanhtoan");
+
+    // AUDIT V2: tổng tiền thực tế trên màn hình trước khi lưu
+    const auditTongTienTruocLuu =
+      getIntValue("phaithanhtoan");
+
     const payload = taoDuLieuLuuBaoMat();
 
 
@@ -341,11 +348,11 @@ export async function luuHoaDonBaoMat() {
           ).trim();
 
         const auditTongTien =
-          ketQuaDaXuLy?.tong_tien ??
-          ketQuaDaXuLy?.tongtien ??
-          payload?.tong_tien ??
-          payload?.tongtien ??
-          null;
+          Number(auditTongTienTruocLuu || 0) > 0
+            ? Number(auditTongTienTruocLuu)
+            : calcTongThanhTienFromBangKetQua(
+              auditBangTruocLuu
+            );
 
         await chotPhienDaLuu({
           sohd: auditSoHdDaLuu,
