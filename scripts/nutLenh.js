@@ -9,6 +9,11 @@ import { luuHoaDonQuaAPI } from './luuhoadon.js';
 import { capNhatThongTinTong } from './utils.js';
 import { napLaiChiTietHoaDon } from './hoadon.js';
 
+import {
+  huyPhienChuaLuu,
+  taoAuditSessionMoi
+} from './banleAudit.js';
+
 function resetTrangThaiZaloKhachHang() {
   if (typeof window.resetZaloJoinedUI === "function") {
     window.resetZaloJoinedUI();
@@ -41,6 +46,63 @@ function formatTimeHHMM(dateInput) {
 
 export function ganSuKienNutLenh() {
   document.getElementById("them")?.addEventListener("click", async () => {
+
+    // ===== AUDIT V2: kiểm tra hóa đơn hiện tại trước khi tạo mới =====
+    const bangHienTai = getBangKetQua() || {};
+    const coSanPham =
+      Object.keys(bangHienTai).length > 0;
+
+    /*
+     * Cờ này được luuHoaDonEntry.js đặt thành true
+     * sau khi hóa đơn đã lưu thành công.
+     */
+    const hoaDonVuaLuu =
+      window.__AUDIT_HOA_DON_VUA_LUU === true;
+
+    /*
+     * Có sản phẩm nhưng chưa lưu:
+     * bắt nhập lý do trước khi bỏ hóa đơn.
+     */
+    if (coSanPham && !hoaDonVuaLuu) {
+      const lydo = prompt(
+        "Hóa đơn hiện tại có sản phẩm nhưng chưa được lưu.\n\n" +
+        "Hãy nhập lý do bỏ hóa đơn:",
+        "Khách không mua"
+      );
+
+      if (!lydo || !lydo.trim()) {
+        alert(
+          "❌ Phải nhập lý do mới được tạo hóa đơn mới."
+        );
+        return;
+      }
+
+      try {
+        await huyPhienChuaLuu(
+          JSON.parse(
+            JSON.stringify(bangHienTai)
+          ),
+          lydo.trim(),
+          "BUTTON_THEM_MOI"
+        );
+      } catch (error) {
+        console.error(
+          "[AUDIT V2] Không ghi được phiên bỏ hóa đơn:",
+          error
+        );
+
+        const tiepTuc = confirm(
+          "⚠️ Chưa ghi được nhật ký bỏ hóa đơn.\n\n" +
+          "Bạn vẫn muốn tạo hóa đơn mới?"
+        );
+
+        if (!tiepTuc) return;
+      }
+    }
+
+    // Cờ chỉ được dùng một lần
+    window.__AUDIT_HOA_DON_VUA_LUU = false;
+
     const diadiemVal = localStorage.getItem("diadiem") || document.getElementById("diadiem").value;
     const manvVal = localStorage.getItem("manv") || document.getElementById("manv").value;
     const tennvVal = localStorage.getItem("tennv") || document.getElementById("tennv").value;
@@ -103,6 +165,20 @@ export function ganSuKienNutLenh() {
     const gioEl = document.getElementById("gio");
     if (gioEl) {
       gioEl.value = formatTimeHHMM(now);
+    }
+
+    // ===== AUDIT V2: tạo phiên riêng cho hóa đơn mới =====
+    try {
+      await taoAuditSessionMoi(
+        hoaDonVuaLuu
+          ? "AFTER_SAVE_NEW_INVOICE"
+          : "BUTTON_NEW_INVOICE"
+      );
+    } catch (error) {
+      console.warn(
+        "[AUDIT V2] Không tạo được phiên hóa đơn mới:",
+        error
+      );
     }
 
     document.getElementById("masp").focus();
