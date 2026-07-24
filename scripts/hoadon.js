@@ -5,6 +5,12 @@ import { capNhatBangHTML, resetFormBang, resetFormSauKhiNhapSize } from './bangk
 import { supabase } from './supabaseClient.js';
 import { tinhKhuyenMai } from './khuyenmai.js';
 
+import {
+    ghiThemSanPham,
+    ghiXoaSanPham,
+    ghiBatDauSua
+} from './banleAudit.js';
+
 function _data() {
     return (window.bangKetQua && Object.keys(window.bangKetQua).length)
         ? window.bangKetQua
@@ -1197,6 +1203,11 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         }
     );
 
+    // ===== AUDIT V2: chụp trạng thái trước khi thêm sản phẩm =====
+    const auditBeforeBang = JSON.parse(
+        JSON.stringify(bangKetQua || {})
+    );
+
     const key = masp;
     const bang = bangKetQua[key] || {
         masp,
@@ -1304,6 +1315,24 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     // Render bảng theo luật mới
     capNhatBangHTML(bangKetQua, window.lastAdded);
 
+    // ===== AUDIT V2: ghi nhận thêm hoặc tăng số lượng =====
+    const auditAfterBang = JSON.parse(
+        JSON.stringify(bangKetQua || {})
+    );
+
+    ghiThemSanPham({
+        beforeBang: auditBeforeBang,
+        afterBang: auditAfterBang,
+        masp: key,
+        size: normSize,
+        item: auditAfterBang[key]
+    }).catch((error) => {
+        console.warn(
+            "[AUDIT V2] Không ghi được thao tác thêm sản phẩm:",
+            error
+        );
+    });
+
     // "Tinh" báo thêm thành công
     window.soundSuccess?.();
 
@@ -1370,6 +1399,17 @@ export function xoaDongDangChon() {
     const item = data[masp];
     if (!item) { alert("Không tìm thấy dòng để xóa."); return; }
 
+    // ===== AUDIT V2: chụp dữ liệu trước khi xóa =====
+    const auditBeforeBang = JSON.parse(
+        JSON.stringify(data || {})
+    );
+
+    const auditItem = JSON.parse(
+        JSON.stringify(item || {})
+    );
+
+    let auditSoLuongXoa = Number(item?.tong || 0);
+
     const msg = size
         ? `Bạn có chắc muốn xóa size "${size}" của mã "${masp}"?`
         : `Bạn có chắc muốn xóa toàn bộ mã "${masp}"?`;
@@ -1379,6 +1419,9 @@ export function xoaDongDangChon() {
         const idx = item.sizes.findIndex(s => String(s).trim() === size);
         if (idx !== -1) {
             const sl = parseInt(item.soluongs[idx] || 0, 10) || 0;
+            // AUDIT V2: số lượng thực tế của size bị xóa
+            auditSoLuongXoa = sl;
+
             item.tong = Math.max(0, (item.tong || 0) - sl);
             item.sizes.splice(idx, 1);
             item.soluongs.splice(idx, 1);
@@ -1390,6 +1433,28 @@ export function xoaDongDangChon() {
 
     setMaspspDangChon(null);
     capNhatBangHTML(data, window.lastAdded);
+
+    // ===== AUDIT V2: ghi nhật ký xóa sản phẩm =====
+    const auditAfterBang = JSON.parse(
+        JSON.stringify(data || {})
+    );
+
+    ghiXoaSanPham({
+        beforeBang: auditBeforeBang,
+        afterBang: auditAfterBang,
+        masp,
+        size,
+        item: auditItem,
+        soluongXoa: auditSoLuongXoa,
+        lydo: size
+            ? `Xóa size ${size} trên bảng bán hàng`
+            : "Xóa toàn bộ mã trên bảng bán hàng"
+    }).catch((error) => {
+        console.warn(
+            "[AUDIT V2] Không ghi được thao tác xóa:",
+            error
+        );
+    });
 }
 
 
@@ -1433,6 +1498,23 @@ export function suaDongDangChon() {
         alert("Không tìm thấy dòng để sửa.");
         return;
     }
+
+    // ===== AUDIT V2: ghi nhận nhân viên bắt đầu sửa dòng =====
+    ghiBatDauSua({
+        bang: JSON.parse(
+            JSON.stringify(data || {})
+        ),
+        masp,
+        size: dangChon?.size ?? null,
+        item: JSON.parse(
+            JSON.stringify(item || {})
+        )
+    }).catch((error) => {
+        console.warn(
+            "[AUDIT V2] Không ghi được thao tác bắt đầu sửa:",
+            error
+        );
+    });
 
     // 3) Đẩy dữ liệu nhóm mã về form nhập
     const maspEl = document.getElementById("masp");
