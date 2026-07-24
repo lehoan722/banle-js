@@ -315,9 +315,6 @@ export async function luuHoaDonBaoMat() {
     const auditSoHdTruocLuu =
       getText("sohd");
 
-    const auditTongTienTruocLuu =
-      getIntValue("phaithanhtoan");
-
     // AUDIT V2: tổng tiền thực tế trên màn hình trước khi lưu
     const auditTongTienTruocLuu =
       getIntValue("phaithanhtoan");
