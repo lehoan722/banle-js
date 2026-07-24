@@ -13,6 +13,10 @@ import { validateKhachHangBatBuoc } from "../services/validateKhachHangTichDiem.
 import { emitInventoryChangedByBangKetQua } from "../services/inventoryEvents.js";
 import { capNhatUsedTuVanSauKhiLuuCT } from "../luuhoadon/api.js";
 
+import {
+  chotPhienDaLuu
+} from "../banleAudit.js";
+
 let dangLuuBaoMat = false;
 
 function getInput(id) {
@@ -303,6 +307,14 @@ export async function luuHoaDonBaoMat() {
   try {
     console.log("[BAO MAT] BAT DAU TEST");
 
+    // ===== AUDIT V2: chụp dữ liệu trước khi API lưu/reset bảng =====
+    const auditBangTruocLuu = JSON.parse(
+      JSON.stringify(getBangKetQua() || {})
+    );
+
+    const auditSoHdTruocLuu =
+      getText("sohd");
+
     const payload = taoDuLieuLuuBaoMat();
 
 
@@ -317,6 +329,51 @@ export async function luuHoaDonBaoMat() {
         ketQuaDaXuLy?.mode === "EDIT_REAL_V1"
       )
     ) {
+
+      // ===== AUDIT V2: chỉ chốt khi hệ thống xác nhận lưu thật =====
+      try {
+        const auditSoHdDaLuu =
+          String(
+            ketQuaDaXuLy?.sohd ||
+            payload?.sohd ||
+            auditSoHdTruocLuu ||
+            ""
+          ).trim();
+
+        const auditTongTien =
+          ketQuaDaXuLy?.tong_tien ??
+          ketQuaDaXuLy?.tongtien ??
+          payload?.tong_tien ??
+          payload?.tongtien ??
+          null;
+
+        await chotPhienDaLuu({
+          sohd: auditSoHdDaLuu,
+          bang: auditBangTruocLuu,
+          tongTien: auditTongTien,
+          source:
+            ketQuaDaXuLy?.mode === "EDIT_REAL_V1"
+              ? "EDIT_HOA_DON_THANH_CONG"
+              : "LUU_HOA_DON_THANH_CONG"
+        });
+
+        /*
+         * Đánh dấu để nút Thêm tự động không hiểu nhầm
+         * hóa đơn vừa lưu là hóa đơn bị bỏ.
+         */
+        window.__AUDIT_HOA_DON_VUA_LUU = true;
+
+      } catch (auditError) {
+        /*
+         * Hóa đơn nghiệp vụ đã lưu thành công.
+         * Audit lỗi không được làm thất bại hóa đơn.
+         */
+        console.error(
+          "[AUDIT V2] Hóa đơn đã lưu nhưng chưa chốt được nhật ký:",
+          auditError
+        );
+      }
+
       await xuLyNghiepVuSauLuuBaoMat(
         ketQuaDaXuLy,
         payload
