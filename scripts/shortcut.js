@@ -8,9 +8,7 @@ import {
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 
 import {
-  batDauAuditSession,
-  huyPhienChuaLuu,
-  taoAuditSessionMoi
+  batDauAuditSession
 } from './banleAudit.js';
 
 // ✅ Thêm flag này
@@ -57,12 +55,8 @@ function khoiTaoLenhQuetDacBiet() {
     }
 
     if (raw === SCAN_CMD_NEW) {
-      // Hands-free: coi như đã bấm 'Có' trong popup F1
-      try {
-        await taoMoiHoaDon();
-      } catch (err) {
-        console.error('Lỗi tạo mới hóa đơn bằng lệnh quét:', err);
-      }
+      document.getElementById("them")?.click();
+      return;
     }
   }, true);
 }
@@ -101,10 +95,7 @@ export function khoiTaoShortcut() {
       const popup = document.getElementById("popupThemMoi");
       popup.style.display = "block";
       setTimeout(() => document.getElementById("btnThemMoiCo")?.focus(), 50);
-      document.getElementById("btnThemMoiCo").onclick = async () => {
-        popup.style.display = "none";
-        await taoMoiHoaDon();
-      };
+
     }
 
     // F2: lưu hóa đơn thường
@@ -315,113 +306,4 @@ export function khoiTaoShortcut() {
 
 }
 
-async function taoMoiHoaDon() {
-  const diadiemVal =
-    localStorage.getItem("diadiem") ||
-    document.getElementById("diadiem")?.value ||
-    "cs1";
 
-  const manvVal =
-    localStorage.getItem("manv") ||
-    document.getElementById("manv")?.value ||
-    "";
-
-  const tennvVal =
-    localStorage.getItem("tennv") ||
-    document.getElementById("tennv")?.value ||
-    "";
-
-  const bangHienTai = getBangKetQua() || {};
-  const coSanPham = Object.keys(bangHienTai).length > 0;
-
-  /*
-   * Khi hóa đơn vừa lưu thành công:
-   * luuHoaDonEntry.js sẽ đặt cờ này.
-   *
-   * Khi đó F1/nút Thêm chỉ làm nhiệm vụ dọn bảng
-   * và tạo phiên mới, không coi là bỏ hóa đơn.
-   */
-  const hoaDonVuaLuu =
-    window.__AUDIT_HOA_DON_VUA_LUU === true;
-
-  if (coSanPham && !hoaDonVuaLuu) {
-    const lydo = prompt(
-      "Hóa đơn hiện tại có sản phẩm nhưng chưa được lưu.\n\n" +
-      "Hãy nhập lý do bỏ hóa đơn:",
-      "Khách không mua"
-    );
-
-    if (!lydo || !lydo.trim()) {
-      alert(
-        "❌ Phải nhập lý do mới được tạo hóa đơn mới."
-      );
-      return;
-    }
-
-    try {
-      await huyPhienChuaLuu(
-        JSON.parse(
-          JSON.stringify(bangHienTai)
-        ),
-        lydo.trim(),
-        "F1_OR_SCAN_NEW"
-      );
-    } catch (error) {
-      console.error(
-        "[AUDIT V2] Không ghi được phiên bỏ hóa đơn:",
-        error
-      );
-
-      const tiepTuc = confirm(
-        "⚠️ Chưa ghi được nhật ký bỏ hóa đơn.\n\n" +
-        "Bạn vẫn muốn tạo hóa đơn mới?"
-      );
-
-      if (!tiepTuc) return;
-    }
-  }
-
-  // Xóa cờ sau khi đã sử dụng
-  window.__AUDIT_HOA_DON_VUA_LUU = false;
-
-  document.querySelectorAll("input").forEach(input => {
-    if (
-      !["diadiem", "manv", "tennv"].includes(input.id)
-    ) {
-      input.value = "";
-    }
-  });
-
-  resetBangKetQua();
-
-  await capNhatSoHoaDonTuDong();
-
-  const now = new Date();
-
-  const diadiemEl = document.getElementById("diadiem");
-  const manvEl = document.getElementById("manv");
-  const tennvEl = document.getElementById("tennv");
-  const ngayEl = document.getElementById("ngay");
-  const gioEl = document.getElementById("gio");
-
-  if (diadiemEl) diadiemEl.value = diadiemVal;
-  if (manvEl) manvEl.value = manvVal;
-  if (tennvEl) tennvEl.value = tennvVal;
-  if (ngayEl) ngayEl.value = now.toISOString().slice(0, 10);
-  if (gioEl) gioEl.value = formatTimeHHMM(now);
-
-  try {
-    await taoAuditSessionMoi(
-      hoaDonVuaLuu
-        ? "AFTER_SAVE_NEW_INVOICE"
-        : "NEW_INVOICE_READY"
-    );
-  } catch (error) {
-    console.warn(
-      "[AUDIT V2] Không tạo được phiên hóa đơn mới:",
-      error
-    );
-  }
-
-  document.getElementById("masp")?.focus();
-}
