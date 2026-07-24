@@ -4,62 +4,200 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Giám sát bán hàng</title>
+
+  <!-- Handsontable -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/handsontable@17.0/dist/handsontable.full.min.css"
+  >
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@17.0/dist/handsontable.full.min.js"></script>
+
   <style>
-    body{font-family:Arial,sans-serif;margin:0;background:#f5f6f8;color:#202124}
-    header{padding:16px;background:#fff;position:sticky;top:0;border-bottom:1px solid #ddd}
-    h1{font-size:20px;margin:0 0 12px}
-    .filters{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px}
-    input,select,button{padding:10px;border:1px solid #bbb;border-radius:8px}
-    main{padding:12px}
-    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-    .card{background:#fff;padding:12px;border-radius:10px;border:1px solid #e3e3e3}
-    .value{font-size:22px;font-weight:700}
-    table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}
-    th,td{padding:9px;border-bottom:1px solid #eee;text-align:left}
-    th{position:sticky;top:94px;background:#fafafa}
-    .rat_cao{font-weight:700}
-    .cao{font-weight:700}
-    @media(max-width:800px){
-      .filters,.cards{grid-template-columns:1fr 1fr}
-      .table-wrap{overflow:auto}
-      table{min-width:1050px}
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f5f6f8;
+      color: #202124;
+    }
+
+    header {
+      padding: 16px;
+      background: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid #ddd;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 12px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 8px;
+    }
+
+    input,
+    select,
+    button {
+      padding: 10px;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #f1f3f4;
+    }
+
+    main {
+      padding: 12px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #e3e3e3;
+    }
+
+    .value {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .table-note {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: #5f6368;
+    }
+
+    #auditHot {
+      width: 100%;
+      height: calc(100vh - 330px);
+      min-height: 320px;
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+
+    /* Nhóm hóa đơn xen kẽ */
+    .handsontable td.invoice-band-gray {
+      background: #eeeeee !important;
+    }
+
+    /* Khi đưa chuột vào một dòng */
+    .handsontable td.audit-row-hover {
+      background: #fff2b3 !important;
+    }
+
+    /* Nếu dòng vừa thuộc nhóm xám vừa đang hover thì màu hover được ưu tiên */
+    .handsontable td.invoice-band-gray.audit-row-hover {
+      background: #fff2b3 !important;
+    }
+
+    /* Mức rủi ro */
+    .handsontable td.risk-high {
+      font-weight: 700;
+      color: #b3261e;
+    }
+
+    .handsontable td.risk-medium {
+      font-weight: 700;
+      color: #8a4b00;
+    }
+
+    /* Header dễ nhìn hơn */
+    .handsontable th {
+      font-weight: 700;
+      background: #f8f9fa;
+    }
+
+    @media (max-width: 800px) {
+      .filters,
+      .cards {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      #auditHot {
+        height: calc(100vh - 430px);
+        min-height: 300px;
+      }
     }
   </style>
 </head>
+
 <body>
 <header>
   <h1>Giám sát thao tác bán hàng</h1>
+
   <div class="filters">
     <input id="tuNgay" type="date">
+
     <input id="denNgay" type="date">
+
     <select id="diadiem">
       <option value="">Tất cả cơ sở</option>
       <option value="cs1">Cơ sở 1</option>
       <option value="cs2">Cơ sở 2</option>
     </select>
-    <button id="btnTai">Tải dữ liệu</button>
+
+    <button id="btnTai" type="button">
+      Tải dữ liệu
+    </button>
   </div>
 </header>
+
 <main>
   <div class="cards">
-    <div class="card">Tổng phiên<div id="cTong" class="value">0</div></div>
-    <div class="card">Phiên bỏ<div id="cBo" class="value">0</div></div>
-    <div class="card">Giá trị loại<div id="cLoai" class="value">0</div></div>
-    <div class="card">Rủi ro cao<div id="cRisk" class="value">0</div></div>
+    <div class="card">
+      Tổng phiên
+      <div id="cTong" class="value">0</div>
+    </div>
+
+    <div class="card">
+      Phiên bỏ
+      <div id="cBo" class="value">0</div>
+    </div>
+
+    <div class="card">
+      Giá trị loại
+      <div id="cLoai" class="value">0</div>
+    </div>
+
+    <div class="card">
+      Rủi ro cao
+      <div id="cRisk" class="value">0</div>
+    </div>
   </div>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Thời gian</th><th>Cơ sở</th><th>Nhân viên</th><th>Trạng thái</th>
-          <th>Số HĐ</th><th>Đỉnh phiên</th><th>Đã lưu</th><th>Giá trị loại</th>
-          <th>Số lần xóa</th><th>Điểm</th><th>Mức</th><th>Lý do</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
-  </div>
+
+  <p class="table-note">
+    Bấm mũi tên ở tiêu đề cột để lọc; bấm tiêu đề để sắp xếp.
+    Các dòng cùng một số hóa đơn dùng chung màu nền.
+  </p>
+
+  <div id="auditHot" aria-label="Bảng giám sát thao tác bán hàng"></div>
 </main>
-<script type="module" src="./auditReport.js"></script>
+
+<script type="module" src="./auditReport.js?v=2.1.0"></script>
 </body>
 </html>
