@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Giám sát bán hàng</title>
+  <style>
+    body{font-family:Arial,sans-serif;margin:0;background:#f5f6f8;color:#202124}
+    header{padding:16px;background:#fff;position:sticky;top:0;border-bottom:1px solid #ddd}
+    h1{font-size:20px;margin:0 0 12px}
+    .filters{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px}
+    input,select,button{padding:10px;border:1px solid #bbb;border-radius:8px}
+    main{padding:12px}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+    .card{background:#fff;padding:12px;border-radius:10px;border:1px solid #e3e3e3}
+    .value{font-size:22px;font-weight:700}
+    table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}
+    th,td{padding:9px;border-bottom:1px solid #eee;text-align:left}
+    th{position:sticky;top:94px;background:#fafafa}
+    .rat_cao{font-weight:700}
+    .cao{font-weight:700}
+    @media(max-width:800px){
+      .filters,.cards{grid-template-columns:1fr 1fr}
+      .table-wrap{overflow:auto}
+      table{min-width:1050px}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Giám sát thao tác bán hàng</h1>
+  <div class="filters">
+    <input id="tuNgay" type="date">
+    <input id="denNgay" type="date">
+    <select id="diadiem">
+      <option value="">Tất cả cơ sở</option>
+      <option value="cs1">Cơ sở 1</option>
+      <option value="cs2">Cơ sở 2</option>
+    </select>
+    <button id="btnTai">Tải dữ liệu</button>
+  </div>
+</header>
+<main>
+  <div class="cards">
+    <div class="card">Tổng phiên<div id="cTong" class="value">0</div></div>
+    <div class="card">Phiên bỏ<div id="cBo" class="value">0</div></div>
+    <div class="card">Giá trị loại<div id="cLoai" class="value">0</div></div>
+    <div class="card">Rủi ro cao<div id="cRisk" class="value">0</div></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Thời gian</th><th>Cơ sở</th><th>Nhân viên</th><th>Trạng thái</th>
+          <th>Số HĐ</th><th>Đỉnh phiên</th><th>Đã lưu</th><th>Giá trị loại</th>
+          <th>Số lần xóa</th><th>Điểm</th><th>Mức</th><th>Lý do</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</main>
+<script type="module" src="./auditReport.js"></script>
+</body>
+</html>
