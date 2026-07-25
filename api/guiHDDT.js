@@ -51,11 +51,11 @@ const viettelAccounts = {
     invoiceSeries: "C25MAT",
     templateCode: "2/001",
     endpoint:
-     // process.env.VIETTEL_CS2_ENDPOINT ||
-    //  "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600960665",
+      process.env.VIETTEL_CS2_ENDPOINT ||
+      "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600960665",
 
-     process.env.VIETTEL_CS2_ENDPOINT ||
-     "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
+    // process.env.VIETTEL_CS2_ENDPOINT ||
+    // "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
 
 
     sellerInfo: {
@@ -190,32 +190,113 @@ function isRetailCustomerText(value) {
  * 2. hoadon.khachhang được coi là mã khách
  * 3. hoadon.khachhang được coi là tên khách
  */
+
 async function findCustomerFromInvoice(hoadon) {
-  const makh = cleanText(hoadon?.makh);
-  const khachhang = cleanText(hoadon?.khachhang);
-
+  // Đúng với cấu trúc bảng dmkhachhang hiện tại
   const customerFields =
-    "makh, tenkh, diachi, dienthoai, email, mst";
+    "makh, tenkh, diachi, dienthoai, email, mst, cccd";
 
-  // 1. Ưu tiên mã khách được lưu đúng trong cột makh
-  if (makh) {
+  /*
+   * Danh sách các trường có thể đang chứa mã khách.
+   * makh là trường chuẩn.
+   * Các trường còn lại giúp tương thích dữ liệu đã lưu trước đây.
+   */
+  const codeCandidates = [
+    hoadon?.makh,
+    hoadon?.makhachhang,
+    hoadon?.ma_khach_hang,
+    hoadon?.customer_code,
+    hoadon?.dienthoaikhach,
+    hoadon?.sdtkhach
+  ]
+    .map(cleanText)
+    .filter(Boolean);
+
+  const uniqueCodes = [...new Set(codeCandidates)];
+
+  /*
+   * 1. Ưu tiên tìm chính xác bằng mã khách.
+   */
+  for (const code of uniqueCodes) {
     const { data, error } = await supabaseAdmin
       .from("dmkhachhang")
       .select(customerFields)
-      .eq("makh", makh)
+      .eq("makh", code)
       .maybeSingle();
 
+    if (error) {
+      console.error(
+        "[VIETTEL] Lỗi tìm khách theo mã khách:",
+        {
+          sohd: hoadon?.sohd,
+          code,
+          error: error.message
+        }
+      );
+    }
+
     if (!error && data) {
+      console.log(
+        "[VIETTEL] Đã tìm thấy khách theo mã:",
+        {
+          sohd: hoadon?.sohd,
+          makh: data.makh
+        }
+      );
+
       return data;
     }
   }
 
-  // Khách lẻ thì không cần tìm tiếp
+  /*
+   * 2. Vì hệ thống của bạn thường dùng số điện thoại làm mã khách,
+   * thử tìm các mã trên trong cột dienthoai.
+   */
+  for (const code of uniqueCodes) {
+    const { data, error } = await supabaseAdmin
+      .from("dmkhachhang")
+      .select(customerFields)
+      .eq("dienthoai", code)
+      .limit(2);
+
+    if (error) {
+      console.error(
+        "[VIETTEL] Lỗi tìm khách theo điện thoại:",
+        {
+          sohd: hoadon?.sohd,
+          code,
+          error: error.message
+        }
+      );
+    }
+
+    if (
+      !error &&
+      Array.isArray(data) &&
+      data.length === 1
+    ) {
+      console.log(
+        "[VIETTEL] Đã tìm thấy khách theo điện thoại:",
+        {
+          sohd: hoadon?.sohd,
+          makh: data[0].makh
+        }
+      );
+
+      return data[0];
+    }
+  }
+
+  const khachhang = cleanText(hoadon?.khachhang);
+
+  // Nếu đúng là khách lẻ thì không tìm tiếp
   if (isRetailCustomerText(khachhang)) {
     return null;
   }
 
-  // 2. Trường hợp mã khách hiện đang được lưu vào cột khachhang
+  /*
+   * 3. Tương thích trường hợp cột khachhang đang chứa mã khách.
+   */
   if (khachhang) {
     const { data, error } = await supabaseAdmin
       .from("dmkhachhang")
@@ -223,28 +304,73 @@ async function findCustomerFromInvoice(hoadon) {
       .eq("makh", khachhang)
       .maybeSingle();
 
+    if (error) {
+      console.error(
+        "[VIETTEL] Lỗi tìm khi khachhang chứa mã:",
+        {
+          sohd: hoadon?.sohd,
+          khachhang,
+          error: error.message
+        }
+      );
+    }
+
     if (!error && data) {
+      console.log(
+        "[VIETTEL] Đã tìm thấy khách từ cột khachhang:",
+        {
+          sohd: hoadon?.sohd,
+          makh: data.makh
+        }
+      );
+
       return data;
     }
   }
 
-  // 3. Trường hợp cột khachhang lưu tên khách
+  /*
+   * 4. Cuối cùng mới tìm bằng tên.
+   * Dùng khớp chính xác không phân biệt hoa thường.
+   */
   if (khachhang) {
     const { data, error } = await supabaseAdmin
       .from("dmkhachhang")
       .select(customerFields)
       .ilike("tenkh", khachhang)
-      .limit(2);
+      .limit(3);
+
+    if (error) {
+      console.error(
+        "[VIETTEL] Lỗi tìm khách theo tên:",
+        {
+          sohd: hoadon?.sohd,
+          khachhang,
+          error: error.message
+        }
+      );
+    }
 
     if (
       !error &&
       Array.isArray(data) &&
       data.length === 1
     ) {
+      console.log(
+        "[VIETTEL] Đã tìm thấy duy nhất một khách theo tên:",
+        {
+          sohd: hoadon?.sohd,
+          makh: data[0].makh
+        }
+      );
+
       return data[0];
     }
 
-    if (Array.isArray(data) && data.length > 1) {
+    if (
+      !error &&
+      Array.isArray(data) &&
+      data.length > 1
+    ) {
       console.warn(
         "[VIETTEL] Có nhiều khách trùng tên, không tự chọn:",
         {
@@ -255,6 +381,19 @@ async function findCustomerFromInvoice(hoadon) {
       );
     }
   }
+
+  console.warn(
+    "[VIETTEL] Không tìm được khách trong dmkhachhang:",
+    {
+      sohd: hoadon?.sohd,
+      makh: hoadon?.makh || "",
+      makhachhang: hoadon?.makhachhang || "",
+      khachhang: hoadon?.khachhang || "",
+      dienthoaikhach: hoadon?.dienthoaikhach || "",
+      sdtkhach: hoadon?.sdtkhach || "",
+      codeCandidates: uniqueCodes
+    }
+  );
 
   return null;
 }
@@ -326,17 +465,19 @@ async function loadInvoice(sohd) {
 }
 
 function buildBuyerInfo(hoadon, khach) {
-  // Ưu tiên dữ liệu chuẩn trong dmkhachhang,
-  // sau đó mới dùng dữ liệu đã lưu trực tiếp trên hóa đơn.
-  const buyerTaxCode = cleanText(
-    khach?.mst ||
-    hoadon?.mstkhach
-  );
-
+  /*
+   * Ưu tiên dữ liệu lấy từ dmkhachhang.
+   * Chỉ dùng dữ liệu trên hóa đơn khi không có dữ liệu danh mục.
+   */
   const buyerName = cleanText(
     khach?.tenkh ||
     hoadon?.tenkhach ||
     hoadon?.khachhang
+  );
+
+  const buyerTaxCode = cleanText(
+    khach?.mst ||
+    hoadon?.mstkhach
   );
 
   const buyerAddress = cleanText(
@@ -356,18 +497,13 @@ function buildBuyerInfo(hoadon, khach) {
   );
 
   const buyerIdNo = cleanText(
-    khach?.sodinhdanh ||
     khach?.cccd ||
-    hoadon?.sodinhdanhkhach ||
-    hoadon?.cccdkhach
+    hoadon?.cccdkhach ||
+    hoadon?.sodinhdanhkhach
   );
 
-  const buyerIdType = cleanText(
-    khach?.loaigiayto ||
-    hoadon?.loaigiaytokhach
-  );
-
-  const hasRealBuyer =
+  const hasCustomerInformation =
+    !!khach ||
     !isRetailCustomerText(buyerName) ||
     !!buyerTaxCode ||
     !!buyerAddress ||
@@ -375,7 +511,7 @@ function buildBuyerInfo(hoadon, khach) {
     !!buyerEmail ||
     !!buyerIdNo;
 
-  const displayName = hasRealBuyer
+  const displayName = hasCustomerInformation
     ? buyerName || "Bán cho người tiêu dùng"
     : "Bán cho người tiêu dùng";
 
@@ -391,15 +527,53 @@ function buildBuyerInfo(hoadon, khach) {
     buyerEmail,
 
     buyerIdNo,
-    buyerIdType: buyerIdNo
-      ? buyerIdType || "CCCD"
-      : "",
+    buyerIdType: buyerIdNo ? "CCCD" : "",
 
     buyerBudgetCode: cleanText(
-      hoadon?.buyerBudgetCode ||
       hoadon?.ma_dvqhns
     )
   };
+}
+
+function validateBuyerMapping(hoadon, khach, buyerInfo) {
+  const selectedCustomerCode = cleanText(
+    hoadon?.makh ||
+    hoadon?.makhachhang ||
+    hoadon?.ma_khach_hang
+  );
+
+  /*
+   * Nếu hóa đơn có mã khách nhưng không tìm thấy trong dmkhachhang,
+   * dừng gửi để tránh phát hành hóa đơn thiếu thông tin.
+   */
+  if (selectedCustomerCode && !khach) {
+    const error = new Error(
+      "BUYER_NOT_FOUND_IN_CUSTOMER_MASTER"
+    );
+
+    error.details = {
+      sohd: hoadon?.sohd,
+      selectedCustomerCode
+    };
+
+    throw error;
+  }
+
+  /*
+   * Nếu khách có mã số thuế thì bắt buộc phải có tên và địa chỉ.
+   */
+  if (buyerInfo.buyerTaxCode) {
+    if (
+      !buyerInfo.buyerName ||
+      isRetailCustomerText(buyerInfo.buyerName)
+    ) {
+      throw new Error("BUYER_NAME_MISSING");
+    }
+
+    if (!buyerInfo.buyerAddressLine) {
+      throw new Error("BUYER_ADDRESS_MISSING");
+    }
+  }
 }
 
 function buildViettelPayload(hoadon, chitiet, khach, acc) {
@@ -605,9 +779,44 @@ export default async function handler(req, res) {
       });
     }
 
-    const payload = buildViettelPayload(hoadon, chitiet, khach, acc);
+    const payload = buildViettelPayload(
+      hoadon,
+      chitiet,
+      khach,
+      acc
+    );
 
-    const viettelResult = await sendToViettel(acc, payload);
+    validateBuyerMapping(
+      hoadon,
+      khach,
+      payload.buyerInfo
+    );
+
+    /*
+     * Log tạm để kiểm tra dữ liệu trước khi gửi Viettel.
+     * Sau khi kiểm tra ổn định có thể xóa phần buyerInfo chi tiết.
+     */
+    console.log(
+      "[VIETTEL] Buyer mapping before send:",
+      {
+        sohd,
+        invoiceCustomerFields: {
+          makh: hoadon?.makh || "",
+          makhachhang: hoadon?.makhachhang || "",
+          khachhang: hoadon?.khachhang || "",
+          dienthoaikhach: hoadon?.dienthoaikhach || "",
+          sdtkhach: hoadon?.sdtkhach || ""
+        },
+        customerFound: !!khach,
+        customerMasterCode: khach?.makh || "",
+        buyerInfo: payload.buyerInfo
+      }
+    );
+
+    const viettelResult = await sendToViettel(
+      acc,
+      payload
+    );
     viettelAccepted = true;
 
     const invoiceNo =
@@ -659,7 +868,9 @@ export default async function handler(req, res) {
       ok: false,
       code: viettelAccepted
         ? "VIETTEL_ACCEPTED_DB_RESULT_UNKNOWN"
-        : "SEND_FAILED"
+        : e?.message || "SEND_FAILED",
+
+      detail: e?.details || null
     });
   }
 }
