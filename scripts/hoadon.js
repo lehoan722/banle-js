@@ -8,7 +8,8 @@ import { tinhKhuyenMai } from './khuyenmai.js';
 import {
     ghiThemSanPham,
     ghiXoaSanPham,
-    ghiBatDauSua
+    ghiBatDauSua,
+    ghiBatDauSuaHoaDonCu
 } from './banleAudit.js';
 
 function _data() {
@@ -32,6 +33,36 @@ function ensureStateFromDOM() {
             _sync(window.bangKetQua); // giữ 1 nguồn sự thật cho mọi hàm trong module
         }
     } catch (_) { }
+}
+
+
+// AUDIT V2.1: nếu đang xem hóa đơn cũ mà bắt đầu thay đổi dữ liệu,
+// ghi nhận đúng là thao tác sửa hóa đơn cũ (chỉ ghi một lần cho mỗi phiên).
+function auditDanhDauSuaHoaDonCu(source) {
+    const state = String(
+        document.getElementById("hd_state")?.value || ""
+    ).trim().toLowerCase();
+
+    const isViewMode =
+        state === "xem" ||
+        window.HD_CTX?.mode === "VIEW" ||
+        window.__AUDIT_OLD_INVOICE_ACTIVE === true;
+
+    if (!isViewMode) return;
+
+    const snapshot = JSON.parse(
+        JSON.stringify(_data() || {})
+    );
+
+    ghiBatDauSuaHoaDonCu({
+        bang: snapshot,
+        source
+    }).catch((error) => {
+        console.warn(
+            "[AUDIT V2.1] Không ghi được bắt đầu sửa hóa đơn cũ:",
+            error
+        );
+    });
 }
 
 // Cho phép module khác (popupNgang) chủ động sync từ window vào biến module
@@ -1062,6 +1093,8 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 }
 
 export function themVaoBang(forcedSize = null, opts = {}) {
+    auditDanhDauSuaHoaDonCu("OLD_INVOICE_ADD");
+
     // luôn đóng popup ngay khi bắt đầu thêm
     window.closePopupMasp && window.closePopupMasp();
     // 🔒 CHỐT: luôn đồng bộ state từ DOM (trường hợp vừa dán Excel / nhập ngang / edit trực tiếp)
@@ -1385,6 +1418,8 @@ export function ganTenNV() {
 }
 
 export function xoaDongDangChon() {
+    auditDanhDauSuaHoaDonCu("OLD_INVOICE_DELETE");
+
     // ✅ Đồng bộ lại dữ liệu từ bảng DOM (trường hợp vừa “nhập ngang”)
     try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
 
@@ -1460,6 +1495,8 @@ export function xoaDongDangChon() {
 
 // hoadon.js
 export function suaDongDangChon() {
+    auditDanhDauSuaHoaDonCu("OLD_INVOICE_F3");
+
     // 1) Đồng bộ lại data từ DOM
     try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
 
