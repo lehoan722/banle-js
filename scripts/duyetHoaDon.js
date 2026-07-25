@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient.js';
 import { capNhatBangHTML } from './bangketqua.js';
 import { capNhatThongTinTong } from './utils.js';
 import { bangKetQua, resetBangKetQua } from './hoadon.js';
+import { batDauPhienXemHoaDonCu } from './banleAudit.js';
 
 function formatTimeHHMM(dateInput) {
   const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
@@ -210,4 +211,20 @@ export async function napHoaDonVaoTrang(hoadon) {
     const el = document.getElementById(id);
     if (el) el.value = tienDoiDiem.toLocaleString("vi-VN");
   });
+
+  // AUDIT V2.1: tách riêng một phiên xem hóa đơn cũ.
+  // Nhờ vậy các thao tác sau đó không bị gán nhầm vào phiên bán mới.
+  try {
+    await batDauPhienXemHoaDonCu({
+      sohd: hoadon.sohd,
+      bang: JSON.parse(JSON.stringify(bangKetQua || {})),
+      source: "DUYET_HOA_DON"
+    });
+  } catch (error) {
+    console.warn(
+      "[AUDIT V2.1] Không ghi được sự kiện xem hóa đơn cũ:",
+      error
+    );
+  }
 }
+ 
