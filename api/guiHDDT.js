@@ -51,11 +51,11 @@ const viettelAccounts = {
     invoiceSeries: "C25MAT",
     templateCode: "2/001",
     endpoint:
-       process.env.VIETTEL_CS2_ENDPOINT ||
+      process.env.VIETTEL_CS2_ENDPOINT ||
       "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600960665",
 
-     // process.env.VIETTEL_CS2_ENDPOINT ||
-     // "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
+    // process.env.VIETTEL_CS2_ENDPOINT ||
+    // "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
 
 
     sellerInfo: {
@@ -166,6 +166,99 @@ async function claimSend(sohd) {
   return row || { ok: false, status: "claim_empty" };
 }
 
+function cleanText(value) {
+  return String(value ?? "").trim();
+}
+
+function isRetailCustomerText(value) {
+  const text = cleanText(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  return (
+    !text ||
+    text === "kl" ||
+    text === "khach le" ||
+    text === "ban cho nguoi tieu dung"
+  );
+}
+
+/**
+ * Tìm khách theo thứ tự:
+ * 1. hoadon.makh
+ * 2. hoadon.khachhang được coi là mã khách
+ * 3. hoadon.khachhang được coi là tên khách
+ */
+async function findCustomerFromInvoice(hoadon) {
+  const makh = cleanText(hoadon?.makh);
+  const khachhang = cleanText(hoadon?.khachhang);
+
+  const customerFields =
+    "makh, tenkh, diachi, dienthoai, email, mst";
+
+  // 1. Ưu tiên mã khách được lưu đúng trong cột makh
+  if (makh) {
+    const { data, error } = await supabaseAdmin
+      .from("dmkhachhang")
+      .select(customerFields)
+      .eq("makh", makh)
+      .maybeSingle();
+
+    if (!error && data) {
+      return data;
+    }
+  }
+
+  // Khách lẻ thì không cần tìm tiếp
+  if (isRetailCustomerText(khachhang)) {
+    return null;
+  }
+
+  // 2. Trường hợp mã khách hiện đang được lưu vào cột khachhang
+  if (khachhang) {
+    const { data, error } = await supabaseAdmin
+      .from("dmkhachhang")
+      .select(customerFields)
+      .eq("makh", khachhang)
+      .maybeSingle();
+
+    if (!error && data) {
+      return data;
+    }
+  }
+
+  // 3. Trường hợp cột khachhang lưu tên khách
+  if (khachhang) {
+    const { data, error } = await supabaseAdmin
+      .from("dmkhachhang")
+      .select(customerFields)
+      .ilike("tenkh", khachhang)
+      .limit(2);
+
+    if (
+      !error &&
+      Array.isArray(data) &&
+      data.length === 1
+    ) {
+      return data[0];
+    }
+
+    if (Array.isArray(data) && data.length > 1) {
+      console.warn(
+        "[VIETTEL] Có nhiều khách trùng tên, không tự chọn:",
+        {
+          sohd: hoadon?.sohd,
+          khachhang,
+          count: data.length
+        }
+      );
+    }
+  }
+
+  return null;
+}
+
 async function loadInvoice(sohd) {
   const isTax = isTaxSohd(sohd);
 
@@ -211,22 +304,17 @@ async function loadInvoice(sohd) {
     };
   }
 
-  let khach = null;
+  const khach = await findCustomerFromInvoice(hoadon);
 
-  const makh = String(
-    hoadon.makh || ""
-  ).trim();
-
-  if (makh) {
-    const { data } = await supabaseAdmin
-      .from("dmkhachhang")
-      .select(
-        "makh, tenkh, diachi, dienthoai, email, mst"
-      )
-      .eq("makh", makh)
-      .maybeSingle();
-
-    khach = data || null;
+  if (!khach) {
+    console.warn(
+      "[VIETTEL] Không tìm được khách trong dmkhachhang:",
+      {
+        sohd: hoadon.sohd,
+        makh: hoadon.makh || "",
+        khachhang: hoadon.khachhang || ""
+      }
+    );
   }
 
   return {
@@ -238,26 +326,79 @@ async function loadInvoice(sohd) {
 }
 
 function buildBuyerInfo(hoadon, khach) {
-  const mst = String(khach?.mst || hoadon.mstkhach || "").trim();
-  const hasTax = !!mst;
+  // Ưu tiên dữ liệu chuẩn trong dmkhachhang,
+  // sau đó mới dùng dữ liệu đã lưu trực tiếp trên hóa đơn.
+  const buyerTaxCode = cleanText(
+    khach?.mst ||
+    hoadon?.mstkhach
+  );
 
-  const ten =
-    String(khach?.tenkh || hoadon.khachhang || "Khách lẻ").trim() ||
-    "Khách lẻ";
+  const buyerName = cleanText(
+    khach?.tenkh ||
+    hoadon?.tenkhach ||
+    hoadon?.khachhang
+  );
+
+  const buyerAddress = cleanText(
+    khach?.diachi ||
+    hoadon?.diachikhach
+  );
+
+  const buyerPhone = cleanText(
+    khach?.dienthoai ||
+    hoadon?.dienthoaikhach ||
+    hoadon?.sdtkhach
+  );
+
+  const buyerEmail = cleanText(
+    khach?.email ||
+    hoadon?.emailkhach
+  );
+
+  const buyerIdNo = cleanText(
+    khach?.sodinhdanh ||
+    khach?.cccd ||
+    hoadon?.sodinhdanhkhach ||
+    hoadon?.cccdkhach
+  );
+
+  const buyerIdType = cleanText(
+    khach?.loaigiayto ||
+    hoadon?.loaigiaytokhach
+  );
+
+  const hasRealBuyer =
+    !isRetailCustomerText(buyerName) ||
+    !!buyerTaxCode ||
+    !!buyerAddress ||
+    !!buyerPhone ||
+    !!buyerEmail ||
+    !!buyerIdNo;
+
+  const displayName = hasRealBuyer
+    ? buyerName || "Bán cho người tiêu dùng"
+    : "Bán cho người tiêu dùng";
 
   return {
     sohd: hoadon.sohd,
 
-    buyerName: hasTax ? ten : "KL",
-    buyerLegalName: hasTax ? ten : "Khách lẻ",
-    buyerTaxCode: hasTax ? mst : "",
-    buyerAddressLine: hasTax ? String(khach?.diachi || hoadon.diachikhach || "").trim() : "",
-    buyerPhoneNumber: hasTax ? String(khach?.dienthoai || "").trim() : "",
-    buyerEmail: hasTax ? String(khach?.email || "").trim() : "",
+    buyerName: displayName,
+    buyerLegalName: displayName,
 
-    buyerIdNo: "",
-    buyerIdType: "",
-    buyerBudgetCode: ""
+    buyerTaxCode,
+    buyerAddressLine: buyerAddress,
+    buyerPhoneNumber: buyerPhone,
+    buyerEmail,
+
+    buyerIdNo,
+    buyerIdType: buyerIdNo
+      ? buyerIdType || "CCCD"
+      : "",
+
+    buyerBudgetCode: cleanText(
+      hoadon?.buyerBudgetCode ||
+      hoadon?.ma_dvqhns
+    )
   };
 }
 
