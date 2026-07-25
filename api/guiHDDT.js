@@ -51,11 +51,11 @@ const viettelAccounts = {
     invoiceSeries: "C25MAT",
     templateCode: "2/001",
     endpoint:
-      process.env.VIETTEL_CS2_ENDPOINT ||
-      "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600960665",
+      //   process.env.VIETTEL_CS2_ENDPOINT ||
+      // "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600960665",
 
-    // process.env.VIETTEL_CS2_ENDPOINT ||
-    // "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
+      process.env.VIETTEL_CS2_ENDPOINT ||
+      "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
 
 
     sellerInfo: {
@@ -86,6 +86,24 @@ function isTaxSohd(sohd = "") {
     s.startsWith("bancs1t_") ||
     s.startsWith("bancs2t_")
   );
+}
+
+function getSourceSohdFromTaxSohd(sohd = "") {
+  const value = String(sohd || "").trim();
+
+  /*
+   * bancs1T_000001 → bancs1_000001
+   * bancs2T_000001 → bancs2_000001
+   */
+  if (/^bancs1t_/i.test(value)) {
+    return value.replace(/^bancs1t_/i, "bancs1_");
+  }
+
+  if (/^bancs2t_/i.test(value)) {
+    return value.replace(/^bancs2t_/i, "bancs2_");
+  }
+
+  return "";
 }
 
 function safeNumber(v) {
@@ -398,6 +416,72 @@ async function findCustomerFromInvoice(hoadon) {
   return null;
 }
 
+async function loadSourceInvoiceCustomer(taxInvoice) {
+  const taxSohd = cleanText(taxInvoice?.sohd);
+  const sourceSohd = getSourceSohdFromTaxSohd(taxSohd);
+
+  if (!sourceSohd) {
+    return {
+      sourceInvoice: null,
+      sourceSohd: ""
+    };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("hoadon_banle")
+    .select(
+      "sohd, makh, khachhang, diadiem, ngay, created_at"
+    )
+    .eq("sohd", sourceSohd)
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      "[VIETTEL] Lỗi đọc hóa đơn nguồn:",
+      {
+        taxSohd,
+        sourceSohd,
+        error: error.message
+      }
+    );
+
+    return {
+      sourceInvoice: null,
+      sourceSohd
+    };
+  }
+
+  if (!data) {
+    console.warn(
+      "[VIETTEL] Không tìm thấy hóa đơn nguồn:",
+      {
+        taxSohd,
+        sourceSohd
+      }
+    );
+
+    return {
+      sourceInvoice: null,
+      sourceSohd
+    };
+  }
+
+  console.log(
+    "[VIETTEL] Đã tìm thấy hóa đơn nguồn:",
+    {
+      taxSohd,
+      sourceSohd,
+      makh: data.makh || "",
+      khachhang: data.khachhang || ""
+    }
+  );
+
+  return {
+    sourceInvoice: data,
+    sourceSohd
+  };
+}
+
 async function loadInvoice(sohd) {
   const isTax = isTaxSohd(sohd);
 
@@ -443,24 +527,69 @@ async function loadInvoice(sohd) {
     };
   }
 
-  const khach = await findCustomerFromInvoice(hoadon);
+  /*
+ * Bản hóa đơn T có thể không được sao chép makh.
+ * Khi đó lấy makh từ hóa đơn nguồn hoadon_banle.
+ */
+  let sourceInvoice = null;
+  let sourceSohd = "";
+
+  if (isTax) {
+    const sourceResult =
+      await loadSourceInvoiceCustomer(hoadon);
+
+    sourceInvoice =
+      sourceResult.sourceInvoice;
+
+    sourceSohd =
+      sourceResult.sourceSohd;
+  }
+
+  /*
+   * Gộp thông tin nhận diện khách:
+   * - Ưu tiên makh đang có trên bản T.
+   * - Nếu bản T thiếu thì lấy từ hóa đơn nguồn.
+   * - Tên trên bản T vẫn được giữ.
+   */
+  const invoiceForCustomerLookup = {
+    ...hoadon,
+
+    makh:
+      cleanText(hoadon?.makh) ||
+      cleanText(sourceInvoice?.makh),
+
+    khachhang:
+      cleanText(hoadon?.khachhang) ||
+      cleanText(sourceInvoice?.khachhang),
+
+    source_sohd: sourceSohd
+  };
+
+  const khach = await findCustomerFromInvoice(
+    invoiceForCustomerLookup
+  );
 
   if (!khach) {
     console.warn(
       "[VIETTEL] Không tìm được khách trong dmkhachhang:",
       {
-        sohd: hoadon.sohd,
-        makh: hoadon.makh || "",
-        khachhang: hoadon.khachhang || ""
+        taxSohd: hoadon.sohd,
+        sourceSohd,
+        taxMakh: hoadon.makh || "",
+        sourceMakh: sourceInvoice?.makh || "",
+        taxKhachhang: hoadon.khachhang || "",
+        sourceKhachhang:
+          sourceInvoice?.khachhang || ""
       }
     );
   }
 
   return {
-    hoadon,
+    hoadon: invoiceForCustomerLookup,
     chitiet,
     khach,
-    isTax
+    isTax,
+    sourceInvoice
   };
 }
 
@@ -799,16 +928,31 @@ export default async function handler(req, res) {
     console.log(
       "[VIETTEL] Buyer mapping before send:",
       {
-        sohd,
+        taxSohd: sohd,
+
+        sourceSohd:
+          hoadon?.source_sohd || "",
+
         invoiceCustomerFields: {
           makh: hoadon?.makh || "",
-          makhachhang: hoadon?.makhachhang || "",
-          khachhang: hoadon?.khachhang || "",
-          dienthoaikhach: hoadon?.dienthoaikhach || "",
-          sdtkhach: hoadon?.sdtkhach || ""
+          khachhang:
+            hoadon?.khachhang || ""
         },
+
         customerFound: !!khach,
-        customerMasterCode: khach?.makh || "",
+
+        customerMaster: khach
+          ? {
+            makh: khach.makh || "",
+            tenkh: khach.tenkh || "",
+            hasAddress: !!khach.diachi,
+            hasPhone: !!khach.dienthoai,
+            hasEmail: !!khach.email,
+            hasTaxCode: !!khach.mst,
+            hasCccd: !!khach.cccd
+          }
+          : null,
+
         buyerInfo: payload.buyerInfo
       }
     );
