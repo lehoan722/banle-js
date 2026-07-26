@@ -168,6 +168,19 @@
     .session-title { font-weight: 700; }
     .session-meta { font-size: 13px; color: #576071; margin-top: 3px; }
 
+
+    .group-multi-wrap {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 6px;
+      min-width: 0;
+    }
+    .group-multi-wrap select,
+    .group-multi-wrap input {
+      width: 100%;
+      min-width: 0;
+    }
+
     @media (max-width: 520px) {
       body { padding: 5px; }
       h1 { font-size: 18px; }
@@ -223,7 +236,12 @@
             </div>
             <div class="grid-2 mt7">
               <select id="category-select"><option value="">Chủng loại</option></select>
-              <select id="group-select"><option value="">Nhóm hàng</option></select>
+              <div class="group-multi-wrap">
+                <select id="group-picker" aria-label="Chọn nhóm hàng để thêm">
+                  <option value="">Chọn nhóm hàng</option>
+                </select>
+                <input id="group-select" type="text" placeholder="Nhóm hàng: AP, SM..." autocomplete="off" aria-label="Các nhóm hàng đã chọn, cách nhau bằng dấu phẩy">
+              </div>
             </div>
             <div class="grid-1 mt7">
               <button id="btn-run-unshown" class="btn-primary" type="button">Kiểm tra hàng chưa bày mẫu</button>
