@@ -73,8 +73,9 @@
     #save-state.saved { background: #dcfce7; color: var(--success); }
     #save-state.dirty { background: #fef3c7; color: var(--warning); }
 
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 7px; }
     .grid-1 { display: grid; grid-template-columns: 1fr; gap: 7px; }
+    .scan-location-row > input { min-width: 0; }
     .mt7 { margin-top: 7px; }
 
     input, select, button {
@@ -189,9 +190,9 @@
           <div id="save-state">Chưa lưu</div>
         </div>
 
-        <div class="grid-1">
-          <input id="current-location" type="text" placeholder="Vị trí bày mẫu đang kiểm, ví dụ GIA12-2A" autocomplete="off">
-          <input id="scan-masp" type="text" placeholder="Quét mã sản phẩm rồi Enter" autocomplete="off" inputmode="text">
+        <div class="grid-2 scan-location-row">
+          <input id="scan-masp" type="text" placeholder="Quét mã sản phẩm" autocomplete="off" inputmode="text">
+          <input id="current-location" type="text" placeholder="Vị trí bày mẫu" autocomplete="off">
         </div>
 
         <div class="grid-2 mt7">
