@@ -805,10 +805,19 @@
             <div class="banle-left">
 
                 <div class="top-inputs">
-                    <div style="position: relative;">
-                        <input id="masp" placeholder="Mã SP" autocomplete="off" />
+                    <div id="maspBox" style="position:relative;display:inline-block;width:250px;">
+                        <input id="masp" placeholder="Mã SP" autocomplete="off"
+                            style="width:100%;padding-right:38px;box-sizing:border-box;" />
+
+                        <button id="btnStockQuickMasp" type="button"
+                            title="Xem nhanh thông tin và tồn kho sản phẩm"
+                            aria-label="Xem nhanh thông tin sản phẩm"
+                            style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:30px;width:34px;padding:0;border:none;background:transparent;cursor:pointer;outline:none;font-size:18px;z-index:2;">
+                            🔍
+                        </button>
+
                         <div id="popup_masp"
-                            style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+                            style="position:absolute;top:100%;left:0;width:300px;max-height:120px;background:#fff;border:1px solid #ccc;display:none;overflow-y:auto;z-index:10000;">
                         </div>
                     </div>
 
@@ -1066,6 +1075,60 @@
     </script>
 
     <script src="/scripts/stockQuickPopup.js?v=101"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const maspEl = document.getElementById("masp");
+            const btn = document.getElementById("btnStockQuickMasp");
+            const anchor = document.getElementById("maspBox") || maspEl;
+
+            if (!maspEl || !btn) return;
+
+            // Giữ focus ở ô mã khi bấm nút.
+            btn.addEventListener("mousedown", (e) => {
+                e.preventDefault();
+            });
+
+            btn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const masp = String(maspEl.value || "")
+                    .trim()
+                    .toUpperCase()
+                    .replace(/\(\d+\)\s*$/, "")
+                    .trim();
+
+                if (!masp) {
+                    alert("Vui lòng nhập mã sản phẩm cần xem.");
+                    maspEl.focus();
+                    return;
+                }
+
+                btn.disabled = true;
+
+                try {
+                    if (
+                        !window.StockQuick ||
+                        typeof window.StockQuick.showFor !== "function"
+                    ) {
+                        throw new Error("StockQuickPopup chưa được nạp.");
+                    }
+
+                    await window.StockQuick.showFor(anchor, masp);
+                } catch (error) {
+                    console.error("Lỗi mở StockQuickPopup từ ô mã sản phẩm:", error);
+                    alert("Không mở được thông tin nhanh của sản phẩm " + masp + ".");
+                } finally {
+                    btn.disabled = false;
+                    setTimeout(() => {
+                        maspEl.focus();
+                        maspEl.select?.();
+                    }, 0);
+                }
+            });
+        });
+    </script>
 
     <script type="module">
         import { mountKhachHangSuggest } from "./scripts/dmkhachhang_diem.js";
