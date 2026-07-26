@@ -429,7 +429,7 @@ async function loadFilterOptions() {
     ]);
     $('category-select').innerHTML = '<option value="">Chủng loại</option>' +
       (cats || []).map((x) => `<option value="${x.machungloai}">${x.machungloai}${x.tenchungloai ? ' - ' + x.tenchungloai : ''}</option>`).join('');
-    $('group-select').innerHTML = '<option value="">Nhóm hàng</option>' +
+    $('group-picker').innerHTML = '<option value="">Chọn nhóm hàng</option>' +
       (groups || []).filter((x) => !x.diadiem || x.diadiem === 'ALL' || String(x.diadiem).toLowerCase() === currentCoSo)
         .map((x) => `<option value="${x.manhom}">${x.manhom}${x.tennhom ? ' - ' + x.tennhom : ''}</option>`).join('');
   } catch (err) {
@@ -437,11 +437,34 @@ async function loadFilterOptions() {
   }
 }
 
+function normalizeGroupList(raw) {
+  const seen = new Set();
+  return String(raw || '')
+    .split(',')
+    .map((x) => normalizeMasp(x))
+    .filter((x) => {
+      if (!x || seen.has(x)) return false;
+      seen.add(x);
+      return true;
+    })
+    .join(', ');
+}
+
+function appendSelectedGroup() {
+  const picker = $('group-picker');
+  const input = $('group-select');
+  const selected = normalizeMasp(picker?.value);
+  if (!selected || !input) return;
+  input.value = normalizeGroupList(input.value ? `${input.value}, ${selected}` : selected);
+  picker.value = '';
+}
+
 async function runUnshown() {
   if (!requireSaved()) return;
   const from = $('date-from').value;
   const to = $('date-to').value;
-  const nhom = $('group-select').value;
+  const nhom = normalizeGroupList($('group-select').value);
+  $('group-select').value = nhom;
   const chungloai = $('category-select').value;
   if (!from || !to || !chungloai) {
     setMessage('Bạn bắt buộc chọn từ ngày, đến ngày và chủng loại. Nhóm hàng có thể để trống.', 'warn');
@@ -564,6 +587,8 @@ function attachEvents() {
   $('btn-load-stock-location').addEventListener('click', loadStockLocations);
   $('btn-multi-location').addEventListener('click', showMultiLocations);
   $('btn-run-unshown').addEventListener('click', runUnshown);
+  $('group-picker').addEventListener('change', appendSelectedGroup);
+  $('group-select').addEventListener('blur', (e) => { e.target.value = normalizeGroupList(e.target.value); });
   $('btn-delete-rows').addEventListener('click', deleteSelectedRows);
   $('btn-new-session').addEventListener('click', newSession);
   $('btn-back-main').addEventListener('click', () => {
