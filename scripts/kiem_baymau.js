@@ -443,8 +443,8 @@ async function runUnshown() {
   const to = $('date-to').value;
   const nhom = $('group-select').value;
   const chungloai = $('category-select').value;
-  if (!from || !to || !nhom || !chungloai) {
-    setMessage('Bạn cần chọn đủ từ ngày, đến ngày, chủng loại và nhóm hàng.', 'warn');
+  if (!from || !to || !chungloai) {
+    setMessage('Bạn bắt buộc chọn từ ngày, đến ngày và chủng loại. Nhóm hàng có thể để trống.', 'warn');
     return;
   }
   if (from > to) {
