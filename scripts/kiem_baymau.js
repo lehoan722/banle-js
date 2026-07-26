@@ -1,0 +1,622 @@
+import { supabase, startSessionKeeper } from './supabaseClient.js';
+import {
+  khoiTaoDangNhapDungChung,
+  getCurrentUserInfo
+} from './authModule.js';
+
+if (typeof window !== 'undefined') window.supabase = supabase;
+startSessionKeeper();
+
+let hot = null;
+let currentSessionId = null;
+let currentSessionCode = '';
+let currentCoSo = 'cs1';
+let currentManv = '';
+let currentTenNv = '';
+let isAdmin = false;
+let isDirty = true;
+let tableMode = 'scan';
+let selectedRows = new Set();
+let lastSavedRowsJson = '[]';
+let modalMode = 'load';
+
+const $ = (id) => document.getElementById(id);
+const normalizeMasp = (v) => String(v || '').trim().toUpperCase();
+const normalizeText = (v) => String(v || '').trim();
+
+function setMessage(text, type = '') {
+  const el = $('message');
+  el.textContent = text;
+  el.className = type;
+}
+
+function focusScan(selectAll = false) {
+  const el = $('scan-masp');
+  if (!el) return;
+  el.focus();
+  if (selectAll) el.select();
+}
+
+function setDirty(value) {
+  isDirty = !!value;
+  const state = $('save-state');
+  if (!currentSessionId) {
+    state.textContent = 'Chưa lưu';
+    state.className = '';
+  } else if (isDirty) {
+    state.textContent = 'Có thay đổi';
+    state.className = 'dirty';
+  } else {
+    state.textContent = 'Đã lưu';
+    state.className = 'saved';
+  }
+  updateActionAvailability();
+}
+
+function updateHeader() {
+  const who = `${currentCoSo.toUpperCase()} · ${currentTenNv || currentManv || 'Người dùng'}`;
+  const phien = currentSessionCode ? ` · ${currentSessionCode}` : ' · Phiên mới';
+  $('session-summary').textContent = who + phien;
+}
+
+function updateActionAvailability() {
+  const analysisIds = [
+    'btn-load-stock-location',
+    'btn-multi-location',
+    'btn-toggle-check',
+    'btn-save-baymau'
+  ];
+  analysisIds.forEach((id) => {
+    const el = $(id);
+    if (el) el.disabled = !currentSessionId || isDirty;
+  });
+  $('btn-merge').disabled = !isAdmin;
+}
+
+function currentRows() {
+  if (!hot) return [];
+  return hot.getSourceData()
+    .map((r) => ({
+      id: r.id || null,
+      masp: normalizeMasp(r.masp),
+      vitri_baymau: normalizeText(r.vitri_baymau),
+      vitri_kho: normalizeText(r.vitri_kho)
+    }))
+    .filter((r) => r.masp || r.vitri_baymau || r.vitri_kho);
+}
+
+function scanRowsForSave() {
+  return currentRows()
+    .filter((r) => r.masp && r.vitri_baymau)
+    .map((r) => ({ masp: r.masp, vitri_baymau: r.vitri_baymau }));
+}
+
+function buildCellsRenderer(row, col) {
+  const props = {};
+  if (tableMode === 'scan' && row === 0) {
+    props.renderer = function (...args) {
+      Handsontable.renderers.TextRenderer.apply(this, args);
+      args[1].style.background = '#fff5bf';
+    };
+  }
+  if (tableMode === 'unshown' && col === 1) {
+    props.renderer = function (...args) {
+      Handsontable.renderers.NumericRenderer.apply(this, args);
+      const value = Number(args[5] || 0);
+      if (value < 0) {
+        args[1].style.background = '#fee2e2';
+        args[1].style.color = '#b91c1c';
+        args[1].style.fontWeight = '700';
+      }
+    };
+  }
+  return props;
+}
+
+function initTable() {
+  const container = $('hot');
+  hot = new Handsontable(container, {
+    data: [{ id: null, masp: '', vitri_baymau: '' }],
+    columns: [
+      { data: 'masp', type: 'text', width: 170 },
+      { data: 'vitri_baymau', type: 'text', width: 150 }
+    ],
+    colHeaders: ['Mã sản phẩm', 'Vị trí bày mẫu'],
+    rowHeaders: true,
+    minSpareRows: 1,
+    width: '100%',
+    height: Math.max(470, window.innerHeight - 250),
+    stretchH: 'all',
+    manualColumnResize: true,
+    columnSorting: true,
+    filters: true,
+    dropdownMenu: true,
+    licenseKey: 'non-commercial-and-evaluation',
+    cells: buildCellsRenderer,
+    afterChange(changes, source) {
+      if (!changes || source === 'loadData' || tableMode !== 'scan') return;
+      setDirty(true);
+    },
+    afterSelectionEnd(row, col, row2) {
+      selectedRows = new Set();
+      const a = Math.min(row, row2);
+      const b = Math.max(row, row2);
+      for (let i = a; i <= b; i++) if (i >= 0) selectedRows.add(i);
+    },
+    afterOnCellMouseDown(event, coords) {
+      if (!coords || coords.row < 0 || coords.col !== 0) return;
+      const masp = normalizeMasp(this.getDataAtCell(coords.row, 0));
+      if (masp && typeof window.stockQuickPopup === 'function') {
+        window.stockQuickPopup(masp);
+      }
+    }
+  });
+}
+
+function showScanTable(rows = []) {
+  tableMode = 'scan';
+  const data = rows.length ? rows : [{ id: null, masp: '', vitri_baymau: '' }];
+  hot.updateSettings({
+    columns: [
+      { data: 'masp', type: 'text', width: 170 },
+      { data: 'vitri_baymau', type: 'text', width: 150 }
+    ],
+    colHeaders: ['Mã sản phẩm', 'Vị trí bày mẫu'],
+    cells: buildCellsRenderer,
+    readOnly: false
+  });
+  hot.loadData(data);
+  hot.render();
+}
+
+function showStockLocationTable(rows) {
+  tableMode = 'stock-location';
+  hot.updateSettings({
+    columns: [
+      { data: 'masp', type: 'text', width: 150, readOnly: true },
+      { data: 'vitri_baymau', type: 'text', width: 135, readOnly: true },
+      { data: 'vitri_kho', type: 'text', width: 125, readOnly: true }
+    ],
+    colHeaders: ['Mã SP', 'Vị trí bày', 'Vị trí kho'],
+    cells: buildCellsRenderer,
+    readOnly: true
+  });
+  hot.loadData(rows);
+  hot.render();
+}
+
+function showMultiLocationTable(rows) {
+  tableMode = 'multi';
+  hot.updateSettings({
+    columns: [
+      { data: 'masp', type: 'text', width: 160, readOnly: true },
+      { data: 'vitri_baymau', type: 'text', width: 220, readOnly: true }
+    ],
+    colHeaders: ['Mã SP', 'Các vị trí bày mẫu'],
+    cells: buildCellsRenderer,
+    readOnly: true
+  });
+  hot.loadData(rows.length ? rows : [{ masp: 'Không có mã bày nhiều vị trí', vitri_baymau: '' }]);
+  hot.render();
+}
+
+function showUnshownTable(rows) {
+  tableMode = 'unshown';
+  hot.updateSettings({
+    columns: [
+      { data: 'masp', type: 'text', width: 155, readOnly: true },
+      { data: 'ton', type: 'numeric', width: 75, readOnly: true },
+      { data: 'vitrikho', type: 'text', width: 130, readOnly: true }
+    ],
+    colHeaders: ['Mã SP', 'Tồn', 'Vị trí kho'],
+    cells: buildCellsRenderer,
+    readOnly: true
+  });
+  hot.loadData(rows.length ? rows : [{ masp: 'Không có kết quả', ton: '', vitrikho: '' }]);
+  hot.render();
+}
+
+async function validateMasp(masp) {
+  const { data, error } = await supabase
+    .from('dmhanghoa')
+    .select('masp')
+    .eq('masp', masp)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+async function handleScan() {
+  if (tableMode !== 'scan') showScanTable(scanRowsForSave());
+
+  const vitri = normalizeText($('current-location').value);
+  const masp = normalizeMasp($('scan-masp').value);
+  if (!vitri) {
+    setMessage('Bạn phải nhập vị trí bày mẫu trước khi quét.', 'warn');
+    $('current-location').focus();
+    return;
+  }
+  if (!masp) return;
+
+  $('scan-masp').disabled = true;
+  try {
+    const valid = await validateMasp(masp);
+    if (!valid) {
+      setMessage(`Mã ${masp} không tồn tại trong danh mục hàng hóa.`, 'err');
+      $('scan-masp').value = '';
+      return;
+    }
+
+    const rows = scanRowsForSave();
+    rows.unshift({ id: null, masp, vitri_baymau: vitri });
+    showScanTable(rows);
+    setDirty(true);
+    setMessage(`Đã thêm ${masp} tại ${vitri}.`, 'ok');
+    $('scan-masp').value = '';
+    hot.scrollViewportTo(0, 0);
+  } catch (err) {
+    console.error(err);
+    setMessage(`Không kiểm tra được mã sản phẩm: ${err.message || err}`, 'err');
+  } finally {
+    $('scan-masp').disabled = false;
+    setTimeout(() => focusScan(), 0);
+  }
+}
+
+async function saveSession() {
+  const rows = scanRowsForSave();
+  if (!rows.length) {
+    setMessage('Chưa có dữ liệu mã sản phẩm và vị trí bày mẫu để lưu.', 'warn');
+    return;
+  }
+
+  $('btn-save').disabled = true;
+  setMessage(`Đang lưu ${rows.length} dòng dữ liệu...`);
+  try {
+    const { data, error } = await supabase.rpc('kbm_save_session', {
+      p_phien_id: currentSessionId,
+      p_coso: currentCoSo,
+      p_manv: currentManv,
+      p_tennv: currentTenNv,
+      p_rows: rows
+    });
+    if (error) throw error;
+
+    currentSessionId = data?.id || data?.phien_id || currentSessionId;
+    currentSessionCode = data?.maphien || currentSessionCode;
+    lastSavedRowsJson = JSON.stringify(rows);
+    setDirty(false);
+    updateHeader();
+    setMessage(`Đã lưu thành công ${rows.length} dòng vào ${currentSessionCode}.`, 'ok');
+  } catch (err) {
+    console.error(err);
+    setMessage(`Lưu dữ liệu thất bại: ${err.message || err}`, 'err');
+  } finally {
+    $('btn-save').disabled = false;
+    focusScan();
+  }
+}
+
+async function listSessions() {
+  const { data, error } = await supabase.rpc('kbm_list_sessions', { p_coso: currentCoSo });
+  if (error) throw error;
+  return data || [];
+}
+
+function openSessionModal(mode, sessions) {
+  modalMode = mode;
+  const list = $('session-list');
+  const isMerge = mode === 'merge';
+  $('session-modal-title').textContent = isMerge ? 'Chọn các phiên cần ghép' : `Các phiên ${currentCoSo.toUpperCase()}`;
+  $('merge-actions').style.display = isMerge ? '' : 'none';
+
+  list.innerHTML = '';
+  if (!sessions.length) {
+    list.textContent = 'Chưa có phiên kiểm nào tại cơ sở này.';
+  } else {
+    sessions.forEach((s) => {
+      const row = document.createElement('div');
+      row.className = 'session-row';
+      row.innerHTML = `
+        ${isMerge ? `<input type="checkbox" class="merge-check" value="${s.id}">` : '<span>›</span>'}
+        <div class="session-main" data-id="${s.id}">
+          <div class="session-title">${s.maphien}${s.is_phien_ghep ? ' · Phiên ghép' : ''}</div>
+          <div class="session-meta">${s.ngay_tao || ''} · ${s.tennv_tao || s.manv_tao || ''} · ${Number(s.so_dong || 0)} dòng</div>
+        </div>`;
+      list.appendChild(row);
+    });
+  }
+
+  if (!isMerge) {
+    list.querySelectorAll('.session-main').forEach((el) => {
+      el.addEventListener('click', () => loadSession(el.dataset.id));
+    });
+  }
+  $('session-modal').classList.add('show');
+}
+
+function closeModal() { $('session-modal').classList.remove('show'); }
+
+async function showLoadSessions() {
+  try {
+    setMessage('Đang tải danh sách phiên kiểm...');
+    openSessionModal('load', await listSessions());
+    setMessage('Chọn một phiên cùng cơ sở để tiếp tục kiểm.', 'ok');
+  } catch (err) {
+    setMessage(`Không tải được danh sách phiên: ${err.message || err}`, 'err');
+  }
+}
+
+async function loadSession(id) {
+  try {
+    const { data, error } = await supabase.rpc('kbm_load_session', { p_phien_id: id });
+    if (error) throw error;
+    const payload = Array.isArray(data) ? data[0] : data;
+    if (!payload) throw new Error('Không tìm thấy phiên kiểm');
+    if (String(payload.coso).toLowerCase() !== currentCoSo) throw new Error('Phiên không thuộc cơ sở đang đăng nhập');
+
+    currentSessionId = payload.id;
+    currentSessionCode = payload.maphien;
+    const rows = (payload.rows || []).map((r) => ({
+      id: r.id || null,
+      masp: normalizeMasp(r.masp),
+      vitri_baymau: normalizeText(r.vitri_baymau)
+    }));
+    showScanTable(rows);
+    lastSavedRowsJson = JSON.stringify(scanRowsForSave());
+    setDirty(false);
+    updateHeader();
+    closeModal();
+    setMessage(`Đã tải ${currentSessionCode}, gồm ${rows.length} dòng.`, 'ok');
+    focusScan();
+  } catch (err) {
+    setMessage(`Không tải được phiên: ${err.message || err}`, 'err');
+  }
+}
+
+function requireSaved() {
+  if (!currentSessionId) {
+    setMessage('Bạn phải lưu dữ liệu phiên kiểm trước khi thực hiện chức năng này.', 'warn');
+    return false;
+  }
+  if (isDirty) {
+    setMessage('Dữ liệu đã thay đổi. Hãy bấm Lưu dữ liệu trước.', 'warn');
+    return false;
+  }
+  return true;
+}
+
+async function loadStockLocations() {
+  if (!requireSaved()) return;
+  const rows = scanRowsForSave();
+  const unique = Array.from(new Set(rows.map((r) => r.masp)));
+  const field = currentCoSo === 'cs2' ? 'vitrikho2' : 'vitrikho1';
+  const map = new Map();
+  try {
+    for (let i = 0; i < unique.length; i += 400) {
+      const chunk = unique.slice(i, i + 400);
+      const { data, error } = await supabase.from('dmhanghoa').select(`masp,${field}`).in('masp', chunk);
+      if (error) throw error;
+      (data || []).forEach((r) => map.set(normalizeMasp(r.masp), normalizeText(r[field])));
+    }
+    showStockLocationTable(rows.map((r) => ({ ...r, vitri_kho: map.get(r.masp) || '' })));
+    setMessage(`Đã tải vị trí kho ${currentCoSo.toUpperCase()} cho ${rows.length} dòng.`, 'ok');
+  } catch (err) {
+    setMessage(`Không tải được vị trí kho: ${err.message || err}`, 'err');
+  }
+}
+
+function showMultiLocations() {
+  if (!requireSaved()) return;
+  const grouped = new Map();
+  scanRowsForSave().forEach((r) => {
+    if (!grouped.has(r.masp)) grouped.set(r.masp, new Set());
+    grouped.get(r.masp).add(r.vitri_baymau);
+  });
+  const results = Array.from(grouped.entries())
+    .map(([masp, set]) => ({ masp, vitri_baymau: Array.from(set).join(', '), count: set.size }))
+    .filter((r) => r.count > 1)
+    .sort((a, b) => b.count - a.count || a.masp.localeCompare(b.masp, 'vi'));
+  showMultiLocationTable(results);
+  setMessage(`Có ${results.length} mã đang bày tại nhiều vị trí.`, results.length ? 'warn' : 'ok');
+}
+
+async function loadFilterOptions() {
+  try {
+    const [{ data: cats }, { data: groups }] = await Promise.all([
+      supabase.from('dmchungloai').select('machungloai,tenchungloai').order('machungloai'),
+      supabase.from('dmnhomhang').select('manhom,tennhom,diadiem').order('manhom')
+    ]);
+    $('category-select').innerHTML = '<option value="">Chủng loại</option>' +
+      (cats || []).map((x) => `<option value="${x.machungloai}">${x.machungloai}${x.tenchungloai ? ' - ' + x.tenchungloai : ''}</option>`).join('');
+    $('group-select').innerHTML = '<option value="">Nhóm hàng</option>' +
+      (groups || []).filter((x) => !x.diadiem || x.diadiem === 'ALL' || String(x.diadiem).toLowerCase() === currentCoSo)
+        .map((x) => `<option value="${x.manhom}">${x.manhom}${x.tennhom ? ' - ' + x.tennhom : ''}</option>`).join('');
+  } catch (err) {
+    console.warn('Không tải được nhóm/chủng loại:', err);
+  }
+}
+
+async function runUnshown() {
+  if (!requireSaved()) return;
+  const from = $('date-from').value;
+  const to = $('date-to').value;
+  const nhom = $('group-select').value;
+  const chungloai = $('category-select').value;
+  if (!from || !to || !nhom || !chungloai) {
+    setMessage('Bạn cần chọn đủ từ ngày, đến ngày, chủng loại và nhóm hàng.', 'warn');
+    return;
+  }
+  if (from > to) {
+    setMessage('Từ ngày phải nhỏ hơn hoặc bằng đến ngày.', 'warn');
+    return;
+  }
+
+  $('btn-run-unshown').disabled = true;
+  setMessage('Đang đối chiếu bán, nhập mới, tồn kho và dữ liệu đã bày mẫu...');
+  try {
+    const { data, error } = await supabase.rpc('kbm_hang_chua_bay', {
+      p_phien_id: currentSessionId,
+      p_tu_ngay: from,
+      p_den_ngay: to,
+      p_nhomhang: nhom,
+      p_chungloai: chungloai
+    });
+    if (error) throw error;
+    showUnshownTable(data || []);
+    setMessage(`Tìm thấy ${(data || []).length} mã cần xem xét bày mẫu. Tồn bằng 0 đã được bỏ qua.`, 'ok');
+  } catch (err) {
+    setMessage(`Kiểm tra hàng chưa bày mẫu thất bại: ${err.message || err}`, 'err');
+  } finally {
+    $('btn-run-unshown').disabled = false;
+  }
+}
+
+function deleteSelectedRows() {
+  if (tableMode !== 'scan') {
+    setMessage('Hãy trở lại bảng quét trước khi xóa dòng.', 'warn');
+    return;
+  }
+  if (!selectedRows.size) {
+    setMessage('Bạn chưa chọn dòng cần xóa.', 'warn');
+    return;
+  }
+  const rows = scanRowsForSave().filter((_, idx) => !selectedRows.has(idx));
+  showScanTable(rows);
+  selectedRows = new Set();
+  setDirty(true);
+  setMessage('Đã xóa các dòng được chọn. Hãy lưu lại dữ liệu.', 'ok');
+}
+
+function newSession() {
+  if (isDirty && scanRowsForSave().length && !confirm('Dữ liệu hiện tại chưa lưu. Bạn có chắc muốn tạo phiên mới?')) return;
+  currentSessionId = null;
+  currentSessionCode = '';
+  lastSavedRowsJson = '[]';
+  showScanTable([]);
+  setDirty(true);
+  updateHeader();
+  setMessage('Đã tạo phiên mới trên màn hình. Hãy quét dữ liệu rồi bấm Lưu dữ liệu.', 'ok');
+  focusScan();
+}
+
+async function showMergeSessions() {
+  if (!isAdmin) return;
+  try {
+    openSessionModal('merge', await listSessions());
+  } catch (err) {
+    setMessage(`Không tải được phiên để ghép: ${err.message || err}`, 'err');
+  }
+}
+
+async function confirmMerge() {
+  if (!isAdmin || modalMode !== 'merge') return;
+  const ids = Array.from(document.querySelectorAll('.merge-check:checked')).map((x) => x.value);
+  if (ids.length < 2) {
+    setMessage('Phải chọn ít nhất hai phiên để ghép.', 'warn');
+    return;
+  }
+  try {
+    const { data, error } = await supabase.rpc('kbm_merge_sessions', {
+      p_phien_ids: ids,
+      p_coso: currentCoSo,
+      p_manv: currentManv,
+      p_tennv: currentTenNv
+    });
+    if (error) throw error;
+    closeModal();
+    await loadSession(data.id || data.phien_id);
+    setMessage(`Đã tạo phiên ghép ${data.maphien}.`, 'ok');
+  } catch (err) {
+    setMessage(`Ghép phiên thất bại: ${err.message || err}`, 'err');
+  }
+}
+
+async function saveBayMauToCatalog() {
+  if (!isAdmin || !requireSaved()) return;
+  if (!confirm('Hệ thống chỉ lưu các mã có đúng một vị trí bày mẫu. Các mã nhiều vị trí sẽ không được lưu. Tiếp tục?')) return;
+  try {
+    const { data, error } = await supabase.rpc('kbm_admin_save_baymau', { p_phien_id: currentSessionId });
+    if (error) throw error;
+    const conflicts = data?.conflicts || [];
+    if (conflicts.length) {
+      showMultiLocationTable(conflicts.map((x) => ({ masp: x.masp, vitri_baymau: (x.positions || []).join(', ') })));
+      setMessage(`Đã lưu ${data.updated_count || 0} mã có một vị trí. Còn ${conflicts.length} mã nhiều vị trí chưa được lưu.`, 'warn');
+    } else {
+      setMessage(`Đã lưu vị trí bày mẫu vào danh mục cho ${data.updated_count || 0} mã.`, 'ok');
+    }
+  } catch (err) {
+    setMessage(`Không lưu được vị trí bày mẫu: ${err.message || err}`, 'err');
+  }
+}
+
+function attachEvents() {
+  $('scan-masp').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
+  $('scan-masp').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleScan(); }
+  });
+  $('current-location').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); focusScan(); }
+  });
+
+  $('btn-save').addEventListener('click', saveSession);
+  $('btn-load-session').addEventListener('click', showLoadSessions);
+  $('btn-load-stock-location').addEventListener('click', loadStockLocations);
+  $('btn-multi-location').addEventListener('click', showMultiLocations);
+  $('btn-run-unshown').addEventListener('click', runUnshown);
+  $('btn-delete-rows').addEventListener('click', deleteSelectedRows);
+  $('btn-new-session').addEventListener('click', newSession);
+  $('btn-back-main').addEventListener('click', () => {
+    showScanTable(scanRowsForSave());
+    setMessage('Đã trở lại bảng quét.', 'ok');
+  });
+  $('btn-merge').addEventListener('click', showMergeSessions);
+  $('btn-confirm-merge').addEventListener('click', confirmMerge);
+  $('btn-save-baymau').addEventListener('click', saveBayMauToCatalog);
+
+  $('btn-toggle-commands').addEventListener('click', () => {
+    const p = $('command-panel');
+    const open = p.style.display === 'block';
+    p.style.display = open ? 'none' : 'block';
+    $('btn-toggle-commands').textContent = open ? 'Chức năng ▼' : 'Chức năng ▲';
+  });
+  $('btn-toggle-check').addEventListener('click', () => {
+    const p = $('check-panel');
+    p.style.display = p.style.display === 'block' ? 'none' : 'block';
+  });
+  $('session-modal-close').addEventListener('click', closeModal);
+  $('session-modal').addEventListener('click', (e) => { if (e.target === $('session-modal')) closeModal(); });
+
+  window.addEventListener('beforeunload', (e) => {
+    if (!isDirty || !scanRowsForSave().length) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+}
+
+(function initPage() {
+  initTable();
+  attachEvents();
+  const today = new Date().toISOString().slice(0, 10);
+  $('date-to').value = today;
+
+  khoiTaoDangNhapDungChung({
+    appContainerId: 'app-container',
+    macDinhDiaDiem: 'cs1',
+    tuDongKhoaCoSo: false,
+    loginApiPath: (cs) => `/api/login-${cs}`,
+    onLoginSuccess: async (nhanvien, context) => {
+      const info = getCurrentUserInfo();
+      currentCoSo = String(context?.diadiem || info.diadiem || 'cs1').trim().toLowerCase();
+      currentManv = normalizeMasp(nhanvien?.manv || info.manv);
+      currentTenNv = normalizeText(nhanvien?.tennv || info.tennv || currentManv);
+      isAdmin = !!(nhanvien?.is_admin || info.is_admin);
+      $('btn-merge').style.display = isAdmin ? '' : 'none';
+      $('btn-save-baymau').style.display = isAdmin ? '' : 'none';
+      updateHeader();
+      setDirty(true);
+      await loadFilterOptions();
+      setTimeout(() => $('current-location').focus(), 80);
+    }
+  });
+})();
