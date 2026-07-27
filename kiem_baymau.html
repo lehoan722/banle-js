@@ -93,6 +93,8 @@
     .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
     .btn-soft { background: #eef3f8; }
     .btn-admin { background: #fff4e5; color: #8a4b00; border-color: #f2c078; }
+    .btn-danger { background:#b91c1c; color:#fff; border-color:#b91c1c; }
+    label { font-size:14px; font-weight:700; margin-top:3px; }
 
     #current-location { font-weight: 700; border: 2px solid #7cb7e8; }
     #scan-masp { font-weight: 700; text-transform: uppercase; border: 2px solid #59a56a; }
@@ -207,10 +209,8 @@
           <input id="scan-masp" type="text" placeholder="Quét mã sản phẩm" autocomplete="off" inputmode="text">
           <input id="current-location" type="text" placeholder="Vị trí bày mẫu" autocomplete="off">
         </div>
-
-        <div class="grid-2 mt7">
-          <button id="btn-save" class="btn-primary" type="button">Lưu dữ liệu</button>
-          <button id="btn-load-session" class="btn-soft" type="button">Tải phiên kiểm</button>
+        <div class="grid-1 mt7">
+          <input id="area-name" type="text" placeholder="Tên khu vực kiểm, ví dụ: GIA1-GIA10" autocomplete="off">
         </div>
 
         <div class="grid-1 mt7">
@@ -219,13 +219,18 @@
 
         <div id="command-panel">
           <div class="command-grid">
+            <button id="btn-save" class="btn-primary" type="button">Lưu dữ liệu</button>
+            <button id="btn-load-session" class="btn-soft" type="button">Tải phiên kiểm</button>
             <button id="btn-load-stock-location" type="button">Tải vị trí kho</button>
             <button id="btn-multi-location" type="button">Bày nhiều vị trí</button>
             <button id="btn-toggle-check" type="button">Hàng chưa bày mẫu</button>
+            <button id="btn-compare" type="button">So sánh phiên</button>
             <button id="btn-delete-rows" type="button">Xóa dòng chọn</button>
             <button id="btn-new-session" type="button">Tạo phiên mới</button>
             <button id="btn-back-main" type="button">Trở lại bảng quét</button>
             <button id="btn-merge" class="btn-admin" type="button" style="display:none;">Ghép phiên</button>
+            <button id="btn-set-standard" class="btn-admin" type="button" style="display:none;">Đặt làm phiên chuẩn</button>
+            <button id="btn-delete-session" class="btn-admin" type="button" style="display:none;">Xóa phiên</button>
             <button id="btn-save-baymau" class="btn-admin" type="button" style="display:none;">Lưu vị trí bày mẫu</button>
           </div>
 
@@ -264,6 +269,24 @@
       <div id="session-list"></div>
       <div id="merge-actions" class="grid-1 mt7" style="display:none;">
         <button id="btn-confirm-merge" class="btn-primary" type="button">Ghép các phiên đã chọn</button>
+      </div>
+      <div id="delete-actions" class="grid-1 mt7" style="display:none;">
+        <button id="btn-confirm-delete-session" class="btn-danger" type="button">Xóa các phiên đã chọn</button>
+      </div>
+    </div>
+  </div>
+  <div id="compare-modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>So sánh phiên kiểm</h3>
+        <button id="compare-modal-close" class="modal-close" type="button">✕</button>
+      </div>
+      <div class="grid-1">
+        <label>Phiên chuẩn</label>
+        <select id="compare-standard"></select>
+        <label>Phiên hiện tại</label>
+        <select id="compare-current"></select>
+        <button id="btn-run-compare" class="btn-primary" type="button">Thực hiện so sánh</button>
       </div>
     </div>
   </div>
