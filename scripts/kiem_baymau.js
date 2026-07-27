@@ -19,6 +19,8 @@ let tableMode = 'scan';
 let selectedRows = new Set();
 let lastSavedRowsJson = '[]';
 let modalMode = 'load';
+let currentAreaName = '';
+let currentIsStandard = false;
 
 const $ = (id) => document.getElementById(id);
 const normalizeMasp = (v) => String(v || '').trim().toUpperCase();
@@ -56,7 +58,9 @@ function setDirty(value) {
 function updateHeader() {
   const who = `${currentCoSo.toUpperCase()} · ${currentTenNv || currentManv || 'Người dùng'}`;
   const phien = currentSessionCode ? ` · ${currentSessionCode}` : ' · Phiên mới';
-  $('session-summary').textContent = who + phien;
+  const area = currentAreaName ? ` · ${currentAreaName}` : '';
+  const standard = currentIsStandard ? ' · CHUẨN' : '';
+  $('session-summary').textContent = who + phien + area + standard;
 }
 
 function updateActionAvailability() {
@@ -64,13 +68,16 @@ function updateActionAvailability() {
     'btn-load-stock-location',
     'btn-multi-location',
     'btn-toggle-check',
-    'btn-save-baymau'
+    'btn-save-baymau',
+    'btn-compare',
+    'btn-set-standard'
   ];
   analysisIds.forEach((id) => {
     const el = $(id);
     if (el) el.disabled = !currentSessionId || isDirty;
   });
   $('btn-merge').disabled = !isAdmin;
+  $('btn-delete-session').disabled = !isAdmin;
 }
 
 function currentRows() {
@@ -278,12 +285,15 @@ async function saveSession() {
       p_coso: currentCoSo,
       p_manv: currentManv,
       p_tennv: currentTenNv,
+      p_khu_vuc: normalizeText($('area-name').value),
       p_rows: rows
     });
     if (error) throw error;
 
     currentSessionId = data?.id || data?.phien_id || currentSessionId;
     currentSessionCode = data?.maphien || currentSessionCode;
+    currentAreaName = data?.khu_vuc || normalizeText($('area-name').value);
+    $('area-name').value = currentAreaName;
     lastSavedRowsJson = JSON.stringify(rows);
     setDirty(false);
     updateHeader();
@@ -307,8 +317,10 @@ function openSessionModal(mode, sessions) {
   modalMode = mode;
   const list = $('session-list');
   const isMerge = mode === 'merge';
-  $('session-modal-title').textContent = isMerge ? 'Chọn các phiên cần ghép' : `Các phiên ${currentCoSo.toUpperCase()}`;
+  const isDelete = mode === 'delete';
+  $('session-modal-title').textContent = isMerge ? 'Chọn các phiên cần ghép' : isDelete ? 'Chọn các phiên cần xóa' : `Các phiên ${currentCoSo.toUpperCase()}`;
   $('merge-actions').style.display = isMerge ? '' : 'none';
+  $('delete-actions').style.display = isDelete ? '' : 'none';
 
   list.innerHTML = '';
   if (!sessions.length) {
@@ -318,16 +330,16 @@ function openSessionModal(mode, sessions) {
       const row = document.createElement('div');
       row.className = 'session-row';
       row.innerHTML = `
-        ${isMerge ? `<input type="checkbox" class="merge-check" value="${s.id}">` : '<span>›</span>'}
+        ${(isMerge || isDelete) ? `<input type="checkbox" class="session-action-check" value="${s.id}">` : '<span>›</span>'}
         <div class="session-main" data-id="${s.id}">
-          <div class="session-title">${s.maphien}${s.is_phien_ghep ? ' · Phiên ghép' : ''}</div>
-          <div class="session-meta">${s.ngay_tao || ''} · ${s.tennv_tao || s.manv_tao || ''} · ${Number(s.so_dong || 0)} dòng</div>
+          <div class="session-title">${s.maphien}${s.is_phien_ghep ? ' · Phiên ghép' : ''}${s.is_standard ? ' · CHUẨN' : ''}</div>
+          <div class="session-meta">${s.ngay_tao || ''} · ${s.tennv_tao || s.manv_tao || ''} · ${Number(s.so_dong || 0)} dòng${s.khu_vuc ? ' · ' + s.khu_vuc : ''}</div>
         </div>`;
       list.appendChild(row);
     });
   }
 
-  if (!isMerge) {
+  if (!isMerge && !isDelete) {
     list.querySelectorAll('.session-main').forEach((el) => {
       el.addEventListener('click', () => loadSession(el.dataset.id));
     });
@@ -357,6 +369,9 @@ async function loadSession(id) {
 
     currentSessionId = payload.id;
     currentSessionCode = payload.maphien;
+    currentAreaName = normalizeText(payload.khu_vuc);
+    currentIsStandard = !!payload.is_standard;
+    $('area-name').value = currentAreaName;
     const rows = (payload.rows || []).map((r) => ({
       id: r.id || null,
       masp: normalizeMasp(r.masp),
@@ -515,6 +530,9 @@ function newSession() {
   if (isDirty && scanRowsForSave().length && !confirm('Dữ liệu hiện tại chưa lưu. Bạn có chắc muốn tạo phiên mới?')) return;
   currentSessionId = null;
   currentSessionCode = '';
+  currentAreaName = '';
+  currentIsStandard = false;
+  $('area-name').value = '';
   lastSavedRowsJson = '[]';
   showScanTable([]);
   setDirty(true);
@@ -534,7 +552,7 @@ async function showMergeSessions() {
 
 async function confirmMerge() {
   if (!isAdmin || modalMode !== 'merge') return;
-  const ids = Array.from(document.querySelectorAll('.merge-check:checked')).map((x) => x.value);
+  const ids = Array.from(document.querySelectorAll('.session-action-check:checked')).map((x) => x.value);
   if (ids.length < 2) {
     setMessage('Phải chọn ít nhất hai phiên để ghép.', 'warn');
     return;
@@ -552,6 +570,121 @@ async function confirmMerge() {
     setMessage(`Đã tạo phiên ghép ${data.maphien}.`, 'ok');
   } catch (err) {
     setMessage(`Ghép phiên thất bại: ${err.message || err}`, 'err');
+  }
+}
+
+
+async function showDeleteSessions() {
+  if (!isAdmin) return;
+  try {
+    openSessionModal('delete', await listSessions());
+  } catch (err) {
+    setMessage(`Không tải được phiên để xóa: ${err.message || err}`, 'err');
+  }
+}
+
+async function confirmDeleteSessions() {
+  if (!isAdmin || modalMode !== 'delete') return;
+  const ids = Array.from(document.querySelectorAll('.session-action-check:checked')).map((x) => x.value);
+  if (!ids.length) {
+    setMessage('Bạn chưa chọn phiên cần xóa.', 'warn');
+    return;
+  }
+  const sessions = await listSessions();
+  const selected = sessions.filter(s => ids.includes(s.id));
+  const totalRows = selected.reduce((sum, s) => sum + Number(s.so_dong || 0), 0);
+  const names = selected.map(s => s.maphien).join(', ');
+  if (!confirm(`Bạn sắp xóa ${ids.length} phiên với khoảng ${totalRows} dòng dữ liệu:\n${names}\n\nThao tác này không thể hoàn tác. Tiếp tục?`)) return;
+  try {
+    const { data, error } = await supabase.rpc('kbm_admin_delete_sessions', {
+      p_phien_ids: ids,
+      p_coso: currentCoSo
+    });
+    if (error) throw error;
+    if (ids.includes(currentSessionId)) newSession();
+    closeModal();
+    setMessage(`Đã xóa ${data?.deleted_count || ids.length} phiên.`, 'ok');
+  } catch (err) {
+    setMessage(`Xóa phiên thất bại: ${err.message || err}`, 'err');
+  }
+}
+
+async function setCurrentAsStandard() {
+  if (!isAdmin || !requireSaved()) return;
+  const area = normalizeText($('area-name').value);
+  if (!area) {
+    setMessage('Hãy nhập tên khu vực kiểm trước khi đặt làm phiên chuẩn.', 'warn');
+    $('area-name').focus();
+    return;
+  }
+  const name = prompt('Tên phiên chuẩn:', currentSessionCode + ' - ' + area);
+  if (name === null) return;
+  try {
+    const { data, error } = await supabase.rpc('kbm_admin_set_standard', {
+      p_phien_id: currentSessionId,
+      p_standard_name: normalizeText(name) || currentSessionCode,
+      p_khu_vuc: area
+    });
+    if (error) throw error;
+    currentIsStandard = true;
+    currentAreaName = area;
+    updateHeader();
+    setMessage(`Đã đặt ${currentSessionCode} làm phiên chuẩn cho khu vực ${area}.`, 'ok');
+  } catch (err) {
+    setMessage(`Không đặt được phiên chuẩn: ${err.message || err}`, 'err');
+  }
+}
+
+async function showCompareModal() {
+  if (!requireSaved()) return;
+  try {
+    const sessions = await listSessions();
+    const optionHtml = (s) => `<option value="${s.id}">${s.maphien}${s.is_standard ? ' · CHUẨN' : ''}${s.khu_vuc ? ' · ' + s.khu_vuc : ''}</option>`;
+    const standards = sessions.filter(s => s.is_standard);
+    $('compare-standard').innerHTML = (standards.length ? standards : sessions).map(optionHtml).join('');
+    $('compare-current').innerHTML = sessions.map(optionHtml).join('');
+    if (currentSessionId) $('compare-current').value = currentSessionId;
+    $('compare-modal').classList.add('show');
+  } catch (err) {
+    setMessage(`Không tải được danh sách phiên để so sánh: ${err.message || err}`, 'err');
+  }
+}
+
+function closeCompareModal() { $('compare-modal').classList.remove('show'); }
+
+async function runCompareSessions() {
+  const standardId = $('compare-standard').value;
+  const currentId = $('compare-current').value;
+  if (!standardId || !currentId) {
+    setMessage('Hãy chọn đủ phiên chuẩn và phiên hiện tại.', 'warn');
+    return;
+  }
+  if (standardId === currentId) {
+    setMessage('Phiên chuẩn và phiên hiện tại phải khác nhau.', 'warn');
+    return;
+  }
+  $('btn-run-compare').disabled = true;
+  setMessage('Đang so sánh hai phiên và tính tồn kho hiện tại...');
+  try {
+    const { data, error } = await supabase.rpc('kbm_compare_sessions', {
+      p_phien_chuan_id: standardId,
+      p_phien_hientai_id: currentId
+    });
+    if (error) throw error;
+    closeCompareModal();
+    const missing = data?.missing || [];
+    const multi = data?.multi_locations || [];
+    showUnshownTable(missing);
+    if (multi.length) {
+      const text = multi.slice(0, 20).map(x => `${x.masp}: ${(x.positions || []).join(', ')}`).join(' | ');
+      setMessage(`Thiếu ${missing.length} mã so với phiên chuẩn. Phiên hiện tại có ${multi.length} mã bày nhiều vị trí. ${text}`, 'warn');
+    } else {
+      setMessage(`Thiếu ${missing.length} mã so với phiên chuẩn. Phiên hiện tại không có mã bày nhiều vị trí.`, missing.length ? 'warn' : 'ok');
+    }
+  } catch (err) {
+    setMessage(`So sánh phiên thất bại: ${err.message || err}`, 'err');
+  } finally {
+    $('btn-run-compare').disabled = false;
   }
 }
 
@@ -598,6 +731,14 @@ function attachEvents() {
   $('btn-merge').addEventListener('click', showMergeSessions);
   $('btn-confirm-merge').addEventListener('click', confirmMerge);
   $('btn-save-baymau').addEventListener('click', saveBayMauToCatalog);
+  $('btn-delete-session').addEventListener('click', showDeleteSessions);
+  $('btn-confirm-delete-session').addEventListener('click', confirmDeleteSessions);
+  $('btn-set-standard').addEventListener('click', setCurrentAsStandard);
+  $('btn-compare').addEventListener('click', showCompareModal);
+  $('btn-run-compare').addEventListener('click', runCompareSessions);
+  $('compare-modal-close').addEventListener('click', closeCompareModal);
+  $('compare-modal').addEventListener('click', (e) => { if (e.target === $('compare-modal')) closeCompareModal(); });
+  $('area-name').addEventListener('input', () => { currentAreaName = normalizeText($('area-name').value); setDirty(true); updateHeader(); });
 
   $('btn-toggle-commands').addEventListener('click', () => {
     const p = $('command-panel');
@@ -638,6 +779,8 @@ function attachEvents() {
       isAdmin = !!(nhanvien?.is_admin || info.is_admin);
       $('btn-merge').style.display = isAdmin ? '' : 'none';
       $('btn-save-baymau').style.display = isAdmin ? '' : 'none';
+      $('btn-set-standard').style.display = isAdmin ? '' : 'none';
+      $('btn-delete-session').style.display = isAdmin ? '' : 'none';
       updateHeader();
       setDirty(true);
       await loadFilterOptions();
