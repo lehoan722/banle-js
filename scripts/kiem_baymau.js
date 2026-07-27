@@ -21,6 +21,14 @@ let lastSavedRowsJson = '[]';
 let modalMode = 'load';
 let currentAreaName = '';
 let currentIsStandard = false;
+let currentTaskId = null;
+let currentTaskCode = '';
+let currentTaskStatus = '';
+let currentTaskRows = [];
+let currentResultRows = [];
+let currentResultContext = null;
+let taskRealtimeChannel = null;
+let suppressTaskChange = false;
 
 const $ = (id) => document.getElementById(id);
 const normalizeMasp = (v) => String(v || '').trim().toUpperCase();
@@ -117,6 +125,20 @@ function buildCellsRenderer(row, col) {
       }
     };
   }
+  if (tableMode === 'task') {
+    props.renderer = function (...args) {
+      const colIndex = args[3];
+      if (colIndex === 0) Handsontable.renderers.CheckboxRenderer.apply(this, args);
+      else Handsontable.renderers.TextRenderer.apply(this, args);
+      const rowData = args[0].getSourceDataAtRow(args[2]) || {};
+      if (rowData.da_baymau) args[1].style.background = '#dcfce7';
+      if (colIndex === 1 && rowData.da_baymau) {
+        const who = rowData.baymau_tennv || rowData.baymau_manv || '';
+        const when = rowData.baymau_at || '';
+        args[1].title = `${who}${when ? ' - ' + when : ''}`;
+      }
+    };
+  }
   return props;
 }
 
@@ -141,8 +163,16 @@ function initTable() {
     licenseKey: 'non-commercial-and-evaluation',
     cells: buildCellsRenderer,
     afterChange(changes, source) {
-      if (!changes || source === 'loadData' || tableMode !== 'scan') return;
-      setDirty(true);
+      if (!changes || source === 'loadData') return;
+      if (tableMode === 'scan') {
+        setDirty(true);
+        return;
+      }
+      if (tableMode === 'task' && !suppressTaskChange && source !== 'realtime' && source !== 'rpc') {
+        for (const [row, prop, oldValue, newValue] of changes) {
+          if (prop === 'da_baymau' && oldValue !== newValue) updateTaskItem(row, !!newValue);
+        }
+      }
     },
     afterSelectionEnd(row, col, row2) {
       selectedRows = new Set();
@@ -151,11 +181,17 @@ function initTable() {
       for (let i = a; i <= b; i++) if (i >= 0) selectedRows.add(i);
     },
     afterOnCellMouseDown(event, coords) {
-      if (!coords || coords.row < 0 || coords.col !== 0) return;
-      const masp = normalizeMasp(this.getDataAtCell(coords.row, 0));
-      if (masp && typeof window.stockQuickPopup === 'function') {
-        window.stockQuickPopup(masp);
+      if (!coords || coords.row < 0) return;
+      if (tableMode === 'task') {
+        const row = this.getSourceDataAtRow(coords.row) || {};
+        if (row.da_baymau && coords.col > 0) {
+          setMessage(`Đã bày bởi ${row.baymau_tennv || row.baymau_manv || 'nhân viên'}${row.baymau_at ? ' lúc ' + row.baymau_at : ''}.`, 'ok');
+        }
+        return;
       }
+      if (coords.col !== 0) return;
+      const masp = normalizeMasp(this.getDataAtCell(coords.row, 0));
+      if (masp && typeof window.stockQuickPopup === 'function') window.stockQuickPopup(masp);
     }
   });
 }
@@ -207,8 +243,10 @@ function showMultiLocationTable(rows) {
   hot.render();
 }
 
-function showUnshownTable(rows) {
+function showUnshownTable(rows, context = null) {
   tableMode = 'unshown';
+  currentResultRows = Array.isArray(rows) ? rows.filter(x => x && x.masp && x.masp !== 'Không có kết quả') : [];
+  currentResultContext = context;
   hot.updateSettings({
     columns: [
       { data: 'masp', type: 'text', width: 155, readOnly: true },
@@ -474,6 +512,50 @@ function appendSelectedGroup() {
   picker.value = '';
 }
 
+
+
+function chunkArray(items, size = 40) {
+  const result = [];
+  for (let i = 0; i < items.length; i += size) result.push(items.slice(i, i + size));
+  return result;
+}
+
+async function fetchStockAfterCheckInChunks(masps, coso, progressLabel = 'Đang tính tồn') {
+  const uniqueMasps = Array.from(new Set((masps || []).map(normalizeMasp).filter(Boolean)));
+  const chunks = chunkArray(uniqueMasps, 40);
+  const stockMap = new Map();
+
+  for (let i = 0; i < chunks.length; i++) {
+    setMessage(`${progressLabel}: lô ${i + 1}/${chunks.length} (${Math.min((i + 1) * 40, uniqueMasps.length)}/${uniqueMasps.length} mã)...`);
+    const { data, error } = await supabase.rpc('kbm_stock_after_check', {
+      p_masps: chunks[i],
+      p_coso: coso
+    });
+    if (error) throw error;
+    (data || []).forEach((row) => {
+      stockMap.set(normalizeMasp(row.masp), Number(row.ton_sau_kiem || 0));
+    });
+  }
+  return stockMap;
+}
+
+function mergeCandidatesWithStock(candidates, stockMap) {
+  return (candidates || [])
+    .map((x) => ({
+      masp: normalizeMasp(x.masp),
+      ton: Number(stockMap.get(normalizeMasp(x.masp)) || 0),
+      vitrikho: x.vitrikho || ''
+    }))
+    .filter((x) => x.ton !== 0)
+    .sort((a, b) => {
+      const ga = a.ton > 0 ? 0 : 1;
+      const gb = b.ton > 0 ? 0 : 1;
+      if (ga !== gb) return ga - gb;
+      if (a.ton !== b.ton) return b.ton - a.ton;
+      return a.masp.localeCompare(b.masp, 'vi');
+    });
+}
+
 async function runUnshown() {
   if (!requireSaved()) return;
   const from = $('date-from').value;
@@ -491,9 +573,9 @@ async function runUnshown() {
   }
 
   $('btn-run-unshown').disabled = true;
-  setMessage('Đang đối chiếu bán, nhập mới, tồn kho và dữ liệu đã bày mẫu...');
+  setMessage('Đang lấy danh sách hàng đã bán/nhập nhưng chưa thấy bày mẫu...');
   try {
-    const { data, error } = await supabase.rpc('kbm_hang_chua_bay', {
+    const { data: candidates, error } = await supabase.rpc('kbm_hang_chua_bay_candidates', {
       p_phien_id: currentSessionId,
       p_tu_ngay: from,
       p_den_ngay: to,
@@ -501,8 +583,22 @@ async function runUnshown() {
       p_chungloai: chungloai
     });
     if (error) throw error;
-    showUnshownTable(data || []);
-    setMessage(`Tìm thấy ${(data || []).length} mã cần xem xét bày mẫu. Tồn bằng 0 đã được bỏ qua.`, 'ok');
+
+    const rows = candidates || [];
+    if (!rows.length) {
+      showUnshownTable([]);
+      setMessage('Không có mã nào cần đối chiếu.', 'ok');
+      return;
+    }
+
+    const stockMap = await fetchStockAfterCheckInChunks(
+      rows.map((x) => x.masp),
+      rows[0]?.coso || currentCoSo,
+      'Đang tính tồn sau kiểm'
+    );
+    const result = mergeCandidatesWithStock(rows, stockMap);
+    showUnshownTable(result, { source: 'HANG_CHUA_BAY', from, to, chungloai, nhomhang: nhom, phien_id: currentSessionId });
+    setMessage(`Tìm thấy ${result.length} mã cần xem xét bày mẫu. Đã xử lý ${rows.length} mã theo từng lô; tồn bằng 0 đã bỏ qua.`, 'ok');
   } catch (err) {
     setMessage(`Kiểm tra hàng chưa bày mẫu thất bại: ${err.message || err}`, 'err');
   } finally {
@@ -664,17 +760,28 @@ async function runCompareSessions() {
     return;
   }
   $('btn-run-compare').disabled = true;
-  setMessage('Đang so sánh hai phiên và tính tồn kho hiện tại...');
+  setMessage('Đang lấy danh sách chênh lệch giữa hai phiên...');
   try {
-    const { data, error } = await supabase.rpc('kbm_compare_sessions', {
+    const { data, error } = await supabase.rpc('kbm_compare_sessions_candidates', {
       p_phien_chuan_id: standardId,
       p_phien_hientai_id: currentId
     });
     if (error) throw error;
-    closeCompareModal();
-    const missing = data?.missing || [];
+
+    const candidates = data?.missing_candidates || [];
     const multi = data?.multi_locations || [];
-    showUnshownTable(missing);
+    let missing = [];
+    if (candidates.length) {
+      const stockMap = await fetchStockAfterCheckInChunks(
+        candidates.map((x) => x.masp),
+        data?.coso || currentCoSo,
+        'Đang tính tồn các mã thiếu'
+      );
+      missing = mergeCandidatesWithStock(candidates, stockMap);
+    }
+
+    closeCompareModal();
+    showUnshownTable(missing, { source: 'SO_SANH_PHIEN', phien_id: currentId, phien_chuan_id: standardId });
     if (multi.length) {
       const text = multi.slice(0, 20).map(x => `${x.masp}: ${(x.positions || []).join(', ')}`).join(' | ');
       setMessage(`Thiếu ${missing.length} mã so với phiên chuẩn. Phiên hiện tại có ${multi.length} mã bày nhiều vị trí. ${text}`, 'warn');
@@ -686,6 +793,173 @@ async function runCompareSessions() {
   } finally {
     $('btn-run-compare').disabled = false;
   }
+}
+
+
+function unsubscribeTaskRealtime() {
+  if (taskRealtimeChannel) {
+    try { supabase.removeChannel(taskRealtimeChannel); } catch (_) {}
+    taskRealtimeChannel = null;
+  }
+}
+
+function taskProgressText() {
+  const total = currentTaskRows.length;
+  const done = currentTaskRows.filter(r => r.da_baymau).length;
+  return `${done}/${total}`;
+}
+
+function showTaskTable(task, rows) {
+  tableMode = 'task';
+  currentTaskId = task.id;
+  currentTaskCode = task.macongviec || '';
+  currentTaskStatus = task.trangthai || 'DANG_LAM';
+  currentTaskRows = Array.isArray(rows) ? rows.slice().sort((a,b) => Number(a.thu_tu)-Number(b.thu_tu)) : [];
+  hot.updateSettings({
+    columns: [
+      { data: 'da_baymau', type: 'checkbox', width: 48, readOnly: currentTaskStatus !== 'DANG_LAM' },
+      { data: 'masp', type: 'text', width: 145, readOnly: true },
+      { data: 'ton', type: 'numeric', width: 58, readOnly: true },
+      { data: 'vitrikho', type: 'text', width: 105, readOnly: true }
+    ],
+    colHeaders: ['Đã bày', 'Mã SP', 'Tồn', 'Vị trí kho'],
+    cells: buildCellsRenderer,
+    readOnly: false,
+    columnSorting: false,
+    filters: false,
+    dropdownMenu: false
+  });
+  suppressTaskChange = true;
+  hot.loadData(currentTaskRows);
+  suppressTaskChange = false;
+  hot.render();
+  $('btn-task-complete').style.display = isAdmin ? '' : 'none';
+  $('btn-task-complete').textContent = currentTaskStatus === 'HOAN_TAT' ? 'Mở lại phiếu' : 'Hoàn tất phiếu';
+  setMessage(`Phiếu ${task.ten_congviec || task.macongviec}: ${taskProgressText()}. Thứ tự dòng được giữ nguyên trên mọi máy.`, currentTaskStatus === 'HOAN_TAT' ? 'ok' : '');
+  subscribeTaskRealtime();
+}
+
+async function saveCurrentResultAsTask() {
+  if (!isAdmin) return;
+  if (tableMode !== 'unshown' || !currentResultRows.length) {
+    setMessage('Hãy mở kết quả hàng chưa bày mẫu hoặc kết quả so sánh trước khi lưu giao việc.', 'warn');
+    return;
+  }
+  const suggested = currentResultContext?.source === 'SO_SANH_PHIEN'
+    ? `Bày mẫu so sánh ${currentSessionCode || ''}`
+    : `Bày mẫu ${$('category-select').value || ''} ${$('group-select').value || ''}`.trim();
+  const name = prompt('Tên phiếu giao bày mẫu:', suggested);
+  if (name === null) return;
+  try {
+    const ctx = currentResultContext || {};
+    const { data, error } = await supabase.rpc('kbm_admin_create_task', {
+      p_coso: currentCoSo,
+      p_ten_congviec: normalizeText(name) || suggested || 'Phiếu bày mẫu',
+      p_nguon: ctx.source || 'HANG_CHUA_BAY',
+      p_phien_nguon_id: ctx.phien_id || currentSessionId,
+      p_tu_ngay: ctx.from || null,
+      p_den_ngay: ctx.to || null,
+      p_chungloai: ctx.chungloai || null,
+      p_nhomhang: ctx.nhomhang || null,
+      p_rows: currentResultRows.map(x => ({ masp:x.masp, ton:Number(x.ton||0), vitrikho:x.vitrikho||'' }))
+    });
+    if (error) throw error;
+    setMessage(`Đã tạo phiếu ${data.macongviec} gồm ${data.so_dong} mã.`, 'ok');
+  } catch (err) {
+    setMessage(`Không lưu được phiếu giao bày mẫu: ${err.message || err}`, 'err');
+  }
+}
+
+async function showTaskList() {
+  try {
+    const { data, error } = await supabase.rpc('kbm_list_tasks', { p_coso: currentCoSo });
+    if (error) throw error;
+    const rows = data || [];
+    $('task-list').innerHTML = rows.length ? rows.map(t => `
+      <div class="session-row task-list-row" data-id="${t.id}">
+        <div></div><div class="session-main">
+          <div class="session-title">${t.ten_congviec} · ${t.da_bay}/${t.tong_dong}${t.trangthai==='HOAN_TAT' ? ' · HOÀN TẤT' : ''}</div>
+          <div class="session-meta">${t.macongviec} · ${t.ngay_tao} · ${t.tennv_tao || ''}</div>
+        </div>
+      </div>`).join('') : '<div>Chưa có phiếu giao bày mẫu.</div>';
+    $('task-list').querySelectorAll('.task-list-row').forEach(el => el.addEventListener('click', () => loadTask(el.dataset.id)));
+    $('task-modal').classList.add('show');
+  } catch (err) { setMessage(`Không tải được danh sách công việc: ${err.message || err}`, 'err'); }
+}
+
+function closeTaskModal() { $('task-modal').classList.remove('show'); }
+
+async function loadTask(id) {
+  try {
+    const { data, error } = await supabase.rpc('kbm_load_task', { p_congviec_id:id, p_coso:currentCoSo });
+    if (error) throw error;
+    closeTaskModal();
+    showTaskTable(data, data.rows || []);
+  } catch (err) { setMessage(`Không mở được phiếu: ${err.message || err}`, 'err'); }
+}
+
+async function updateTaskItem(rowIndex, done) {
+  const row = hot.getSourceDataAtRow(rowIndex);
+  if (!row?.id || !currentTaskId) return;
+  try {
+    const { data, error } = await supabase.rpc('kbm_set_task_item_done', {
+      p_chitiet_id: row.id,
+      p_congviec_id: currentTaskId,
+      p_coso: currentCoSo,
+      p_da_baymau: done
+    });
+    if (error) throw error;
+    Object.assign(row, data);
+    currentTaskRows[rowIndex] = row;
+    suppressTaskChange = true;
+    hot.setDataAtRowProp(rowIndex, 'da_baymau', data.da_baymau, 'rpc');
+    suppressTaskChange = false;
+    hot.render();
+    setMessage(`${data.masp}: ${data.da_baymau ? 'đã bày bởi ' + (data.baymau_tennv || data.baymau_manv || '') + ' lúc ' + (data.baymau_at || '') : 'đã bỏ đánh dấu'}. Tiến độ ${taskProgressText()}.`, 'ok');
+  } catch (err) {
+    suppressTaskChange = true;
+    hot.setDataAtRowProp(rowIndex, 'da_baymau', !done, 'rpc');
+    suppressTaskChange = false;
+    setMessage(`Không lưu được đánh dấu: ${err.message || err}`, 'err');
+  }
+}
+
+function subscribeTaskRealtime() {
+  unsubscribeTaskRealtime();
+  if (!currentTaskId) return;
+  taskRealtimeChannel = supabase.channel(`kbm-task-${currentTaskId}-${Date.now()}`)
+    .on('postgres_changes', {
+      event:'UPDATE', schema:'public', table:'kiem_baymau_congviec_chitiet',
+      filter:`congviec_id=eq.${currentTaskId}`
+    }, payload => {
+      const n = payload.new || {};
+      const idx = currentTaskRows.findIndex(r => r.id === n.id);
+      if (idx < 0) return;
+      currentTaskRows[idx] = { ...currentTaskRows[idx], ...n,
+        ton: currentTaskRows[idx].ton,
+        vitrikho: currentTaskRows[idx].vitrikho,
+        baymau_at: n.baymau_at ? new Date(n.baymau_at).toLocaleString('vi-VN') : null
+      };
+      suppressTaskChange = true;
+      hot.setDataAtRowProp(idx, 'da_baymau', !!n.da_baymau, 'realtime');
+      suppressTaskChange = false;
+      hot.render();
+      setMessage(`Tiến độ phiếu ${currentTaskCode}: ${taskProgressText()}.`, 'ok');
+    }).subscribe();
+}
+
+async function toggleTaskComplete() {
+  if (!isAdmin || !currentTaskId) return;
+  const next = currentTaskStatus === 'HOAN_TAT' ? 'DANG_LAM' : 'HOAN_TAT';
+  const total = currentTaskRows.length;
+  const done = currentTaskRows.filter(r => r.da_baymau).length;
+  if (next === 'HOAN_TAT' && done < total && !confirm(`Phiếu còn ${total-done} mã chưa bày. Vẫn hoàn tất?`)) return;
+  try {
+    const { data, error } = await supabase.rpc('kbm_admin_set_task_status', { p_congviec_id:currentTaskId, p_coso:currentCoSo, p_trangthai:next });
+    if (error) throw error;
+    currentTaskStatus = data.trangthai;
+    showTaskTable({ id:currentTaskId, macongviec:currentTaskCode, ten_congviec:currentTaskCode, trangthai:currentTaskStatus }, currentTaskRows);
+  } catch (err) { setMessage(`Không đổi được trạng thái phiếu: ${err.message || err}`, 'err'); }
 }
 
 async function saveBayMauToCatalog() {
@@ -725,18 +999,26 @@ function attachEvents() {
   $('btn-delete-rows').addEventListener('click', deleteSelectedRows);
   $('btn-new-session').addEventListener('click', newSession);
   $('btn-back-main').addEventListener('click', () => {
+    unsubscribeTaskRealtime();
+    currentTaskId = null;
+    $('btn-task-complete').style.display = 'none';
     showScanTable(scanRowsForSave());
     setMessage('Đã trở lại bảng quét.', 'ok');
   });
   $('btn-merge').addEventListener('click', showMergeSessions);
   $('btn-confirm-merge').addEventListener('click', confirmMerge);
   $('btn-save-baymau').addEventListener('click', saveBayMauToCatalog);
+  $('btn-save-task').addEventListener('click', saveCurrentResultAsTask);
+  $('btn-open-tasks').addEventListener('click', showTaskList);
+  $('btn-task-complete').addEventListener('click', toggleTaskComplete);
   $('btn-delete-session').addEventListener('click', showDeleteSessions);
   $('btn-confirm-delete-session').addEventListener('click', confirmDeleteSessions);
   $('btn-set-standard').addEventListener('click', setCurrentAsStandard);
   $('btn-compare').addEventListener('click', showCompareModal);
   $('btn-run-compare').addEventListener('click', runCompareSessions);
   $('compare-modal-close').addEventListener('click', closeCompareModal);
+  $('task-modal-close').addEventListener('click', closeTaskModal);
+  $('task-modal').addEventListener('click', (e) => { if (e.target === $('task-modal')) closeTaskModal(); });
   $('compare-modal').addEventListener('click', (e) => { if (e.target === $('compare-modal')) closeCompareModal(); });
   $('area-name').addEventListener('input', () => { currentAreaName = normalizeText($('area-name').value); setDirty(true); updateHeader(); });
 
@@ -754,6 +1036,7 @@ function attachEvents() {
   $('session-modal').addEventListener('click', (e) => { if (e.target === $('session-modal')) closeModal(); });
 
   window.addEventListener('beforeunload', (e) => {
+    unsubscribeTaskRealtime();
     if (!isDirty || !scanRowsForSave().length) return;
     e.preventDefault();
     e.returnValue = '';
@@ -781,6 +1064,7 @@ function attachEvents() {
       $('btn-save-baymau').style.display = isAdmin ? '' : 'none';
       $('btn-set-standard').style.display = isAdmin ? '' : 'none';
       $('btn-delete-session').style.display = isAdmin ? '' : 'none';
+      $('btn-save-task').style.display = isAdmin ? '' : 'none';
       updateHeader();
       setDirty(true);
       await loadFilterOptions();
