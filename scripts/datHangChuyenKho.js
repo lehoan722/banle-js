@@ -301,68 +301,121 @@ function getDenNgayForDhck() {
 }
 
 async function fetchCurrentSuggestionKeysByMasp(masp) {
-  if (!ctx?.supabase || !masp) return new Set();
+  if (!ctx?.supabase || !masp) {
+    return {
+      ok: false,
+      reason: "missing_context",
+      hasNegative: false,
+      suggestions: [],
+      keys: new Set()
+    };
+  }
 
   const code = String(masp || "").trim().toUpperCase();
   const denNgay = getDenNgayForDhck();
 
-  const [snapRes, kiemRes] = await Promise.all([
-    ctx.supabase.rpc("xntnhanh", {
-      p_masps: [code],
-      p_den_ngay: denNgay,
-      p_tonghop_size: false
-    }),
+  try {
+    const [snapRes, kiemRes] = await Promise.all([
+      ctx.supabase.rpc("xntnhanh", {
+        p_masps: [code],
+        p_den_ngay: denNgay,
+        p_tonghop_size: false
+      }),
 
-    ctx.supabase.rpc("rpc_stockquick_kiemton", {
-      p_masp: code
-    })
-  ]);
+      ctx.supabase.rpc("rpc_stockquick_kiemton", {
+        p_masp: code
+      })
+    ]);
 
-  if (snapRes.error) {
-    console.warn("[Đặt hàng CK] Không đọc được tồn hiện tại:", code, snapRes.error);
-    return new Set();
-  }
+    if (snapRes?.error) {
+      console.warn("[Đặt hàng CK] Không đọc được tồn hiện tại:", code, snapRes.error);
+      return {
+        ok: false,
+        reason: "xnt_error",
+        error: snapRes.error,
+        hasNegative: false,
+        suggestions: [],
+        keys: new Set()
+      };
+    }
 
-  const kiemton = kiemRes?.data || { cs1: {}, cs2: {} };
-  const data = Array.isArray(snapRes.data) ? snapRes.data : [];
+    if (kiemRes?.error) {
+      console.warn("[Đặt hàng CK] Không đọc được chênh lệch kiểm tồn:", code, kiemRes.error);
+      return {
+        ok: false,
+        reason: "kiemton_error",
+        error: kiemRes.error,
+        hasNegative: false,
+        suggestions: [],
+        keys: new Set()
+      };
+    }
 
-  const rows = data.map(r => {
-    const sizeKey = String(r.size || "").replace(/^size\s+/i, "").trim();
+    const data = Array.isArray(snapRes?.data) ? snapRes.data : [];
+
+    // Không có dữ liệu không đồng nghĩa với không còn cần chuyển.
+    // Phải coi là thiếu căn cứ và bỏ qua mã này để tránh ẩn nhầm dữ liệu.
+    if (!data.length) {
+      console.warn("[Đặt hàng CK] xntnhanh trả về rỗng, bỏ qua kiểm tra mã:", code);
+      return {
+        ok: false,
+        reason: "empty_stock_rows",
+        hasNegative: false,
+        suggestions: [],
+        keys: new Set()
+      };
+    }
+
+    const kiemton = kiemRes?.data || { cs1: {}, cs2: {} };
+
+    const rows = data.map(r => {
+      const sizeKey = String(r.size || "").replace(/^size\s+/i, "").trim();
+
+      return {
+        masp: String(r.masp || code).toUpperCase(),
+        size: r.size,
+        ton_cs1: Number(r.ton_cs1 || 0),
+        ton_cs2: Number(r.ton_cs2 || 0),
+        lech_cs1: Number(kiemton?.cs1?.lech?.[sizeKey] || 0),
+        lech_cs2: Number(kiemton?.cs2?.lech?.[sizeKey] || 0),
+        ban_cs1: Number(r.ban_cs1 || 0),
+        ban_cs2: Number(r.ban_cs2 || 0),
+        tong_ban: Number(r.tong_ban || 0),
+        tong_nhap: Number(r.tong_nhap || 0),
+        tong_ton: Number(r.tong_ton || 0)
+      };
+    });
+
+    const hasNegative = hasNegativeStockRows(rows);
+    const suggestions = hasNegative ? [] : calcSuggestionsFromRows(rows, code);
 
     return {
-      masp: String(r.masp || code).toUpperCase(),
-      size: r.size,
-      ton_cs1: Number(r.ton_cs1 || 0),
-      ton_cs2: Number(r.ton_cs2 || 0),
-      lech_cs1: Number(kiemton?.cs1?.lech?.[sizeKey] || 0),
-      lech_cs2: Number(kiemton?.cs2?.lech?.[sizeKey] || 0),
-
-      // Quan trọng: truyền dữ liệu bán để luật thông minh hoạt động
-      ban_cs1: Number(r.ban_cs1 || 0),
-      ban_cs2: Number(r.ban_cs2 || 0),
-      tong_ban: Number(r.tong_ban || 0),
-      tong_nhap: Number(r.tong_nhap || 0),
-      tong_ton: Number(r.tong_ton || 0)
-    };
-  });
-
-  const hasNegative = hasNegativeStockRows(rows);
-  const suggestions = hasNegative ? [] : calcSuggestionsFromRows(rows, code);
-
-  return {
-    hasNegative,
-    suggestions,
-    keys: new Set(
-      suggestions.map(x =>
-        `${String(x.masp).toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`
+      ok: true,
+      reason: "ok",
+      hasNegative,
+      suggestions,
+      keys: new Set(
+        suggestions.map(x =>
+          `${String(x.masp).toUpperCase()}|${normSize(x.size)}|${x.huong_chuyen}`
+        )
       )
-    )
-  };
+    };
+  } catch (error) {
+    console.error("[Đặt hàng CK] Exception khi đọc tồn:", code, error);
+    return {
+      ok: false,
+      reason: "exception",
+      error,
+      hasNegative: false,
+      suggestions: [],
+      keys: new Set()
+    };
+  }
 }
 
 async function autoMarkOutdatedNewOrders(rows) {
-  if (!ctx?.supabase || !Array.isArray(rows) || !rows.length) return false;
-  if (autoRecheckRunning) return false;
+  if (!ctx?.supabase || !Array.isArray(rows) || !rows.length) return { changed: false, skippedMasps: [] };
+  if (autoRecheckRunning) return { changed: false, skippedMasps: [], busy: true };
   autoRecheckRunning = true;
 
   try {
@@ -375,7 +428,7 @@ async function autoMarkOutdatedNewOrders(rows) {
       )
       .slice(0, 200);
 
-    if (!openRows.length) return false;
+    if (!openRows.length) return { changed: false, skippedMasps: [] };
 
     const masps = Array.from(
       new Set(
@@ -385,12 +438,19 @@ async function autoMarkOutdatedNewOrders(rows) {
       )
     );
 
-    if (!masps.length) return false;
+    if (!masps.length) return { changed: false, skippedMasps: [] };
 
     const suggestionInfoByMasp = new Map();
+    const skippedMasps = [];
 
     for (const masp of masps) {
       const info = await fetchCurrentSuggestionKeysByMasp(masp);
+
+      if (!info?.ok) {
+        skippedMasps.push({ masp, reason: info?.reason || "unknown" });
+        continue;
+      }
+
       suggestionInfoByMasp.set(masp, info);
     }
 
@@ -537,7 +597,7 @@ async function autoMarkOutdatedNewOrders(rows) {
       }
     }
 
-    return changed;
+    return { changed, skippedMasps };
 
   } finally {
     autoRecheckRunning = false;
@@ -1232,8 +1292,11 @@ async function recheckNeedStockCheckOrders(canMove) {
     const masp = String(r.masp || "").trim().toUpperCase();
     const info = await fetchCurrentSuggestionKeysByMasp(masp);
 
+    // Không đủ dữ liệu thì giữ nguyên, tuyệt đối không đổi trạng thái.
+    if (!info?.ok) continue;
+
     // Nếu vẫn còn âm thì giữ cảnh báo vàng
-    if (info?.hasNegative) continue;
+    if (info.hasNegative) continue;
 
     const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
 
@@ -1373,7 +1436,11 @@ async function manualRecheckOutdatedOrders(box, canMove) {
 
   try {
     // Chỉ tại thao tác thủ công này mới được phép thay đổi trạng thái lỗi thời.
-    const changed = await autoMarkOutdatedNewOrders(canMove || []);
+    const recheckResult = await autoMarkOutdatedNewOrders(canMove || []);
+    const changed = recheckResult?.changed === true;
+    const skippedMasps = Array.isArray(recheckResult?.skippedMasps)
+      ? recheckResult.skippedMasps
+      : [];
 
     // Sau khi kiểm tra xong mới tải lại danh sách.
     // fetchOrders() hiện chỉ SELECT, không tự động sửa dữ liệu.
@@ -1400,15 +1467,21 @@ async function manualRecheckOutdatedOrders(box, canMove) {
       await showPanel(rowsAfterCheck);
     }
 
+    const skippedText = skippedMasps.length
+      ? `\n\n⚠️ Đã bỏ qua ${skippedMasps.length} mã do không đọc đủ dữ liệu tồn kho. Các mã này KHÔNG bị thay đổi trạng thái.`
+      : "";
+
     if (changed && hiddenCount > 0) {
       alert(
         `✅ Đã kiểm tra xong.\n` +
-        `Đã đánh dấu và ẩn ${hiddenCount} dòng không còn cần chuyển kho.`
+        `Đã đánh dấu và ẩn ${hiddenCount} dòng không còn cần chuyển kho.` +
+        skippedText
       );
     } else {
       alert(
         "✅ Đã kiểm tra xong.\n" +
-        "Không phát hiện thêm dòng đặt hàng lỗi thời."
+        "Không phát hiện thêm dòng đặt hàng lỗi thời." +
+        skippedText
       );
     }
 
@@ -1927,12 +2000,14 @@ async function afterCcnSaved(result) {
   }
 
   ids = ids.map(Number).filter(Boolean);
-  if (!ids.length) return;
 
+  // Dự phòng: nếu localStorage bị mất hoặc tab CCN mở độc lập,
+  // lấy order ID từ ghi chú "ĐẶT HÀNG CK: 123,124,...".
   if (!ids.length) {
     const note = String(
       document.getElementById("ghichu")?.value ||
       result?.hoadon?.ghichu ||
+      result?.ghichu ||
       ""
     );
 
@@ -1944,6 +2019,11 @@ async function afterCcnSaved(result) {
         .map(x => Number(String(x).trim()))
         .filter(Boolean);
     }
+  }
+
+  if (!ids.length) {
+    console.warn("[Đặt hàng CK] Không xác định được order_ids sau khi lưu CCN.");
+    return;
   }
 
   const dir =
@@ -2024,6 +2104,7 @@ async function afterCcnSaved(result) {
       .from("dat_hang_chuyen_kho")
       .update({
         trang_thai: "moi",
+        chon_chuyen: false,
         updated_at: now
       })
       .in("id", idsTraVeMoi);
