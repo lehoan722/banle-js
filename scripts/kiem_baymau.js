@@ -184,7 +184,21 @@ function initTable() {
       if (!coords || coords.row < 0) return;
       if (tableMode === 'task') {
         const row = this.getSourceDataAtRow(coords.row) || {};
-        if (row.da_baymau && coords.col > 0) {
+
+        // Chạm vào cột Mã SP trong phiếu bày mẫu -> mở StockQuickPopup.
+        // Không liên quan tới thao tác checkbox và không làm thay đổi thứ tự dòng.
+        if (coords.col === 1) {
+          const masp = normalizeMasp(row.masp);
+          if (masp && typeof window.stockQuickPopup === 'function') {
+            window.stockQuickPopup(masp);
+          } else if (masp) {
+            setMessage('StockQuickPopup chưa sẵn sàng. Hãy tải lại trang.', 'warn');
+          }
+          return;
+        }
+
+        // Chạm các cột thông tin khác của dòng đã hoàn thành -> xem người và thời gian bày.
+        if (row.da_baymau && coords.col > 1) {
           setMessage(`Đã bày bởi ${row.baymau_tennv || row.baymau_manv || 'nhân viên'}${row.baymau_at ? ' lúc ' + row.baymau_at : ''}.`, 'ok');
         }
         return;
