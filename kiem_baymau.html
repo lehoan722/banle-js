@@ -171,6 +171,10 @@
     .session-meta { font-size: 13px; color: #576071; margin-top: 3px; }
 
 
+
+    .task-row-done td { background:#dcfce7 !important; }
+    .task-check-cell { text-align:center !important; }
+
     .group-multi-wrap {
       display: grid;
       grid-template-columns: 0.9fr 1.1fr;
@@ -232,6 +236,9 @@
             <button id="btn-set-standard" class="btn-admin" type="button" style="display:none;">Đặt làm phiên chuẩn</button>
             <button id="btn-delete-session" class="btn-admin" type="button" style="display:none;">Xóa phiên</button>
             <button id="btn-save-baymau" class="btn-admin" type="button" style="display:none;">Lưu vị trí bày mẫu</button>
+            <button id="btn-save-task" class="btn-admin" type="button" style="display:none;">Lưu kết quả giao bày mẫu</button>
+            <button id="btn-open-tasks" type="button">Danh sách cần bày mẫu</button>
+            <button id="btn-task-complete" class="btn-admin" type="button" style="display:none;">Hoàn tất phiếu</button>
           </div>
 
           <div id="check-panel">
@@ -275,6 +282,17 @@
       </div>
     </div>
   </div>
+
+  <div id="task-modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Danh sách cần bày mẫu</h3>
+        <button id="task-modal-close" class="modal-close" type="button">✕</button>
+      </div>
+      <div id="task-list"></div>
+    </div>
+  </div>
+
   <div id="compare-modal" class="modal" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-head">
