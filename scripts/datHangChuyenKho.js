@@ -290,15 +290,14 @@ function sortOrdersForDisplay(rows) {
 }
 
 function getDenNgayForDhck() {
-  try {
-    const raw = sessionStorage.getItem("XNT14_FILTERS");
-    if (raw) {
-      const f = JSON.parse(raw);
-      if (f.den_ngay) return f.den_ngay;
-    }
-  } catch { }
+  // Luôn dùng ngày hiện tại theo giờ máy đang mở trang.
+  // Không lấy bộ lọc XNT14_FILTERS của trang khác vì có thể còn lưu ngày cũ.
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
 
-  return new Date().toISOString().slice(0, 10);
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 async function fetchCurrentSuggestionKeysByMasp(masp) {
@@ -546,6 +545,9 @@ async function autoMarkOutdatedNewOrders(rows) {
 }
 
 async function fetchOrders() {
+  // QUAN TRỌNG:
+  // Hàm tải danh sách chỉ được phép SELECT, tuyệt đối không tự đổi trạng thái.
+  // Việc kiểm tra lỗi thời chỉ chạy khi người dùng bấm nút thủ công.
   const { data, error } = await ctx.supabase
     .from("dat_hang_chuyen_kho")
     .select("*")
@@ -559,28 +561,7 @@ async function fetchOrders() {
     return [];
   }
 
-  const sortedRows = sortOrdersForDisplay(data || []);
-
-  const changed = await autoMarkOutdatedNewOrders(sortedRows);
-
-  if (changed) {
-    const { data: data2, error: error2 } = await ctx.supabase
-      .from("dat_hang_chuyen_kho")
-      .select("*")
-      .or(
-        "trang_thai.in.(moi,dang_chuyen,da_tao_phieu,yeu_cau_kiem_kho),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
-      )
-      .order("created_at", { ascending: false });
-
-    if (error2) {
-      console.error("[Đặt hàng CK] fetch lại lỗi:", error2);
-      return sortedRows;
-    }
-
-    return sortOrdersForDisplay(data2 || []);
-  }
-
-  return sortedRows;
+  return sortOrdersForDisplay(data || []);
 }
 
 function openStockQuickFromDatHang(masp) {
@@ -1371,6 +1352,13 @@ async function manualRecheckOutdatedOrders(box, canMove) {
     return;
   }
 
+  const confirmed = confirm(
+    "Bạn có chắc muốn kiểm tra lại các đặt hàng theo tồn kho hiện tại?\n\n" +
+    "Chỉ những dòng được hệ thống xác định không còn cần chuyển mới được đánh dấu lỗi thời và ẩn khỏi danh sách."
+  );
+
+  if (!confirmed) return;
+
   await flushInlineNotes(box);
 
   const button = box.querySelector("#dhck-recheck-outdated");
@@ -1381,14 +1369,14 @@ async function manualRecheckOutdatedOrders(box, canMove) {
     button.textContent = "Đang kiểm tra...";
   }
 
-  const oldCount = Array.isArray(canMove)
-    ? canMove.length
-    : 0;
+  const oldCount = Array.isArray(canMove) ? canMove.length : 0;
 
   try {
-    // fetchOrders đã tự gọi:
-    // autoMarkOutdatedNewOrders()
-    // và tải lại dữ liệu nếu có dòng bị đổi trạng thái.
+    // Chỉ tại thao tác thủ công này mới được phép thay đổi trạng thái lỗi thời.
+    const changed = await autoMarkOutdatedNewOrders(canMove || []);
+
+    // Sau khi kiểm tra xong mới tải lại danh sách.
+    // fetchOrders() hiện chỉ SELECT, không tự động sửa dữ liệu.
     const rowsAfterCheck = await fetchOrders();
 
     const coso = getCurrentCoso();
@@ -1400,12 +1388,8 @@ async function manualRecheckOutdatedOrders(box, canMove) {
           .toLowerCase() === coso
     );
 
-    const hiddenCount = Math.max(
-      0,
-      oldCount - canMoveAfter.length
-    );
+    const hiddenCount = Math.max(0, oldCount - canMoveAfter.length);
 
-    // Đóng bảng cũ và dựng lại bằng dữ liệu mới nhất
     popupOpen = false;
     document.getElementById("dhck-panel")?.remove();
 
@@ -1416,10 +1400,10 @@ async function manualRecheckOutdatedOrders(box, canMove) {
       await showPanel(rowsAfterCheck);
     }
 
-    if (hiddenCount > 0) {
+    if (changed && hiddenCount > 0) {
       alert(
         `✅ Đã kiểm tra xong.\n` +
-        `Đã phát hiện và ẩn ${hiddenCount} dòng không còn cần chuyển kho.`
+        `Đã đánh dấu và ẩn ${hiddenCount} dòng không còn cần chuyển kho.`
       );
     } else {
       alert(
