@@ -24,9 +24,12 @@ let currentIsStandard = false;
 let currentTaskId = null;
 let currentTaskCode = '';
 let currentTaskStatus = '';
+let currentTaskType = '';
 let currentTaskRows = [];
 let currentResultRows = [];
 let currentResultContext = null;
+let currentMultiResultRows = [];
+let currentMultiResultContext = null;
 let taskRealtimeChannel = null;
 let suppressTaskChange = false;
 
@@ -132,6 +135,9 @@ function buildCellsRenderer(row, col) {
       else Handsontable.renderers.TextRenderer.apply(this, args);
       const rowData = args[0].getSourceDataAtRow(args[2]) || {};
       if (rowData.da_baymau) args[1].style.background = '#dcfce7';
+      if (currentTaskType === 'NHIEU_VI_TRI' && colIndex === 3 && !String(rowData.vitri_chuan || '').trim()) {
+        args[1].style.background = '#fff7cc';
+      }
       if (colIndex === 1 && rowData.da_baymau) {
         const who = rowData.baymau_tennv || rowData.baymau_manv || '';
         const when = rowData.baymau_at || '';
@@ -171,6 +177,7 @@ function initTable() {
       if (tableMode === 'task' && !suppressTaskChange && source !== 'realtime' && source !== 'rpc') {
         for (const [row, prop, oldValue, newValue] of changes) {
           if (prop === 'da_baymau' && oldValue !== newValue) updateTaskItem(row, !!newValue);
+          if (prop === 'vitri_chuan' && oldValue !== newValue) updateTaskStandardPosition(row, newValue, oldValue);
         }
       }
     },
@@ -242,18 +249,26 @@ function showStockLocationTable(rows) {
   hot.render();
 }
 
-function showMultiLocationTable(rows) {
+function showMultiLocationTable(rows, context = null) {
   tableMode = 'multi';
+  currentMultiResultRows = Array.isArray(rows)
+    ? rows.filter(x => x && x.masp && x.masp !== 'Không có mã bày nhiều vị trí')
+    : [];
+  currentMultiResultContext = context;
   hot.updateSettings({
     columns: [
-      { data: 'masp', type: 'text', width: 160, readOnly: true },
-      { data: 'vitri_baymau', type: 'text', width: 220, readOnly: true }
+      { data: 'masp', type: 'text', width: 145, readOnly: true },
+      { data: 'vitri_hien_co', type: 'text', width: 210, readOnly: true },
+      { data: 'vitri_chuan', type: 'text', width: 125, readOnly: true }
     ],
-    colHeaders: ['Mã SP', 'Các vị trí bày mẫu'],
+    colHeaders: ['Mã SP', 'Các vị trí hiện có', 'Vị trí chuẩn'],
     cells: buildCellsRenderer,
-    readOnly: true
+    readOnly: true,
+    columnSorting: false,
+    filters: false,
+    dropdownMenu: false
   });
-  hot.loadData(rows.length ? rows : [{ masp: 'Không có mã bày nhiều vị trí', vitri_baymau: '' }]);
+  hot.loadData(rows.length ? rows : [{ masp: 'Không có mã bày nhiều vị trí', vitri_hien_co: '', vitri_chuan: '' }]);
   hot.render();
 }
 
@@ -473,19 +488,49 @@ async function loadStockLocations() {
   }
 }
 
-function showMultiLocations() {
+async function showMultiLocations() {
   if (!requireSaved()) return;
   const grouped = new Map();
   scanRowsForSave().forEach((r) => {
     if (!grouped.has(r.masp)) grouped.set(r.masp, new Set());
     grouped.get(r.masp).add(r.vitri_baymau);
   });
-  const results = Array.from(grouped.entries())
-    .map(([masp, set]) => ({ masp, vitri_baymau: Array.from(set).join(', '), count: set.size }))
+  let results = Array.from(grouped.entries())
+    .map(([masp, set]) => ({
+      masp,
+      positions: Array.from(set),
+      vitri_hien_co: Array.from(set).join(', '),
+      vitri_chuan: '',
+      count: set.size
+    }))
     .filter((r) => r.count > 1)
     .sort((a, b) => b.count - a.count || a.masp.localeCompare(b.masp, 'vi'));
-  showMultiLocationTable(results);
-  setMessage(`Có ${results.length} mã đang bày tại nhiều vị trí.`, results.length ? 'warn' : 'ok');
+
+  try {
+    if (results.length) {
+      const field = currentCoSo === 'cs2' ? 'treomaucs2' : 'treomaucs1';
+      const map = new Map();
+      const masps = results.map(x => x.masp);
+      for (let i = 0; i < masps.length; i += 400) {
+        const { data, error } = await supabase.from('dmhanghoa').select(`masp,${field}`).in('masp', masps.slice(i, i + 400));
+        if (error) throw error;
+        (data || []).forEach(r => map.set(normalizeMasp(r.masp), normalizeText(r[field])));
+      }
+      results = results.map(r => {
+        const catalogRaw = map.get(r.masp) || '';
+        const catalogPositions = catalogRaw.split(',').map(normalizeText).filter(Boolean);
+        const auto = catalogPositions.length === 1 && r.positions.some(p => p.toLowerCase() === catalogPositions[0].toLowerCase())
+          ? r.positions.find(p => p.toLowerCase() === catalogPositions[0].toLowerCase())
+          : '';
+        return { ...r, vitri_chuan: auto || '' };
+      });
+    }
+  } catch (err) {
+    console.warn('Không lấy được vị trí mẫu hiện tại để gợi ý:', err);
+  }
+
+  showMultiLocationTable(results, { source: 'NHIEU_VI_TRI', phien_id: currentSessionId });
+  setMessage(`Có ${results.length} mã đang bày tại nhiều vị trí. Có thể lưu thành phiếu để nhân viên chọn vị trí chuẩn và xử lý.`, results.length ? 'warn' : 'ok');
 }
 
 async function loadFilterOptions() {
@@ -823,21 +868,50 @@ function taskProgressText() {
   return `${done}/${total}`;
 }
 
+function taskPositionOptions(rowData) {
+  return String(rowData?.vitri_hien_co || '')
+    .split(',')
+    .map(normalizeText)
+    .filter(Boolean);
+}
+
 function showTaskTable(task, rows) {
   tableMode = 'task';
   currentTaskId = task.id;
   currentTaskCode = task.macongviec || '';
   currentTaskStatus = task.trangthai || 'DANG_LAM';
+  currentTaskType = String(task.nguon || '').toUpperCase();
   currentTaskRows = Array.isArray(rows) ? rows.slice().sort((a,b) => Number(a.thu_tu)-Number(b.thu_tu)) : [];
+
+  const isMulti = currentTaskType === 'NHIEU_VI_TRI';
+  const columns = isMulti ? [
+    { data: 'da_baymau', type: 'checkbox', width: 52, readOnly: currentTaskStatus !== 'DANG_LAM' },
+    { data: 'masp', type: 'text', width: 135, readOnly: true },
+    { data: 'vitri_hien_co', type: 'text', width: 190, readOnly: true },
+    { data: 'vitri_chuan', type: 'dropdown', width: 120, readOnly: currentTaskStatus !== 'DANG_LAM' }
+  ] : [
+    { data: 'da_baymau', type: 'checkbox', width: 48, readOnly: currentTaskStatus !== 'DANG_LAM' },
+    { data: 'masp', type: 'text', width: 145, readOnly: true },
+    { data: 'ton', type: 'numeric', width: 58, readOnly: true },
+    { data: 'vitrikho', type: 'text', width: 105, readOnly: true }
+  ];
+
   hot.updateSettings({
-    columns: [
-      { data: 'da_baymau', type: 'checkbox', width: 48, readOnly: currentTaskStatus !== 'DANG_LAM' },
-      { data: 'masp', type: 'text', width: 145, readOnly: true },
-      { data: 'ton', type: 'numeric', width: 58, readOnly: true },
-      { data: 'vitrikho', type: 'text', width: 105, readOnly: true }
-    ],
-    colHeaders: ['Đã bày', 'Mã SP', 'Tồn', 'Vị trí kho'],
-    cells: buildCellsRenderer,
+    columns,
+    colHeaders: isMulti
+      ? ['Đã xử lý', 'Mã SP', 'Vị trí hiện có', 'Vị trí chuẩn']
+      : ['Đã bày', 'Mã SP', 'Tồn', 'Vị trí kho'],
+    cells(row, col) {
+      const props = buildCellsRenderer(row, col);
+      if (isMulti && col === 3) {
+        props.type = 'dropdown';
+        props.source = taskPositionOptions(currentTaskRows[row]);
+        props.strict = true;
+        props.allowInvalid = false;
+        props.readOnly = currentTaskStatus !== 'DANG_LAM';
+      }
+      return props;
+    },
     readOnly: false,
     columnSorting: false,
     filters: false,
@@ -849,38 +923,62 @@ function showTaskTable(task, rows) {
   hot.render();
   $('btn-task-complete').style.display = isAdmin ? '' : 'none';
   $('btn-task-complete').textContent = currentTaskStatus === 'HOAN_TAT' ? 'Mở lại phiếu' : 'Hoàn tất phiếu';
-  setMessage(`Phiếu ${task.ten_congviec || task.macongviec}: ${taskProgressText()}. Thứ tự dòng được giữ nguyên trên mọi máy.`, currentTaskStatus === 'HOAN_TAT' ? 'ok' : '');
+  const label = isMulti ? 'xử lý nhiều vị trí' : 'bày mẫu';
+  setMessage(`Phiếu ${task.ten_congviec || task.macongviec} (${label}): ${taskProgressText()}. Thứ tự dòng được giữ nguyên trên mọi máy.`, currentTaskStatus === 'HOAN_TAT' ? 'ok' : '');
   subscribeTaskRealtime();
 }
 
 async function saveCurrentResultAsTask() {
   if (!isAdmin) return;
-  if (tableMode !== 'unshown' || !currentResultRows.length) {
-    setMessage('Hãy mở kết quả hàng chưa bày mẫu hoặc kết quả so sánh trước khi lưu giao việc.', 'warn');
+
+  const isMulti = tableMode === 'multi' && currentMultiResultRows.length;
+  const isUnshown = tableMode === 'unshown' && currentResultRows.length;
+  if (!isMulti && !isUnshown) {
+    setMessage('Hãy mở kết quả hàng chưa bày mẫu, so sánh phiên hoặc bày nhiều vị trí trước khi lưu giao việc.', 'warn');
     return;
   }
-  const suggested = currentResultContext?.source === 'SO_SANH_PHIEN'
-    ? `Bày mẫu so sánh ${currentSessionCode || ''}`
-    : `Bày mẫu ${$('category-select').value || ''} ${$('group-select').value || ''}`.trim();
-  const name = prompt('Tên phiếu giao bày mẫu:', suggested);
+
+  const ctx = isMulti ? (currentMultiResultContext || {}) : (currentResultContext || {});
+  const suggested = isMulti
+    ? `Xử lý nhiều vị trí ${currentSessionCode || ''}`
+    : currentResultContext?.source === 'SO_SANH_PHIEN'
+      ? `Bày mẫu so sánh ${currentSessionCode || ''}`
+      : `Bày mẫu ${$('category-select').value || ''} ${$('group-select').value || ''}`.trim();
+  const name = prompt('Tên phiếu giao việc:', suggested);
   if (name === null) return;
+
+  const rows = isMulti
+    ? currentMultiResultRows.map(x => ({
+        masp: x.masp,
+        ton: 0,
+        vitrikho: '',
+        vitri_hien_co: x.vitri_hien_co || '',
+        vitri_chuan: x.vitri_chuan || ''
+      }))
+    : currentResultRows.map(x => ({
+        masp:x.masp,
+        ton:Number(x.ton||0),
+        vitrikho:x.vitrikho||'',
+        vitri_hien_co:'',
+        vitri_chuan:''
+      }));
+
   try {
-    const ctx = currentResultContext || {};
     const { data, error } = await supabase.rpc('kbm_admin_create_task', {
       p_coso: currentCoSo,
-      p_ten_congviec: normalizeText(name) || suggested || 'Phiếu bày mẫu',
-      p_nguon: ctx.source || 'HANG_CHUA_BAY',
+      p_ten_congviec: normalizeText(name) || suggested || 'Phiếu công việc bày mẫu',
+      p_nguon: isMulti ? 'NHIEU_VI_TRI' : (ctx.source || 'HANG_CHUA_BAY'),
       p_phien_nguon_id: ctx.phien_id || currentSessionId,
       p_tu_ngay: ctx.from || null,
       p_den_ngay: ctx.to || null,
       p_chungloai: ctx.chungloai || null,
       p_nhomhang: ctx.nhomhang || null,
-      p_rows: currentResultRows.map(x => ({ masp:x.masp, ton:Number(x.ton||0), vitrikho:x.vitrikho||'' }))
+      p_rows: rows
     });
     if (error) throw error;
     setMessage(`Đã tạo phiếu ${data.macongviec} gồm ${data.so_dong} mã.`, 'ok');
   } catch (err) {
-    setMessage(`Không lưu được phiếu giao bày mẫu: ${err.message || err}`, 'err');
+    setMessage(`Không lưu được phiếu giao việc: ${err.message || err}`, 'err');
   }
 }
 
@@ -892,10 +990,10 @@ async function showTaskList() {
     $('task-list').innerHTML = rows.length ? rows.map(t => `
       <div class="session-row task-list-row" data-id="${t.id}">
         <div></div><div class="session-main">
-          <div class="session-title">${t.ten_congviec} · ${t.da_bay}/${t.tong_dong}${t.trangthai==='HOAN_TAT' ? ' · HOÀN TẤT' : ''}</div>
+          <div class="session-title">${t.nguon === 'NHIEU_VI_TRI' ? '[Nhiều vị trí] ' : '[Chưa bày] '}${t.ten_congviec} · ${t.da_bay}/${t.tong_dong}${t.trangthai==='HOAN_TAT' ? ' · HOÀN TẤT' : ''}</div>
           <div class="session-meta">${t.macongviec} · ${t.ngay_tao} · ${t.tennv_tao || ''}</div>
         </div>
-      </div>`).join('') : '<div>Chưa có phiếu giao bày mẫu.</div>';
+      </div>`).join('') : '<div>Chưa có phiếu công việc bày mẫu.</div>';
     $('task-list').querySelectorAll('.task-list-row').forEach(el => el.addEventListener('click', () => loadTask(el.dataset.id)));
     $('task-modal').classList.add('show');
   } catch (err) { setMessage(`Không tải được danh sách công việc: ${err.message || err}`, 'err'); }
@@ -910,6 +1008,33 @@ async function loadTask(id) {
     closeTaskModal();
     showTaskTable(data, data.rows || []);
   } catch (err) { setMessage(`Không mở được phiếu: ${err.message || err}`, 'err'); }
+}
+
+async function updateTaskStandardPosition(rowIndex, newValue, oldValue) {
+  if (currentTaskType !== 'NHIEU_VI_TRI') return;
+  const row = hot.getSourceDataAtRow(rowIndex);
+  if (!row?.id || !currentTaskId) return;
+  try {
+    const { data, error } = await supabase.rpc('kbm_set_task_item_standard_position', {
+      p_chitiet_id: row.id,
+      p_congviec_id: currentTaskId,
+      p_coso: currentCoSo,
+      p_vitri_chuan: normalizeText(newValue)
+    });
+    if (error) throw error;
+    Object.assign(row, data);
+    currentTaskRows[rowIndex] = row;
+    suppressTaskChange = true;
+    hot.setDataAtRowProp(rowIndex, 'vitri_chuan', data.vitri_chuan || '', 'rpc');
+    suppressTaskChange = false;
+    hot.render();
+    setMessage(`${data.masp}: vị trí chuẩn ${data.vitri_chuan || 'chưa chọn'}.`, 'ok');
+  } catch (err) {
+    suppressTaskChange = true;
+    hot.setDataAtRowProp(rowIndex, 'vitri_chuan', oldValue || '', 'rpc');
+    suppressTaskChange = false;
+    setMessage(`Không lưu được vị trí chuẩn: ${err.message || err}`, 'err');
+  }
 }
 
 async function updateTaskItem(rowIndex, done) {
@@ -929,7 +1054,8 @@ async function updateTaskItem(rowIndex, done) {
     hot.setDataAtRowProp(rowIndex, 'da_baymau', data.da_baymau, 'rpc');
     suppressTaskChange = false;
     hot.render();
-    setMessage(`${data.masp}: ${data.da_baymau ? 'đã bày bởi ' + (data.baymau_tennv || data.baymau_manv || '') + ' lúc ' + (data.baymau_at || '') : 'đã bỏ đánh dấu'}. Tiến độ ${taskProgressText()}.`, 'ok');
+    const actionText = currentTaskType === 'NHIEU_VI_TRI' ? 'đã xử lý' : 'đã bày';
+    setMessage(`${data.masp}: ${data.da_baymau ? actionText + ' bởi ' + (data.baymau_tennv || data.baymau_manv || '') + ' lúc ' + (data.baymau_at || '') : 'đã bỏ đánh dấu'}. Tiến độ ${taskProgressText()}.`, 'ok');
   } catch (err) {
     suppressTaskChange = true;
     hot.setDataAtRowProp(rowIndex, 'da_baymau', !done, 'rpc');
@@ -952,10 +1078,15 @@ function subscribeTaskRealtime() {
       currentTaskRows[idx] = { ...currentTaskRows[idx], ...n,
         ton: currentTaskRows[idx].ton,
         vitrikho: currentTaskRows[idx].vitrikho,
+        vitri_hien_co: n.vitri_hien_co ?? currentTaskRows[idx].vitri_hien_co,
+        vitri_chuan: n.vitri_chuan ?? currentTaskRows[idx].vitri_chuan,
         baymau_at: n.baymau_at ? new Date(n.baymau_at).toLocaleString('vi-VN') : null
       };
       suppressTaskChange = true;
       hot.setDataAtRowProp(idx, 'da_baymau', !!n.da_baymau, 'realtime');
+      if (currentTaskType === 'NHIEU_VI_TRI') {
+        hot.setDataAtRowProp(idx, 'vitri_chuan', currentTaskRows[idx].vitri_chuan || '', 'realtime');
+      }
       suppressTaskChange = false;
       hot.render();
       setMessage(`Tiến độ phiếu ${currentTaskCode}: ${taskProgressText()}.`, 'ok');
@@ -967,7 +1098,7 @@ async function toggleTaskComplete() {
   const next = currentTaskStatus === 'HOAN_TAT' ? 'DANG_LAM' : 'HOAN_TAT';
   const total = currentTaskRows.length;
   const done = currentTaskRows.filter(r => r.da_baymau).length;
-  if (next === 'HOAN_TAT' && done < total && !confirm(`Phiếu còn ${total-done} mã chưa bày. Vẫn hoàn tất?`)) return;
+  if (next === 'HOAN_TAT' && done < total && !confirm(`Phiếu còn ${total-done} mã chưa ${currentTaskType === 'NHIEU_VI_TRI' ? 'xử lý' : 'bày'}. Vẫn hoàn tất?`)) return;
   try {
     const { data, error } = await supabase.rpc('kbm_admin_set_task_status', { p_congviec_id:currentTaskId, p_coso:currentCoSo, p_trangthai:next });
     if (error) throw error;
@@ -984,7 +1115,7 @@ async function saveBayMauToCatalog() {
     if (error) throw error;
     const conflicts = data?.conflicts || [];
     if (conflicts.length) {
-      showMultiLocationTable(conflicts.map((x) => ({ masp: x.masp, vitri_baymau: (x.positions || []).join(', ') })));
+      showMultiLocationTable(conflicts.map((x) => ({ masp: x.masp, vitri_hien_co: (x.positions || []).join(', '), vitri_chuan: '' })), { source: 'NHIEU_VI_TRI', phien_id: currentSessionId });
       setMessage(`Đã lưu ${data.updated_count || 0} mã có một vị trí. Còn ${conflicts.length} mã nhiều vị trí chưa được lưu.`, 'warn');
     } else {
       setMessage(`Đã lưu vị trí bày mẫu vào danh mục cho ${data.updated_count || 0} mã.`, 'ok');
@@ -1015,6 +1146,7 @@ function attachEvents() {
   $('btn-back-main').addEventListener('click', () => {
     unsubscribeTaskRealtime();
     currentTaskId = null;
+    currentTaskType = '';
     $('btn-task-complete').style.display = 'none';
     showScanTable(scanRowsForSave());
     setMessage('Đã trở lại bảng quét.', 'ok');
