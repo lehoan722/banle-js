@@ -174,7 +174,7 @@ function initTable() {
         setDirty(true);
         return;
       }
-      if (tableMode === 'task' && !suppressTaskChange && source !== 'realtime' && source !== 'rpc') {
+      if (tableMode === 'task' && !suppressTaskChange && source !== 'realtime' && source !== 'rpc' && source !== 'ui-checkbox') {
         for (const [row, prop, oldValue, newValue] of changes) {
           if (prop === 'da_baymau' && oldValue !== newValue) updateTaskItem(row, !!newValue);
           if (prop === 'vitri_chuan' && oldValue !== newValue) updateTaskStandardPosition(row, newValue, oldValue);
@@ -191,6 +191,26 @@ function initTable() {
       if (!coords || coords.row < 0) return;
       if (tableMode === 'task') {
         const row = this.getSourceDataAtRow(coords.row) || {};
+
+        // Xử lý checkbox chủ động để hoạt động ổn định trên cả iPhone và máy tính.
+        // Không phụ thuộc vào cơ chế toggle mặc định của Handsontable.
+        if (coords.col === 0) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (currentTaskStatus !== 'DANG_LAM') {
+            setMessage('Phiếu đã hoàn tất, không thể thay đổi.', 'warn');
+            return;
+          }
+
+          const nextValue = !Boolean(row.da_baymau);
+          suppressTaskChange = true;
+          this.setDataAtRowProp(coords.row, 'da_baymau', nextValue, 'ui-checkbox');
+          suppressTaskChange = false;
+          this.render();
+          updateTaskItem(coords.row, nextValue);
+          return;
+        }
 
         // Chạm vào cột Mã SP trong phiếu bày mẫu -> mở StockQuickPopup.
         // Không liên quan tới thao tác checkbox và không làm thay đổi thứ tự dòng.
@@ -885,12 +905,12 @@ function showTaskTable(task, rows) {
 
   const isMulti = currentTaskType === 'NHIEU_VI_TRI';
   const columns = isMulti ? [
-    { data: 'da_baymau', type: 'checkbox', width: 52, readOnly: currentTaskStatus !== 'DANG_LAM' },
+    { data: 'da_baymau', type: 'checkbox', checkedTemplate: true, uncheckedTemplate: false, width: 52, readOnly: currentTaskStatus !== 'DANG_LAM' },
     { data: 'masp', type: 'text', width: 135, readOnly: true },
     { data: 'vitri_hien_co', type: 'text', width: 190, readOnly: true },
     { data: 'vitri_chuan', type: 'dropdown', width: 120, readOnly: currentTaskStatus !== 'DANG_LAM' }
   ] : [
-    { data: 'da_baymau', type: 'checkbox', width: 48, readOnly: currentTaskStatus !== 'DANG_LAM' },
+    { data: 'da_baymau', type: 'checkbox', checkedTemplate: true, uncheckedTemplate: false, width: 48, readOnly: currentTaskStatus !== 'DANG_LAM' },
     { data: 'masp', type: 'text', width: 145, readOnly: true },
     { data: 'ton', type: 'numeric', width: 58, readOnly: true },
     { data: 'vitrikho', type: 'text', width: 105, readOnly: true }
