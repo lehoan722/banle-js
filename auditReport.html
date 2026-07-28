@@ -132,83 +132,6 @@
       background: #f8f9fa;
     }
 
-
-
-    .handsontable td.risk-very-high {
-      font-weight: 700;
-      color: #7a0019;
-      background: #ffd6dc !important;
-    }
-
-    #auditTimelineModal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 99999;
-    }
-
-    .audit-modal-backdrop {
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.38);
-    }
-
-    .audit-modal-panel {
-      position: absolute;
-      inset: 5vh 3vw;
-      background: #fff;
-      border-radius: 10px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
-    }
-
-    .audit-modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      border-bottom: 1px solid #ddd;
-      font-size: 18px;
-    }
-
-    .audit-timeline-summary {
-      padding: 10px 16px;
-      background: #f7f7f7;
-      border-bottom: 1px solid #ddd;
-    }
-
-    .audit-timeline-table-wrap {
-      overflow: auto;
-      flex: 1;
-    }
-
-    .audit-timeline-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    .audit-timeline-table th,
-    .audit-timeline-table td {
-      border: 1px solid #ddd;
-      padding: 7px;
-      text-align: left;
-      white-space: nowrap;
-    }
-
-    .audit-timeline-table th {
-      position: sticky;
-      top: 0;
-      background: #f1f3f4;
-      z-index: 2;
-    }
-
-    .audit-timeline-table .num {
-      text-align: right;
-    }
-
     @media (max-width: 800px) {
       .filters,
       .cards {
@@ -257,7 +180,7 @@
     </div>
 
     <div class="card">
-      Giảm từ đỉnh
+      Giá trị loại
       <div id="cLoai" class="value">0</div>
     </div>
 
@@ -269,12 +192,12 @@
 
   <p class="table-note">
     Bấm mũi tên ở tiêu đề cột để lọc; bấm tiêu đề để sắp xếp.
-    Mỗi dòng là một hóa đơn. Bấm đúp vào dòng để xem toàn bộ lịch sử thao tác.
+    Các dòng cùng một số hóa đơn dùng chung màu nền.
   </p>
 
   <div id="auditHot" aria-label="Bảng giám sát thao tác bán hàng"></div>
 </main>
 
-<script type="module" src="./auditReport.js?v=2.2.0"></script>
+<script type="module" src="./auditReport.js?v=2.1.0"></script>
 </body>
 </html>
