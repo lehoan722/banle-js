@@ -15,6 +15,8 @@ let suppressRealtimeUntil = 0;
 let userClosedPanel = false;
 let restorePanelExpandedOnce = false;
 let autoRecheckRunning = false;
+let suggestedDeleteIds = new Set();
+let suggestedNeedCheckIds = new Set();
 
 function getCurrentCoso() {
   return String(
@@ -413,22 +415,45 @@ async function fetchCurrentSuggestionKeysByMasp(masp) {
   }
 }
 
-async function autoMarkOutdatedNewOrders(rows) {
-  if (!ctx?.supabase || !Array.isArray(rows) || !rows.length) return { changed: false, skippedMasps: [] };
-  if (autoRecheckRunning) return { changed: false, skippedMasps: [], busy: true };
+async function analyzeOutdatedOrders(rows) {
+  if (!ctx?.supabase || !Array.isArray(rows) || !rows.length) {
+    return {
+      deleteCandidateIds: [],
+      needStockCheckIds: [],
+      skippedMasps: []
+    };
+  }
+
+  if (autoRecheckRunning) {
+    return {
+      deleteCandidateIds: [],
+      needStockCheckIds: [],
+      skippedMasps: [],
+      busy: true
+    };
+  }
+
   autoRecheckRunning = true;
 
   try {
     const coso = getCurrentCoso();
 
+    // Chỉ phân tích dòng "mới" của cơ sở hiện tại.
+    // Không đụng tới dòng đang chuyển, đã tạo phiếu hoặc yêu cầu kiểm kho.
     const openRows = rows
       .filter(r =>
-        ["moi", "dang_chuyen", "da_tao_phieu", "yeu_cau_kiem_kho"].includes(String(r.trang_thai || "")) &&
+        String(r.trang_thai || "") === "moi" &&
         String(r.tu_coso || "").toLowerCase() === coso
       )
       .slice(0, 200);
 
-    if (!openRows.length) return { changed: false, skippedMasps: [] };
+    if (!openRows.length) {
+      return {
+        deleteCandidateIds: [],
+        needStockCheckIds: [],
+        skippedMasps: []
+      };
+    }
 
     const masps = Array.from(
       new Set(
@@ -438,8 +463,6 @@ async function autoMarkOutdatedNewOrders(rows) {
       )
     );
 
-    if (!masps.length) return { changed: false, skippedMasps: [] };
-
     const suggestionInfoByMasp = new Map();
     const skippedMasps = [];
 
@@ -447,157 +470,45 @@ async function autoMarkOutdatedNewOrders(rows) {
       const info = await fetchCurrentSuggestionKeysByMasp(masp);
 
       if (!info?.ok) {
-        skippedMasps.push({ masp, reason: info?.reason || "unknown" });
+        skippedMasps.push({
+          masp,
+          reason: info?.reason || "unknown"
+        });
         continue;
       }
 
       suggestionInfoByMasp.set(masp, info);
     }
 
-    const deleteNewIds = [];
-    const outdatedMovingIds = [];
-    const needCheckNewIds = [];
-    const needCheckMovingIds = [];
-    const restoreCheckIds = [];
+    const deleteCandidateIds = [];
+    const needStockCheckIds = [];
 
     openRows.forEach(r => {
       const id = Number(r.id);
       const masp = String(r.masp || "").trim().toUpperCase();
-      const status = String(r.trang_thai || "");
       const key = `${masp}|${normSize(r.size)}|${r.huong_chuyen}`;
 
       if (!id || !suggestionInfoByMasp.has(masp)) return;
 
       const info = suggestionInfoByMasp.get(masp);
 
-      // Nếu tồn đang âm: không kết luận lỗi thời, bắt kiểm kho
-      if (info?.hasNegative) {
-        if (status === "moi") {
-          needCheckNewIds.push(id);
-        }
-
-        if (["dang_chuyen", "da_tao_phieu"].includes(status)) {
-          needCheckMovingIds.push(id);
-        }
-
+      // Tồn âm: chỉ cảnh báo cần kiểm kho trên giao diện, không ghi DB.
+      if (info.hasNegative) {
+        needStockCheckIds.push(id);
         return;
       }
 
-      const stillNeeded = info.keys.has(key);
-
-      // Dòng yêu cầu kiểm kho: sau khi hết âm thì kiểm lại
-      if (status === "yeu_cau_kiem_kho") {
-        if (stillNeeded) {
-          restoreCheckIds.push(id);
-        } else {
-          deleteNewIds.push(id);
-        }
-        return;
-      }
-
-      if (stillNeeded) return;
-
-      // Dòng trạng thái "moi" không còn nằm trong danh sách gợi ý hiện tại
-      // thì đánh dấu lỗi thời để ẩn khỏi bảng.
-      if (status === "moi") {
-        deleteNewIds.push(id);
-        return;
-      }
-
-      // Dòng đã thao tác chuyển thì giữ lại để cảnh báo
-      if (["dang_chuyen", "da_tao_phieu"].includes(status)) {
-        outdatedMovingIds.push(id);
+      // Không còn nằm trong gợi ý hiện tại: đề xuất tick cột Xóa.
+      if (!info.keys.has(key)) {
+        deleteCandidateIds.push(id);
       }
     });
 
-    const now = new Date().toISOString();
-    let changed = false;
-
-    if (deleteNewIds.length) {
-      const { error } = await ctx.supabase.rpc("dhck_mark_outdated", {
-        p_ids: deleteNewIds
-      });
-
-      if (error) {
-        console.warn("[Đặt hàng CK] Không đánh dấu lỗi thời:", error);
-      } else {
-        changed = true;
-      }
-    }
-
-    if (outdatedMovingIds.length) {
-      const { error } = await ctx.supabase
-        .from("dat_hang_chuyen_kho")
-        .update({
-          trang_thai: "loi_thoi",
-          chon_chuyen: true,
-          updated_at: now
-        })
-        .in("id", outdatedMovingIds)
-        .in("trang_thai", ["dang_chuyen", "da_tao_phieu"]);
-
-      if (error) {
-        console.warn("[Đặt hàng CK] Không cập nhật được dòng đang chuyển lỗi thời:", error);
-      } else {
-        changed = true;
-      }
-    }
-
-    if (needCheckNewIds.length) {
-      const { error } = await ctx.supabase
-        .from("dat_hang_chuyen_kho")
-        .update({
-          trang_thai: "yeu_cau_kiem_kho",
-          chon_chuyen: false,
-          updated_at: now
-        })
-        .in("id", needCheckNewIds)
-        .eq("trang_thai", "moi");
-
-      if (error) {
-        console.warn("[Đặt hàng CK] Không cập nhật được dòng yêu cầu kiểm kho:", error);
-      } else {
-        changed = true;
-      }
-    }
-
-    if (needCheckMovingIds.length) {
-      const { error } = await ctx.supabase
-        .from("dat_hang_chuyen_kho")
-        .update({
-          trang_thai: "yeu_cau_kiem_kho",
-          chon_chuyen: true,
-          updated_at: now
-        })
-        .in("id", needCheckMovingIds)
-        .in("trang_thai", ["dang_chuyen", "da_tao_phieu"]);
-
-      if (error) {
-        console.warn("[Đặt hàng CK] Không cập nhật được dòng đang chuyển yêu cầu kiểm kho:", error);
-      } else {
-        changed = true;
-      }
-    }
-
-    if (restoreCheckIds.length) {
-      const { error } = await ctx.supabase
-        .from("dat_hang_chuyen_kho")
-        .update({
-          trang_thai: "moi",
-          chon_chuyen: false,
-          updated_at: now
-        })
-        .in("id", restoreCheckIds)
-        .eq("trang_thai", "yeu_cau_kiem_kho");
-
-      if (error) {
-        console.warn("[Đặt hàng CK] Không khôi phục được dòng yêu cầu kiểm kho:", error);
-      } else {
-        changed = true;
-      }
-    }
-
-    return { changed, skippedMasps };
+    return {
+      deleteCandidateIds,
+      needStockCheckIds,
+      skippedMasps
+    };
 
   } finally {
     autoRecheckRunning = false;
@@ -649,12 +560,15 @@ function renderRows(rows, allowMove) {
   return rows.map(r => {
     const outdatedMoving = isOutdatedMovingRow(r);
     const needStockCheck = isNeedStockCheckRow(r);
+    const suggestedDelete = suggestedDeleteIds.has(Number(r.id));
+    const suggestedNeedCheck = suggestedNeedCheckIds.has(Number(r.id));
 
     return `
-      <tr class="${allowMove ? "" : "dhck-readonly"} ${outdatedMoving ? "dhck-outdated-moving" : ""} ${needStockCheck ? "dhck-need-stock-check" : ""}">
+      <tr class="${allowMove ? "" : "dhck-readonly"} ${outdatedMoving ? "dhck-outdated-moving" : ""} ${needStockCheck ? "dhck-need-stock-check" : ""} ${suggestedDelete ? "dhck-suggested-delete" : ""} ${suggestedNeedCheck ? "dhck-suggested-need-check" : ""}">
         <td style="text-align:center;">
           <input type="checkbox" class="dhck-delete-check"
             ${allowMove ? "" : "disabled"}
+            ${suggestedDelete ? "checked" : ""}
             data-id="${r.id}">
         </td>
 
@@ -685,7 +599,7 @@ function renderRows(rows, allowMove) {
         </td>
 
         <td class="dhck-status-cell">
-         ${needStockCheck ? "Yêu cầu kiểm kho" : outdatedMoving ? "Lỗi thời - trả lại kho" : statusText(r.trang_thai)}
+         ${suggestedNeedCheck ? "Đề xuất kiểm kho" : suggestedDelete ? "Đề xuất xóa" : needStockCheck ? "Yêu cầu kiểm kho" : outdatedMoving ? "Lỗi thời - trả lại kho" : statusText(r.trang_thai)}
         </td>
       </tr>
     `;
@@ -881,6 +795,22 @@ function bindDeleteCheckAll(box) {
         ".dhck-delete-check:not(:disabled)"
       ).forEach(checkbox => {
         checkbox.checked = checked;
+
+        const id = Number(checkbox.dataset.id);
+        const row = checkbox.closest("tr");
+        const statusCell = row?.querySelector(".dhck-status-cell");
+
+        if (checked) {
+          suggestedDeleteIds.add(id);
+          row?.classList.add("dhck-suggested-delete");
+          if (statusCell) statusCell.textContent = "Đề xuất xóa";
+        } else {
+          suggestedDeleteIds.delete(id);
+          row?.classList.remove("dhck-suggested-delete");
+          if (statusCell?.textContent === "Đề xuất xóa") {
+            statusCell.textContent = "Mới";
+          }
+        }
       });
 
       checkAll.indeterminate = false;
@@ -899,6 +829,21 @@ function bindDeleteCheckAll(box) {
     checkbox.dataset.deleteBound = "1";
 
     checkbox.addEventListener("change", () => {
+      const id = Number(checkbox.dataset.id);
+      const row = checkbox.closest("tr");
+      const statusCell = row?.querySelector(".dhck-status-cell");
+
+      if (checkbox.checked) {
+        suggestedDeleteIds.add(id);
+      } else {
+        suggestedDeleteIds.delete(id);
+        row?.classList.remove("dhck-suggested-delete");
+
+        if (statusCell && statusCell.textContent === "Đề xuất xóa") {
+          statusCell.textContent = "Mới";
+        }
+      }
+
       updateDeleteCheckAllState(box);
     });
   });
@@ -1007,12 +952,11 @@ async function showPanel(allRows) {
     <div style="text-align:right;margin:6px 0;">
   <button
     id="dhck-recheck-outdated"
-    title="Tính lại toàn bộ đặt hàng theo tồn kho hiện tại và ẩn các dòng không còn cần chuyển"
+    title="Phân tích theo tồn kho hiện tại và tick tạm cột Xóa; chưa thay đổi dữ liệu"
   >
     Kiểm tra lỗi thời ngay
   </button>
 
-  ${isAdmin ? `<button id="dhck-delete-outdated">Xóa lỗi thời</button>` : ""}
   ${isAdmin ? `<button id="dhck-delete">Xóa đặt hàng</button>` : ""}
 
   <button id="dhck-create-ccn">Tạo hóa đơn CCN</button>
@@ -1071,6 +1015,18 @@ async function showPanel(allRows) {
 
 #dhck-panel tr.dhck-need-stock-check .dhck-masp-link {
   color:#7a4b00 !important;
+}
+
+#dhck-panel tr.dhck-suggested-delete td {
+  background:#ffe0e0 !important;
+  color:#9b0000 !important;
+  font-weight:700;
+}
+
+#dhck-panel tr.dhck-suggested-need-check td {
+  background:#fff3b0 !important;
+  color:#7a4b00 !important;
+  font-weight:700;
 }
 
 #dhck-panel thead th {
@@ -1261,10 +1217,6 @@ async function showPanel(allRows) {
     deleteCheckedOrders(box, canMove);
   });
 
-  box.querySelector("#dhck-delete-outdated")?.addEventListener("click", () => {
-    deleteOutdatedMovingOrders(box, canMove);
-  });
-
   document.addEventListener("keydown", function esc(e) {
     if (e.key === "Escape" && document.getElementById("dhck-panel")) {
       popupOpen = false;
@@ -1417,7 +1369,7 @@ async function manualRecheckOutdatedOrders(box, canMove) {
 
   const confirmed = confirm(
     "Bạn có chắc muốn kiểm tra lại các đặt hàng theo tồn kho hiện tại?\n\n" +
-    "Chỉ những dòng được hệ thống xác định không còn cần chuyển mới được đánh dấu lỗi thời và ẩn khỏi danh sách."
+    "Hệ thống chỉ ĐỀ XUẤT bằng cách tick cột Xóa. Không có dữ liệu nào bị đổi trạng thái hoặc bị xóa ở bước này."
   );
 
   if (!confirmed) return;
@@ -1432,69 +1384,70 @@ async function manualRecheckOutdatedOrders(box, canMove) {
     button.textContent = "Đang kiểm tra...";
   }
 
-  const oldCount = Array.isArray(canMove) ? canMove.length : 0;
-
   try {
-    // Chỉ tại thao tác thủ công này mới được phép thay đổi trạng thái lỗi thời.
-    const recheckResult = await autoMarkOutdatedNewOrders(canMove || []);
-    const changed = recheckResult?.changed === true;
-    const skippedMasps = Array.isArray(recheckResult?.skippedMasps)
-      ? recheckResult.skippedMasps
+    const result = await analyzeOutdatedOrders(canMove || []);
+
+    if (result?.busy) {
+      alert("Hệ thống đang có một lượt kiểm tra khác. Vui lòng thử lại.");
+      return;
+    }
+
+    suggestedDeleteIds = new Set(
+      (result?.deleteCandidateIds || []).map(Number).filter(Boolean)
+    );
+
+    suggestedNeedCheckIds = new Set(
+      (result?.needStockCheckIds || []).map(Number).filter(Boolean)
+    );
+
+    // Bỏ mọi tick Xóa cũ rồi tick lại đúng danh sách hệ thống vừa đề xuất.
+    box.querySelectorAll(".dhck-delete-check:not(:disabled)").forEach(input => {
+      const id = Number(input.dataset.id);
+      input.checked = suggestedDeleteIds.has(id);
+    });
+
+    // Tô màu và cập nhật trạng thái tạm ngay trên bảng hiện tại.
+    box.querySelectorAll(".dhck-delete-check:not(:disabled)").forEach(input => {
+      const id = Number(input.dataset.id);
+      const row = input.closest("tr");
+      const statusCell = row?.querySelector(".dhck-status-cell");
+
+      row?.classList.toggle("dhck-suggested-delete", suggestedDeleteIds.has(id));
+      row?.classList.toggle("dhck-suggested-need-check", suggestedNeedCheckIds.has(id));
+
+      if (statusCell) {
+        if (suggestedDeleteIds.has(id)) {
+          statusCell.textContent = "Đề xuất xóa";
+        } else if (suggestedNeedCheckIds.has(id)) {
+          statusCell.textContent = "Đề xuất kiểm kho";
+        }
+      }
+    });
+
+    bindDeleteCheckAll(box);
+    updateDeleteCheckAllState(box);
+
+    const skippedMasps = Array.isArray(result?.skippedMasps)
+      ? result.skippedMasps
       : [];
 
-    // Sau khi kiểm tra xong mới tải lại danh sách.
-    // fetchOrders() hiện chỉ SELECT, không tự động sửa dữ liệu.
-    const rowsAfterCheck = await fetchOrders();
-
-    const coso = getCurrentCoso();
-
-    const canMoveAfter = (rowsAfterCheck || []).filter(
-      row =>
-        String(row.tu_coso || "")
-          .trim()
-          .toLowerCase() === coso
-    );
-
-    const hiddenCount = Math.max(0, oldCount - canMoveAfter.length);
-
-    popupOpen = false;
-    document.getElementById("dhck-panel")?.remove();
-
-    userClosedPanel = false;
-    restorePanelExpandedOnce = true;
-
-    if (rowsAfterCheck.length) {
-      await showPanel(rowsAfterCheck);
-    }
-
     const skippedText = skippedMasps.length
-      ? `\n\n⚠️ Đã bỏ qua ${skippedMasps.length} mã do không đọc đủ dữ liệu tồn kho. Các mã này KHÔNG bị thay đổi trạng thái.`
+      ? `\nBỏ qua do thiếu dữ liệu: ${skippedMasps.length} mã.`
       : "";
 
-    if (changed && hiddenCount > 0) {
-      alert(
-        `✅ Đã kiểm tra xong.\n` +
-        `Đã đánh dấu và ẩn ${hiddenCount} dòng không còn cần chuyển kho.` +
-        skippedText
-      );
-    } else {
-      alert(
-        "✅ Đã kiểm tra xong.\n" +
-        "Không phát hiện thêm dòng đặt hàng lỗi thời." +
-        skippedText
-      );
-    }
+    alert(
+      "✅ Đã kiểm tra xong.\n\n" +
+      `Đề xuất xóa: ${suggestedDeleteIds.size} dòng.\n` +
+      `Đề xuất kiểm kho: ${suggestedNeedCheckIds.size} dòng.` +
+      skippedText +
+      "\n\nHãy xem lại các dòng đã được tick ở cột Xóa. " +
+      "Bỏ tick những dòng bạn muốn giữ, sau đó bấm “Xóa đặt hàng”.\n\n" +
+      "Chưa có dữ liệu nào bị thay đổi trong cơ sở dữ liệu."
+    );
 
   } catch (error) {
-    console.error(
-      "[Đặt hàng CK] Lỗi kiểm tra lỗi thời thủ công:",
-      error
-    );
-
-    alert(
-      "❌ Không thể kiểm tra lỗi thời lúc này.\n" +
-      "Vui lòng thử lại."
-    );
+    console.error("[Đặt hàng CK] Lỗi phân tích lỗi thời:", error);
+    alert("❌ Không thể kiểm tra lỗi thời lúc này. Vui lòng thử lại.");
 
   } finally {
     if (button?.isConnected) {
@@ -1626,6 +1579,11 @@ async function deleteCheckedOrders(box, canMove) {
     alert(
       `✅ Đã xóa thật ${deletedCount} dòng đặt hàng chuyển kho.`
     );
+
+    deleteIds.forEach(id => {
+      suggestedDeleteIds.delete(Number(id));
+      suggestedNeedCheckIds.delete(Number(id));
+    });
 
     popupOpen = false;
     document.getElementById("dhck-panel")?.remove();
