@@ -5,13 +5,46 @@ const money = value => Number(value || 0).toLocaleString("vi-VN");
 
 let hot = null;
 let hoveredRow = -1;
-let currentRows = [];
 
 function setDefaultDates() {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  $("tuNgay").value = start.toISOString().slice(0, 10);
-  $("denNgay").value = now.toISOString().slice(0, 10);
+
+  $("tuNgay").value = toDateInputValue(start);
+  $("denNgay").value = toDateInputValue(now);
+}
+
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getDateRangeIso() {
+  const startValue = $("tuNgay").value;
+  const endValue = $("denNgay").value;
+
+  if (!startValue || !endValue) {
+    throw new Error("Phải chọn đầy đủ từ ngày và đến ngày.");
+  }
+
+  const start = new Date(`${startValue}T00:00:00`);
+  const end = new Date(`${endValue}T00:00:00`);
+  end.setDate(end.getDate() + 1);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    throw new Error("Khoảng ngày không hợp lệ.");
+  }
+
+  if (start >= end) {
+    throw new Error("Từ ngày phải nhỏ hơn hoặc bằng đến ngày.");
+  }
+
+  return {
+    fromIso: start.toISOString(),
+    toIso: end.toISOString()
+  };
 }
 
 function normalizeRows(rows) {
@@ -40,23 +73,34 @@ function normalizeRows(rows) {
 
 function updateSummary(rows) {
   $("cTong").textContent = rows.length;
-  $("cBo").textContent = rows.filter(x => x.trangthai === "bo_huy").length;
+
+  $("cBo").textContent = rows.filter(
+    row => row.trangthai === "bo_huy"
+  ).length;
+
   $("cLoai").textContent = money(
-    rows.reduce((sum, x) => sum + Number(x.giam_tu_dinh || 0), 0)
+    rows.reduce(
+      (sum, row) => sum + Number(row.giam_tu_dinh || 0),
+      0
+    )
   );
-  $("cRisk").textContent = rows.filter(x =>
-    ["cao", "rat_cao"].includes(x.muc_rui_ro)
+
+  $("cRisk").textContent = rows.filter(
+    row => ["cao", "rat_cao"].includes(row.muc_rui_ro)
   ).length;
 }
 
 function getVisibleRows() {
   if (!hot) return [];
+
   const rows = [];
+
   for (let visualRow = 0; visualRow < hot.countRows(); visualRow++) {
     const physicalRow = hot.toPhysicalRow(visualRow);
     const row = hot.getSourceDataAtRow(physicalRow);
     if (row) rows.push(row);
   }
+
   return rows;
 }
 
@@ -68,10 +112,15 @@ function decorateCell(td, visualRow, prop) {
     "risk-very-high"
   );
 
-  if (visualRow === hoveredRow) td.classList.add("audit-row-hover");
+  if (visualRow === hoveredRow) {
+    td.classList.add("audit-row-hover");
+  }
 
   if (prop === "muc_rui_ro") {
-    const risk = String(hot?.getDataAtRowProp(visualRow, "muc_rui_ro") || "");
+    const risk = String(
+      hot?.getDataAtRowProp(visualRow, "muc_rui_ro") || ""
+    );
+
     if (risk === "rat_cao") td.classList.add("risk-very-high");
     else if (risk === "cao") td.classList.add("risk-high");
     else if (risk === "trung_binh") td.classList.add("risk-medium");
@@ -86,13 +135,16 @@ function textRenderer(instance, td, row, col, prop, value) {
 
 function dateRenderer(instance, td, row, col, prop, value) {
   Handsontable.renderers.TextRenderer.apply(this, arguments);
-  if (!value) td.textContent = "";
-  else {
+
+  if (!value) {
+    td.textContent = "";
+  } else {
     const date = new Date(value);
     td.textContent = Number.isNaN(date.getTime())
       ? String(value)
       : date.toLocaleString("vi-VN");
   }
+
   decorateCell(td, row, prop);
 }
 
@@ -125,16 +177,20 @@ function refreshAfterTableChange() {
 }
 
 function createOrUpdateTable(rows) {
-  currentRows = normalizeRows(rows);
+  const normalizedRows = normalizeRows(rows);
+
+  if (!window.Handsontable) {
+    throw new Error("Không tải được thư viện Handsontable.");
+  }
 
   if (hot) {
-    hot.loadData(currentRows);
+    hot.loadData(normalizedRows);
     refreshAfterTableChange();
     return;
   }
 
   hot = new Handsontable($("auditHot"), {
-    data: currentRows,
+    data: normalizedRows,
     columns: [
       { data: "bat_dau_at", title: "Bắt đầu", renderer: dateRenderer },
       { data: "luu_at", title: "Lưu lúc", renderer: dateRenderer },
@@ -173,11 +229,19 @@ function createOrUpdateTable(rows) {
     manualColumnResize: true,
     autoWrapRow: false,
     autoWrapCol: false,
-    licenseKey: window.HANDSONTABLE_LICENSE_KEY || "non-commercial-and-evaluation",
+    licenseKey:
+      window.HANDSONTABLE_LICENSE_KEY ||
+      "non-commercial-and-evaluation",
     afterInit: refreshAfterTableChange,
-    afterLoadData() { setTimeout(refreshAfterTableChange, 0); },
-    afterColumnSort() { setTimeout(refreshAfterTableChange, 0); },
-    afterFilter() { setTimeout(refreshAfterTableChange, 0); },
+    afterLoadData() {
+      setTimeout(refreshAfterTableChange, 0);
+    },
+    afterColumnSort() {
+      setTimeout(refreshAfterTableChange, 0);
+    },
+    afterFilter() {
+      setTimeout(refreshAfterTableChange, 0);
+    },
     afterOnCellMouseOver(event, coords) {
       if (coords.row < 0 || coords.row === hoveredRow) return;
       hoveredRow = coords.row;
@@ -230,17 +294,23 @@ function ensureTimelineModal() {
       </div>
     </div>
   `;
+
   document.body.appendChild(modal);
 
-  const close = () => { modal.style.display = "none"; };
+  const close = () => {
+    modal.style.display = "none";
+  };
+
   $("auditTimelineClose").addEventListener("click", close);
   modal.querySelector(".audit-modal-backdrop").addEventListener("click", close);
 }
 
 async function openTimeline(row) {
   ensureTimelineModal();
+
   const modal = $("auditTimelineModal");
   modal.style.display = "block";
+
   $("auditTimelineTitle").textContent = `Lịch sử: ${row.sohd}`;
   $("auditTimelineSummary").textContent = "Đang tải dữ liệu...";
   $("auditTimelineBody").innerHTML = "";
@@ -254,7 +324,9 @@ async function openTimeline(row) {
     .order("id", { ascending: true });
 
   if (error) {
-    $("auditTimelineSummary").textContent = `Không tải được timeline: ${error.message}`;
+    console.error("[AUDIT TIMELINE]", formatSupabaseError(error));
+    $("auditTimelineSummary").textContent =
+      `Không tải được timeline: ${error.message || "Lỗi không xác định"}`;
     return;
   }
 
@@ -265,48 +337,79 @@ async function openTimeline(row) {
     <b>Điểm:</b> ${row.diem_rui_ro} — ${row.muc_rui_ro}
   `;
 
-  $("auditTimelineBody").innerHTML = (data || []).map(x => `
+  $("auditTimelineBody").innerHTML = (data || []).map(item => `
     <tr>
-      <td>${new Date(x.event_at).toLocaleString("vi-VN")}</td>
-      <td><b>${x.hanhdong || ""}</b></td>
-      <td>${x.masp || ""}</td>
-      <td>${x.size || ""}</td>
-      <td>${x.soluong_truoc ?? ""}</td>
-      <td>${x.soluong_sau ?? ""}</td>
-      <td class="num">${money(x.tong_tien_tai_su_kien)}</td>
-      <td class="num">${Number(x.diem_rui_ro_phat_sinh || 0)}</td>
-      <td>${[x.lydo, x.source].filter(Boolean).join(" — ")}</td>
+      <td>${new Date(item.event_at).toLocaleString("vi-VN")}</td>
+      <td><b>${escapeHtml(item.hanhdong || "")}</b></td>
+      <td>${escapeHtml(item.masp || "")}</td>
+      <td>${escapeHtml(item.size || "")}</td>
+      <td>${item.soluong_truoc ?? ""}</td>
+      <td>${item.soluong_sau ?? ""}</td>
+      <td class="num">${money(item.tong_tien_tai_su_kien)}</td>
+      <td class="num">${Number(item.diem_rui_ro_phat_sinh || 0)}</td>
+      <td>${escapeHtml(
+        [item.lydo, item.source].filter(Boolean).join(" — ")
+      )}</td>
     </tr>
   `).join("");
 }
 
-async function loadData() {
-  const from = $("tuNgay").value + "T00:00:00";
-  const toDate = new Date($("denNgay").value + "T00:00:00");
-  toDate.setDate(toDate.getDate() + 1);
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
+function formatSupabaseError(error) {
+  return {
+    code: error?.code || null,
+    message: error?.message || String(error),
+    details: error?.details || null,
+    hint: error?.hint || null
+  };
+}
+
+async function loadData() {
   $("btnTai").disabled = true;
   $("btnTai").textContent = "Đang tải...";
+  $("loadStatus").textContent = "Đang tổng hợp dữ liệu Audit...";
 
   try {
-    let query = supabase
-      .from("v_banle_audit_hoadon")
-      .select("*")
-      .gte("bat_dau_at", from)
-      .lt("bat_dau_at", toDate.toISOString())
-      .order("bat_dau_at", { ascending: false })
-      .limit(2000);
+    const { fromIso, toIso } = getDateRangeIso();
 
-    if ($("diadiem").value) {
-      query = query.eq("diadiem", $("diadiem").value);
-    }
+    const { data, error } = await supabase.rpc(
+      "rpc_banle_audit_hoadon",
+      {
+        p_tu: fromIso,
+        p_den: toIso,
+        p_diadiem: $("diadiem").value || null,
+        p_limit: 2000
+      }
+    );
 
-    const { data, error } = await query;
     if (error) throw error;
+
     createOrUpdateTable(data || []);
+
+    $("loadStatus").textContent =
+      `Đã tải ${(data || []).length.toLocaleString("vi-VN")} dòng từ dữ liệu Audit.`;
   } catch (error) {
-    console.error("[AUDIT REPORT] Không tải được dữ liệu:", error);
-    alert("Không tải được dữ liệu: " + (error?.message || error));
+    const info = formatSupabaseError(error);
+
+    console.error("[AUDIT REPORT V2.1.1]", info);
+
+    $("loadStatus").textContent = "Tải dữ liệu thất bại.";
+
+    alert(
+      "Không tải được dữ liệu Audit.\n\n" +
+      `Mã lỗi: ${info.code || "không có"}\n` +
+      `Thông báo: ${info.message}\n` +
+      `Chi tiết: ${info.details || "không có"}\n` +
+      `Gợi ý: ${info.hint || "không có"}`
+    );
   } finally {
     $("btnTai").disabled = false;
     $("btnTai").textContent = "Tải dữ liệu";
