@@ -3,6 +3,11 @@ import {
   khoiTaoDangNhapDungChung,
   getCurrentUserInfo
 } from './authModule.js';
+import {
+  playSuccessBeep,
+  playAlertBeep,
+  setupBeepUnlockOnce
+} from './soundBeep.js';
 
 if (typeof window !== 'undefined') window.supabase = supabase;
 startSessionKeeper();
@@ -59,6 +64,19 @@ function setMessage(text, type = '') {
   const el = $('message');
   el.textContent = text;
   el.className = type;
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function playTripleAlertBeep() {
+  // soundBeep.js khóa beep lỗi trong khoảng 260ms để tránh chồng âm.
+  // Chờ 310ms giữa các lần để người dùng nghe rõ đủ 3 tiếng.
+  for (let i = 0; i < 3; i += 1) {
+    try { playAlertBeep(); } catch (_) { }
+    if (i < 2) await wait(310);
+  }
 }
 
 function focusScan(selectAll = false) {
@@ -495,6 +513,7 @@ async function handleScan() {
     const resolved = await resolveScannedMasp(scannedMasp);
     if (!resolved.ok) {
       setMessage(`Mã ${scannedMasp} không tồn tại trong danh mục hàng hóa.`, 'err');
+      void playTripleAlertBeep();
       $('scan-masp').value = '';
       return;
     }
@@ -510,11 +529,13 @@ async function handleScan() {
         : `Đã thêm ${masp} tại ${vitri}.`,
       'ok'
     );
+    try { playSuccessBeep(); } catch (_) { }
     $('scan-masp').value = '';
     hot.scrollViewportTo(0, 0);
   } catch (err) {
     console.error(err);
     setMessage(`Không kiểm tra được mã sản phẩm: ${err.message || err}`, 'err');
+    void playTripleAlertBeep();
   } finally {
     $('scan-masp').disabled = false;
     setTimeout(() => focusScan(), 0);
@@ -1416,6 +1437,7 @@ function attachEvents() {
 }
 
 (function initPage() {
+  try { setupBeepUnlockOnce(document); } catch (_) { }
   initTable();
   attachEvents();
   const today = new Date().toISOString().slice(0, 10);
