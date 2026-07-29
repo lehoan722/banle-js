@@ -438,11 +438,16 @@ async function analyzeOutdatedOrders(rows) {
   try {
     const coso = getCurrentCoso();
 
-    // Chỉ phân tích dòng "mới" của cơ sở hiện tại.
-    // Không đụng tới dòng đang chuyển, đã tạo phiếu hoặc yêu cầu kiểm kho.
+    // Phân tích cả dòng "mới" và dòng đã tick "đang chuyển"
+    // của cơ sở hiện tại. Đây chỉ là bước ĐỀ XUẤT trên giao diện,
+    // tuyệt đối không đổi trạng thái trong database.
+    // Không phân tích "da_tao_phieu" để tránh đề xuất xóa dòng
+    // đang thuộc một quy trình tạo phiếu chưa hoàn tất.
+    const analyzableStatuses = new Set(["moi", "dang_chuyen"]);
+
     const openRows = rows
       .filter(r =>
-        String(r.trang_thai || "") === "moi" &&
+        analyzableStatuses.has(String(r.trang_thai || "")) &&
         String(r.tu_coso || "").toLowerCase() === coso
       )
       .slice(0, 200);
@@ -564,7 +569,9 @@ function renderRows(rows, allowMove) {
     const suggestedNeedCheck = suggestedNeedCheckIds.has(Number(r.id));
 
     return `
-      <tr class="${allowMove ? "" : "dhck-readonly"} ${outdatedMoving ? "dhck-outdated-moving" : ""} ${needStockCheck ? "dhck-need-stock-check" : ""} ${suggestedDelete ? "dhck-suggested-delete" : ""} ${suggestedNeedCheck ? "dhck-suggested-need-check" : ""}">
+      <tr
+        data-original-status="${escAttr(String(r.trang_thai || "moi"))}"
+        class="${allowMove ? "" : "dhck-readonly"} ${outdatedMoving ? "dhck-outdated-moving" : ""} ${needStockCheck ? "dhck-need-stock-check" : ""} ${suggestedDelete ? "dhck-suggested-delete" : ""} ${suggestedNeedCheck ? "dhck-suggested-need-check" : ""}">
         <td style="text-align:center;">
           <input type="checkbox" class="dhck-delete-check"
             ${allowMove ? "" : "disabled"}
@@ -735,6 +742,32 @@ function bindMoveCheck(box) {
   });
 }
 
+function restoreTemporaryRowDisplay(row) {
+  if (!row) return;
+
+  const id = Number(
+    row.querySelector(".dhck-delete-check")?.dataset.id
+  );
+  const statusCell = row.querySelector(".dhck-status-cell");
+  const originalStatus = String(
+    row.dataset.originalStatus || "moi"
+  );
+
+  row.classList.remove("dhck-suggested-delete");
+
+  if (suggestedNeedCheckIds.has(id)) {
+    row.classList.add("dhck-suggested-need-check");
+    if (statusCell) statusCell.textContent = "Đề xuất kiểm kho";
+    return;
+  }
+
+  row.classList.remove("dhck-suggested-need-check");
+
+  if (statusCell) {
+    statusCell.textContent = statusText(originalStatus);
+  }
+}
+
 function updateDeleteCheckAllState(box) {
   if (!box) return;
 
@@ -806,10 +839,7 @@ function bindDeleteCheckAll(box) {
           if (statusCell) statusCell.textContent = "Đề xuất xóa";
         } else {
           suggestedDeleteIds.delete(id);
-          row?.classList.remove("dhck-suggested-delete");
-          if (statusCell?.textContent === "Đề xuất xóa") {
-            statusCell.textContent = "Mới";
-          }
+          restoreTemporaryRowDisplay(row);
         }
       });
 
@@ -835,13 +865,11 @@ function bindDeleteCheckAll(box) {
 
       if (checkbox.checked) {
         suggestedDeleteIds.add(id);
+        row?.classList.add("dhck-suggested-delete");
+        if (statusCell) statusCell.textContent = "Đề xuất xóa";
       } else {
         suggestedDeleteIds.delete(id);
-        row?.classList.remove("dhck-suggested-delete");
-
-        if (statusCell && statusCell.textContent === "Đề xuất xóa") {
-          statusCell.textContent = "Mới";
-        }
+        restoreTemporaryRowDisplay(row);
       }
 
       updateDeleteCheckAllState(box);
@@ -1369,7 +1397,7 @@ async function manualRecheckOutdatedOrders(box, canMove) {
 
   const confirmed = confirm(
     "Bạn có chắc muốn kiểm tra lại các đặt hàng theo tồn kho hiện tại?\n\n" +
-    "Hệ thống chỉ ĐỀ XUẤT bằng cách tick cột Xóa. Không có dữ liệu nào bị đổi trạng thái hoặc bị xóa ở bước này."
+    "Hệ thống sẽ kiểm tra cả dòng Mới và dòng Đang chuyển, sau đó chỉ ĐỀ XUẤT bằng cách tick cột Xóa. Không có dữ liệu nào bị đổi trạng thái hoặc bị xóa ở bước này."
   );
 
   if (!confirmed) return;
@@ -1420,6 +1448,10 @@ async function manualRecheckOutdatedOrders(box, canMove) {
           statusCell.textContent = "Đề xuất xóa";
         } else if (suggestedNeedCheckIds.has(id)) {
           statusCell.textContent = "Đề xuất kiểm kho";
+        } else {
+          // Khi chạy kiểm tra lần mới, phải trả các dòng không còn
+          // nằm trong đề xuất về đúng trạng thái gốc (Mới/Đang chuyển...).
+          restoreTemporaryRowDisplay(row);
         }
       }
     });
