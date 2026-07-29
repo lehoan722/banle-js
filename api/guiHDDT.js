@@ -26,11 +26,11 @@ const viettelAccounts = {
     templateCode: "2/001",
     endpoint:
 
-      // process.env.VIETTEL_CS1_ENDPOINT ||
-      // "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600370592",
+       process.env.VIETTEL_CS1_ENDPOINT ||
+       "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600370592",
 
-      process.env.VIETTEL_CS1_ENDPOINT ||
-      "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600370592",
+    //  process.env.VIETTEL_CS1_ENDPOINT ||
+    //  "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600370592",
 
 
     sellerInfo: {
