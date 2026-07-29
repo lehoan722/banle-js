@@ -310,42 +310,141 @@ function showUnshownTable(rows, context = null) {
   hot.render();
 }
 
-async function validateMasp(masp) {
+let cachedSizeSuffixes = null;
+
+function normalizeSizeSuffix(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/^SIZE\s*/i, '')
+    .replace(/\s+/g, '');
+}
+
+async function getSizeSuffixSet() {
+  if (cachedSizeSuffixes) return cachedSizeSuffixes;
+
+  const set = new Set([
+    '0', '38', '39', '40', '41', '42', '43', '44', '45', '46',
+    'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL',
+    '2X', '3X', '4X', '5X', '6X'
+  ]);
+
+  try {
+    const { data, error } = await supabase
+      .from('dm_size')
+      .select('size')
+      .limit(500);
+
+    if (!error) {
+      (data || []).forEach((row) => {
+        const raw = normalizeSizeSuffix(row?.size);
+        if (!raw) return;
+
+        // Danh mục size đôi khi chứa nhãn mở rộng như "40/L/50/175".
+        // Lưu cả chuỗi đầy đủ và từng thành phần để nhận mã vạch dạng _40, _L...
+        set.add(raw);
+        raw.split(/[,;\/|]+/).map(normalizeSizeSuffix).filter(Boolean).forEach((x) => set.add(x));
+      });
+    }
+  } catch (err) {
+    console.warn('[KBM] Không tải được dm_size, dùng danh sách size dự phòng:', err);
+  }
+
+  cachedSizeSuffixes = set;
+  return set;
+}
+
+async function findExactCatalogMasp(masp) {
+  const code = normalizeMasp(masp);
+  if (!code) return null;
+
   const { data, error } = await supabase
     .from('dmhanghoa')
     .select('masp')
-    .eq('masp', masp)
+    .eq('masp', code)
     .maybeSingle();
+
   if (error) throw error;
-  return !!data;
+  return data?.masp ? normalizeMasp(data.masp) : null;
+}
+
+/**
+ * Chuẩn hóa mã quét có hậu tố size.
+ * Ví dụ SC60403-9/DEN_40 -> SC60403-9/DEN.
+ * An toàn theo 2 bước:
+ * 1) Ưu tiên mã nguyên gốc nếu tồn tại trong dmhanghoa.
+ * 2) Chỉ bỏ hậu tố sau dấu _ cuối khi hậu tố là size hợp lệ
+ *    và mã phần trước thực sự tồn tại trong dmhanghoa.
+ */
+async function resolveScannedMasp(rawMasp) {
+  const scanned = normalizeMasp(rawMasp);
+  if (!scanned) return { ok: false, scanned, masp: '', size: '' };
+
+  const exact = await findExactCatalogMasp(scanned);
+  if (exact) return { ok: true, scanned, masp: exact, size: '', stripped: false };
+
+  const underscoreAt = scanned.lastIndexOf('_');
+  if (underscoreAt <= 0 || underscoreAt >= scanned.length - 1) {
+    return { ok: false, scanned, masp: '', size: '' };
+  }
+
+  const baseMasp = normalizeMasp(scanned.slice(0, underscoreAt));
+  const suffix = normalizeSizeSuffix(scanned.slice(underscoreAt + 1));
+  if (!baseMasp || !suffix) return { ok: false, scanned, masp: '', size: suffix };
+
+  const validSizes = await getSizeSuffixSet();
+  if (!validSizes.has(suffix)) {
+    return { ok: false, scanned, masp: '', size: suffix };
+  }
+
+  const baseExact = await findExactCatalogMasp(baseMasp);
+  if (!baseExact) return { ok: false, scanned, masp: '', size: suffix };
+
+  return {
+    ok: true,
+    scanned,
+    masp: baseExact,
+    size: suffix,
+    stripped: true
+  };
+}
+
+async function validateMasp(masp) {
+  return !!(await findExactCatalogMasp(masp));
 }
 
 async function handleScan() {
   if (tableMode !== 'scan') showScanTable(scanRowsForSave());
 
   const vitri = normalizeText($('current-location').value);
-  const masp = normalizeMasp($('scan-masp').value);
+  const scannedMasp = normalizeMasp($('scan-masp').value);
   if (!vitri) {
     setMessage('Bạn phải nhập vị trí bày mẫu trước khi quét.', 'warn');
     $('current-location').focus();
     return;
   }
-  if (!masp) return;
+  if (!scannedMasp) return;
 
   $('scan-masp').disabled = true;
   try {
-    const valid = await validateMasp(masp);
-    if (!valid) {
-      setMessage(`Mã ${masp} không tồn tại trong danh mục hàng hóa.`, 'err');
+    const resolved = await resolveScannedMasp(scannedMasp);
+    if (!resolved.ok) {
+      setMessage(`Mã ${scannedMasp} không tồn tại trong danh mục hàng hóa.`, 'err');
       $('scan-masp').value = '';
       return;
     }
 
+    const masp = resolved.masp;
     const rows = scanRowsForSave();
     rows.unshift({ id: null, masp, vitri_baymau: vitri });
     showScanTable(rows);
     setDirty(true);
-    setMessage(`Đã thêm ${masp} tại ${vitri}.`, 'ok');
+    setMessage(
+      resolved.stripped
+        ? `Đã nhận ${scannedMasp} là mã ${masp}, size ${resolved.size}; thêm tại ${vitri}.`
+        : `Đã thêm ${masp} tại ${vitri}.`,
+      'ok'
+    );
     $('scan-masp').value = '';
     hot.scrollViewportTo(0, 0);
   } catch (err) {
