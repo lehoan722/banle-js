@@ -1,4 +1,5 @@
 import { supabase, startSessionKeeper } from './supabaseClient.js';
+import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 import {
   khoiTaoDangNhapDungChung,
   getCurrentUserInfo
@@ -36,6 +37,17 @@ let suppressTaskChange = false;
 const $ = (id) => document.getElementById(id);
 const normalizeMasp = (v) => String(v || '').trim().toUpperCase();
 const normalizeText = (v) => String(v || '').trim();
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function playTripleErrorBeep() {
+  for (let i = 0; i < 3; i++) {
+    try { playAlertBeep(); } catch (_) {}
+    if (i < 2) await sleep(300);
+  }
+}
 
 function setMessage(text, type = '') {
   const el = $('message');
@@ -467,6 +479,7 @@ async function handleScan() {
   const scannedMasp = normalizeMasp($('scan-masp').value);
   if (!vitri) {
     setMessage('Bạn phải nhập vị trí bày mẫu trước khi quét.', 'warn');
+    playTripleErrorBeep();
     $('current-location').focus();
     return;
   }
@@ -477,6 +490,7 @@ async function handleScan() {
     const resolved = await resolveScannedMasp(scannedMasp);
     if (!resolved.ok) {
       setMessage(`Mã ${scannedMasp} không tồn tại trong danh mục hàng hóa.`, 'err');
+      playTripleErrorBeep();
       $('scan-masp').value = '';
       return;
     }
@@ -486,6 +500,7 @@ async function handleScan() {
     rows.unshift({ id: null, masp, vitri_baymau: vitri });
     showScanTable(rows);
     setDirty(true);
+    try { playSuccessBeep(); } catch (_) {}
     setMessage(
       resolved.stripped
         ? `Đã nhận ${scannedMasp} là mã ${masp}, size ${resolved.size}; thêm tại ${vitri}.`
@@ -496,6 +511,7 @@ async function handleScan() {
     hot.scrollViewportTo(0, 0);
   } catch (err) {
     console.error(err);
+    playTripleErrorBeep();
     setMessage(`Không kiểm tra được mã sản phẩm: ${err.message || err}`, 'err');
   } finally {
     $('scan-masp').disabled = false;
@@ -1399,6 +1415,7 @@ function attachEvents() {
 }
 
 (function initPage() {
+  try { setupBeepUnlockOnce(document); } catch (_) {}
   initTable();
   attachEvents();
   const today = new Date().toISOString().slice(0, 10);
