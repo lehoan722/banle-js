@@ -77,6 +77,7 @@ function updateHeader() {
 function updateActionAvailability() {
   const analysisIds = [
     'btn-load-stock-location',
+    'btn-load-display-location',
     'btn-multi-location',
     'btn-toggle-check',
     'btn-save-baymau',
@@ -125,6 +126,16 @@ function buildCellsRenderer(row, col) {
         args[1].style.background = '#fee2e2';
         args[1].style.color = '#b91c1c';
         args[1].style.fontWeight = '700';
+      }
+    };
+  }
+  if (tableMode === 'display-location') {
+    props.renderer = function (...args) {
+      Handsontable.renderers.TextRenderer.apply(this, args);
+      const rowData = args[0].getSourceDataAtRow(args[2]) || {};
+      if (rowData.baymau_mismatch) {
+        args[1].style.background = '#f3e8ff';
+        args[1].style.color = '#581c87';
       }
     };
   }
@@ -264,6 +275,42 @@ function showStockLocationTable(rows) {
     colHeaders: ['Mã SP', 'Vị trí bày', 'Vị trí kho'],
     cells: buildCellsRenderer,
     readOnly: true
+  });
+  hot.loadData(rows);
+  hot.render();
+}
+
+function normalizeDisplayPosition(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '');
+}
+
+function isDisplayPositionMatched(checkedPosition, catalogPosition) {
+  const checked = normalizeDisplayPosition(checkedPosition);
+  if (!checked) return !normalizeDisplayPosition(catalogPosition);
+
+  const allowed = String(catalogPosition || '')
+    .split(/[,;\n]+/)
+    .map(normalizeDisplayPosition)
+    .filter(Boolean);
+
+  return allowed.includes(checked);
+}
+
+function showDisplayLocationTable(rows) {
+  tableMode = 'display-location';
+  hot.updateSettings({
+    columns: [
+      { data: 'masp', type: 'text', width: 150, readOnly: true },
+      { data: 'vitri_baymau', type: 'text', width: 140, readOnly: true },
+      { data: 'vitri_baymau_dm', type: 'text', width: 150, readOnly: true }
+    ],
+    colHeaders: ['Mã SP', 'Vị trí đang kiểm', 'Vị trí mẫu trong danh mục'],
+    cells: buildCellsRenderer,
+    readOnly: true,
+    columnSorting: false
   });
   hot.loadData(rows);
   hot.render();
@@ -604,6 +651,48 @@ async function loadStockLocations() {
     setMessage(`Đã tải vị trí kho ${currentCoSo.toUpperCase()} cho ${rows.length} dòng.`, 'ok');
   } catch (err) {
     setMessage(`Không tải được vị trí kho: ${err.message || err}`, 'err');
+  }
+}
+
+async function loadDisplayLocations() {
+  if (!requireSaved()) return;
+  const rows = scanRowsForSave();
+  const unique = Array.from(new Set(rows.map((r) => r.masp)));
+  const field = currentCoSo === 'cs2' ? 'treomaucs2' : 'treomaucs1';
+  const map = new Map();
+
+  try {
+    for (let i = 0; i < unique.length; i += 400) {
+      const chunk = unique.slice(i, i + 400);
+      const { data, error } = await supabase
+        .from('dmhanghoa')
+        .select(`masp,${field}`)
+        .in('masp', chunk);
+      if (error) throw error;
+      (data || []).forEach((r) => {
+        map.set(normalizeMasp(r.masp), normalizeText(r[field]));
+      });
+    }
+
+    const comparedRows = rows.map((r) => {
+      const catalogPosition = map.get(r.masp) || '';
+      return {
+        ...r,
+        vitri_baymau_dm: catalogPosition,
+        baymau_mismatch: !isDisplayPositionMatched(r.vitri_baymau, catalogPosition)
+      };
+    });
+
+    const mismatchCount = comparedRows.filter((r) => r.baymau_mismatch).length;
+    showDisplayLocationTable(comparedRows);
+
+    if (mismatchCount > 0) {
+      setMessage(`Đã tải vị trí bày mẫu ${currentCoSo.toUpperCase()} cho ${rows.length} dòng. Có ${mismatchCount} dòng lệch chuẩn được tô tím nhạt.`, 'warn');
+    } else {
+      setMessage(`Đã tải vị trí bày mẫu ${currentCoSo.toUpperCase()} cho ${rows.length} dòng. Tất cả vị trí đều khớp.`, 'ok');
+    }
+  } catch (err) {
+    setMessage(`Không tải được vị trí bày mẫu: ${err.message || err}`, 'err');
   }
 }
 
@@ -1256,6 +1345,7 @@ function attachEvents() {
   $('btn-save').addEventListener('click', saveSession);
   $('btn-load-session').addEventListener('click', showLoadSessions);
   $('btn-load-stock-location').addEventListener('click', loadStockLocations);
+  $('btn-load-display-location').addEventListener('click', loadDisplayLocations);
   $('btn-multi-location').addEventListener('click', showMultiLocations);
   $('btn-run-unshown').addEventListener('click', runUnshown);
   $('group-picker').addEventListener('change', appendSelectedGroup);
