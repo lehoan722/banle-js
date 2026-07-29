@@ -51,11 +51,11 @@ const viettelAccounts = {
     invoiceSeries: "C25MAT",
     templateCode: "2/001",
     endpoint:
-         process.env.VIETTEL_CS2_ENDPOINT ||
-        "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600960665",
+      //   process.env.VIETTEL_CS2_ENDPOINT ||
+      //  "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600960665",
 
-   //   process.env.VIETTEL_CS2_ENDPOINT ||
-    //  "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
+      process.env.VIETTEL_CS2_ENDPOINT ||
+      "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
 
 
     sellerInfo: {
@@ -595,18 +595,38 @@ async function loadInvoice(sohd) {
 
 function buildBuyerInfo(hoadon, khach) {
   /*
-   * Ưu tiên dữ liệu lấy từ dmkhachhang.
-   * Chỉ dùng dữ liệu trên hóa đơn khi không có dữ liệu danh mục.
+   * QUY TẮC GỬI THÔNG TIN NGƯỜI MUA:
+   * - Chỉ khi có mã số thuế mới gửi đầy đủ thông tin người mua.
+   * - Nếu không có mã số thuế, luôn gửi dưới dạng
+   *   "Bán cho người tiêu dùng", kể cả hóa đơn bán lẻ có tên khách.
    */
+  const buyerTaxCode = cleanText(
+    khach?.mst ||
+    hoadon?.mstkhach
+  );
+
+  if (!buyerTaxCode) {
+    return {
+      sohd: hoadon.sohd,
+
+      buyerName: "Bán cho người tiêu dùng",
+      buyerLegalName: "Bán cho người tiêu dùng",
+
+      buyerTaxCode: "",
+      buyerAddressLine: "",
+      buyerPhoneNumber: "",
+      buyerEmail: "",
+
+      buyerIdNo: "",
+      buyerIdType: "",
+      buyerBudgetCode: ""
+    };
+  }
+
   const buyerName = cleanText(
     khach?.tenkh ||
     hoadon?.tenkhach ||
     hoadon?.khachhang
-  );
-
-  const buyerTaxCode = cleanText(
-    khach?.mst ||
-    hoadon?.mstkhach
   );
 
   const buyerAddress = cleanText(
@@ -631,24 +651,11 @@ function buildBuyerInfo(hoadon, khach) {
     hoadon?.sodinhdanhkhach
   );
 
-  const hasCustomerInformation =
-    !!khach ||
-    !isRetailCustomerText(buyerName) ||
-    !!buyerTaxCode ||
-    !!buyerAddress ||
-    !!buyerPhone ||
-    !!buyerEmail ||
-    !!buyerIdNo;
-
-  const displayName = hasCustomerInformation
-    ? buyerName || "Bán cho người tiêu dùng"
-    : "Bán cho người tiêu dùng";
-
   return {
     sohd: hoadon.sohd,
 
-    buyerName: displayName,
-    buyerLegalName: displayName,
+    buyerName,
+    buyerLegalName: buyerName,
 
     buyerTaxCode,
     buyerAddressLine: buyerAddress,
