@@ -509,6 +509,35 @@ function requireManagedInTransfer(masp) {
 }
 
 // === BANLE MT HELPERS: xác định bối cảnh bán lẻ MT & gợi ý size từ hóa đơn nhân viên ===
+
+// ===== TỰ ĐỘNG NẠP ĐẦY ĐỦ THÔNG TIN KHÁCH HÀNG =====
+// Giả lập đúng thao tác người dùng đứng tại ô mã khách rồi nhấn Enter.
+// dmkhachhang_diem.js sẽ tiếp nhận để nạp điểm, hạng khách,
+// trạng thái Zalo và các thông tin liên quan.
+function tuDongNapDayDuKhachHangSauKhiGanMa(delayMs = 100) {
+    const makhEl = document.getElementById("makh");
+    if (!makhEl) return;
+
+    const makh = String(makhEl.value || "").trim().toUpperCase();
+    if (!makh || makh === "KL") return;
+
+    setTimeout(() => {
+        const makhHienTai = String(makhEl.value || "").trim().toUpperCase();
+        if (!makhHienTai || makhHienTai === "KL") return;
+
+        makhEl.dispatchEvent(
+            new KeyboardEvent("keydown", {
+                key: "Enter",
+                code: "Enter",
+                keyCode: 13,
+                which: 13,
+                bubbles: true,
+                cancelable: true
+            })
+        );
+    }, delayMs);
+}
+
 function isBanLeMTMode() {
     const p = (location.pathname || "").toLowerCase();
     const loai = (window.loaihd || "").toLowerCase();
@@ -556,18 +585,17 @@ function autoGoiYSizeNeuOTrong(maspBaseNow) {
             const sizeValue = String(sizeGoiY.size).trim();
             sizeInput.value = sizeValue;
 
-            // 🔥 GÁN KHÁCH HÀNG
+            // 🔥 GÁN MÃ VÀ TÊN KHÁCH HÀNG
             if (sizeGoiY.makh || sizeGoiY.tenkh) {
                 const makhEl = document.getElementById("makh");
                 const tenEl = document.getElementById("khachhang");
 
-                if (makhEl) makhEl.value = sizeGoiY.makh || "";
-                if (tenEl) tenEl.value = sizeGoiY.tenkh || "";
+                if (makhEl) {
+                    makhEl.value = sizeGoiY.makh || "";
+                }
 
-                // Chỉ trigger load điểm khi có mã khách.
-                // Nếu makh rỗng mà vẫn trigger thì module khách có thể xóa trắng tên khách.
-                if (sizeGoiY.makh) {
-                    makhEl?.dispatchEvent(new Event("change", { bubbles: true }));
+                if (tenEl) {
+                    tenEl.value = sizeGoiY.tenkh || "";
                 }
             }
 
@@ -581,6 +609,12 @@ function autoGoiYSizeNeuOTrong(maspBaseNow) {
             } else {
                 // Chế độ bình thường: thêm xong reset về #masp
                 themVaoBang(sizeValue);
+            }
+
+            // Sau khi sản phẩm đã được đưa xuống bảng,
+            // tự động thực hiện hành động giống nhấn Enter tại ô mã khách.
+            if (sizeGoiY.makh) {
+                tuDongNapDayDuKhachHangSauKhiGanMa(100);
             }
 
             // Không cần focus/select #size nữa vì themVaoBang đã xử lý focus phù hợp
@@ -656,14 +690,18 @@ export async function chuyenFocus(e) {
                     const tenEl = document.getElementById("khachhang");
 
                     if (makhEl && kh.makh) {
-
                         makhEl.value = kh.makh || "";
-                        tenEl.value = kh.tenkh || "";
 
-                        // Trigger toàn bộ logic load điểm hiện tại
-                        makhEl.dispatchEvent(
-                            new Event("change", { bubbles: true })
-                        );
+                        if (tenEl) {
+                            tenEl.value = kh.tenkh || "";
+                        }
+
+                        /*
+                         * Phần xử lý phía dưới sẽ tiếp tục thêm sản phẩm xuống bảng.
+                         * Sau 100 ms, tự phát Enter tại ô mã khách để nạp điểm,
+                         * hạng khách và trạng thái Zalo.
+                         */
+                        tuDongNapDayDuKhachHangSauKhiGanMa(100);
                     }
                 }
 
