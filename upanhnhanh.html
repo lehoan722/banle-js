@@ -820,50 +820,58 @@
 
 
     function drawBottomLeftTag(ctx, w, h, masp, manv) {
-      const pad = Math.max(10, Math.round(Math.min(w, h) * 0.02)); // ~2%
-      const lineGap = Math.max(6, Math.round(Math.min(w, h) * 0.01));
+      const pad = Math.max(10, Math.round(Math.min(w, h) * 0.02));
+      const lineGap = Math.max(5, Math.round(Math.min(w, h) * 0.008));
 
+      // Cả mã sản phẩm và mã nhân viên đều viết IN HOA
       const maspText = String(masp || '').trim().toUpperCase();
-      const manvText = String(manv || '').trim();
+      const manvText = String(manv || '').trim().toUpperCase();
       if (!maspText && !manvText) return;
 
-      // Font theo kích thước ảnh (đảm bảo nhìn rõ)
-      const fontSize = Math.max(22, Math.round(Math.min(w, h) * 0.05)); // ~5%
-      ctx.font = `700 ${fontSize}px -apple-system, system-ui, Segoe UI, Roboto, Arial`;
+      // Chữ thường, không in đậm
+      const fontSize = Math.max(22, Math.round(Math.min(w, h) * 0.05));
+      ctx.font = `400 ${fontSize}px -apple-system, system-ui, Segoe UI, Roboto, Arial`;
       ctx.textAlign = 'left';
-      ctx.textBaseline = 'top'; // ✅ QUAN TRỌNG: căn theo đỉnh
-      //ctx.textBaseline = 'alphabetic';  // ✅ QUAN TRỌNG: căn theo đay
+      ctx.textBaseline = 'top';
 
-      // Đổ bóng + viền để nổi trên mọi nền
-      ctx.shadowColor = 'rgba(0,0,0,0.55)';
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 2;
-
-      ctx.lineWidth = Math.max(4, Math.round(fontSize * 0.14));
-      ctx.strokeStyle = 'rgba(255,255,255,1)';   // viền trắng
-      ctx.fillStyle = 'rgba(255,0,0,1)';         // chữ đỏ
-
-      // 2 dòng ở góc dưới trái: dòng 2 sát đáy, dòng 1 nằm trên
-      const y1 = pad;                       // dòng MASP ở trên
-      const y2 = y1 + fontSize + lineGap;   // dòng MANV ngay dưới
-      //const y2 = h - pad;                      // ✅ QUAN TRỌNG: căn theo đay
-      //const y1 = y2 - fontSize - lineGap;      // ✅ QUAN TRỌNG: căn theo đay
-
-      if (maspText) {
-        ctx.strokeText(maspText, pad, y1);
-        ctx.fillText(maspText, pad, y1);
-      }
-      if (manvText) {
-        ctx.strokeText(manvText, pad, y2);
-        ctx.fillText(manvText, pad, y2);
-      }
-
-      // reset shadow để tránh ảnh hưởng vẽ khác (nếu có)
+      // Không dùng bóng và không dùng viền chữ
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 0;
+
+      const boxPadX = Math.max(7, Math.round(fontSize * 0.28));
+      const boxPadY = Math.max(4, Math.round(fontSize * 0.18));
+      const lineH = fontSize + boxPadY * 2;
+
+      const y1 = pad;
+      const y2 = y1 + lineH + lineGap;
+
+      function drawTag(text, x, y) {
+        if (!text) return;
+
+        const textWidth = Math.ceil(ctx.measureText(text).width);
+
+        // Nền trắng riêng cho từng dòng
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(
+          x,
+          y,
+          textWidth + boxPadX * 2,
+          lineH
+        );
+
+        // Chữ đỏ, nét bình thường
+        ctx.fillStyle = '#ff0000';
+        ctx.fillText(
+          text,
+          x + boxPadX,
+          y + boxPadY
+        );
+      }
+
+      drawTag(maspText, pad, y1);
+      drawTag(manvText, pad, y2);
     }
 
     async function saveImageAndAttrs() {
