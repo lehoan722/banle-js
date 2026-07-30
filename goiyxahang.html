@@ -51,15 +51,7 @@
         }
 
         .layout {
-            display: grid;
-            grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-            gap: 12px;
-        }
-
-        @media (max-width: 900px) {
-            .layout {
-                grid-template-columns: minmax(0, 1fr);
-            }
+            display: block;
         }
 
         .card {
@@ -139,6 +131,23 @@
             color: var(--muted);
         }
 
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .btn.images {
+            background: #0f766e;
+            color: #fff;
+        }
+
+        #hotXa .htCore tbody tr:hover td {
+            background: #eef6ff;
+            cursor: pointer;
+        }
+
         #hotWrap {
             margin-top: 8px;
         }
@@ -150,67 +159,6 @@
             text-align: center;
             padding: 4px 6px;
             font-size: 11px;
-        }
-
-        .detail-panel {
-            display: grid;
-            grid-template-rows: auto auto 1fr;
-            gap: 8px;
-        }
-
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
-
-        .info-table th,
-        .info-table td {
-            border: 1px solid #e5e7eb;
-            padding: 3px 4px;
-            text-align: left;
-        }
-
-        .info-table th {
-            background: #f9fafb;
-            font-weight: 600;
-            font-size: 11px;
-        }
-
-        .badge-danger {
-            display: inline-flex;
-            align-items: center;
-            padding: 3px 6px;
-            border-radius: 999px;
-            font-size: 11px;
-            background: #fee2e2;
-            color: #b91c1c;
-        }
-
-        #xaImgBox {
-            border-radius: 8px;
-            background: #f9fafb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 180px;
-            overflow: hidden;
-        }
-
-        #xaImgBox img {
-            max-width: 100%;
-            max-height: 240px;
-            object-fit: contain;
-        }
-
-        .xa-note {
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        .xa-highlight {
-            font-weight: 600;
-            color: var(--danger);
         }
     </style>
 </head>
@@ -269,76 +217,29 @@
 
                     <div class="filter-row" style="justify-content: space-between; margin-top:4px;">
                         <div class="status" id="statusMsg">Chưa chạy.</div>
-                        <button class="btn secondary" id="btnExport">⬇️ Xuất CSV</button>
+                        <div class="action-buttons">
+                            <button class="btn images" id="btnViewImages">🖼️ Xem ảnh</button>
+                            <button class="btn secondary" id="btnExport">⬇️ Xuất CSV</button>
+                        </div>
                     </div>
 
                     <div id="hotWrap">
                         <div id="hotXa" style="width:100%; min-height:320px;"></div>
                     </div>
                 </div>
-
-                <!-- BÊN PHẢI: CHI TIẾT 1 MÃ -->
-                <div class="card detail-panel">
-                    <div>
-                        <h3>Chi tiết mã xả</h3>
-                        <div class="xa-note">
-                            Chọn một dòng trong bảng bên trái để xem chi tiết: ảnh sản phẩm, tồn & lịch sử bán.
-                        </div>
-                    </div>
-
-                    <table class="info-table" id="infoTable">
-                        <tbody>
-                            <tr>
-                                <th>Mã SP</th>
-                                <td colspan="3" id="infoMasp">-</td>
-                            </tr>
-                            <tr>
-                                <th>Tên SP</th>
-                                <td colspan="3" id="infoTensp">-</td>
-                            </tr>
-                            <tr>
-                                <th>Nhóm / Chủng</th>
-                                <td id="infoNhom">-</td>
-                                <th>Màu / NCC</th>
-                                <td id="infoMauNhacc">-</td>
-                            </tr>
-                            <tr>
-                                <th>Giá lẻ</th>
-                                <td id="infoGia">-</td>
-                                <th>Tổng nhập</th>
-                                <td id="infoTongNhap">-</td>
-                            </tr>
-                            <tr>
-                                <th>Tổng bán</th>
-                                <td id="infoTongXuat">-</td>
-                                <th>Tồn hiện tại</th>
-                                <td id="infoTon">-</td>
-                            </tr>
-                            <tr>
-                                <th>% tồn / nhập</th>
-                                <td id="infoTyle">-</td>
-                                <th>Ngày bán cuối</th>
-                                <td id="infoLastSale">-</td>
-                            </tr>
-                            <tr>
-                                <th>Không bán (ngày)</th>
-                                <td colspan="3" id="infoNoSale">-</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <div id="xaImgBox">
-                        <span style="font-size:12px; color:#9ca3af;">Chưa chọn mã nào.</span>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
+    </div>
+
+    <!-- Popup tồn/bán nhanh dùng chung -->
+    <script src="./scripts/stockQuickPopup.js?v=20260730a"></script>
 
     <!-- SUPABASE AUTH + LOGIC GỢI Ý XẢ HÀNG -->
     <script type="module">
         import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
-        import { initGoiYXaHang } from './scripts/goiyxahang.js?v=20251208a';
+        import { initGoiYXaHang } from './scripts/goiyxahang.js?v=20260730a';
 
         // Khởi tạo đăng nhập chuẩn auth, chỉ cho ADMIN giống trang nhập DM nhân viên
         khoiTaoDangNhapDungChung({
