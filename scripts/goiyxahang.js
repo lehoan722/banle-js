@@ -1,5 +1,5 @@
 // scripts/goiyxahang.js
-// Tầng 1: bảng toàn trang + StockQuickPopup + xem ảnh nhanh + tồn sau kiểm.
+// Bản RPC tồn sau kiểm + lọc cơ sở + StockQuickPopup + xem ảnh nhanh.
 
 const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -40,6 +40,8 @@ const hotCols = [
   { data: "ton_may", title: "TỒN MÁY", type: "numeric", width: 80 },
   { data: "lech_kiem", title: "LỆCH KIỂM", type: "numeric", width: 85 },
   { data: "ton_hientai", title: "TỒN SAU KIỂM", type: "numeric", width: 105 },
+  { data: "ton_cs1_sau_kiem", title: "TỒN CS1 SAU KIỂM", type: "numeric", width: 110 },
+  { data: "ton_cs2_sau_kiem", title: "TỒN CS2 SAU KIỂM", type: "numeric", width: 110 },
   { data: "tyle_ton", title: "% TỒN/NHẬP", type: "numeric", width: 95 },
   { data: "so_ngay_khong_ban", title: "KHÔNG BÁN (NGÀY)", type: "numeric", width: 115 },
   { data: "ngay_ban_cuoi", title: "NGÀY BÁN CUỐI", type: "text", width: 105 },
@@ -109,7 +111,7 @@ function renderHOT() {
     cells: (row, col) => {
       const props = {};
       const key = hotCols[col]?.data;
-      if (["tong_nhap", "tong_xuat", "ton_may", "lech_kiem", "ton_hientai", "tyle_ton", "so_ngay_khong_ban", "stt"].includes(key)) {
+      if (["tong_nhap", "tong_xuat", "ton_may", "lech_kiem", "ton_hientai", "ton_cs1_sau_kiem", "ton_cs2_sau_kiem", "tyle_ton", "so_ngay_khong_ban", "stt"].includes(key)) {
         props.className = "htRight";
       }
       if (key === "lech_kiem") {
@@ -139,62 +141,9 @@ function renderHOT() {
   });
 }
 
-function sumLechObject(obj) {
-  if (!obj || typeof obj !== "object") return 0;
-  return Object.values(obj).reduce((sum, value) => sum + Number(value || 0), 0);
-}
-
-async function fetchKiemTonDelta(masp) {
-  try {
-    const { data, error } = await supabaseClient.rpc("rpc_stockquick_kiemton", { p_masp: masp });
-    if (error) throw error;
-    return sumLechObject(data?.cs1?.lech) + sumLechObject(data?.cs2?.lech);
-  } catch (err) {
-    console.warn(`[goiyxahang] Không lấy được kiểm tồn ${masp}:`, err);
-    return 0;
-  }
-}
-
-async function mapWithConcurrency(items, limit, worker) {
-  const result = new Array(items.length);
-  let index = 0;
-  async function runner() {
-    while (true) {
-      const current = index++;
-      if (current >= items.length) return;
-      result[current] = await worker(items[current], current);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length || 1) }, runner));
-  return result;
-}
-
-async function applyTonSauKiem(rows, tonMax, tyleMax) {
-  const enriched = await mapWithConcurrency(rows, 8, async (r) => {
-    const tonMay = Number(r.ton_hientai || 0);
-    const lechKiem = await fetchKiemTonDelta(String(r.masp || "").trim().toUpperCase());
-    const tonSauKiem = tonMay + lechKiem;
-    const tongNhap = Number(r.tong_nhap || 0);
-    return {
-      ...r,
-      ton_may: tonMay,
-      lech_kiem: lechKiem,
-      ton_hientai: tonSauKiem,
-      tyle_ton: tongNhap > 0 ? tonSauKiem / tongNhap : null,
-    };
-  });
-
-  return enriched.filter((r) =>
-    Number(r.ton_hientai) > 0 &&
-    Number(r.ton_hientai) <= tonMax &&
-    r.tyle_ton != null &&
-    Number(r.tyle_ton) <= tyleMax
-  );
-}
-
 async function runXaHang() {
   const msg = $("#statusMsg");
-  msg.textContent = "Đang lọc danh sách và đối chiếu tồn sau kiểm...";
+  msg.textContent = "Đang lọc danh sách theo tồn sau kiểm...";
   $("#btnRun").disabled = true;
   $("#btnViewImages").disabled = true;
 
@@ -223,19 +172,19 @@ async function runXaHang() {
       p_nhomhang_filter: $("#nhomhangFilter").value.trim() || null,
       p_chungloai_filter: $("#chungloaiFilter").value.trim() || null,
       p_nhacc_filter: $("#nhaccFilter").value.trim() || null,
+      p_coso_filter: $("#cosoFilter").value || null,
     });
 
     if (error) throw error;
 
-    const rpcRows = data || [];
-    const checkedRows = await applyTonSauKiem(rpcRows, tonMax, tyleMax);
-    hotData = checkedRows.map((r, idx) => ({ ...r, stt: idx + 1 }));
+    hotData = (data || []).map((r, idx) => ({ ...r, stt: idx + 1 }));
     renderHOT();
 
-    const removed = rpcRows.length - hotData.length;
+    const coso = $("#cosoFilter").value;
+    const cosoLabel = coso === "cs1" ? " tại Cơ sở 1" : coso === "cs2" ? " tại Cơ sở 2" : " ở tất cả cơ sở";
     msg.textContent = hotData.length
-      ? `Hoàn thành! Có ${hotData.length} mã sau khi áp dụng tồn sau kiểm${removed > 0 ? `; đã loại ${removed} mã không còn đúng ngưỡng` : ""}. Bấm một dòng để xem tồn nhanh.`
-      : "Không có mã nào thỏa điều kiện sau khi áp dụng tồn sau kiểm.";
+      ? `Hoàn thành! Có ${hotData.length} mã gợi ý xả${cosoLabel}, đã tính theo tồn sau kiểm. Bấm một dòng để xem tồn nhanh.`
+      : `Không có mã nào thỏa điều kiện xả${cosoLabel} theo tồn sau kiểm.`;
   } catch (e) {
     console.error(e);
     msg.textContent = "❌ Lỗi khi chạy gợi ý xả hàng. Xem console để biết chi tiết.";
@@ -329,8 +278,9 @@ function main() {
   $("#btnRun").addEventListener("click", runXaHang);
   $("#btnViewImages").addEventListener("click", openVisibleImages);
   $("#btnExport").addEventListener("click", exportCsv);
+  $("#cosoFilter").addEventListener("change", runXaHang);
 
-  ["denNgay", "ngayKhongBan", "tonMax", "tyleMax", "nhomhangFilter", "chungloaiFilter", "nhaccFilter"].forEach((id) => {
+  ["denNgay", "ngayKhongBan", "tonMax", "tyleMax", "nhomhangFilter", "chungloaiFilter", "nhaccFilter", "cosoFilter"].forEach((id) => {
     const el = $("#" + id);
     el?.addEventListener("keypress", (e) => {
       if (e.key === "Enter") runXaHang();
