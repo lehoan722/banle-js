@@ -40,7 +40,7 @@
         }
 
         .product-list {
-            height: 160px;
+            height: 95px;
             /* 👈 giảm xuống (280 → 180) */
             overflow-y: auto;
             margin-top: 10px;
@@ -167,7 +167,7 @@
             }
 
             .print-preview .qr-col {
-                margin-top: 2.8mm !important;
+                margin-top: 1.5mm !important;
             }
         }
 
@@ -208,7 +208,7 @@
         .form-row {
             display: flex;
             align-items: center;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             position: relative;
         }
 
@@ -226,7 +226,14 @@
 
         .form-input input {
             width: 100%;
-            padding: 2px 5px;
+            padding: 1px 5px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        .form-input select {
+            width: 100%;
+            padding: 1px 5px;
             font-size: 13px;
             box-sizing: border-box;
         }
@@ -438,6 +445,48 @@
 
                         </div>
 
+                        <!-- 
+
+                        <div class="form-row">
+                            <label for="formAoInput">Form</label>
+                            <div class="form-input">
+                                <select name="form" id="formAoInput">
+                                    <option value="">-- Không chọn --</option>
+                                    <option value="bo">SLIM</option>
+                                    <option value="vua">REGULAR</option>
+                                    <option value="rong">WIDE</option>
+                                </select>
+                            </div>
+                        </div>
+
+                           
+                                    <div class="form-row">
+                            <label for="rongOngInput">Rộng ống</label>
+                            <div class="form-input">
+                                <select name="rong_ong" id="rongOngInput">
+                                    <option value="">-- Không chọn --</option>
+                                    <option value="16">16</option>
+                                    <option value="18">18</option>
+                                    <option value="20">20</option>
+                                    <option value="22">22</option>
+                                </select>
+                            </div>
+                        </div>               
+
+
+                        <div class="form-row">
+                            <label for="coGianInput">Co giãn</label>
+                            <div class="form-input">
+                                <select name="co_gian" id="coGianInput">
+                                    <option value="">-- Không chọn --</option>
+                                    <option value="co">CO</option>
+                                    <option value="khong">KHONG</option>
+                                </select>
+                            </div>
+                        </div>
+
+                                                 -->
+
                         <div class="form-row">
                             <label><input type="checkbox" id="quanlykichcoCheckbox" /> Quản lý kích cỡ</label>
                         </div>
@@ -474,6 +523,7 @@
                             <option value="quanao">Tem quần áo</option>
                             <option value="tem_giamgia">Tem giảm giá</option>
                             <option value="tem_mavach">Tem mã vạch</option>
+                            <option value="tem_mau">Tem mẫu</option>
                             <option value="insize_tomy114">In size </option>
                         </select>
                     </label>
@@ -983,13 +1033,13 @@
                 let infoChung = "";
                 if (loaiTem === "giaydep") {
                     infoChung = `
-            Phân phối sản phẩm và <br>
+            Nguyên Phân phối Sphẩm<br>
             Dán nhãn tại Việt Nam Giày<br>
             dép;chất liệu da,tổng hợp<br>           
         `;
                 } else if (loaiTem === "quanao") {
                     infoChung = `
-            Phân phối sản phẩm và <br>
+            Nguyên Phân phối Sphẩm<br>
             Dán nhãn tại Việt Nam <br>
             Quần,Áo Vải sợi tổng hợp     <br>           
         `;
@@ -1072,7 +1122,70 @@
                     else html += `
                     
 
-                    ${loaiTem === "tem_mavach" ? `
+                    ${loaiTem === "tem_mau" ? `
+<div class="tem"
+     data-masp="${t.masp}"
+     data-size="${(t.size ?? '').toString().trim()}"
+     style="
+        width:${TEM_WIDTH_MM}mm;
+        height:${TEM_HEIGHT_MM}mm;
+        box-sizing:border-box;
+        overflow:hidden;
+        border:0;
+        margin:0;
+        padding:0;
+     ">
+    <div style="
+        display:grid;
+        grid-template-columns:50% 50%;
+        width:100%;
+        height:100%;
+        box-sizing:border-box;
+        align-items:center;
+    ">
+        <div style="
+            width:100%;
+            height:100%;
+            box-sizing:border-box;
+            display:flex;
+            align-items:flex-start;
+            justify-content:flex-start;
+            padding:1.2mm 0.8mm 0.6mm 1mm;
+            overflow:hidden;
+        ">
+            <div style="
+                font-family:Arial, sans-serif;
+                font-size:14pt;
+                font-weight:400;
+                line-height:1.02;
+                color:#000;
+                white-space:normal;
+                overflow:hidden;
+                word-break:break-word;
+                overflow-wrap:anywhere;
+                text-align:left;
+            ">
+                ${t.masp}
+            </div>
+        </div>
+
+        <div class="qr-col" style="
+    width:100%;
+    height:100%;
+    box-sizing:border-box;
+    display:flex;
+    align-items:flex-start;
+    justify-content:flex-start;
+    margin:0;
+    padding:0;
+    padding-left:0.2mm;
+    padding-top:0.2mm;
+">
+    <canvas class="qr" style="width:14mm; height:14mm;"></canvas>
+</div>
+    </div>
+</div>
+` : loaiTem === "tem_mavach" ? `
 <div class="tem"
      data-masp="${t.masp}"
      data-size="${(t.size ?? '').toString().trim()}"
@@ -1173,7 +1286,7 @@
         <!-- SHOP HOÀN TUYẾT ngay dưới Mã -->
       <div style="font-size:6pt;  line-height:1;
                   white-space:nowrap; overflow:hidden; text-overflow:clip; margin:0;">
-        Shop HoànTuyết,TháiNguyên
+        Shop Hoàn Tuyết,Thái
       </div>
 
       ${loaiTem === "tem_giamgia" ? (() => {
@@ -1207,8 +1320,8 @@
     </div>    
 
     <div style="font-size:12pt; font-weight:bold; line-height:1;
-                white-space:nowrap; text-overflow:clip; margin:0;">
-      Giá: ${formatGia(t.giale)}
+            white-space:nowrap; text-overflow:clip; margin:0;">
+         Giá:${formatGia(t.giale)}
     </div>
 `}
 
@@ -1223,10 +1336,10 @@
   
   <div class="qr-col" style="grid-column:2; grid-row:3;
             display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-start;
-            margin:0; padding:0; margin-top:2.8mm;">
-  <canvas class="qr" style="width:8mm; height:8mm;"></canvas>
+            margin:0; padding:0; margin-top:1.5mm;">
+           <canvas class="qr" style="width:8mm; height:8mm;"></canvas>
 
-  ${(() => {
+            ${(() => {
                             const s = (t.size ?? '').toString().trim();
                             return s && s !== '0'
                                 ? `<div class="size-under-qr" style="font-size:12pt; line-height:1; margin-top:3mm; font-weight:700; text-transform: uppercase; align-self:center; text-align:center;  /* luôn hiển thị in hoa */">
@@ -1485,7 +1598,7 @@
                     return;
                 }
 
-                const ok = kiemTraGiaLeTruocKhiIn();
+                const ok = (loaiTem === 'tem_mau') ? true : kiemTraGiaLeTruocKhiIn();
                 if (!ok) {
                     return;
                 }
@@ -1571,7 +1684,7 @@
                     return;
                 }
 
-                const okGia = kiemTraGiaLeTruocKhiIn();
+                const okGia = (loaiTem === 'tem_mau') ? true : kiemTraGiaLeTruocKhiIn();
                 if (!okGia) return;
 
                 const ok = await renderAllPagesForPrint();
@@ -1810,6 +1923,9 @@
                     document.getElementById('nhaccInput').value = data.nhacc || '';
                     document.getElementById('nhomhangInput').value = data.nhomhang || '';
                     document.getElementById('chungloaiInput').value = data.chungloai || '';
+                    document.getElementById('formAoInput').value = data.form || '';
+                    document.getElementById('rongOngInput').value = data.rong_ong || '';
+                    document.getElementById('coGianInput').value = data.co_gian || '';
                     document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                     // [ADD] Khi load form sửa, cũng xét lại theo Giá lẻ đang có
                     syncQuanLyKichCoByGiaLe();
@@ -1849,6 +1965,9 @@
 
                 // Không giữ lại nhóm hàng cũ khi thêm mã mới, sẽ để hệ thống tự suy ra lại từ mã sản phẩm
                 document.getElementById('nhomhangInput').value = '';
+                document.getElementById('formAoInput').value = '';
+                document.getElementById('rongOngInput').value = '';
+                document.getElementById('coGianInput').value = '';
 
                 document.getElementById('addProductMessage').textContent = '';
                 document.getElementById('addProductForm').style.border = '';
@@ -2000,6 +2119,11 @@
                     nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),
                     nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
                     chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(),
+                    form: document.getElementById('formAoInput').value || null,
+                    rong_ong: document.getElementById('rongOngInput').value
+                        ? Number(document.getElementById('rongOngInput').value)
+                        : null,
+                    co_gian: document.getElementById('coGianInput').value || null,
                     quanlykichco: document.getElementById('quanlykichcoCheckbox').checked,
                 };
 
@@ -2685,9 +2809,14 @@ Bạn chưa nhập màu sắc.
                 'gialeInput',
                 'mausacInput',
                 'khuyenmaiInput',
-                'nhaccInput',     // NHÀ CUNG CẤP trước
-                'nhomhangInput',  // rồi NHÓM HÀNG
-                'chungloaiInput'
+                'nhaccInput',      // Nhà cung cấp
+                'nhomhangInput',   // Nhóm hàng
+                'chungloaiInput',  // Chủng loại
+
+                // Các trường mới thêm
+                'formAoInput',
+                'rongOngInput',
+                'coGianInput'
             ];
 
             function attachEnterNav(order) {
@@ -2991,7 +3120,7 @@ Bạn chưa nhập màu sắc.
                         items
                     };
                     const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-                    const url = `nhaptamcs211.html?data=${encoded}`;
+                    const url = `nhaptamcs222.html?data=${encoded}`;
                     window.open(url, "_blank");
                 } catch (err) {
                     console.error("❌ Lỗi khi tạo nhập tạm:", err);
