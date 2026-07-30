@@ -457,7 +457,8 @@
                             </div>
                         </div>
 
-                        <div class="form-row">
+                        <!--    
+                                    <div class="form-row">
                             <label for="rongOngInput">Rộng ống</label>
                             <div class="form-input">
                                 <select name="rong_ong" id="rongOngInput">
@@ -468,7 +469,8 @@
                                     <option value="22">22</option>
                                 </select>
                             </div>
-                        </div>
+                        </div>               -->
+                        
 
                         <div class="form-row">
                             <label for="coGianInput">Co giãn</label>
@@ -1108,7 +1110,7 @@
         row-gap: 1.7mm;        
     ">`;
 
-                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs1  row-gap: 1.5mm; voi cs1
+                // Blank cho trang đầu  //row-gap: 1.9mm;  voi cs2  row-gap: 1.5mm; voi cs2 (khac nhau)
                 for (let i = 0; i < blank; i++) html += `<div class="tem tem-blank"></div>`;
                 for (let i = 0; i < maxTems; i++) {
                     const t = pageTems[i] || null;
