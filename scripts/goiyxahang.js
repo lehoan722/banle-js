@@ -86,20 +86,34 @@ function updateDirtyStatus() {
   hot?.render();
 }
 
-function getVisibleRecords() {
+function getVisibleRowEntries() {
   if (!hot) return [];
+
   const rows = [];
   const seen = new Set();
+
   for (let visualRow = 0; visualRow < hot.countRows(); visualRow += 1) {
     const physicalRow = hot.toPhysicalRow(visualRow);
     if (physicalRow == null || physicalRow < 0) continue;
+
     const rec = hot.getSourceDataAtRow(physicalRow);
     const masp = String(rec?.masp || "").trim().toUpperCase();
+
     if (!masp || seen.has(masp)) continue;
+
     seen.add(masp);
-    rows.push(rec);
+    rows.push({
+      visualRow,
+      physicalRow,
+      rec
+    });
   }
+
   return rows;
+}
+
+function getVisibleRecords() {
+  return getVisibleRowEntries().map((x) => x.rec);
 }
 
 function confirmLoseUnsaved() {
@@ -156,7 +170,10 @@ function renderHOT() {
     cells: (row, col) => {
       const props = {};
       const key = hotCols[col]?.data;
-      const rec = hotData[row];
+      const physicalRow = hot ? hot.toPhysicalRow(row) : row;
+      const rec = physicalRow == null || physicalRow < 0
+        ? null
+        : hotData[physicalRow];
 
       if (hotCols[col]?.readOnly) props.readOnly = true;
       if (["tong_nhap", "tong_xuat", "ton_may", "lech_kiem", "ton_hientai", "ton_cs1_sau_kiem", "ton_cs2_sau_kiem", "tyle_ton", "so_ngay_khong_ban", "stt"].includes(key)) {
@@ -215,18 +232,35 @@ function renderHOT() {
 }
 
 function setAllVisibleSelection(value) {
-  const rows = getVisibleRecords();
+  const entries = getVisibleRowEntries();
+  if (!entries.length || !hot) return;
+
+  const changes = entries.map(({ visualRow }) => [
+    visualRow,
+    "chon_giam_gia",
+    !!value
+  ]);
+
   isApplyingProgrammaticChange = true;
-  rows.forEach((rec) => { rec.chon_giam_gia = !!value; });
+
+  hot.batch(() => {
+    hot.setDataAtRowProp(changes, "bulk-select");
+  });
+
   isApplyingProgrammaticChange = false;
-  hot?.render();
+  hot.render();
 }
 
 function toggleSelectAllVisible() {
-  const rows = getVisibleRecords();
-  if (!rows.length) return;
-  const shouldSelect = !rows.every((r) => r.chon_giam_gia === true);
+  const entries = getVisibleRowEntries();
+  if (!entries.length) return;
+
+  const shouldSelect = !entries.every(({ visualRow }) =>
+    hot.getDataAtRowProp(visualRow, "chon_giam_gia") === true
+  );
+
   setAllVisibleSelection(shouldSelect);
+
   $("#btnSelectAll").textContent = shouldSelect
     ? "☐ Bỏ chọn tất cả đang hiển thị"
     : "☑ Chọn tất cả đang hiển thị";
@@ -234,6 +268,7 @@ function toggleSelectAllVisible() {
 
 function applyBulkDiscount() {
   let pct;
+
   try {
     pct = normalizeDiscount($("#bulkDiscount").value);
   } catch (err) {
@@ -242,19 +277,39 @@ function applyBulkDiscount() {
     return;
   }
 
-  const selected = getVisibleRecords().filter((r) => r.chon_giam_gia === true);
-  if (!selected.length) {
+  const selectedEntries = getVisibleRowEntries().filter(({ visualRow }) =>
+    hot.getDataAtRowProp(visualRow, "chon_giam_gia") === true
+  );
+
+  if (!selectedEntries.length) {
     alert("Bạn chưa chọn dòng sản phẩm nào.");
     return;
   }
 
   const text = pct == null ? "xóa giảm giá" : `áp dụng giảm ${pct}%`;
-  if (!confirm(`Bạn có muốn ${text} cho ${selected.length} sản phẩm đã chọn không? Dữ liệu mới chỉ được ghi vào bảng và chưa lưu vào cơ sở dữ liệu.`)) return;
+
+  if (!confirm(
+    `Bạn có muốn ${text} cho ${selectedEntries.length} sản phẩm đã chọn không? ` +
+    `Dữ liệu mới chỉ được ghi vào bảng và chưa lưu vào cơ sở dữ liệu.`
+  )) {
+    return;
+  }
+
+  const value = pct == null ? "" : String(pct);
+  const changes = selectedEntries.map(({ visualRow }) => [
+    visualRow,
+    "giam_gia_pct",
+    value
+  ]);
 
   isApplyingProgrammaticChange = true;
-  selected.forEach((rec) => { rec.giam_gia_pct = pct == null ? "" : String(pct); });
+
+  hot.batch(() => {
+    hot.setDataAtRowProp(changes, "bulk-discount");
+  });
+
   isApplyingProgrammaticChange = false;
-  hot?.render();
+  hot.render();
   updateDirtyStatus();
 }
 
