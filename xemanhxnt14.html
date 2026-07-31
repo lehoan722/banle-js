@@ -377,7 +377,7 @@
     <section class="panel" id="panel-best">
         <div class="placeholder">
             <strong>Tab Bán chạy</strong>
-            Chưa thiết kế dữ liệu cho tab này ở tầng hiện tại. Giao diện đã được tạo sẵn để nâng cấp ở bước sau.
+            Chưa kích hoạt ở bản này vì cần chốt rõ khoảng thời gian bán chạy và nguồn dữ liệu bán gần đây. Tab vẫn được giữ sẵn để hoàn thiện sau.
         </div>
     </section>
 
@@ -387,17 +387,13 @@
     </section>
 
     <section class="panel" id="panel-cheaper">
-        <div class="placeholder">
-            <strong>Tab Rẻ hơn</strong>
-            Chưa thiết kế dữ liệu cho tab này ở tầng hiện tại. Giao diện đã được tạo sẵn để nâng cấp ở bước sau.
-        </div>
+        <p class="panel-note"><strong>Tab Rẻ hơn:</strong> Tìm sản phẩm cùng nhóm, còn đúng size tại đúng cơ sở và có giá thấp hơn sản phẩm gốc. Các sản phẩm có mức giá gần sản phẩm gốc nhất được đưa lên trước.</p>
+        <div id="cheaperGridWrap"></div>
     </section>
 
     <section class="panel" id="panel-premium">
-        <div class="placeholder">
-            <strong>Tab Cao cấp hơn</strong>
-            Chưa thiết kế dữ liệu cho tab này ở tầng hiện tại. Giao diện đã được tạo sẵn để nâng cấp ở bước sau.
-        </div>
+        <p class="panel-note"><strong>Tab Cao cấp hơn:</strong> Tìm sản phẩm cùng nhóm, còn đúng size tại đúng cơ sở và có giá cao hơn sản phẩm gốc. Các sản phẩm có mức giá cao hơn gần nhất được đưa lên trước để dễ tư vấn nâng cấp.</p>
+        <div id="premiumGridWrap"></div>
     </section>
 
     <div id="globalEmpty" class="empty" style="display:none">
@@ -414,14 +410,16 @@
             discount: { panel: "panel-discount", wrap: "discountGridWrap", label: "Cần xả (giảm giá)" },
             best: { panel: "panel-best", wrap: null, label: "Bán chạy" },
             similar: { panel: "panel-similar", wrap: "similarGridWrap", label: "Gần giống" },
-            cheaper: { panel: "panel-cheaper", wrap: null, label: "Rẻ hơn" },
-            premium: { panel: "panel-premium", wrap: null, label: "Cao cấp hơn" }
+            cheaper: { panel: "panel-cheaper", wrap: "cheaperGridWrap", label: "Rẻ hơn" },
+            premium: { panel: "panel-premium", wrap: "premiumGridWrap", label: "Cao cấp hơn" }
         };
 
         let CURRENT_LIST = [];
         let CURRENT_CONTEXT = {};
         let CURRENT_FILTERS = {};
         let DATA_TAB_KEY = "similar";
+        const TAB_LIST_CACHE = new Map();
+        const TAB_LOADING = new Set();
 
         function fmtVND(n) {
             if (n == null || isNaN(n)) return "";
@@ -544,19 +542,28 @@
             count.textContent = CURRENT_LIST.length ? `Tổng: ${CURRENT_LIST.length}` : "";
         }
 
-        function activateTab(tabKey) {
+        async function activateTab(tabKey) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.tab === tabKey);
             });
+
             Object.entries(TAB_META).forEach(([key, meta]) => {
                 const panel = document.getElementById(meta.panel);
                 if (panel) panel.classList.toggle('active', key === tabKey);
             });
+
+            if (["discount", "similar", "cheaper", "premium"].includes(tabKey)) {
+                await ensureTabData(tabKey);
+            }
         }
 
         function bindTabs() {
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+                btn.addEventListener('click', () => {
+                    activateTab(btn.dataset.tab).catch(err => {
+                        console.warn("[xemanhxnt14] Lỗi mở tab:", err);
+                    });
+                });
             });
         }
 
@@ -665,6 +672,123 @@
             return Array.from(map.values());
         }
 
+
+        function getContextForRecommendation() {
+            return {
+                masp: normalizeMasp(CURRENT_CONTEXT.source_masp || ""),
+                size: String(CURRENT_CONTEXT.source_size || "").trim(),
+                nhomhang: String(CURRENT_CONTEXT.nhomhang || "").trim(),
+                branch: String(CURRENT_CONTEXT.branch || "").trim().toLowerCase(),
+                denNgay:
+                    CURRENT_FILTERS.den_ngay ||
+                    new Date().toISOString().slice(0, 10)
+            };
+        }
+
+        function canBuildRecommendation() {
+            const ctx = getContextForRecommendation();
+            return !!(
+                ctx.masp &&
+                ctx.size &&
+                ctx.nhomhang &&
+                ["cs1", "cs2"].includes(ctx.branch)
+            );
+        }
+
+        function setWrapMessage(tabKey, htmlText) {
+            const wrapId = TAB_META[tabKey]?.wrap;
+            const wrap = wrapId ? document.getElementById(wrapId) : null;
+            if (wrap) wrap.innerHTML = htmlText;
+        }
+
+        async function ensureTabData(tabKey) {
+            if (!["discount", "similar", "cheaper", "premium"].includes(tabKey)) {
+                return;
+            }
+
+            if (TAB_LIST_CACHE.has(tabKey)) {
+                const cached = TAB_LIST_CACHE.get(tabKey) || [];
+                const wrapId = TAB_META[tabKey]?.wrap;
+                const wrap = wrapId ? document.getElementById(wrapId) : null;
+                const cards = renderListIntoWrap(cached, wrap);
+                attachPopupToCards(cards);
+                return;
+            }
+
+            // Danh sách được truyền từ trang nguồn luôn giữ nguyên trong đúng tab nguồn.
+            if (tabKey === DATA_TAB_KEY && CURRENT_LIST.length) {
+                TAB_LIST_CACHE.set(tabKey, CURRENT_LIST);
+                const wrapId = TAB_META[tabKey]?.wrap;
+                const wrap = wrapId ? document.getElementById(wrapId) : null;
+                const cards = renderListIntoWrap(CURRENT_LIST, wrap);
+                attachPopupToCards(cards);
+                return;
+            }
+
+            if (!canBuildRecommendation()) {
+                setWrapMessage(
+                    tabKey,
+                    `<div class="placeholder">
+                        <strong>Chưa đủ ngữ cảnh để tạo danh sách</strong>
+                        Cần mở trang từ StockQuickPopup bằng một size cụ thể để hệ thống biết mã gốc, nhóm hàng, size và cơ sở.
+                    </div>`
+                );
+                return;
+            }
+
+            if (
+                !window.StockQuickSimilar ||
+                typeof window.StockQuickSimilar.getRecommendationList !== "function"
+            ) {
+                setWrapMessage(
+                    tabKey,
+                    `<div class="placeholder">
+                        <strong>Module gợi ý chưa sẵn sàng</strong>
+                        Hãy kiểm tra file scripts/stockQuickSimilar.js đã được cập nhật.
+                    </div>`
+                );
+                return;
+            }
+
+            if (TAB_LOADING.has(tabKey)) return;
+            TAB_LOADING.add(tabKey);
+
+            setWrapMessage(
+                tabKey,
+                `<div class="loading">Đang tìm sản phẩm ${TAB_META[tabKey]?.label || ""}...</div>`
+            );
+
+            try {
+                const ctx = getContextForRecommendation();
+
+                const result = await window.StockQuickSimilar.getRecommendationList({
+                    ...ctx,
+                    mode: tabKey
+                });
+
+                let list = Array.isArray(result?.list) ? result.list : [];
+                list = await enrichListWithDiscountInfo(list);
+
+                TAB_LIST_CACHE.set(tabKey, list);
+
+                const wrapId = TAB_META[tabKey]?.wrap;
+                const wrap = wrapId ? document.getElementById(wrapId) : null;
+                const cards = renderListIntoWrap(list, wrap);
+                attachPopupToCards(cards);
+            } catch (err) {
+                console.error("[xemanhxnt14] Lỗi tải tab", tabKey, err);
+                setWrapMessage(
+                    tabKey,
+                    `<div class="placeholder">
+                        <strong>Không tải được dữ liệu</strong>
+                        ${String(err?.message || err || "Có lỗi xảy ra")}
+                    </div>`
+                );
+            } finally {
+                TAB_LOADING.delete(tabKey);
+            }
+        }
+
         function showLoading() {
             const meta = TAB_META[DATA_TAB_KEY];
             const wrapEl = meta && meta.wrap ? document.getElementById(meta.wrap) : null;
@@ -679,7 +803,7 @@
             buildContextChips();
             DATA_TAB_KEY = pickDataTabKey();
             bindTabs();
-            activateTab(DATA_TAB_KEY);
+            await activateTab(DATA_TAB_KEY);
             setCountText();
 
             if (!CURRENT_LIST.length) {
@@ -700,6 +824,8 @@
                 await sleep(250);
                 CURRENT_LIST = await enrichListWithDiscountInfo(CURRENT_LIST);
             }
+
+            TAB_LIST_CACHE.set(DATA_TAB_KEY, CURRENT_LIST);
 
             const wrapId = TAB_META[DATA_TAB_KEY]?.wrap;
             const wrapEl = wrapId ? document.getElementById(wrapId) : null;
