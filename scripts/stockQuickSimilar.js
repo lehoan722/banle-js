@@ -60,7 +60,7 @@
 
     const { data, error } = await client
       .from("dmhanghoa")
-      .select("masp, giale, nhomhang")
+      .select("masp, giale, nhomhang, giam_gia_pct")
       .ilike("nhomhang", `%${String(nhomhang || "").trim()}%`)
       .order("masp", { ascending: true });
 
@@ -108,6 +108,7 @@
       masterMap.set(normText(m.masp), {
         giale: Number(m.giale || 0),
         nhomhang: m.nhomhang || "",
+        giam_gia_pct: m.giam_gia_pct == null ? null : Number(m.giam_gia_pct),
       });
     });
 
@@ -133,6 +134,7 @@
         toncs1: 0,
         toncs2: 0,
         ban_nhanh: false,
+        giam_gia_pct: masterMap.get(masp)?.giam_gia_pct ?? null,
       };
 
       item.toncs1 += toncs1;
@@ -150,9 +152,41 @@
     });
   }
 
-  function openViewer({ list, masp, size, branch, nhomhang }) {
+
+  function buildDiscountListFromGroupData({ sourceMasp, size, branch, masters, stockRows }) {
+    const discountMasters = (masters || []).filter(m =>
+      [10, 20, 30, 50].includes(Number(m.giam_gia_pct))
+    );
+
+    const allowed = new Set(
+      discountMasters.map(m => normText(m.masp)).filter(Boolean)
+    );
+
+    const list = buildListFromGroupData({
+      sourceMasp,
+      size,
+      branch,
+      masters: discountMasters,
+      stockRows: (stockRows || []).filter(r => allowed.has(normText(r.masp)))
+    });
+
+    return list.sort((a, b) => {
+      const da = Number(a.giam_gia_pct || 0);
+      const db = Number(b.giam_gia_pct || 0);
+
+      if (db !== da) return db - da;
+
+      const ta = branch === "cs2" ? Number(a.toncs2 || 0) : Number(a.toncs1 || 0);
+      const tb = branch === "cs2" ? Number(b.toncs2 || 0) : Number(b.toncs1 || 0);
+
+      if (tb !== ta) return tb - ta;
+      return String(a.masp || "").localeCompare(String(b.masp || ""), "vi", { numeric: true });
+    });
+  }
+
+  function openViewer({ list, masp, size, branch, nhomhang, mode = "similar" }) {
     if (!list.length) {
-      alert(`Không có sản phẩm cùng nhóm còn size ${size}`);
+      alert(mode === "discount" ? `Không có sản phẩm giảm giá cùng nhóm còn size ${size}` : `Không có sản phẩm cùng nhóm còn size ${size}`);
       return;
     }
 
@@ -161,7 +195,8 @@
       source_masp: masp,
       source_size: size,
       branch,
-      nhomhang
+      nhomhang,
+      mode
     }));
 
     window.open("xemanhxnt14.html", "_blank");
@@ -205,5 +240,56 @@
     });
   }
 
-  window.StockQuickSimilar = { openFromPopup };
+
+  async function openDiscountFromPopup({ masp, size, nhomhang, denNgay }) {
+    const sourceMasp = normText(masp);
+    const sourceGroup = String(nhomhang || "").trim();
+    const sizeNorm = normalizeSize(size);
+
+    if (!sourceMasp || !sourceGroup || !sizeNorm) {
+      alert("Thiếu dữ liệu để tìm hàng giảm giá cùng nhóm");
+      return;
+    }
+
+    let branch = detectBranch();
+    if (!branch) {
+      branch = await pickBranchIfNeeded();
+      if (!branch) return;
+    }
+
+    const masters = await fetchGroupMasterProducts(sourceGroup);
+    const discountMasters = masters.filter(m =>
+      [10, 20, 30, 50].includes(Number(m.giam_gia_pct))
+    );
+
+    if (!discountMasters.length) {
+      alert("Nhóm hàng này chưa có sản phẩm nào được đánh dấu giảm giá.");
+      return;
+    }
+
+    const maspList = discountMasters
+      .map(x => normText(x.masp))
+      .filter(Boolean);
+
+    const stockRows = await fetchGroupStockRows(maspList, denNgay);
+
+    const list = buildDiscountListFromGroupData({
+      sourceMasp,
+      size: sizeNorm,
+      branch,
+      masters: discountMasters,
+      stockRows
+    });
+
+    openViewer({
+      list,
+      masp: sourceMasp,
+      size: sizeNorm,
+      branch,
+      nhomhang: sourceGroup,
+      mode: "discount"
+    });
+  }
+
+  window.StockQuickSimilar = { openFromPopup, openDiscountFromPopup };
 })();
