@@ -295,6 +295,66 @@
   }
 
 
+  async function fetchSourceMaster(maspRaw) {
+    const client = getSupabaseClient();
+    if (!client) return null;
+    const masp = normText(maspRaw);
+    if (!masp) return null;
+    const { data, error } = await client
+      .from("dmhanghoa")
+      .select("masp, giale, nhomhang, giam_gia_pct")
+      .eq("masp", masp)
+      .maybeSingle();
+    if (error) {
+      console.warn("[StockQuickSimilar] Không đọc được mã gốc:", error);
+      return null;
+    }
+    return data || null;
+  }
+
+  async function getRecommendationList({
+    masp, size, nhomhang, denNgay, branch, mode = "similar"
+  }) {
+    const sourceMasp = normText(masp);
+    const sizeNorm = normalizeSize(size);
+    if (!sourceMasp || !sizeNorm) return { ok:false, message:"Thiếu mã gốc hoặc size", list:[] };
+
+    let useBranch = String(branch || "").trim().toLowerCase();
+    if (!["cs1","cs2"].includes(useBranch)) useBranch = detectBranch();
+    if (!["cs1","cs2"].includes(useBranch)) {
+      useBranch = await pickBranchIfNeeded();
+      if (!useBranch) return { ok:false, canceled:true, list:[] };
+    }
+
+    const sourceFresh = await fetchSourceMaster(sourceMasp);
+    const sourceGroup = String(sourceFresh?.nhomhang || nhomhang || "").trim();
+    if (!sourceGroup) return { ok:false, message:"Không đọc được nhóm hàng mã gốc", list:[] };
+
+    const masters = await fetchGroupMasterProducts(sourceGroup);
+    const sourceMaster = sourceFresh || masters.find(x => normText(x.masp) === sourceMasp);
+    const sourcePrice = Number(sourceMaster?.giale || 0);
+    let filtered = masters.filter(x => normText(x.masp) !== sourceMasp);
+
+    if (mode === "discount") filtered = filtered.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
+    if (mode === "cheaper") filtered = filtered.filter(x => Number(x.giale||0)>0 && Number(x.giale||0)<sourcePrice);
+    if (mode === "premium") filtered = filtered.filter(x => Number(x.giale||0)>sourcePrice);
+
+    if (!filtered.length) return { ok:true, source_price:sourcePrice, source_group:sourceGroup, branch:useBranch, list:[] };
+
+    const stockRows = await fetchGroupStockRows(filtered.map(x => normText(x.masp)).filter(Boolean), denNgay);
+    let list = buildListFromGroupData({ sourceMasp, size:sizeNorm, branch:useBranch, masters:filtered, stockRows });
+
+    if (mode === "discount") {
+      list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct))).sort((a,b) => Number(b.giam_gia_pct||0)-Number(a.giam_gia_pct||0));
+    } else if (mode === "cheaper") {
+      list.sort((a,b) => (sourcePrice-Number(a.giale||0))-(sourcePrice-Number(b.giale||0)));
+    } else if (mode === "premium") {
+      list.sort((a,b) => (Number(a.giale||0)-sourcePrice)-(Number(b.giale||0)-sourcePrice));
+    }
+
+    return { ok:true, source_price:sourcePrice, source_group:sourceGroup, branch:useBranch, list };
+  }
+
   async function getDiscountSizeSummary({
     masp,
     nhomhang,
@@ -307,7 +367,11 @@
     const useBranch = String(branch || "").trim().toLowerCase();
 
     if (!sourceMasp || !sourceGroup || !["cs1", "cs2"].includes(useBranch)) {
-      return { ok: false, message: "Thiếu mã, nhóm hàng hoặc cơ sở", summary: {} };
+      return {
+        ok: false,
+        message: "Thiếu mã, nhóm hàng hoặc cơ sở",
+        summary: {}
+      };
     }
 
     const cacheKey = [
@@ -323,7 +387,11 @@
       cached &&
       Date.now() - cached.savedAt < DISCOUNT_SIZE_SUMMARY_TTL_MS
     ) {
-      return { ok: true, cached: true, summary: cached.summary };
+      return {
+        ok: true,
+        cached: true,
+        summary: cached.summary
+      };
     }
 
     const masters = await fetchGroupMasterProducts(sourceGroup);
@@ -341,11 +409,16 @@
 
     if (!discountMasters.length) {
       const empty = {};
+
       DISCOUNT_SIZE_SUMMARY_CACHE.set(cacheKey, {
         savedAt: Date.now(),
         summary: empty
       });
-      return { ok: true, summary: empty };
+
+      return {
+        ok: true,
+        summary: empty
+      };
     }
 
     const allowedMasps = new Set(
@@ -372,11 +445,15 @@
 
       if (ton <= 0) return;
 
-      if (!sizeSets.has(size)) sizeSets.set(size, new Set());
+      if (!sizeSets.has(size)) {
+        sizeSets.set(size, new Set());
+      }
+
       sizeSets.get(size).add(code);
     });
 
     const summary = {};
+
     sizeSets.forEach((set, size) => {
       summary[size] = set.size;
     });
@@ -386,7 +463,11 @@
       summary
     });
 
-    return { ok: true, cached: false, summary };
+    return {
+      ok: true,
+      cached: false,
+      summary
+    };
   }
 
   function clearDiscountSizeSummaryCache() {
@@ -396,6 +477,7 @@
   window.StockQuickSimilar = {
     openFromPopup,
     openDiscountFromPopup,
+    getRecommendationList,
     getDiscountSizeSummary,
     clearDiscountSizeSummaryCache
   };
