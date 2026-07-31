@@ -1,6 +1,9 @@
 // stockQuickSimilar.js - Tìm sản phẩm cùng nhóm cùng size
 
 (function () {
+  const DISCOUNT_SIZE_SUMMARY_CACHE = new Map();
+  const DISCOUNT_SIZE_SUMMARY_TTL_MS = 2 * 60 * 1000;
+
   function getSupabaseClient() {
     const client = window.supabase;
     if (!client || typeof client.from !== "function" || typeof client.rpc !== "function") {
@@ -292,69 +295,108 @@
   }
 
 
-  async function fetchSourceMaster(maspRaw) {
-    const client = getSupabaseClient();
-    if (!client) return null;
-    const masp = normText(maspRaw);
-    if (!masp) return null;
-    const { data, error } = await client
-      .from("dmhanghoa")
-      .select("masp, giale, nhomhang, giam_gia_pct")
-      .eq("masp", masp)
-      .maybeSingle();
-    if (error) {
-      console.warn("[StockQuickSimilar] Không đọc được mã gốc:", error);
-      return null;
-    }
-    return data || null;
-  }
-
-  async function getRecommendationList({
-    masp, size, nhomhang, denNgay, branch, mode = "similar"
+  async function getDiscountSizeSummary({
+    masp,
+    nhomhang,
+    denNgay,
+    branch,
+    forceRefresh = false
   }) {
     const sourceMasp = normText(masp);
-    const sizeNorm = normalizeSize(size);
-    if (!sourceMasp || !sizeNorm) return { ok:false, message:"Thiếu mã gốc hoặc size", list:[] };
+    const sourceGroup = String(nhomhang || "").trim();
+    const useBranch = String(branch || "").trim().toLowerCase();
 
-    let useBranch = String(branch || "").trim().toLowerCase();
-    if (!["cs1","cs2"].includes(useBranch)) useBranch = detectBranch();
-    if (!["cs1","cs2"].includes(useBranch)) {
-      useBranch = await pickBranchIfNeeded();
-      if (!useBranch) return { ok:false, canceled:true, list:[] };
+    if (!sourceMasp || !sourceGroup || !["cs1", "cs2"].includes(useBranch)) {
+      return { ok: false, message: "Thiếu mã, nhóm hàng hoặc cơ sở", summary: {} };
     }
 
-    const sourceFresh = await fetchSourceMaster(sourceMasp);
-    const sourceGroup = String(sourceFresh?.nhomhang || nhomhang || "").trim();
-    if (!sourceGroup) return { ok:false, message:"Không đọc được nhóm hàng mã gốc", list:[] };
+    const cacheKey = [
+      normText(sourceGroup),
+      useBranch,
+      String(denNgay || "")
+    ].join("|");
+
+    const cached = DISCOUNT_SIZE_SUMMARY_CACHE.get(cacheKey);
+
+    if (
+      !forceRefresh &&
+      cached &&
+      Date.now() - cached.savedAt < DISCOUNT_SIZE_SUMMARY_TTL_MS
+    ) {
+      return { ok: true, cached: true, summary: cached.summary };
+    }
 
     const masters = await fetchGroupMasterProducts(sourceGroup);
-    const sourceMaster = sourceFresh || masters.find(x => normText(x.masp) === sourceMasp);
-    const sourcePrice = Number(sourceMaster?.giale || 0);
-    let filtered = masters.filter(x => normText(x.masp) !== sourceMasp);
 
-    if (mode === "discount") filtered = filtered.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
-    if (mode === "cheaper") filtered = filtered.filter(x => Number(x.giale||0)>0 && Number(x.giale||0)<sourcePrice);
-    if (mode === "premium") filtered = filtered.filter(x => Number(x.giale||0)>sourcePrice);
+    const discountMasters = (masters || []).filter(m => {
+      const code = normText(m.masp);
+      const pct = Number(m.giam_gia_pct || 0);
 
-    if (!filtered.length) return { ok:true, source_price:sourcePrice, source_group:sourceGroup, branch:useBranch, list:[] };
+      return (
+        code &&
+        code !== sourceMasp &&
+        [10, 20, 30, 50].includes(pct)
+      );
+    });
 
-    const stockRows = await fetchGroupStockRows(filtered.map(x => normText(x.masp)).filter(Boolean), denNgay);
-    let list = buildListFromGroupData({ sourceMasp, size:sizeNorm, branch:useBranch, masters:filtered, stockRows });
-
-    if (mode === "discount") {
-      list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct))).sort((a,b) => Number(b.giam_gia_pct||0)-Number(a.giam_gia_pct||0));
-    } else if (mode === "cheaper") {
-      list.sort((a,b) => (sourcePrice-Number(a.giale||0))-(sourcePrice-Number(b.giale||0)));
-    } else if (mode === "premium") {
-      list.sort((a,b) => (Number(a.giale||0)-sourcePrice)-(Number(b.giale||0)-sourcePrice));
+    if (!discountMasters.length) {
+      const empty = {};
+      DISCOUNT_SIZE_SUMMARY_CACHE.set(cacheKey, {
+        savedAt: Date.now(),
+        summary: empty
+      });
+      return { ok: true, summary: empty };
     }
 
-    return { ok:true, source_price:sourcePrice, source_group:sourceGroup, branch:useBranch, list };
+    const allowedMasps = new Set(
+      discountMasters.map(x => normText(x.masp)).filter(Boolean)
+    );
+
+    const stockRows = await fetchGroupStockRows(
+      Array.from(allowedMasps),
+      denNgay
+    );
+
+    const sizeSets = new Map();
+
+    (stockRows || []).forEach(r => {
+      const code = normText(r.masp);
+      if (!allowedMasps.has(code)) return;
+
+      const size = normalizeSize(r.size);
+      if (!size) return;
+
+      const ton = useBranch === "cs2"
+        ? Number(r.ton_cs2 || 0)
+        : Number(r.ton_cs1 || 0);
+
+      if (ton <= 0) return;
+
+      if (!sizeSets.has(size)) sizeSets.set(size, new Set());
+      sizeSets.get(size).add(code);
+    });
+
+    const summary = {};
+    sizeSets.forEach((set, size) => {
+      summary[size] = set.size;
+    });
+
+    DISCOUNT_SIZE_SUMMARY_CACHE.set(cacheKey, {
+      savedAt: Date.now(),
+      summary
+    });
+
+    return { ok: true, cached: false, summary };
+  }
+
+  function clearDiscountSizeSummaryCache() {
+    DISCOUNT_SIZE_SUMMARY_CACHE.clear();
   }
 
   window.StockQuickSimilar = {
     openFromPopup,
     openDiscountFromPopup,
-    getRecommendationList
+    getDiscountSizeSummary,
+    clearDiscountSizeSummaryCache
   };
 })();
