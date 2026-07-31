@@ -314,6 +314,43 @@
     background: #dbeafe;
   }
 
+  .sq-size-cell-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .sq-size-label-text {
+    min-width: 0;
+  }
+
+  .sq-discount-size-count {
+    display: none;
+    flex: 0 0 auto;
+    color: #dc2626;
+    font-size: 0.82em;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    text-decoration: underline;
+    white-space: nowrap;
+    padding: 2px 3px;
+    border-radius: 4px;
+  }
+
+  .sq-discount-size-count:hover {
+    background: #fee2e2;
+  }
+
+  .sq-discount-size-count.loading {
+    display: inline-block;
+    color: #9ca3af;
+    text-decoration: none;
+    cursor: default;
+  }
+
   /* Gợi ý chuyển từ CS1 sang CS2: nền xanh nhạt */
 .sq-stock-popup tr.sq-dhck-suggest-1v2 td {
   background: #d9fbe6 !important;
@@ -1723,7 +1760,16 @@ data-color-masp="${targetMasp}"
 
         return `
         <tr class="sq-open-similar-row${suggestClass}" data-size="${sizeNum}" title="${suggestTitle}">
-          <td>${sizeLabel}</td>
+          <td>
+            <div class="sq-size-cell-inner">
+              <span class="sq-size-label-text">${sizeLabel}</span>
+              <span
+                class="sq-discount-size-count loading"
+                data-discount-size="${sizeNum}"
+                title="Đang tải số mã giảm giá cùng nhóm..."
+              >GG…</span>
+            </div>
+          </td>
           <td class="num sq-col-k1">
   ${renderTonLech(r.ton_cs1, r.lech_cs1, hasManocanh("cs1", sizeNum), getDangChuyenQty("cs1", sizeNum))}
 </td>
@@ -2189,6 +2235,134 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     return !!window.StockQuickSimilar;
   }
 
+
+  function detectStockQuickBranch() {
+    const path = String(window.location.pathname || "").toLowerCase();
+
+    if (path.includes("cs1")) return "cs1";
+    if (path.includes("cs2")) return "cs2";
+
+    const candidates = [
+      sessionStorage.getItem("diadiem"),
+      localStorage.getItem("diadiem"),
+      window.diadiem,
+      document.getElementById("diadiem")?.value
+    ];
+
+    for (const value of candidates) {
+      const v = String(value || "").trim().toLowerCase();
+
+      if (v === "cs1" || v === "cs2") return v;
+    }
+
+    return "";
+  }
+
+  async function loadDiscountSizeSummaryInBackground(popup, payload) {
+    if (!popup || !payload?.nhomhang) return;
+
+    const badges = popup.querySelectorAll(
+      ".sq-discount-size-count[data-discount-size]"
+    );
+
+    if (!badges.length) return;
+
+    const branch = detectStockQuickBranch();
+
+    if (!branch) {
+      badges.forEach(el => el.remove());
+      return;
+    }
+
+    const ready = await ensureStockQuickSimilarReady();
+
+    if (
+      !ready ||
+      typeof window.StockQuickSimilar?.getDiscountSizeSummary !== "function"
+    ) {
+      badges.forEach(el => el.remove());
+      return;
+    }
+
+    try {
+      const result = await window.StockQuickSimilar.getDiscountSizeSummary({
+        masp: String(popup.dataset.masp || "").trim().toUpperCase(),
+        nhomhang: String(payload.nhomhang || "").trim(),
+        denNgay: getDenNgay(),
+        branch
+      });
+
+      const summary = result?.summary || {};
+
+      badges.forEach(el => {
+        const size = String(el.dataset.discountSize || "").trim();
+        const count = Number(summary[size] || 0);
+
+        el.classList.remove("loading");
+
+        if (count <= 0) {
+          el.style.display = "none";
+          el.textContent = "";
+          return;
+        }
+
+        el.style.display = "inline-block";
+        el.textContent = `GG${count}`;
+        el.title =
+          `${count} mã giảm giá cùng nhóm còn size ${size} tại ${branch.toUpperCase()}`;
+      });
+    } catch (err) {
+      console.warn(
+        "[StockQuickPopup] Không tải được tổng hợp hàng giảm giá theo size:",
+        err
+      );
+      badges.forEach(el => el.remove());
+    }
+  }
+
+  function bindDiscountSizeCountActions(popup, payload) {
+    if (!popup) return;
+
+    popup.querySelectorAll(
+      ".sq-discount-size-count[data-discount-size]"
+    ).forEach(el => {
+      if (el.dataset.discountCountBound === "1") return;
+      el.dataset.discountCountBound = "1";
+
+      el.addEventListener("click", async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        if (String(el.textContent || "").trim() === "GG…") return;
+
+        const size = String(el.dataset.discountSize || "").trim();
+        if (!size) return;
+
+        const ready = await ensureStockQuickSimilarReady();
+
+        if (
+          !ready ||
+          typeof window.StockQuickSimilar?.openDiscountFromPopup !== "function"
+        ) {
+          alert("Module xem hàng giảm giá chưa sẵn sàng. Vui lòng tải lại trang.");
+          return;
+        }
+
+        await window.StockQuickSimilar.openDiscountFromPopup({
+          masp: String(popup.dataset.masp || "").trim().toUpperCase(),
+          size,
+          nhomhang: String(
+            payload?.nhomhang ||
+            popup.dataset.nhomhang ||
+            ""
+          ).trim(),
+          denNgay: getDenNgay()
+        });
+      });
+    });
+  }
+
   function bindDiscountActions(popup, payload) {
     if (!popup) return;
 
@@ -2245,6 +2419,10 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
           lastSaved = pct === null ? "" : String(pct);
           input.value = lastSaved;
           payload.giam_gia_pct = pct;
+
+          try {
+            window.StockQuickSimilar?.clearDiscountSizeSummaryCache?.();
+          } catch (_) { }
 
           if (msgEl) {
             msgEl.textContent = rs.message || "Đã lưu";
@@ -2820,6 +2998,14 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
     // bind click dòng size mở sản phẩm cùng nhóm
     bindOpenSimilarRows(popup);
+
+    // Bấm trực tiếp GGx để mở hàng giảm giá đúng size.
+    bindDiscountSizeCountActions(popup, payload);
+
+    // Tải nền số mã giảm giá theo size, không chặn popup hiển thị.
+    setTimeout(() => {
+      loadDiscountSizeSummaryInBackground(popup, payload);
+    }, 0);
 
     popup.querySelectorAll(".sq-vitri-input, .sq-vitri-save-btn").forEach((el) => {
       el.addEventListener("click", (e) => {
