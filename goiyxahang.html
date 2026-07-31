@@ -143,6 +143,49 @@
             color: #fff;
         }
 
+        .btn.save-discount {
+            background: #b91c1c;
+            color: #fff;
+        }
+
+        .discount-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: end;
+            gap: 8px;
+            margin: 10px 0 6px;
+            padding: 10px;
+            border: 1px solid #fecaca;
+            background: #fff7f7;
+            border-radius: 9px;
+        }
+
+        .discount-toolbar .filter-group {
+            flex: 0 0 150px;
+            min-width: 130px;
+        }
+
+        .discount-note {
+            font-size: 12px;
+            color: #7f1d1d;
+            flex: 1 1 260px;
+            line-height: 1.4;
+        }
+
+        #discountDirtyMsg {
+            font-weight: 700;
+            color: #b45309;
+        }
+
+        #hotXa td.discount-dirty-cell {
+            background: #fef3c7 !important;
+        }
+
+        #hotXa td.discount-saved-cell {
+            color: #b91c1c;
+            font-weight: 700;
+        }
+
         #hotXa .htCore tbody tr:hover td {
             background: #eef6ff;
             cursor: pointer;
@@ -223,6 +266,26 @@
                         </div>
                     </div>
 
+                    <div class="discount-toolbar">
+                        <div class="filter-group">
+                            <label for="bulkDiscount">Mức giảm áp dụng</label>
+                            <input id="bulkDiscount" list="discountLevels" inputmode="numeric" placeholder="Trống / 10 / 20 / 30 / 50" />
+                            <datalist id="discountLevels">
+                                <option value="10"></option>
+                                <option value="20"></option>
+                                <option value="30"></option>
+                                <option value="50"></option>
+                            </datalist>
+                        </div>
+                        <button class="btn secondary" id="btnSelectAll">☑ Chọn tất cả đang hiển thị</button>
+                        <button class="btn secondary" id="btnApplyDiscount">Áp dụng cho dòng đã chọn</button>
+                        <button class="btn save-discount" id="btnSaveDiscount">💾 Lưu dữ liệu giảm giá</button>
+                        <div class="discount-note">
+                            Chọn các dòng cần xử lý, nhập mức 10/20/30/50 hoặc để trống để xóa giảm giá, sau đó bấm lưu.
+                            <span id="discountDirtyMsg">Không có thay đổi chưa lưu.</span>
+                        </div>
+                    </div>
+
                     <div class="filter-row" style="justify-content: space-between; margin-top:4px;">
                         <div class="status" id="statusMsg">Chưa chạy.</div>
                         <div class="action-buttons">
@@ -247,7 +310,7 @@
     <!-- SUPABASE AUTH + LOGIC GỢI Ý XẢ HÀNG -->
     <script type="module">
         import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
-        import { initGoiYXaHang } from './scripts/goiyxahang.js?v=20260730b';
+        import { initGoiYXaHang } from './scripts/goiyxahang.js?v=20260731giamgia';
 
         // Khởi tạo đăng nhập chuẩn auth, chỉ cho ADMIN giống trang nhập DM nhân viên
         khoiTaoDangNhapDungChung({
