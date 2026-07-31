@@ -88,6 +88,8 @@
             font-weight: 600;
         }
 
+        .header-right button:disabled { opacity:.65; cursor:wait; }
+
         .header-right small {
             opacity: .9;
             white-space: nowrap;
@@ -353,6 +355,7 @@
                 </div>
             </div>
             <div class="header-right">
+                <button id="btnRefresh" type="button">🔄 Làm mới</button>
                 <button onclick="history.back()">⬅ Quay lại</button>
                 <small id="count"></small>
             </div>
@@ -552,17 +555,16 @@
                 if (panel) panel.classList.toggle('active', key === tabKey);
             });
 
-            if (["discount", "similar", "cheaper", "premium"].includes(tabKey)) {
-                await ensureTabData(tabKey);
-            }
+            // Dữ liệu được tải mới khi bấm tab hoặc bấm Làm mới.
         }
 
         function bindTabs() {
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    activateTab(btn.dataset.tab).catch(err => {
-                        console.warn("[xemanhxnt14] Lỗi mở tab:", err);
-                    });
+                    const tabKey = btn.dataset.tab;
+                    activateTab(tabKey)
+                      .then(() => ensureTabData(tabKey, { forceRefresh:true }))
+                      .catch(err => console.warn("[xemanhxnt14] Lỗi mở tab:", err));
                 });
             });
         }
@@ -701,89 +703,43 @@
             if (wrap) wrap.innerHTML = htmlText;
         }
 
-        async function ensureTabData(tabKey) {
-            if (!["discount", "similar", "cheaper", "premium"].includes(tabKey)) {
-                return;
-            }
-
-            if (TAB_LIST_CACHE.has(tabKey)) {
-                const cached = TAB_LIST_CACHE.get(tabKey) || [];
-                const wrapId = TAB_META[tabKey]?.wrap;
-                const wrap = wrapId ? document.getElementById(wrapId) : null;
-                const cards = renderListIntoWrap(cached, wrap);
-                attachPopupToCards(cards);
-                return;
-            }
-
-            // Danh sách được truyền từ trang nguồn luôn giữ nguyên trong đúng tab nguồn.
-            if (tabKey === DATA_TAB_KEY && CURRENT_LIST.length) {
-                TAB_LIST_CACHE.set(tabKey, CURRENT_LIST);
-                const wrapId = TAB_META[tabKey]?.wrap;
-                const wrap = wrapId ? document.getElementById(wrapId) : null;
-                const cards = renderListIntoWrap(CURRENT_LIST, wrap);
-                attachPopupToCards(cards);
-                return;
-            }
+        async function ensureTabData(tabKey, options = {}) {
+            if (!["discount","similar","cheaper","premium"].includes(tabKey)) return;
 
             if (!canBuildRecommendation()) {
-                setWrapMessage(
-                    tabKey,
-                    `<div class="placeholder">
-                        <strong>Chưa đủ ngữ cảnh để tạo danh sách</strong>
-                        Cần mở trang từ StockQuickPopup bằng một size cụ thể để hệ thống biết mã gốc, nhóm hàng, size và cơ sở.
-                    </div>`
-                );
+                if (tabKey !== DATA_TAB_KEY) {
+                    setWrapMessage(tabKey, `<div class="placeholder"><strong>Chưa đủ ngữ cảnh để tạo danh sách</strong>Cần mở từ StockQuickPopup với mã gốc, nhóm, size và cơ sở.</div>`);
+                    return;
+                }
+                let list = Array.isArray(CURRENT_LIST) ? CURRENT_LIST.map(x => ({...x})) : [];
+                list = await enrichListWithDiscountInfo(list);
+                if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
+                TAB_LIST_CACHE.set(tabKey, list);
+                document.getElementById("count").textContent = `Tổng: ${list.length}`;
+                const wrap = document.getElementById(TAB_META[tabKey]?.wrap);
+                attachPopupToCards(renderListIntoWrap(list, wrap));
                 return;
             }
 
-            if (
-                !window.StockQuickSimilar ||
-                typeof window.StockQuickSimilar.getRecommendationList !== "function"
-            ) {
-                setWrapMessage(
-                    tabKey,
-                    `<div class="placeholder">
-                        <strong>Module gợi ý chưa sẵn sàng</strong>
-                        Hãy kiểm tra file scripts/stockQuickSimilar.js đã được cập nhật.
-                    </div>`
-                );
+            if (!window.StockQuickSimilar?.getRecommendationList) {
+                setWrapMessage(tabKey, `<div class="placeholder"><strong>Module gợi ý chưa sẵn sàng</strong>Kiểm tra scripts/stockQuickSimilar.js.</div>`);
                 return;
             }
-
             if (TAB_LOADING.has(tabKey)) return;
             TAB_LOADING.add(tabKey);
-
-            setWrapMessage(
-                tabKey,
-                `<div class="loading">Đang tìm sản phẩm ${TAB_META[tabKey]?.label || ""}...</div>`
-            );
-
+            setWrapMessage(tabKey, `<div class="loading">Đang tải dữ liệu mới nhất cho ${TAB_META[tabKey]?.label || ""}...</div>`);
             try {
-                const ctx = getContextForRecommendation();
-
-                const result = await window.StockQuickSimilar.getRecommendationList({
-                    ...ctx,
-                    mode: tabKey
-                });
-
+                const result = await window.StockQuickSimilar.getRecommendationList({...getContextForRecommendation(), mode:tabKey});
                 let list = Array.isArray(result?.list) ? result.list : [];
                 list = await enrichListWithDiscountInfo(list);
-
+                if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
-
-                const wrapId = TAB_META[tabKey]?.wrap;
-                const wrap = wrapId ? document.getElementById(wrapId) : null;
-                const cards = renderListIntoWrap(list, wrap);
-                attachPopupToCards(cards);
+                document.getElementById("count").textContent = `Tổng: ${list.length}`;
+                const wrap = document.getElementById(TAB_META[tabKey]?.wrap);
+                attachPopupToCards(renderListIntoWrap(list, wrap));
             } catch (err) {
                 console.error("[xemanhxnt14] Lỗi tải tab", tabKey, err);
-                setWrapMessage(
-                    tabKey,
-                    `<div class="placeholder">
-                        <strong>Không tải được dữ liệu</strong>
-                        ${String(err?.message || err || "Có lỗi xảy ra")}
-                    </div>`
-                );
+                setWrapMessage(tabKey, `<div class="placeholder"><strong>Không tải được dữ liệu</strong>${String(err?.message || err)}</div>`);
             } finally {
                 TAB_LOADING.delete(tabKey);
             }
@@ -795,6 +751,22 @@
             if (wrapEl) wrapEl.innerHTML = `<div class="loading">Đang tải danh sách sản phẩm...</div>`;
         }
 
+        function getActiveTabKey() {
+            return document.querySelector(".tab-btn.active")?.dataset?.tab || DATA_TAB_KEY;
+        }
+
+        async function refreshCurrentTab() {
+            const btn = document.getElementById("btnRefresh");
+            const tabKey = getActiveTabKey();
+            if (btn) { btn.disabled=true; btn.textContent="⏳ Đang làm mới"; }
+            try {
+                TAB_LIST_CACHE.delete(tabKey);
+                await ensureTabData(tabKey, { forceRefresh:true });
+            } finally {
+                if (btn) { btn.disabled=false; btn.textContent="🔄 Làm mới"; }
+            }
+        }
+
         async function initPage() {
             CURRENT_LIST = JSON.parse(sessionStorage.getItem("XNT14_MASP_LIST") || "[]");
             CURRENT_CONTEXT = JSON.parse(sessionStorage.getItem("XNT14_CONTEXT") || "{}");
@@ -803,6 +775,7 @@
             buildContextChips();
             DATA_TAB_KEY = pickDataTabKey();
             bindTabs();
+            document.getElementById("btnRefresh")?.addEventListener("click", () => refreshCurrentTab());
             await activateTab(DATA_TAB_KEY);
             setCountText();
 
@@ -825,18 +798,14 @@
                 CURRENT_LIST = await enrichListWithDiscountInfo(CURRENT_LIST);
             }
 
-            TAB_LIST_CACHE.set(DATA_TAB_KEY, CURRENT_LIST);
-
-            const wrapId = TAB_META[DATA_TAB_KEY]?.wrap;
-            const wrapEl = wrapId ? document.getElementById(wrapId) : null;
-            const cards = renderListIntoWrap(CURRENT_LIST, wrapEl);
-            setCountText();
-
             if (ok) {
-                attachPopupToCards(cards);
+                await ensureTabData(DATA_TAB_KEY, { forceRefresh:true });
             } else {
+                const wrap = document.getElementById(TAB_META[DATA_TAB_KEY]?.wrap);
+                attachPopupToCards(renderListIntoWrap(CURRENT_LIST, wrap));
                 console.warn('[xemanhxnt14] StockQuick hoặc Supabase chưa sẵn sàng sau thời gian chờ.');
             }
+            setCountText();
         }
 
         if (document.readyState === 'loading') {
