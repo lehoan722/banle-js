@@ -27,6 +27,37 @@ function getIntValue(id) {
   return parseInt((getInput(id)?.value || "").replace(/[^\d-]/g, "") || "0", 10) || 0;
 }
 
+function chuanHoaKhongDau(value) {
+  return String(value || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
+function laKhachLeHienTai() {
+  const maKh = chuanHoaKhongDau(
+    getText("makh") || getText("ma_khach_hang") || getText("makhInput")
+  );
+  const tenKh = chuanHoaKhongDau(
+    getText("khachhang") || getText("tenkh") || getText("tenkhachhang")
+  );
+
+  return !maKh || maKh === "KL" || tenKh === "KHACH LE";
+}
+
+function xoaDuLieuDiemNeuLaKhachLe() {
+  if (!laKhachLeHienTai()) return false;
+
+  // KL không được cộng điểm, trừ điểm hoặc đổi điểm dưới bất kỳ hình thức nào.
+  ["diem_tru", "tien_doi_diem"].forEach((id) => {
+    const el = getInput(id);
+    if (el) el.value = "0";
+  });
+
+  return true;
+}
+
 function apDungGiamDiemVaoThanhToan() {
   const tongHang = calcTongThanhTienFromBangKetQua(getBangKetQua());
   const chietKhau = getIntValue("chietkhau");
@@ -42,6 +73,9 @@ function apDungGiamDiemVaoThanhToan() {
 
 async function validateBeforeSecureSave() {
   capNhatThongTinTong(getBangKetQua());
+
+  // Phải xóa dữ liệu điểm trước khi tính lại thanh toán và trước khi tạo payload.
+  xoaDuLieuDiemNeuLaKhachLe();
   apDungGiamDiemVaoThanhToan();
 
   const maspChuaNhap = getText("masp");
