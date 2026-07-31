@@ -524,6 +524,124 @@
   color: #dc2626;
 }
 
+
+  /* ===== Quản lý giảm giá ===== */
+  .sq-discount-wrap {
+    margin-top: 8px;
+    padding: 7px 8px;
+    border: 1px solid #fecaca;
+    background: #fff7f7;
+    border-radius: 8px;
+  }
+
+  .sq-discount-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+    font-size: 15px;
+  }
+
+  .sq-discount-label {
+    font-weight: 700;
+    color: #b91c1c;
+  }
+
+  .sq-discount-input {
+    width: 86px;
+    padding: 4px 7px;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    font-size: 15px;
+    background: #fff;
+  }
+
+  .sq-discount-input:disabled {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+
+  .sq-discount-msg {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .sq-discount-msg.ok { color: #15803d; }
+  .sq-discount-msg.err { color: #dc2626; }
+
+  .sq-discount-view-link {
+    margin-top: 7px;
+    text-align: center;
+    color: #dc2626;
+    font-weight: 800;
+    cursor: pointer;
+    user-select: none;
+    text-decoration: underline;
+    animation: sqDiscountBlink 1.05s ease-in-out infinite;
+  }
+
+  .sq-discount-view-link:hover {
+    color: #991b1b;
+  }
+
+  @keyframes sqDiscountBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .28; }
+  }
+
+  .sq-discount-size-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 100001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+  }
+
+  .sq-discount-size-card {
+    width: min(360px, 94vw);
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 12px 35px rgba(0,0,0,.28);
+  }
+
+  .sq-discount-size-title {
+    font-weight: 800;
+    color: #b91c1c;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .sq-discount-size-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 7px;
+  }
+
+  .sq-discount-size-btn,
+  .sq-discount-cancel-btn {
+    padding: 8px 6px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .sq-discount-size-btn:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+  }
+
+  .sq-discount-cancel-btn {
+    width: 100%;
+    margin-top: 10px;
+    background: #f3f4f6;
+  }
+
   /* ===== Layout cho ĐIỆN THOẠI DỌC ===== */
    @media (max-width: 800px) and (orientation: portrait) {
     .sq-stock-popup {
@@ -929,6 +1047,43 @@ data-color-masp="${targetMasp}"
     }
   }
 
+
+  async function saveDiscountNhanh(maspRaw, pctRaw) {
+    const masp = String(maspRaw || "").trim().toUpperCase();
+    const raw = String(pctRaw ?? "").trim();
+    const pct = raw === "" ? null : Number(raw);
+
+    if (!masp) {
+      return { ok: false, message: "Mã sản phẩm trống" };
+    }
+
+    if (pct !== null && ![10, 20, 30, 50].includes(pct)) {
+      return { ok: false, message: "Chỉ cho phép mức giảm 10, 20, 30 hoặc 50" };
+    }
+
+    const client = getSupabaseClient();
+    if (!client) {
+      return { ok: false, message: "Supabase chưa sẵn sàng" };
+    }
+
+    try {
+      const { data, error } = await client.rpc("rpc_save_giam_gia_sanpham", {
+        p_masp: masp,
+        p_giam_gia_pct: pct
+      });
+
+      if (error) {
+        console.warn("[StockQuickPopup] rpc_save_giam_gia_sanpham error:", error);
+        return { ok: false, message: error.message || "Lỗi gọi RPC" };
+      }
+
+      return data || { ok: false, message: "Không nhận được phản hồi từ RPC" };
+    } catch (e) {
+      console.warn("[StockQuickPopup] saveDiscountNhanh exception:", e);
+      return { ok: false, message: e.message || "Có lỗi khi lưu giảm giá" };
+    }
+  }
+
   async function fetchTonBanByMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
     if (!masp) {
@@ -974,6 +1129,7 @@ data-color-masp="${targetMasp}"
     let nhap_cuoi_ma = "";
     let giale = "";
     let nhomhang = "";
+    let giam_gia_pct = null;
     let mau_khac = "";
     let manocanh = {
       cs1: {},
@@ -1028,7 +1184,7 @@ data-color-masp="${targetMasp}"
 
         client
           .from("dmhanghoa")
-          .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, giale, nhomhang")
+          .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, giale, nhomhang, giam_gia_pct")
           .eq("masp", masp)
           .maybeSingle(),
 
@@ -1164,6 +1320,7 @@ data-color-masp="${targetMasp}"
         baymau_cs2 = hh.treomaucs2 || "";
         giale = hh.giale || "";
         nhomhang = hh.nhomhang || "";
+        giam_gia_pct = hh.giam_gia_pct == null ? null : Number(hh.giam_gia_pct);
 
         // ✅ Ưu tiên ND từ dmhanghoa.nhapdau (nếu có)
         const ndRaw = hh.nhapdau ? String(hh.nhapdau).trim() : "";
@@ -1207,7 +1364,8 @@ data-color-masp="${targetMasp}"
       rows,
       nhomhang,
       giale,
-      mau_khac
+      mau_khac,
+      giam_gia_pct
     };
 
     return {
@@ -1223,6 +1381,7 @@ data-color-masp="${targetMasp}"
       giale,
       nhomhang,
       mau_khac,
+      giam_gia_pct,
       manocanh,
       dangchuyen
     };
@@ -1249,6 +1408,7 @@ data-color-masp="${targetMasp}"
     const giale = payload && payload.giale ? payload.giale : "";
     const nhomhang = payload && payload.nhomhang ? payload.nhomhang : "";
     const mau_khac = payload && payload.mau_khac ? payload.mau_khac : "";
+    const giam_gia_pct = payload && payload.giam_gia_pct != null ? Number(payload.giam_gia_pct) : null;
     const kiemton = payload && payload.kiemton
       ? payload.kiemton
       : {};
@@ -1759,6 +1919,51 @@ data-color-masp="${targetMasp}"
         </div>
       `;
 
+
+    const discountEditorBlock = isAdmin
+      ? `
+        <div class="sq-discount-wrap">
+          <div class="sq-discount-row">
+            <span class="sq-discount-label">Giảm giá (%):</span>
+            <input
+              class="sq-discount-input"
+              type="number"
+              min="10"
+              max="50"
+              step="10"
+              list="sq-discount-options"
+              value="${giam_gia_pct == null ? "" : giam_gia_pct}"
+              placeholder="Trống"
+              inputmode="numeric"
+              autocomplete="off"
+            />
+            <datalist id="sq-discount-options">
+              <option value="10"></option>
+              <option value="20"></option>
+              <option value="30"></option>
+              <option value="50"></option>
+            </datalist>
+            <span class="sq-discount-msg"></span>
+          </div>
+          <div
+            class="sq-discount-view-link"
+            title="Xem sản phẩm giảm giá cùng nhóm và đúng size"
+          >XEM HÀNG GIẢM GIÁ CÙNG NHÓM${nhomhang ? `: ${nhomhang}` : ""}</div>
+        </div>
+      `
+      : `
+        <div class="sq-discount-wrap">
+          <div class="sq-discount-row">
+            <span class="sq-discount-label">Giảm giá:</span>
+            <span class="sq-vitri-value-readonly">${giam_gia_pct == null ? "Không giảm" : `${giam_gia_pct}%`}</span>
+          </div>
+          <div
+            class="sq-discount-view-link"
+            title="Xem sản phẩm giảm giá cùng nhóm và đúng size"
+          >XEM HÀNG GIẢM GIÁ CÙNG NHÓM${nhomhang ? `: ${nhomhang}` : ""}</div>
+        </div>
+      `;
+
     const vitriEditorBlock = `
   <div class="sq-vitri-actions-wrap">
     ${vitriRowCs1}
@@ -1814,6 +2019,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
           </div>
           ${imgBlock}
         </div>
+        ${discountEditorBlock}
         ${vitriEditorBlock}
       </div>`;
   }
@@ -1916,6 +2122,180 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
           await ensurePopup(document.body, targetMasp);
         });
       });
+  }
+
+
+  function pickDiscountSize() {
+    return new Promise((resolve) => {
+      document.querySelectorAll(".sq-discount-size-backdrop").forEach(el => el.remove());
+
+      const overlay = document.createElement("div");
+      overlay.className = "sq-discount-size-backdrop";
+
+      const sizes = ["0", "38", "39", "40", "41", "42", "43", "44", "45", "46"];
+
+      overlay.innerHTML = `
+        <div class="sq-discount-size-card">
+          <div class="sq-discount-size-title">Chọn size cần tìm hàng giảm giá</div>
+          <div class="sq-discount-size-grid">
+            ${sizes.map(s => `<button type="button" class="sq-discount-size-btn" data-size="${s}">${s}</button>`).join("")}
+          </div>
+          <button type="button" class="sq-discount-cancel-btn">Hủy</button>
+        </div>
+      `;
+
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+          overlay.remove();
+          resolve(null);
+        }
+      });
+
+      overlay.querySelectorAll(".sq-discount-size-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const size = String(btn.dataset.size || "").trim();
+          overlay.remove();
+          resolve(size || null);
+        });
+      });
+
+      overlay.querySelector(".sq-discount-cancel-btn")?.addEventListener("click", () => {
+        overlay.remove();
+        resolve(null);
+      });
+
+      document.body.appendChild(overlay);
+    });
+  }
+
+  async function ensureStockQuickSimilarReady(maxWaitMs = 2500) {
+    if (window.StockQuickSimilar) return true;
+
+    let script = document.querySelector('script[data-stockquick-similar="1"]');
+
+    if (!script) {
+      script = document.createElement("script");
+      script.src = "/scripts/stockQuickSimilar.js?v=20260731-discount1";
+      script.dataset.stockquickSimilar = "1";
+      document.head.appendChild(script);
+    }
+
+    const start = Date.now();
+    while (Date.now() - start < maxWaitMs) {
+      if (window.StockQuickSimilar) return true;
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    return !!window.StockQuickSimilar;
+  }
+
+  function bindDiscountActions(popup, payload) {
+    if (!popup) return;
+
+    const input = popup.querySelector(".sq-discount-input");
+    const msgEl = popup.querySelector(".sq-discount-msg");
+    const link = popup.querySelector(".sq-discount-view-link");
+
+    if (input && input.dataset.discountBound !== "1") {
+      input.dataset.discountBound = "1";
+      let lastSaved = String(payload?.giam_gia_pct == null ? "" : payload.giam_gia_pct);
+
+      const runSave = async () => {
+        if (!getIsAdminLocal()) {
+          alert("Chỉ quản lý mới được thay đổi giảm giá.");
+          input.value = lastSaved;
+          return;
+        }
+
+        const raw = String(input.value || "").trim();
+        const pct = raw === "" ? null : Number(raw);
+
+        if (pct !== null && ![10, 20, 30, 50].includes(pct)) {
+          alert("Chỉ được nhập mức giảm 10, 20, 30 hoặc 50. Để trống là xóa giảm giá.");
+          input.value = lastSaved;
+          input.focus();
+          input.select();
+          return;
+        }
+
+        if (raw === lastSaved) return;
+
+        const masp = String(popup.dataset.masp || "").trim().toUpperCase();
+        const actionText = pct === null
+          ? `xóa giảm giá của sản phẩm ${masp}`
+          : `lưu mức giảm ${pct}% cho sản phẩm ${masp}`;
+
+        const ok = window.confirm(`Bạn có muốn ${actionText} không?`);
+        if (!ok) {
+          input.value = lastSaved;
+          return;
+        }
+
+        input.disabled = true;
+        if (msgEl) {
+          msgEl.textContent = "Đang lưu...";
+          msgEl.className = "sq-discount-msg";
+        }
+
+        const rs = await saveDiscountNhanh(masp, pct);
+
+        input.disabled = false;
+
+        if (rs?.ok) {
+          lastSaved = pct === null ? "" : String(pct);
+          input.value = lastSaved;
+          payload.giam_gia_pct = pct;
+
+          if (msgEl) {
+            msgEl.textContent = rs.message || "Đã lưu";
+            msgEl.className = "sq-discount-msg ok";
+          }
+          return;
+        }
+
+        input.value = lastSaved;
+        if (msgEl) {
+          msgEl.textContent = rs?.message || "Lưu giảm giá thất bại";
+          msgEl.className = "sq-discount-msg err";
+        }
+      };
+
+      input.addEventListener("change", runSave);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          input.blur();
+        }
+      });
+      input.addEventListener("click", e => e.stopPropagation());
+    }
+
+    if (link && link.dataset.discountLinkBound !== "1") {
+      link.dataset.discountLinkBound = "1";
+
+      link.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        const size = await pickDiscountSize();
+        if (!size) return;
+
+        const ready = await ensureStockQuickSimilarReady();
+        if (!ready || typeof window.StockQuickSimilar?.openDiscountFromPopup !== "function") {
+          alert("Module xem hàng giảm giá chưa sẵn sàng. Hãy cập nhật stockQuickSimilar.js rồi thử lại.");
+          return;
+        }
+
+        await window.StockQuickSimilar.openDiscountFromPopup({
+          masp: String(popup.dataset.masp || "").trim().toUpperCase(),
+          size,
+          nhomhang: String(payload?.nhomhang || popup.dataset.nhomhang || "").trim(),
+          denNgay: getDenNgay()
+        });
+      });
+    }
   }
 
   function bindVitriActions(popup) {
@@ -2427,6 +2807,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
     // bind Lưu kho kho nhanh cho CS1 / CS2
     bindVitriActions(popup);
+
+    // bind lưu/xóa giảm giá và mở hàng giảm giá cùng nhóm
+    bindDiscountActions(popup, payload);
 
     // bind click màu khác để mở lại toàn bộ popup theo mã màu đó
     bindColorLinks(popup);
