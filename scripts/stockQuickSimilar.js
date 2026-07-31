@@ -292,181 +292,64 @@
   }
 
 
+  async function fetchSourceMaster(maspRaw) {
+    const client = getSupabaseClient();
+    if (!client) return null;
+    const masp = normText(maspRaw);
+    if (!masp) return null;
+    const { data, error } = await client
+      .from("dmhanghoa")
+      .select("masp, giale, nhomhang, giam_gia_pct")
+      .eq("masp", masp)
+      .maybeSingle();
+    if (error) {
+      console.warn("[StockQuickSimilar] Không đọc được mã gốc:", error);
+      return null;
+    }
+    return data || null;
+  }
+
   async function getRecommendationList({
-    masp,
-    size,
-    nhomhang,
-    denNgay,
-    branch,
-    mode = "similar"
+    masp, size, nhomhang, denNgay, branch, mode = "similar"
   }) {
     const sourceMasp = normText(masp);
-    const sourceGroup = String(nhomhang || "").trim();
     const sizeNorm = normalizeSize(size);
-
-    if (!sourceMasp || !sourceGroup || !sizeNorm) {
-      return {
-        ok: false,
-        message: "Thiếu mã gốc, nhóm hàng hoặc size",
-        list: []
-      };
-    }
+    if (!sourceMasp || !sizeNorm) return { ok:false, message:"Thiếu mã gốc hoặc size", list:[] };
 
     let useBranch = String(branch || "").trim().toLowerCase();
-
-    if (!["cs1", "cs2"].includes(useBranch)) {
-      useBranch = detectBranch();
-    }
-
-    if (!["cs1", "cs2"].includes(useBranch)) {
+    if (!["cs1","cs2"].includes(useBranch)) useBranch = detectBranch();
+    if (!["cs1","cs2"].includes(useBranch)) {
       useBranch = await pickBranchIfNeeded();
-      if (!useBranch) {
-        return {
-          ok: false,
-          canceled: true,
-          message: "Đã hủy chọn cơ sở",
-          list: []
-        };
-      }
+      if (!useBranch) return { ok:false, canceled:true, list:[] };
     }
+
+    const sourceFresh = await fetchSourceMaster(sourceMasp);
+    const sourceGroup = String(sourceFresh?.nhomhang || nhomhang || "").trim();
+    if (!sourceGroup) return { ok:false, message:"Không đọc được nhóm hàng mã gốc", list:[] };
 
     const masters = await fetchGroupMasterProducts(sourceGroup);
-
-    if (!masters.length) {
-      return {
-        ok: false,
-        message: "Không tìm thấy sản phẩm cùng nhóm",
-        list: []
-      };
-    }
-
-    const sourceMaster = masters.find(
-      x => normText(x.masp) === sourceMasp
-    );
-
+    const sourceMaster = sourceFresh || masters.find(x => normText(x.masp) === sourceMasp);
     const sourcePrice = Number(sourceMaster?.giale || 0);
+    let filtered = masters.filter(x => normText(x.masp) !== sourceMasp);
 
-    let filteredMasters = masters.filter(
-      x => normText(x.masp) !== sourceMasp
-    );
+    if (mode === "discount") filtered = filtered.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
+    if (mode === "cheaper") filtered = filtered.filter(x => Number(x.giale||0)>0 && Number(x.giale||0)<sourcePrice);
+    if (mode === "premium") filtered = filtered.filter(x => Number(x.giale||0)>sourcePrice);
 
-    if (mode === "discount") {
-      filteredMasters = filteredMasters.filter(
-        x => [10, 20, 30, 50].includes(Number(x.giam_gia_pct))
-      );
-    } else if (mode === "cheaper") {
-      if (!sourcePrice) {
-        return {
-          ok: false,
-          message: "Không đọc được giá sản phẩm gốc để tìm sản phẩm rẻ hơn",
-          list: []
-        };
-      }
+    if (!filtered.length) return { ok:true, source_price:sourcePrice, source_group:sourceGroup, branch:useBranch, list:[] };
 
-      filteredMasters = filteredMasters.filter(
-        x => Number(x.giale || 0) > 0 &&
-             Number(x.giale || 0) < sourcePrice
-      );
-    } else if (mode === "premium") {
-      if (!sourcePrice) {
-        return {
-          ok: false,
-          message: "Không đọc được giá sản phẩm gốc để tìm sản phẩm cao cấp hơn",
-          list: []
-        };
-      }
-
-      filteredMasters = filteredMasters.filter(
-        x => Number(x.giale || 0) > sourcePrice
-      );
-    }
-
-    if (!filteredMasters.length) {
-      return {
-        ok: true,
-        message: "Không có sản phẩm phù hợp",
-        source_price: sourcePrice,
-        branch: useBranch,
-        list: []
-      };
-    }
-
-    const maspList = filteredMasters
-      .map(x => normText(x.masp))
-      .filter(Boolean);
-
-    const stockRows = await fetchGroupStockRows(maspList, denNgay);
-
-    let list = buildListFromGroupData({
-      sourceMasp,
-      size: sizeNorm,
-      branch: useBranch,
-      masters: filteredMasters,
-      stockRows
-    });
+    const stockRows = await fetchGroupStockRows(filtered.map(x => normText(x.masp)).filter(Boolean), denNgay);
+    let list = buildListFromGroupData({ sourceMasp, size:sizeNorm, branch:useBranch, masters:filtered, stockRows });
 
     if (mode === "discount") {
-      list = list
-        .filter(x => [10, 20, 30, 50].includes(Number(x.giam_gia_pct)))
-        .sort((a, b) => {
-          const discountDiff =
-            Number(b.giam_gia_pct || 0) -
-            Number(a.giam_gia_pct || 0);
-
-          if (discountDiff !== 0) return discountDiff;
-
-          const ta = useBranch === "cs2"
-            ? Number(a.toncs2 || 0)
-            : Number(a.toncs1 || 0);
-
-          const tb = useBranch === "cs2"
-            ? Number(b.toncs2 || 0)
-            : Number(b.toncs1 || 0);
-
-          return tb - ta;
-        });
+      list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct))).sort((a,b) => Number(b.giam_gia_pct||0)-Number(a.giam_gia_pct||0));
     } else if (mode === "cheaper") {
-      list.sort((a, b) => {
-        const da = sourcePrice - Number(a.giale || 0);
-        const db = sourcePrice - Number(b.giale || 0);
-
-        if (da !== db) return da - db;
-
-        const ta = useBranch === "cs2"
-          ? Number(a.toncs2 || 0)
-          : Number(a.toncs1 || 0);
-
-        const tb = useBranch === "cs2"
-          ? Number(b.toncs2 || 0)
-          : Number(b.toncs1 || 0);
-
-        return tb - ta;
-      });
+      list.sort((a,b) => (sourcePrice-Number(a.giale||0))-(sourcePrice-Number(b.giale||0)));
     } else if (mode === "premium") {
-      list.sort((a, b) => {
-        const da = Number(a.giale || 0) - sourcePrice;
-        const db = Number(b.giale || 0) - sourcePrice;
-
-        if (da !== db) return da - db;
-
-        const ta = useBranch === "cs2"
-          ? Number(a.toncs2 || 0)
-          : Number(a.toncs1 || 0);
-
-        const tb = useBranch === "cs2"
-          ? Number(b.toncs2 || 0)
-          : Number(b.toncs1 || 0);
-
-        return tb - ta;
-      });
+      list.sort((a,b) => (Number(a.giale||0)-sourcePrice)-(Number(b.giale||0)-sourcePrice));
     }
 
-    return {
-      ok: true,
-      source_price: sourcePrice,
-      branch: useBranch,
-      list
-    };
+    return { ok:true, source_price:sourcePrice, source_group:sourceGroup, branch:useBranch, list };
   }
 
   window.StockQuickSimilar = {
