@@ -42,6 +42,28 @@ function normalizeDiscount(value) {
   return n;
 }
 
+function isDiscountedValue(value) {
+  if (value === null || value === undefined || value === "") return false;
+  return VALID_DISCOUNTS.has(Number(value));
+}
+
+function filterRowsByDiscountStatus(rows, status) {
+  const mode = String(status || "").trim();
+  if (mode === "discounted") {
+    return rows.filter((r) => isDiscountedValue(r?.giam_gia_pct));
+  }
+  if (mode === "not_discounted") {
+    return rows.filter((r) => !isDiscountedValue(r?.giam_gia_pct));
+  }
+  return rows;
+}
+
+function getDiscountStatusLabel(status) {
+  if (status === "discounted") return "đã có giảm giá";
+  if (status === "not_discounted") return "chưa có giảm giá";
+  return "tất cả trạng thái giảm giá";
+}
+
 const hotCols = [
   { data: "stt", title: "STT", type: "numeric", width: 48, readOnly: true },
   { data: "chon_giam_gia", title: "CHỌN", type: "checkbox", width: 58 },
@@ -418,7 +440,10 @@ async function runXaHang() {
     });
     if (error) throw error;
 
-    hotData = (data || []).map((r, idx) => {
+    const giamGiaStatus = $("#giamGiaStatusFilter").value || "";
+    const filteredRows = filterRowsByDiscountStatus(data || [], giamGiaStatus);
+
+    hotData = filteredRows.map((r, idx) => {
       const pct = r.giam_gia_pct == null ? null : Number(r.giam_gia_pct);
       return {
         ...r,
@@ -432,10 +457,18 @@ async function runXaHang() {
     $("#btnSelectAll").textContent = "☑ Chọn tất cả đang hiển thị";
 
     const coso = $("#cosoFilter").value;
-    const cosoLabel = coso === "cs1" ? " tại Cơ sở 1" : coso === "cs2" ? " tại Cơ sở 2" : " ở tất cả cơ sở";
+    const cosoLabel = coso === "cs1"
+      ? " tại Cơ sở 1"
+      : coso === "cs2"
+        ? " tại Cơ sở 2"
+        : " ở tất cả cơ sở";
+
+    const giamGiaStatus = $("#giamGiaStatusFilter").value || "";
+    const giamGiaLabel = getDiscountStatusLabel(giamGiaStatus);
+
     msg.textContent = hotData.length
-      ? `Hoàn thành! Có ${hotData.length} mã gợi ý xả${cosoLabel}, đã tính theo tồn sau kiểm.`
-      : `Không có mã nào thỏa điều kiện xả${cosoLabel} theo tồn sau kiểm.`;
+      ? `Hoàn thành! Có ${hotData.length} mã gợi ý xả ${giamGiaLabel}${cosoLabel}, đã tính theo tồn sau kiểm.`
+      : `Không có mã nào ${giamGiaLabel} thỏa điều kiện xả${cosoLabel} theo tồn sau kiểm.`;
   } catch (e) {
     console.error(e);
     msg.textContent = "❌ Lỗi khi chạy gợi ý xả hàng. Xem console để biết chi tiết.";
@@ -500,6 +533,7 @@ async function openVisibleImages() {
       den_ngay: $("#denNgay").value || todayISO(),
       source: "goiyxahang",
       visible_count: list.length,
+      discount_status: $("#giamGiaStatusFilter").value || "",
     }));
     window.open("xemanhxnt14.html", "_blank");
   } catch (err) {
@@ -539,8 +573,9 @@ function main() {
   $("#btnApplyDiscount").addEventListener("click", applyBulkDiscount);
   $("#btnSaveDiscount").addEventListener("click", saveDiscountChanges);
   $("#cosoFilter").addEventListener("change", runXaHang);
+  $("#giamGiaStatusFilter").addEventListener("change", runXaHang);
 
-  ["denNgay", "ngayKhongBan", "tonMax", "tyleMax", "nhomhangFilter", "chungloaiFilter", "nhaccFilter", "cosoFilter"].forEach((id) => {
+  ["denNgay", "ngayKhongBan", "tonMax", "tyleMax", "nhomhangFilter", "chungloaiFilter", "nhaccFilter", "cosoFilter", "giamGiaStatusFilter"].forEach((id) => {
     const el = $("#" + id);
     el?.addEventListener("keypress", (e) => {
       if (e.key === "Enter") runXaHang();
