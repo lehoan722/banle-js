@@ -75,6 +75,48 @@
     return (data || []).filter(x => normText(x.nhomhang) === groupNorm);
   }
 
+
+  async function fetchMasterProductsByGroups(groupList) {
+    const client = getSupabaseClient();
+    if (!client) return [];
+
+    const groups = Array.from(
+      new Set(
+        (groupList || [])
+          .map(normText)
+          .filter(Boolean)
+      )
+    );
+
+    if (!groups.length) return [];
+
+    const all = [];
+    const chunkSize = 20;
+
+    for (let i = 0; i < groups.length; i += chunkSize) {
+      const chunk = groups.slice(i, i + chunkSize);
+
+      const { data, error } = await client
+        .from("dmhanghoa")
+        .select("masp, giale, nhomhang, giam_gia_pct")
+        .in("nhomhang", chunk)
+        .order("masp", { ascending: true });
+
+      if (error) {
+        console.warn("[StockQuickSimilar] Lỗi đọc nhiều nhóm hàng:", error);
+        return all;
+      }
+
+      all.push(...(data || []));
+    }
+
+    const allowed = new Set(groups);
+
+    return all.filter(row =>
+      allowed.has(normText(row.nhomhang))
+    );
+  }
+
   async function fetchGroupStockRows(maspList, denNgay) {
     const client = getSupabaseClient();
     if (!client || !Array.isArray(maspList) || !maspList.length) return [];
@@ -155,6 +197,91 @@
     });
   }
 
+
+
+  function buildListFromMultiFilterData({
+    sourceMasp,
+    sizes,
+    branch,
+    masters,
+    stockRows
+  }) {
+    const source = normText(sourceMasp);
+    const sizeSet = new Set(
+      (sizes || []).map(normalizeSize).filter(Boolean)
+    );
+
+    const masterMap = new Map();
+
+    (masters || []).forEach(m => {
+      masterMap.set(normText(m.masp), {
+        giale: Number(m.giale || 0),
+        nhomhang: m.nhomhang || "",
+        giam_gia_pct:
+          m.giam_gia_pct == null
+            ? null
+            : Number(m.giam_gia_pct)
+      });
+    });
+
+    const byMasp = new Map();
+
+    (stockRows || []).forEach(r => {
+      const masp = normText(r.masp);
+
+      if (!masp || masp === source) return;
+
+      const rowSize = normalizeSize(r.size);
+
+      if (!sizeSet.has(rowSize)) return;
+
+      const toncs1 = Number(r.ton_cs1 || 0);
+      const toncs2 = Number(r.ton_cs2 || 0);
+
+      if (branch === "cs1" && toncs1 <= 0) return;
+      if (branch === "cs2" && toncs2 <= 0) return;
+
+      const item = byMasp.get(masp) || {
+        masp,
+        giale: masterMap.get(masp)?.giale || 0,
+        toncs1: 0,
+        toncs2: 0,
+        ban_nhanh: false,
+        giam_gia_pct:
+          masterMap.get(masp)?.giam_gia_pct ?? null,
+        matched_sizes: []
+      };
+
+      item.toncs1 += toncs1;
+      item.toncs2 += toncs2;
+
+      if (!item.matched_sizes.includes(rowSize)) {
+        item.matched_sizes.push(rowSize);
+      }
+
+      byMasp.set(masp, item);
+    });
+
+    return Array.from(byMasp.values()).sort((a, b) => {
+      const ta =
+        branch === "cs2"
+          ? Number(a.toncs2 || 0)
+          : Number(a.toncs1 || 0);
+
+      const tb =
+        branch === "cs2"
+          ? Number(b.toncs2 || 0)
+          : Number(b.toncs1 || 0);
+
+      if (tb !== ta) return tb - ta;
+
+      return String(a.masp || "").localeCompare(
+        String(b.masp || ""),
+        "vi",
+        { numeric: true }
+      );
+    });
+  }
 
   function buildDiscountListFromGroupData({ sourceMasp, size, branch, masters, stockRows }) {
     const discountMasters = (masters || []).filter(m =>
@@ -355,6 +482,197 @@
     return { ok:true, source_price:sourcePrice, source_group:sourceGroup, branch:useBranch, list };
   }
 
+
+  async function getRecommendationListByFilters({
+    masp,
+    sizes,
+    nhomhangs,
+    denNgay,
+    branch,
+    mode = "similar"
+  }) {
+    const sourceMasp = normText(masp);
+
+    const sizeList = Array.from(
+      new Set(
+        (sizes || [])
+          .map(normalizeSize)
+          .filter(Boolean)
+      )
+    );
+
+    const groupList = Array.from(
+      new Set(
+        (nhomhangs || [])
+          .map(normText)
+          .filter(Boolean)
+      )
+    );
+
+    let useBranch = String(branch || "").trim().toLowerCase();
+
+    if (!["cs1", "cs2"].includes(useBranch)) {
+      useBranch = detectBranch();
+    }
+
+    if (!["cs1", "cs2"].includes(useBranch)) {
+      useBranch = await pickBranchIfNeeded();
+
+      if (!useBranch) {
+        return {
+          ok: false,
+          canceled: true,
+          message: "Đã hủy chọn cơ sở",
+          list: []
+        };
+      }
+    }
+
+    if (!sizeList.length) {
+      return {
+        ok: false,
+        message: "Chưa chọn size",
+        list: []
+      };
+    }
+
+    if (!groupList.length) {
+      return {
+        ok: false,
+        message: "Chưa chọn nhóm hàng",
+        list: []
+      };
+    }
+
+    const sourceFresh = sourceMasp
+      ? await fetchSourceMaster(sourceMasp)
+      : null;
+
+    const sourcePrice = Number(sourceFresh?.giale || 0);
+
+    let masters = await fetchMasterProductsByGroups(groupList);
+
+    masters = masters.filter(
+      x => normText(x.masp) !== sourceMasp
+    );
+
+    if (mode === "discount") {
+      masters = masters.filter(x =>
+        [10, 20, 30, 50].includes(
+          Number(x.giam_gia_pct)
+        )
+      );
+    } else if (mode === "cheaper") {
+      if (!sourcePrice) {
+        return {
+          ok: false,
+          message:
+            "Không đọc được giá mã gốc để tìm hàng rẻ hơn",
+          list: []
+        };
+      }
+
+      masters = masters.filter(x =>
+        Number(x.giale || 0) > 0 &&
+        Number(x.giale || 0) < sourcePrice
+      );
+    } else if (mode === "premium") {
+      if (!sourcePrice) {
+        return {
+          ok: false,
+          message:
+            "Không đọc được giá mã gốc để tìm hàng cao cấp hơn",
+          list: []
+        };
+      }
+
+      masters = masters.filter(x =>
+        Number(x.giale || 0) > sourcePrice
+      );
+    }
+
+    if (!masters.length) {
+      return {
+        ok: true,
+        source_price: sourcePrice,
+        branch: useBranch,
+        list: []
+      };
+    }
+
+    const maspList = masters
+      .map(x => normText(x.masp))
+      .filter(Boolean);
+
+    const stockRows = await fetchGroupStockRows(
+      maspList,
+      denNgay
+    );
+
+    let list = buildListFromMultiFilterData({
+      sourceMasp,
+      sizes: sizeList,
+      branch: useBranch,
+      masters,
+      stockRows
+    });
+
+    if (mode === "discount") {
+      list = list
+        .filter(x =>
+          [10, 20, 30, 50].includes(
+            Number(x.giam_gia_pct)
+          )
+        )
+        .sort((a, b) => {
+          const pctDiff =
+            Number(b.giam_gia_pct || 0) -
+            Number(a.giam_gia_pct || 0);
+
+          if (pctDiff !== 0) return pctDiff;
+
+          const ta =
+            useBranch === "cs2"
+              ? Number(a.toncs2 || 0)
+              : Number(a.toncs1 || 0);
+
+          const tb =
+            useBranch === "cs2"
+              ? Number(b.toncs2 || 0)
+              : Number(b.toncs1 || 0);
+
+          return tb - ta;
+        });
+    } else if (mode === "cheaper") {
+      list.sort((a, b) => {
+        const da =
+          sourcePrice - Number(a.giale || 0);
+
+        const db =
+          sourcePrice - Number(b.giale || 0);
+
+        return da - db;
+      });
+    } else if (mode === "premium") {
+      list.sort((a, b) => {
+        const da =
+          Number(a.giale || 0) - sourcePrice;
+
+        const db =
+          Number(b.giale || 0) - sourcePrice;
+
+        return da - db;
+      });
+    }
+
+    return {
+      ok: true,
+      source_price: sourcePrice,
+      branch: useBranch,
+      list
+    };
+  }
+
   async function getDiscountSizeSummary({
     masp,
     nhomhang,
@@ -478,6 +796,7 @@
     openFromPopup,
     openDiscountFromPopup,
     getRecommendationList,
+    getRecommendationListByFilters,
     getDiscountSizeSummary,
     clearDiscountSizeSummaryCache
   };
