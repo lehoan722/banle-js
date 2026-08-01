@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Nhập Danh Mục Chủng Loại</title>
+  <meta name="viewport" content="width=450">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9fb;
+      padding: 32px;
+      margin: 0;
+    }
+    .center-box {
+      width: 440px;
+      max-width: calc(100vw - 24px);
+      margin: 40px auto 0;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 3px 18px #d6e3ef44;
+      border: 1.5px solid #e3e9f1;
+      padding: 28px 24px 18px;
+    }
+    .form-title {
+      font-size: 1.18em;
+      font-weight: bold;
+      letter-spacing: .4px;
+      margin-bottom: 22px;
+      color: #163163;
+      text-align: center;
+    }
+    .row {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 15px;
+    }
+    .row label {
+      width: 130px;
+      flex: 0 0 130px;
+      font-size: 1em;
+      padding-top: 8px;
+    }
+    .row input {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      font-size: 1em;
+      font-family: Arial, sans-serif;
+      border-radius: 7px;
+      border: 1.2px solid #b5bed5;
+      background: #fcfcfe;
+      outline: none;
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .row textarea {
+      min-height: 92px;
+      resize: vertical;
+      line-height: 1.4;
+    }
+    .row input:focus:focus {
+      border-color: #1164be;
+      box-shadow: 0 0 0 3px #1164be16;
+    }
+    .row input[readonly] {
+      background: #f0f2f5;
+      color: #555;
+      cursor: not-allowed;
+    }
+    .required { color: #e23a1b; font-weight: bold; }
+    .hint {
+      margin: -5px 0 14px 130px;
+      color: #6d7788;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+    .actions button {
+      font-size: 1em;
+      padding: 8px 17px;
+      border-radius: 7px;
+      border: none;
+      box-shadow: 0 2px 6px #dee6ff33;
+      cursor: pointer;
+      transition: .13s;
+      font-weight: 500;
+    }
+    .actions button.save { background: #18804f; color: #fff; }
+    .actions button.new { background: #eaeaec; color: #222; }
+    .actions button.logout { background: #efebfa; color: #45427b; }
+    .actions button.delete { background: #a7362d; color: #fff; }
+    .actions button:hover { opacity: .87; }
+    .actions button:disabled { opacity: .55; cursor: wait; }
+    .msg {
+      text-align: center;
+      padding: 10px 8px 5px;
+      min-height: 31px;
+      line-height: 1.35;
+    }
+    .msg.error { color: #fff; background: #c44736; border-radius: 6px; }
+    .msg.success { color: #18804f; background: #e6f4e7; border-radius: 6px; }
+    .msg.info { color: #315784; background: #eef5ff; border-radius: 6px; }
+    #machungloaiSuggestList {
+      background: #fff;
+      box-shadow: 0 3px 18px #c3d3f655;
+      border: 1.2px solid #b5bed5;
+      border-radius: 8px;
+      max-height: 240px;
+      overflow: auto;
+      font-size: .99em;
+    }
+    .suggest-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .suggest-item:last-child { border-bottom: none; }
+    .suggest-item.active,
+    .suggest-item:hover { background: #f3f8ff; color: #1164be; }
+    .suggest-code { font-weight: 600; width: 82px; color: #18408d; }
+    .suggest-name { color: #333; flex: 1; }
+    .suggest-note {
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      color: #7a4b9c;
+    }
+    @media (max-width: 520px) {
+      body { padding: 12px; }
+      .center-box { margin-top: 12px; padding: 22px 16px 16px; }
+      .row label { width: 112px; flex-basis: 112px; }
+      .hint { margin-left: 112px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-container" style="display:none;">
+    <div id="mainform" class="center-box">
+      <div class="form-title">NHẬP DANH MỤC CHỦNG LOẠI</div>
+
+      <div class="row" style="position:relative;">
+        <label class="required" for="machungloai">Mã chủng loại *</label>
+        <input id="machungloai" maxlength="20" autocomplete="off" placeholder="Nhập mã chủng loại...">
+        <div id="machungloaiSuggestList"
+          style="position:absolute;left:134px;top:38px;width:calc(100% - 134px);z-index:20;display:none;"></div>
+      </div>
+
+      <div class="row">
+        <label class="required" for="tenchungloai">Tên chủng loại *</label>
+        <input id="tenchungloai" maxlength="100" autocomplete="off" placeholder="Nhập tên chủng loại...">
+      </div>
+
+      <div class="hint">Mã chủng loại và tên chủng loại là bắt buộc. Mã được tự động chuyển thành chữ in hoa.</div>
+
+      <div id="msgBox" class="msg"></div>
+
+      <div class="actions">
+        <button class="save" id="btnSave" onclick="saveChungLoai()">Lưu dữ liệu</button>
+        <button class="new" onclick="resetForm()">Thêm mới</button>
+        <button class="logout" onclick="doLogout()">Đăng xuất</button>
+        <button class="delete" id="btnDelete" onclick="deleteChungLoai()">Xóa</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      khoiTaoDangNhapDungChung,
+      dangXuatDungChung,
+      getSupabaseClient,
+      getCurrentUserInfo,
+    } from "./scripts/authModule.js";
+
+    const TABLE = "dmchungloai";
+    let supabase = null;
+    let editingOld = false;
+    let suggestList = [];
+    let suggestIndex = -1;
+    let eventsBound = false;
+
+    function getEl(id) { return document.getElementById(id); }
+    function getVal(id) { return getEl(id)?.value || ""; }
+    function setVal(id, value) { const el = getEl(id); if (el) el.value = value ?? ""; }
+
+    function showMsg(message, type = "") {
+      const box = getEl("msgBox");
+      if (!box) return;
+      box.textContent = message || "";
+      box.className = "msg" + (type ? " " + type : "");
+      if (message && type === "success") {
+        window.clearTimeout(showMsg.timer);
+        showMsg.timer = window.setTimeout(() => {
+          if (box.textContent === message) {
+            box.textContent = "";
+            box.className = "msg";
+          }
+        }, 2800);
+      }
+    }
+
+    function setBusy(isBusy) {
+      getEl("btnSave").disabled = isBusy;
+      getEl("btnDelete").disabled = isBusy;
+    }
+
+    function normalizeMaChungLoai(value) {
+      return String(value || "").trim().toUpperCase();
+    }
+
+    function escapePostgrestSearch(value) {
+      return String(value || "").replace(/[,%()]/g, " ").trim();
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function validateForm() {
+      const machungloai = normalizeMaChungLoai(getVal("machungloai"));
+      const tenchungloai = getVal("tenchungloai").trim();
+      if (!machungloai) return "Mã chủng loại không được bỏ trống!";
+      if (!tenchungloai) return "Tên chủng loại không được bỏ trống!";
+      return null;
+    }
+
+    function hideSuggest() {
+      const popup = getEl("machungloaiSuggestList");
+      if (popup) popup.style.display = "none";
+    }
+
+    function resetForm() {
+      setVal("machungloai", "");
+      setVal("tenchungloai", "");
+      editingOld = false;
+      const codeInput = getEl("machungloai");
+      if (codeInput) codeInput.readOnly = false;
+      hideSuggest();
+      showMsg("");
+      codeInput?.focus();
+    }
+
+    async function fetchChungLoai(codeInput = null) {
+      if (!supabase) return;
+      const machungloai = normalizeMaChungLoai(codeInput ?? getVal("machungloai"));
+      if (!machungloai) return;
+
+      setVal("machungloai", machungloai);
+      hideSuggest();
+      showMsg("Đang kiểm tra dữ liệu...", "info");
+
+      const { data, error } = await supabase
+        .from(TABLE)
+        .select("machungloai,tenchungloai")
+        .eq("machungloai", machungloai)
+        .maybeSingle();
+
+      if (error) {
+        showMsg("Lỗi đọc dữ liệu: " + error.message, "error");
+        return;
+      }
+
+      if (data?.machungloai) {
+        setVal("machungloai", data.machungloai);
+        setVal("tenchungloai", data.tenchungloai || "");
+        getEl("machungloai").readOnly = true;
+        editingOld = true;
+        showMsg("Đã nạp chủng loại. Sửa thông tin rồi bấm Lưu dữ liệu để cập nhật.", "success");
+      } else {
+        setVal("tenchungloai", "");
+        getEl("machungloai").readOnly = false;
+        editingOld = false;
+        showMsg("Mã chủng loại mới. Nhập đủ thông tin để lưu.", "info");
+      }
+    }
+
+    async function saveChungLoai() {
+      if (!supabase) return showMsg("Chưa kết nối được cơ sở dữ liệu!", "error");
+      const validationError = validateForm();
+      if (validationError) return showMsg(validationError, "error");
+
+      const record = {
+        machungloai: normalizeMaChungLoai(getVal("machungloai")),
+        tenchungloai: getVal("tenchungloai").trim(),
+      };
+
+      setBusy(true);
+      showMsg(editingOld ? "Đang cập nhật..." : "Đang lưu chủng loại mới...", "info");
+
+      try {
+        let error;
+        if (editingOld) {
+          ({ error } = await supabase.from(TABLE).update({
+            tenchungloai: record.tenchungloai,
+          }).eq("machungloai", record.machungloai));
+        } else {
+          ({ error } = await supabase.from(TABLE).insert(record));
+        }
+
+        if (error) {
+          const duplicate = String(error.code || "") === "23505";
+          showMsg(duplicate ? "Mã chủng loại đã tồn tại. Hãy chọn mã trong danh sách để sửa." : "Lỗi lưu dữ liệu: " + error.message, "error");
+          return;
+        }
+
+        showMsg(editingOld ? "Đã cập nhật chủng loại!" : "Đã thêm chủng loại mới!", "success");
+        window.setTimeout(resetForm, 900);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function deleteChungLoai() {
+      if (!supabase) return showMsg("Chưa kết nối được cơ sở dữ liệu!", "error");
+      const machungloai = normalizeMaChungLoai(getVal("machungloai"));
+      if (!machungloai) return showMsg("Không có mã chủng loại để xóa!", "error");
+      if (!editingOld) return showMsg("Mã chủng loại này chưa được nạp từ dữ liệu cũ!", "error");
+      if (!window.confirm(`Bạn có chắc chắn muốn xóa chủng loại ${machungloai}?`)) return;
+
+      setBusy(true);
+      showMsg("Đang xóa dữ liệu...", "info");
+      try {
+        const { error } = await supabase.from(TABLE).delete().eq("machungloai", machungloai);
+        if (error) {
+          showMsg("Lỗi khi xóa: " + error.message + ". Chủng loại có thể đang được dữ liệu khác sử dụng.", "error");
+          return;
+        }
+        resetForm();
+        showMsg(`Đã xóa chủng loại ${machungloai}!`, "success");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function suggestChungLoai() {
+      if (!supabase) return;
+      const input = getEl("machungloai");
+      const popup = getEl("machungloaiSuggestList");
+      if (!input || !popup || input.readOnly) {
+        hideSuggest();
+        return;
+      }
+
+      const raw = escapePostgrestSearch(input.value).toUpperCase();
+      let query = supabase
+        .from(TABLE)
+        .select("machungloai,tenchungloai")
+        .order("machungloai", { ascending: true })
+        .limit(raw ? 50 : 200);
+
+      if (raw) query = query.or(`machungloai.ilike.%${raw}%,tenchungloai.ilike.%${raw}%`);
+
+      const { data, error } = await query;
+      if (error || !data?.length) {
+        hideSuggest();
+        return;
+      }
+
+      suggestList = data;
+      suggestIndex = 0;
+      popup.innerHTML = data.map((row, index) => `
+        <div class="suggest-item${index === 0 ? " active" : ""}" data-idx="${index}">
+          <span class="suggest-code">${escapeHtml(row.machungloai)}</span>
+          <span class="suggest-name">${escapeHtml(row.tenchungloai || "")}</span>
+        </div>
+      `).join("");
+      popup.style.display = "block";
+    }
+
+    function chooseFromSuggest(index) {
+      const row = suggestList[index];
+      if (!row) return;
+      setVal("machungloai", row.machungloai);
+      hideSuggest();
+      fetchChungLoai(row.machungloai);
+      window.setTimeout(() => getEl("tenchungloai")?.focus(), 80);
+    }
+
+    function updateSuggestActive() {
+      const popup = getEl("machungloaiSuggestList");
+      if (!popup) return;
+      popup.querySelectorAll(".suggest-item").forEach((item, index) => {
+        item.classList.toggle("active", index === suggestIndex);
+        if (index === suggestIndex) item.scrollIntoView({ block: "nearest" });
+      });
+    }
+
+    const ENTER_FLOW = ["machungloai", "tenchungloai"];
+    function focusNextFrom(id) {
+      const index = ENTER_FLOW.indexOf(id);
+      const nextId = ENTER_FLOW[index + 1];
+      if (nextId) getEl(nextId)?.focus();
+      else if (id === "tenchungloai") saveChungLoai();
+    }
+
+    function bindEvents() {
+      if (eventsBound) return;
+      eventsBound = true;
+
+      const codeInput = getEl("machungloai");
+      codeInput?.addEventListener("input", () => {
+        codeInput.value = codeInput.value.toUpperCase();
+        suggestChungLoai();
+      });
+      codeInput?.addEventListener("focus", suggestChungLoai);
+      codeInput?.addEventListener("blur", () => {
+        codeInput.value = normalizeMaChungLoai(codeInput.value);
+      });
+
+      getEl("machungloaiSuggestList")?.addEventListener("mousedown", (event) => {
+        const item = event.target.closest(".suggest-item");
+        if (!item) return;
+        event.preventDefault();
+        chooseFromSuggest(Number(item.dataset.idx));
+      });
+
+      document.addEventListener("mousedown", (event) => {
+        const popup = getEl("machungloaiSuggestList");
+        if (popup && !popup.contains(event.target) && event.target.id !== "machungloai") hideSuggest();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        const active = document.activeElement;
+        if (!active) return;
+
+        if (active.id === "machungloai") {
+          const popup = getEl("machungloaiSuggestList");
+          const popupOpen = popup && popup.style.display !== "none" && suggestList.length > 0;
+          if (popupOpen) {
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              suggestIndex = (suggestIndex + 1) % suggestList.length;
+              updateSuggestActive();
+              return;
+            }
+            if (event.key === "ArrowUp") {
+              event.preventDefault();
+              suggestIndex = (suggestIndex - 1 + suggestList.length) % suggestList.length;
+              updateSuggestActive();
+              return;
+            }
+            if (event.key === "Enter") {
+              event.preventDefault();
+              chooseFromSuggest(suggestIndex);
+              return;
+            }
+            if (event.key === "Escape") {
+              hideSuggest();
+              return;
+            }
+          }
+        }
+
+        if (event.key === "Enter" && ENTER_FLOW.includes(active.id)) {
+          event.preventDefault();
+          if (active.id === "machungloai") {
+            const code = normalizeMaChungLoai(getVal("machungloai"));
+            if (!code) return showMsg("Hãy nhập mã chủng loại!", "error");
+            fetchChungLoai(code).then(() => {
+              if (!editingOld) getEl("tenchungloai")?.focus();
+            });
+            return;
+          }
+          focusNextFrom(active.id);
+        }
+
+        if (event.key === "F2") {
+          event.preventDefault();
+          saveChungLoai();
+        }
+      });
+
+      window.fetchChungLoai = fetchChungLoai;
+      window.saveChungLoai = saveChungLoai;
+      window.resetForm = resetForm;
+      window.deleteChungLoai = deleteChungLoai;
+      window.doLogout = () => dangXuatDungChung({ reloadPage: true });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      khoiTaoDangNhapDungChung({
+        appContainerId: "app-container",
+        tuDongKhoaCoSo: false,
+        macDinhDiaDiem: localStorage.getItem("diadiem") || "cs1",
+        onLoginSuccess: async () => {
+          supabase = getSupabaseClient();
+          const userInfo = getCurrentUserInfo();
+          if (!userInfo?.is_admin) {
+            document.getElementById("mainform").innerHTML = `
+              <div class="form-title">NHẬP DANH MỤC CHỦNG LOẠI</div>
+              <div class="msg error">Chỉ tài khoản quản trị viên mới được sử dụng trang này.</div>`;
+            return;
+          }
+          bindEvents();
+          resetForm();
+        },
+      });
+    });
+  </script>
+</body>
+</html>
