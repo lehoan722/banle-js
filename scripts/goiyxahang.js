@@ -1,601 +1,346 @@
-// scripts/goiyxahang.js
-// Gợi ý xả hàng: tồn sau kiểm + lọc cơ sở + quản lý giảm giá hàng loạt.
+<!doctype html>
+<html lang="vi">
 
-const $ = (sel, root = document) => root.querySelector(sel);
-const VALID_DISCOUNTS = new Set([10, 20, 30, 50]);
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gợi Ý Xả Hàng</title>
 
-const formatNumber = (v, digits = 0) => {
-  if (v === null || v === undefined || isNaN(v)) return "";
-  return Number(v).toLocaleString("vi-VN", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
-};
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 
-const todayISO = () => {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-};
-
-const toCsv = (rows) => rows
-  .map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","))
-  .join("\r\n");
-
-let hot = null;
-let hotData = [];
-let supabaseClient = null;
-let lastPopupMasp = "";
-let lastPopupAt = 0;
-let isApplyingProgrammaticChange = false;
-
-function normalizeDiscount(value) {
-  if (value === null || value === undefined) return null;
-  const raw = String(value).trim();
-  if (!raw) return null;
-  const n = Number(raw.replace("%", ""));
-  if (!VALID_DISCOUNTS.has(n)) {
-    throw new Error("Chỉ cho phép mức giảm 10, 20, 30, 50 hoặc để trống.");
-  }
-  return n;
-}
-
-function isDiscountedValue(value) {
-  if (value === null || value === undefined || value === "") return false;
-  return VALID_DISCOUNTS.has(Number(value));
-}
-
-function filterRowsByDiscountStatus(rows, status) {
-  const mode = String(status || "").trim();
-  if (mode === "discounted") {
-    return rows.filter((r) => isDiscountedValue(r?.giam_gia_pct));
-  }
-  if (mode === "not_discounted") {
-    return rows.filter((r) => !isDiscountedValue(r?.giam_gia_pct));
-  }
-  return rows;
-}
-
-function getDiscountStatusLabel(status) {
-  if (status === "discounted") return "đã có giảm giá";
-  if (status === "not_discounted") return "chưa có giảm giá";
-  return "tất cả trạng thái giảm giá";
-}
-
-const hotCols = [
-  { data: "stt", title: "STT", type: "numeric", width: 48, readOnly: true },
-  { data: "chon_giam_gia", title: "CHỌN", type: "checkbox", width: 58 },
-  { data: "giam_gia_pct", title: "% GIẢM", type: "dropdown", source: ["", "10", "20", "30", "50"], strict: true, allowInvalid: false, width: 78 },
-  { data: "masp", title: "MÃ SP", type: "text", width: 145, readOnly: true },
-  { data: "tensp", title: "TÊN SP", type: "text", width: 210, readOnly: true },
-  { data: "nhomhang", title: "NHÓM HÀNG", type: "text", width: 105, readOnly: true },
-  { data: "chungloai", title: "CHỦNG LOẠI", type: "text", width: 95, readOnly: true },
-  { data: "nhacc", title: "NHÀ CC", type: "text", width: 120, readOnly: true },
-  { data: "tong_nhap", title: "TỔNG NHẬP", type: "numeric", width: 90, readOnly: true },
-  { data: "tong_xuat", title: "TỔNG BÁN", type: "numeric", width: 90, readOnly: true },
-  { data: "ton_may", title: "TỒN MÁY", type: "numeric", width: 80, readOnly: true },
-  { data: "lech_kiem", title: "LỆCH KIỂM", type: "numeric", width: 85, readOnly: true },
-  { data: "ton_hientai", title: "TỒN SAU KIỂM", type: "numeric", width: 105, readOnly: true },
-  { data: "ton_cs1_sau_kiem", title: "TỒN CS1 SAU KIỂM", type: "numeric", width: 110, readOnly: true },
-  { data: "ton_cs2_sau_kiem", title: "TỒN CS2 SAU KIỂM", type: "numeric", width: 110, readOnly: true },
-  { data: "tyle_ton", title: "% TỒN/NHẬP", type: "numeric", width: 95, readOnly: true },
-  { data: "so_ngay_khong_ban", title: "KHÔNG BÁN (NGÀY)", type: "numeric", width: 115, readOnly: true },
-  { data: "ngay_ban_cuoi", title: "NGÀY BÁN CUỐI", type: "text", width: 105, readOnly: true },
-];
-
-function isDirty(rec) {
-  const a = rec?.giam_gia_pct == null || rec.giam_gia_pct === "" ? null : Number(rec.giam_gia_pct);
-  const b = rec?.original_giam_gia_pct == null || rec.original_giam_gia_pct === "" ? null : Number(rec.original_giam_gia_pct);
-  return a !== b;
-}
-
-function getDirtyRecords() {
-  return hotData.filter(isDirty);
-}
-
-function updateDirtyStatus() {
-  const dirty = getDirtyRecords();
-  const el = $("#discountDirtyMsg");
-  if (el) {
-    el.textContent = dirty.length
-      ? `Có ${dirty.length} thay đổi chưa lưu.`
-      : "Không có thay đổi chưa lưu.";
-  }
-  const btn = $("#btnSaveDiscount");
-  if (btn) btn.disabled = dirty.length === 0;
-  hot?.render();
-}
-
-function getVisibleRowEntries() {
-  if (!hot) return [];
-
-  const rows = [];
-  const seen = new Set();
-
-  for (let visualRow = 0; visualRow < hot.countRows(); visualRow += 1) {
-    const physicalRow = hot.toPhysicalRow(visualRow);
-    if (physicalRow == null || physicalRow < 0) continue;
-
-    const rec = hot.getSourceDataAtRow(physicalRow);
-    const masp = String(rec?.masp || "").trim().toUpperCase();
-
-    if (!masp || seen.has(masp)) continue;
-
-    seen.add(masp);
-    rows.push({
-      visualRow,
-      physicalRow,
-      rec
-    });
-  }
-
-  return rows;
-}
-
-function getVisibleRecords() {
-  return getVisibleRowEntries().map((x) => x.rec);
-}
-
-function confirmLoseUnsaved() {
-  const count = getDirtyRecords().length;
-  if (!count) return true;
-  return confirm(`Bạn có ${count} thay đổi giảm giá chưa lưu. Tiếp tục sẽ mất các thay đổi này. Bạn có muốn tiếp tục không?`);
-}
-
-async function openStockQuick(rec) {
-  const masp = String(rec?.masp || "").trim().toUpperCase();
-  if (!masp) return;
-  const now = Date.now();
-  if (masp === lastPopupMasp && now - lastPopupAt < 350) return;
-  lastPopupMasp = masp;
-  lastPopupAt = now;
-
-  if (window.StockQuick?.showFor) {
-    await window.StockQuick.showFor(document.body, masp);
-  } else if (typeof window.stockQuickPopup === "function") {
-    await window.stockQuickPopup(masp);
-  } else {
-    alert("Module stockQuickPopup chưa sẵn sàng. Vui lòng tải lại trang.");
-  }
-}
-
-function renderHOT() {
-  const container = $("#hotXa");
-  if (!container) return;
-  const h = Math.max(430, window.innerHeight - 390);
-
-  if (hot) {
-    hot.updateSettings({ data: hotData, height: h });
-    hot.render();
-    if (hotData.length) hot.scrollViewportTo(0, 0);
-    updateDirtyStatus();
-    return;
-  }
-
-  hot = new Handsontable(container, {
-    data: hotData,
-    columns: hotCols,
-    colHeaders: hotCols.map((c) => c.title),
-    rowHeaders: true,
-    stretchH: "all",
-    autoColumnSize: false,
-    manualColumnResize: true,
-    manualColumnMove: true,
-    height: h,
-    licenseKey: "non-commercial-and-evaluation",
-    columnSorting: true,
-    filters: true,
-    dropdownMenu: true,
-    contextMenu: ["copy", "---------", "alignment"],
-    cells: (row, col) => {
-      const props = {};
-      const key = hotCols[col]?.data;
-      const physicalRow = hot ? hot.toPhysicalRow(row) : row;
-      const rec = physicalRow == null || physicalRow < 0
-        ? null
-        : hotData[physicalRow];
-
-      if (hotCols[col]?.readOnly) props.readOnly = true;
-      if (["tong_nhap", "tong_xuat", "ton_may", "lech_kiem", "ton_hientai", "ton_cs1_sau_kiem", "ton_cs2_sau_kiem", "tyle_ton", "so_ngay_khong_ban", "stt"].includes(key)) {
-        props.className = "htRight";
-      }
-      if (isDirty(rec) && key === "giam_gia_pct") {
-        props.className = `${props.className || ""} discount-dirty-cell`.trim();
-      } else if (key === "giam_gia_pct" && rec?.giam_gia_pct) {
-        props.className = `${props.className || ""} discount-saved-cell`.trim();
-      }
-      if (key === "lech_kiem") {
-        props.renderer = (instance, td, r, c, prop, value, cellProps) => {
-          Handsontable.renderers.NumericRenderer(instance, td, r, c, prop, value, cellProps);
-          if (Number(value || 0) !== 0) {
-            td.style.color = "#dc2626";
-            td.style.fontWeight = "700";
-          }
-        };
-      }
-      if (key === "tyle_ton") {
-        props.renderer = (_instance, td, _r, _c, _prop, value) => {
-          td.textContent = value == null ? "" : `${formatNumber(Number(value) * 100, 1)} %`;
-          td.className = "htRight";
-        };
-      }
-      return props;
-    },
-    beforeChange: (changes, source) => {
-      if (!changes || source === "loadData" || isApplyingProgrammaticChange) return;
-      for (const change of changes) {
-        const prop = change[1];
-        if (prop !== "giam_gia_pct") continue;
-        try {
-          const normalized = normalizeDiscount(change[3]);
-          change[3] = normalized == null ? "" : String(normalized);
-        } catch (err) {
-          alert(err.message);
-          return false;
+    <style>
+        :root {
+            --bg: #f7f7f8;
+            --card: #fff;
+            --text: #111;
+            --muted: #666;
+            --accent: #2563eb;
+            --accent-soft: #e0edff;
+            --danger: #dc2626;
+            --br: 10px;
+            --shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
         }
-      }
-    },
-    afterChange: (changes, source) => {
-      if (!changes || source === "loadData") return;
-      updateDirtyStatus();
-    },
-    afterOnCellMouseDown: (event, coords) => {
-      if (coords.row == null || coords.row < 0) return;
-      const key = hotCols[coords.col]?.data;
-      if (["chon_giam_gia", "giam_gia_pct"].includes(key)) return;
-      const physicalRow = hot.toPhysicalRow(coords.row);
-      const rec = hot.getSourceDataAtRow(physicalRow);
-      openStockQuick(rec).catch((err) => console.warn("[goiyxahang] mở StockQuick lỗi:", err));
-    },
-  });
-  updateDirtyStatus();
-}
 
-function setAllVisibleSelection(value) {
-  const entries = getVisibleRowEntries();
-  if (!entries.length || !hot) return;
+        * {
+            box-sizing: border-box;
+        }
 
-  const changes = entries.map(({ visualRow }) => [
-    visualRow,
-    "chon_giam_gia",
-    !!value
-  ]);
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
 
-  isApplyingProgrammaticChange = true;
+        .page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 12px;
+        }
 
-  hot.batch(() => {
-    hot.setDataAtRowProp(changes, "bulk-select");
-  });
+        h1 {
+            font-size: 20px;
+            margin: 0 0 8px;
+        }
 
-  isApplyingProgrammaticChange = false;
-  hot.render();
-}
+        .sub {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
 
-function toggleSelectAllVisible() {
-  const entries = getVisibleRowEntries();
-  if (!entries.length) return;
+        .layout {
+            display: block;
+        }
 
-  const shouldSelect = !entries.every(({ visualRow }) =>
-    hot.getDataAtRowProp(visualRow, "chon_giam_gia") === true
-  );
+        .card {
+            background: var(--card);
+            border-radius: var(--br);
+            box-shadow: var(--shadow);
+            padding: 12px;
+        }
 
-  setAllVisibleSelection(shouldSelect);
+        .card h3 {
+            margin: 0 0 8px;
+            font-size: 16px;
+        }
 
-  $("#btnSelectAll").textContent = shouldSelect
-    ? "☐ Bỏ chọn tất cả đang hiển thị"
-    : "☑ Chọn tất cả đang hiển thị";
-}
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
 
-function applyBulkDiscount() {
-  let pct;
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 110px;
+            flex: 1;
+        }
 
-  try {
-    pct = normalizeDiscount($("#bulkDiscount").value);
-  } catch (err) {
-    alert(err.message);
-    $("#bulkDiscount").focus();
-    return;
-  }
+        label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
 
-  const selectedEntries = getVisibleRowEntries().filter(({ visualRow }) =>
-    hot.getDataAtRowProp(visualRow, "chon_giam_gia") === true
-  );
+        input[type="date"],
+        input[type="number"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 4px 6px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            font-size: 13px;
+        }
 
-  if (!selectedEntries.length) {
-    alert("Bạn chưa chọn dòng sản phẩm nào.");
-    return;
-  }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border-radius: 999px;
+            border: none;
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            background: var(--accent);
+            color: #fff;
+            white-space: nowrap;
+        }
 
-  const text = pct == null ? "xóa giảm giá" : `áp dụng giảm ${pct}%`;
+        .btn.secondary {
+            background: #e5e7eb;
+            color: #111;
+        }
 
-  if (!confirm(
-    `Bạn có muốn ${text} cho ${selectedEntries.length} sản phẩm đã chọn không? ` +
-    `Dữ liệu mới chỉ được ghi vào bảng và chưa lưu vào cơ sở dữ liệu.`
-  )) {
-    return;
-  }
+        .btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
 
-  const value = pct == null ? "" : String(pct);
-  const changes = selectedEntries.map(({ visualRow }) => [
-    visualRow,
-    "giam_gia_pct",
-    value
-  ]);
+        .status {
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--muted);
+        }
 
-  isApplyingProgrammaticChange = true;
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
 
-  hot.batch(() => {
-    hot.setDataAtRowProp(changes, "bulk-discount");
-  });
+        .btn.images {
+            background: #0f766e;
+            color: #fff;
+        }
 
-  isApplyingProgrammaticChange = false;
-  hot.render();
-  updateDirtyStatus();
-}
+        .btn.save-discount {
+            background: #b91c1c;
+            color: #fff;
+        }
 
-function summarizeDirty(dirty) {
-  const counts = { addChange: 0, remove: 0, same: 0 };
-  dirty.forEach((r) => {
-    const now = r.giam_gia_pct == null || r.giam_gia_pct === "" ? null : Number(r.giam_gia_pct);
-    if (now == null) counts.remove += 1;
-    else counts.addChange += 1;
-  });
-  return counts;
-}
+        .discount-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: end;
+            gap: 8px;
+            margin: 10px 0 6px;
+            padding: 10px;
+            border: 1px solid #fecaca;
+            background: #fff7f7;
+            border-radius: 9px;
+        }
 
-async function saveDiscountChanges() {
-  const dirty = getDirtyRecords();
-  if (!dirty.length) {
-    alert("Không có thay đổi giảm giá để lưu.");
-    return;
-  }
+        .discount-toolbar .filter-group {
+            flex: 0 0 150px;
+            min-width: 130px;
+        }
 
-  const summary = summarizeDirty(dirty);
-  const ok = confirm(
-    `Bạn có muốn lưu thay đổi giảm giá cho ${dirty.length} sản phẩm không?\n\n` +
-    `- Thêm hoặc đổi giảm giá: ${summary.addChange} mã\n` +
-    `- Xóa giảm giá: ${summary.remove} mã`
-  );
-  if (!ok) return;
+        .discount-note {
+            font-size: 12px;
+            color: #7f1d1d;
+            flex: 1 1 260px;
+            line-height: 1.4;
+        }
 
-  const btn = $("#btnSaveDiscount");
-  const oldText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = "Đang lưu...";
+        #discountDirtyMsg {
+            font-weight: 700;
+            color: #b45309;
+        }
 
-  try {
-    const items = dirty.map((r) => ({
-      masp: String(r.masp || "").trim().toUpperCase(),
-      giam_gia_pct: r.giam_gia_pct == null || r.giam_gia_pct === "" ? null : Number(r.giam_gia_pct),
-    }));
+        #hotXa td.discount-dirty-cell {
+            background: #fef3c7 !important;
+        }
 
-    const { data, error } = await supabaseClient.rpc("rpc_save_giam_gia_sanpham_batch", {
-      p_items: items,
-    });
-    if (error) throw error;
-    if (!data?.ok) throw new Error(data?.message || "Không lưu được dữ liệu giảm giá");
+        #hotXa td.discount-saved-cell {
+            color: #b91c1c;
+            font-weight: 700;
+        }
 
-    const savedMap = new Map((data.items || []).map((x) => [String(x.masp || "").toUpperCase(), x]));
-    dirty.forEach((rec) => {
-      const key = String(rec.masp || "").toUpperCase();
-      const result = savedMap.get(key);
-      if (result?.ok !== false) {
-        rec.original_giam_gia_pct = rec.giam_gia_pct == null || rec.giam_gia_pct === "" ? null : Number(rec.giam_gia_pct);
-        rec.chon_giam_gia = false;
-      }
-    });
+        #hotXa .htCore tbody tr:hover td {
+            background: #eef6ff;
+            cursor: pointer;
+        }
 
-    hot?.render();
-    updateDirtyStatus();
+        #hotWrap {
+            margin-top: 8px;
+        }
 
-    const byPct = { 10: 0, 20: 0, 30: 0, 50: 0, remove: 0 };
-    items.forEach((x) => {
-      if (x.giam_gia_pct == null) byPct.remove += 1;
-      else byPct[x.giam_gia_pct] += 1;
-    });
-    alert(
-      `Đã lưu thành công ${data.updated_count ?? dirty.length} sản phẩm.\n` +
-      `10%: ${byPct[10]} | 20%: ${byPct[20]} | 30%: ${byPct[30]} | 50%: ${byPct[50]} | Xóa: ${byPct.remove}`
-    );
-  } catch (err) {
-    console.error("[goiyxahang] Lưu giảm giá lỗi:", err);
-    alert("Không lưu được dữ liệu giảm giá: " + (err.message || err));
-  } finally {
-    btn.disabled = false;
-    btn.textContent = oldText;
-    updateDirtyStatus();
-  }
-}
+        .ht_clone_top th .colHeader {
+            white-space: normal !important;
+            line-height: 1.2 !important;
+            word-break: break-word !important;
+            text-align: center;
+            padding: 4px 6px;
+            font-size: 11px;
+        }
+    </style>
+</head>
 
-async function runXaHang() {
-  if (!confirmLoseUnsaved()) return;
-  const msg = $("#statusMsg");
-  msg.textContent = "Đang lọc danh sách theo tồn sau kiểm...";
-  $("#btnRun").disabled = true;
-  $("#btnViewImages").disabled = true;
+<body>
+    <!-- Ẩn toàn bộ app cho tới khi đăng nhập thành công (giống trang nhập DM nhân viên) -->
+    <div id="app-container" style="display:none">
+        <div class="page">
+            <h1>Gợi Ý Xả Hàng</h1>
+            <div class="sub">
+                Lọc ra các mã còn tồn lẻ (≤ 3 SP), tồn ≤ 10% tổng nhập, không bán ≥ 60 ngày, để xả hết cho sạch kho.
+            </div>
 
-  try {
-    if (!supabaseClient) {
-      msg.textContent = "❌ Supabase chưa khởi tạo. Vui lòng tải lại trang.";
-      return;
-    }
+            <div class="layout">
+                <!-- BÊN TRÁI: LỌC + BẢNG -->
+                <div class="card">
+                    <h3>Tham số lọc</h3>
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="denNgay">Đến ngày</label>
+                            <input type="date" id="denNgay" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="ngayKhongBan">Không bán ít nhất (ngày)</label>
+                            <input type="number" id="ngayKhongBan" value="60" min="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="tonMax">Tồn tối đa (SP)</label>
+                            <input type="number" id="tonMax" value="3" min="1" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="tyleMax">% tồn / nhập tối đa</label>
+                            <input type="number" id="tyleMax" value="10" min="1" max="100" />
+                        </div>
+                    </div>
 
-    const denNgay = $("#denNgay").value || todayISO();
-    const ngayKhongBan = parseInt($("#ngayKhongBan").value || "60", 10);
-    const tonMax = parseInt($("#tonMax").value || "3", 10);
-    const tyleMaxPercent = parseFloat($("#tyleMax").value || "10");
-    const tyleMax = (tyleMaxPercent || 10) / 100;
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label for="nhomhangFilter">Nhóm hàng</label>
+                            <input type="text" id="nhomhangFilter" placeholder="VD: GIAY, AO, QUAN..." />
+                        </div>
+                        <div class="filter-group">
+                            <label for="chungloaiFilter">Chủng loại</label>
+                            <input type="text" id="chungloaiFilter" placeholder="Tùy chọn" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="nhaccFilter">Nhà cung cấp</label>
+                            <input type="text" id="nhaccFilter" placeholder="Tùy chọn" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="giamGiaStatusFilter">Trạng thái giảm giá</label>
+                            <select id="giamGiaStatusFilter">
+                                <option value="">Tất cả</option>
+                                <option value="discounted">Đã có giảm giá</option>
+                                <option value="not_discounted">Chưa có giảm giá</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="cosoFilter">Cơ sở xả hàng</label>
+                            <select id="cosoFilter">
+                                <option value="">Tất cả cơ sở</option>
+                                <option value="cs1">Cơ sở 1</option>
+                                <option value="cs2">Cơ sở 2</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="align-items:flex-start; margin-top:18px; flex:0 0 auto;">
+                            <button class="btn" id="btnRun">
+                                🔍 Lọc xả hàng
+                            </button>
+                        </div>
+                    </div>
 
-    const { data, error } = await supabaseClient.rpc("goiy_xahang", {
-      p_den_ngay: denNgay,
-      p_ngay_khong_ban: ngayKhongBan,
-      p_ton_max: tonMax,
-      p_tyle_max: tyleMax,
-      p_nhomhang_filter: $("#nhomhangFilter").value.trim() || null,
-      p_chungloai_filter: $("#chungloaiFilter").value.trim() || null,
-      p_nhacc_filter: $("#nhaccFilter").value.trim() || null,
-      p_coso_filter: $("#cosoFilter").value || null,
-    });
-    if (error) throw error;
+                    <div class="discount-toolbar">
+                        <div class="filter-group">
+                            <label for="bulkDiscount">Mức giảm áp dụng</label>
+                            <input id="bulkDiscount" list="discountLevels" inputmode="numeric" placeholder="Trống / 10 / 20 / 30 / 50" />
+                            <datalist id="discountLevels">
+                                <option value="10"></option>
+                                <option value="20"></option>
+                                <option value="30"></option>
+                                <option value="50"></option>
+                            </datalist>
+                        </div>
+                        <button class="btn secondary" id="btnSelectAll">☑ Chọn tất cả đang hiển thị</button>
+                        <button class="btn secondary" id="btnApplyDiscount">Áp dụng cho dòng đã chọn</button>
+                        <button class="btn save-discount" id="btnSaveDiscount">💾 Lưu dữ liệu giảm giá</button>
+                        <div class="discount-note">
+                            Chọn các dòng cần xử lý, nhập mức 10/20/30/50 hoặc để trống để xóa giảm giá, sau đó bấm lưu.
+                            <span id="discountDirtyMsg">Không có thay đổi chưa lưu.</span>
+                        </div>
+                    </div>
 
-    const giamGiaStatus = $("#giamGiaStatusFilter").value || "";
-    const filteredRows = filterRowsByDiscountStatus(data || [], giamGiaStatus);
+                    <div class="filter-row" style="justify-content: space-between; margin-top:4px;">
+                        <div class="status" id="statusMsg">Chưa chạy.</div>
+                        <div class="action-buttons">
+                            <button class="btn images" id="btnViewImages">🖼️ Xem ảnh</button>
+                            <button class="btn secondary" id="btnExport">⬇️ Xuất CSV</button>
+                        </div>
+                    </div>
 
-    hotData = filteredRows.map((r, idx) => {
-      const pct = r.giam_gia_pct == null ? null : Number(r.giam_gia_pct);
-      return {
-        ...r,
-        stt: idx + 1,
-        chon_giam_gia: false,
-        giam_gia_pct: pct == null ? "" : String(pct),
-        original_giam_gia_pct: pct,
-      };
-    });
-    renderHOT();
-    $("#btnSelectAll").textContent = "☑ Chọn tất cả đang hiển thị";
+                    <div id="hotWrap">
+                        <div id="hotXa" style="width:100%; min-height:320px;"></div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
 
-    const coso = $("#cosoFilter").value;
-    const cosoLabel = coso === "cs1"
-      ? " tại Cơ sở 1"
-      : coso === "cs2"
-        ? " tại Cơ sở 2"
-        : " ở tất cả cơ sở";
+    <!-- Popup tồn/bán nhanh dùng chung -->
+    <script src="./scripts/stockQuickPopup.js?v=20260730a"></script>
 
-    const giamGiaStatus = $("#giamGiaStatusFilter").value || "";
-    const giamGiaLabel = getDiscountStatusLabel(giamGiaStatus);
+    <!-- SUPABASE AUTH + LOGIC GỢI Ý XẢ HÀNG -->
+    <script type="module">
+        import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
+        import { initGoiYXaHang } from './scripts/goiyxahang.js?v=20260801giamgiafilter';
 
-    msg.textContent = hotData.length
-      ? `Hoàn thành! Có ${hotData.length} mã gợi ý xả ${giamGiaLabel}${cosoLabel}, đã tính theo tồn sau kiểm.`
-      : `Không có mã nào ${giamGiaLabel} thỏa điều kiện xả${cosoLabel} theo tồn sau kiểm.`;
-  } catch (e) {
-    console.error(e);
-    msg.textContent = "❌ Lỗi khi chạy gợi ý xả hàng. Xem console để biết chi tiết.";
-  } finally {
-    $("#btnRun").disabled = false;
-    $("#btnViewImages").disabled = false;
-  }
-}
+        // Khởi tạo đăng nhập chuẩn auth, chỉ cho ADMIN giống trang nhập DM nhân viên
+        khoiTaoDangNhapDungChung({
+            appContainerId: 'app-container',
+            macDinhDiaDiem: 'cs1',          // nếu trang này của CS2 thì đổi thành 'cs2'
+            tuDongKhoaCoSo: true,
+            loginApiPath: '/api/login-cs1', // nếu làm bản riêng cho cs2 thì dùng /api/login-cs2
+            onLoginSuccess: async (nhanvien, context) => {
 
-async function openVisibleImages() {
-  const rows = getVisibleRecords();
-  if (!rows.length) {
-    alert("Không có mã sản phẩm nào đang hiển thị để xem ảnh.");
-    return;
-  }
+                // Giống trang nhập DM nhân viên: chỉ ADMIN được xem
+                if (!nhanvien.is_admin) {
+                    alert('Tài khoản này KHÔNG phải ADMIN nên không được phép truy cập trang Gợi Ý Xả Hàng.');
+                    await dangXuatDungChung({ appContainerId: 'app-container' });
+                    return;
+                }
 
-  const btn = $("#btnViewImages");
-  const oldText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = "Đang chuẩn bị ảnh...";
+                // Cho hiện giao diện + khởi tạo trang
+                document.getElementById('app-container').style.display = '';
+                initGoiYXaHang();
+            }
+        });
+    </script>
+</body>
 
-  try {
-    const masps = rows.map((r) => String(r.masp || "").trim().toUpperCase()).filter(Boolean);
-    let stockMap = {};
-    try {
-      const { data, error } = await supabaseClient.rpc("xntnhanh", {
-        p_masps: masps,
-        p_den_ngay: $("#denNgay").value || todayISO(),
-        p_tonghop_size: true,
-      });
-      if (error) throw error;
-      (data || []).forEach((r) => {
-        const key = String(r.masp || "").trim().toUpperCase();
-        if (!key) return;
-        stockMap[key] = {
-          toncs1: Number(r.ton_cs1 || 0),
-          toncs2: Number(r.ton_cs2 || 0),
-        };
-      });
-    } catch (err) {
-      console.warn("[goiyxahang] Không lấy được tồn từng CS cho trang ảnh:", err);
-    }
-
-    const list = rows.map((r) => {
-      const masp = String(r.masp || "").trim().toUpperCase();
-      return {
-        masp,
-        giale: Number(r.giale || 0),
-        toncs1: Number(stockMap[masp]?.toncs1 || 0),
-        toncs2: Number(stockMap[masp]?.toncs2 || 0),
-        giam_gia_pct: r.giam_gia_pct == null || r.giam_gia_pct === "" ? null : Number(r.giam_gia_pct),
-      };
-    });
-
-    sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
-    sessionStorage.setItem("XNT14_CONTEXT", JSON.stringify({
-      mode: "discount",
-      branch: $("#cosoFilter").value || "",
-      source: "goiyxahang"
-    }));
-    sessionStorage.setItem("XNT14_FILTERS", JSON.stringify({
-      den_ngay: $("#denNgay").value || todayISO(),
-      source: "goiyxahang",
-      visible_count: list.length,
-      discount_status: $("#giamGiaStatusFilter").value || "",
-    }));
-    window.open("xemanhxnt14.html", "_blank");
-  } catch (err) {
-    console.error(err);
-    alert("Không mở được trang xem ảnh: " + (err.message || err));
-  } finally {
-    btn.disabled = false;
-    btn.textContent = oldText;
-  }
-}
-
-function exportCsv() {
-  const rows = getVisibleRecords();
-  if (!rows.length) {
-    alert("Không có dữ liệu đang hiển thị để xuất.");
-    return;
-  }
-  const exportCols = hotCols.filter((c) => c.data !== "chon_giam_gia");
-  const header = exportCols.map((c) => c.title);
-  const body = rows.map((r) => exportCols.map((c) => r[c.data]));
-  const csv = toCsv([header, ...body]);
-  const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `goi_y_xa_hang_${Date.now()}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function main() {
-  $("#denNgay").value = todayISO();
-  $("#btnRun").addEventListener("click", runXaHang);
-  $("#btnViewImages").addEventListener("click", openVisibleImages);
-  $("#btnExport").addEventListener("click", exportCsv);
-  $("#btnSelectAll").addEventListener("click", toggleSelectAllVisible);
-  $("#btnApplyDiscount").addEventListener("click", applyBulkDiscount);
-  $("#btnSaveDiscount").addEventListener("click", saveDiscountChanges);
-  $("#cosoFilter").addEventListener("change", runXaHang);
-  $("#giamGiaStatusFilter").addEventListener("change", runXaHang);
-
-  ["denNgay", "ngayKhongBan", "tonMax", "tyleMax", "nhomhangFilter", "chungloaiFilter", "nhaccFilter", "cosoFilter", "giamGiaStatusFilter"].forEach((id) => {
-    const el = $("#" + id);
-    el?.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") runXaHang();
-    });
-  });
-
-  window.addEventListener("beforeunload", (e) => {
-    if (!getDirtyRecords().length) return;
-    e.preventDefault();
-    e.returnValue = "";
-  });
-
-  window.addEventListener("resize", () => {
-    if (hot) hot.updateSettings({ height: Math.max(430, window.innerHeight - 390) });
-  });
-  renderHOT();
-}
-
-export function initGoiYXaHang() {
-  supabaseClient = window.supabase || null;
-  if (!supabaseClient) console.error("initGoiYXaHang: window.supabase chưa được khởi tạo bởi authModule");
-  main();
-}
+</html>
