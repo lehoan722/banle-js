@@ -252,6 +252,14 @@
                             <input type="text" id="nhaccFilter" placeholder="Tùy chọn" />
                         </div>
                         <div class="filter-group">
+                            <label for="giamGiaStatusFilter">Trạng thái giảm giá</label>
+                            <select id="giamGiaStatusFilter">
+                                <option value="">Tất cả</option>
+                                <option value="discounted">Đã có giảm giá</option>
+                                <option value="not_discounted">Chưa có giảm giá</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
                             <label for="cosoFilter">Cơ sở xả hàng</label>
                             <select id="cosoFilter">
                                 <option value="">Tất cả cơ sở</option>
@@ -310,7 +318,7 @@
     <!-- SUPABASE AUTH + LOGIC GỢI Ý XẢ HÀNG -->
     <script type="module">
         import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
-        import { initGoiYXaHang } from './scripts/goiyxahang.js?v=20260731giamgia';
+        import { initGoiYXaHang } from './scripts/goiyxahang.js?v=20260801giamgiafilter';
 
         // Khởi tạo đăng nhập chuẩn auth, chỉ cho ADMIN giống trang nhập DM nhân viên
         khoiTaoDangNhapDungChung({
