@@ -1041,6 +1041,24 @@ function loadQuickActionState() {
     document.getElementById("inKhongHoi").checked = states.inKhongHoi;
 }
 
+// Tự động gắn mã nhân viên vào cuối ghi chú bày mẫu.
+// Ví dụ: "Không tìm thấy sản phẩm [NV:NV01]"
+function buildBayMauNoteWithStaff(note, manv) {
+  const cleanNote = String(note || "")
+    .trim()
+    // Loại bỏ mã NV đã gắn ở cuối nếu có, tránh bị lặp khi sửa lại.
+    .replace(/\s*\[NV\s*:\s*[^\]]+\]\s*$/i, "")
+    .trim();
+
+  if (!cleanNote) return "";
+
+  const cleanManv = String(manv || "").trim().toUpperCase();
+
+  if (!cleanManv) return cleanNote;
+
+  return `${cleanNote} [NV:${cleanManv}]`;
+}
+
 // =================== BẮT ĐẦU: POPUP NHẮC BÀY MẪU ===================
 
 let bayMauTimer = null;
@@ -1614,7 +1632,7 @@ function showBayMauPopup(tasks, context) {
         if (note && note !== oldNote) {
           noteUpdates.push({
             id_ct: Number(input.dataset.idCt),
-            note,
+            note: buildBayMauNoteWithStaff(note, currentManv),
           });
         }
       });
