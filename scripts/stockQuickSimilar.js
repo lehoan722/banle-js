@@ -144,7 +144,7 @@
     return all;
   }
 
-  function buildListFromGroupData({ sourceMasp, size, branch, masters, stockRows }) {
+  function buildListFromGroupData({ sourceMasp, size, branch, masters, stockRows, includeSource = false }) {
     const sizeNorm = normalizeSize(size);
     const source = normText(sourceMasp);
 
@@ -161,7 +161,7 @@
 
     stockRows.forEach(r => {
       const masp = normText(r.masp);
-      if (!masp || masp === source) return;
+      if (!masp || (!includeSource && masp === source)) return;
 
       const rowSize = normalizeSize(r.size);
       if (rowSize !== sizeNorm) return;
@@ -204,7 +204,8 @@
     sizes,
     branch,
     masters,
-    stockRows
+    stockRows,
+    includeSource = false
   }) {
     const source = normText(sourceMasp);
     const sizeSet = new Set(
@@ -229,7 +230,7 @@
     (stockRows || []).forEach(r => {
       const masp = normText(r.masp);
 
-      if (!masp || masp === source) return;
+      if (!masp || (!includeSource && masp === source)) return;
 
       const rowSize = normalizeSize(r.size);
 
@@ -297,7 +298,8 @@
       size,
       branch,
       masters: discountMasters,
-      stockRows: (stockRows || []).filter(r => allowed.has(normText(r.masp)))
+      stockRows: (stockRows || []).filter(r => allowed.has(normText(r.masp))),
+      includeSource: true
     });
 
     return list.sort((a, b) => {
@@ -314,7 +316,7 @@
     });
   }
 
-  function openViewer({ list, masp, size, branch, nhomhang, mode = "similar" }) {
+  function openViewer({ list, masp, size, branch, nhomhang, sourcePrice = 0, mode = "similar" }) {
     if (!list.length) {
       alert(mode === "discount" ? `Không có sản phẩm giảm giá cùng nhóm còn size ${size}` : `Không có sản phẩm cùng nhóm còn size ${size}`);
       return;
@@ -326,6 +328,7 @@
       source_size: size,
       branch,
       nhomhang,
+      source_price: Number(sourcePrice || 0),
       mode
     }));
 
@@ -349,6 +352,8 @@
     }
 
     const masters = await fetchGroupMasterProducts(sourceGroup);
+    const sourceMaster = masters.find(x => normText(x.masp) === sourceMasp);
+    const sourcePrice = Number(sourceMaster?.giale || 0);
     const maspList = masters.map(x => normText(x.masp)).filter(Boolean);
 
     const stockRows = await fetchGroupStockRows(maspList, denNgay);
@@ -358,7 +363,14 @@
       size: sizeNorm,
       branch,
       masters,
-      stockRows
+      stockRows,
+      includeSource: true
+    });
+
+    list.sort((a, b) => {
+      const aSource = normText(a.masp) === sourceMasp ? 1 : 0;
+      const bSource = normText(b.masp) === sourceMasp ? 1 : 0;
+      return bSource - aSource;
     });
 
     openViewer({
@@ -366,7 +378,8 @@
       masp: sourceMasp,
       size: sizeNorm,
       branch,
-      nhomhang: sourceGroup
+      nhomhang: sourceGroup,
+      sourcePrice
     });
   }
 
@@ -388,6 +401,8 @@
     }
 
     const masters = await fetchGroupMasterProducts(sourceGroup);
+    const sourceMaster = masters.find(x => normText(x.masp) === sourceMasp);
+    const sourcePrice = Number(sourceMaster?.giale || 0);
     const discountMasters = masters.filter(m =>
       [10, 20, 30, 50].includes(Number(m.giam_gia_pct))
     );
@@ -417,6 +432,7 @@
       size: sizeNorm,
       branch,
       nhomhang: sourceGroup,
+      sourcePrice,
       mode: "discount"
     });
   }
@@ -460,16 +476,16 @@
     const masters = await fetchGroupMasterProducts(sourceGroup);
     const sourceMaster = sourceFresh || masters.find(x => normText(x.masp) === sourceMasp);
     const sourcePrice = Number(sourceMaster?.giale || 0);
-    let filtered = masters.filter(x => normText(x.masp) !== sourceMasp);
+    let filtered = masters.slice();
 
     if (mode === "discount") filtered = filtered.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
-    if (mode === "cheaper") filtered = filtered.filter(x => Number(x.giale||0)>0 && Number(x.giale||0)<sourcePrice);
-    if (mode === "premium") filtered = filtered.filter(x => Number(x.giale||0)>sourcePrice);
+    if (mode === "cheaper") filtered = filtered.filter(x => Number(x.giale||0)>0 && Number(x.giale||0)<=sourcePrice);
+    if (mode === "premium") filtered = filtered.filter(x => Number(x.giale||0)>=sourcePrice);
 
     if (!filtered.length) return { ok:true, source_price:sourcePrice, source_group:sourceGroup, branch:useBranch, list:[] };
 
     const stockRows = await fetchGroupStockRows(filtered.map(x => normText(x.masp)).filter(Boolean), denNgay);
-    let list = buildListFromGroupData({ sourceMasp, size:sizeNorm, branch:useBranch, masters:filtered, stockRows });
+    let list = buildListFromGroupData({ sourceMasp, size:sizeNorm, branch:useBranch, masters:filtered, stockRows, includeSource:true });
 
     if (mode === "discount") {
       list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct))).sort((a,b) => Number(b.giam_gia_pct||0)-Number(a.giam_gia_pct||0));
@@ -477,6 +493,14 @@
       list.sort((a,b) => (sourcePrice-Number(a.giale||0))-(sourcePrice-Number(b.giale||0)));
     } else if (mode === "premium") {
       list.sort((a,b) => (Number(a.giale||0)-sourcePrice)-(Number(b.giale||0)-sourcePrice));
+    }
+
+    if (sourceMasp) {
+      list.sort((a, b) => {
+        const aSource = normText(a.masp) === sourceMasp ? 1 : 0;
+        const bSource = normText(b.masp) === sourceMasp ? 1 : 0;
+        return bSource - aSource;
+      });
     }
 
     return { ok:true, source_price:sourcePrice, source_group:sourceGroup, branch:useBranch, list };
@@ -489,6 +513,7 @@
     nhomhangs,
     denNgay,
     branch,
+    referencePrice = 0,
     mode = "similar"
   }) {
     const sourceMasp = normText(masp);
@@ -548,13 +573,12 @@
       ? await fetchSourceMaster(sourceMasp)
       : null;
 
-    const sourcePrice = Number(sourceFresh?.giale || 0);
+    const sourcePrice = Number(referencePrice || sourceFresh?.giale || 0);
 
     let masters = await fetchMasterProductsByGroups(groupList);
 
-    masters = masters.filter(
-      x => normText(x.masp) !== sourceMasp
-    );
+    // Giữ mã gốc trong tập ứng viên. Nếu mã gốc thỏa điều kiện
+    // size, nhóm, giá và tồn tại cơ sở đang xem thì sẽ được xếp đầu.
 
     if (mode === "discount") {
       masters = masters.filter(x =>
@@ -574,7 +598,7 @@
 
       masters = masters.filter(x =>
         Number(x.giale || 0) > 0 &&
-        Number(x.giale || 0) < sourcePrice
+        Number(x.giale || 0) <= sourcePrice
       );
     } else if (mode === "premium") {
       if (!sourcePrice) {
@@ -587,7 +611,7 @@
       }
 
       masters = masters.filter(x =>
-        Number(x.giale || 0) > sourcePrice
+        Number(x.giale || 0) >= sourcePrice
       );
     }
 
@@ -614,7 +638,8 @@
       sizes: sizeList,
       branch: useBranch,
       masters,
-      stockRows
+      stockRows,
+      includeSource: true
     });
 
     if (mode === "discount") {
@@ -662,6 +687,14 @@
           Number(b.giale || 0) - sourcePrice;
 
         return da - db;
+      });
+    }
+
+    if (sourceMasp) {
+      list.sort((a, b) => {
+        const aSource = normText(a.masp) === sourceMasp ? 1 : 0;
+        const bSource = normText(b.masp) === sourceMasp ? 1 : 0;
+        return bSource - aSource;
       });
     }
 
