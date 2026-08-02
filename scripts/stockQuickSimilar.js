@@ -351,8 +351,11 @@
       if (!branch) return;
     }
 
-    const masters = await fetchGroupMasterProducts(sourceGroup);
-    const sourceMaster = masters.find(x => normText(x.masp) === sourceMasp);
+    const [masters, sourceFresh] = await Promise.all([
+      fetchGroupMasterProducts(sourceGroup),
+      fetchSourceMaster(sourceMasp)
+    ]);
+    const sourceMaster = sourceFresh || masters.find(x => normText(x.masp) === sourceMasp);
     const sourcePrice = Number(sourceMaster?.giale || 0);
     const maspList = masters.map(x => normText(x.masp)).filter(Boolean);
 
