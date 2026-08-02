@@ -673,6 +673,111 @@
     };
   }
 
+
+  function isoDateShift(dateText, daysBack) {
+    const base = /^\d{4}-\d{2}-\d{2}$/.test(String(dateText || ""))
+      ? new Date(String(dateText) + "T12:00:00")
+      : new Date();
+    base.setDate(base.getDate() - Number(daysBack || 0));
+    return base.toISOString().slice(0, 10);
+  }
+
+  function aggregateSalesForSelectedSizes(rows, sizes) {
+    const sizeSet = new Set((sizes || []).map(normalizeSize).filter(Boolean));
+    const map = new Map();
+
+    (rows || []).forEach(row => {
+      const masp = normText(row.masp);
+      const size = normalizeSize(row.size);
+      if (!masp || !sizeSet.has(size)) return;
+
+      const sold = Number(row.ban_cs1 || 0) + Number(row.ban_cs2 || 0);
+      map.set(masp, Number(map.get(masp) || 0) + sold);
+    });
+
+    return map;
+  }
+
+  async function getBestSellerListByFilters({
+    sizes,
+    nhomhangs,
+    denNgay,
+    branch
+  }) {
+    const sizeList = Array.from(new Set((sizes || []).map(normalizeSize).filter(Boolean)));
+    const groupList = Array.from(new Set((nhomhangs || []).map(normText).filter(Boolean)));
+    const useBranch = ["cs1", "cs2"].includes(String(branch || "").toLowerCase())
+      ? String(branch).toLowerCase()
+      : "cs1";
+
+    if (!sizeList.length) return { ok:false, message:"Chưa chọn size", list:[] };
+    if (!groupList.length) return { ok:false, message:"Chưa chọn nhóm hàng", list:[] };
+
+    const endDate = /^\d{4}-\d{2}-\d{2}$/.test(String(denNgay || ""))
+      ? String(denNgay)
+      : new Date().toISOString().slice(0, 10);
+    const before10 = isoDateShift(endDate, 10);
+    const before30 = isoDateShift(endDate, 30);
+
+    const masters = await fetchMasterProductsByGroups(groupList);
+    if (!masters.length) return { ok:true, branch:useBranch, list:[] };
+
+    const masps = masters.map(x => normText(x.masp)).filter(Boolean);
+    const [rowsNow, rowsBefore10, rowsBefore30] = await Promise.all([
+      fetchGroupStockRows(masps, endDate),
+      fetchGroupStockRows(masps, before10),
+      fetchGroupStockRows(masps, before30)
+    ]);
+
+    const soldNow = aggregateSalesForSelectedSizes(rowsNow, sizeList);
+    const sold10Base = aggregateSalesForSelectedSizes(rowsBefore10, sizeList);
+    const sold30Base = aggregateSalesForSelectedSizes(rowsBefore30, sizeList);
+
+    const masterMap = new Map(masters.map(m => [normText(m.masp), m]));
+    const list = [];
+
+    masps.forEach(masp => {
+      const cumulativeNow = Number(soldNow.get(masp) || 0);
+      const cumulative10 = Number(sold10Base.get(masp) || 0);
+      const cumulative30 = Number(sold30Base.get(masp) || 0);
+      const ban10 = Math.max(0, cumulativeNow - cumulative10);
+      const ban30 = Math.max(0, cumulativeNow - cumulative30);
+      const ban11To30 = Math.max(0, ban30 - ban10);
+      const score = ban10 * 2 + ban11To30;
+
+      if (ban30 <= 0) return;
+      const m = masterMap.get(masp) || {};
+      list.push({
+        masp,
+        giale: Number(m.giale || 0),
+        giam_gia_pct: m.giam_gia_pct == null ? null : Number(m.giam_gia_pct),
+        toncs1: 0,
+        toncs2: 0,
+        ban_10_ngay: ban10,
+        ban_30_ngay: ban30,
+        ban_11_30_ngay: ban11To30,
+        diem_ban_chay: score,
+        ban_nhanh: true
+      });
+    });
+
+    list.sort((a, b) =>
+      Number(b.diem_ban_chay || 0) - Number(a.diem_ban_chay || 0) ||
+      Number(b.ban_10_ngay || 0) - Number(a.ban_10_ngay || 0) ||
+      Number(b.ban_30_ngay || 0) - Number(a.ban_30_ngay || 0) ||
+      String(a.masp || "").localeCompare(String(b.masp || ""), "vi", { numeric:true })
+    );
+
+    return {
+      ok:true,
+      branch:useBranch,
+      den_ngay:endDate,
+      moc_10_ngay:before10,
+      moc_30_ngay:before30,
+      list
+    };
+  }
+
   async function getDiscountSizeSummary({
     masp,
     nhomhang,
@@ -797,6 +902,7 @@
     openDiscountFromPopup,
     getRecommendationList,
     getRecommendationListByFilters,
+    getBestSellerListByFilters,
     getDiscountSizeSummary,
     clearDiscountSizeSummaryCache
   };
