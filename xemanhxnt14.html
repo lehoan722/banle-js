@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <title>Ảnh sản phẩm (từ XNT14)</title>
-    <!-- viewer-stock-after-check-independent-v3 -->
+    <!-- viewer-stock-after-check-independent-v4-positive-stock-only -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         :root {
@@ -1594,6 +1594,33 @@
             return result;
         }
 
+        function getViewerActiveBranch(fallback = "") {
+            const fromFilter = String(
+                document.getElementById("viewerBranch")?.value || ""
+            ).trim().toLowerCase();
+
+            if (["cs1", "cs2"].includes(fromFilter)) {
+                return fromFilter;
+            }
+
+            const fromContext = String(
+                fallback || CURRENT_CONTEXT.branch || ""
+            ).trim().toLowerCase();
+
+            return ["cs1", "cs2"].includes(fromContext)
+                ? fromContext
+                : "cs1";
+        }
+
+        function filterListByPositiveStockAtBranch(list, branchRaw = "") {
+            const branch = getViewerActiveBranch(branchRaw);
+            const stockField = branch === "cs2" ? "toncs2" : "toncs1";
+
+            return (Array.isArray(list) ? list : []).filter(item =>
+                Number(item?.[stockField] || 0) > 0
+            );
+        }
+
         function getContextForRecommendation() {
             return {
                 masp: normalizeMasp(
@@ -1724,6 +1751,12 @@
                     { forceRefresh: true }
                 );
 
+                // Chỉ giữ sản phẩm còn tồn sau kiểm tại cơ sở đang xem.
+                list = filterListByPositiveStockAtBranch(
+                    list,
+                    filters.branch
+                );
+
                 if (tabKey === "discount") {
                     list = list.filter(x =>
                         [10, 20, 30, 50].includes(
@@ -1790,6 +1823,7 @@
                 let list = Array.isArray(CURRENT_LIST) ? CURRENT_LIST.map(x => ({...x})) : [];
                 list = await enrichListWithDiscountInfo(list);
                 list = await enrichListWithStockAfterCheck(list);
+                list = filterListByPositiveStockAtBranch(list);
                 if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
@@ -1810,6 +1844,7 @@
                 let list = Array.isArray(result?.list) ? result.list : [];
                 list = await enrichListWithDiscountInfo(list);
                 list = await enrichListWithStockAfterCheck(list);
+                list = filterListByPositiveStockAtBranch(list);
                 if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
