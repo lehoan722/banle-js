@@ -594,7 +594,7 @@
 
     <div class="tabs-wrap">
         <div class="tabs" id="tabs">
-            <button type="button" class="tab-btn discount" data-tab="discount">Cần xả (giảm giá)</button>
+            <button type="button" class="tab-btn discount" data-tab="discount">Giảm giá</button>
             <button type="button" class="tab-btn" data-tab="best">Bán chạy</button>
             <button type="button" class="tab-btn" data-tab="similar">Gần giống</button>
             <button type="button" class="tab-btn" data-tab="cheaper">Rẻ hơn</button>
@@ -1092,6 +1092,58 @@
                 );
             } catch {
                 return {};
+            }
+        }
+
+        async function ensureViewerSourcePrice(options = {}) {
+            const priceEl = document.getElementById("viewerPrice");
+            const currentInput = parseViewerPriceInput(priceEl?.value || "");
+            const contextPrice = Number(CURRENT_CONTEXT.source_price || 0);
+
+            if (!options.forceRefresh && (currentInput > 0 || contextPrice > 0)) {
+                const resolved = currentInput > 0 ? currentInput : contextPrice;
+                if (priceEl && currentInput <= 0) {
+                    priceEl.value = formatViewerPriceInput(resolved);
+                }
+                return resolved;
+            }
+
+            const masp = normalizeMasp(CURRENT_CONTEXT.source_masp || "");
+            const client = window.supabase;
+            if (!masp || !client || typeof client.from !== "function") return 0;
+
+            try {
+                const { data, error } = await client
+                    .from("dmhanghoa")
+                    .select("masp, giale")
+                    .eq("masp", masp)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                const price = Number(data?.giale || 0);
+                if (price <= 0) return 0;
+
+                CURRENT_CONTEXT.source_price = price;
+                sessionStorage.setItem(
+                    "XNT14_CONTEXT",
+                    JSON.stringify(CURRENT_CONTEXT)
+                );
+
+                if (priceEl) {
+                    priceEl.value = formatViewerPriceInput(price);
+                }
+
+                buildContextChips();
+                updateViewerFilterSummary();
+                return price;
+            } catch (error) {
+                console.warn(
+                    "[xemanhxnt14] Không tự lấy được giá mã gốc:",
+                    masp,
+                    error
+                );
+                return 0;
             }
         }
 
@@ -1774,8 +1826,13 @@
             const tabKey = getActiveTabKey();
 
             if (["cheaper", "premium"].includes(tabKey) && !filters.price) {
-                alert("Bạn cần nhập giá so sánh để tải tab Rẻ hơn hoặc Cao cấp hơn.");
-                return;
+                const autoPrice = await ensureViewerSourcePrice({ forceRefresh: true });
+                if (autoPrice > 0) {
+                    filters.price = autoPrice;
+                } else {
+                    alert("Bạn cần nhập giá so sánh để tải tab Rẻ hơn hoặc Cao cấp hơn.");
+                    return;
+                }
             }
 
             const requiredMethod = tabKey === "best"
@@ -2058,6 +2115,7 @@
             const ok = await waitForDependencies(12000);
             if (ok) {
                 await sleep(250);
+                await ensureViewerSourcePrice();
                 CURRENT_LIST = await enrichListWithDiscountInfo(CURRENT_LIST);
             }
 
