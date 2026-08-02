@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 
@@ -139,6 +138,89 @@
         .tab-btn.discount.active {
             background: var(--danger);
             border-color: var(--danger);
+        }
+
+
+        .viewer-filter-wrap {
+            background: #fff;
+            border-bottom: 1px solid var(--line);
+            padding: 10px 14px;
+        }
+
+        .viewer-filter {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns:
+                minmax(180px, 1.5fr)
+                minmax(120px, .7fr)
+                minmax(220px, 1.8fr)
+                auto;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .viewer-filter-group {
+            min-width: 0;
+        }
+
+        .viewer-filter-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #374151;
+            text-transform: uppercase;
+        }
+
+        .viewer-filter input,
+        .viewer-filter select {
+            width: 100%;
+            min-height: 38px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 7px 10px;
+            background: #fff;
+            color: #111827;
+            font-size: 14px;
+        }
+
+        .viewer-filter input:focus,
+        .viewer-filter select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37,99,235,.12);
+        }
+
+        .viewer-filter-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .viewer-filter-btn {
+            min-height: 38px;
+            border: 1px solid #1d4ed8;
+            border-radius: 8px;
+            padding: 8px 14px;
+            background: #2563eb;
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .viewer-filter-btn:disabled {
+            opacity: .65;
+            cursor: wait;
+        }
+
+        .viewer-filter-summary {
+            max-width: 1400px;
+            margin: 8px auto 0;
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.4;
         }
 
         .panel {
@@ -310,6 +392,18 @@
                 top: 89px;
             }
 
+            .viewer-filter {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .viewer-filter-actions {
+                grid-column: 1 / -1;
+            }
+
+            .viewer-filter-btn {
+                width: 100%;
+            }
+
             .tabs {
                 padding: 8px;
                 gap: 6px;
@@ -373,6 +467,51 @@
         </div>
     </div>
 
+    <div class="viewer-filter-wrap">
+        <div class="viewer-filter">
+            <div class="viewer-filter-group">
+                <label for="viewerSizes">Size cần xem</label>
+                <input
+                    id="viewerSizes"
+                    type="text"
+                    placeholder="Ví dụ: 40,41,42"
+                    autocomplete="off"
+                />
+            </div>
+
+            <div class="viewer-filter-group">
+                <label for="viewerBranch">Cơ sở</label>
+                <select id="viewerBranch">
+                    <option value="cs1">Cơ sở 1</option>
+                    <option value="cs2">Cơ sở 2</option>
+                </select>
+            </div>
+
+            <div class="viewer-filter-group">
+                <label for="viewerGroups">Nhóm hàng</label>
+                <input
+                    id="viewerGroups"
+                    type="text"
+                    placeholder="Ví dụ: AP,SM,DEP,GIAY"
+                    autocomplete="off"
+                />
+            </div>
+
+            <div class="viewer-filter-actions">
+                <button
+                    id="btnLoadByFilters"
+                    class="viewer-filter-btn"
+                    type="button"
+                >🔍 Tải dữ liệu</button>
+            </div>
+        </div>
+
+        <div
+            id="viewerFilterSummary"
+            class="viewer-filter-summary"
+        ></div>
+    </div>
+
     <section class="panel" id="panel-discount">
         <p class="panel-note"><strong>Tab Cần xả (giảm giá):</strong> Khi mở từ <b>StockQuickPopup → Xem hàng giảm giá</b>, danh sách hàng giảm giá sẽ hiển thị tại đây. Ở giai đoạn hiện tại, các sản phẩm nào có giảm giá sẽ được gắn nhãn đỏ trực tiếp trên ảnh.</p>
         <div id="discountGridWrap"></div>
@@ -424,6 +563,220 @@
         let DATA_TAB_KEY = "similar";
         const TAB_LIST_CACHE = new Map();
         const TAB_LOADING = new Set();
+
+        const VALID_VIEWER_SIZES = new Set([
+            "0", "38", "39", "40", "41",
+            "42", "43", "44", "45", "46"
+        ]);
+
+        let FILTERS_USER_CHANGED = false;
+
+
+        function parseCsvValues(value) {
+            return Array.from(
+                new Set(
+                    String(value || "")
+                        .split(",")
+                        .map(x => x.trim())
+                        .filter(Boolean)
+                )
+            );
+        }
+
+        function parseAndValidateSizes(value) {
+            const sizes = parseCsvValues(value).map(x => {
+                const m = String(x).match(/\d{1,2}/);
+                return m ? m[0] : String(x).trim();
+            });
+
+            const invalid = sizes.filter(
+                x => !VALID_VIEWER_SIZES.has(x)
+            );
+
+            if (invalid.length) {
+                throw new Error(
+                    "Size không hợp lệ: " +
+                    invalid.join(", ") +
+                    ". Chỉ cho phép 0,38,39,40,41,42,43,44,45,46."
+                );
+            }
+
+            if (!sizes.length) {
+                throw new Error("Bạn chưa nhập size cần xem.");
+            }
+
+            return sizes;
+        }
+
+        function parseAndValidateGroups(value) {
+            const groups = parseCsvValues(value)
+                .map(x => String(x).trim().toUpperCase());
+
+            if (!groups.length) {
+                throw new Error("Bạn chưa nhập nhóm hàng.");
+            }
+
+            return groups;
+        }
+
+        function getViewerFilterValues() {
+            const sizes = parseAndValidateSizes(
+                document.getElementById("viewerSizes")?.value
+            );
+
+            const groups = parseAndValidateGroups(
+                document.getElementById("viewerGroups")?.value
+            );
+
+            const branch = String(
+                document.getElementById("viewerBranch")?.value || ""
+            ).trim().toLowerCase();
+
+            if (!["cs1", "cs2"].includes(branch)) {
+                throw new Error("Cơ sở không hợp lệ.");
+            }
+
+            return { sizes, groups, branch };
+        }
+
+        function saveViewerFilterValues(filters) {
+            sessionStorage.setItem(
+                "XNT14_VIEWER_FILTERS",
+                JSON.stringify(filters || {})
+            );
+        }
+
+        function loadSavedViewerFilters() {
+            try {
+                return JSON.parse(
+                    sessionStorage.getItem(
+                        "XNT14_VIEWER_FILTERS"
+                    ) || "{}"
+                );
+            } catch {
+                return {};
+            }
+        }
+
+        function fillViewerFilterDefaults() {
+            const saved = loadSavedViewerFilters();
+
+            const sizeValue =
+                Array.isArray(saved.sizes) &&
+                saved.sizes.length
+                    ? saved.sizes.join(",")
+                    : String(
+                        CURRENT_CONTEXT.source_size || ""
+                    ).trim();
+
+            const groupValue =
+                Array.isArray(saved.groups) &&
+                saved.groups.length
+                    ? saved.groups.join(",")
+                    : String(
+                        CURRENT_CONTEXT.nhomhang || ""
+                    ).trim();
+
+            const branchValue =
+                ["cs1", "cs2"].includes(
+                    String(saved.branch || "")
+                        .trim()
+                        .toLowerCase()
+                )
+                    ? String(saved.branch)
+                        .trim()
+                        .toLowerCase()
+                    : String(
+                        CURRENT_CONTEXT.branch || "cs1"
+                    ).trim().toLowerCase();
+
+            const sizesEl =
+                document.getElementById("viewerSizes");
+
+            const groupsEl =
+                document.getElementById("viewerGroups");
+
+            const branchEl =
+                document.getElementById("viewerBranch");
+
+            if (sizesEl) sizesEl.value = sizeValue;
+            if (groupsEl) groupsEl.value = groupValue;
+            if (branchEl) {
+                branchEl.value =
+                    ["cs1", "cs2"].includes(branchValue)
+                        ? branchValue
+                        : "cs1";
+            }
+
+            updateViewerFilterSummary();
+        }
+
+        function updateViewerFilterSummary(extraText = "") {
+            const el =
+                document.getElementById(
+                    "viewerFilterSummary"
+                );
+
+            if (!el) return;
+
+            const sizes =
+                document.getElementById(
+                    "viewerSizes"
+                )?.value || "";
+
+            const groups =
+                document.getElementById(
+                    "viewerGroups"
+                )?.value || "";
+
+            const branch =
+                document.getElementById(
+                    "viewerBranch"
+                )?.value || "cs1";
+
+            const tabKey = getActiveTabKey();
+            const tabLabel =
+                TAB_META[tabKey]?.label || tabKey;
+
+            el.textContent =
+                `Tab ${tabLabel} • ` +
+                `${branch.toUpperCase()} • ` +
+                `Size ${sizes || "-"} • ` +
+                `Nhóm ${groups || "-"}` +
+                (extraText ? ` • ${extraText}` : "");
+        }
+
+        function bindViewerFilterInputs() {
+            [
+                "viewerSizes",
+                "viewerGroups",
+                "viewerBranch"
+            ].forEach(id => {
+                document
+                    .getElementById(id)
+                    ?.addEventListener("input", () => {
+                        FILTERS_USER_CHANGED = true;
+                        updateViewerFilterSummary(
+                            "Có thay đổi chưa tải"
+                        );
+                    });
+            });
+
+            document
+                .getElementById("viewerBranch")
+                ?.addEventListener("change", () => {
+                    FILTERS_USER_CHANGED = true;
+                    updateViewerFilterSummary(
+                        "Có thay đổi chưa tải"
+                    );
+                });
+
+            document
+                .getElementById("btnLoadByFilters")
+                ?.addEventListener("click", () => {
+                    loadCurrentTabByFilters();
+                });
+        }
 
         function fmtVND(n) {
             if (n == null || isNaN(n)) return "";
@@ -564,8 +917,16 @@
                 btn.addEventListener('click', () => {
                     const tabKey = btn.dataset.tab;
                     activateTab(tabKey)
-                      .then(() => ensureTabData(tabKey, { forceRefresh:true }))
-                      .catch(err => console.warn("[xemanhxnt14] Lỗi mở tab:", err));
+                      .then(() => {
+                          updateViewerFilterSummary();
+                          return loadCurrentTabByFilters();
+                      })
+                      .catch(err =>
+                          console.warn(
+                              "[xemanhxnt14] Lỗi mở tab:",
+                              err
+                          )
+                      );
                 });
             });
         }
@@ -639,37 +1000,6 @@
             }
         }
 
-        async function enrichListWithStockAfterCheck(list, options = {}) {
-            if (!Array.isArray(list) || !list.length) return list;
-            if (!window.StockQuick || typeof window.StockQuick.getStockAfterCheck !== "function") {
-                console.warn("[xemanhxnt14] StockQuick.getStockAfterCheck chưa sẵn sàng.");
-                return list;
-            }
-
-            const result = list.map(item => ({ ...item }));
-            const concurrency = 5;
-            let nextIndex = 0;
-
-            async function worker() {
-                while (true) {
-                    const index = nextIndex++;
-                    if (index >= result.length) return;
-
-                    const item = result[index];
-                    try {
-                        const stock = await window.StockQuick.getStockAfterCheck(item.masp, options);
-                        item.toncs1 = Number(stock?.toncs1 || 0);
-                        item.toncs2 = Number(stock?.toncs2 || 0);
-                    } catch (err) {
-                        console.warn("[xemanhxnt14] Không lấy được tồn sau kiểm:", item.masp, err);
-                    }
-                }
-            }
-
-            await Promise.all(Array.from({ length: Math.min(concurrency, result.length) }, worker));
-            return result;
-        }
-
         async function enrichListWithDiscountInfo(list) {
             const client = window.supabase;
             if (!client || !Array.isArray(list) || !list.length) return list;
@@ -709,10 +1039,18 @@
 
         function getContextForRecommendation() {
             return {
-                masp: normalizeMasp(CURRENT_CONTEXT.source_masp || ""),
-                size: String(CURRENT_CONTEXT.source_size || "").trim(),
-                nhomhang: String(CURRENT_CONTEXT.nhomhang || "").trim(),
-                branch: String(CURRENT_CONTEXT.branch || "").trim().toLowerCase(),
+                masp: normalizeMasp(
+                    CURRENT_CONTEXT.source_masp || ""
+                ),
+                size: String(
+                    CURRENT_CONTEXT.source_size || ""
+                ).trim(),
+                nhomhang: String(
+                    CURRENT_CONTEXT.nhomhang || ""
+                ).trim(),
+                branch: String(
+                    CURRENT_CONTEXT.branch || ""
+                ).trim().toLowerCase(),
                 denNgay:
                     CURRENT_FILTERS.den_ngay ||
                     new Date().toISOString().slice(0, 10)
@@ -735,6 +1073,150 @@
             if (wrap) wrap.innerHTML = htmlText;
         }
 
+
+        async function loadCurrentTabByFilters() {
+            const button =
+                document.getElementById(
+                    "btnLoadByFilters"
+                );
+
+            let filters;
+
+            try {
+                filters = getViewerFilterValues();
+            } catch (err) {
+                alert(err.message);
+                return;
+            }
+
+            const tabKey = getActiveTabKey();
+
+            if (tabKey === "best") {
+                alert(
+                    "Tab Bán chạy chưa được kích hoạt dữ liệu."
+                );
+                return;
+            }
+
+            if (
+                !window.StockQuickSimilar ||
+                typeof window.StockQuickSimilar
+                    .getRecommendationListByFilters
+                    !== "function"
+            ) {
+                alert(
+                    "Module lọc nhiều size/nhóm chưa sẵn sàng. " +
+                    "Hãy cập nhật stockQuickSimilar.js."
+                );
+                return;
+            }
+
+            if (button) {
+                button.disabled = true;
+                button.textContent = "⏳ Đang tải";
+            }
+
+            saveViewerFilterValues(filters);
+            FILTERS_USER_CHANGED = false;
+            updateViewerFilterSummary("Đang tải dữ liệu...");
+
+            TAB_LIST_CACHE.delete(tabKey);
+
+            setWrapMessage(
+                tabKey,
+                `<div class="loading">
+                    Đang tải dữ liệu theo điều kiện đã chọn...
+                </div>`
+            );
+
+            try {
+                const result =
+                    await window.StockQuickSimilar
+                        .getRecommendationListByFilters({
+                            masp: normalizeMasp(
+                                CURRENT_CONTEXT.source_masp || ""
+                            ),
+                            sizes: filters.sizes,
+                            nhomhangs: filters.groups,
+                            branch: filters.branch,
+                            denNgay:
+                                CURRENT_FILTERS.den_ngay ||
+                                new Date()
+                                    .toISOString()
+                                    .slice(0, 10),
+                            mode: tabKey
+                        });
+
+                if (result?.ok === false) {
+                    throw new Error(
+                        result.message ||
+                        "Không tải được dữ liệu."
+                    );
+                }
+
+                let list = Array.isArray(result?.list)
+                    ? result.list
+                    : [];
+
+                list = await enrichListWithDiscountInfo(
+                    list
+                );
+
+                if (tabKey === "discount") {
+                    list = list.filter(x =>
+                        [10, 20, 30, 50].includes(
+                            Number(x.giam_gia_pct)
+                        )
+                    );
+                }
+
+                TAB_LIST_CACHE.set(tabKey, list);
+
+                document.getElementById(
+                    "count"
+                ).textContent = `Tổng: ${list.length}`;
+
+                const wrap =
+                    document.getElementById(
+                        TAB_META[tabKey]?.wrap
+                    );
+
+                attachPopupToCards(
+                    renderListIntoWrap(list, wrap)
+                );
+
+                updateViewerFilterSummary(
+                    `${list.length} sản phẩm`
+                );
+            } catch (err) {
+                console.error(
+                    "[xemanhxnt14] Lỗi tải theo bộ lọc:",
+                    err
+                );
+
+                setWrapMessage(
+                    tabKey,
+                    `<div class="placeholder">
+                        <strong>Không tải được dữ liệu</strong>
+                        ${String(
+                            err?.message ||
+                            err ||
+                            "Có lỗi xảy ra"
+                        )}
+                    </div>`
+                );
+
+                updateViewerFilterSummary(
+                    "Tải dữ liệu thất bại"
+                );
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = "🔍 Tải dữ liệu";
+                }
+            }
+        }
+
         async function ensureTabData(tabKey, options = {}) {
             if (!["discount","similar","cheaper","premium"].includes(tabKey)) return;
 
@@ -745,7 +1227,6 @@
                 }
                 let list = Array.isArray(CURRENT_LIST) ? CURRENT_LIST.map(x => ({...x})) : [];
                 list = await enrichListWithDiscountInfo(list);
-                list = await enrichListWithStockAfterCheck(list, options);
                 if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
@@ -765,7 +1246,6 @@
                 const result = await window.StockQuickSimilar.getRecommendationList({...getContextForRecommendation(), mode:tabKey});
                 let list = Array.isArray(result?.list) ? result.list : [];
                 list = await enrichListWithDiscountInfo(list);
-                list = await enrichListWithStockAfterCheck(list, options);
                 if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
@@ -795,7 +1275,27 @@
             if (btn) { btn.disabled=true; btn.textContent="⏳ Đang làm mới"; }
             try {
                 TAB_LIST_CACHE.delete(tabKey);
-                await ensureTabData(tabKey, { forceRefresh:true });
+
+                const hasFilterValues =
+                    String(
+                        document.getElementById(
+                            "viewerSizes"
+                        )?.value || ""
+                    ).trim() &&
+                    String(
+                        document.getElementById(
+                            "viewerGroups"
+                        )?.value || ""
+                    ).trim();
+
+                if (hasFilterValues) {
+                    await loadCurrentTabByFilters();
+                } else {
+                    await ensureTabData(
+                        tabKey,
+                        { forceRefresh: true }
+                    );
+                }
             } finally {
                 if (btn) { btn.disabled=false; btn.textContent="🔄 Làm mới"; }
             }
@@ -808,8 +1308,17 @@
 
             buildContextChips();
             DATA_TAB_KEY = pickDataTabKey();
+
+            fillViewerFilterDefaults();
+            bindViewerFilterInputs();
             bindTabs();
-            document.getElementById("btnRefresh")?.addEventListener("click", () => refreshCurrentTab());
+
+            document
+                .getElementById("btnRefresh")
+                ?.addEventListener(
+                    "click",
+                    () => refreshCurrentTab()
+                );
             await activateTab(DATA_TAB_KEY);
             setCountText();
 
@@ -830,7 +1339,6 @@
             if (ok) {
                 await sleep(250);
                 CURRENT_LIST = await enrichListWithDiscountInfo(CURRENT_LIST);
-                CURRENT_LIST = await enrichListWithStockAfterCheck(CURRENT_LIST);
             }
 
             if (ok) {
@@ -850,6 +1358,6 @@
         }
     </script>
 
-    <script src="scripts/stockQuickSimilar.js"></script>
+    <script src="scripts/stockQuickSimilar.js?v=20260801-viewerfilters1"></script>
 </body>
 </html>
