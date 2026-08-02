@@ -185,6 +185,116 @@
             font-size: 14px;
         }
 
+        .multi-select {
+            position: relative;
+        }
+
+        .multi-select-display {
+            width: 100%;
+            min-height: 38px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 8px 36px 8px 10px;
+            background: #fff;
+            color: #111827;
+            font-size: 14px;
+            cursor: pointer;
+            position: relative;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .multi-select-display::after {
+            content: "▼";
+            position: absolute;
+            right: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 11px;
+        }
+
+        .multi-select.open .multi-select-display {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37,99,235,.12);
+        }
+
+        .multi-select-menu {
+            display: none;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 4px);
+            z-index: 60;
+            max-height: 290px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            box-shadow: 0 12px 28px rgba(15,23,42,.16);
+            padding: 8px;
+        }
+
+        .multi-select.open .multi-select-menu {
+            display: block;
+        }
+
+        .multi-select-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 8px;
+            border-radius: 7px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 14px;
+        }
+
+        .multi-select-option:hover {
+            background: #f1f5f9;
+        }
+
+        .multi-select-option input {
+            width: 17px;
+            height: 17px;
+            min-height: auto;
+            margin: 0;
+            padding: 0;
+        }
+
+        .multi-select-actions {
+            display: flex;
+            gap: 6px;
+            position: sticky;
+            bottom: -8px;
+            background: #fff;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 6px;
+        }
+
+        .multi-select-action-btn {
+            flex: 1;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            background: #fff;
+            padding: 6px 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .multi-select-action-btn.primary {
+            background: #2563eb;
+            color: #fff;
+            border-color: #2563eb;
+        }
+
+        .multi-select-hidden-input {
+            display: none;
+        }
+
         .viewer-filter input:focus,
         .viewer-filter select:focus {
             outline: none;
@@ -471,12 +581,19 @@
         <div class="viewer-filter">
             <div class="viewer-filter-group">
                 <label for="viewerSizes">Size cần xem</label>
-                <input
-                    id="viewerSizes"
-                    type="text"
-                    placeholder="Ví dụ: 40,41,42"
-                    autocomplete="off"
-                />
+                <div class="multi-select" id="viewerSizesMulti">
+                    <div
+                        class="multi-select-display"
+                        tabindex="0"
+                        aria-expanded="false"
+                    >Chọn size</div>
+                    <div class="multi-select-menu"></div>
+                    <input
+                        id="viewerSizes"
+                        class="multi-select-hidden-input"
+                        type="hidden"
+                    />
+                </div>
             </div>
 
             <div class="viewer-filter-group">
@@ -489,12 +606,19 @@
 
             <div class="viewer-filter-group">
                 <label for="viewerGroups">Nhóm hàng</label>
-                <input
-                    id="viewerGroups"
-                    type="text"
-                    placeholder="Ví dụ: AP,SM,DEP,GIAY"
-                    autocomplete="off"
-                />
+                <div class="multi-select" id="viewerGroupsMulti">
+                    <div
+                        class="multi-select-display"
+                        tabindex="0"
+                        aria-expanded="false"
+                    >Chọn nhóm hàng</div>
+                    <div class="multi-select-menu"></div>
+                    <input
+                        id="viewerGroups"
+                        class="multi-select-hidden-input"
+                        type="hidden"
+                    />
+                </div>
             </div>
 
             <div class="viewer-filter-actions">
@@ -571,6 +695,250 @@
 
         let FILTERS_USER_CHANGED = false;
 
+        const VIEWER_SIZE_OPTIONS = [
+            "0", "38", "39", "40", "41",
+            "42", "43", "44", "45", "46"
+        ];
+
+        const VIEWER_GROUP_OPTIONS = [
+            "AP", "SM", "SMC", "SMD", "QB", "QT", "QV",
+            "NGO", "QNI", "AOKHOAC", "TD", "SO", "LEN", "AODA",
+            "3LO", "BOC", "BOD", "DEP",
+            "GIAYDA", "GIAYSUC", "GIAYTHOITRANG"
+        ];
+
+
+
+        function createMultiSelect({
+            rootId,
+            hiddenInputId,
+            options,
+            placeholder
+        }) {
+            const root = document.getElementById(rootId);
+            const hidden = document.getElementById(hiddenInputId);
+
+            if (!root || !hidden) return null;
+
+            const display = root.querySelector(
+                ".multi-select-display"
+            );
+            const menu = root.querySelector(
+                ".multi-select-menu"
+            );
+
+            const selected = new Set(
+                String(hidden.value || "")
+                    .split(",")
+                    .map(x => x.trim().toUpperCase())
+                    .filter(Boolean)
+            );
+
+            function syncFromHidden() {
+                selected.clear();
+
+                String(hidden.value || "")
+                    .split(",")
+                    .map(x => x.trim().toUpperCase())
+                    .filter(Boolean)
+                    .forEach(x => selected.add(x));
+
+                render();
+            }
+
+            function commit() {
+                hidden.value = Array.from(selected).join(",");
+                hidden.dispatchEvent(
+                    new Event("input", { bubbles: true })
+                );
+                render();
+            }
+
+            function render() {
+                display.textContent = selected.size
+                    ? Array.from(selected).join(",")
+                    : placeholder;
+
+                menu.innerHTML = `
+                    ${options.map(option => {
+                        const checked = selected.has(option);
+                        return `
+                            <label class="multi-select-option">
+                                <input
+                                    type="checkbox"
+                                    value="${option}"
+                                    ${checked ? "checked" : ""}
+                                />
+                                <span>${option}</span>
+                            </label>
+                        `;
+                    }).join("")}
+                    <div class="multi-select-actions">
+                        <button
+                            type="button"
+                            class="multi-select-action-btn"
+                            data-action="clear"
+                        >Bỏ chọn</button>
+                        <button
+                            type="button"
+                            class="multi-select-action-btn primary"
+                            data-action="done"
+                        >Xong</button>
+                    </div>
+                `;
+
+                menu.querySelectorAll(
+                    'input[type="checkbox"]'
+                ).forEach(box => {
+                    box.addEventListener("change", () => {
+                        const value = String(
+                            box.value || ""
+                        ).trim().toUpperCase();
+
+                        if (box.checked) {
+                            selected.add(value);
+                        } else {
+                            selected.delete(value);
+                        }
+
+                        hidden.value =
+                            Array.from(selected).join(",");
+
+                        display.textContent = selected.size
+                            ? Array.from(selected).join(",")
+                            : placeholder;
+
+                        hidden.dispatchEvent(
+                            new Event(
+                                "input",
+                                { bubbles: true }
+                            )
+                        );
+                    });
+                });
+
+                menu
+                    .querySelector('[data-action="clear"]')
+                    ?.addEventListener("click", e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        selected.clear();
+                        commit();
+                    });
+
+                menu
+                    .querySelector('[data-action="done"]')
+                    ?.addEventListener("click", e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        close();
+                        commit();
+                    });
+            }
+
+            function open() {
+                document.querySelectorAll(
+                    ".multi-select.open"
+                ).forEach(el => {
+                    if (el !== root) {
+                        el.classList.remove("open");
+                        el.querySelector(
+                            ".multi-select-display"
+                        )?.setAttribute(
+                            "aria-expanded",
+                            "false"
+                        );
+                    }
+                });
+
+                root.classList.add("open");
+                display.setAttribute(
+                    "aria-expanded",
+                    "true"
+                );
+            }
+
+            function close() {
+                root.classList.remove("open");
+                display.setAttribute(
+                    "aria-expanded",
+                    "false"
+                );
+            }
+
+            display.addEventListener("click", e => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (root.classList.contains("open")) {
+                    close();
+                } else {
+                    open();
+                }
+            });
+
+            display.addEventListener("keydown", e => {
+                if (
+                    e.key === "Enter" ||
+                    e.key === " " ||
+                    e.key === "ArrowDown"
+                ) {
+                    e.preventDefault();
+
+                    if (root.classList.contains("open")) {
+                        close();
+                    } else {
+                        open();
+                    }
+                }
+
+                if (e.key === "Escape") {
+                    close();
+                }
+            });
+
+            menu.addEventListener("click", e => {
+                e.stopPropagation();
+            });
+
+            hidden.addEventListener(
+                "multiselect-sync",
+                syncFromHidden
+            );
+
+            render();
+
+            return {
+                open,
+                close,
+                syncFromHidden,
+                getSelected: () => Array.from(selected)
+            };
+        }
+
+        let viewerSizesMultiApi = null;
+        let viewerGroupsMultiApi = null;
+
+        function initViewerMultiSelects() {
+            viewerSizesMultiApi = createMultiSelect({
+                rootId: "viewerSizesMulti",
+                hiddenInputId: "viewerSizes",
+                options: VIEWER_SIZE_OPTIONS,
+                placeholder: "Chọn size"
+            });
+
+            viewerGroupsMultiApi = createMultiSelect({
+                rootId: "viewerGroupsMulti",
+                hiddenInputId: "viewerGroups",
+                options: VIEWER_GROUP_OPTIONS,
+                placeholder: "Chọn nhóm hàng"
+            });
+
+            document.addEventListener("click", () => {
+                viewerSizesMultiApi?.close();
+                viewerGroupsMultiApi?.close();
+            });
+        }
 
         function parseCsvValues(value) {
             return Array.from(
@@ -707,6 +1075,14 @@
                         ? branchValue
                         : "cs1";
             }
+
+            sizesEl?.dispatchEvent(
+                new Event("multiselect-sync")
+            );
+
+            groupsEl?.dispatchEvent(
+                new Event("multiselect-sync")
+            );
 
             updateViewerFilterSummary();
         }
@@ -1309,6 +1685,7 @@
             buildContextChips();
             DATA_TAB_KEY = pickDataTabKey();
 
+            initViewerMultiSelects();
             fillViewerFilterDefaults();
             bindViewerFilterInputs();
             bindTabs();
@@ -1358,6 +1735,6 @@
         }
     </script>
 
-    <script src="scripts/stockQuickSimilar.js?v=20260801-viewerfilters1"></script>
+    <script src="scripts/stockQuickSimilar.js?v=20260801-viewerfilters2"></script>
 </body>
 </html>
