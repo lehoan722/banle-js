@@ -808,6 +808,24 @@ async function resizeBayMauImageFixed(file, quality = 0.62, masp = "", manv = ""
     });
 }
 
+// Tự động gắn mã nhân viên vào cuối ghi chú bày mẫu.
+// Ví dụ: "Không tìm thấy sản phẩm [NV:NV01]"
+function buildBayMauNoteWithStaff(note, manv) {
+    const cleanNote = String(note || "")
+        .trim()
+        // Loại bỏ mã NV đã gắn ở cuối nếu có, tránh bị lặp.
+        .replace(/\s*\[NV\s*:\s*[^\]]+\]\s*$/i, "")
+        .trim();
+
+    if (!cleanNote) return "";
+
+    const cleanManv = String(manv || "").trim().toUpperCase();
+
+    if (!cleanManv) return cleanNote;
+
+    return `${cleanNote} [NV:${cleanManv}]`;
+}
+
 async function saveBayMauRowsFromChamCong(changes, { manv, diadiem }) {
     if (!changes.length) return true;
 
@@ -823,7 +841,10 @@ async function saveBayMauRowsFromChamCong(changes, { manv, diadiem }) {
         }
 
         if (row.newNote !== row.oldNote) {
-            updates.baymau_note = row.newNote;
+            updates.baymau_note = buildBayMauNoteWithStaff(
+                row.newNote,
+                manv
+            );
         }
 
         if (row.imageFile) {
@@ -1346,7 +1367,7 @@ async function approveShiftWhenCheckin({ manv, diadiem }) {
             return;
         }
 
-        console.log("ĐÃ AUTO DUYỆT ca id", target.id, "cho", manv, "tại", diadiem);        
+        console.log("ĐÃ AUTO DUYỆT ca id", target.id, "cho", manv, "tại", diadiem);
 
         const { data: autoAssignData, error: autoAssignError } = await sp
             .schema("qlnv")
