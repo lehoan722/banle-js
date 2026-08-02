@@ -467,6 +467,28 @@
             font-size: 13px;
         }
 
+        .best-badge {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: rgba(17,24,39,.92);
+            color: #fff;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1;
+            box-shadow: 0 2px 10px rgba(0,0,0,.18);
+        }
+
+        .cap .best-line {
+            display: block;
+            margin-top: 4px;
+            color: #1d4ed8;
+            font-weight: 800;
+            font-size: 13px;
+        }
+
         .loading {
             padding: 28px 18px;
             color: #374151;
@@ -643,10 +665,8 @@
     </section>
 
     <section class="panel" id="panel-best">
-        <div class="placeholder">
-            <strong>Tab Bán chạy</strong>
-            Chưa kích hoạt ở bản này vì cần chốt rõ khoảng thời gian bán chạy và nguồn dữ liệu bán gần đây. Tab vẫn được giữ sẵn để hoàn thiện sau.
-        </div>
+        <p class="panel-note"><strong>Tab Bán chạy:</strong> Xếp hạng theo doanh số của cả CS1 và CS2 trong 30 ngày gần nhất, trong đó 10 ngày gần nhất được nhân hệ số 2. Chỉ hiển thị sản phẩm còn tồn sau kiểm tại cơ sở và các size đang xem.</p>
+        <div id="bestGridWrap"></div>
     </section>
 
     <section class="panel" id="panel-similar">
@@ -676,7 +696,7 @@
 
         const TAB_META = {
             discount: { panel: "panel-discount", wrap: "discountGridWrap", label: "Cần xả (giảm giá)" },
-            best: { panel: "panel-best", wrap: null, label: "Bán chạy" },
+            best: { panel: "panel-best", wrap: "bestGridWrap", label: "Bán chạy" },
             similar: { panel: "panel-similar", wrap: "similarGridWrap", label: "Gần giống" },
             cheaper: { panel: "panel-cheaper", wrap: "cheaperGridWrap", label: "Rẻ hơn" },
             premium: { panel: "panel-premium", wrap: "premiumGridWrap", label: "Cao cấp hơn" }
@@ -1205,7 +1225,7 @@
             sub.innerHTML = chips.map(t => `<span class="ctx-chip">${t}</span>`).join("");
         }
 
-        function createCard({ masp, giale, toncs1, toncs2, ban_nhanh, giam_gia_pct }) {
+        function createCard({ masp, giale, toncs1, toncs2, ban_nhanh, giam_gia_pct, ban_30_ngay, ban_10_ngay, diem_ban_chay }) {
             const card = document.createElement("div");
             card.className = "card";
             card.dataset.masp = masp;
@@ -1235,12 +1255,22 @@
                 imgwrap.appendChild(badge);
             }
 
+            const sold30 = Number(ban_30_ngay || 0);
+            const sold10 = Number(ban_10_ngay || 0);
+            if (sold30 > 0) {
+                const bestBadge = document.createElement("div");
+                bestBadge.className = "best-badge";
+                bestBadge.textContent = `BÁN ${sold30}`;
+                imgwrap.appendChild(bestBadge);
+            }
+
             const cap = document.createElement("div");
             cap.className = ban_nhanh ? "cap ban-nhanh" : "cap";
             cap.innerHTML = `
                 <a class="cap-link" href="javascript:void(0)">
                     ${masp} / ${fmtVND(giale)} ${Number(toncs1 || 0)}/${Number(toncs2 || 0)}
                     ${[10,20,30,50].includes(pct) ? `<span class="discount-line">Giảm ${pct}%</span>` : ``}
+                    ${sold30 > 0 ? `<span class="best-line">Bán 30 ngày: ${sold30} • 10 ngày: ${sold10} • Điểm: ${Number(diem_ban_chay || 0)}</span>` : ``}
                 </a>`;
 
             card.appendChild(imgwrap);
@@ -1675,21 +1705,16 @@
 
             const tabKey = getActiveTabKey();
 
-            if (tabKey === "best") {
-                alert(
-                    "Tab Bán chạy chưa được kích hoạt dữ liệu."
-                );
-                return;
-            }
+            const requiredMethod = tabKey === "best"
+                ? "getBestSellerListByFilters"
+                : "getRecommendationListByFilters";
 
             if (
                 !window.StockQuickSimilar ||
-                typeof window.StockQuickSimilar
-                    .getRecommendationListByFilters
-                    !== "function"
+                typeof window.StockQuickSimilar[requiredMethod] !== "function"
             ) {
                 alert(
-                    "Module lọc nhiều size/nhóm chưa sẵn sàng. " +
+                    "Module dữ liệu chưa sẵn sàng. " +
                     "Hãy cập nhật stockQuickSimilar.js."
                 );
                 return;
@@ -1714,22 +1739,22 @@
             );
 
             try {
-                const result =
-                    await window.StockQuickSimilar
-                        .getRecommendationListByFilters({
-                            masp: normalizeMasp(
-                                CURRENT_CONTEXT.source_masp || ""
-                            ),
-                            sizes: filters.sizes,
-                            nhomhangs: filters.groups,
-                            branch: filters.branch,
-                            denNgay:
-                                CURRENT_FILTERS.den_ngay ||
-                                new Date()
-                                    .toISOString()
-                                    .slice(0, 10),
-                            mode: tabKey
-                        });
+                const requestParams = {
+                    masp: normalizeMasp(
+                        CURRENT_CONTEXT.source_masp || ""
+                    ),
+                    sizes: filters.sizes,
+                    nhomhangs: filters.groups,
+                    branch: filters.branch,
+                    denNgay:
+                        CURRENT_FILTERS.den_ngay ||
+                        new Date().toISOString().slice(0, 10),
+                    mode: tabKey
+                };
+
+                const result = tabKey === "best"
+                    ? await window.StockQuickSimilar.getBestSellerListByFilters(requestParams)
+                    : await window.StockQuickSimilar.getRecommendationListByFilters(requestParams);
 
                 if (result?.ok === false) {
                     throw new Error(
@@ -1813,7 +1838,7 @@
         }
 
         async function ensureTabData(tabKey, options = {}) {
-            if (!["discount","similar","cheaper","premium"].includes(tabKey)) return;
+            if (!["discount","best","similar","cheaper","premium"].includes(tabKey)) return;
 
             if (!canBuildRecommendation()) {
                 if (tabKey !== DATA_TAB_KEY) {
@@ -1840,7 +1865,14 @@
             TAB_LOADING.add(tabKey);
             setWrapMessage(tabKey, `<div class="loading">Đang tải dữ liệu mới nhất cho ${TAB_META[tabKey]?.label || ""}...</div>`);
             try {
-                const result = await window.StockQuickSimilar.getRecommendationList({...getContextForRecommendation(), mode:tabKey});
+                const result = tabKey === "best"
+                    ? await window.StockQuickSimilar.getBestSellerListByFilters({
+                        sizes: [getContextForRecommendation().size],
+                        nhomhangs: [getContextForRecommendation().nhomhang],
+                        branch: getContextForRecommendation().branch,
+                        denNgay: getContextForRecommendation().denNgay
+                    })
+                    : await window.StockQuickSimilar.getRecommendationList({...getContextForRecommendation(), mode:tabKey});
                 let list = Array.isArray(result?.list) ? result.list : [];
                 list = await enrichListWithDiscountInfo(list);
                 list = await enrichListWithStockAfterCheck(list);
