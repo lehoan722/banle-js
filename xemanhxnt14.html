@@ -1413,6 +1413,68 @@
         }
 
 
+        const STOCK_AFTER_CHECK_CACHE = new Map();
+
+        async function enrichListWithStockAfterCheck(list, options = {}) {
+            if (!Array.isArray(list) || !list.length) return list || [];
+
+            if (
+                !window.StockQuick ||
+                typeof window.StockQuick.getStockAfterCheck !== "function"
+            ) {
+                console.warn(
+                    "[xemanhxnt14] StockQuick.getStockAfterCheck chưa sẵn sàng; giữ nguyên tồn hiện tại."
+                );
+                return list;
+            }
+
+            const forceRefresh = options.forceRefresh === true;
+            const resultList = list.map(item => ({ ...item }));
+            const concurrency = 5;
+            let cursor = 0;
+
+            async function worker() {
+                while (cursor < resultList.length) {
+                    const index = cursor++;
+                    const item = resultList[index];
+                    const masp = normalizeMasp(item.masp);
+                    if (!masp) continue;
+
+                    try {
+                        let stock = !forceRefresh
+                            ? STOCK_AFTER_CHECK_CACHE.get(masp)
+                            : null;
+
+                        if (!stock) {
+                            stock = await window.StockQuick
+                                .getStockAfterCheck(masp);
+                            STOCK_AFTER_CHECK_CACHE.set(masp, stock);
+                        }
+
+                        if (stock?.ok !== false) {
+                            item.toncs1 = Number(stock?.toncs1 || 0);
+                            item.toncs2 = Number(stock?.toncs2 || 0);
+                        }
+                    } catch (err) {
+                        console.warn(
+                            `[xemanhxnt14] Không lấy được tồn sau kiểm cho ${masp}:`,
+                            err
+                        );
+                    }
+                }
+            }
+
+            await Promise.all(
+                Array.from(
+                    { length: Math.min(concurrency, resultList.length) },
+                    () => worker()
+                )
+            );
+
+            return resultList;
+        }
+
+
         function getContextForRecommendation() {
             return {
                 masp: normalizeMasp(
@@ -1537,6 +1599,10 @@
                 list = await enrichListWithDiscountInfo(
                     list
                 );
+                list = await enrichListWithStockAfterCheck(
+                    list,
+                    { forceRefresh: true }
+                );
 
                 if (tabKey === "discount") {
                     list = list.filter(x =>
@@ -1603,6 +1669,10 @@
                 }
                 let list = Array.isArray(CURRENT_LIST) ? CURRENT_LIST.map(x => ({...x})) : [];
                 list = await enrichListWithDiscountInfo(list);
+                list = await enrichListWithStockAfterCheck(
+                    list,
+                    { forceRefresh: options.forceRefresh === true }
+                );
                 if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
@@ -1622,6 +1692,10 @@
                 const result = await window.StockQuickSimilar.getRecommendationList({...getContextForRecommendation(), mode:tabKey});
                 let list = Array.isArray(result?.list) ? result.list : [];
                 list = await enrichListWithDiscountInfo(list);
+                list = await enrichListWithStockAfterCheck(
+                    list,
+                    { forceRefresh: options.forceRefresh === true }
+                );
                 if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
@@ -1716,6 +1790,10 @@
             if (ok) {
                 await sleep(250);
                 CURRENT_LIST = await enrichListWithDiscountInfo(CURRENT_LIST);
+                CURRENT_LIST = await enrichListWithStockAfterCheck(
+                    CURRENT_LIST,
+                    { forceRefresh: true }
+                );
             }
 
             if (ok) {
