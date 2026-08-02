@@ -19,7 +19,9 @@
             --danger-soft: #fee2e2;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         body {
             margin: 0;
@@ -34,7 +36,7 @@
             z-index: 20;
             background: #111;
             color: #fff;
-            border-bottom: 1px solid rgba(255,255,255,.08);
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
         }
 
         .header-main {
@@ -66,8 +68,8 @@
 
         .ctx-chip {
             font-size: 12px;
-            border: 1px solid rgba(255,255,255,.18);
-            background: rgba(255,255,255,.08);
+            border: 1px solid rgba(255, 255, 255, .18);
+            background: rgba(255, 255, 255, .08);
             color: #fff;
             border-radius: 999px;
             padding: 4px 8px;
@@ -90,7 +92,10 @@
             font-weight: 600;
         }
 
-        .header-right button:disabled { opacity:.65; cursor:wait; }
+        .header-right button:disabled {
+            opacity: .65;
+            cursor: wait;
+        }
 
         .header-right small {
             opacity: .9;
@@ -154,11 +159,7 @@
             margin: 0 auto;
             display: grid;
             grid-template-columns:
-                minmax(180px, 1.5fr)
-                minmax(120px, .7fr)
-                minmax(220px, 1.8fr)
-                minmax(150px, .8fr)
-                auto;
+                minmax(180px, 1.5fr) minmax(120px, .7fr) minmax(220px, 1.8fr) minmax(150px, .8fr) auto;
             gap: 10px;
             align-items: end;
         }
@@ -220,7 +221,7 @@
 
         .multi-select.open .multi-select-display {
             border-color: #2563eb;
-            box-shadow: 0 0 0 2px rgba(37,99,235,.12);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, .12);
         }
 
         .multi-select-menu {
@@ -235,7 +236,7 @@
             background: #fff;
             border: 1px solid #cbd5e1;
             border-radius: 10px;
-            box-shadow: 0 12px 28px rgba(15,23,42,.16);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
             padding: 8px;
         }
 
@@ -302,7 +303,7 @@
         .viewer-filter select:focus {
             outline: none;
             border-color: #2563eb;
-            box-shadow: 0 0 0 2px rgba(37,99,235,.12);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, .12);
         }
 
         .viewer-filter-actions {
@@ -358,7 +359,9 @@
             line-height: 1.45;
         }
 
-        .panel-note strong { color: #111827; }
+        .panel-note strong {
+            color: #111827;
+        }
 
         .placeholder {
             background: #fff;
@@ -404,7 +407,7 @@
             position: absolute;
             left: 10px;
             bottom: 10px;
-            background: rgba(255,255,255,.95);
+            background: rgba(255, 255, 255, .95);
             color: var(--danger);
             border: 2px solid var(--danger);
             border-radius: 10px;
@@ -412,7 +415,7 @@
             font-size: 16px;
             font-weight: 800;
             line-height: 1;
-            box-shadow: 0 2px 10px rgba(0,0,0,.12);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .12);
         }
 
         img {
@@ -473,14 +476,14 @@
             position: absolute;
             right: 10px;
             top: 10px;
-            background: rgba(17,24,39,.92);
+            background: rgba(17, 24, 39, .92);
             color: #fff;
             border-radius: 999px;
             padding: 6px 10px;
             font-size: 14px;
             font-weight: 800;
             line-height: 1;
-            box-shadow: 0 2px 10px rgba(0,0,0,.18);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
         }
 
         .cap .best-line {
@@ -607,17 +610,9 @@
             <div class="viewer-filter-group">
                 <label for="viewerSizes">Size cần xem</label>
                 <div class="multi-select" id="viewerSizesMulti">
-                    <div
-                        class="multi-select-display"
-                        tabindex="0"
-                        aria-expanded="false"
-                    >Chọn size</div>
+                    <div class="multi-select-display" tabindex="0" aria-expanded="false">Chọn size</div>
                     <div class="multi-select-menu"></div>
-                    <input
-                        id="viewerSizes"
-                        class="multi-select-hidden-input"
-                        type="hidden"
-                    />
+                    <input id="viewerSizes" class="multi-select-hidden-input" type="hidden" />
                 </div>
             </div>
 
@@ -632,30 +627,16 @@
             <div class="viewer-filter-group">
                 <label for="viewerGroups">Nhóm hàng</label>
                 <div class="multi-select" id="viewerGroupsMulti">
-                    <div
-                        class="multi-select-display"
-                        tabindex="0"
-                        aria-expanded="false"
-                    >Chọn nhóm hàng</div>
+                    <div class="multi-select-display" tabindex="0" aria-expanded="false">Chọn nhóm hàng</div>
                     <div class="multi-select-menu"></div>
-                    <input
-                        id="viewerGroups"
-                        class="multi-select-hidden-input"
-                        type="hidden"
-                    />
+                    <input id="viewerGroups" class="multi-select-hidden-input" type="hidden" />
                 </div>
             </div>
 
             <div class="viewer-filter-group">
                 <label for="viewerPrice">Giá so sánh (nghìn đồng)</label>
-                <input
-                    id="viewerPrice"
-                    type="text"
-                    inputmode="numeric"
-                    list="viewerPriceOptions"
-                    placeholder="Ví dụ: 350"
-                    autocomplete="off"
-                />
+                <input id="viewerPrice" type="text" inputmode="numeric" list="viewerPriceOptions"
+                    placeholder="Ví dụ: 350" autocomplete="off" />
                 <datalist id="viewerPriceOptions">
                     <option value="200"></option>
                     <option value="400"></option>
@@ -666,42 +647,44 @@
             </div>
 
             <div class="viewer-filter-actions">
-                <button
-                    id="btnLoadByFilters"
-                    class="viewer-filter-btn"
-                    type="button"
-                >🔍 Tải dữ liệu</button>
+                <button id="btnLoadByFilters" class="viewer-filter-btn" type="button">🔍 Tải dữ liệu</button>
             </div>
         </div>
 
-        <div
-            id="viewerFilterSummary"
-            class="viewer-filter-summary"
-        ></div>
+        <div id="viewerFilterSummary" class="viewer-filter-summary"></div>
     </div>
 
     <section class="panel" id="panel-discount">
-        <p class="panel-note"><strong>Tab Cần xả (giảm giá):</strong> Khi mở từ <b>StockQuickPopup → Xem hàng giảm giá</b>, danh sách hàng giảm giá sẽ hiển thị tại đây. Ở giai đoạn hiện tại, các sản phẩm nào có giảm giá sẽ được gắn nhãn đỏ trực tiếp trên ảnh.</p>
+        <p class="panel-note"><strong>Tab Cần xả (giảm giá):</strong> Khi mở từ <b>StockQuickPopup → Xem hàng giảm
+                giá</b>, danh sách hàng giảm giá sẽ hiển thị tại đây. Ở giai đoạn hiện tại, các sản phẩm nào có giảm giá
+            sẽ được gắn nhãn đỏ trực tiếp trên ảnh.</p>
         <div id="discountGridWrap"></div>
     </section>
 
     <section class="panel" id="panel-best">
-        <p class="panel-note"><strong>Tab Bán chạy:</strong> Sức bán được tính trên <b>toàn bộ size của từng mã</b> tại cả CS1 và CS2 trong 30 ngày gần nhất; 10 ngày gần nhất được nhân hệ số 2. Size đang chọn chỉ dùng để kiểm tra mã còn tồn sau kiểm tại cơ sở đang xem.</p>
+        <p class="panel-note"><strong>Tab Bán chạy:</strong> Sức bán được tính trên <b>toàn bộ size của từng mã</b> tại
+            cả CS1 và CS2 trong 30 ngày gần nhất; 10 ngày gần nhất được nhân hệ số 2. Size đang chọn chỉ dùng để kiểm
+            tra mã còn tồn sau kiểm tại cơ sở đang xem.</p>
         <div id="bestGridWrap"></div>
     </section>
 
     <section class="panel" id="panel-similar">
-        <p class="panel-note"><strong>Tab Gần giống:</strong> Khi mở thông thường từ các trang khác, danh sách hiện tại vẫn hiển thị như trước đây trong tab này. Các sản phẩm có giảm giá vẫn được gắn nhãn trên ảnh.</p>
+        <p class="panel-note"><strong>Tab Gần giống:</strong> Khi mở thông thường từ các trang khác, danh sách hiện tại
+            vẫn hiển thị như trước đây trong tab này. Các sản phẩm có giảm giá vẫn được gắn nhãn trên ảnh.</p>
         <div id="similarGridWrap"></div>
     </section>
 
     <section class="panel" id="panel-cheaper">
-        <p class="panel-note"><strong>Tab Rẻ hơn:</strong> Tìm sản phẩm cùng nhóm, còn đúng size tại đúng cơ sở và có giá thấp hơn hoặc đồng giá với giá so sánh. Các sản phẩm có mức giá gần sản phẩm gốc nhất được đưa lên trước.</p>
+        <p class="panel-note"><strong>Tab Rẻ hơn:</strong> Tìm sản phẩm cùng nhóm, còn đúng size tại đúng cơ sở và có
+            giá thấp hơn hoặc đồng giá với giá so sánh. Các sản phẩm có mức giá gần sản phẩm gốc nhất được đưa lên
+            trước.</p>
         <div id="cheaperGridWrap"></div>
     </section>
 
     <section class="panel" id="panel-premium">
-        <p class="panel-note"><strong>Tab Cao cấp hơn:</strong> Tìm sản phẩm cùng nhóm, còn đúng size tại đúng cơ sở và có giá cao hơn hoặc đồng giá với giá so sánh. Các sản phẩm có mức giá cao hơn gần nhất được đưa lên trước để dễ tư vấn nâng cấp.</p>
+        <p class="panel-note"><strong>Tab Cao cấp hơn:</strong> Tìm sản phẩm cùng nhóm, còn đúng size tại đúng cơ sở và
+            có giá cao hơn hoặc đồng giá với giá so sánh. Các sản phẩm có mức giá cao hơn gần nhất được đưa lên trước để
+            dễ tư vấn nâng cấp.</p>
         <div id="premiumGridWrap"></div>
     </section>
 
@@ -803,8 +786,8 @@
 
                 menu.innerHTML = `
                     ${options.map(option => {
-                        const checked = selected.has(option);
-                        return `
+                    const checked = selected.has(option);
+                    return `
                             <label class="multi-select-option">
                                 <input
                                     type="checkbox"
@@ -814,7 +797,7 @@
                                 <span>${option}</span>
                             </label>
                         `;
-                    }).join("")}
+                }).join("")}
                     <div class="multi-select-actions">
                         <button
                             type="button"
@@ -1095,6 +1078,31 @@
             }
         }
 
+        function parseViewerPriceInput(value) {
+            const raw = String(value ?? "")
+                .trim()
+                .replace(/\s+/g, "")
+                .replace(/\./g, "")
+                .replace(/,/g, "");
+
+            if (!raw) return 0;
+
+            const number = Number(raw);
+
+            if (!Number.isFinite(number) || number <= 0) {
+                return 0;
+            }
+
+            // Người dùng nhập 190, 350, 600...
+            // được hiểu là đơn vị nghìn đồng.
+            if (number <= 10000) {
+                return Math.round(number * 1000);
+            }
+
+            // Người dùng nhập trực tiếp 190000, 350000...
+            return Math.round(number);
+        }
+
         async function ensureViewerSourcePrice(options = {}) {
             const priceEl = document.getElementById("viewerPrice");
             const currentInput = parseViewerPriceInput(priceEl?.value || "");
@@ -1246,7 +1254,7 @@
             try {
                 const price = parseViewerPrice(priceRaw);
                 if (price) priceText = fmtVND(price);
-            } catch (_) {}
+            } catch (_) { }
 
             const tabKey = getActiveTabKey();
             const tabLabel =
@@ -1389,7 +1397,7 @@
             cap.innerHTML = `
                 <a class="cap-link" href="javascript:void(0)">
                     ${masp} / ${fmtVND(giale)} ${Number(toncs1 || 0)}/${Number(toncs2 || 0)}
-                    ${[10,20,30,50].includes(pct) ? `<span class="discount-line">Giảm ${pct}%</span>` : ``}
+                    ${[10, 20, 30, 50].includes(pct) ? `<span class="discount-line">Giảm ${pct}%</span>` : ``}
                     ${sold30 > 0 ? `<span class="best-line">Bán toàn mã 30 ngày: ${sold30} • 10 ngày: ${sold10} • Điểm: ${Number(diem_ban_chay || 0)}</span>` : ``}
                 </a>`;
 
@@ -1444,16 +1452,16 @@
                 btn.addEventListener('click', () => {
                     const tabKey = btn.dataset.tab;
                     activateTab(tabKey)
-                      .then(() => {
-                          updateViewerFilterSummary();
-                          return loadCurrentTabByFilters();
-                      })
-                      .catch(err =>
-                          console.warn(
-                              "[xemanhxnt14] Lỗi mở tab:",
-                              err
-                          )
-                      );
+                        .then(() => {
+                            updateViewerFilterSummary();
+                            return loadCurrentTabByFilters();
+                        })
+                        .catch(err =>
+                            console.warn(
+                                "[xemanhxnt14] Lỗi mở tab:",
+                                err
+                            )
+                        );
                 });
             });
         }
@@ -1963,10 +1971,10 @@
                     `<div class="placeholder">
                         <strong>Không tải được dữ liệu</strong>
                         ${String(
-                            err?.message ||
-                            err ||
-                            "Có lỗi xảy ra"
-                        )}
+                        err?.message ||
+                        err ||
+                        "Có lỗi xảy ra"
+                    )}
                     </div>`
                 );
 
@@ -1982,18 +1990,18 @@
         }
 
         async function ensureTabData(tabKey, options = {}) {
-            if (!["discount","best","similar","cheaper","premium"].includes(tabKey)) return;
+            if (!["discount", "best", "similar", "cheaper", "premium"].includes(tabKey)) return;
 
             if (!canBuildRecommendation()) {
                 if (tabKey !== DATA_TAB_KEY) {
                     setWrapMessage(tabKey, `<div class="placeholder"><strong>Chưa đủ ngữ cảnh để tạo danh sách</strong>Cần mở từ StockQuickPopup với mã gốc, nhóm, size và cơ sở.</div>`);
                     return;
                 }
-                let list = Array.isArray(CURRENT_LIST) ? CURRENT_LIST.map(x => ({...x})) : [];
+                let list = Array.isArray(CURRENT_LIST) ? CURRENT_LIST.map(x => ({ ...x })) : [];
                 list = await enrichListWithDiscountInfo(list);
                 list = await enrichListWithStockAfterCheck(list);
                 list = filterListByPositiveStockAtBranch(list);
-                if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
+                if (tabKey === "discount") list = list.filter(x => [10, 20, 30, 50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
                 const wrap = document.getElementById(TAB_META[tabKey]?.wrap);
@@ -2016,12 +2024,12 @@
                         branch: getContextForRecommendation().branch,
                         denNgay: getContextForRecommendation().denNgay
                     })
-                    : await window.StockQuickSimilar.getRecommendationList({...getContextForRecommendation(), mode:tabKey});
+                    : await window.StockQuickSimilar.getRecommendationList({ ...getContextForRecommendation(), mode: tabKey });
                 let list = Array.isArray(result?.list) ? result.list : [];
                 list = await enrichListWithDiscountInfo(list);
                 list = await enrichListWithStockAfterCheck(list);
                 list = filterListByPositiveStockAtBranch(list);
-                if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
+                if (tabKey === "discount") list = list.filter(x => [10, 20, 30, 50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
                 const wrap = document.getElementById(TAB_META[tabKey]?.wrap);
@@ -2047,7 +2055,7 @@
         async function refreshCurrentTab() {
             const btn = document.getElementById("btnRefresh");
             const tabKey = getActiveTabKey();
-            if (btn) { btn.disabled=true; btn.textContent="⏳ Đang làm mới"; }
+            if (btn) { btn.disabled = true; btn.textContent = "⏳ Đang làm mới"; }
             try {
                 TAB_LIST_CACHE.delete(tabKey);
                 VIEWER_STOCK_AFTER_CHECK_CACHE.clear();
@@ -2073,7 +2081,7 @@
                     );
                 }
             } finally {
-                if (btn) { btn.disabled=false; btn.textContent="🔄 Làm mới"; }
+                if (btn) { btn.disabled = false; btn.textContent = "🔄 Làm mới"; }
             }
         }
 
@@ -2120,7 +2128,7 @@
             }
 
             if (ok) {
-                await ensureTabData(DATA_TAB_KEY, { forceRefresh:true });
+                await ensureTabData(DATA_TAB_KEY, { forceRefresh: true });
             } else {
                 const wrap = document.getElementById(TAB_META[DATA_TAB_KEY]?.wrap);
                 attachPopupToCards(renderListIntoWrap(CURRENT_LIST, wrap));
@@ -2138,4 +2146,5 @@
 
     <script src="scripts/stockQuickSimilar.js?v=20260802-price-equal-sourcefirst"></script>
 </body>
+
 </html>
