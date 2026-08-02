@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <title>Ảnh sản phẩm (từ XNT14)</title>
+    <!-- viewer-stock-after-check-independent-v3 -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         :root {
@@ -1376,53 +1377,6 @@
             }
         }
 
-        async function enrichListWithStockAfterCheck(list, sizes, options = {}) {
-            if (!Array.isArray(list) || !list.length) return list;
-            if (!window.StockQuick || typeof window.StockQuick.getStockAfterCheck !== "function") {
-                console.warn("[xemanhxnt14] StockQuick.getStockAfterCheck chưa sẵn sàng");
-                return list;
-            }
-
-            const normalizedSizes = (Array.isArray(sizes) ? sizes : [sizes])
-                .map(v => {
-                    const raw = String(v ?? "").replace(/^size\s+/i, "").trim();
-                    const m = raw.match(/(\d{1,2})/);
-                    return m ? m[1] : raw;
-                })
-                .filter(Boolean);
-
-            const output = list.map(item => ({ ...item }));
-            let nextIndex = 0;
-            const concurrency = Math.min(5, output.length);
-
-            async function worker() {
-                while (true) {
-                    const index = nextIndex++;
-                    if (index >= output.length) return;
-                    const item = output[index];
-                    try {
-                        const stock = await window.StockQuick.getStockAfterCheck(
-                            normalizeMasp(item.masp),
-                            normalizedSizes
-                        );
-                        item.toncs1 = Number(stock?.toncs1 || 0);
-                        item.toncs2 = Number(stock?.toncs2 || 0);
-                    } catch (err) {
-                        console.warn(
-                            "[xemanhxnt14] Không lấy được tồn sau kiểm:",
-                            item.masp,
-                            err
-                        );
-                    }
-                }
-            }
-
-            await Promise.all(
-                Array.from({ length: concurrency }, () => worker())
-            );
-            return output;
-        }
-
         async function enrichListWithDiscountInfo(list) {
             const client = window.supabase;
             if (!client || !Array.isArray(list) || !list.length) return list;
@@ -1459,6 +1413,186 @@
             return Array.from(map.values());
         }
 
+
+
+        // ===== TỒN SAU KIỂM ĐỘC LẬP CHO TRANG XEM ẢNH =====
+        // Trang này tự đọc xntnhanh + rpc_stockquick_kiemton.
+        // Không phụ thuộc StockQuickPopup để tính số tồn hiển thị dưới ảnh.
+        const VIEWER_STOCK_AFTER_CHECK_CACHE = new Map();
+
+        function normalizeViewerSizeKey(value) {
+            const raw = String(value ?? "")
+                .replace(/^size\s+/i, "")
+                .trim();
+            const match = raw.match(/\d{1,2}/);
+            return match ? match[0] : raw;
+        }
+
+        function getViewerSelectedSizesFallback() {
+            const fromInput = parseCsvValues(
+                document.getElementById("viewerSizes")?.value || ""
+            ).map(normalizeViewerSizeKey).filter(Boolean);
+
+            if (fromInput.length) return fromInput;
+
+            const fromContext = normalizeViewerSizeKey(
+                CURRENT_CONTEXT.source_size || ""
+            );
+            return fromContext ? [fromContext] : [];
+        }
+
+        async function fetchStockAfterCheckForOneMasp(
+            maspRaw,
+            selectedSizes,
+            options = {}
+        ) {
+            const client = window.supabase;
+            const masp = normalizeMasp(maspRaw);
+            const denNgay =
+                CURRENT_FILTERS.den_ngay ||
+                new Date().toISOString().slice(0, 10);
+            const sizes = Array.from(
+                new Set(
+                    (selectedSizes || [])
+                        .map(normalizeViewerSizeKey)
+                        .filter(Boolean)
+                )
+            );
+
+            if (!client || !masp || !sizes.length) return null;
+
+            const cacheKey = `${masp}|${sizes.join(",")}|${denNgay}`;
+            if (!options.forceRefresh && VIEWER_STOCK_AFTER_CHECK_CACHE.has(cacheKey)) {
+                return VIEWER_STOCK_AFTER_CHECK_CACHE.get(cacheKey);
+            }
+
+            const promise = (async () => {
+                const [stockRes, checkRes] = await Promise.all([
+                    client.rpc("xntnhanh", {
+                        p_masps: [masp],
+                        p_den_ngay: denNgay,
+                        p_tonghop_size: false
+                    }),
+                    client.rpc("rpc_stockquick_kiemton", {
+                        p_masp: masp
+                    })
+                ]);
+
+                if (stockRes?.error) {
+                    throw stockRes.error;
+                }
+                if (checkRes?.error) {
+                    console.warn(
+                        "[xemanhxnt14] Không đọc được chênh lệch kiểm:",
+                        masp,
+                        checkRes.error
+                    );
+                }
+
+                const stockBySize = new Map();
+                (Array.isArray(stockRes?.data) ? stockRes.data : [])
+                    .forEach(row => {
+                        const sizeKey = normalizeViewerSizeKey(row.size);
+                        if (!sizeKey) return;
+                        stockBySize.set(sizeKey, {
+                            ton_cs1: Number(row.ton_cs1 || 0),
+                            ton_cs2: Number(row.ton_cs2 || 0)
+                        });
+                    });
+
+                const checkData = checkRes?.data || {};
+                let toncs1 = 0;
+                let toncs2 = 0;
+
+                sizes.forEach(sizeKey => {
+                    const stock = stockBySize.get(sizeKey) || {
+                        ton_cs1: 0,
+                        ton_cs2: 0
+                    };
+
+                    const lech1 = Number(
+                        checkData?.cs1?.lech?.[sizeKey] || 0
+                    );
+                    const lech2 = Number(
+                        checkData?.cs2?.lech?.[sizeKey] || 0
+                    );
+
+                    // Giống StockQuickPopup: tồn sau kiểm không âm.
+                    toncs1 += Math.max(
+                        0,
+                        Number(stock.ton_cs1 || 0) + lech1
+                    );
+                    toncs2 += Math.max(
+                        0,
+                        Number(stock.ton_cs2 || 0) + lech2
+                    );
+                });
+
+                return { toncs1, toncs2 };
+            })();
+
+            VIEWER_STOCK_AFTER_CHECK_CACHE.set(cacheKey, promise);
+
+            try {
+                const result = await promise;
+                VIEWER_STOCK_AFTER_CHECK_CACHE.set(cacheKey, result);
+                return result;
+            } catch (error) {
+                VIEWER_STOCK_AFTER_CHECK_CACHE.delete(cacheKey);
+                throw error;
+            }
+        }
+
+        async function enrichListWithStockAfterCheck(
+            list,
+            selectedSizes = null,
+            options = {}
+        ) {
+            if (!Array.isArray(list) || !list.length) return list || [];
+
+            const sizes = selectedSizes?.length
+                ? selectedSizes
+                : getViewerSelectedSizesFallback();
+
+            if (!sizes.length || !window.supabase) return list;
+
+            const result = list.map(item => ({ ...item }));
+            const concurrency = 6;
+            let cursor = 0;
+
+            async function worker() {
+                while (cursor < result.length) {
+                    const index = cursor++;
+                    const item = result[index];
+                    try {
+                        const stock = await fetchStockAfterCheckForOneMasp(
+                            item.masp,
+                            sizes,
+                            options
+                        );
+                        if (stock) {
+                            item.toncs1 = Number(stock.toncs1 || 0);
+                            item.toncs2 = Number(stock.toncs2 || 0);
+                        }
+                    } catch (error) {
+                        console.warn(
+                            "[xemanhxnt14] Lỗi lấy tồn sau kiểm:",
+                            item.masp,
+                            error
+                        );
+                    }
+                }
+            }
+
+            await Promise.all(
+                Array.from(
+                    { length: Math.min(concurrency, result.length) },
+                    () => worker()
+                )
+            );
+
+            return result;
+        }
 
         function getContextForRecommendation() {
             return {
@@ -1586,7 +1720,8 @@
                 );
                 list = await enrichListWithStockAfterCheck(
                     list,
-                    filters.sizes
+                    filters.sizes,
+                    { forceRefresh: true }
                 );
 
                 if (tabKey === "discount") {
@@ -1654,10 +1789,7 @@
                 }
                 let list = Array.isArray(CURRENT_LIST) ? CURRENT_LIST.map(x => ({...x})) : [];
                 list = await enrichListWithDiscountInfo(list);
-                list = await enrichListWithStockAfterCheck(
-                    list,
-                    [CURRENT_CONTEXT.source_size].filter(Boolean)
-                );
+                list = await enrichListWithStockAfterCheck(list);
                 if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
@@ -1677,10 +1809,7 @@
                 const result = await window.StockQuickSimilar.getRecommendationList({...getContextForRecommendation(), mode:tabKey});
                 let list = Array.isArray(result?.list) ? result.list : [];
                 list = await enrichListWithDiscountInfo(list);
-                list = await enrichListWithStockAfterCheck(
-                    list,
-                    [CURRENT_CONTEXT.source_size].filter(Boolean)
-                );
+                list = await enrichListWithStockAfterCheck(list);
                 if (tabKey === "discount") list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
@@ -1710,6 +1839,7 @@
             if (btn) { btn.disabled=true; btn.textContent="⏳ Đang làm mới"; }
             try {
                 TAB_LIST_CACHE.delete(tabKey);
+                VIEWER_STOCK_AFTER_CHECK_CACHE.clear();
 
                 const hasFilterValues =
                     String(
