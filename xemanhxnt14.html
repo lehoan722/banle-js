@@ -665,7 +665,7 @@
     </section>
 
     <section class="panel" id="panel-best">
-        <p class="panel-note"><strong>Tab Bán chạy:</strong> Xếp hạng theo doanh số của cả CS1 và CS2 trong 30 ngày gần nhất, trong đó 10 ngày gần nhất được nhân hệ số 2. Chỉ hiển thị sản phẩm còn tồn sau kiểm tại cơ sở và các size đang xem.</p>
+        <p class="panel-note"><strong>Tab Bán chạy:</strong> Sức bán được tính trên <b>toàn bộ size của từng mã</b> tại cả CS1 và CS2 trong 30 ngày gần nhất; 10 ngày gần nhất được nhân hệ số 2. Size đang chọn chỉ dùng để kiểm tra mã còn tồn sau kiểm tại cơ sở đang xem.</p>
         <div id="bestGridWrap"></div>
     </section>
 
@@ -1270,7 +1270,7 @@
                 <a class="cap-link" href="javascript:void(0)">
                     ${masp} / ${fmtVND(giale)} ${Number(toncs1 || 0)}/${Number(toncs2 || 0)}
                     ${[10,20,30,50].includes(pct) ? `<span class="discount-line">Giảm ${pct}%</span>` : ``}
-                    ${sold30 > 0 ? `<span class="best-line">Bán 30 ngày: ${sold30} • 10 ngày: ${sold10} • Điểm: ${Number(diem_ban_chay || 0)}</span>` : ``}
+                    ${sold30 > 0 ? `<span class="best-line">Bán toàn mã 30 ngày: ${sold30} • 10 ngày: ${sold10} • Điểm: ${Number(diem_ban_chay || 0)}</span>` : ``}
                 </a>`;
 
             card.appendChild(imgwrap);
