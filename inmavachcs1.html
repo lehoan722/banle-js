@@ -1603,21 +1603,25 @@
             }
 
             // Xuất Excel
+            // Admin xuất giá nhập thật; nhân viên vẫn có cột Giá nhập nhưng luôn ghi = 1.
             window.exportExcel = function () {
-                const headers = currentUserIsAdmin
-                    ? ["STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ"]
-                    : ["STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "In", "Giá lẻ"];
+                syncHandsontableToSelected();
 
-                const data = selected.map((row, idx) => currentUserIsAdmin
-                    ? [
-                        idx + 1, row.masp, row.tensp, row.size, row.sl, row.dvt || "",
-                        Number(row.gianhap) || 0, row.tick ? true : false, Number(row.giale) || 0
-                    ]
-                    : [
-                        idx + 1, row.masp, row.tensp, row.size, row.sl, row.dvt || "",
-                        row.tick ? true : false, Number(row.giale) || 0
-                    ]
-                );
+                const headers = [
+                    "STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ"
+                ];
+
+                const data = selected.map((row, idx) => [
+                    idx + 1,
+                    row.masp,
+                    row.tensp,
+                    row.size,
+                    row.sl,
+                    row.dvt || "",
+                    currentUserIsAdmin ? (Number(row.gianhap) || 0) : 1,
+                    row.tick ? true : false,
+                    Number(row.giale) || 0
+                ]);
                 const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
@@ -1742,7 +1746,10 @@
                         size: ((r.size ?? '').toString().trim()) || '0',
                         sl: Number(r.sl) || 1,
                         dvt: r.dvt || 'sp',
-                        gianhap: Number(r.gianhap) || 0
+                        // Admin truyền giá nhập thật; nhân viên truyền mặc định = 1.
+                        // Vì cả nút Tạo HĐ nhập và Tạo HĐ nhập tạm đều dùng hàm này,
+                        // trang nhận không cần sửa và nhân viên không nhìn thấy giá nhập thật.
+                        gianhap: currentUserIsAdmin ? (Number(r.gianhap) || 0) : 1
                     }));
             }
 
