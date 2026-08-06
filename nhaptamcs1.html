@@ -364,6 +364,31 @@
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css">
 
+
+    <style id="employee-price-privacy-style">
+        /* Chỉ áp dụng riêng cho trang nhập tạm khi người đăng nhập là nhân viên.
+           Dữ liệu và logic lưu hóa đơn vẫn giữ nguyên, chỉ ẩn trên giao diện. */
+        body.employee-price-hidden #gia,
+        body.employee-price-hidden #khuyenmai,
+        body.employee-price-hidden #thanhtien,
+        body.employee-price-hidden .employee-sensitive-total,
+        body.employee-price-hidden #xemin,
+        body.employee-price-hidden #btnCopy,
+        body.employee-price-hidden #xuatexcel {
+            display: none !important;
+        }
+
+        /* Bảng kết quả: ẩn Đơn giá, Khuyến mại và Thành tiền. */
+        body.employee-price-hidden #bangketqua th:nth-child(6),
+        body.employee-price-hidden #bangketqua td:nth-child(6),
+        body.employee-price-hidden #bangketqua th:nth-child(7),
+        body.employee-price-hidden #bangketqua td:nth-child(7),
+        body.employee-price-hidden #bangketqua th:nth-child(8),
+        body.employee-price-hidden #bangketqua td:nth-child(8) {
+            display: none !important;
+        }
+    </style>
+
 </head>
 
 <body class="popupnhanh">
@@ -574,17 +599,17 @@
                     </div>
                 </div>
 
-                <div class="btn-big red" style="font-size: 20px; padding: 6px 10px;">
+                <div class="btn-big red employee-sensitive-total" style="font-size: 20px; padding: 6px 10px;">
                     Tổng phải trả
                     <input id="phaithanhtoan"
                         style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:white; padding:0; margin:0;" />
                 </div>
-                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
+                <div class="btn-big gray employee-sensitive-total" style="font-size: 20px; padding: 6px 10px;">
                     Khách thanh toán
                     <input id="khachtra"
                         style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;" />
                 </div>
-                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
+                <div class="btn-big gray employee-sensitive-total" style="font-size: 20px; padding: 6px 10px;">
                     Còn lại
                     <input id="conlai"
                         style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;"
@@ -671,6 +696,30 @@
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
+        // Phân quyền hiển thị giá chỉ trong riêng trang nhaptamcs1.html.
+        // Không thay đổi hoadon.js, main.js hoặc dữ liệu dùng để lưu hóa đơn.
+        function laTaiKhoanAdmin(nhanvien) {
+            const nv = nhanvien || {};
+            const trueValues = [true, 1, "1", "true", "yes", "admin", "quantri", "quản trị"];
+            const candidates = [
+                nv.is_admin, nv.isAdmin, nv.admin, nv.la_admin,
+                nv.role, nv.vai_tro, nv.vaitro, nv.quyen, nv.loai_tai_khoan
+            ];
+
+            return candidates.some(value => {
+                if (value === true || value === 1) return true;
+                const normalized = String(value ?? "").trim().toLowerCase();
+                return trueValues.some(v => String(v).toLowerCase() === normalized);
+            }) || String(nv.manv || "").trim().toLowerCase() === "admin";
+        }
+
+        function apDungAnGiaChoNhanVien(nhanvien) {
+            const isAdmin = laTaiKhoanAdmin(nhanvien);
+            document.body.classList.toggle("employee-price-hidden", !isAdmin);
+            // Chỉ lưu cờ để tiện kiểm tra giao diện; không can thiệp dữ liệu hóa đơn.
+            localStorage.setItem("is_admin", isAdmin ? "true" : "false");
+        }
+
         // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
         khoiTaoDangNhapDungChung({
             macDinhDiaDiem: "CS1",          // cố định cơ sở 1
@@ -696,6 +745,9 @@
                 // 2. Cho các script khác trên trang dùng
                 window.diadiem = diadiem;
                 window.dangLuu = false;
+
+                // Chỉ ẩn thông tin giá trên riêng trang này đối với nhân viên.
+                apDungAnGiaChoNhanVien(nhanvien);
 
                 // 3. Cập nhật lên giao diện bán hàng
                 const manvInput = document.getElementById("manv");
