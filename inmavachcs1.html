@@ -348,6 +348,11 @@
             color: #666;
             min-height: 14px;
         }
+
+        /* Phân quyền: nhân viên chỉ dùng khu vực lập danh sách/in tem */
+        body.employee-mode #productInputForm {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -656,6 +661,62 @@
                 }                                             // Giá lẻ
             ];
 
+            // ===== PHÂN QUYỀN HIỂN THỊ =====
+            // Mặc định an toàn: chỉ tài khoản được xác định rõ là admin mới thấy giá nhập
+            // và khu vực thêm/sửa/xóa danh mục sản phẩm.
+            let currentUserIsAdmin = false;
+
+            function isAdminAccount(nhanvien = {}, context = {}) {
+                const trueFlags = [
+                    nhanvien?.is_admin, nhanvien?.isAdmin, nhanvien?.la_admin, nhanvien?.laAdmin,
+                    nhanvien?.admin, nhanvien?.quantri, nhanvien?.is_quan_tri,
+                    context?.is_admin, context?.isAdmin, context?.la_admin, context?.laAdmin,
+                    context?.admin, context?.quantri, context?.is_quan_tri
+                ];
+                if (trueFlags.some(v => v === true || v === 1 || String(v).toLowerCase() === 'true')) {
+                    return true;
+                }
+
+                const roleValues = [
+                    nhanvien?.role, nhanvien?.vai_tro, nhanvien?.vaitro, nhanvien?.quyen,
+                    nhanvien?.loai_tai_khoan, context?.role, context?.vai_tro,
+                    context?.vaitro, context?.quyen, context?.loai_tai_khoan
+                ].filter(v => v !== undefined && v !== null)
+                 .map(v => String(v).trim().toLowerCase());
+
+                if (roleValues.some(v => ['admin', 'administrator', 'quantri', 'quản trị', 'quan_ly', 'quản lý'].includes(v))) {
+                    return true;
+                }
+
+                const accountCodes = [
+                    nhanvien?.manv, nhanvien?.ma_nv, nhanvien?.username, nhanvien?.tendangnhap,
+                    context?.manv, context?.ma_nv, context?.username, context?.tendangnhap
+                ].filter(Boolean).map(v => String(v).trim().toLowerCase());
+
+                return accountCodes.some(v => ['admin', 'administrator', 'quantri'].includes(v));
+            }
+
+            function applyPagePermission(nhanvien = {}, context = {}) {
+                currentUserIsAdmin = isAdminAccount(nhanvien, context);
+                document.body.classList.toggle('employee-mode', !currentUserIsAdmin);
+
+                // Ẩn cột Giá nhập trên Handsontable đối với nhân viên.
+                if (hot) {
+                    hot.updateSettings({
+                        hiddenColumns: currentUserIsAdmin
+                            ? { columns: [], indicators: false }
+                            : { columns: [6], indicators: false }
+                    });
+                    hot.render();
+                }
+
+                // Xóa giá nhập đang nằm trên form khỏi DOM khi là nhân viên.
+                if (!currentUserIsAdmin) {
+                    const giaNhapInput = document.getElementById('gianhapInput');
+                    if (giaNhapInput) giaNhapInput.value = '';
+                }
+            }
+
             document.addEventListener("DOMContentLoaded", function () {
                 const container = document.getElementById('hot');
                 hot = new Handsontable(container, {
@@ -719,7 +780,11 @@
                     tuDongKhoaCoSo: true,
                     loginApiPath: '/api/login-cs1',
                     onLoginSuccess: async (nhanvien, context) => {
+                        // Áp dụng phân quyền ngay sau khi đăng nhập.
+                        applyPagePermission(nhanvien, context);
+
                         // Sau khi đăng nhập xong mới load danh mục, tránh query khi chưa có session
+                        // Nhân viên không thấy form, nhưng giữ nguyên luồng cũ để các chức năng khác hoạt động.
                         await loadDropdownOptions();
                         // Nếu cần có thêm logic khi login xong (ví dụ log, hiển thị tên NV),
                         // có thể thêm ở đây.
@@ -1513,35 +1578,46 @@
                     const giale = Number(row.giale) || 0;
                     const giaToiThieu = Math.ceil(gianhap * 1.4);
 
+                    // Admin thấy đầy đủ; nhân viên không được lộ giá nhập hoặc mức giá suy ra từ giá nhập.
+                    if (!currentUserIsAdmin) {
+                        return `${idx + 1}. ${masp}${tensp ? ' - ' + tensp : ''}\n` +
+                            `   Giá lẻ hiện tại: ${giale.toLocaleString('vi-VN')}`;
+                    }
+
                     return `${idx + 1}. ${masp}${tensp ? ' - ' + tensp : ''}\n` +
                         `   Giá nhập: ${gianhap.toLocaleString('vi-VN')} | ` +
                         `Giá lẻ: ${giale.toLocaleString('vi-VN')} | ` +
                         `Tối thiểu nên là: ${giaToiThieu.toLocaleString('vi-VN')}`;
                 }).join('\n\n');
 
-                const msg =
-                    `⚠️ Bạn kiểm tra lại giá lẻ.\n\n` +
-                    `Có ${dsCanhBao.length} sản phẩm có giá lẻ chưa cao hơn giá nhập 40%.\n\n` +
-                    `${dsText}\n\n` +
-                    `Bạn có đồng ý in tem với giá lẻ hiện tại không?`;
+                const msg = currentUserIsAdmin
+                    ? (`⚠️ Bạn kiểm tra lại giá lẻ.\n\n` +
+                       `Có ${dsCanhBao.length} sản phẩm có giá lẻ chưa cao hơn giá nhập 40%.\n\n` +
+                       `${dsText}\n\n` +
+                       `Bạn có đồng ý in tem với giá lẻ hiện tại không?`)
+                    : (`⚠️ Có ${dsCanhBao.length} sản phẩm cần kiểm tra lại giá lẻ.\n\n` +
+                       `${dsText}\n\n` +
+                       `Bạn có đồng ý tiếp tục in tem với giá lẻ hiện tại không?`);
 
                 return confirm(msg);
             }
 
             // Xuất Excel
             window.exportExcel = function () {
-                const headers = ["STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ"];
-                const data = selected.map((row, idx) => [
-                    idx + 1,
-                    row.masp,
-                    row.tensp,
-                    row.size,
-                    row.sl,
-                    row.dvt || "",
-                    Number(row.gianhap) || 0,
-                    row.tick ? true : false,
-                    Number(row.giale) || 0
-                ]);
+                const headers = currentUserIsAdmin
+                    ? ["STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "Giá nhập", "In", "Giá lẻ"]
+                    : ["STT", "Mã hàng", "Tên hàng", "Kích cỡ", "Số lượng", "ĐVT", "In", "Giá lẻ"];
+
+                const data = selected.map((row, idx) => currentUserIsAdmin
+                    ? [
+                        idx + 1, row.masp, row.tensp, row.size, row.sl, row.dvt || "",
+                        Number(row.gianhap) || 0, row.tick ? true : false, Number(row.giale) || 0
+                    ]
+                    : [
+                        idx + 1, row.masp, row.tensp, row.size, row.sl, row.dvt || "",
+                        row.tick ? true : false, Number(row.giale) || 0
+                    ]
+                );
                 const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "TemMaVach");
