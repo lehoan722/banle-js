@@ -630,7 +630,8 @@
 
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
-            <button id="btnCopy">Copy</button>
+            <button id="btnCopy">📋 Copy</button>
+            <button id="btnPaste">📥 Dán</button>
             <button id="xuatexcel">Xuất Excel</button>
             <button id="btn-logout">THOAT PM</button>
 
@@ -907,69 +908,183 @@
         }
 
 
+        // COPY / DÁN BẢNG KẾT QUẢ CCN
+        // Copy KHÔNG lấy dòng tiêu đề
+        // Dán trả lại đúng dữ liệu vào bảng kết quả
+        // ======================================================
 
-        // Copy bảng sang clipboard, có cả dòng tiêu đề
-        document.getElementById('btnCopy').onclick = function () {
-            const table = document.getElementById('bangketqua');
-            let str = '';
+        // ---------- COPY ----------
+        document.getElementById('btnCopy').onclick = async function () {
+            try {
+                const table = document.getElementById('bangketqua');
+                const rows = table.querySelectorAll('tbody tr');
 
-            // 1. Copy dòng tiêu đề (thead)
-            const thead = table.querySelector('thead');
-            if (thead) {
-                const headerCells = thead.rows[0].cells;
-                let headerLine = [];
-                for (let cell of headerCells) {
-                    headerLine.push(cell.innerText);
+                if (!rows.length) {
+                    alert('Bảng kết quả chưa có dữ liệu để copy.');
+                    return;
                 }
-                str += headerLine.join('\t') + '\n';
-            }
 
-            // 2. Copy từng dòng dữ liệu (tbody)
-            for (let row of table.querySelectorAll('tbody tr')) {
-                let line = [];
-                for (let cell of row.cells) {
-                    line.push(cell.innerText);
+                const lines = [];
+
+                // CHỈ COPY TBODY - KHÔNG COPY THEAD
+                for (const row of rows) {
+                    const cells = [];
+
+                    for (const cell of row.cells) {
+                        // Loại bỏ xuống dòng/tab trong nội dung ô
+                        // để không làm sai cấu trúc khi dán lại
+                        const value = String(cell.innerText || '')
+                            .replace(/\t/g, ' ')
+                            .replace(/\r?\n/g, ' ')
+                            .trim();
+
+                        cells.push(value);
+                    }
+
+                    lines.push(cells.join('\t'));
                 }
-                str += line.join('\t') + '\n';
-            }
 
-            navigator.clipboard.writeText(str)
-                .then(() => alert('Đã copy ra clipboard! Dán vào Excel được luôn.'));
+                const text = lines.join('\n');
+
+                await navigator.clipboard.writeText(text);
+
+                alert(`Đã copy ${rows.length} dòng dữ liệu.`);
+            } catch (err) {
+                console.error('[CCN COPY] Lỗi:', err);
+                alert('Không copy được dữ liệu vào clipboard.');
+            }
         };
 
 
-        // Dán từ clipboard (Excel) vào bảng web
-        document.getElementById('bangketqua').addEventListener('paste', function (e) {
-            e.preventDefault();
-            const text = e.clipboardData.getData('text/plain');
-            const rows = text.trim().split('\n').map(r => r.split('\t'));
-            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+        // ---------- HÀM DÁN TEXT VÀO BẢNG ----------
+        function danDuLieuCCNVaoBang(text) {
+            const table = document.getElementById('bangketqua');
+            const tbody = table.querySelector('tbody');
+
+            if (!text || !text.trim()) {
+                alert('Clipboard không có dữ liệu.');
+                return;
+            }
+
+            // Tách từng dòng
+            let rows = text
+                .replace(/\r/g, '')
+                .split('\n')
+                .filter(line => line.trim() !== '')
+                .map(line => line.split('\t'));
+
+            if (!rows.length) {
+                alert('Không tìm thấy dữ liệu hợp lệ để dán.');
+                return;
+            }
+
+            // Bảng CCN hiện tại có 11 cột
+            const COL_COUNT = 11;
+
+            /*
+               Trường hợp người dùng vô tình copy từ bản cũ
+               có cả dòng tiêu đề thì tự động bỏ tiêu đề.
+            */
+            const firstCell = String(rows[0]?.[0] || '')
+                .trim()
+                .toLowerCase();
+
+            if (
+                firstCell === 'mã hàng' ||
+                firstCell === 'ma hang' ||
+                firstCell === 'mã sp' ||
+                firstCell === 'masp'
+            ) {
+                rows.shift();
+            }
+
+            if (!rows.length) {
+                alert('Clipboard chỉ có dòng tiêu đề, không có dữ liệu.');
+                return;
+            }
+
+            // Xóa dữ liệu cũ trong bảng
             tbody.innerHTML = '';
-            rows.forEach(rowArr => {
-                if (rowArr.length < 2) return;
+
+            for (const rowArr of rows) {
+
+                // Bổ sung ô trống nếu thiếu cột
+                while (rowArr.length < COL_COUNT) {
+                    rowArr.push('');
+                }
+
+                // Nếu thừa cột thì chỉ lấy đúng số cột của bảng
+                const normalizedRow = rowArr.slice(0, COL_COUNT);
+
+                // Bỏ những dòng hoàn toàn trống
+                if (!normalizedRow.some(v => String(v).trim() !== '')) {
+                    continue;
+                }
+
                 const tr = document.createElement('tr');
-                rowArr.forEach(cell => {
+
+                normalizedRow.forEach(value => {
                     const td = document.createElement('td');
-                    td.innerText = cell;
+                    td.textContent = String(value || '').trim();
                     tr.appendChild(td);
                 });
-                tbody.appendChild(tr);
-            });
-            // ✅ Cập nhật lại dữ liệu JS sau khi dán xong
-            capNhatBangKetQuaTuDOM();
 
-            // ✅ Cập nhật tổng số lượng và tổng khuyến mãi
-            if (typeof capNhatThongTinTong === "function") {
+                tbody.appendChild(tr);
+            }
+
+            // RẤT QUAN TRỌNG:
+            // Đọc ngược dữ liệu DOM về window.bangKetQua
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            } else if (typeof capNhatBangKetQuaTuDOM === 'function') {
+                capNhatBangKetQuaTuDOM();
+            }
+
+            // Cập nhật tổng SL, tổng tiền...
+            if (typeof window.capNhatThongTinTong === 'function') {
+                window.capNhatThongTinTong(window.bangKetQua || {});
+            } else if (typeof capNhatThongTinTong === 'function') {
                 capNhatThongTinTong(window.bangKetQua || {});
             }
 
-            // Log để kiểm tra
-            console.log("window.bangKetQua:", window.bangKetQua);
-            if (typeof bangKetQua !== "undefined") {
-                console.log("bangKetQua:", bangKetQua);
-            }
-        });
+            console.log('[CCN PASTE] Đã dán dữ liệu:', rows.length, 'dòng');
+            console.log('[CCN PASTE] window.bangKetQua:', window.bangKetQua);
 
+            alert(`Đã dán ${rows.length} dòng vào bảng kết quả.`);
+        }
+
+
+        // ---------- NÚT DÁN ----------
+        document.getElementById('btnPaste').onclick = async function () {
+            try {
+                const text = await navigator.clipboard.readText();
+
+                if (!text || !text.trim()) {
+                    alert('Clipboard hiện không có dữ liệu.');
+                    return;
+                }
+
+                danDuLieuCCNVaoBang(text);
+
+            } catch (err) {
+                console.error('[CCN PASTE] Không đọc được clipboard:', err);
+
+                alert(
+                    'Trình duyệt chưa cho phép đọc clipboard.\n' +
+                    'Hãy cho phép Clipboard cho trang web rồi nhấn Dán lại.'
+                );
+            }
+        };
+
+
+        // ---------- VẪN CHO PHÉP CTRL+V TRỰC TIẾP ----------
+        document.getElementById('bangketqua').addEventListener('paste', function (e) {
+            e.preventDefault();
+
+            const text = e.clipboardData.getData('text/plain');
+
+            danDuLieuCCNVaoBang(text);
+        });
 
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
