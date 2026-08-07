@@ -38,7 +38,7 @@ function formatHMS(totalSeconds) {
 // ===== CẤU HÌNH CƠ SỞ (tọa độ) =====
 const CS1_COORD = { lat: 21.552722, lng: 105.842583 };
 const CS2_COORD = { lat: 21.5843348, lng: 105.8343116 };
-const MAX_DISTANCE_M = 1700000;                // bán kính cho phép (m)
+const MAX_DISTANCE_M = 2000;                // bán kính cho phép (m)
 const AUTO_CHECK_INTERVAL_MS = 1000000;     // 3 phút
 const BUTTON_LOCK_MS = 5 * 60 * 1000;      // 5 phút khoá nút sau khi bấm
 
