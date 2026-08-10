@@ -1715,16 +1715,6 @@ function patchAlertWithBeep() {
       }
     });
 
-    tbody.querySelectorAll(".cell-nhap-sizesl, .cell-nhap-tongsl").forEach((el) => {
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-      });
-
-      el.addEventListener("mousedown", (e) => {
-        e.stopPropagation();
-      });
-    });
-
     capNhatThongKeDauTrang();
   }
 
@@ -3146,12 +3136,6 @@ function patchAlertWithBeep() {
     tbody.dataset.rowSelectBound = "1";
 
     tbody.addEventListener("click", (e) => {
-      // Nếu đang click vào ô cho phép sửa trực tiếp thì không chọn dòng
-      const editableCell = e.target.closest(".cell-nhap-sizesl, .cell-nhap-tongsl");
-      if (editableCell) {
-        return;
-      }
-
       const tr = e.target.closest("tr");
       if (!tr) return;
 
