@@ -934,21 +934,6 @@ height:34px;
           cardCell.classList.add("card");
           window.StockQuick.attach(cardCell, masp);
           row.dataset.stockQuickBound = "1";
-
-          // PC: cho phép click CẢ DÒNG thì cũng mở popup
-          const isTouch =
-            "ontouchstart" in window || (navigator && navigator.maxTouchPoints > 0);
-
-          if (!isTouch && typeof window.StockQuick.showFor === "function" &&
-            !row.dataset.stockQuickRowClickBound) {
-
-            row.addEventListener("click", () => {
-              // chỉ gọi showFor, không toggle, để luôn hiện popup theo dòng đang chọn
-              window.StockQuick.showFor(cardCell, masp);
-            });
-
-            row.dataset.stockQuickRowClickBound = "1";
-          }
         }
 
         // 🔹 Phần tồn kho tức thì – GIỮ NGUYÊN như cũ
