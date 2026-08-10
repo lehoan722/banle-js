@@ -1766,6 +1766,8 @@
         (function () {
             const masp = document.getElementById('masp');
 
+            const CCN_BACKUP_KEY = 'CCN1V2_DRAFT_BACKUP';
+
             function khoaMasp() {
                 if (!masp) return;
 
@@ -1776,21 +1778,46 @@
                 masp.placeholder = 'ĐÃ KHÓA SAU KHI LƯU - F5 để làm mới';
             }
 
+            function xoaBackupCCNSauKhiLuuThanhCong() {
+                try {
+                    localStorage.removeItem(CCN_BACKUP_KEY);
+                    localStorage.removeItem(CCN_BACKUP_KEY + '_TIME');
+
+                    console.log(
+                        '[CCN BACKUP] Đã xóa backup sau khi lưu hóa đơn thành công.'
+                    );
+                } catch (err) {
+                    console.error(
+                        '[CCN BACKUP] Không xóa được backup:',
+                        err
+                    );
+                }
+            }
+
             // ===== BẮT alert() =====
             const originalAlert = window.alert;
 
             window.alert = function (msg) {
                 try {
-                    if (typeof msg === 'string' && msg.includes('Đã lưu hóa đơn CCN')) {
-                        // 👉 Nếu thấy thông báo thành công → khóa ngay
+                    if (
+                        typeof msg === 'string' &&
+                        msg.includes('Đã lưu hóa đơn CCN')
+                    ) {
+                        // 1. Khóa nhập tiếp
                         khoaMasp();
-                    }
-                } catch (e) { }
 
-                // vẫn gọi alert gốc
+                        // 2. Chỉ tại đây mới xóa backup
+                        xoaBackupCCNSauKhiLuuThanhCong();
+                    }
+                } catch (e) {
+                    console.error(
+                        '[CCN SAVE SUCCESS HOOK] Lỗi:',
+                        e
+                    );
+                }
+
                 return originalAlert.apply(this, arguments);
             };
-
         })();
     </script>
 
