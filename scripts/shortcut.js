@@ -262,26 +262,17 @@ export function khoiTaoShortcut() {
     }
 
     // F11: mở popup nhập số hóa đơn cũ
+    // ADMIN và NHÂN VIÊN đều được phép XEM hóa đơn cũ
     if (e.key === "F11") {
       e.preventDefault();
       e.stopPropagation();
 
-      // 🔒 Kiểm tra quyền admin
-      const isAdmin =
-        (localStorage.getItem("is_admin") || "").toLowerCase() === "true" ||
-        (localStorage.getItem("role") || "").toLowerCase() === "admin";
-
-      if (!isAdmin) {
-        // Không phải admin → bỏ qua (không làm gì)
-        return;
-      }
-
       if (typeof window.moPopupMoHoaDonCu === "function") {
         window.moPopupMoHoaDonCu();
       }
+
       return;
     }
-
 
     // Ctrl + T: lưu hóa đơn vào cả 2 bảng
     if (e.ctrlKey && e.key.toLowerCase() === "t") {
