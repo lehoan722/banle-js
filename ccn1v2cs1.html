@@ -1038,20 +1038,66 @@
 
             let timer = null;
 
+
+            // =====================================================
+            // CHỈ BACKUP PHIẾU CCN ĐANG NHẬP MỚI
+            // KHÔNG BACKUP HÓA ĐƠN CŨ KHI QUAY LẠI / XEM
+            // =====================================================
+            function dangLaPhieuCCNMoi() {
+                const hdState = String(
+                    document.getElementById('hd_state')?.value || ''
+                )
+                    .trim()
+                    .toLowerCase();
+
+                // Điều kiện chính:
+                // chỉ trạng thái "moi" mới được backup
+                if (hdState !== 'moi') {
+                    return false;
+                }
+
+                // Bảo vệ thêm nếu HD_CTX đang tồn tại
+                const mode = String(
+                    window.HD_CTX?.mode || ''
+                )
+                    .trim()
+                    .toUpperCase();
+
+                // Nếu đã xác định VIEW / EDIT thì tuyệt đối không backup
+                if (mode === 'VIEW' || mode === 'EDIT') {
+                    return false;
+                }
+
+                return true;
+            }
+
+
             const observer = new MutationObserver(() => {
-                // Gom các thay đổi liên tiếp lại.
-                // Tránh một lần render tạo nhiều lần backup.
                 clearTimeout(timer);
 
                 timer = setTimeout(() => {
+
+                    // 🔒 QUAN TRỌNG:
+                    // đang xem hóa đơn cũ => bỏ qua hoàn toàn
+                    if (!dangLaPhieuCCNMoi()) {
+                        console.log(
+                            '[CCN AUTO BACKUP] Bỏ qua vì không phải phiếu mới.'
+                        );
+                        return;
+                    }
+
                     const rowCount =
                         tbody.querySelectorAll('tr').length;
 
-                    if (rowCount > 0) {
-                        window.backupBangKetQuaCCN?.(true);
+                    if (rowCount <= 0) {
+                        return;
                     }
+
+                    window.backupBangKetQuaCCN?.(true);
+
                 }, 120);
             });
+
 
             observer.observe(tbody, {
                 childList: true,
@@ -1059,11 +1105,11 @@
                 characterData: true
             });
 
+
             console.log(
-                '[CCN AUTO BACKUP] Đã bật theo dõi bảng kết quả.'
+                '[CCN AUTO BACKUP] Đã bật - chỉ backup phiếu mới.'
             );
         })();
-
 
         // ---------- HÀM DÁN TEXT VÀO BẢNG ----------
         function danDuLieuCCNVaoBang(text) {
