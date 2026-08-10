@@ -194,7 +194,24 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
         ? logs.map(r => `
                   <tr>
                     <td style="border:1px solid #ddd;padding:6px;">${fmtDate(r.ngay)}</td>
-                    <td style="border:1px solid #ddd;padding:6px;">${r.sohd || ""}</td>
+                    
+                    <td
+  class="quick-kh-sohd"
+  data-sohd="${r.sohd || ""}"
+  title="Kích đúp để xem chi tiết hóa đơn"
+  style="
+    border:1px solid #ddd;
+    padding:6px;
+    color:#0066cc;
+    font-weight:bold;
+    text-decoration:underline;
+    cursor:pointer;
+    user-select:text;
+  "
+>
+  ${r.sohd || ""}
+</td>
+
                     <td style="border:1px solid #ddd;padding:6px;text-align:right;">${fmtMoney(r.diem_truoc)}</td>
                     <td style="border:1px solid #ddd;padding:6px;text-align:right;color:#b91c1c;">${fmtMoney(r.diem_dung)}</td>
                     <td style="border:1px solid #ddd;padding:6px;text-align:right;color:#15803d;">${fmtMoney(r.diem_tich)}</td>
@@ -207,6 +224,61 @@ export function mountKhachHangQuickInfoPopup(options = {}) {
         </table>
       </div>
     `;
+
+    // ===== DOUBLE CLICK SỐ HÓA ĐƠN => MỞ HÓA ĐƠN CŨ =====
+    body.querySelectorAll(".quick-kh-sohd").forEach((cell) => {
+      cell.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const sohd = String(cell.dataset.sohd || "").trim();
+
+        if (!sohd) {
+          alert("❌ Không xác định được số hóa đơn.");
+          return;
+        }
+
+        const sohdEl = document.getElementById("sohd");
+
+        if (!sohdEl) {
+          alert("❌ Không tìm thấy ô số hóa đơn trên trang bán lẻ.");
+          return;
+        }
+
+        // 1. Đóng popup thông tin khách hàng
+        popup.style.display = "none";
+
+        // 2. Ghi số hóa đơn được chọn vào giao diện bán lẻ
+        sohdEl.value = sohd;
+
+        // Báo cho các chức năng khác biết số hóa đơn đã thay đổi
+        sohdEl.dispatchEvent(
+          new Event("input", {
+            bubbles: true
+          })
+        );
+
+        sohdEl.dispatchEvent(
+          new Event("change", {
+            bubbles: true
+          })
+        );
+
+        // 3. Gọi đúng luồng có sẵn của duyetHoaDon.js:
+        // Enter tại #sohd => taiHoaDonTuSo() => napHoaDonVaoTrang()
+        sohdEl.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "Enter",
+            code: "Enter",
+            keyCode: 13,
+            which: 13,
+            bubbles: true,
+            cancelable: true
+          })
+        );
+      });
+    });
+
   }
 
   async function openQuickInfo(makhInputValue = "") {
