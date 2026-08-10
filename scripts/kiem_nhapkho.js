@@ -2102,7 +2102,9 @@ function patchAlertWithBeep() {
   // KIỂM TRA
   // Bản đầu: so tổng SL theo mã
   // =========================
-  function kiemTraPhieu() {
+  function kiemTraPhieu(
+    choPhepAutoBackup = true
+  ) {
     // luôn đọc lại dữ liệu người dùng vừa sửa trực tiếp trên bảng
     docLaiNhapTuBangHTML();
 
@@ -2193,16 +2195,38 @@ function patchAlertWithBeep() {
     // AUTO BACKUP SAU KHI DỮ LIỆU ĐÃ CẬP NHẬT THÀNH CÔNG
     // ======================================================
 
-    if (dangLaPhieuKiemNhapDangLam()) {
+    if (
+      choPhepAutoBackup &&
+      dangLaPhieuKiemNhapDangLam()
+    ) {
 
-      // Không await để không làm chậm thao tác nhập hàng
-      backupDuLieuNhapKiemKho(true)
-        .catch(err => {
-          console.warn(
-            "[KNK AUTO BACKUP] Lỗi:",
-            err
-          );
-        });
+      const stateBackup = getState();
+
+      // Chỉ backup khi phần NHẬP thực sự có dữ liệu
+      const coDuLieuNhap =
+        stateBackup.nhap &&
+        Object.keys(stateBackup.nhap).length > 0;
+
+
+      if (coDuLieuNhap) {
+
+        backupDuLieuNhapKiemKho(true)
+          .catch(err => {
+
+            console.warn(
+              "[KNK AUTO BACKUP] Lỗi:",
+              err
+            );
+
+          });
+
+      } else {
+
+        console.log(
+          "[KNK AUTO BACKUP] " +
+          "Bỏ qua vì phần NHẬP đang rỗng."
+        );
+      }
     }
   }
 
@@ -3289,6 +3313,19 @@ function patchAlertWithBeep() {
       // ==================================================
       // 1. BACKUP CHẮC CHẮN VÀO LOCALSTORAGE
       // ==================================================
+
+      const stateHienTai = getState();
+
+      if (
+        !stateHienTai.nhap ||
+        Object.keys(stateHienTai.nhap).length === 0
+      ) {
+        console.log(
+          "[KNK BACKUP] Không ghi backup vì phần NHẬP đang rỗng."
+        );
+
+        return false;
+      }
 
       localStorage.setItem(
         KIEM_NHAP_BACKUP_KEY,
@@ -4526,10 +4563,34 @@ function patchAlertWithBeep() {
 
     setXuatData(dataMap, orderArr) {
       const state = getState();
+
       state.xuat = dataMap || {};
-      state.xuatOrder = Array.isArray(orderArr) ? orderArr.map(normalizeMasp).filter(Boolean) : [];
+
+      state.xuatOrder =
+        Array.isArray(orderArr)
+          ? orderArr
+            .map(normalizeMasp)
+            .filter(Boolean)
+          : [];
+
       state.ketQua = {};
-      autoKiemTraSauNhap();
+
+      // =====================================================
+      // NẠP HĐ CCN CHỈ THAY ĐỔI PHẦN XUẤT
+      // KHÔNG ĐƯỢC GHI ĐÈ BACKUP PHẦN NHẬP
+      // =====================================================
+
+      try {
+        renderBangKetQua();
+        kiemTraPhieu(false);
+      } catch (err) {
+        console.error(
+          "[KNK] setXuatData lỗi:",
+          err
+        );
+
+        renderBangKetQua();
+      }
     }
   };
 
