@@ -1665,14 +1665,25 @@ function patchAlertWithBeep() {
     </div>
   </td>
 
-  <td contenteditable="true"
-      class="cell-nhap-sizesl"
-      data-masp="${escapeHtml(masp)}"
-      style="white-space: pre-line; text-align:left;">${escapeHtml(nhapText)}</td>
+  <td
+    class="cell-nhap-sizesl"
+    data-masp="${escapeHtml(masp)}"
+    style="
+        white-space: pre-line;
+        text-align:left;
+        cursor:default;
+        user-select:text;
+    "
+>${escapeHtml(nhapText)}</td>
 
-  <td contenteditable="true"
-      class="cell-nhap-tongsl"
-      data-masp="${escapeHtml(masp)}">${tongSoLuong(nhapGroup?.items || []) || ""}</td>
+<td
+    class="cell-nhap-tongsl"
+    data-masp="${escapeHtml(masp)}"
+    style="
+        cursor:default;
+        user-select:text;
+    "
+>${tongSoLuong(nhapGroup?.items || []) || ""}</td>
 
   <td class="cell-masp-click" data-masp="${escapeHtml(masp)}"
     style="cursor:pointer; color:#0b57d0; font-weight:400; text-decoration:none; padding-top:4px; padding-bottom:4px;">
