@@ -631,7 +631,7 @@
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">📋 Copy</button>
-            <button id="btnPaste">📥 Dán</button>           
+            <button id="btnPaste">📥 Dán</button>
             <button id="btn-logout">THOAT PM</button>
 
             <div style="margin-bottom:6px;">
@@ -913,46 +913,156 @@
         // ======================================================
 
         // ---------- COPY ----------
-        document.getElementById('btnCopy').onclick = async function () {
-            try {
-                const table = document.getElementById('bangketqua');
-                const rows = table.querySelectorAll('tbody tr');
+        // ======================================================
+        // BACKUP / COPY BẢNG KẾT QUẢ CCN
+        // ======================================================
 
-                if (!rows.length) {
-                    alert('Bảng kết quả chưa có dữ liệu để copy.');
-                    return;
+        const CCN_BACKUP_KEY = 'CCN1V2_DRAFT_BACKUP';
+
+        // Lấy toàn bộ dữ liệu bảng thành text giống nút Copy hiện tại
+        function layTextBangKetQuaCCN() {
+            const table = document.getElementById('bangketqua');
+            const rows = table?.querySelectorAll('tbody tr') || [];
+
+            if (!rows.length) return '';
+
+            const lines = [];
+
+            for (const row of rows) {
+                const cells = [];
+
+                for (const cell of row.cells) {
+                    const value = String(cell.innerText || '')
+                        .replace(/\t/g, ' ')
+                        .replace(/\r?\n/g, ' ')
+                        .trim();
+
+                    cells.push(value);
                 }
 
-                const lines = [];
-
-                // CHỈ COPY TBODY - KHÔNG COPY THEAD
-                for (const row of rows) {
-                    const cells = [];
-
-                    for (const cell of row.cells) {
-                        // Loại bỏ xuống dòng/tab trong nội dung ô
-                        // để không làm sai cấu trúc khi dán lại
-                        const value = String(cell.innerText || '')
-                            .replace(/\t/g, ' ')
-                            .replace(/\r?\n/g, ' ')
-                            .trim();
-
-                        cells.push(value);
-                    }
-
-                    lines.push(cells.join('\t'));
-                }
-
-                const text = lines.join('\n');
-
-                await navigator.clipboard.writeText(text);
-
-                alert(`Đã copy ${rows.length} dòng dữ liệu.`);
-            } catch (err) {
-                console.error('[CCN COPY] Lỗi:', err);
-                alert('Không copy được dữ liệu vào clipboard.');
+                lines.push(cells.join('\t'));
             }
+
+            return lines.join('\n');
+        }
+
+
+        // Tự động backup.
+        // silent=true: không hiện alert khi hệ thống tự backup.
+        async function backupBangKetQuaCCN(silent = true) {
+            try {
+                const text = layTextBangKetQuaCCN();
+
+                if (!text.trim()) return false;
+
+                // 1. Backup chắc chắn vào localStorage
+                localStorage.setItem(CCN_BACKUP_KEY, text);
+                localStorage.setItem(
+                    CCN_BACKUP_KEY + '_TIME',
+                    new Date().toISOString()
+                );
+
+                // 2. Thử ghi thêm vào clipboard
+                try {
+                    if (navigator.clipboard?.writeText) {
+                        await navigator.clipboard.writeText(text);
+                    }
+                } catch (clipboardErr) {
+                    // Clipboard có thể bị trình duyệt chặn.
+                    // Không sao vì localStorage vẫn đã backup.
+                    console.warn(
+                        '[CCN AUTO BACKUP] Clipboard bị chặn:',
+                        clipboardErr
+                    );
+                }
+
+                console.log(
+                    '[CCN AUTO BACKUP] Đã backup bảng kết quả',
+                    new Date().toLocaleTimeString()
+                );
+
+                if (!silent) {
+                    const rows =
+                        document.querySelectorAll('#bangketqua tbody tr');
+
+                    alert(
+                        `Đã copy và backup ${rows.length} dòng dữ liệu.`
+                    );
+                }
+
+                return true;
+
+            } catch (err) {
+                console.error('[CCN AUTO BACKUP] Lỗi:', err);
+
+                if (!silent) {
+                    alert('Không backup được dữ liệu.');
+                }
+
+                return false;
+            }
+        }
+
+
+        // Nút COPY thủ công vẫn hoạt động như cũ
+        document.getElementById('btnCopy').onclick = async function () {
+            const text = layTextBangKetQuaCCN();
+
+            if (!text.trim()) {
+                alert('Bảng kết quả chưa có dữ liệu để copy.');
+                return;
+            }
+
+            await backupBangKetQuaCCN(false);
         };
+
+
+        // Cho các đoạn khác gọi nếu cần
+        window.backupBangKetQuaCCN = backupBangKetQuaCCN;
+
+
+        // ======================================================
+        // TỰ ĐỘNG BACKUP MỖI KHI BẢNG KẾT QUẢ THAY ĐỔI
+        // ======================================================
+
+        (function initCCNAutoBackup() {
+            const tbody =
+                document.querySelector('#bangketqua tbody');
+
+            if (!tbody) {
+                console.warn(
+                    '[CCN AUTO BACKUP] Không tìm thấy tbody.'
+                );
+                return;
+            }
+
+            let timer = null;
+
+            const observer = new MutationObserver(() => {
+                // Gom các thay đổi liên tiếp lại.
+                // Tránh một lần render tạo nhiều lần backup.
+                clearTimeout(timer);
+
+                timer = setTimeout(() => {
+                    const rowCount =
+                        tbody.querySelectorAll('tr').length;
+
+                    if (rowCount > 0) {
+                        window.backupBangKetQuaCCN?.(true);
+                    }
+                }, 120);
+            });
+
+            observer.observe(tbody, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+
+            console.log(
+                '[CCN AUTO BACKUP] Đã bật theo dõi bảng kết quả.'
+            );
+        })();
 
 
         // ---------- HÀM DÁN TEXT VÀO BẢNG ----------
@@ -1054,27 +1164,41 @@
 
 
         // ---------- NÚT DÁN ----------
+
         document.getElementById('btnPaste').onclick = async function () {
+            let text = '';
+
+            // 1. Thử lấy clipboard trước
             try {
-                const text = await navigator.clipboard.readText();
-
-                if (!text || !text.trim()) {
-                    alert('Clipboard hiện không có dữ liệu.');
-                    return;
-                }
-
-                danDuLieuCCNVaoBang(text);
-
+                text = await navigator.clipboard.readText();
             } catch (err) {
-                console.error('[CCN PASTE] Không đọc được clipboard:', err);
-
-                alert(
-                    'Trình duyệt chưa cho phép đọc clipboard.\n' +
-                    'Hãy cho phép Clipboard cho trang web rồi nhấn Dán lại.'
+                console.warn(
+                    '[CCN PASTE] Không đọc được clipboard:',
+                    err
                 );
             }
-        };
 
+            // 2. Nếu clipboard trống hoặc không đọc được
+            // => lấy bản backup tự động
+            if (!text || !text.trim()) {
+                text = localStorage.getItem(CCN_BACKUP_KEY) || '';
+
+                if (text.trim()) {
+                    console.log(
+                        '[CCN PASTE] Đang khôi phục từ AUTO BACKUP.'
+                    );
+                }
+            }
+
+            if (!text || !text.trim()) {
+                alert(
+                    'Không có dữ liệu trong Clipboard và cũng chưa có bản backup CCN.'
+                );
+                return;
+            }
+
+            danDuLieuCCNVaoBang(text);
+        };
 
         // ---------- VẪN CHO PHÉP CTRL+V TRỰC TIẾP ----------
         document.getElementById('bangketqua').addEventListener('paste', function (e) {
