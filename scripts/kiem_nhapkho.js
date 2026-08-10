@@ -2182,8 +2182,27 @@ function patchAlertWithBeep() {
     }
 
     state.ketQua = ketQua;
+
     sapXepLaiThuTuMaspTheoKetQua();
+
     renderBangKetQua();
+
+
+    // ======================================================
+    // AUTO BACKUP SAU KHI DỮ LIỆU ĐÃ CẬP NHẬT THÀNH CÔNG
+    // ======================================================
+
+    if (dangLaPhieuKiemNhapDangLam()) {
+
+      // Không await để không làm chậm thao tác nhập hàng
+      backupDuLieuNhapKiemKho(true)
+        .catch(err => {
+          console.warn(
+            "[KNK AUTO BACKUP] Lỗi:",
+            err
+          );
+        });
+    }
   }
 
   // =========================
@@ -3132,45 +3151,245 @@ function patchAlertWithBeep() {
     });
   }
 
-  async function copyDuLieuNhap() {
-    try {
-      docLaiNhapTuBangHTML();
+  // ======================================================
+  // BACKUP DỮ LIỆU KIỂM NHẬP
+  // CS1 và CS2 dùng khóa riêng
+  // ======================================================
 
-      const tbody = document.querySelector("#bangketqua tbody");
-      if (!tbody) {
-        alert("Không tìm thấy bảng kết quả.");
-        return;
-      }
+  const KIEM_NHAP_BACKUP_KEY =
+    String(CFG.toBranch || "").toLowerCase() === "cs2"
+      ? "KIEM_NHAP_CS2_DRAFT_BACKUP"
+      : "KIEM_NHAP_CS1_DRAFT_BACKUP";
 
-      const rows = Array.from(tbody.querySelectorAll("tr"));
-      if (rows.length === 0) {
-        alert("Không có dữ liệu để copy.");
-        return;
-      }
 
-      const lines = rows.map((tr) => {
-        const masp = normalizeMasp(tr.dataset.masp || tr.children[0]?.dataset?.masp || "");
+  // ======================================================
+  // Kiểm tra có phải phiếu đang làm dở không
+  // moi + da_nap = được backup
+  // xem = tuyệt đối không backup
+  // ======================================================
 
-        const sizeSlText = String(tr.querySelector(".cell-nhap-sizesl")?.innerText || "")
-          .replace(/\r/g, "")
-          .replace(/\n+/g, " ")
-          .replace(/\s+/g, " ")
-          .trim();
+  function dangLaPhieuKiemNhapDangLam() {
+    const state = String(
+      byId("hd_state")?.value || ""
+    )
+      .trim()
+      .toLowerCase();
 
-        const tongSlText = String(tr.querySelector(".cell-nhap-tongsl")?.innerText || "").trim();
+    return state === "moi" || state === "da_nap";
+  }
+
+
+  // ======================================================
+  // Lấy text phần NHẬP
+  // Định dạng giống chính nút Copy hiện tại
+  // ======================================================
+
+  function layTextDuLieuNhapDeBackup() {
+
+    docLaiNhapTuBangHTML();
+
+    const tbody =
+      document.querySelector("#bangketqua tbody");
+
+    if (!tbody) {
+      return {
+        text: "",
+        rowCount: 0
+      };
+    }
+
+    const rows =
+      Array.from(
+        tbody.querySelectorAll("tr")
+      );
+
+    if (!rows.length) {
+      return {
+        text: "",
+        rowCount: 0
+      };
+    }
+
+    const lines = rows
+      .map((tr) => {
+
+        const masp =
+          normalizeMasp(
+            tr.dataset.masp ||
+            tr.children[0]?.dataset?.masp ||
+            ""
+          );
+
+        const sizeSlText =
+          String(
+            tr.querySelector(
+              ".cell-nhap-sizesl"
+            )?.innerText || ""
+          )
+            .replace(/\r/g, "")
+            .replace(/\n+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        const tongSlText =
+          String(
+            tr.querySelector(
+              ".cell-nhap-tongsl"
+            )?.innerText || ""
+          ).trim();
 
         if (!masp) return "";
-        return [masp, sizeSlText, tongSlText].join("\t");
-      }).filter(Boolean);
 
-      const text = lines.join("\n");
-      await navigator.clipboard.writeText(text);
+        return [
+          masp,
+          sizeSlText,
+          tongSlText
+        ].join("\t");
 
-      alert(`Đã copy ${lines.length} dòng dữ liệu phần nhập.`);
+      })
+      .filter(Boolean);
+
+
+    return {
+      text: lines.join("\n"),
+      rowCount: lines.length
+    };
+  }
+
+
+  // ======================================================
+  // BACKUP
+  // silent=true = auto backup, không hiện alert
+  // ======================================================
+
+  async function backupDuLieuNhapKiemKho(
+    silent = true
+  ) {
+
+    try {
+
+      // Đang xem phiếu cũ → không được ghi đè
+      if (!dangLaPhieuKiemNhapDangLam()) {
+
+        console.log(
+          "[KNK BACKUP] Bỏ qua vì đang xem phiếu cũ."
+        );
+
+        return false;
+      }
+
+
+      const {
+        text,
+        rowCount
+      } = layTextDuLieuNhapDeBackup();
+
+
+      // Chưa nhập gì thì không tạo backup rỗng
+      if (!text.trim() || rowCount <= 0) {
+        return false;
+      }
+
+
+      // ==================================================
+      // 1. BACKUP CHẮC CHẮN VÀO LOCALSTORAGE
+      // ==================================================
+
+      localStorage.setItem(
+        KIEM_NHAP_BACKUP_KEY,
+        text
+      );
+
+      localStorage.setItem(
+        KIEM_NHAP_BACKUP_KEY + "_TIME",
+        new Date().toISOString()
+      );
+
+
+      // ==================================================
+      // 2. THỬ COPY THÊM VÀO CLIPBOARD
+      // ==================================================
+
+      try {
+
+        if (
+          navigator.clipboard?.writeText
+        ) {
+
+          await navigator.clipboard.writeText(
+            text
+          );
+        }
+
+      } catch (clipboardErr) {
+
+        // Không sao:
+        // localStorage phía trên đã backup thành công
+
+        console.warn(
+          "[KNK BACKUP] Clipboard bị chặn:",
+          clipboardErr
+        );
+      }
+
+
+      console.log(
+        `[KNK BACKUP] Đã backup ${rowCount} dòng`,
+        new Date().toLocaleTimeString()
+      );
+
+
+      if (!silent) {
+
+        alert(
+          `Đã copy và backup ${rowCount} dòng dữ liệu phần nhập.`
+        );
+      }
+
+
+      return true;
+
     } catch (err) {
-      console.error("[KNK] copyDuLieuNhap error:", err);
-      alert("Không copy được dữ liệu.");
+
+      console.error(
+        "[KNK BACKUP] Lỗi:",
+        err
+      );
+
+      if (!silent) {
+        alert(
+          "Không backup được dữ liệu kiểm nhập."
+        );
+      }
+
+      return false;
     }
+  }
+
+
+  // ======================================================
+  // NÚT COPY THỦ CÔNG
+  // ======================================================
+
+  async function copyDuLieuNhap() {
+
+    const {
+      text,
+      rowCount
+    } = layTextDuLieuNhapDeBackup();
+
+
+    if (!text.trim() || rowCount <= 0) {
+
+      alert(
+        "Không có dữ liệu để copy."
+      );
+
+      return;
+    }
+
+
+    await backupDuLieuNhapKiemKho(false);
   }
 
   async function copyDuLieuXuat() {
@@ -3264,35 +3483,167 @@ function patchAlertWithBeep() {
   }
 
   async function pasteDuLieuNhap() {
+
     try {
-      const text = await navigator.clipboard.readText();
-      if (!String(text || "").trim()) {
-        alert("Clipboard đang trống.");
-        return;
+
+      let text = "";
+      let dangKhoiPhucBackup = false;
+
+
+      // ==================================================
+      // 1. THỬ CLIPBOARD TRƯỚC
+      // ==================================================
+
+      try {
+
+        text =
+          await navigator.clipboard.readText();
+
+      } catch (err) {
+
+        console.warn(
+          "[KNK PASTE] Không đọc được clipboard:",
+          err
+        );
       }
 
-      const nhapMoi = parseClipboardToNhapMap(text);
-      const soDong = Object.keys(nhapMoi).length;
+
+      // Thử parse clipboard
+      let nhapMoi =
+        parseClipboardToNhapMap(text);
+
+      let soDong =
+        Object.keys(nhapMoi).length;
+
+
+      // ==================================================
+      // 2. CLIPBOARD TRỐNG HOẶC ĐÃ BỊ GHI ĐÈ
+      // => DÙNG AUTO BACKUP
+      // ==================================================
 
       if (soDong === 0) {
-        alert("Dữ liệu dán không hợp lệ.");
+
+        const backupText =
+          localStorage.getItem(
+            KIEM_NHAP_BACKUP_KEY
+          ) || "";
+
+
+        if (backupText.trim()) {
+
+          const backupMap =
+            parseClipboardToNhapMap(
+              backupText
+            );
+
+
+          if (
+            Object.keys(backupMap).length > 0
+          ) {
+
+            text = backupText;
+
+            nhapMoi = backupMap;
+
+            soDong =
+              Object.keys(
+                backupMap
+              ).length;
+
+            dangKhoiPhucBackup = true;
+          }
+        }
+      }
+
+
+      // ==================================================
+      // 3. KHÔNG CÓ DỮ LIỆU
+      // ==================================================
+
+      if (soDong === 0) {
+
+        alert(
+          "Clipboard không có dữ liệu hợp lệ " +
+          "và cũng chưa có bản backup kiểm nhập."
+        );
+
         return;
       }
 
-      const ok = confirm("Dán dữ liệu sẽ thay toàn bộ phần nhập hiện tại. Bạn có muốn tiếp tục không?");
+
+      // ==================================================
+      // 4. XÁC NHẬN
+      // ==================================================
+
+      const msg =
+        dangKhoiPhucBackup
+
+          ? "Clipboard không có dữ liệu kiểm nhập hợp lệ.\n\n" +
+          "Hệ thống đã tìm thấy bản AUTO BACKUP.\n\n" +
+          "Khôi phục bản backup và thay toàn bộ phần nhập hiện tại?"
+
+          : "Dán dữ liệu sẽ thay toàn bộ phần nhập hiện tại. " +
+          "Bạn có muốn tiếp tục không?";
+
+
+      const ok = confirm(msg);
+
       if (!ok) return;
 
-      const state = getState();
-      state.nhap = nhapMoi;
-      state.ketQua = {};
-      state.selectedMasp = "";
-      state.nhapOrder = [...new Set(Object.values(nhapMoi).map(x => normalizeMasp(x.masp)))];
 
+      // ==================================================
+      // 5. PHỤC HỒI VÀO STATE THẬT
+      // ==================================================
+
+      const state = getState();
+
+      state.nhap = nhapMoi;
+
+      state.ketQua = {};
+
+      state.selectedMasp = "";
+
+      state.nhapOrder = [
+        ...new Set(
+          Object.values(nhapMoi)
+            .map(
+              x =>
+                normalizeMasp(
+                  x.masp
+                )
+            )
+        )
+      ];
+
+
+      // Render + kiểm tra + tự backup lại
       autoKiemTraSauNhap();
-      alert(`Đã dán ${soDong} dòng dữ liệu nhập.`);
+
+
+      if (dangKhoiPhucBackup) {
+
+        alert(
+          `✅ Đã khôi phục ${soDong} dòng từ AUTO BACKUP.`
+        );
+
+      } else {
+
+        alert(
+          `Đã dán ${soDong} dòng dữ liệu nhập.`
+        );
+      }
+
+
     } catch (err) {
-      console.error("[KNK] pasteDuLieuNhap error:", err);
-      alert("Không đọc được dữ liệu từ clipboard.");
+
+      console.error(
+        "[KNK] pasteDuLieuNhap error:",
+        err
+      );
+
+      alert(
+        "Không phục hồi được dữ liệu kiểm nhập."
+      );
     }
   }
 
@@ -3669,6 +4020,34 @@ function patchAlertWithBeep() {
     };
   }
 
+  function xoaBackupKiemNhapSauKhiLuuThanhCong() {
+
+    try {
+
+      localStorage.removeItem(
+        KIEM_NHAP_BACKUP_KEY
+      );
+
+      localStorage.removeItem(
+        KIEM_NHAP_BACKUP_KEY + "_TIME"
+      );
+
+
+      console.log(
+        "[KNK BACKUP] " +
+        "Đã xóa backup sau khi lưu thành công."
+      );
+
+    } catch (err) {
+
+      console.error(
+        "[KNK BACKUP] " +
+        "Không xóa được backup:",
+        err
+      );
+    }
+  }
+
   async function luuPhieuKiemNhapKho() {
 
     const hdState = document.getElementById("hd_state")?.value;
@@ -3864,7 +4243,20 @@ function patchAlertWithBeep() {
         nhanvienkiem
       );
 
-      alert(`Đã lưu phiếu kiểm nhập: ${so_hd_kiemnhap}`);
+
+      // ======================================================
+      // CHỈ ĐẾN ĐÂY MỚI XÓA BACKUP
+      // vì toàn bộ quá trình lưu đã thành công
+      // ======================================================
+
+      xoaBackupKiemNhapSauKhiLuuThanhCong();
+
+
+      alert(
+        `Đã lưu phiếu kiểm nhập: ${so_hd_kiemnhap}`
+      );
+
+
       await resetPhieu();
 
     } catch (err) {
@@ -4154,7 +4546,7 @@ function patchAlertWithBeep() {
     setDefaultBranchInfo();
     bindInputEvents();
     bindButtons();
-        try {
+    try {
       initAutocompleteRealtimeMasp();
     } catch (err) {
       console.error("[KNK] Lỗi gắn gợi ý mã sản phẩm realtime:", err);
