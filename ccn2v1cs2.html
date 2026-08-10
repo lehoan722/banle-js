@@ -909,78 +909,137 @@
 
 
         // ======================================================
-        // COPY / DÁN BẢNG KẾT QUẢ CCN 2 → 1
-        // Copy KHÔNG lấy dòng tiêu đề
-        // Dán trả lại đúng dữ liệu vào bảng kết quả
+        // COPY / DÁN + AUTO BACKUP BẢNG KẾT QUẢ CCN 2 → 1
+        // - Copy không lấy tiêu đề
+        // - Auto backup khi phiếu MỚI thay đổi
+        // - Không backup khi Quay lại / xem / sửa hóa đơn cũ
+        // - Nút Dán ưu tiên Clipboard, fallback về localStorage
         // ======================================================
+
+        const CCN_BACKUP_KEY = 'CCN2V1_DRAFT_BACKUP';
+
+        // ======================================================
+        // 1. LẤY DỮ LIỆU BẢNG THÀNH TEXT
+        // ======================================================
+        function layTextBangKetQuaCCN() {
+            const table = document.getElementById('bangketqua');
+            const rows = table?.querySelectorAll('tbody tr') || [];
+
+            if (!rows.length) return '';
+
+            const lines = [];
+
+            for (const row of rows) {
+                const cells = [];
+
+                for (const cell of row.cells) {
+                    const value = String(cell.innerText || '')
+                        .replace(/\t/g, ' ')
+                        .replace(/\r?\n/g, ' ')
+                        .trim();
+
+                    cells.push(value);
+                }
+
+                lines.push(cells.join('\t'));
+            }
+
+            return lines.join('\n');
+        }
 
 
         // ======================================================
-        // 1. COPY
+        // 2. BACKUP BẢNG
+        // silent=true: auto backup, không hiện alert
         // ======================================================
-
-        document.getElementById('btnCopy').onclick = async function () {
+        async function backupBangKetQuaCCN(silent = true) {
             try {
-                const table = document.getElementById('bangketqua');
-                const rows = table.querySelectorAll('tbody tr');
+                const text = layTextBangKetQuaCCN();
 
-                if (!rows.length) {
-                    alert('Bảng kết quả chưa có dữ liệu để copy.');
-                    return;
-                }
+                if (!text.trim()) return false;
 
-                const lines = [];
+                // Lớp an toàn chính: localStorage
+                localStorage.setItem(CCN_BACKUP_KEY, text);
+                localStorage.setItem(
+                    CCN_BACKUP_KEY + '_TIME',
+                    new Date().toISOString()
+                );
 
-                // CHỈ COPY TBODY
-                // KHÔNG COPY THEAD / DÒNG TIÊU ĐỀ
-                for (const row of rows) {
-                    const cells = [];
-
-                    for (const cell of row.cells) {
-
-                        // Loại bỏ tab / xuống dòng trong nội dung ô
-                        // để khi dán lại không làm lệch cột
-                        const value = String(cell.innerText || '')
-                            .replace(/\t/g, ' ')
-                            .replace(/\r?\n/g, ' ')
-                            .trim();
-
-                        cells.push(value);
+                // Lớp dự phòng thứ hai: Clipboard.
+                // Nếu trình duyệt không cho phép thì localStorage vẫn còn.
+                try {
+                    if (navigator.clipboard?.writeText) {
+                        await navigator.clipboard.writeText(text);
                     }
-
-                    lines.push(cells.join('\t'));
+                } catch (clipboardErr) {
+                    console.warn(
+                        '[CCN 2v1 AUTO BACKUP] Clipboard bị chặn:',
+                        clipboardErr
+                    );
                 }
 
-                const text = lines.join('\n');
+                console.log(
+                    '[CCN 2v1 AUTO BACKUP] Đã backup bảng kết quả:',
+                    new Date().toLocaleTimeString()
+                );
 
-                await navigator.clipboard.writeText(text);
+                if (!silent) {
+                    const rows =
+                        document.querySelectorAll('#bangketqua tbody tr');
 
-                alert(`Đã copy ${rows.length} dòng dữ liệu.`);
+                    alert(
+                        `Đã copy và backup ${rows.length} dòng dữ liệu.`
+                    );
+                }
+
+                return true;
 
             } catch (err) {
+                console.error(
+                    '[CCN 2v1 AUTO BACKUP] Lỗi:',
+                    err
+                );
 
-                console.error('[CCN 2v1 COPY] Lỗi:', err);
+                if (!silent) {
+                    alert('Không backup được dữ liệu.');
+                }
 
-                alert('Không copy được dữ liệu vào clipboard.');
+                return false;
             }
+        }
+
+        // Cho các đoạn khác trên trang có thể gọi
+        window.backupBangKetQuaCCN = backupBangKetQuaCCN;
+
+
+        // ======================================================
+        // 3. NÚT COPY THỦ CÔNG
+        // ======================================================
+        document.getElementById('btnCopy').onclick = async function () {
+            const text = layTextBangKetQuaCCN();
+
+            if (!text.trim()) {
+                alert('Bảng kết quả chưa có dữ liệu để copy.');
+                return;
+            }
+
+            await backupBangKetQuaCCN(false);
         };
 
 
         // ======================================================
-        // 2. HÀM DÁN DỮ LIỆU VÀO BẢNG
+        // 4. HÀM DÁN DỮ LIỆU VÀO BẢNG
         // ======================================================
-
         function danDuLieuCCNVaoBang(text) {
 
             const table = document.getElementById('bangketqua');
             const tbody = table.querySelector('tbody');
 
             if (!text || !text.trim()) {
-                alert('Clipboard không có dữ liệu.');
+                alert('Không có dữ liệu hợp lệ để dán.');
                 return;
             }
 
-            // Tách từng dòng và từng cột theo TAB
             let rows = text
                 .replace(/\r/g, '')
                 .split('\n')
@@ -992,31 +1051,12 @@
                 return;
             }
 
-            // Bảng CCN hiện tại:
-            //
-            // 1 Mã hàng
-            // 2 Tên hàng
-            // 3 Size
-            // 4 SL
-            // 5 ĐVT
-            // 6 Đơn giá
-            // 7 Khuyến mại
-            // 8 Thành tiền
-            // 9 Vị trí
-            // 10 T1
-            // 11 T2
-
+            // 11 cột:
+            // Mã hàng | Tên hàng | Size | SL | ĐVT | Đơn giá
+            // | Khuyến mại | Thành tiền | Vị trí | T1 | T2
             const COL_COUNT = 11;
 
-
-            // ==================================================
-            // TƯƠNG THÍCH DỮ LIỆU COPY CŨ
-            // ==================================================
-            //
-            // Nếu người dùng vô tình lấy dữ liệu từ bản cũ
-            // có dòng tiêu đề thì tự bỏ dòng tiêu đề.
-            //
-
+            // Tương thích dữ liệu cũ có dòng tiêu đề
             const firstCell = String(rows[0]?.[0] || '')
                 .trim()
                 .toLowerCase();
@@ -1031,99 +1071,79 @@
             }
 
             if (!rows.length) {
-                alert('Clipboard chỉ có dòng tiêu đề, không có dữ liệu.');
+                alert('Dữ liệu chỉ có dòng tiêu đề, không có nội dung.');
                 return;
             }
 
-
-            // ==================================================
-            // XÓA BẢNG CŨ
-            // ==================================================
-
+            // Xóa bảng hiện tại rồi dựng lại
             tbody.innerHTML = '';
-
-
-            // ==================================================
-            // TẠO LẠI TỪNG DÒNG
-            // ==================================================
 
             for (const rowArr of rows) {
 
-                // Nếu clipboard thiếu một số cột phía sau
-                // thì tự bổ sung ô rỗng.
                 while (rowArr.length < COL_COUNT) {
                     rowArr.push('');
                 }
 
-                // Nếu dữ liệu thừa cột
-                // thì chỉ lấy đúng 11 cột của bảng CCN.
-                const normalizedRow = rowArr.slice(0, COL_COUNT);
+                const normalizedRow =
+                    rowArr.slice(0, COL_COUNT);
 
-
-                // Bỏ qua dòng hoàn toàn rỗng
-                if (!normalizedRow.some(v => String(v).trim() !== '')) {
+                if (
+                    !normalizedRow.some(
+                        v => String(v).trim() !== ''
+                    )
+                ) {
                     continue;
                 }
 
                 const tr = document.createElement('tr');
 
                 normalizedRow.forEach(value => {
-
                     const td = document.createElement('td');
-
-                    td.textContent = String(value || '').trim();
-
+                    td.textContent =
+                        String(value || '').trim();
                     tr.appendChild(td);
                 });
 
                 tbody.appendChild(tr);
             }
 
-
-            // ==================================================
-            // RẤT QUAN TRỌNG
-            // ĐỒNG BỘ DOM → window.bangKetQua
-            // ==================================================
-
-            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-
+            // Đồng bộ DOM → window.bangKetQua
+            if (
+                typeof window.capNhatBangKetQuaTuDOM ===
+                'function'
+            ) {
                 window.capNhatBangKetQuaTuDOM();
 
-            } else if (typeof capNhatBangKetQuaTuDOM === 'function') {
-
+            } else if (
+                typeof capNhatBangKetQuaTuDOM ===
+                'function'
+            ) {
                 capNhatBangKetQuaTuDOM();
             }
 
-
-            // ==================================================
-            // CẬP NHẬT TỔNG
-            // ==================================================
-
-            if (typeof window.capNhatThongTinTong === 'function') {
-
+            // Cập nhật tổng
+            if (
+                typeof window.capNhatThongTinTong ===
+                'function'
+            ) {
                 window.capNhatThongTinTong(
                     window.bangKetQua || {}
                 );
 
-            } else if (typeof capNhatThongTinTong === 'function') {
-
+            } else if (
+                typeof capNhatThongTinTong ===
+                'function'
+            ) {
                 capNhatThongTinTong(
                     window.bangKetQua || {}
                 );
             }
-
 
             console.log(
                 '[CCN 2v1 PASTE] Đã dán:',
                 rows.length,
                 'dòng'
             );
-
-            console.log(
-                '[CCN 2v1 PASTE] window.bangKetQua:',
-                window.bangKetQua
-            );
-
 
             alert(
                 `Đã dán ${rows.length} dòng vào bảng kết quả.`
@@ -1132,56 +1152,61 @@
 
 
         // ======================================================
-        // 3. NÚT DÁN
+        // 5. NÚT DÁN
+        // Ưu tiên Clipboard, nếu trống/lỗi thì lấy AUTO BACKUP
         // ======================================================
+        document.getElementById('btnPaste').onclick =
+            async function () {
 
-        document.getElementById('btnPaste').onclick = async function () {
+                let text = '';
 
-            try {
+                // Ưu tiên clipboard
+                try {
+                    text =
+                        await navigator.clipboard.readText();
 
-                const text =
-                    await navigator.clipboard.readText();
+                } catch (err) {
+                    console.warn(
+                        '[CCN 2v1 PASTE] Không đọc được clipboard:',
+                        err
+                    );
+                }
 
+                // Clipboard trống hoặc không đọc được
+                // => phục hồi từ localStorage
+                if (!text || !text.trim()) {
+                    text =
+                        localStorage.getItem(
+                            CCN_BACKUP_KEY
+                        ) || '';
+
+                    if (text.trim()) {
+                        console.log(
+                            '[CCN 2v1 PASTE] Đang phục hồi từ AUTO BACKUP.'
+                        );
+                    }
+                }
 
                 if (!text || !text.trim()) {
-
                     alert(
-                        'Clipboard hiện không có dữ liệu.'
+                        'Không có dữ liệu trong Clipboard ' +
+                        'và cũng chưa có bản backup CCN 2→1.'
                     );
-
                     return;
                 }
 
-
                 danDuLieuCCNVaoBang(text);
-
-
-            } catch (err) {
-
-                console.error(
-                    '[CCN 2v1 PASTE] Không đọc được clipboard:',
-                    err
-                );
-
-
-                alert(
-                    'Trình duyệt chưa cho phép đọc clipboard.\n\n' +
-                    'Hãy cho phép Clipboard cho trang web rồi nhấn Dán lại.'
-                );
-            }
-        };
+            };
 
 
         // ======================================================
-        // 4. VẪN CHO PHÉP CTRL + V TRỰC TIẾP VÀO BẢNG
+        // 6. CTRL + V TRỰC TIẾP VÀO BẢNG
         // ======================================================
-
         document
             .getElementById('bangketqua')
             .addEventListener(
                 'paste',
                 function (e) {
-
                     e.preventDefault();
 
                     const text =
@@ -1192,6 +1217,104 @@
                     danDuLieuCCNVaoBang(text);
                 }
             );
+
+
+        // ======================================================
+        // 7. AUTO BACKUP KHI BẢNG THAY ĐỔI
+        // CHỈ CHẠY VỚI PHIẾU MỚI
+        // ======================================================
+        (function initCCNAutoBackup() {
+
+            const tbody =
+                document.querySelector(
+                    '#bangketqua tbody'
+                );
+
+            if (!tbody) {
+                console.warn(
+                    '[CCN 2v1 AUTO BACKUP] Không tìm thấy tbody.'
+                );
+                return;
+            }
+
+            let timer = null;
+
+            function dangLaPhieuCCNMoi() {
+
+                const hdState = String(
+                    document.getElementById(
+                        'hd_state'
+                    )?.value || ''
+                )
+                    .trim()
+                    .toLowerCase();
+
+                // Chỉ phiếu mới mới được backup
+                if (hdState !== 'moi') {
+                    return false;
+                }
+
+                const mode = String(
+                    window.HD_CTX?.mode || ''
+                )
+                    .trim()
+                    .toUpperCase();
+
+                // Đang xem/sửa hóa đơn cũ:
+                // tuyệt đối không ghi đè backup phiếu dở.
+                if (
+                    mode === 'VIEW' ||
+                    mode === 'EDIT'
+                ) {
+                    return false;
+                }
+
+                return true;
+            }
+
+            const observer =
+                new MutationObserver(() => {
+
+                    clearTimeout(timer);
+
+                    // Gom nhiều mutation của một lần render
+                    timer = setTimeout(() => {
+
+                        if (!dangLaPhieuCCNMoi()) {
+                            console.log(
+                                '[CCN 2v1 AUTO BACKUP] Bỏ qua vì không phải phiếu mới.'
+                            );
+                            return;
+                        }
+
+                        const rowCount =
+                            tbody.querySelectorAll(
+                                'tr'
+                            ).length;
+
+                        if (rowCount <= 0) {
+                            return;
+                        }
+
+                        window.backupBangKetQuaCCN?.(true);
+
+                    }, 120);
+                });
+
+            observer.observe(
+                tbody,
+                {
+                    childList: true,
+                    subtree: true,
+                    characterData: true
+                }
+            );
+
+            console.log(
+                '[CCN 2v1 AUTO BACKUP] Đã bật - chỉ backup phiếu mới.'
+            );
+
+        })();
 
 
         // Đóng popup khi bấm ESC hoặc click ra ngoài
@@ -1219,9 +1342,22 @@
 
         async function dangXuatApp() {
             if (window.supabase && window.supabase.auth) {
+                // Giữ riêng bản backup CCN 2→1 qua lần đăng xuất.
+                // Nguyên tắc: chỉ lưu hóa đơn CCN thành công mới được xóa backup.
+                const ccnBackup = localStorage.getItem('CCN2V1_DRAFT_BACKUP');
+                const ccnBackupTime = localStorage.getItem('CCN2V1_DRAFT_BACKUP_TIME');
+
                 await window.supabase.auth.signOut();
                 localStorage.clear();
                 sessionStorage.clear();
+
+                if (ccnBackup) {
+                    localStorage.setItem('CCN2V1_DRAFT_BACKUP', ccnBackup);
+                }
+                if (ccnBackupTime) {
+                    localStorage.setItem('CCN2V1_DRAFT_BACKUP_TIME', ccnBackupTime);
+                }
+
                 localStorage.removeItem("quyen_sua_hoadon");
             }
 
@@ -1710,6 +1846,7 @@
     <script>
         (function () {
             const masp = document.getElementById('masp');
+            const CCN_BACKUP_KEY = 'CCN2V1_DRAFT_BACKUP';
 
             function khoaMasp() {
                 if (!masp) return;
@@ -1718,7 +1855,31 @@
                 masp.setAttribute('readonly', true);
                 masp.style.background = '#ccc';
                 masp.style.cursor = 'not-allowed';
-                masp.placeholder = 'ĐÃ KHÓA SAU KHI LƯU - F5 để làm mới';
+                masp.placeholder =
+                    'ĐÃ KHÓA SAU KHI LƯU - F5 để làm mới';
+            }
+
+            // Chỉ được gọi khi hệ thống đã báo lưu CCN thành công.
+            function xoaBackupCCNSauKhiLuuThanhCong() {
+                try {
+                    localStorage.removeItem(
+                        CCN_BACKUP_KEY
+                    );
+
+                    localStorage.removeItem(
+                        CCN_BACKUP_KEY + '_TIME'
+                    );
+
+                    console.log(
+                        '[CCN 2v1 BACKUP] Đã xóa backup sau khi lưu thành công.'
+                    );
+
+                } catch (err) {
+                    console.error(
+                        '[CCN 2v1 BACKUP] Không xóa được backup:',
+                        err
+                    );
+                }
             }
 
             // ===== BẮT alert() =====
@@ -1726,14 +1887,29 @@
 
             window.alert = function (msg) {
                 try {
-                    if (typeof msg === 'string' && msg.includes('Đã lưu hóa đơn CCN')) {
-                        // 👉 Nếu thấy thông báo thành công → khóa ngay
+                    if (
+                        typeof msg === 'string' &&
+                        msg.includes(
+                            'Đã lưu hóa đơn CCN'
+                        )
+                    ) {
+                        // 1. Khóa nhập tiếp
                         khoaMasp();
-                    }
-                } catch (e) { }
 
-                // vẫn gọi alert gốc
-                return originalAlert.apply(this, arguments);
+                        // 2. Chỉ lúc lưu thành công mới xóa backup
+                        xoaBackupCCNSauKhiLuuThanhCong();
+                    }
+                } catch (e) {
+                    console.error(
+                        '[CCN 2v1 SAVE SUCCESS HOOK] Lỗi:',
+                        e
+                    );
+                }
+
+                return originalAlert.apply(
+                    this,
+                    arguments
+                );
             };
 
         })();
