@@ -2008,6 +2008,17 @@
                     originalGiaLe = null;
                     document.getElementById('addProductForm').style.border = '';
 
+                    // Mã sản phẩm mới luôn bắt đầu với Giá nhập = 1.
+                    // Giá trị 1 chỉ là giá trị tạm để người dùng có thể Enter nhanh sang Giá lẻ.
+                    // Khi hoàn tất Giá lẻ, hệ thống sẽ chặn nếu Giá nhập vẫn = 1
+                    // và đưa focus về ô % CK để người dùng nhập chiết khấu.
+                    if (gianhapInput) {
+                        gianhapInput.value = '1';
+                    }
+                    if (chietKhauInput) {
+                        chietKhauInput.value = '';
+                    }
+
                     // Mã mới: tự gán nhóm hàng theo hậu tố sau dấu "-"
                     autoFillNhomHangFromMasp({ force: true });
                 }
@@ -2029,7 +2040,13 @@
                 // Xóa trắng toàn bộ form
                 document.getElementById('addProductForm').reset();
 
-                // Phòng ngừa: luôn xóa % CK khi bắt đầu sản phẩm mới.
+                // Sản phẩm mới luôn bắt đầu với Giá nhập = 1.
+                // Đây chỉ là giá trị tạm để cho phép Enter nhanh qua ô Giá nhập.
+                if (gianhapInput) {
+                    gianhapInput.value = '1';
+                }
+
+                // Luôn xóa % CK khi bắt đầu sản phẩm mới.
                 if (chietKhauInput) {
                     chietKhauInput.value = '';
                 }
@@ -3086,7 +3103,10 @@ Bạn chưa nhập màu sắc.
 
                 const gianhap = parseMoney(this.value);
 
-                if (gianhap > 0) {
+                // Giá nhập = 1 là giá trị mặc định tạm của sản phẩm mới.
+                // Không tự tạo Giá lẻ = 2 trong trường hợp này; cho người dùng
+                // xuống Giá lẻ và nhập giá bán thực tế trước.
+                if (gianhap > 1) {
 
                     // Giữ nguyên quy tắc cũ:
                     // Giá lẻ = Giá nhập × 1.5
@@ -3179,24 +3199,6 @@ Bạn chưa nhập màu sắc.
                             const pop = document.getElementById('maspSuggestList');
                             if (pop) pop.style.display = 'none';
                             // Không bắt buộc gọi checkExistAndFillForm() ở đây vì blur ngay sau đó sẽ gọi.
-                        }
-
-                        // Giá nhập: bắt buộc phải chọn 1 trong 2 cách nhập
-                        // 1) Nhập trực tiếp Giá nhập, hoặc 2) nhập % CK.
-                        if (order[idx] === 'gianhapInput') {
-                            const gianhap = parseMoney(gianhapInput.value);
-                            const pct = getChietKhauPct();
-
-                            if (gianhap <= 0 && pct <= 0) {
-                                alert('Vui lòng nhập Giá nhập hoặc % chiết khấu trước khi nhập Giá lẻ.');
-
-                                setTimeout(() => {
-                                    chietKhauInput.focus();
-                                    chietKhauInput.select();
-                                }, 10);
-
-                                return;
-                            }
                         }
 
                         // Riêng Giá lẻ: kiểm tra Giá nhập trước khi cho đi tiếp
