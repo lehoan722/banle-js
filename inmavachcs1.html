@@ -1981,6 +1981,12 @@
                     document.getElementById('gianhapInput').value = data.gianhap || '';
                     document.getElementById('gialeInput').value = data.giale || '';
 
+                    // Sản phẩm cũ dùng Giá nhập thật từ database.
+                    // Không giữ % CK của lần thao tác trước để tránh tính lại sai Giá nhập.
+                    if (chietKhauInput) {
+                        chietKhauInput.value = '';
+                    }
+
                     originalGiaNhap = Number(data.gianhap) || 0;
                     originalGiaLe = Number(data.giale) || 0;
                     document.getElementById('mausacInput').value = data.mausac || '';
@@ -2022,6 +2028,12 @@
                 });
                 // Xóa trắng toàn bộ form
                 document.getElementById('addProductForm').reset();
+
+                // Phòng ngừa: luôn xóa % CK khi bắt đầu sản phẩm mới.
+                if (chietKhauInput) {
+                    chietKhauInput.value = '';
+                }
+
                 // Điền lại các trường giữ lại (trừ khi reset hoàn toàn)
                 GIU_LAI_FIELDS.forEach(field => {
                     //if (keepMasp && field === 'masp') return; // Trường hợp muốn giữ lại mã sp cũ
@@ -3167,6 +3179,24 @@ Bạn chưa nhập màu sắc.
                             const pop = document.getElementById('maspSuggestList');
                             if (pop) pop.style.display = 'none';
                             // Không bắt buộc gọi checkExistAndFillForm() ở đây vì blur ngay sau đó sẽ gọi.
+                        }
+
+                        // Giá nhập: bắt buộc phải chọn 1 trong 2 cách nhập
+                        // 1) Nhập trực tiếp Giá nhập, hoặc 2) nhập % CK.
+                        if (order[idx] === 'gianhapInput') {
+                            const gianhap = parseMoney(gianhapInput.value);
+                            const pct = getChietKhauPct();
+
+                            if (gianhap <= 0 && pct <= 0) {
+                                alert('Vui lòng nhập Giá nhập hoặc % chiết khấu trước khi nhập Giá lẻ.');
+
+                                setTimeout(() => {
+                                    chietKhauInput.focus();
+                                    chietKhauInput.select();
+                                }, 10);
+
+                                return;
+                            }
                         }
 
                         // Riêng Giá lẻ: kiểm tra Giá nhập trước khi cho đi tiếp
