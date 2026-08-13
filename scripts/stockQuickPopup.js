@@ -141,13 +141,27 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow: hidden;
+  user-select: none;
 }
 
 .sq-image-fullscreen img {
   max-width: 96vw;
   max-height: 96vh;
   object-fit: contain;
-  cursor: zoom-out;
+  cursor: zoom-in;
+  transform-origin: center center;
+  will-change: transform;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.sq-image-fullscreen.sq-zoomed img {
+  cursor: grab;
+}
+
+.sq-image-fullscreen.sq-dragging img {
+  cursor: grabbing;
 }
 
 .sq-image-fullscreen-close {
@@ -158,6 +172,57 @@
   font-size: 34px;
   font-weight: 700;
   cursor: pointer;
+  z-index: 2;
+}
+
+.sq-image-zoom-tools {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(17,17,17,.72);
+  color: #fff;
+  font-size: 14px;
+}
+
+.sq-image-zoom-tools button {
+  min-width: 34px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 7px;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sq-image-zoom-tools button:hover {
+  background: rgba(255,255,255,.24);
+}
+
+.sq-image-zoom-value {
+  min-width: 48px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.sq-image-zoom-hint {
+  opacity: .82;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+  .sq-image-zoom-tools {
+    display: none;
+  }
 }
 
 .sq-mc {
@@ -2078,28 +2143,194 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     const overlay = document.createElement("div");
     overlay.className = "sq-image-fullscreen";
     overlay.innerHTML = `
+      <div class="sq-image-zoom-tools" title="Cuộn con lăn để zoom, giữ chuột trái để kéo ảnh">
+        <button type="button" class="sq-image-zoom-out" aria-label="Thu nhỏ">−</button>
+        <span class="sq-image-zoom-value">100%</span>
+        <button type="button" class="sq-image-zoom-in" aria-label="Phóng to">+</button>
+        <button type="button" class="sq-image-zoom-reset" aria-label="Đặt lại ảnh">↺</button>
+        <span class="sq-image-zoom-hint">Lăn chuột để zoom · kéo để xem</span>
+      </div>
       <span class="sq-image-fullscreen-close">×</span>
-      <img src="${imgSrc}" alt="${altText}">
+      <img src="${imgSrc}" alt="${altText}" draggable="false">
     `;
 
+    const img = overlay.querySelector("img");
+    const zoomValue = overlay.querySelector(".sq-image-zoom-value");
+    const btnZoomIn = overlay.querySelector(".sq-image-zoom-in");
+    const btnZoomOut = overlay.querySelector(".sq-image-zoom-out");
+    const btnReset = overlay.querySelector(".sq-image-zoom-reset");
+
+    const isTouch = isTouchDevice();
+    const MIN_SCALE = 1;
+    const MAX_SCALE = 6;
+    const STEP = 0.25;
+
+    let scale = 1;
+    let translateX = 0;
+    let translateY = 0;
+    let dragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragBaseX = 0;
+    let dragBaseY = 0;
+
+    function clampScale(v) {
+      return Math.min(MAX_SCALE, Math.max(MIN_SCALE, v));
+    }
+
+    function applyTransform() {
+      if (scale <= 1) {
+        scale = 1;
+        translateX = 0;
+        translateY = 0;
+        overlay.classList.remove("sq-zoomed");
+      } else {
+        overlay.classList.add("sq-zoomed");
+      }
+
+      img.style.transform =
+        `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`;
+
+      if (zoomValue) {
+        zoomValue.textContent = `${Math.round(scale * 100)}%`;
+      }
+    }
+
+    function setScale(nextScale) {
+      const oldScale = scale;
+      scale = clampScale(nextScale);
+
+      // Khi zoom từ mức 100% thì luôn bắt đầu ở tâm ảnh.
+      // Khi thu nhỏ dần, giảm cả độ lệch để ảnh không bị "trôi" khỏi màn hình.
+      if (scale < oldScale && oldScale > 1) {
+        const ratio = (scale - 1) / (oldScale - 1);
+        translateX *= Math.max(0, ratio);
+        translateY *= Math.max(0, ratio);
+      }
+
+      applyTransform();
+    }
+
+    function resetZoom() {
+      scale = 1;
+      translateX = 0;
+      translateY = 0;
+      applyTransform();
+    }
+
+    // PC: lăn con lăn chuột để zoom.
+    overlay.addEventListener("wheel", (e) => {
+      if (isTouch) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const factor = e.deltaY < 0 ? 1.15 : (1 / 1.15);
+      setScale(scale * factor);
+    }, { passive: false });
+
+    // PC: double click ảnh = 100% <-> 250%.
+    img.addEventListener("dblclick", (e) => {
+      if (isTouch) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (scale > 1) {
+        resetZoom();
+      } else {
+        setScale(2.5);
+      }
+    });
+
+    // PC: giữ chuột trái để kéo ảnh sau khi zoom.
+    img.addEventListener("mousedown", (e) => {
+      if (isTouch || e.button !== 0 || scale <= 1) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      dragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      dragBaseX = translateX;
+      dragBaseY = translateY;
+      overlay.classList.add("sq-dragging");
+    });
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+
+    function onMouseMove(e) {
+      if (!dragging) return;
+
+      e.preventDefault();
+      translateX = dragBaseX + (e.clientX - dragStartX);
+      translateY = dragBaseY + (e.clientY - dragStartY);
+      applyTransform();
+    }
+
+    function onMouseUp() {
+      if (!dragging) return;
+      dragging = false;
+      overlay.classList.remove("sq-dragging");
+    }
+
+    function cleanupAndClose() {
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      overlay.remove();
+
+      // chống click đóng ảnh làm đóng luôn popup tồn kho
+      lastStockQuickOpenAt = Date.now();
+    }
+
+    btnZoomIn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setScale(scale + STEP);
+    });
+
+    btnZoomOut?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setScale(scale - STEP);
+    });
+
+    btnReset?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resetZoom();
+    });
+
+    // Bấm nền tối hoặc nút X để đóng.
+    // Trên điện thoại giữ hành vi cũ: bấm vào chính ảnh cũng đóng.
     overlay.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
 
-      if (
-        e.target.classList.contains("sq-image-fullscreen") ||
-        e.target.classList.contains("sq-image-fullscreen-close") ||
-        e.target.tagName === "IMG"
-      ) {
-        overlay.remove();
+      const clickBackdrop = e.target.classList.contains("sq-image-fullscreen");
+      const clickClose = e.target.classList.contains("sq-image-fullscreen-close");
+      const clickImageOnTouch = isTouch && e.target.tagName === "IMG";
 
-        // chống click đóng ảnh làm đóng luôn popup tồn kho
-        lastStockQuickOpenAt = Date.now();
+      if (clickBackdrop || clickClose || clickImageOnTouch) {
+        cleanupAndClose();
       }
     }, true);
 
+    // ESC đóng trình xem ảnh trên PC.
+    function onKeyDown(e) {
+      if (e.key === "Escape") {
+        document.removeEventListener("keydown", onKeyDown);
+        cleanupAndClose();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+
     document.body.appendChild(overlay);
+    applyTransform();
   }
 
   function hideAllPopups() {
