@@ -788,53 +788,36 @@
     async function resizeImageFixed(file, quality = 0.82, masp = '', manv = '') {
       const img = await fileToImage(file);
 
-      // Giữ nguyên tỷ lệ ảnh, chỉ thu nhỏ khi cạnh dài > 1600px.
-      // Không phóng to ảnh nhỏ vì không làm ảnh nét hơn mà chỉ tăng dung lượng.
-      const MAX_LONG_EDGE = 1600;
+      // xác định ảnh ngang hay dọc
+      const isLandscape = img.width >= img.height;
 
-      const srcW = img.naturalWidth || img.width;
-      const srcH = img.naturalHeight || img.height;
-
-      const longEdge = Math.max(srcW, srcH);
-
-      const scale =
-        longEdge > MAX_LONG_EDGE
-          ? MAX_LONG_EDGE / longEdge
-          : 1;
-
-      const targetW = Math.max(1, Math.round(srcW * scale));
-      const targetH = Math.max(1, Math.round(srcH * scale));
+      // target size
+      const targetW = isLandscape ? 1280 : 960;
+      const targetH = isLandscape ? 960 : 1280;
 
       const canvas = document.createElement('canvas');
       canvas.width = targetW;
       canvas.height = targetH;
 
       const ctx = canvas.getContext('2d', { alpha: false });
-
-      // Nền trắng để khi lưu JPEG không có vùng trong suốt
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, targetW, targetH);
 
-      // Vẽ ảnh đúng tỷ lệ, không méo, không crop
-      ctx.drawImage(img, 0, 0, targetW, targetH);
+      // Scale để "fit" vào khung target (giữ tỷ lệ, không méo)
+      const scale = Math.min(targetW / img.width, targetH / img.height);
+      const drawW = Math.round(img.width * scale);
+      const drawH = Math.round(img.height * scale);
+      const dx = Math.round((targetW - drawW) / 2);
+      const dy = Math.round((targetH - drawH) / 2);
 
-      // Giữ nguyên chức năng ghi mã SP + mã nhân viên
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+
+      // vẽ chữ (đang dùng hàm drawBottomLeftTag của bạn)
       drawBottomLeftTag(ctx, targetW, targetH, masp, manv);
 
-      return await new Promise((res, rej) => {
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              res(blob);
-            } else {
-              rej(new Error('Không thể tạo ảnh JPEG'));
-            }
-          },
-          'image/jpeg',
-          quality
-        );
-      });
+      return await new Promise(res => canvas.toBlob(b => res(b), 'image/jpeg', quality));
     }
+
 
     function drawBottomLeftTag(ctx, w, h, masp, manv) {
       const pad = Math.max(10, Math.round(Math.min(w, h) * 0.02));
