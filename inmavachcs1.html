@@ -1981,11 +1981,10 @@
                     document.getElementById('gianhapInput').value = data.gianhap || '';
                     document.getElementById('gialeInput').value = data.giale || '';
 
-                    // Sản phẩm cũ dùng Giá nhập thật từ database.
-                    // Không giữ % CK của lần thao tác trước để tránh tính lại sai Giá nhập.
-                    if (chietKhauInput) {
-                        chietKhauInput.value = '';
-                    }
+                    // Sản phẩm cũ dùng Giá nhập/Giá lẻ thật từ database và
+                    // tự hiển thị % CK tương ứng để người dùng luôn thấy đủ 3 thông số.
+                    chietKhauDoNguoiDungNhap = false;
+                    tinhChietKhauTuGia();
 
                     originalGiaNhap = Number(data.gianhap) || 0;
                     originalGiaLe = Number(data.giale) || 0;
@@ -2018,6 +2017,7 @@
                     if (chietKhauInput) {
                         chietKhauInput.value = '';
                     }
+                    chietKhauDoNguoiDungNhap = false;
 
                     // Mã mới: tự gán nhóm hàng theo hậu tố sau dấu "-"
                     autoFillNhomHangFromMasp({ force: true });
@@ -2050,6 +2050,7 @@
                 if (chietKhauInput) {
                     chietKhauInput.value = '';
                 }
+                chietKhauDoNguoiDungNhap = false;
 
                 // Điền lại các trường giữ lại (trừ khi reset hoàn toàn)
                 GIU_LAI_FIELDS.forEach(field => {
@@ -2197,7 +2198,7 @@
                 }
 
                 // Nếu dùng % CK thì tính lại Giá nhập lần cuối
-                if (getChietKhauPct() > 0) {
+                if (chietKhauDoNguoiDungNhap && getChietKhauPct() > 0) {
                     tinhGiaNhapTuChietKhau();
                 }
 
@@ -2601,6 +2602,40 @@ Bạn chưa nhập màu sắc.
                 return Number.isFinite(pct) ? pct : 0;
             }
 
+            // true = % CK vừa được người dùng chủ động nhập/sửa.
+            // false = % CK chỉ đang được hệ thống tự tính để hiển thị.
+            // Biến này giúp tránh dùng % đã làm tròn để tính ngược lại Giá nhập.
+            let chietKhauDoNguoiDungNhap = false;
+
+            function formatChietKhauPct(value) {
+                const n = Number(value);
+                if (!Number.isFinite(n) || n <= 0) return '';
+                const rounded = Math.round(n * 100) / 100;
+                return Number.isInteger(rounded)
+                    ? String(rounded)
+                    : String(rounded).replace('.', ',');
+            }
+
+            // Tự tính % CK từ Giá nhập và Giá lẻ:
+            // % CK = (Giá lẻ - Giá nhập) / Giá lẻ * 100
+            function tinhChietKhauTuGia() {
+                const gianhap = parseMoney(gianhapInput.value);
+                const giale = parseMoney(gialeInput.value);
+
+                // Giá nhập = 1 là giá trị tạm của sản phẩm mới, không dùng để
+                // hiển thị % CK gần 100% vì sẽ gây hiểu nhầm cho người dùng.
+                if (gianhap <= 1 || giale <= 0 || gianhap >= giale) {
+                    chietKhauInput.value = '';
+                    chietKhauDoNguoiDungNhap = false;
+                    return false;
+                }
+
+                const pct = ((giale - gianhap) / giale) * 100;
+                chietKhauInput.value = formatChietKhauPct(pct);
+                chietKhauDoNguoiDungNhap = false;
+                return true;
+            }
+
 
             // Tính giá nhập từ Giá lẻ và % CK
             function tinhGiaNhapTuChietKhau() {
@@ -2641,10 +2676,12 @@ Bạn chưa nhập màu sắc.
                     return false;
                 }
 
-                // Nếu đang nhập theo % CK thì tính giá nhập trước
+                // Chỉ tính ngược Giá nhập khi % CK là do người dùng chủ động nhập.
+                // Nếu % CK chỉ là số tự hiển thị từ Giá nhập/Giá lẻ thì không được
+                // dùng số % đã làm tròn để tính ngược, tránh làm lệch Giá nhập.
                 const pct = getChietKhauPct();
 
-                if (pct > 0) {
+                if (chietKhauDoNguoiDungNhap && pct > 0) {
                     if (pct >= 100) {
                         if (showMessage) {
                             alert('% chiết khấu phải lớn hơn 0 và nhỏ hơn 100.');
@@ -3088,13 +3125,19 @@ Bạn chưa nhập màu sắc.
             // =====================================================
 
             gianhapInput.addEventListener('input', function () {
+                // Giá nhập vừa được người dùng chủ động sửa -> % CK trở thành
+                // thông số tự hiển thị theo Giá nhập + Giá lẻ hiện có.
+                chietKhauDoNguoiDungNhap = false;
 
                 const gianhap = parseMoney(this.value);
-
-                if (gianhap > 0) {
-                    // Người dùng chuyển sang phương pháp nhập giá trực tiếp
-                    // => bỏ % CK để tránh 2 nguồn dữ liệu mâu thuẫn
+                if (gianhap <= 1) {
                     chietKhauInput.value = '';
+                    return;
+                }
+
+                // Nếu đã có Giá lẻ thì cập nhật % CK ngay để người dùng luôn nhìn thấy.
+                if (parseMoney(gialeInput.value) > 0) {
+                    tinhChietKhauTuGia();
                 }
             });
 
@@ -3115,7 +3158,12 @@ Bạn chưa nhập màu sắc.
                     this.value = formatMoneyInput(gianhap);
                     gialeInput.value = formatMoneyInput(giale);
 
+                    // Đồng thời tự hiển thị % CK tương ứng với 2 mức giá.
+                    tinhChietKhauTuGia();
                     syncQuanLyKichCoByGiaLe();
+                } else {
+                    chietKhauInput.value = '';
+                    chietKhauDoNguoiDungNhap = false;
                 }
             });
 
@@ -3125,6 +3173,8 @@ Bạn chưa nhập màu sắc.
 
             chietKhauInput.addEventListener('input', function () {
 
+                // Từ thời điểm này % CK là thông số người dùng chủ động điều khiển.
+                chietKhauDoNguoiDungNhap = true;
                 let pct = getChietKhauPct();
 
                 // Khi người dùng bắt đầu nhập %,
@@ -3204,8 +3254,9 @@ Bạn chưa nhập màu sắc.
                         // Riêng Giá lẻ: kiểm tra Giá nhập trước khi cho đi tiếp
                         if (order[idx] === 'gialeInput') {
 
-                            // Nếu đang dùng % CK thì tính Giá nhập
-                            if (getChietKhauPct() > 0) {
+                            // Chỉ tính Giá nhập từ % CK nếu % này do người dùng chủ động nhập.
+                            // Nếu % CK đang là giá trị tự hiển thị thì giữ nguyên Giá nhập.
+                            if (chietKhauDoNguoiDungNhap && getChietKhauPct() > 0) {
                                 tinhGiaNhapTuChietKhau();
                             }
 
@@ -3263,6 +3314,19 @@ Bạn chưa nhập màu sắc.
             attachEnterNav(formOrder);
             // [ADD] Đồng bộ khi rời ô và khi nhấn Enter tại ô Giá lẻ
             if (gialeInput) {
+                // Người dùng sửa Giá lẻ -> giữ nguyên Giá nhập và tự tính lại % CK.
+                gialeInput.addEventListener('input', () => {
+                    chietKhauDoNguoiDungNhap = false;
+                    tinhChietKhauTuGia();
+                });
+
+                gialeInput.addEventListener('change', () => {
+                    const giale = parseMoney(gialeInput.value);
+                    if (giale > 0) gialeInput.value = formatMoneyInput(giale);
+                    tinhChietKhauTuGia();
+                    syncQuanLyKichCoByGiaLe();
+                });
+
                 gialeInput.addEventListener('blur', syncQuanLyKichCoByGiaLe);
                 gialeInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
