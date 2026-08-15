@@ -600,7 +600,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     } catch (err) {
       console.error("Passkey login error:", err);
       errorEl.style.color = "red";
-      errorEl.textContent = "❌ Không xác nhận được Passkey. Anh/chị có thể đăng nhập bằng mật khẩu.";
+      errorEl.textContent = "❌ Không xác nhận được Passkey. Bạn có thể đăng nhập bằng mật khẩu.";
     } finally {
       if (btnPasskey) btnPasskey.disabled = !passkeyManager.isSupported();
     }
