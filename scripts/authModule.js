@@ -1,6 +1,7 @@
 // scripts/authModule.js
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/+esm";
 import { initCopyDuLieu } from "./copyDuLieu.js";
+import { createPasskeyManager } from "./passkeyModule.js";
 
 // =======================================================
 // 1) CẤU HÌNH SUPABASE DÙNG CHUNG (frontend anon key)
@@ -213,6 +214,13 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     onLoginSuccess,
   } = options;
 
+  // ===== PASSKEY POC =====
+  // Client danh tính riêng, KHÔNG ghi đè session Supabase nghiệp vụ/warehouse.
+  const passkeyManager = createPasskeyManager({
+    supabaseUrl: SUPABASE_URL,
+    supabaseAnonKey: SUPABASE_KEY,
+  });
+
   // ✅ đăng ký 1 lần để các trang gọi window.capNhatQuyenGiaoDien()
   registerAuthStateListener();
   registerGlobalUiPermissionHook();
@@ -265,7 +273,14 @@ export function khoiTaoDangNhapDungChung(options = {}) {
              placeholder="Nhập mật khẩu"
              style="width:100%;padding:6px;margin-bottom:12px;" /><br />
 
-      <button type="submit" style="padding: 8px 16px;">Đăng nhập</button>
+      <button type="button" id="btn-login-passkey"
+              style="padding:8px 16px; margin-right:8px; background:#111827; color:white; border:0; border-radius:6px;">
+        🔐 Khuôn mặt / vân tay
+      </button>
+      <button type="submit" style="padding:8px 16px;">Đăng nhập bằng mật khẩu</button>
+      <div style="font-size:12px;color:#666;margin-top:8px;line-height:1.35;">
+        Lần đầu vẫn đăng nhập bằng mật khẩu để thiết lập Passkey.
+      </div>
       <p id="login-error" style="color:red; margin-top:10px;"></p>
     </form>
   </div>
@@ -276,6 +291,13 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   const passInput = document.getElementById("login-password-nv");
   const errorEl = document.getElementById("login-error");
   const form = document.getElementById("form-login-dungchung");
+  const btnPasskey = document.getElementById("btn-login-passkey");
+
+  if (btnPasskey && !passkeyManager.isSupported()) {
+    btnPasskey.disabled = true;
+    btnPasskey.title = "Thiết bị/trình duyệt chưa hỗ trợ Passkey hoặc trang chưa chạy HTTPS";
+    btnPasskey.style.opacity = "0.55";
+  }
 
   // ===== Email dropdown gợi ý (vừa chọn vừa gõ) =====
   const emailDatalist = document.getElementById("email-suggest");
@@ -522,6 +544,112 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     };
   }
 
+  async function apDungKetQuaPasskey(result, cs) {
+    if (!result?.ok || !result?.appSession?.access_token || !result?.appSession?.refresh_token) {
+      throw new Error("Kết quả Passkey không có session hợp lệ");
+    }
+
+    // Chuyển session danh tính -> session app chính.
+    // Employee: appSession là warehouse session.
+    // Admin: appSession là session admin cá nhân.
+    const { data: setData, error: setErr } = await window.supabase.auth.setSession({
+      access_token: result.appSession.access_token,
+      refresh_token: result.appSession.refresh_token,
+    });
+    if (setErr) throw setErr;
+
+    const p = result.profile || {};
+    const isAdmin = result.kind === "admin" || p.is_admin === true;
+
+    localStorage.setItem("diadiem", cs || macDinhDiaDiem || "cs1");
+    localStorage.setItem("manv", String(p.manv || "").trim().toUpperCase());
+    localStorage.setItem("tennv", String(p.tennv || "").trim());
+    localStorage.setItem("quyen_sua_hoadon", p.sua_hoadon ? "true" : "false");
+    localStorage.setItem("is_admin", isAdmin ? "true" : "false");
+    localStorage.setItem("last_login_identifier", String(p.manv || "PASSKEY"));
+
+    syncGlobalsFromLocalStorageGlobal();
+
+    return {
+      nhanvienLike: {
+        ...p,
+        is_admin: isAdmin,
+      },
+      context: {
+        diadiem: cs || macDinhDiaDiem || "cs1",
+        nhanvien: p,
+        session: setData?.session || result.appSession,
+        login_method: "passkey",
+      },
+    };
+  }
+
+  async function dangNhapBangPasskey() {
+    const cs = (csSelect.value || macDinhDiaDiem || "cs1").toLowerCase();
+    errorEl.style.color = "#333";
+    errorEl.textContent = "Đang chờ xác nhận khuôn mặt / vân tay…";
+    if (btnPasskey) btnPasskey.disabled = true;
+
+    try {
+      const result = await passkeyManager.signIn({ diadiem: cs });
+      const normalized = await apDungKetQuaPasskey(result, cs);
+
+      errorEl.style.color = "green";
+      errorEl.textContent = `✅ Đã xác nhận ${normalized.nhanvienLike?.manv || "người dùng"}`;
+      showAppAfterLogin(normalized.nhanvienLike, normalized.context);
+    } catch (err) {
+      console.error("Passkey login error:", err);
+      errorEl.style.color = "red";
+      errorEl.textContent = "❌ Không xác nhận được Passkey. Anh/chị có thể đăng nhập bằng mật khẩu.";
+    } finally {
+      if (btnPasskey) btnPasskey.disabled = !passkeyManager.isSupported();
+    }
+  }
+
+  async function goiYDangKyPasskeySauPassword({ kind, identifier, password, cs }) {
+    if (!passkeyManager.isSupported()) return;
+
+    const key = `passkey_enrolled_hint:${String(identifier || "").toLowerCase()}`;
+    try {
+      if (localStorage.getItem(key) === "1") return;
+    } catch { }
+
+    // Chỉ POC trên banlemtcs1 trước. Khi test ổn có thể bỏ điều kiện này để áp dụng toàn hệ thống.
+    const path = (location.pathname || "").toLowerCase();
+    if (!path.includes("banlemtcs1")) return;
+
+    setTimeout(async () => {
+      const ok = window.confirm(
+        "Bật đăng nhập nhanh bằng khuôn mặt / vân tay trên thiết bị này?\n\n" +
+        "Lần sau có thể dùng Passkey thay cho việc nhập lại mật khẩu."
+      );
+      if (!ok) return;
+
+      try {
+        if (kind === "admin") {
+          await passkeyManager.enrollAdmin({ email: identifier, password });
+        } else {
+          await passkeyManager.enrollEmployee({ manv: identifier, password, diadiem: cs });
+        }
+        try { localStorage.setItem(key, "1"); } catch { }
+        alert("✅ Đã thiết lập đăng nhập khuôn mặt / vân tay thành công trên tài khoản này.");
+      } catch (err) {
+        console.error("Passkey enroll error:", err);
+        const code = err?.code || "";
+        if (code === "webauthn_credential_exists" || String(err?.message || "").includes("already")) {
+          try { localStorage.setItem(key, "1"); } catch { }
+          alert("Passkey này đã được đăng ký trước đó.");
+          return;
+        }
+        alert("Chưa thiết lập được Passkey: " + (err?.message || "Lỗi không xác định"));
+      }
+    }, 700);
+  }
+
+  if (btnPasskey) {
+    btnPasskey.addEventListener("click", dangNhapBangPasskey);
+  }
+
   async function xuLyDangNhap(e) {
     e.preventDefault();
 
@@ -551,6 +679,12 @@ export function khoiTaoDangNhapDungChung(options = {}) {
         errorEl.style.color = "green";
         errorEl.textContent = "✅ Đăng nhập thành công!";
         showAppAfterLogin(emp.nhanvienLike, emp.context);
+        goiYDangKyPasskeySauPassword({
+          kind: "employee",
+          identifier: manvUpper,
+          password,
+          cs,
+        });
         return;
       }
 
@@ -577,6 +711,12 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       errorEl.style.color = "green";
       errorEl.textContent = "✅ Đăng nhập thành công!";
       showAppAfterLogin(adm.nhanvienLike, adm.context);
+      goiYDangKyPasskeySauPassword({
+        kind: "admin",
+        identifier: email,
+        password,
+        cs,
+      });
     } catch (err) {
       console.error(err);
       errorEl.textContent = "❌ Không đăng nhập được";
