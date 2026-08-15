@@ -204,6 +204,9 @@ async function hydrateCurrentUserFromSession(macDinhDiaDiem = "cs1") {
 // =======================================================
 // 4) MODULE ĐĂNG NHẬP DÙNG CHUNG
 // =======================================================
+
+let globalPasskeyManager = null;
+
 export function khoiTaoDangNhapDungChung(options = {}) {
   const {
     loginContainerId = "login-container",
@@ -220,6 +223,8 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     supabaseUrl: SUPABASE_URL,
     supabaseAnonKey: SUPABASE_KEY,
   });
+
+  globalPasskeyManager = passkeyManager;
 
   // ✅ đăng ký 1 lần để các trang gọi window.capNhatQuyenGiaoDien()
   registerAuthStateListener();
@@ -614,10 +619,6 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       if (localStorage.getItem(key) === "1") return;
     } catch { }
 
-    // Chỉ POC trên banlemtcs1 trước. Khi test ổn có thể bỏ điều kiện này để áp dụng toàn hệ thống.
-    const path = (location.pathname || "").toLowerCase();
-    if (!path.includes("banlemtcs1")) return;
-
     setTimeout(async () => {
       const ok = window.confirm(
         "Bật đăng nhập nhanh bằng khuôn mặt / vân tay trên thiết bị này?\n\n" +
@@ -787,15 +788,20 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 // 5) ĐĂNG XUẤT DÙNG CHUNG
 // =======================================================
 // ==== 3. HÀM ĐĂNG XUẤT DÙNG CHUNG ====
+
 export async function dangXuatDungChung(options = {}) {
   const {
     loginContainerId = 'login-container',
     appContainerId = 'app-container',
     clearDraft = true,
-    reloadPage = true, // ✅ mặc định: logout xong reload luôn cho ổn định
+    reloadPage = true,
   } = options;
 
-  // 1) Sign out Supabase
+  // =====================================================
+  // 1) Logout session APP chính
+  //    - Nhân viên: warehouse session
+  //    - Admin: admin Supabase session
+  // =====================================================
   try {
     if (window.supabase && window.supabase.auth) {
       await window.supabase.auth.signOut();
@@ -804,40 +810,80 @@ export async function dangXuatDungChung(options = {}) {
     console.warn('Lỗi khi signOut Supabase:', err);
   }
 
-  // 2) Chỉ xóa key liên quan auth (không clear all để khỏi mất config khác)
+  // =====================================================
+  // 2) Logout session DANH TÍNH PASSKEY
+  //
+  // LƯU Ý:
+  // - Chỉ logout session Passkey hiện tại.
+  // - KHÔNG xóa Passkey đã đăng ký trên iPhone/Android/Windows.
+  // - Lần sau người dùng vẫn đăng nhập lại bằng Face ID/vân tay.
+  // =====================================================
+  try {
+    if (
+      globalPasskeyManager &&
+      typeof globalPasskeyManager.signOutIdentity === "function"
+    ) {
+      await globalPasskeyManager.signOutIdentity();
+    }
+  } catch (err) {
+    console.warn("Không logout được Passkey identity session:", err);
+  }
+
+  // =====================================================
+  // 3) Giữ lại cơ sở + identifier để lần sau đăng nhập nhanh
+  // =====================================================
   const keepBranch = localStorage.getItem('diadiem');
   const keepId = localStorage.getItem('last_login_identifier');
 
+  // Xóa profile đăng nhập hiện tại
   localStorage.removeItem('manv');
   localStorage.removeItem('tennv');
   localStorage.removeItem('is_admin');
   localStorage.removeItem('quyen_sua_hoadon');
 
+  // Xóa cờ unlock trang nhạy cảm hiện tại
   try {
     const p = (location.pathname || "").toLowerCase();
     sessionStorage.removeItem(`ccn_unlocked:${p}`);
   } catch (e) { }
 
-  // sessionStorage: xóa sạch cho chắc (reload cũng sẽ sạch)
-  try { sessionStorage.clear(); } catch (e) { }
+  // Xóa sessionStorage
+  try {
+    sessionStorage.clear();
+  } catch (e) { }
 
-  // giữ lại cơ sở + identifier để lần sau chọn nhanh
-  if (keepBranch) localStorage.setItem('diadiem', keepBranch);
-  if (keepId) localStorage.setItem('last_login_identifier', keepId);
+  // Khôi phục thông tin tiện ích cho lần login tiếp theo
+  if (keepBranch) {
+    localStorage.setItem('diadiem', keepBranch);
+  }
 
-  // 3) Ẩn app / hiện login (phòng trường hợp reload bị chặn)
+  if (keepId) {
+    localStorage.setItem('last_login_identifier', keepId);
+  }
+
+  // =====================================================
+  // 4) Ẩn APP / hiện form đăng nhập
+  // =====================================================
   const loginContainer = document.getElementById(loginContainerId);
   const appContainer = document.getElementById(appContainerId);
+
   if (loginContainer) loginContainer.style.display = '';
   if (appContainer) appContainer.style.display = 'none';
 
-  // 4) Xóa draft nếu muốn
+  // =====================================================
+  // 5) Xóa draft nếu yêu cầu
+  // =====================================================
   if (clearDraft) {
     localStorage.removeItem('draft_hoadon');
-    try { sessionStorage.removeItem('draft_hoadon'); } catch (e) { }
+
+    try {
+      sessionStorage.removeItem('draft_hoadon');
+    } catch (e) { }
   }
 
-  // 5) ✅ Ổn định nhất: reload trang để tránh bị init/lắng nghe sự kiện nhiều lần
+  // =====================================================
+  // 6) Reload để reset sạch các listener/module
+  // =====================================================
   if (reloadPage) {
     try {
       location.reload();
