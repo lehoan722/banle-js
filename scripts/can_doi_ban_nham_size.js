@@ -23,6 +23,43 @@
       .toLowerCase();
   }
 
+  function getMaUuTien() {
+    const raw = String(byId("maUuTien")?.value || "");
+
+    const out = [];
+    const seen = new Set();
+
+    raw.split(/\r?\n/).forEach(line => {
+      const masp = String(line || "").trim().toUpperCase();
+      if (!masp || seen.has(masp)) return;
+      seen.add(masp);
+      out.push(masp);
+    });
+
+    return out;
+  }
+
+  function sapXepTheoMaUuTien(list) {
+    const maUuTien = getMaUuTien();
+    if (!maUuTien.length) return list;
+
+    const thuTu = new Map(maUuTien.map((masp, index) => [masp, index]));
+
+    return list
+      .map((row, originalIndex) => ({
+        row,
+        originalIndex,
+        priority: thuTu.has(String(row?.masp || "").trim().toUpperCase())
+          ? thuTu.get(String(row?.masp || "").trim().toUpperCase())
+          : Number.MAX_SAFE_INTEGER
+      }))
+      .sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        return a.originalIndex - b.originalIndex;
+      })
+      .map(item => item.row);
+  }
+
   function setStatus(text) {
     const el = byId("status");
     if (el) el.textContent = text;
@@ -176,10 +213,20 @@
       }
 
       rows = Array.isArray(data?.rows) ? data.rows : [];
+      rows = sapXepTheoMaUuTien(rows);
       render();
 
       const coTheXuLy = rows.filter(r => r.ct_id && r.trangthai === "cho_xu_ly").length;
-      setStatus(`Tìm thấy ${rows.length} mã, có thể xử lý ${coTheXuLy} mã.`);
+      const maUuTien = getMaUuTien();
+      const soDongUuTien = maUuTien.length
+        ? rows.filter(r => maUuTien.includes(String(r?.masp || "").trim().toUpperCase())).length
+        : 0;
+
+      setStatus(
+        maUuTien.length
+          ? `Tìm thấy ${rows.length} mã, ưu tiên ${soDongUuTien} dòng theo danh sách nhập, có thể xử lý ${coTheXuLy} mã.`
+          : `Tìm thấy ${rows.length} mã, có thể xử lý ${coTheXuLy} mã.`
+      );
     } catch (err) {
       console.error(err);
       alert("Lỗi hệ thống khi tải danh sách.");

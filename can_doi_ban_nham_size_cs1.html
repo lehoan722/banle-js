@@ -32,9 +32,25 @@
 
     input,
     select,
-    button {
+    button,
+    textarea {
       font-size: 16px;
       padding: 6px;
+      box-sizing: border-box;
+    }
+
+    .ma-uu-tien-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #maUuTien {
+      width: 190px;
+      height: 68px;
+      resize: vertical;
+      font-family: Arial, sans-serif;
+      line-height: 1.25;
     }
 
     button {
@@ -117,6 +133,12 @@
         <input id="denNgay" type="date">
       </label>
 
+      <label class="ma-uu-tien-wrap">
+        <span>Mã ưu tiên:</span>
+        <textarea id="maUuTien"
+          placeholder="Mỗi dòng 1 mã SP&#10;VD:&#10;1YD&#10;2ABC"></textarea>
+      </label>
+
       <button id="btnTai">Tải danh sách</button>
       <button id="btnCanDoi">Cân đối dòng đã chọn</button>
       <button id="btnTaiLichSu" type="button">Tải lịch sử</button>
@@ -173,6 +195,8 @@
         document.getElementById("app-container").style.display = "block";
       }
     });
+
+    
   </script>
 
   <script src="./scripts/stockQuickPopup.js?v=1"></script>
