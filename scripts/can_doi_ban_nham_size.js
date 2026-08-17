@@ -39,22 +39,27 @@
     return out;
   }
 
-  function sapXepTheoMaUuTien(list) {
+  function locVaSapXepTheoMaUuTien(list) {
     const maUuTien = getMaUuTien();
+
+    // Nếu ô mã ưu tiên trống: giữ nguyên hoạt động cũ.
     if (!maUuTien.length) return list;
 
     const thuTu = new Map(maUuTien.map((masp, index) => [masp, index]));
 
+    // Nếu có nhập mã: chỉ giữ những dòng có mã nằm trong textarea,
+    // đồng thời sắp xếp theo đúng thứ tự mã người dùng nhập.
     return list
       .map((row, originalIndex) => ({
         row,
         originalIndex,
-        priority: thuTu.has(String(row?.masp || "").trim().toUpperCase())
-          ? thuTu.get(String(row?.masp || "").trim().toUpperCase())
-          : Number.MAX_SAFE_INTEGER
+        maspChuan: String(row?.masp || "").trim().toUpperCase()
       }))
+      .filter(item => thuTu.has(item.maspChuan))
       .sort((a, b) => {
-        if (a.priority !== b.priority) return a.priority - b.priority;
+        const pa = thuTu.get(a.maspChuan);
+        const pb = thuTu.get(b.maspChuan);
+        if (pa !== pb) return pa - pb;
         return a.originalIndex - b.originalIndex;
       })
       .map(item => item.row);
@@ -212,21 +217,28 @@
         return;
       }
 
-      rows = Array.isArray(data?.rows) ? data.rows : [];
-      rows = sapXepTheoMaUuTien(rows);
+      const allRows = Array.isArray(data?.rows) ? data.rows : [];
+      const maUuTien = getMaUuTien();
+
+      rows = locVaSapXepTheoMaUuTien(allRows);
       render();
 
       const coTheXuLy = rows.filter(r => r.ct_id && r.trangthai === "cho_xu_ly").length;
-      const maUuTien = getMaUuTien();
-      const soDongUuTien = maUuTien.length
-        ? rows.filter(r => maUuTien.includes(String(r?.masp || "").trim().toUpperCase())).length
-        : 0;
 
-      setStatus(
-        maUuTien.length
-          ? `Tìm thấy ${rows.length} mã, ưu tiên ${soDongUuTien} dòng theo danh sách nhập, có thể xử lý ${coTheXuLy} mã.`
-          : `Tìm thấy ${rows.length} mã, có thể xử lý ${coTheXuLy} mã.`
-      );
+      if (maUuTien.length) {
+        const maTimThay = new Set(
+          rows.map(r => String(r?.masp || "").trim().toUpperCase())
+        );
+        const maKhongTimThay = maUuTien.filter(masp => !maTimThay.has(masp));
+
+        setStatus(
+          maKhongTimThay.length
+            ? `Theo mã nhập: tìm thấy ${rows.length} dòng, có thể xử lý ${coTheXuLy} dòng. Không tìm thấy: ${maKhongTimThay.join(", ")}`
+            : `Theo mã nhập: tìm thấy ${rows.length} dòng, có thể xử lý ${coTheXuLy} dòng.`
+        );
+      } else {
+        setStatus(`Tìm thấy ${rows.length} mã, có thể xử lý ${coTheXuLy} mã.`);
+      }
     } catch (err) {
       console.error(err);
       alert("Lỗi hệ thống khi tải danh sách.");
