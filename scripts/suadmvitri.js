@@ -527,14 +527,26 @@ async function saveData() {
       if (resultError || !returnedId) {
         fail++;
         errors.push(`Dòng ${item.index + 1} (${item.row.ma_vitri}): ${resultError?.message || 'Không ghi được'}`);
-        hot.setDataAtRowProp(item.index, 'trangthai', 'LỖI', 'system');
       } else {
         ok++;
-        hot.setDataAtRowProp(item.index, 'id', returnedId, 'system');
-        hot.setDataAtRowProp(item.index, 'trangthai', 'OK', 'system');
       }
     }
-    hot.render();
+
+    // QUAN TRỌNG: Không gọi setDataAtRowProp trong vòng lặp lưu.
+    // Handsontable có minSpareRows và có thể thay đổi số dòng vật lý khi ghi id/trạng thái,
+    // gây lỗi "Assertion failed: Expecting an unsigned number" và làm dừng batch sau dòng đầu.
+    // Chỉ cập nhật giao diện SAU KHI toàn bộ request DB đã chạy xong.
+    try {
+      checked.validRows.forEach((item) => {
+        const rowError = errors.find(e => e.startsWith(`Dòng ${item.index + 1} (`));
+        if (item.index >= 0 && item.index < hot.countSourceRows()) {
+          hot.setDataAtRowProp(item.index, 'trangthai', rowError ? 'LỖI' : 'OK', 'system');
+        }
+      });
+      hot.render();
+    } catch (uiErr) {
+      console.warn('[suadmvitri] DB save completed; skipped per-row UI status update:', uiErr);
+    }
 
     if (fail) {
       setMessage(`Đã lưu ${ok} dòng, ${fail} dòng lỗi. Đã đồng bộ ${migratedProducts} lượt SP. ${errors.slice(0,3).join(' | ')}`, 'warn');
