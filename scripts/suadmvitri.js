@@ -170,7 +170,7 @@ function initTable(rows = []) {
   ];
 
   hot = new Handsontable(container, {
-    data: rows.length ? rows : Array.from({length:25}, makeEmptyRow),
+    data: rows.length ? rows : [makeEmptyRow()],
     columns,
     colHeaders:['Chọn','Mã vị trí','Tên vị trí','Loại','Cơ sở','Khu vực','Thứ tự','Active','Ghi chú','Số SP','Trạng thái'],
     rowHeaders:true,
@@ -255,10 +255,36 @@ async function fetchUsageMap(coSo, loai) {
   return map;
 }
 
+function resetBlankTable(message = 'Bảng đã làm trống. Bạn có thể dán dữ liệu từ Excel hoặc nhập Mã vị trí rồi bấm Tải dữ liệu.') {
+  currentMode = selectedMode();
+  originalById = new Map();
+  loadedSnapshot = '[]';
+  isDirty = false;
+  initTable([makeEmptyRow()]);
+  if ($('filter-text')) $('filter-text').value = '';
+  setMessage(message, 'ok');
+}
+
+function getLookupPositionCodesFromTable() {
+  if (!hot) return [];
+  const seen = new Set();
+  const result = [];
+  for (const row of hot.getSourceData()) {
+    const code = normalizeCode(row?.ma_vitri);
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    result.push(code);
+  }
+  return result;
+}
+
 async function loadData() {
   currentMode = selectedMode();
+  const lookupCodes = getLookupPositionCodesFromTable();
   $('btn-load').disabled = true;
-  setMessage('Đang tải danh mục vị trí...');
+  setMessage(lookupCodes.length
+    ? `Đang tải dữ liệu cho ${lookupCodes.length} mã vị trí đã nhập...`
+    : 'Đang tải danh mục vị trí...');
   try {
     const { data, error } = await supabase
       .from('dm_vitri')
@@ -270,9 +296,12 @@ async function loadData() {
     if (error) throw error;
 
     // Tương thích dữ liệu cũ: kho/KHO, treomau/TREOMAU/BAY_MAU...
-    const sourceRows = (data || []).filter(r =>
-      currentMode.loai === 'ALL' || normalizeLoai(r.loai_vitri) === currentMode.loai
-    );
+    const lookupSet = new Set(lookupCodes);
+    const sourceRows = (data || []).filter(r => {
+      if (currentMode.loai !== 'ALL' && normalizeLoai(r.loai_vitri) !== currentMode.loai) return false;
+      if (lookupSet.size && !lookupSet.has(normalizeCode(r.ma_vitri))) return false;
+      return true;
+    });
 
     // Giữ RAW để nhận ra kho -> KHO, treomau -> TREOMAU là thay đổi thật cần lưu.
     const rawById = new Map(sourceRows.map(r => [r.id, {
@@ -306,7 +335,16 @@ async function loadData() {
     isDirty = false;
 
     applyClientFilter();
-    setMessage(`Đã tải ${rows.length} vị trí của ${currentMode.coSo.toUpperCase()}${currentMode.loai === 'ALL' ? '' : ' · ' + currentMode.loai}.`, 'ok');
+    if (lookupCodes.length) {
+      const foundSet = new Set(rows.map(r => normalizeCode(r.ma_vitri)));
+      const missing = lookupCodes.filter(code => !foundSet.has(code));
+      setMessage(
+        `Đã tải ${rows.length}/${lookupCodes.length} mã vị trí đã nhập${missing.length ? `. Không tìm thấy: ${missing.slice(0,20).join(', ')}${missing.length > 20 ? '...' : ''}` : ''}.`,
+        missing.length ? 'warn' : 'ok'
+      );
+    } else {
+      setMessage(`Đã tải ${rows.length} vị trí của ${currentMode.coSo.toUpperCase()}${currentMode.loai === 'ALL' ? '' : ' · ' + currentMode.loai}.`, 'ok');
+    }
   } catch (err) {
     console.error(err);
     setMessage(`Tải dữ liệu thất bại: ${err.message || err}`, 'err');
@@ -726,16 +764,16 @@ function attachEvents() {
   $('btn-check').addEventListener('click', () => checkRows());
   $('btn-save').addEventListener('click', saveData);
   $('btn-reset').addEventListener('click', () => {
-    if (isDirty && !confirm('Có thay đổi chưa lưu. Làm lại sẽ bỏ các thay đổi này. Tiếp tục?')) return;
-    loadData();
+    if (isDirty && !confirm('Có thay đổi chưa lưu. Làm lại sẽ bỏ các thay đổi này và làm trắng bảng. Tiếp tục?')) return;
+    resetBlankTable();
   });
   $('btn-audit').addEventListener('click', auditProductPositions);
   $('btn-export').addEventListener('click', exportCsv);
   $('btn-disable').addEventListener('click', disableSelected);
   $('btn-delete').addEventListener('click', deleteSelected);
   $('filter-text').addEventListener('input', applyClientFilter);
-  $('co-so').addEventListener('change', () => { currentMode = selectedMode(); });
-  $('loai-vitri').addEventListener('change', () => { currentMode = selectedMode(); initTable([]); setMessage('Đã đổi chế độ. Bấm Tải dữ liệu để lấy danh mục hiện có.', 'warn'); });
+  $('co-so').addEventListener('change', () => { currentMode = selectedMode(); resetBlankTable('Đã đổi cơ sở. Bảng đã làm trống để nhập/dán dữ liệu mới hoặc nhập mã vị trí cần tải.'); });
+  $('loai-vitri').addEventListener('change', () => { currentMode = selectedMode(); resetBlankTable('Đã đổi loại vị trí. Bảng đã làm trống để nhập/dán dữ liệu mới hoặc nhập mã vị trí cần tải.'); });
 
   $('usage-close').addEventListener('click', () => $('usage-modal').classList.remove('show'));
   $('usage-modal').addEventListener('click', e => { if (e.target === $('usage-modal')) $('usage-modal').classList.remove('show'); });
@@ -751,7 +789,7 @@ function attachEvents() {
 
 (function initPage() {
   currentMode = selectedMode();
-  initTable([]);
+  initTable([makeEmptyRow()]);
   attachEvents();
 
   khoiTaoDangNhapDungChung({
@@ -769,8 +807,7 @@ function attachEvents() {
       const cs = normalizeCoSo(context?.diadiem || 'cs1');
       if (COSO_OPTIONS.includes(cs)) $('co-so').value = cs;
       currentMode = selectedMode();
-      initTable([]);
-      await loadData();
+      resetBlankTable('Trang sẵn sàng. Dán dữ liệu từ Excel, hoặc nhập Mã vị trí rồi bấm Tải dữ liệu. Nếu bảng trống, Tải dữ liệu sẽ tải toàn bộ theo bộ lọc phía trên.');
     }
   });
 })();
