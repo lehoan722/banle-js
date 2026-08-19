@@ -9,17 +9,10 @@ const normalizeCode = (v) => normalizeText(v).toUpperCase();
 const normalizeCoSo = (v) => normalizeText(v).toLowerCase();
 const normalizeLoai = (v) => {
   const s = normalizeCode(v).replace(/[\s-]+/g, '_');
-  if (['BAYMAU', 'BAY_MAU', 'TREO_MAU', 'TREOMAU'].includes(s)) return 'BAY_MAU';
+  if (['BAYMAU', 'BAY_MAU', 'TREO_MAU', 'TREOMAU'].includes(s)) return 'TREOMAU';
   if (['KHO', 'KHO_HANG', 'KHOHANG'].includes(s)) return 'KHO';
   return s;
 };
-
-// Chuẩn ghi xuống DB. Giữ tương thích với dữ liệu hiện tại của hệ thống:
-// - kho      -> KHO
-// - treomau  -> TREOMAU
-// Giao diện vẫn hiển thị nhãn BÀY MẪU, nhưng DB dùng TREOMAU để không phá code cũ.
-const dbLoaiValue = (v) => normalizeLoai(v) === 'BAY_MAU' ? 'TREOMAU' : normalizeLoai(v);
-const normalizeDbLoaiForCompare = (v) => normalizeCode(v).replace(/[\s-]+/g, '_');
 const isBlank = (v) => v === null || typeof v === 'undefined' || normalizeText(v) === '';
 
 let hot = null;
@@ -29,7 +22,7 @@ let isDirty = false;
 let isAdmin = false;
 let originalById = new Map();
 
-const LOAI_OPTIONS = ['KHO', 'BAY_MAU'];
+const LOAI_OPTIONS = ['KHO', 'TREOMAU'];
 const COSO_OPTIONS = ['cs1', 'cs2', 'cs3'];
 
 function setMessage(text, type = '') {
@@ -51,7 +44,7 @@ function getDmHangHoaColumn(coSo, loai) {
     if (coSo === 'cs2') return 'vitrikho2';
     if (coSo === 'cs3') return 'vitrikho3';
   }
-  if (loai === 'BAY_MAU') {
+  if (loai === 'TREOMAU') {
     if (coSo === 'cs1') return 'treomaucs1';
     if (coSo === 'cs2') return 'treomaucs2';
   }
@@ -81,8 +74,8 @@ function normalizeRow(row) {
   fixed.chon = !!row.chon;
   fixed.ma_vitri = normalizeCode(row.ma_vitri);
   fixed.ten_vitri = normalizeText(row.ten_vitri);
-  fixed.loai_vitri = currentMode.loai === 'ALL' ? normalizeLoai(row.loai_vitri) : currentMode.loai;
-  fixed.co_so = currentMode.loai === 'ALL' ? normalizeCoSo(row.co_so || currentMode.coSo) : currentMode.coSo;
+  fixed.loai_vitri = normalizeLoai(row.loai_vitri || (currentMode.loai === 'ALL' ? '' : currentMode.loai));
+  fixed.co_so = normalizeCoSo(row.co_so || currentMode.coSo);
   fixed.khu_vuc = normalizeText(row.khu_vuc);
   fixed.thu_tu = Number.isFinite(Number(row.thu_tu)) ? Number(row.thu_tu) : 0;
   fixed.active = row.active !== false && String(row.active).toLowerCase() !== 'false' && String(row.active) !== '0';
@@ -103,25 +96,12 @@ function getComparablePayload(row) {
   return {
     ma_vitri: row.ma_vitri,
     ten_vitri: row.ten_vitri || null,
-    loai_vitri: dbLoaiValue(row.loai_vitri),
-    co_so: normalizeCoSo(row.co_so),
+    loai_vitri: row.loai_vitri,
+    co_so: row.co_so,
     khu_vuc: row.khu_vuc || null,
     thu_tu: Number(row.thu_tu || 0),
     active: !!row.active,
     ghi_chu: row.ghi_chu || null
-  };
-}
-
-function getRawComparablePayload(row) {
-  return {
-    ma_vitri: normalizeText(row.ma_vitri),
-    ten_vitri: normalizeText(row.ten_vitri) || null,
-    loai_vitri: normalizeText(row.loai_vitri),
-    co_so: normalizeText(row.co_so),
-    khu_vuc: normalizeText(row.khu_vuc) || null,
-    thu_tu: Number(row.thu_tu || 0),
-    active: row.active !== false,
-    ghi_chu: normalizeText(row.ghi_chu) || null
   };
 }
 
@@ -138,7 +118,28 @@ function isRowChanged(row) {
   if (!row.id) return true;
   const original = originalById.get(row.id);
   if (!original) return true;
-  return JSON.stringify(getComparablePayload(row)) !== JSON.stringify(original);
+  const next = getComparablePayload(row);
+  // originalById giữ RAW của DB để việc chuẩn hóa kho->KHO, treomau->TREOMAU được coi là thay đổi.
+  return JSON.stringify(next) !== JSON.stringify(original);
+}
+
+function keyChanged(row) {
+  if (!row?.id) return false;
+  const o = originalById.get(row.id);
+  if (!o) return false;
+  return normalizeCode(o.ma_vitri) !== normalizeCode(row.ma_vitri)
+    || normalizeCoSo(o.co_so) !== normalizeCoSo(row.co_so)
+    || normalizeLoai(o.loai_vitri) !== normalizeLoai(row.loai_vitri);
+}
+
+function rawKeyChanged(row) {
+  if (!row?.id) return false;
+  const o = originalById.get(row.id);
+  if (!o) return false;
+  // Có cả thay đổi chỉ về hoa/thường: vẫn cần RPC để chuẩn hóa dmhanghoa nếu có.
+  return normalizeText(o.ma_vitri) !== normalizeText(row.ma_vitri)
+    || normalizeText(o.co_so) !== normalizeText(row.co_so)
+    || normalizeText(o.loai_vitri) !== normalizeText(row.loai_vitri);
 }
 
 function statusClass(value) {
@@ -158,8 +159,8 @@ function initTable(rows = []) {
     { data:'chon', type:'checkbox', width:48 },
     { data:'ma_vitri', type:'text', width:125 },
     { data:'ten_vitri', type:'text', width:190 },
-    { data:'loai_vitri', type:'dropdown', source:LOAI_OPTIONS, strict:true, allowInvalid:false, width:110, readOnly:!isAll },
-    { data:'co_so', type:'dropdown', source:COSO_OPTIONS, strict:true, allowInvalid:false, width:80, readOnly:!isAll },
+    { data:'loai_vitri', type:'dropdown', source:LOAI_OPTIONS, strict:true, allowInvalid:false, width:110 },
+    { data:'co_so', type:'dropdown', source:COSO_OPTIONS, strict:true, allowInvalid:false, width:80 },
     { data:'khu_vuc', type:'text', width:120 },
     { data:'thu_tu', type:'numeric', width:70 },
     { data:'active', type:'checkbox', width:65 },
@@ -192,11 +193,20 @@ function initTable(rows = []) {
     },
     afterChange(changes, source) {
       if (!changes || source === 'loadData' || source === 'system') return;
-      // Tự khóa/điền cơ sở + loại theo chế độ đang chọn.
-      if (currentMode.loai !== 'ALL') {
-        for (const [r] of changes) {
-          this.setDataAtRowProp(r, 'co_so', currentMode.coSo, 'system');
-          this.setDataAtRowProp(r, 'loai_vitri', currentMode.loai, 'system');
+      const keyProps = new Set(['ma_vitri','co_so','loai_vitri']);
+      for (const [r, prop, oldValue, newValue] of changes) {
+        if (!keyProps.has(prop) || oldValue === newValue) continue;
+        const row = this.getSourceDataAtRow(r) || {};
+        if (!row.id) continue; // dòng mới chưa liên kết dmhanghoa nên không cần cảnh báo
+        const oldText = String(oldValue ?? '').trim();
+        const newText = String(newValue ?? '').trim();
+        const label = prop === 'ma_vitri' ? 'MÃ VỊ TRÍ' : prop === 'co_so' ? 'CƠ SỞ' : 'LOẠI VỊ TRÍ';
+        const ok = confirm(`⚠️ Bạn đang thay đổi ${label} của một vị trí đã tồn tại\n\n${oldText || '(trống)'} → ${newText || '(trống)'}\n\nThay đổi khóa vị trí có thể làm thay đổi dữ liệu vị trí của các sản phẩm đang liên kết. Khi bấm LƯU, hệ thống sẽ cập nhật dm_vitri và dmhanghoa đồng thời trong một transaction.\n\nBạn có chắc chắn muốn thay đổi?`);
+        if (!ok) {
+          this.setDataAtRowProp(r, prop, oldValue, 'system');
+          setMessage('Đã hủy thay đổi khóa vị trí.', 'warn');
+        } else {
+          this.setDataAtRowProp(r, 'trangthai', 'THAY ĐỔI KHÓA', 'system');
         }
       }
       markDirty();
@@ -250,24 +260,33 @@ async function loadData() {
   $('btn-load').disabled = true;
   setMessage('Đang tải danh mục vị trí...');
   try {
-    // Không lọc loai_vitri trực tiếp ở DB vì dữ liệu lịch sử đang có nhiều kiểu:
-    // kho / KHO / treomau / TREOMAU / BAY_MAU...
-    // Tải theo cơ sở trước, sau đó chuẩn hóa và lọc phía client.
-    const { data: rawData, error } = await supabase
+    const { data, error } = await supabase
       .from('dm_vitri')
       .select('id,ma_vitri,ten_vitri,loai_vitri,co_so,khu_vuc,thu_tu,active,ghi_chu,created_at,updated_at')
       .ilike('co_so', currentMode.coSo)
+      .order('loai_vitri')
       .order('thu_tu')
       .order('ma_vitri');
     if (error) throw error;
 
-    const sourceData = (rawData || []).filter(r =>
+    // Tương thích dữ liệu cũ: kho/KHO, treomau/TREOMAU/BAY_MAU...
+    const sourceRows = (data || []).filter(r =>
       currentMode.loai === 'ALL' || normalizeLoai(r.loai_vitri) === currentMode.loai
     );
 
-    // Giao diện hiển thị chuẩn, nhưng originalById bên dưới giữ RAW DB để phát hiện
-    // các thay đổi chuẩn hóa như kho -> KHO, treomau -> TREOMAU.
-    const rows = sourceData.map(r => ({
+    // Giữ RAW để nhận ra kho -> KHO, treomau -> TREOMAU là thay đổi thật cần lưu.
+    const rawById = new Map(sourceRows.map(r => [r.id, {
+      ma_vitri: normalizeText(r.ma_vitri),
+      ten_vitri: normalizeText(r.ten_vitri) || null,
+      loai_vitri: normalizeText(r.loai_vitri),
+      co_so: normalizeText(r.co_so),
+      khu_vuc: normalizeText(r.khu_vuc) || null,
+      thu_tu: Number(r.thu_tu || 0),
+      active: r.active !== false,
+      ghi_chu: normalizeText(r.ghi_chu) || null
+    }]));
+
+    const rows = sourceRows.map(r => ({
       ...r,
       ma_vitri: normalizeCode(r.ma_vitri),
       loai_vitri: normalizeLoai(r.loai_vitri),
@@ -275,20 +294,17 @@ async function loadData() {
       chon:false, so_sp:0, trangthai:''
     }));
 
-    if (currentMode.loai === 'ALL') {
-      const maps = new Map();
-      for (const loai of LOAI_OPTIONS) maps.set(loai, await fetchUsageMap(currentMode.coSo, loai));
-      rows.forEach(r => { r.so_sp = maps.get(normalizeLoai(r.loai_vitri))?.get(normalizeCode(r.ma_vitri)) || 0; });
-    } else {
-      const usage = await fetchUsageMap(currentMode.coSo, currentMode.loai);
-      rows.forEach(r => { r.so_sp = usage.get(normalizeCode(r.ma_vitri)) || 0; });
-    }
+    const usageMaps = new Map();
+    for (const loai of LOAI_OPTIONS) usageMaps.set(loai, await fetchUsageMap(currentMode.coSo, loai));
+    rows.forEach(r => {
+      r.so_sp = usageMaps.get(normalizeLoai(r.loai_vitri))?.get(normalizeCode(r.ma_vitri)) || 0;
+    });
 
     initTable(rows);
-    // Giữ giá trị RAW đã có trong DB để việc chuẩn hóa chữ hoa/loại vị trí được nhận là thay đổi.
-    originalById = new Map(sourceData.map(r => [r.id, getRawComparablePayload(r)]));
+    originalById = rawById;
     loadedSnapshot = JSON.stringify(dataRows().map(r => ({...getComparablePayload(r), id:r.id})));
     isDirty = false;
+
     applyClientFilter();
     setMessage(`Đã tải ${rows.length} vị trí của ${currentMode.coSo.toUpperCase()}${currentMode.loai === 'ALL' ? '' : ' · ' + currentMode.loai}.`, 'ok');
   } catch (err) {
@@ -372,6 +388,27 @@ async function checkRows({showMessage=true} = {}) {
   return { ok: errors === 0, validRows, errors, warnings };
 }
 
+async function previewKeyMigration(row) {
+  const o = originalById.get(row.id);
+  if (!o) return null;
+  const oldCoSo = normalizeCoSo(o.co_so);
+  const oldLoai = normalizeLoai(o.loai_vitri);
+  const oldMa = normalizeCode(o.ma_vitri);
+  const newCoSo = normalizeCoSo(row.co_so);
+  const newLoai = normalizeLoai(row.loai_vitri);
+  const newMa = normalizeCode(row.ma_vitri);
+  const oldCol = getDmHangHoaColumn(oldCoSo, oldLoai);
+  const newCol = getDmHangHoaColumn(newCoSo, newLoai);
+  if (!oldCol || !newCol) throw new Error(`Không xác định được cột dmhanghoa cho ${oldCoSo}/${oldLoai} → ${newCoSo}/${newLoai}.`);
+
+  const { count, error } = await supabase
+    .from('dmhanghoa')
+    .select('masp', { count:'exact', head:true })
+    .ilike(oldCol, oldMa);
+  if (error) throw error;
+  return { oldCoSo, oldLoai, oldMa, newCoSo, newLoai, newMa, oldCol, newCol, count:Number(count || 0) };
+}
+
 async function saveData() {
   if (!isAdmin) return;
   $('btn-save').disabled = true;
@@ -387,44 +424,96 @@ async function saveData() {
       return;
     }
 
-    if (!confirm(`Sẽ ghi ${checked.validRows.length} dòng vào dm_vitri.\nDòng đã có sẽ cập nhật theo ID; dòng mới sẽ được thêm. Tiếp tục?`)) return;
-
-    let ok = 0, fail = 0;
-    const errors = [];
+    const migrations = [];
     for (const item of checked.validRows) {
-      const payload = getSavePayload(item.row);
-      let result;
-      if (item.row.id) {
-        result = await supabase.from('dm_vitri').update(payload).eq('id', item.row.id).select('id').maybeSingle();
-      } else {
-        result = await supabase.from('dm_vitri').insert(payload).select('id').maybeSingle();
+      if (item.row.id && rawKeyChanged(item.row)) {
+        migrations.push({ item, preview: await previewKeyMigration(item.row) });
       }
-      if (result.error || !result.data?.id) {
+    }
+
+    if (migrations.length) {
+      const lines = migrations.slice(0, 12).map(({item,preview}) =>
+        `• ${preview.oldCoSo.toUpperCase()}/${preview.oldLoai}/${preview.oldMa} → ${preview.newCoSo.toUpperCase()}/${preview.newLoai}/${preview.newMa}: ${preview.count} SP (${preview.oldCol}${preview.oldCol !== preview.newCol ? ' → ' + preview.newCol : ''})`
+      ).join('\n');
+      const more = migrations.length > 12 ? `\n... và ${migrations.length - 12} thay đổi khóa khác.` : '';
+      if (!confirm(`⚠️ CÓ ${migrations.length} THAY ĐỔI KHÓA VỊ TRÍ\n\n${lines}${more}\n\nCác sản phẩm liên quan trong dmhanghoa sẽ được cập nhật đồng thời. Nếu bất kỳ bước nào lỗi, RPC sẽ rollback thay đổi của dòng đó.\n\nBạn chắc chắn muốn tiếp tục?`)) {
+        setMessage('Đã hủy lưu dữ liệu.', 'warn');
+        return;
+      }
+    } else if (!confirm(`Sẽ ghi ${checked.validRows.length} dòng vào dm_vitri. Tiếp tục?`)) {
+      return;
+    }
+
+    let ok = 0, fail = 0, migratedProducts = 0;
+    const errors = [];
+
+    for (const item of checked.validRows) {
+      const payload = getComparablePayload(item.row);
+      let resultData = null, resultError = null;
+
+      if (!item.row.id) {
+        const result = await supabase
+          .from('dm_vitri')
+          .insert({ ...payload, updated_at:new Date().toISOString() })
+          .select('id')
+          .maybeSingle();
+        resultData = result.data;
+        resultError = result.error;
+      } else if (rawKeyChanged(item.row)) {
+        const result = await supabase.rpc('dmvitri_admin_update_atomic', {
+          p_vitri_id: item.row.id,
+          p_ma_vitri: payload.ma_vitri,
+          p_ten_vitri: payload.ten_vitri,
+          p_loai_vitri: payload.loai_vitri,
+          p_co_so: payload.co_so,
+          p_khu_vuc: payload.khu_vuc,
+          p_thu_tu: payload.thu_tu,
+          p_active: payload.active,
+          p_ghi_chu: payload.ghi_chu
+        });
+        resultError = result.error;
+        resultData = result.data;
+        if (!resultError) migratedProducts += Number(result.data?.updated_products || 0);
+      } else {
+        const result = await supabase
+          .from('dm_vitri')
+          .update({ ...payload, updated_at:new Date().toISOString() })
+          .eq('id', item.row.id)
+          .select('id')
+          .maybeSingle();
+        resultData = result.data;
+        resultError = result.error;
+      }
+
+      const returnedId = resultData?.id || resultData?.vitri_id || item.row.id;
+      if (resultError || !returnedId) {
         fail++;
-        errors.push(`Dòng ${item.index + 1} (${item.row.ma_vitri}): ${result.error?.message || 'Không ghi được'}`);
+        errors.push(`Dòng ${item.index + 1} (${item.row.ma_vitri}): ${resultError?.message || 'Không ghi được'}`);
         hot.setDataAtRowProp(item.index, 'trangthai', 'LỖI', 'system');
       } else {
         ok++;
-        hot.setDataAtRowProp(item.index, 'id', result.data.id, 'system');
+        hot.setDataAtRowProp(item.index, 'id', returnedId, 'system');
         hot.setDataAtRowProp(item.index, 'trangthai', 'OK', 'system');
       }
     }
     hot.render();
 
     if (fail) {
-      setMessage(`Đã lưu ${ok} dòng, ${fail} dòng lỗi. ${errors.slice(0,3).join(' | ')}`, 'warn');
-    } else {
-      setMessage(`Đã lưu thành công ${ok} dòng. Đang tải lại danh mục...`, 'ok');
-      try {
-        await loadData();
-      } catch (reloadErr) {
-        console.error('Lưu DB thành công nhưng tải lại giao diện lỗi:', reloadErr);
-        setMessage(`Đã lưu thành công ${ok} dòng vào DB, nhưng tải lại bảng bị lỗi: ${reloadErr.message || reloadErr}. Bạn có thể bấm Tải dữ liệu để tải lại.`, 'warn');
-      }
+      setMessage(`Đã lưu ${ok} dòng, ${fail} dòng lỗi. Đã đồng bộ ${migratedProducts} lượt SP. ${errors.slice(0,3).join(' | ')}`, 'warn');
+      return;
+    }
+
+    // DB đã thành công. Refresh là bước riêng để không báo nhầm "lưu thất bại" nếu Handsontable reload lỗi.
+    setMessage(`Đã lưu thành công ${ok} dòng và đồng bộ ${migratedProducts} lượt sản phẩm. Đang tải lại bảng...`, 'ok');
+    try {
+      await loadData();
+    } catch (reloadErr) {
+      console.error(reloadErr);
+      setMessage(`Đã lưu DB thành công ${ok} dòng và đồng bộ ${migratedProducts} lượt SP, nhưng tải lại bảng bị lỗi. Bấm Tải dữ liệu để nạp lại.`, 'warn');
     }
   } catch (err) {
     console.error(err);
-    setMessage(`Lưu dữ liệu thất bại trước khi hoàn tất: ${err.message || err}`, 'err');
+    setMessage(`Lưu dữ liệu thất bại: ${err.message || err}`, 'err');
   } finally {
     $('btn-save').disabled = false;
   }
@@ -569,7 +658,7 @@ async function auditProductPositions() {
 
     const checks = [
       ['cs1','KHO','vitrikho1'], ['cs2','KHO','vitrikho2'], ['cs3','KHO','vitrikho3'],
-      ['cs1','BAY_MAU','treomaucs1'], ['cs2','BAY_MAU','treomaucs2']
+      ['cs1','TREOMAU','treomaucs1'], ['cs2','TREOMAU','treomaucs2']
     ];
 
     const summary = [];
