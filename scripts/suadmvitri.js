@@ -13,6 +13,13 @@ const normalizeLoai = (v) => {
   if (['KHO', 'KHO_HANG', 'KHOHANG'].includes(s)) return 'KHO';
   return s;
 };
+
+// Chuẩn ghi xuống DB. Giữ tương thích với dữ liệu hiện tại của hệ thống:
+// - kho      -> KHO
+// - treomau  -> TREOMAU
+// Giao diện vẫn hiển thị nhãn BÀY MẪU, nhưng DB dùng TREOMAU để không phá code cũ.
+const dbLoaiValue = (v) => normalizeLoai(v) === 'BAY_MAU' ? 'TREOMAU' : normalizeLoai(v);
+const normalizeDbLoaiForCompare = (v) => normalizeCode(v).replace(/[\s-]+/g, '_');
 const isBlank = (v) => v === null || typeof v === 'undefined' || normalizeText(v) === '';
 
 let hot = null;
@@ -96,12 +103,25 @@ function getComparablePayload(row) {
   return {
     ma_vitri: row.ma_vitri,
     ten_vitri: row.ten_vitri || null,
-    loai_vitri: row.loai_vitri,
-    co_so: row.co_so,
+    loai_vitri: dbLoaiValue(row.loai_vitri),
+    co_so: normalizeCoSo(row.co_so),
     khu_vuc: row.khu_vuc || null,
     thu_tu: Number(row.thu_tu || 0),
     active: !!row.active,
     ghi_chu: row.ghi_chu || null
+  };
+}
+
+function getRawComparablePayload(row) {
+  return {
+    ma_vitri: normalizeText(row.ma_vitri),
+    ten_vitri: normalizeText(row.ten_vitri) || null,
+    loai_vitri: normalizeText(row.loai_vitri),
+    co_so: normalizeText(row.co_so),
+    khu_vuc: normalizeText(row.khu_vuc) || null,
+    thu_tu: Number(row.thu_tu || 0),
+    active: row.active !== false,
+    ghi_chu: normalizeText(row.ghi_chu) || null
   };
 }
 
@@ -230,20 +250,30 @@ async function loadData() {
   $('btn-load').disabled = true;
   setMessage('Đang tải danh mục vị trí...');
   try {
-    let q = supabase
+    // Không lọc loai_vitri trực tiếp ở DB vì dữ liệu lịch sử đang có nhiều kiểu:
+    // kho / KHO / treomau / TREOMAU / BAY_MAU...
+    // Tải theo cơ sở trước, sau đó chuẩn hóa và lọc phía client.
+    const { data: rawData, error } = await supabase
       .from('dm_vitri')
       .select('id,ma_vitri,ten_vitri,loai_vitri,co_so,khu_vuc,thu_tu,active,ghi_chu,created_at,updated_at')
-      .eq('co_so', currentMode.coSo)
-      .order('loai_vitri')
+      .ilike('co_so', currentMode.coSo)
       .order('thu_tu')
       .order('ma_vitri');
-
-    if (currentMode.loai !== 'ALL') q = q.eq('loai_vitri', currentMode.loai);
-
-    const { data, error } = await q;
     if (error) throw error;
 
-    const rows = (data || []).map(r => ({ ...r, chon:false, so_sp:0, trangthai:'' }));
+    const sourceData = (rawData || []).filter(r =>
+      currentMode.loai === 'ALL' || normalizeLoai(r.loai_vitri) === currentMode.loai
+    );
+
+    // Giao diện hiển thị chuẩn, nhưng originalById bên dưới giữ RAW DB để phát hiện
+    // các thay đổi chuẩn hóa như kho -> KHO, treomau -> TREOMAU.
+    const rows = sourceData.map(r => ({
+      ...r,
+      ma_vitri: normalizeCode(r.ma_vitri),
+      loai_vitri: normalizeLoai(r.loai_vitri),
+      co_so: normalizeCoSo(r.co_so),
+      chon:false, so_sp:0, trangthai:''
+    }));
 
     if (currentMode.loai === 'ALL') {
       const maps = new Map();
@@ -255,7 +285,8 @@ async function loadData() {
     }
 
     initTable(rows);
-    originalById = new Map(dataRows().filter(r => r.id).map(r => [r.id, getComparablePayload(r)]));
+    // Giữ giá trị RAW đã có trong DB để việc chuẩn hóa chữ hoa/loại vị trí được nhận là thay đổi.
+    originalById = new Map(sourceData.map(r => [r.id, getRawComparablePayload(r)]));
     loadedSnapshot = JSON.stringify(dataRows().map(r => ({...getComparablePayload(r), id:r.id})));
     isDirty = false;
     applyClientFilter();
@@ -383,12 +414,17 @@ async function saveData() {
     if (fail) {
       setMessage(`Đã lưu ${ok} dòng, ${fail} dòng lỗi. ${errors.slice(0,3).join(' | ')}`, 'warn');
     } else {
-      setMessage(`Đã lưu thành công ${ok} dòng.`, 'ok');
-      await loadData();
+      setMessage(`Đã lưu thành công ${ok} dòng. Đang tải lại danh mục...`, 'ok');
+      try {
+        await loadData();
+      } catch (reloadErr) {
+        console.error('Lưu DB thành công nhưng tải lại giao diện lỗi:', reloadErr);
+        setMessage(`Đã lưu thành công ${ok} dòng vào DB, nhưng tải lại bảng bị lỗi: ${reloadErr.message || reloadErr}. Bạn có thể bấm Tải dữ liệu để tải lại.`, 'warn');
+      }
     }
   } catch (err) {
     console.error(err);
-    setMessage(`Lưu dữ liệu thất bại: ${err.message || err}`, 'err');
+    setMessage(`Lưu dữ liệu thất bại trước khi hoàn tất: ${err.message || err}`, 'err');
   } finally {
     $('btn-save').disabled = false;
   }
