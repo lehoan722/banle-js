@@ -163,6 +163,36 @@ function getColLabel(colname) {
   return colInfo ? colInfo.label : colname;
 }
 
+// ==== Ngày nhập đầu hiệu lực ====
+// Quy tắc:
+// - Nếu nhapdau đã có dữ liệu -> dùng nguyên nhapdau.
+// - Nếu nhapdau trống/NULL -> lấy ngày từ created_at theo múi giờ Việt Nam.
+// - created_at CHỈ dùng làm dữ liệu dự phòng để hiển thị/chỉnh sửa, không bao giờ bị ghi đè.
+function formatCreatedAtToVNDate(createdAt) {
+  if (!createdAt) return null;
+
+  const d = new Date(createdAt);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(d);
+
+  const map = {};
+  parts.forEach(p => { if (p.type !== 'literal') map[p.type] = p.value; });
+  if (!map.year || !map.month || !map.day) return null;
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function getEffectiveNhapDau(row) {
+  const nhapdau = (row?.nhapdau ?? '').toString().trim();
+  if (nhapdau) return nhapdau;
+  return formatCreatedAtToVNDate(row?.created_at);
+}
+
 // ==== Ô nhập mã sản phẩm nhanh (giống upanhnhanh) ====
 let quickMaspInput = null;
 let quickMaspSuggestDiv = null;
@@ -446,6 +476,42 @@ async function fetchDistinctValuesFromDmHangHoa(colname, createdAtRange) {
 async function fetchRowsByFilterFromDmHangHoa(colname, filterValue, createdAtRange) {
   const rows = [];
   let from = 0;
+
+  // Riêng Ngày nhập đầu: giá trị hiệu lực có thể nằm ở nhapdau HOẶC created_at,
+  // nên phải lấy cả 2 cột rồi lọc trên giá trị đã fallback.
+  if (colname === 'nhapdau') {
+    const wanted = (Array.isArray(filterValue) ? filterValue : [filterValue])
+      .map(v => String(v ?? '').trim().toLowerCase())
+      .filter(Boolean);
+
+    while (rows.length < FILTER_MAX_ROWS) {
+      const to = from + FILTER_BATCH - 1;
+
+      let q = supabase
+        .from('dmhanghoa')
+        .select('masp,nhapdau,created_at');
+
+      q = applyCreatedAtRange(q, createdAtRange);
+
+      const { data, error } = await q.range(from, to);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      for (const row of data) {
+        const effective = getEffectiveNhapDau(row);
+        const text = (effective ?? '').toString().toLowerCase();
+        if (wanted.some(v => text.includes(v))) {
+          rows.push({ ...row, nhapdau: effective });
+          if (rows.length >= FILTER_MAX_ROWS) break;
+        }
+      }
+
+      if (data.length < FILTER_BATCH) break;
+      from += FILTER_BATCH;
+    }
+
+    return rows;
+  }
 
   while (rows.length < FILTER_MAX_ROWS) {
     const to = from + FILTER_BATCH - 1;
@@ -794,9 +860,14 @@ async function kiemTraViTri() {
 
   hot.loadData(uniqueRows);
 
+  // Riêng Ngày nhập đầu cần lấy thêm created_at để fallback nếu nhapdau đang trống.
+  const selectCols = colname === 'nhapdau'
+    ? 'masp,nhapdau,created_at'
+    : `masp,${colname}`;
+
   const { data: found, error } = await supabase
     .from('dmhanghoa')
-    .select(`masp,${colname}`)
+    .select(selectCols)
     .in('masp', uniqueMasps);
 
   if (error) {
@@ -805,7 +876,12 @@ async function kiemTraViTri() {
   }
 
   const maspMap = {};
-  found.forEach(row => { maspMap[row.masp.toUpperCase()] = row[colname]; });
+  found.forEach(row => {
+    const key = row.masp.toUpperCase();
+    maspMap[key] = colname === 'nhapdau'
+      ? getEffectiveNhapDau(row)
+      : row[colname];
+  });
 
   hot.batch(() => {
     for (let r = 0; r < hot.countRows(); r++) {
