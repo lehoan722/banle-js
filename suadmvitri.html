@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
 
-  <script type="module" src="./scripts/suadmvitri.js?v=1.0.0"></script>
+  <script type="module" src="./scripts/suadmvitri.js?v=2.1.0"></script>
 
   <style>
     :root {
@@ -78,7 +78,7 @@
 
         <select id="loai-vitri">
           <option value="KHO">KHO</option>
-          <option value="BAY_MAU">BÀY MẪU</option>
+          <option value="TREOMAU">BÀY MẪU</option>
           <option value="ALL">TẤT CẢ</option>
         </select>
 
@@ -97,12 +97,12 @@
       </div>
 
       <div class="legend">
-        Chế độ CS1/CS2/CS3 + KHO/BÀY MẪU: bạn có thể dán hàng loạt từ Excel; cột Cơ sở và Loại được tự khóa theo lựa chọn phía trên. 
+        Khi mở trang hoặc bấm Làm lại, bảng để trống để bạn dán hàng loạt từ Excel. Bạn cũng có thể nhập/dán một hoặc nhiều Mã vị trí rồi bấm Tải dữ liệu để tải các dòng tương ứng; nếu bảng đang trống thì Tải dữ liệu sẽ tải toàn bộ theo CS + loại đang chọn. Mọi cột đều có thể chỉnh sửa. Khi đổi Mã vị trí/Cơ sở/Loại của dòng đã tồn tại, hệ thống sẽ cảnh báo và khi Lưu sẽ đồng bộ sang dmhanghoa. 
         Chọn TẤT CẢ để xem/sửa đầy đủ. Click vào <b>Mã vị trí</b> của dòng đã tải để xem các sản phẩm đang dùng vị trí đó.
       </div>
     </div>
 
-    <div id="message">Chọn cơ sở và loại vị trí rồi bấm Tải dữ liệu.</div>
+    <div id="message">Dán dữ liệu từ Excel, hoặc nhập Mã vị trí rồi bấm Tải dữ liệu. Nếu bảng trống, Tải dữ liệu sẽ tải toàn bộ theo bộ lọc.</div>
     <div id="hot"></div>
   </div>
 
