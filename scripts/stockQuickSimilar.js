@@ -1,6 +1,8 @@
 // stockQuickSimilar.js - Tìm sản phẩm cùng nhóm cùng size
+// discount-60pct-fix-20260820-v3
 
 (function () {
+  const ALLOWED_DISCOUNT_PCTS = new Set([10, 20, 30, 50, 60]);
   const DISCOUNT_SIZE_SUMMARY_CACHE = new Map();
   const DISCOUNT_SIZE_SUMMARY_TTL_MS = 2 * 60 * 1000;
 
@@ -286,7 +288,7 @@
 
   function buildDiscountListFromGroupData({ sourceMasp, size, branch, masters, stockRows }) {
     const discountMasters = (masters || []).filter(m =>
-      [10, 20, 30, 50].includes(Number(m.giam_gia_pct))
+      ALLOWED_DISCOUNT_PCTS.has(Number(m.giam_gia_pct))
     );
 
     const allowed = new Set(
@@ -407,7 +409,7 @@
     const sourceMaster = masters.find(x => normText(x.masp) === sourceMasp);
     const sourcePrice = Number(sourceMaster?.giale || 0);
     const discountMasters = masters.filter(m =>
-      [10, 20, 30, 50].includes(Number(m.giam_gia_pct))
+      ALLOWED_DISCOUNT_PCTS.has(Number(m.giam_gia_pct))
     );
 
     if (!discountMasters.length) {
@@ -481,7 +483,7 @@
     const sourcePrice = Number(sourceMaster?.giale || 0);
     let filtered = masters.slice();
 
-    if (mode === "discount") filtered = filtered.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct)));
+    if (mode === "discount") filtered = filtered.filter(x => ALLOWED_DISCOUNT_PCTS.has(Number(x.giam_gia_pct)));
     if (mode === "cheaper") filtered = filtered.filter(x => Number(x.giale||0)>0 && Number(x.giale||0)<=sourcePrice);
     if (mode === "premium") filtered = filtered.filter(x => Number(x.giale||0)>=sourcePrice);
 
@@ -491,7 +493,7 @@
     let list = buildListFromGroupData({ sourceMasp, size:sizeNorm, branch:useBranch, masters:filtered, stockRows, includeSource:true });
 
     if (mode === "discount") {
-      list = list.filter(x => [10,20,30,50].includes(Number(x.giam_gia_pct))).sort((a,b) => Number(b.giam_gia_pct||0)-Number(a.giam_gia_pct||0));
+      list = list.filter(x => ALLOWED_DISCOUNT_PCTS.has(Number(x.giam_gia_pct))).sort((a,b) => Number(b.giam_gia_pct||0)-Number(a.giam_gia_pct||0));
     } else if (mode === "cheaper") {
       list.sort((a,b) => (sourcePrice-Number(a.giale||0))-(sourcePrice-Number(b.giale||0)));
     } else if (mode === "premium") {
@@ -585,9 +587,7 @@
 
     if (mode === "discount") {
       masters = masters.filter(x =>
-        [10, 20, 30, 50].includes(
-          Number(x.giam_gia_pct)
-        )
+        ALLOWED_DISCOUNT_PCTS.has(Number(x.giam_gia_pct))
       );
     } else if (mode === "cheaper") {
       if (!sourcePrice) {
@@ -648,9 +648,7 @@
     if (mode === "discount") {
       list = list
         .filter(x =>
-          [10, 20, 30, 50].includes(
-            Number(x.giam_gia_pct)
-          )
+          ALLOWED_DISCOUNT_PCTS.has(Number(x.giam_gia_pct))
         )
         .sort((a, b) => {
           const pctDiff =
@@ -856,7 +854,7 @@
       return (
         code &&
         code !== sourceMasp &&
-        [10, 20, 30, 50].includes(pct)
+        ALLOWED_DISCOUNT_PCTS.has(pct)
       );
     });
 
