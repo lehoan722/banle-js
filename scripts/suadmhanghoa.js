@@ -22,6 +22,7 @@ const COLS = [
   { name: "vitrikho2", label: "Vị trí kho 2" },
   { name: "mausac", label: "Màu sắc" },
   { name: "khuyenmai", label: "Khuyến mãi" },
+  { name: "giam_gia_pct", label: "Giảm giá xả hàng (%)" },
   { name: "quanlykichco", label: "Quản lý kích cỡ" },
   { name: "active", label: "Đang dùng?" },
   { name: "ngaysua", label: "Ngày sửa" },
@@ -55,8 +56,9 @@ const DISTINCT_BATCH = 1000;        // mỗi lần đọc bao nhiêu dòng
 const FILTER_MAX_ROWS = 10000;      // tối đa số sản phẩm tải theo điều kiện (tránh nặng HOT)
 const FILTER_BATCH = 1000;
 
-const FILTER_NUMERIC_COLS = new Set(['gianhap', 'giale', 'giasi']);
+const FILTER_NUMERIC_COLS = new Set(['gianhap', 'giale', 'giasi', 'giam_gia_pct']);
 const FILTER_BOOLEAN_COLS = new Set(['active', 'quanlykichco']);
+const GIAM_GIA_PCT_ALLOWED = new Set([10, 20, 30, 50]);
 
 // ==== Lọc theo khoảng ngày tạo (created_at) ====
 // Nếu người dùng chọn từ ngày/đến ngày, ta sẽ chỉ tải các mã sản phẩm có created_at nằm trong khoảng đó.
@@ -564,10 +566,21 @@ function initTable(colname = 'vitrikho1') {
   const colLabel = colInfo ? colInfo.label : colname;
 
   const colHeaders = ['Mã sản phẩm', colLabel, 'Trạng thái'];
+  const valueColumn = colname === 'giam_gia_pct'
+    ? {
+        data: colname,
+        type: 'dropdown',
+        source: ['', '10', '20', '30', '50'],
+        strict: true,
+        allowInvalid: false,
+        width: 150
+      }
+    : { data: colname, type: 'text', width: 150 };
+
   const columns = [
     { data: 'masp', type: 'text', width: 150 },
-    { data: colname, type: 'text', width: 150 },
-    { data: 'trangthai', type: 'text', width: 110 }
+    valueColumn,
+    { data: 'trangthai', type: 'text', width: 110, readOnly: true }
   ];
 
   const container = document.getElementById('hot');
@@ -1085,7 +1098,19 @@ function resolveUpdateValue(colname, rawVal) {
     return null;
   }
 
-  // 4. Cột số (giữ nguyên, KHÔNG uppercase)
+  // 4. Cột giảm giá xả hàng: DB chỉ cho NULL / 10 / 20 / 30 / 50
+  if (colname === 'giam_gia_pct') {
+    const n = Number(s.replace(',', '.'));
+    if (!Number.isFinite(n)) {
+      throw new Error('Giảm giá xả hàng phải là 10, 20, 30, 50 hoặc để trống.');
+    }
+    if (!GIAM_GIA_PCT_ALLOWED.has(n)) {
+      throw new Error(`Mức giảm ${s}% không hợp lệ. Chỉ cho phép 10, 20, 30, 50 hoặc để trống.`);
+    }
+    return n;
+  }
+
+  // 5. Các cột số khác (giữ nguyên, KHÔNG uppercase)
   if (["gianhap", "giale", "giasi"].includes(colname)) {
     const n = Number(s.replace(',', '.'));
     return Number.isFinite(n) ? n : null;
@@ -1140,8 +1165,36 @@ async function luuDuLieu() {
     return;
   }
 
+  // Kiểm tra trước toàn bộ mức giảm xả hàng để tránh ghi dở dang một phần.
+  if (colname === 'giam_gia_pct') {
+    const invalidRows = [];
+    for (const row of rows) {
+      const raw = row.rawVal;
+      const text = raw == null ? '' : String(raw).trim();
+      if (!text) continue; // để trống = xóa mức giảm (NULL)
+      const n = Number(text.replace(',', '.'));
+      if (!Number.isFinite(n) || !GIAM_GIA_PCT_ALLOWED.has(n)) {
+        invalidRows.push(`Dòng ${row.rowIndex + 1} (${row.masp}): ${text}`);
+      }
+    }
+
+    if (invalidRows.length) {
+      alert(
+        '❌ Có mức giảm xả hàng không hợp lệ.\n' +
+        'Chỉ cho phép: 10, 20, 30, 50 hoặc để trống để xóa.\n\n' +
+        invalidRows.slice(0, 20).join('\n') +
+        (invalidRows.length > 20 ? `\n... và ${invalidRows.length - 20} dòng khác.` : '')
+      );
+      return;
+    }
+  }
+
   // Nhắc người dùng: sẽ GHI ĐÈ và có thể XÓA dữ liệu cũ (ghi null)
-  if (!confirm(`⚠️ Hành động này sẽ ghi đè cột "${colLabel}" cho các mã đã nhập.\nNếu ô để trống, hệ thống sẽ xóa giá trị cũ (ghi NULL).\nBạn chắc chắn muốn tiếp tục?`)) {
+  const confirmMsg = colname === 'giam_gia_pct'
+    ? `⚠️ Hành động này sẽ ghi đè mức GIẢM GIÁ XẢ HÀNG cho ${rows.length} mã sản phẩm.\nChỉ dùng các mức 10%, 20%, 30%, 50%.\nÔ để trống sẽ XÓA mức xả hàng cũ (ghi NULL).\n\nBạn chắc chắn muốn tiếp tục?`
+    : `⚠️ Hành động này sẽ ghi đè cột "${colLabel}" cho các mã đã nhập.\nNếu ô để trống, hệ thống sẽ xóa giá trị cũ (ghi NULL).\nBạn chắc chắn muốn tiếp tục?`;
+
+  if (!confirm(confirmMsg)) {
     if (previewEl) {
       previewEl.innerHTML = `<span style="color:orange;">⏹️ Đã hủy thao tác ghi đè.</span>`;
     }
