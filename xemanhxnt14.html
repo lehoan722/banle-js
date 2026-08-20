@@ -610,7 +610,7 @@
             <div class="viewer-filter-group">
                 <label for="viewerSizes">Size cần xem</label>
                 <div class="multi-select" id="viewerSizesMulti">
-                    <div class="multi-select-display" tabindex="0" aria-expanded="false">Chọn size</div>
+                    <div class="multi-select-display" tabindex="0" aria-expanded="false">Tất cả size</div>
                     <div class="multi-select-menu"></div>
                     <input id="viewerSizes" class="multi-select-hidden-input" type="hidden" />
                 </div>
@@ -949,7 +949,7 @@
                 rootId: "viewerSizesMulti",
                 hiddenInputId: "viewerSizes",
                 options: VIEWER_SIZE_OPTIONS,
-                placeholder: "Chọn size"
+                placeholder: "Tất cả size"
             });
 
             viewerGroupsMultiApi = createMultiSelect({
@@ -994,8 +994,9 @@
                 );
             }
 
+            // Không chọn size = xem tất cả size hợp lệ.
             if (!sizes.length) {
-                throw new Error("Bạn chưa nhập size cần xem.");
+                return [...VIEWER_SIZE_OPTIONS];
             }
 
             return sizes;
@@ -1263,7 +1264,7 @@
             el.textContent =
                 `Tab ${tabLabel} • ` +
                 `${branch.toUpperCase()} • ` +
-                `Size ${sizes || "-"} • ` +
+                `Size ${sizes || "Tất cả"} • ` +
                 `Nhóm ${groups || "-"} • ` +
                 `Giá ${priceText}` +
                 (extraText ? ` • ${extraText}` : "");
@@ -1376,7 +1377,7 @@
             imgwrap.appendChild(img);
 
             const pct = Number(giam_gia_pct || 0);
-            if ([10, 20, 30, 50].includes(pct)) {
+            if ([10, 20, 30, 50, 60].includes(pct)) {
                 const badge = document.createElement("div");
                 badge.className = "discount-badge";
                 badge.textContent = `GIẢM ${pct}%`;
@@ -1397,7 +1398,7 @@
             cap.innerHTML = `
                 <a class="cap-link" href="javascript:void(0)">
                     ${masp} / ${fmtVND(giale)} ${Number(toncs1 || 0)}/${Number(toncs2 || 0)}
-                    ${[10, 20, 30, 50].includes(pct) ? `<span class="discount-line">Giảm ${pct}%</span>` : ``}
+                    ${[10, 20, 30, 50, 60].includes(pct) ? `<span class="discount-line">Giảm ${pct}%</span>` : ``}
                     ${sold30 > 0 ? `<span class="best-line">Bán toàn mã 30 ngày: ${sold30} • 10 ngày: ${sold10} • Điểm: ${Number(diem_ban_chay || 0)}</span>` : ``}
                 </a>`;
 
@@ -1923,7 +1924,7 @@
 
                 if (tabKey === "discount") {
                     list = list.filter(x =>
-                        [10, 20, 30, 50].includes(
+                        [10, 20, 30, 50, 60].includes(
                             Number(x.giam_gia_pct)
                         )
                     );
@@ -2001,7 +2002,7 @@
                 list = await enrichListWithDiscountInfo(list);
                 list = await enrichListWithStockAfterCheck(list);
                 list = filterListByPositiveStockAtBranch(list);
-                if (tabKey === "discount") list = list.filter(x => [10, 20, 30, 50].includes(Number(x.giam_gia_pct)));
+                if (tabKey === "discount") list = list.filter(x => [10, 20, 30, 50, 60].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
                 const wrap = document.getElementById(TAB_META[tabKey]?.wrap);
@@ -2029,7 +2030,7 @@
                 list = await enrichListWithDiscountInfo(list);
                 list = await enrichListWithStockAfterCheck(list);
                 list = filterListByPositiveStockAtBranch(list);
-                if (tabKey === "discount") list = list.filter(x => [10, 20, 30, 50].includes(Number(x.giam_gia_pct)));
+                if (tabKey === "discount") list = list.filter(x => [10, 20, 30, 50, 60].includes(Number(x.giam_gia_pct)));
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
                 const wrap = document.getElementById(TAB_META[tabKey]?.wrap);
@@ -2060,12 +2061,8 @@
                 TAB_LIST_CACHE.delete(tabKey);
                 VIEWER_STOCK_AFTER_CHECK_CACHE.clear();
 
+                // Nhóm hàng vẫn bắt buộc; size có thể để trống (= tất cả size).
                 const hasFilterValues =
-                    String(
-                        document.getElementById(
-                            "viewerSizes"
-                        )?.value || ""
-                    ).trim() &&
                     String(
                         document.getElementById(
                             "viewerGroups"
