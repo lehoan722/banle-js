@@ -292,19 +292,33 @@ async function learnSuggestionForProduct(sp, profile, seed) {
 
 async function getStockForMasps(masps) {
   const out = new Map();
-  if (!masps.length) return out;
-  const denNgay = new Date().toISOString().slice(0,10);
-  for (let i=0;i<masps.length;i+=80) {
-    const chunk = masps.slice(i,i+80);
-    const { data, error } = await supabase.rpc("xntnhanh", {
-      p_masps: chunk, p_den_ngay: denNgay, p_tonghop_size: false
-    });
-    if (error) { console.warn("xntnhanh:", error); continue; }
-    (data || []).forEach(r => {
+
+  const uniqueMasps = Array.from(
+    new Set(
+      (masps || [])
+        .map(norm)
+        .filter(Boolean)
+    )
+  );
+
+  if (!uniqueMasps.length) {
+    return out;
+  }
+
+  const denNgay =
+    new Date().toISOString().slice(0,10);
+
+  function absorbRows(rows) {
+    (rows || []).forEach(r => {
       const m = norm(r.masp);
       const s = extractInternalSize(r.size);
+
       if (!m || !s) return;
-      if (!out.has(m)) out.set(m, new Map());
+
+      if (!out.has(m)) {
+        out.set(m, new Map());
+      }
+
       out.get(m).set(s, {
         ton_cs1:Number(r.ton_cs1||0),
         ton_cs2:Number(r.ton_cs2||0),
@@ -313,6 +327,111 @@ async function getStockForMasps(masps) {
       });
     });
   }
+
+  // V1.5:
+  // Chia lô nhỏ để tránh RPC trả thiếu dòng khi danh sách mã lớn.
+  // 20 mã * khoảng 9 size = khoảng 180 dòng/lần.
+  const CHUNK_SIZE = 20;
+
+  for (
+    let i=0;
+    i<uniqueMasps.length;
+    i+=CHUNK_SIZE
+  ) {
+    const chunk =
+      uniqueMasps.slice(
+        i,
+        i+CHUNK_SIZE
+      );
+
+    let { data, error } =
+      await supabase.rpc(
+        "xntnhanh",
+        {
+          p_masps: chunk,
+          p_den_ngay: denNgay,
+          p_tonghop_size: false
+        }
+      );
+
+    if (error) {
+      console.warn(
+        "[SalesCopilot] xntnhanh chunk lỗi:",
+        error
+      );
+      data = [];
+    }
+
+    absorbRows(data || []);
+
+    // Những mã hoàn toàn không xuất hiện trong kết quả chunk
+    // sẽ được gọi lại từng mã một giống cách StockQuickPopup làm.
+    const returnedMasps =
+      new Set(
+        (data || [])
+          .map(r => norm(r.masp))
+          .filter(Boolean)
+      );
+
+    const missing =
+      chunk.filter(
+        m => !returnedMasps.has(m)
+      );
+
+    for (const masp of missing) {
+      let retry =
+        await supabase.rpc(
+          "xntnhanh",
+          {
+            p_masps: [masp],
+            p_den_ngay: denNgay,
+            p_tonghop_size: false
+          }
+        );
+
+      let rows =
+        Array.isArray(retry?.data)
+          ? retry.data
+          : [];
+
+      // StockQuickPopup cũng có cơ chế gọi lại sau 400ms
+      // nếu lần đầu không có dòng.
+      if (
+        !rows.length &&
+        !retry?.error
+      ) {
+        await new Promise(
+          r => setTimeout(r, 400)
+        );
+
+        retry =
+          await supabase.rpc(
+            "xntnhanh",
+            {
+              p_masps: [masp],
+              p_den_ngay: denNgay,
+              p_tonghop_size: false
+            }
+          );
+
+        rows =
+          Array.isArray(retry?.data)
+            ? retry.data
+            : [];
+      }
+
+      if (retry?.error) {
+        console.warn(
+          "[SalesCopilot] xntnhanh retry lỗi:",
+          masp,
+          retry.error
+        );
+      }
+
+      absorbRows(rows);
+    }
+  }
+
   return out;
 }
 
@@ -429,47 +548,79 @@ function safeDomId(v) {
     .replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
+function jumpInstantTo(top) {
+  const root = document.documentElement;
+  const old = root.style.scrollBehavior;
+
+  root.style.scrollBehavior = "auto";
+
+  window.scrollTo(
+    0,
+    Math.max(0, Number(top || 0))
+  );
+
+  // ép browser hoàn tất ngay trong frame hiện tại
+  requestAnimationFrame(() => {
+    root.style.scrollBehavior = old;
+  });
+}
+
 function scrollToProductDetail() {
   const el = $("productDetail");
   if (!el) return;
 
-  const card = el.closest(".card") || el;
+  const card =
+    el.closest(".card") ||
+    el;
 
-  // Header + tab khách + step bar chiếm khá nhiều chỗ trên điện thoại.
-  // Đặt phần chi tiết thấp xuống khoảng 220px để nhìn được trọn phần đầu.
-  const offset = window.innerWidth <= 720 ? 225 : 150;
+  const offset =
+    window.innerWidth <= 720
+      ? 225
+      : 150;
 
   const top =
     card.getBoundingClientRect().top +
     window.pageYOffset -
     offset;
 
-  window.scrollTo({
-    top: Math.max(0, top),
-    behavior: "smooth"
-  });
+  jumpInstantTo(top);
 }
 
 function scrollToProductCard(masp) {
-  const el = document.getElementById(
-    "sp-card-" + safeDomId(norm(masp))
-  );
+  const el =
+    document.getElementById(
+      "sp-card-" +
+      safeDomId(norm(masp))
+    );
 
   if (!el) {
-    toast("Không tìm thấy ảnh sản phẩm trong danh sách hiện tại.");
+    toast(
+      "Không tìm thấy ảnh sản phẩm trong danh sách hiện tại."
+    );
     return;
   }
 
-  el.scrollIntoView({
-    behavior: "smooth",
-    block: "center"
-  });
+  const offset =
+    window.innerWidth <= 720
+      ? 210
+      : 120;
 
-  el.classList.add("jump-highlight");
+  const top =
+    el.getBoundingClientRect().top +
+    window.pageYOffset -
+    offset;
+
+  jumpInstantTo(top);
+
+  el.classList.add(
+    "jump-highlight"
+  );
 
   setTimeout(() => {
-    el.classList.remove("jump-highlight");
-  }, 1800);
+    el.classList.remove(
+      "jump-highlight"
+    );
+  }, 900);
 }
 
 function effectiveSuggestionForMatchedSizes(baseSug, matchedSizes) {
@@ -773,21 +924,76 @@ async function searchProducts() {
       list.map(x => x.masp)
     );
 
+  // StockQuickSimilar ở bước 1 đã xác nhận:
+  // mã có ít nhất một size phù hợp và tồn dương tại đúng cơ sở.
+  //
+  // Full-stock ở bước 2 chỉ dùng để bổ sung TOÀN BỘ size còn lại.
+  // Nếu full-stock bị thiếu vì RPC/network thì KHÔNG được phép
+  // biến một mã đã xác nhận còn hàng thành "Hết hàng".
+  list = list.filter(sp => {
+    const matched =
+      (sp.__matched_sizes || [])
+        .map(extractInternalSize)
+        .filter(Boolean);
+
+    return matched.some(
+      s => sizes.includes(s)
+    );
+  });
+
   list.forEach(sp => {
     state.productCache.set(
       norm(sp.masp),
       sp
     );
 
+    let stockMap =
+      fullStock.get(norm(sp.masp));
+
+    // Fallback an toàn:
+    // nếu full-stock không có dữ liệu cho mã,
+    // dùng matched_sizes từ StockQuickSimilar như bằng chứng tồn tối thiểu.
+    if (
+      !stockMap ||
+      !stockMap.size
+    ) {
+      stockMap = new Map();
+
+      (sp.__matched_sizes || [])
+        .map(extractInternalSize)
+        .filter(Boolean)
+        .forEach(size => {
+          stockMap.set(
+            size,
+            {
+              ton_cs1:
+                state.diadiem === "cs1"
+                  ? 1
+                  : 0,
+
+              ton_cs2:
+                state.diadiem === "cs2"
+                  ? 1
+                  : 0,
+
+              ban_cs1:0,
+              ban_cs2:0,
+
+              __fallback:true
+            }
+          );
+        });
+    }
+
     state.stockCache.set(
       norm(sp.masp),
-      fullStock.get(norm(sp.masp)) || new Map()
+      stockMap
     );
   });
 
   $("searchSummary").textContent =
     `${list.length} sản phẩm · ${state.diadiem.toUpperCase()} · ` +
-    `lọc theo size phù hợp ${sizes.join(", ")}`;
+    `chỉ hiện mã còn hàng và có size phù hợp ${sizes.join(", ")}`;
 
   await renderProducts(list);
 }
@@ -815,6 +1021,13 @@ async function renderProducts(list) {
     const allAvailable =
       availableSizes(stockBySize);
 
+    // Nếu full-stock thiếu nhưng StockQuickSimilar có matched size,
+    // stockCache đã có fallback tối thiểu nên allAvailable vẫn phải có dữ liệu.
+    // Nếu cả hai đều rỗng thì mới bỏ card.
+    if (!allAvailable.length) {
+      continue;
+    }
+
     // Chỉ các size vừa nằm trong size gợi ý của khách
     // vừa thực sự còn tồn tại cơ sở.
     const matchedSizes = Array.from(
@@ -822,11 +1035,15 @@ async function renderProducts(list) {
         (sp.__matched_sizes || [])
           .map(extractInternalSize)
           .filter(Boolean)
-          .filter(s => stockAtBranch(stockBySize,s) > 0)
       )
     ).sort(
       (a,b)=>(sizeRank(a)||99)-(sizeRank(b)||99)
     );
+
+    // StockQuickSimilar đã bảo đảm matched_sizes là size tồn dương ở cơ sở.
+    if (!matchedSizes.length) {
+      continue;
+    }
 
     let sug = {
       ...(sp.__seed || seedSuggestionForProfile(
@@ -902,7 +1119,7 @@ async function renderProducts(list) {
                     }"
                   >${s}</span>
                 `).join("")
-              : `<span style="color:#b42318">Hết hàng</span>`
+              : ``
           }
         </div>
 
@@ -978,10 +1195,7 @@ async function selectProduct(
     const matchedSizes =
       (sp.__matched_sizes || [])
         .map(extractInternalSize)
-        .filter(Boolean)
-        .filter(
-          s => stockAtBranch(stockBySize,s) > 0
-        );
+        .filter(Boolean);
 
     sug =
       effectiveSuggestionForMatchedSizes(
