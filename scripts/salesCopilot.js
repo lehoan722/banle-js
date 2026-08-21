@@ -15,6 +15,8 @@ const state = {
   sessions: [],
   currentSessionId: null,
   selectedGroup: "AP",
+  searchMode: "similar",
+  referencePrice: 0,
   selectedProduct: null,
   selectedSize: null,
   currentSuggestion: null,
@@ -803,6 +805,202 @@ function renderGroups() {
   });
 }
 
+
+function modeMeta(mode) {
+  return ({
+    similar: {
+      label: "Phù hợp",
+      hint: "Hàng phù hợp size khách"
+    },
+    discount: {
+      label: "Giảm giá",
+      hint: "Hàng đang giảm giá nhưng vẫn phải còn đúng size khách"
+    },
+    cheaper: {
+      label: "Rẻ hơn",
+      hint: "Cùng nhóm, còn đúng size và giá thấp hơn hoặc bằng giá so sánh"
+    },
+    premium: {
+      label: "Đắt hơn",
+      hint: "Cùng nhóm, còn đúng size và giá cao hơn hoặc bằng giá so sánh"
+    }
+  })[mode] || {
+    label: mode,
+    hint: ""
+  };
+}
+
+function renderModeControls() {
+  document
+    .querySelectorAll(".mode-btn")
+    .forEach(btn => {
+      btn.classList.toggle(
+        "active",
+        btn.dataset.mode === state.searchMode
+      );
+    });
+
+  const meta =
+    modeMeta(state.searchMode);
+
+  if ($("modeHint")) {
+    $("modeHint").textContent =
+      meta.hint;
+  }
+
+  const needPrice =
+    ["cheaper","premium"]
+      .includes(state.searchMode);
+
+  $("priceCompareRow")
+    ?.classList.toggle(
+      "show",
+      needPrice
+    );
+
+  if (
+    needPrice &&
+    state.referencePrice > 0 &&
+    !$("txtReferencePrice").value
+  ) {
+    $("txtReferencePrice").value =
+      Math.round(
+        state.referencePrice / 1000
+      );
+  }
+}
+
+function getReferencePriceFromInput() {
+  const nghin =
+    Number(
+      $("txtReferencePrice")?.value ||
+      0
+    );
+
+  return nghin > 0
+    ? nghin * 1000
+    : 0;
+}
+
+function useSelectedProductPrice() {
+  const price =
+    Number(
+      state.selectedProduct?.giale ||
+      0
+    );
+
+  if (price <= 0) {
+    toast(
+      "Chưa có sản phẩm đang tư vấn để lấy giá."
+    );
+    return false;
+  }
+
+  state.referencePrice=price;
+
+  $("txtReferencePrice").value =
+    Math.round(price/1000);
+
+  toast(
+    `Giá so sánh: ${money(price)} đ`
+  );
+
+  return true;
+}
+
+async function setSearchMode(mode) {
+  state.searchMode =
+    ["similar","discount","cheaper","premium"]
+      .includes(mode)
+        ? mode
+        : "similar";
+
+  if (
+    ["cheaper","premium"]
+      .includes(state.searchMode)
+  ) {
+    if (
+      state.referencePrice <= 0 &&
+      state.selectedProduct?.giale
+    ) {
+      state.referencePrice =
+        Number(
+          state.selectedProduct.giale
+        ) || 0;
+    }
+  }
+
+  renderModeControls();
+
+  if (
+    ["cheaper","premium"]
+      .includes(state.searchMode) &&
+    state.referencePrice <= 0
+  ) {
+    $("txtReferencePrice")?.focus();
+
+    toast(
+      "Nhập giá so sánh hoặc chọn một sản phẩm rồi bấm 'Lấy giá mã đang xem'.",
+      3500
+    );
+
+    return;
+  }
+
+  if (currentSession()) {
+    await searchProducts();
+  }
+}
+
+function priceModeNote(sp) {
+  const price =
+    Number(sp?.giale || 0);
+
+  const ref =
+    Number(
+      state.referencePrice ||
+      0
+    );
+
+  if (
+    !price ||
+    !ref
+  ) {
+    return "";
+  }
+
+  const diff =
+    price - ref;
+
+  if (
+    state.searchMode === "cheaper"
+  ) {
+    const cheaperBy =
+      Math.max(0, ref-price);
+
+    return `
+      <span class="price-diff cheaper">
+        Rẻ hơn ${money(cheaperBy)} đ
+      </span>
+    `;
+  }
+
+  if (
+    state.searchMode === "premium"
+  ) {
+    const more =
+      Math.max(0, price-ref);
+
+    return `
+      <span class="price-diff premium">
+        Cao hơn ${money(more)} đ
+      </span>
+    `;
+  }
+
+  return "";
+}
+
 async function searchProducts() {
   const p=currentSession();
 
@@ -833,6 +1031,35 @@ async function searchProducts() {
   }
 
   if (
+    ["cheaper","premium"]
+      .includes(state.searchMode)
+  ) {
+    const fromInput =
+      getReferencePriceFromInput();
+
+    if (fromInput > 0) {
+      state.referencePrice =
+        fromInput;
+    }
+
+    if (
+      state.referencePrice <= 0
+    ) {
+      $("searchSummary").textContent =
+        "Hãy nhập giá so sánh trước.";
+
+      $("productList").innerHTML =
+        `<div class="empty">
+          Chế độ ${esc(modeMeta(state.searchMode).label)}
+          cần có giá so sánh.
+        </div>`;
+
+      $("txtReferencePrice")?.focus();
+      return;
+    }
+  }
+
+  if (
     !window.StockQuickSimilar ||
     typeof window.StockQuickSimilar
       .getRecommendationListByFilters !== "function"
@@ -845,7 +1072,8 @@ async function searchProducts() {
   }
 
   $("searchSummary").textContent =
-    `Đang tải ${state.selectedGroup} · size gợi ý ${sizes.join(", ")} · ${state.diadiem.toUpperCase()}...`;
+    `Đang tải ${modeMeta(state.searchMode).label} · ${state.selectedGroup} · ` +
+    `size ${sizes.join(", ")} · ${state.diadiem.toUpperCase()}...`;
 
   $("productList").innerHTML =
     `<div class="empty">Đang tải dữ liệu...</div>`;
@@ -853,6 +1081,13 @@ async function searchProducts() {
   // BƯỚC 1:
   // Dùng đúng engine giống xemanhxnt14 để LỌC ra các mã
   // có tồn ít nhất một size phù hợp với khách.
+  // Giảm giá: lấy candidate theo "similar" rồi lọc giam_gia_pct sau,
+  // để hỗ trợ cả các mức giảm mới như 60% mà không phụ thuộc danh sách hard-code cũ.
+  const requestMode =
+    state.searchMode === "discount"
+      ? "similar"
+      : state.searchMode;
+
   const result =
     await window.StockQuickSimilar
       .getRecommendationListByFilters({
@@ -860,8 +1095,16 @@ async function searchProducts() {
         sizes,
         nhomhangs: [state.selectedGroup],
         branch: state.diadiem,
-        denNgay: new Date().toISOString().slice(0,10),
-        mode: "similar"
+        referencePrice:
+          Number(
+            state.referencePrice ||
+            0
+          ),
+        denNgay:
+          new Date()
+            .toISOString()
+            .slice(0,10),
+        mode: requestMode
       });
 
   if (result?.ok === false) {
@@ -907,6 +1150,74 @@ async function searchProducts() {
       };
     })
     .filter(Boolean);
+
+  // Lọc theo chế độ tư vấn.
+  if (
+    state.searchMode === "discount"
+  ) {
+    list = list
+      .filter(
+        sp =>
+          Number(
+            sp.giam_gia_pct ||
+            0
+          ) > 0
+      )
+      .sort(
+        (a,b) =>
+          Number(
+            b.giam_gia_pct ||
+            0
+          ) -
+          Number(
+            a.giam_gia_pct ||
+            0
+          )
+      );
+  }
+
+  if (
+    state.searchMode === "cheaper"
+  ) {
+    const ref =
+      Number(
+        state.referencePrice ||
+        0
+      );
+
+    list = list
+      .filter(
+        sp =>
+          Number(sp.giale || 0) > 0 &&
+          Number(sp.giale || 0) <= ref
+      )
+      .sort(
+        (a,b) =>
+          (ref - Number(a.giale || 0)) -
+          (ref - Number(b.giale || 0))
+      );
+  }
+
+  if (
+    state.searchMode === "premium"
+  ) {
+    const ref =
+      Number(
+        state.referencePrice ||
+        0
+      );
+
+    list = list
+      .filter(
+        sp =>
+          Number(sp.giale || 0) >= ref
+      )
+      .sort(
+        (a,b) =>
+          (Number(a.giale || 0) - ref) -
+          (Number(b.giale || 0) - ref)
+      );
+  }
 
   if (kw) {
     list = list.filter(sp =>
@@ -991,9 +1302,18 @@ async function searchProducts() {
     );
   });
 
+  const modeLabel =
+    modeMeta(state.searchMode).label;
+
+  const pricePart =
+    ["cheaper","premium"]
+      .includes(state.searchMode)
+        ? ` · giá so sánh ${money(state.referencePrice)} đ`
+        : "";
+
   $("searchSummary").textContent =
-    `${list.length} sản phẩm · ${state.diadiem.toUpperCase()} · ` +
-    `chỉ hiện mã còn hàng và có size phù hợp ${sizes.join(", ")}`;
+    `${list.length} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · ` +
+    `size phù hợp ${sizes.join(", ")}${pricePart}`;
 
   await renderProducts(list);
 }
@@ -1102,6 +1422,16 @@ async function renderProducts(list) {
           ${money(sp.giale)} đ
         </div>
 
+        ${
+          Number(sp.giam_gia_pct || 0) > 0
+            ? `<span class="discount-badge">
+                GIẢM ${Number(sp.giam_gia_pct)}%
+              </span>`
+            : ""
+        }
+
+        ${priceModeNote(sp)}
+
         <div class="stock">
           Gợi ý phù hợp:
           <b>${esc(suggestionText)}</b>
@@ -1163,6 +1493,26 @@ async function selectProduct(
   state.selectedProduct=sp;
   state.selectedSize=null;
   state.selectedFit=null;
+
+  // Lưu giá mã đang xem làm giá so sánh gợi ý,
+  // nhưng không tự ép thay nếu NV đã nhập giá so sánh thủ công.
+  if (
+    Number(sp?.giale || 0) > 0 &&
+    !Number(
+      $("txtReferencePrice")?.value ||
+      0
+    )
+  ) {
+    state.referencePrice =
+      Number(sp.giale);
+
+    if ($("txtReferencePrice")) {
+      $("txtReferencePrice").value =
+        Math.round(
+          Number(sp.giale) / 1000
+        );
+    }
+  }
 
   setStep(3);
 
@@ -1262,7 +1612,17 @@ function renderProductDetail() {
       title="Bấm để quay lại ảnh sản phẩm trong danh sách"
     >${esc(sp.masp)}</div>
     <div class="tensp">${esc(sp.tensp||"")}</div>
-    <div style="margin:6px 0"><b>${money(sp.giale)} đ</b> · ${esc(sp.nhomhang||"")}</div>
+    <div style="margin:6px 0">
+      <b>${money(sp.giale)} đ</b> · ${esc(sp.nhomhang||"")}
+      ${
+        Number(sp.giam_gia_pct || 0) > 0
+          ? `<span class="discount-badge">
+              GIẢM ${Number(sp.giam_gia_pct)}%
+            </span>`
+          : ""
+      }
+      ${priceModeNote(sp)}
+    </div>
     ${managed ? `
       <div class="size-hero">
         <div><div style="font-size:11px;color:#667">NÊN THỬ</div><div class="size-main">${esc(sug?.primary||"?")}</div></div>
@@ -1818,6 +2178,78 @@ async function renderAll(){
 }
 
 function bindEvents(){
+  document
+    .querySelectorAll(".mode-btn")
+    .forEach(btn => {
+      btn.onclick =
+        () => setSearchMode(
+          btn.dataset.mode
+        );
+    });
+
+  $("btnApDungGia").onclick =
+    async () => {
+      const ref =
+        getReferencePriceFromInput();
+
+      if (ref <= 0) {
+        toast(
+          "Giá so sánh phải lớn hơn 0."
+        );
+        return;
+      }
+
+      state.referencePrice=ref;
+
+      if (
+        ["cheaper","premium"]
+          .includes(state.searchMode) &&
+        currentSession()
+      ) {
+        await searchProducts();
+      }
+    };
+
+  $("btnLayGiaDangXem").onclick =
+    async () => {
+      const ok =
+        useSelectedProductPrice();
+
+      if (
+        ok &&
+        ["cheaper","premium"]
+          .includes(state.searchMode) &&
+        currentSession()
+      ) {
+        await searchProducts();
+      }
+    };
+
+  $("txtReferencePrice")
+    ?.addEventListener(
+      "keydown",
+      async e => {
+        if (e.key !== "Enter") return;
+
+        e.preventDefault();
+
+        const ref =
+          getReferencePriceFromInput();
+
+        if (ref <= 0) return;
+
+        state.referencePrice=ref;
+
+        if (
+          ["cheaper","premium"]
+            .includes(state.searchMode) &&
+          currentSession()
+        ) {
+          await searchProducts();
+        }
+      }
+    );
+
   $("btnKhachMoi").onclick=()=>openCustomerModal(false);
   $("btnSuaKhach").onclick=()=>{if(currentSession())openCustomerModal(true);};
   $("btnHuyKhach").onclick=()=>$("modalKhach").classList.remove("show");
@@ -1860,6 +2292,7 @@ async function init(){
     await loadConfig();
     await loadSessions();
     bindEvents();
+    renderModeControls();
     renderGroups();
     await renderAll();
     if(!state.sessions.length) openCustomerModal(false);
