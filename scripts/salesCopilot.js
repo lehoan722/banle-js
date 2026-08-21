@@ -248,7 +248,7 @@ async function learnSuggestionForProduct(sp, profile, seed) {
     .select("*")
     .eq("masp", sp.masp)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(1000);
 
   if (error || !data?.length) return seed;
 
@@ -424,6 +424,182 @@ function renderTabs() {
 
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
+function safeDomId(v) {
+  return String(v || "")
+    .replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+function scrollToProductDetail() {
+  const el = $("productDetail");
+  if (!el) return;
+
+  const card = el.closest(".card") || el;
+  card.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function scrollToProductCard(masp) {
+  const el = document.getElementById(
+    "sp-card-" + safeDomId(norm(masp))
+  );
+
+  if (!el) {
+    toast("Không tìm thấy ảnh sản phẩm trong danh sách hiện tại.");
+    return;
+  }
+
+  el.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+
+  el.classList.add("jump-highlight");
+
+  setTimeout(() => {
+    el.classList.remove("jump-highlight");
+  }, 1800);
+}
+
+function effectiveSuggestionForMatchedSizes(baseSug, matchedSizes) {
+  const matched = Array.from(
+    new Set(
+      (matchedSizes || [])
+        .map(extractInternalSize)
+        .filter(Boolean)
+    )
+  ).sort((a,b)=>(sizeRank(a)||99)-(sizeRank(b)||99));
+
+  if (!matched.length) {
+    return {
+      ...baseSug,
+      primary: null,
+      backup: null,
+      available: [],
+      primaryInStock: false,
+      backupInStock: false
+    };
+  }
+
+  let primary = null;
+
+  if (baseSug?.primary && matched.includes(baseSug.primary)) {
+    primary = baseSug.primary;
+  } else if (baseSug?.backup && matched.includes(baseSug.backup)) {
+    primary = baseSug.backup;
+  } else {
+    const targetRank =
+      sizeRank(baseSug?.primary) ||
+      sizeRank(baseSug?.backup) ||
+      sizeRank(matched[0]);
+
+    primary = [...matched].sort(
+      (a,b) =>
+        Math.abs((sizeRank(a)||0)-targetRank) -
+        Math.abs((sizeRank(b)||0)-targetRank)
+    )[0];
+  }
+
+  let backup = null;
+
+  if (
+    baseSug?.backup &&
+    baseSug.backup !== primary &&
+    matched.includes(baseSug.backup)
+  ) {
+    backup = baseSug.backup;
+  } else {
+    backup = matched
+      .filter(x => x !== primary)
+      .sort(
+        (a,b) =>
+          Math.abs((sizeRank(a)||0)-(sizeRank(primary)||0)) -
+          Math.abs((sizeRank(b)||0)-(sizeRank(primary)||0))
+      )[0] || null;
+  }
+
+  return {
+    ...baseSug,
+    primary,
+    backup,
+    available: matched,
+    primaryInStock: !!primary,
+    backupInStock: !!backup
+  };
+}
+
+function suggestedSizesForGroup(profile, groupCode) {
+  const g = state.groups.find(
+    x => norm(x.manhom) === norm(groupCode)
+  );
+
+  const loai = g?.loai_tu_van || "AO";
+  const seed = seedSuggestionForProfile(profile, loai);
+
+  return {
+    seed,
+    sizes: Array.from(
+      new Set(
+        [seed.primary, seed.backup]
+          .map(extractInternalSize)
+          .filter(Boolean)
+      )
+    )
+  };
+}
+
+function buildStockMapFromRecommendationItem(item) {
+  const map = new Map();
+
+  (item?.matched_sizes || []).forEach(s => {
+    const size = extractInternalSize(s);
+    if (!size) return;
+
+    // StockQuickSimilar đã chỉ trả matched_sizes có tồn dương tại cơ sở chọn.
+    // Tổng ton của item không tách theo từng size, nên tại đây chỉ cần >0 để UI biết size còn.
+    map.set(size, {
+      ton_cs1: state.diadiem === "cs1" ? 1 : 0,
+      ton_cs2: state.diadiem === "cs2" ? 1 : 0,
+      ban_cs1: 0,
+      ban_cs2: 0
+    });
+  });
+
+  return map;
+}
+
+async function loadProductMastersByMasps(masps) {
+  const unique = Array.from(
+    new Set((masps || []).map(norm).filter(Boolean))
+  );
+
+  const out = new Map();
+
+  for (let i = 0; i < unique.length; i += 120) {
+    const chunk = unique.slice(i, i + 120);
+
+    const { data, error } = await supabase
+      .from("dmhanghoa")
+      .select(
+        "masp,tensp,giale,nhomhang,chungloai,mausac,form,rong_ong,co_gian,active,giam_gia_pct"
+      )
+      .in("masp", chunk);
+
+    if (error) {
+      console.warn("[SalesCopilot] Lỗi đọc master sản phẩm:", error);
+      continue;
+    }
+
+    (data || []).forEach(sp => {
+      out.set(norm(sp.masp), sp);
+    });
+  }
+
+  return out;
+}
+
+
 function profileModifiers(p) {
   const a=[],q=[];
   if(p.ao_vai_rong)a.push("vai rộng"); if(p.ao_nguc_to)a.push("ngực to"); if(p.ao_bung)a.push("bụng");
@@ -468,122 +644,325 @@ function renderGroups() {
 
 async function searchProducts() {
   const p=currentSession();
-  if(!p){toast("Hãy tạo/chọn khách trước.");return;}
-  setStep(4);
-  const kw=String($("txtSearch").value||"").trim();
-  let q=supabase.from("dmhanghoa")
-    .select("masp,tensp,giale,nhomhang,chungloai,mausac,form,rong_ong,co_gian,active,giam_gia_pct")
-    .eq("active",true)
-    .eq("nhomhang",state.selectedGroup)
-    .order("masp",{ascending:false})
-    .limit(50);
-  if(kw) q=q.or(`masp.ilike.%${kw}%,tensp.ilike.%${kw}%`);
-  const {data,error}=await q;
-  if(error){toast("Lỗi tìm sản phẩm: "+error.message,4000);return;}
-  const list=data||[];
-  list.forEach(sp=>state.productCache.set(norm(sp.masp),sp));
-  const stock=await getStockForMasps(list.map(x=>x.masp));
-  stock.forEach((v,k)=>state.stockCache.set(k,v));
 
-  const only=$("chkConHang").checked;
-  const filtered=list.filter(sp=>{
-    if(!only)return true;
-    const sm=stock.get(norm(sp.masp));
-    if(!isSizeManagedGroup(sp.nhomhang)) return true;
-    return availableSizes(sm).length>0;
+  if(!p){
+    toast("Hãy tạo/chọn khách trước.");
+    return;
+  }
+
+  setStep(4);
+
+  const kw=String($("txtSearch").value||"")
+    .trim()
+    .toUpperCase();
+
+  const { seed, sizes } =
+    suggestedSizesForGroup(p, state.selectedGroup);
+
+  if (!sizes.length) {
+    $("searchSummary").textContent =
+      "Nhóm này chưa có size gợi ý tự động.";
+    $("productList").innerHTML =
+      `<div class="empty">
+        Chưa xác định được size để tìm hàng.
+      </div>`;
+    return;
+  }
+
+  if (
+    !window.StockQuickSimilar ||
+    typeof window.StockQuickSimilar
+      .getRecommendationListByFilters !== "function"
+  ) {
+    toast(
+      "Chưa tải được stockQuickSimilar.js. Hãy kiểm tra file trên server.",
+      5000
+    );
+    return;
+  }
+
+  $("searchSummary").textContent =
+    `Đang tải ${state.selectedGroup} · size gợi ý ${sizes.join(", ")} · ${state.diadiem.toUpperCase()}...`;
+
+  $("productList").innerHTML =
+    `<div class="empty">Đang tải dữ liệu...</div>`;
+
+  const result =
+    await window.StockQuickSimilar
+      .getRecommendationListByFilters({
+        masp: "",
+        sizes,
+        nhomhangs: [state.selectedGroup],
+        branch: state.diadiem,
+        denNgay: new Date().toISOString().slice(0,10),
+        mode: "similar"
+      });
+
+  if (result?.ok === false) {
+    $("productList").innerHTML =
+      `<div class="empty">${esc(result.message || "Không tải được dữ liệu.")}</div>`;
+    return;
+  }
+
+  let rawList = Array.isArray(result?.list)
+    ? result.list
+    : [];
+
+  // Chỉ sản phẩm có tồn đúng một trong các size gợi ý mới được vào danh sách.
+  rawList = rawList.filter(item => {
+    const matched = (item.matched_sizes || [])
+      .map(extractInternalSize)
+      .filter(Boolean);
+
+    return matched.some(s => sizes.includes(s));
   });
-  $("searchSummary").textContent=`${filtered.length} sản phẩm · ${state.diadiem.toUpperCase()} · size nội bộ 38–46`;
-  await renderProducts(filtered);
+
+  const masters =
+    await loadProductMastersByMasps(
+      rawList.map(x => x.masp)
+    );
+
+  let list = rawList
+    .map(item => {
+      const sp = masters.get(norm(item.masp));
+
+      if (!sp) return null;
+
+      return {
+        ...sp,
+        __matched_sizes: (
+          item.matched_sizes || []
+        )
+          .map(extractInternalSize)
+          .filter(Boolean),
+        __toncs1: Number(item.toncs1 || 0),
+        __toncs2: Number(item.toncs2 || 0),
+        __seed: seed
+      };
+    })
+    .filter(Boolean);
+
+  if (kw) {
+    list = list.filter(sp =>
+      norm(sp.masp).includes(kw) ||
+      norm(sp.tensp).includes(kw)
+    );
+  }
+
+  // Mỗi product cache/stock cache dùng đúng matched size của StockQuickSimilar.
+  list.forEach(sp => {
+    state.productCache.set(norm(sp.masp), sp);
+    state.stockCache.set(
+      norm(sp.masp),
+      buildStockMapFromRecommendationItem({
+        matched_sizes: sp.__matched_sizes
+      })
+    );
+  });
+
+  $("searchSummary").textContent =
+    `${list.length} sản phẩm · ${state.diadiem.toUpperCase()} · ` +
+    `chỉ còn size gợi ý ${sizes.join(", ")}`;
+
+  await renderProducts(list);
 }
 
 async function renderProducts(list) {
-  const box=$("productList");box.innerHTML="";
-  if(!list.length){box.innerHTML=`<div class="empty">Không tìm thấy sản phẩm phù hợp.</div>`;return;}
+  const box=$("productList");
+  box.innerHTML="";
+
+  if(!list.length){
+    box.innerHTML=
+      `<div class="empty">
+        Không có sản phẩm nào còn đúng size gợi ý tại ${state.diadiem.toUpperCase()}.
+      </div>`;
+    return;
+  }
+
   const p=currentSession();
-  const loaiGroup=state.groups.find(g=>norm(g.manhom)===norm(state.selectedGroup))?.loai_tu_van || "AO";
-  const seed=seedSuggestionForProfile(p,loaiGroup);
 
   for(const sp of list){
-    const stockBySize=state.stockCache.get(norm(sp.masp));
-    let sug=await learnSuggestionForProduct(sp,p,seed);
-    sug=applyAvailability(sug,stockBySize);
+    const matchedSizes = Array.from(
+      new Set(
+        (sp.__matched_sizes || [])
+          .map(extractInternalSize)
+          .filter(Boolean)
+      )
+    ).sort(
+      (a,b)=>(sizeRank(a)||99)-(sizeRank(b)||99)
+    );
 
-    const cacheKey = `${p.id}|${norm(sp.masp)}`;
-    state.suggestionCache.set(cacheKey, { ...sug });
+    // Seed của khách cho nhóm hiện tại.
+    let sug = {
+      ...(sp.__seed || seedSuggestionForProfile(
+        p,
+        productLoai(sp)
+      ))
+    };
 
-    const av=availableSizes(stockBySize);
+    // Lịch sử sản phẩm vẫn có thể điều chỉnh điểm ưu tiên,
+    // nhưng cuối cùng size gợi ý BẮT BUỘC phải là size đang còn trong matchedSizes.
+    sug = await learnSuggestionForProduct(
+      sp,
+      p,
+      sug
+    );
+
+    sug = effectiveSuggestionForMatchedSizes(
+      sug,
+      matchedSizes
+    );
+
+    const cacheKey =
+      `${p.id}|${norm(sp.masp)}`;
+
+    state.suggestionCache.set(
+      cacheKey,
+      { ...sug }
+    );
+
     const div=document.createElement("div");
+
     div.className="product";
-    const img=`${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
+    div.id =
+      "sp-card-" + safeDomId(norm(sp.masp));
+
+    div.dataset.masp = norm(sp.masp);
+
+    const img=
+      `${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
+
+    const suggestionText = sug.primary
+      ? (
+          sug.backup
+            ? `${sug.primary} / ${sug.backup}`
+            : `${sug.primary}`
+        )
+      : "-";
+
     div.innerHTML=`
-      <img src="${img}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">
+      <img
+        src="${img}"
+        onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"
+      >
+
       <div class="product-body">
         <div class="masp">${esc(sp.masp)}</div>
         <div class="tensp">${esc(sp.tensp||"")}</div>
-        <div class="price">${money(sp.giale)} đ</div>
-        <div class="stock">${isSizeManagedGroup(sp.nhomhang)
-          ? (
-              av.length
-                ? `
-                  Gợi ý: <b>${esc(sug.primary || "-")}${sug.backup ? " / " + esc(sug.backup) : ""}</b><br>
-                  Còn size:
-                  ${av.map(s => `
-                    <span class="sizebadge ${
-                      s===sug.primary || s===sug.backup ? "best" : ""
-                    }">${s}</span>
-                  `).join("")}
-                `
-                : "Hết size tại cơ sở"
-            )
-          :"Không quản size"}
+
+        <div class="price">
+          ${money(sp.giale)} đ
         </div>
+
+        <div class="stock">
+          Gợi ý phù hợp:
+          <b>${esc(suggestionText)}</b>
+          <br>
+
+          Còn đúng size:
+          ${
+            matchedSizes.map(s=>`
+              <span
+                class="sizebadge ${
+                  s===sug.primary ||
+                  s===sug.backup
+                    ? "best"
+                    : ""
+                }"
+              >${s}</span>
+            `).join("")
+          }
+        </div>
+
         <div class="product-actions">
-          <button class="btn-blue btn-tv">Tư vấn</button>
-          <button class="btn-gray btn-ton">Xem tồn</button>
+          <button class="btn-blue btn-tv">
+            Tư vấn
+          </button>
+
+          <button class="btn-gray btn-ton">
+            Xem tồn
+          </button>
         </div>
-      </div>`;
-    div.querySelector(".btn-tv").onclick=()=>selectProduct(sp);
-    div.querySelector(".btn-ton").onclick=(e)=>{e.stopPropagation();window.StockQuick?.showFor(e.currentTarget,sp.masp);};
+      </div>
+    `;
+
+    div.querySelector(".btn-tv").onclick=
+      async()=>{
+        await selectProduct(sp, {
+          scrollToDetail: true
+        });
+      };
+
+    div.querySelector(".btn-ton").onclick=(e)=>{
+      e.stopPropagation();
+
+      window.StockQuick?.showFor(
+        e.currentTarget,
+        sp.masp
+      );
+    };
+
     box.appendChild(div);
   }
 }
 
-async function selectProduct(sp) {
+async function selectProduct(
+  sp,
+  options = {}
+) {
   state.selectedProduct=sp;
   state.selectedSize=null;
   state.selectedFit=null;
+
   setStep(3);
 
   const p=currentSession();
-  const loai=productLoai(sp);
-  const cacheKey = `${p?.id}|${norm(sp.masp)}`;
+  const cacheKey=
+    `${p?.id}|${norm(sp.masp)}`;
 
-  let sug = state.suggestionCache.get(cacheKey);
+  let sug =
+    state.suggestionCache.get(cacheKey);
 
   if (!sug) {
-    sug=seedSuggestionForProfile(p,loai);
-    sug=await learnSuggestionForProduct(sp,p,sug);
+    let base =
+      sp.__seed ||
+      seedSuggestionForProfile(
+        p,
+        productLoai(sp)
+      );
 
-    const stockTemp =
-      state.stockCache.get(norm(sp.masp)) ||
-      (await getStockForMasps([sp.masp])).get(norm(sp.masp));
+    base=
+      await learnSuggestionForProduct(
+        sp,
+        p,
+        base
+      );
 
-    sug=applyAvailability(sug,stockTemp);
-    state.suggestionCache.set(cacheKey, { ...sug });
+    sug =
+      effectiveSuggestionForMatchedSizes(
+        base,
+        sp.__matched_sizes || []
+      );
+
+    state.suggestionCache.set(
+      cacheKey,
+      { ...sug }
+    );
   }
 
-  const stock =
-    state.stockCache.get(norm(sp.masp)) ||
-    (await getStockForMasps([sp.masp])).get(norm(sp.masp));
+  state.currentSuggestion={...sug};
 
-  if(stock) state.stockCache.set(norm(sp.masp),stock);
-
-  // KHONG thay đổi primary/backup theo tồn kho.
-  sug=applyAvailability(sug,stock);
-
-  state.currentSuggestion=sug;
   renderProductDetail();
   renderCoach();
+
+  if (options.scrollToDetail) {
+    requestAnimationFrame(() => {
+      setTimeout(
+        scrollToProductDetail,
+        30
+      );
+    });
+  }
 }
 
 function sourceText(s){
@@ -605,7 +984,12 @@ function renderProductDetail() {
   const av=availableSizes(stock);
   const managed=isSizeManagedGroup(sp.nhomhang);
   box.innerHTML=`
-    <div class="masp">${esc(sp.masp)}</div>
+    <div
+      class="masp"
+      id="detailMaspLink"
+      style="cursor:pointer;text-decoration:underline"
+      title="Bấm để quay lại ảnh sản phẩm trong danh sách"
+    >${esc(sp.masp)}</div>
     <div class="tensp">${esc(sp.tensp||"")}</div>
     <div style="margin:6px 0"><b>${money(sp.giale)} đ</b> · ${esc(sp.nhomhang||"")}</div>
     ${managed ? `
@@ -628,7 +1012,12 @@ function renderProductDetail() {
             s===""+state.selectedSize?"selected":"",
             ton<=0?"no-stock":""
           ].filter(Boolean).join(" ");
-          return `<button class="size-btn ${cls}" data-size="${s}" title="Tồn ${state.diadiem.toUpperCase()}: ${ton}">${s}<br><small>${ton}</small></button>`;
+          return `<button
+            class="size-btn ${cls}"
+            data-size="${s}"
+            data-ton="${ton}"
+            title="${ton > 0 ? `Có tồn size ${s} tại ${state.diadiem.toUpperCase()}` : `Hết tồn size ${s} tại ${state.diadiem.toUpperCase()}`}"
+          >${s}<br><small>${ton > 0 ? "✓" : "0"}</small></button>`;
         }).join("")}
       </div>
       <div id="fitPanel"></div>
@@ -638,8 +1027,23 @@ function renderProductDetail() {
     `}
     <button class="btn btn-gray" id="btnTonDetail" style="width:100%;margin-top:8px">Xem StockQuickPopup</button>
   `;
-  box.querySelectorAll(".size-btn").forEach(b=>b.onclick=()=>chooseSize(b.dataset.size));
-  $("btnTonDetail").onclick=(e)=>window.StockQuick?.showFor(e.currentTarget,sp.masp);
+  box.querySelectorAll(".size-btn").forEach(
+    b => b.onclick=()=>chooseSize(
+      b.dataset.size,
+      Number(b.dataset.ton || 0)
+    )
+  );
+
+  $("btnTonDetail").onclick=(e)=>
+    window.StockQuick?.showFor(
+      e.currentTarget,
+      sp.masp
+    );
+
+  $("detailMaspLink")?.addEventListener(
+    "click",
+    () => scrollToProductCard(sp.masp)
+  );
   if($("btnChotNoSize")) $("btnChotNoSize").onclick=()=>addToCart(null,null);
 }
 
@@ -750,12 +1154,53 @@ function renderFitPanel() {
   }
 }
 
-function chooseSize(size) {
+async function chooseSize(
+  size,
+  tonHienTai = null
+) {
+  const stockMap =
+    state.stockCache.get(
+      norm(state.selectedProduct?.masp)
+    );
+
+  const ton =
+    tonHienTai == null
+      ? stockAtBranch(stockMap,size)
+      : Number(tonHienTai || 0);
+
+  if (ton <= 0) {
+    const masp =
+      state.selectedProduct?.masp || "";
+
+    const ok = confirm(
+      `⚠️ Hệ thống đang ghi nhận SIZE ${size} đã hết tại ${state.diadiem.toUpperCase()}.\n\n` +
+      `Bạn có chắc thực tế vẫn còn size ${size} không?\n\n` +
+      `Nếu chọn OK, hệ thống sẽ mở trang KIỂM TỒN của mã ${masp} để bạn kiểm tra ngay.`
+    );
+
+    if (!ok) {
+      return;
+    }
+
+    const url =
+      state.diadiem === "cs2"
+        ? `/kiem_tonkho_cs2.html?masp=${encodeURIComponent(masp)}&from=stockquick`
+        : `/kiem_tonkho_cs1.html?masp=${encodeURIComponent(masp)}&from=stockquick`;
+
+    window.open(
+      url,
+      "_blank"
+    );
+
+    // Vẫn cho ghi nhận là NV đang thử size này,
+    // nhưng dữ liệu sẽ bị kiểm tra nghi ngờ ở bước saveFit.
+  }
+
   state.selectedSize=size;
   state.selectedFit=null;
+
   setStep(5);
 
-  // Render lại cả detail để nút size đang chọn đổi trạng thái rõ ràng.
   renderProductDetail();
   renderFitPanel();
   renderCoach();
@@ -770,14 +1215,39 @@ async function saveFit(fit) {
   if(!p||!sp||!size) return;
 
   const outside=distanceOutsideSuggestedRange(size,sug);
-  const suspicious=outside>=2;
-  const level=outside>=3 ? 3 : outside>=2 ? 2 : outside===1 ? 1 : 0;
+
+  const stockMap =
+    state.stockCache.get(norm(sp.masp));
+
+  const tonTaiCoSo =
+    stockAtBranch(stockMap,size);
+
+  const stockSuspicious =
+    tonTaiCoSo <= 0;
+
+  const suspicious =
+    outside>=2 ||
+    stockSuspicious;
+
+  const level =
+    stockSuspicious
+      ? Math.max(2, outside>=3 ? 3 : 2)
+      : outside>=3
+        ? 3
+        : outside>=2
+          ? 2
+          : outside===1
+            ? 1
+            : 0;
 
   if(suspicious){
+    const reasonText = stockSuspicious
+      ? `Hệ thống đang ghi nhận size ${size} hết tồn tại ${state.diadiem.toUpperCase()}.`
+      : `Size ${size} lệch ${outside} bậc ngoài khoảng cơ thể nền ${sug?.rangeMin || sug?.primary}-${sug?.rangeMax || sug?.backup || sug?.primary}.`;
+
     const ok=confirm(
-      `⚠️ Size ${size} lệch ${outside} bậc ngoài khoảng cơ thể nền ` +
-      `${sug?.rangeMin || sug?.primary}-${sug?.rangeMax || sug?.backup || sug?.primary}.\n\n` +
-      `Nếu vẫn ghi nhận, dữ liệu này sẽ bị đánh dấu nghi ngờ và KHÔNG dùng để học tự động.\n\n` +
+      `⚠️ ${reasonText}\n\n` +
+      `Nếu vẫn ghi nhận kết quả thử, dữ liệu này sẽ bị đánh dấu nghi ngờ và KHÔNG dùng để học tự động.\n\n` +
       `Bạn chắc chắn khách đã thử size ${size}?`
     );
 
@@ -803,9 +1273,11 @@ async function saveFit(fit) {
 
     nghi_ngo_du_lieu:suspicious,
     muc_nghi_ngo:level,
-    ly_do_nghi_ngo:outside>0
-      ? `Size thu ${size} nam ngoai khoang co the ${sug?.rangeMin || "-"}-${sug?.rangeMax || "-"} ${outside} bac`
-      : null
+    ly_do_nghi_ngo:stockSuspicious
+      ? `Size thu ${size} dang duoc ghi nhan het ton tai ${state.diadiem}`
+      : outside>0
+        ? `Size thu ${size} nam ngoai khoang co the ${sug?.rangeMin || "-"}-${sug?.rangeMax || "-"} ${outside} bac`
+        : null
   };
 
   // V1.1: cùng 1 khách + mã + size chỉ giữ KẾT QUẢ MỚI NHẤT.
@@ -863,16 +1335,29 @@ async function addToCart(size,fit) {
   const p=currentSession(), sp=state.selectedProduct, sug=state.currentSuggestion;
   if(!p||!sp)return;
   const diff=size ? distanceOutsideSuggestedRange(size,sug) : 0;
+
+  const stockMap =
+    state.stockCache.get(norm(sp.masp));
+
+  const stockSuspicious =
+    size
+      ? stockAtBranch(stockMap,size) <= 0
+      : false;
+
   const row={
     phien_id:p.id,masp:sp.masp,size:size||null,soluong:1,
     giale_hien_thi:Number(sp.giale||0),khuyenmai_hien_thi:0,trang_thai:"DA_CHOT",
     ket_qua_mac:fit||null,size_he_thong_goi_y:sug?.primary||null,size_du_phong:sug?.backup||null,
     nguon_goi_y_size:sug?.source||null,do_tin_cay_size:sug?.confidence||null,
-    nghi_ngo_size:diff>=2,
-    muc_nghi_ngo_size:diff>=3?3:diff>=2?2:diff===1?1:0,
-    ly_do_nghi_ngo_size:diff>0
-      ? `Size chot ${size} nam ngoai khoang co the ${sug?.rangeMin || "-"}-${sug?.rangeMax || "-"} ${diff} bac`
-      : null
+    nghi_ngo_size:stockSuspicious || diff>=2,
+    muc_nghi_ngo_size:stockSuspicious
+      ? Math.max(2, diff>=3?3:2)
+      : diff>=3?3:diff>=2?2:diff===1?1:0,
+    ly_do_nghi_ngo_size:stockSuspicious
+      ? `Size chot ${size} dang duoc ghi nhan het ton tai ${state.diadiem}`
+      : diff>0
+        ? `Size chot ${size} nam ngoai khoang co the ${sug?.rangeMin || "-"}-${sug?.rangeMax || "-"} ${diff} bac`
+        : null
   };
   const {error}=await supabase.from("gio_tu_van").insert(row);
   if(error){toast("Không thêm được giỏ tư vấn: "+error.message,4000);return;}
