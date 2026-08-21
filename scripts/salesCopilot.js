@@ -248,7 +248,7 @@ async function learnSuggestionForProduct(sp, profile, seed) {
     .select("*")
     .eq("masp", sp.masp)
     .order("created_at", { ascending: false })
-    .limit(1000);
+    .limit(100);
 
   if (error || !data?.length) return seed;
 
@@ -434,9 +434,19 @@ function scrollToProductDetail() {
   if (!el) return;
 
   const card = el.closest(".card") || el;
-  card.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
+
+  // Header + tab khách + step bar chiếm khá nhiều chỗ trên điện thoại.
+  // Đặt phần chi tiết thấp xuống khoảng 220px để nhìn được trọn phần đầu.
+  const offset = window.innerWidth <= 720 ? 225 : 150;
+
+  const top =
+    card.getBoundingClientRect().top +
+    window.pageYOffset -
+    offset;
+
+  window.scrollTo({
+    top: Math.max(0, top),
+    behavior: "smooth"
   });
 }
 
@@ -662,10 +672,12 @@ async function searchProducts() {
   if (!sizes.length) {
     $("searchSummary").textContent =
       "Nhóm này chưa có size gợi ý tự động.";
+
     $("productList").innerHTML =
       `<div class="empty">
         Chưa xác định được size để tìm hàng.
       </div>`;
+
     return;
   }
 
@@ -687,6 +699,9 @@ async function searchProducts() {
   $("productList").innerHTML =
     `<div class="empty">Đang tải dữ liệu...</div>`;
 
+  // BƯỚC 1:
+  // Dùng đúng engine giống xemanhxnt14 để LỌC ra các mã
+  // có tồn ít nhất một size phù hợp với khách.
   const result =
     await window.StockQuickSimilar
       .getRecommendationListByFilters({
@@ -708,7 +723,6 @@ async function searchProducts() {
     ? result.list
     : [];
 
-  // Chỉ sản phẩm có tồn đúng một trong các size gợi ý mới được vào danh sách.
   rawList = rawList.filter(item => {
     const matched = (item.matched_sizes || [])
       .map(extractInternalSize)
@@ -730,13 +744,14 @@ async function searchProducts() {
 
       return {
         ...sp,
+
+        // matched size chỉ dùng xác định size nào phù hợp trong size nền.
         __matched_sizes: (
           item.matched_sizes || []
         )
           .map(extractInternalSize)
           .filter(Boolean),
-        __toncs1: Number(item.toncs1 || 0),
-        __toncs2: Number(item.toncs2 || 0),
+
         __seed: seed
       };
     })
@@ -749,20 +764,30 @@ async function searchProducts() {
     );
   }
 
-  // Mỗi product cache/stock cache dùng đúng matched size của StockQuickSimilar.
+  // BƯỚC 2:
+  // Sau khi đã lọc được danh sách mã phù hợp,
+  // tải LẠI TOÀN BỘ tồn 38–46 của các mã bằng xntnhanh.
+  // Đây là dữ liệu dùng để hiển thị "Còn size" và chi tiết sản phẩm.
+  const fullStock =
+    await getStockForMasps(
+      list.map(x => x.masp)
+    );
+
   list.forEach(sp => {
-    state.productCache.set(norm(sp.masp), sp);
+    state.productCache.set(
+      norm(sp.masp),
+      sp
+    );
+
     state.stockCache.set(
       norm(sp.masp),
-      buildStockMapFromRecommendationItem({
-        matched_sizes: sp.__matched_sizes
-      })
+      fullStock.get(norm(sp.masp)) || new Map()
     );
   });
 
   $("searchSummary").textContent =
     `${list.length} sản phẩm · ${state.diadiem.toUpperCase()} · ` +
-    `chỉ còn size gợi ý ${sizes.join(", ")}`;
+    `lọc theo size phù hợp ${sizes.join(", ")}`;
 
   await renderProducts(list);
 }
@@ -782,17 +807,27 @@ async function renderProducts(list) {
   const p=currentSession();
 
   for(const sp of list){
+    const stockBySize =
+      state.stockCache.get(norm(sp.masp)) ||
+      new Map();
+
+    // Toàn bộ size còn thực tế của sản phẩm.
+    const allAvailable =
+      availableSizes(stockBySize);
+
+    // Chỉ các size vừa nằm trong size gợi ý của khách
+    // vừa thực sự còn tồn tại cơ sở.
     const matchedSizes = Array.from(
       new Set(
         (sp.__matched_sizes || [])
           .map(extractInternalSize)
           .filter(Boolean)
+          .filter(s => stockAtBranch(stockBySize,s) > 0)
       )
     ).sort(
       (a,b)=>(sizeRank(a)||99)-(sizeRank(b)||99)
     );
 
-    // Seed của khách cho nhóm hiện tại.
     let sug = {
       ...(sp.__seed || seedSuggestionForProfile(
         p,
@@ -800,14 +835,13 @@ async function renderProducts(list) {
       ))
     };
 
-    // Lịch sử sản phẩm vẫn có thể điều chỉnh điểm ưu tiên,
-    // nhưng cuối cùng size gợi ý BẮT BUỘC phải là size đang còn trong matchedSizes.
     sug = await learnSuggestionForProduct(
       sp,
       p,
       sug
     );
 
+    // Gợi ý cuối cùng bắt buộc nằm trong matchedSizes.
     sug = effectiveSuggestionForMatchedSizes(
       sug,
       matchedSizes
@@ -824,21 +858,18 @@ async function renderProducts(list) {
     const div=document.createElement("div");
 
     div.className="product";
-    div.id =
+    div.id=
       "sp-card-" + safeDomId(norm(sp.masp));
 
-    div.dataset.masp = norm(sp.masp);
+    div.dataset.masp=norm(sp.masp);
 
     const img=
       `${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
 
-    const suggestionText = sug.primary
-      ? (
-          sug.backup
-            ? `${sug.primary} / ${sug.backup}`
-            : `${sug.primary}`
-        )
-      : "-";
+    // Theo yêu cầu V1.3:
+    // "Gợi ý phù hợp" chỉ hiển thị MỘT size nên thử.
+    const suggestionText =
+      sug.primary || "-";
 
     div.innerHTML=`
       <img
@@ -859,18 +890,19 @@ async function renderProducts(list) {
           <b>${esc(suggestionText)}</b>
           <br>
 
-          Còn đúng size:
+          Còn size:
           ${
-            matchedSizes.map(s=>`
-              <span
-                class="sizebadge ${
-                  s===sug.primary ||
-                  s===sug.backup
-                    ? "best"
-                    : ""
-                }"
-              >${s}</span>
-            `).join("")
+            allAvailable.length
+              ? allAvailable.map(s=>`
+                  <span
+                    class="sizebadge ${
+                      s===sug.primary
+                        ? "best"
+                        : ""
+                    }"
+                  >${s}</span>
+                `).join("")
+              : `<span style="color:#b42318">Hết hàng</span>`
           }
         </div>
 
@@ -888,9 +920,10 @@ async function renderProducts(list) {
 
     div.querySelector(".btn-tv").onclick=
       async()=>{
-        await selectProduct(sp, {
-          scrollToDetail: true
-        });
+        await selectProduct(
+          sp,
+          { scrollToDetail:true }
+        );
       };
 
     div.querySelector(".btn-ton").onclick=(e)=>{
@@ -920,6 +953,10 @@ async function selectProduct(
   const cacheKey=
     `${p?.id}|${norm(sp.masp)}`;
 
+  const stockBySize =
+    state.stockCache.get(norm(sp.masp)) ||
+    new Map();
+
   let sug =
     state.suggestionCache.get(cacheKey);
 
@@ -931,17 +968,25 @@ async function selectProduct(
         productLoai(sp)
       );
 
-    base=
+    base =
       await learnSuggestionForProduct(
         sp,
         p,
         base
       );
 
+    const matchedSizes =
+      (sp.__matched_sizes || [])
+        .map(extractInternalSize)
+        .filter(Boolean)
+        .filter(
+          s => stockAtBranch(stockBySize,s) > 0
+        );
+
     sug =
       effectiveSuggestionForMatchedSizes(
         base,
-        sp.__matched_sizes || []
+        matchedSizes
       );
 
     state.suggestionCache.set(
@@ -950,7 +995,19 @@ async function selectProduct(
     );
   }
 
-  state.currentSuggestion={...sug};
+  // Quan trọng:
+  // tồn hiển thị trong detail luôn là FULL STOCK 38–46,
+  // KHÔNG thay bằng matched size.
+  state.currentSuggestion={
+    ...sug,
+    available: availableSizes(stockBySize),
+    primaryInStock: sug?.primary
+      ? stockAtBranch(stockBySize,sug.primary) > 0
+      : false,
+    backupInStock: sug?.backup
+      ? stockAtBranch(stockBySize,sug.backup) > 0
+      : false
+  };
 
   renderProductDetail();
   renderCoach();
@@ -959,7 +1016,7 @@ async function selectProduct(
     requestAnimationFrame(() => {
       setTimeout(
         scrollToProductDetail,
-        30
+        40
       );
     });
   }
@@ -995,7 +1052,7 @@ function renderProductDetail() {
     ${managed ? `
       <div class="size-hero">
         <div><div style="font-size:11px;color:#667">NÊN THỬ</div><div class="size-main">${esc(sug?.primary||"?")}</div></div>
-        <div class="size-backup">Dự phòng: <b>${esc(sug?.backup||"-")}</b><br>
+        <div class="size-backup">Dự phòng: <b>${esc((sug?.backup && sug?.backupInStock) ? sug.backup : "-")}</b><br>
           <span class="confidence">
             ${sourceText(sug?.source)} · tin cậy ${Math.round((sug?.confidence||0)*100)}%
             ${sug?.rangeMin ? `<br>Khoảng cơ thể nền: <b>${esc(sug.rangeMin)}–${esc(sug.rangeMax || sug.rangeMin)}</b>` : ""}
@@ -1016,8 +1073,8 @@ function renderProductDetail() {
             class="size-btn ${cls}"
             data-size="${s}"
             data-ton="${ton}"
-            title="${ton > 0 ? `Có tồn size ${s} tại ${state.diadiem.toUpperCase()}` : `Hết tồn size ${s} tại ${state.diadiem.toUpperCase()}`}"
-          >${s}<br><small>${ton > 0 ? "✓" : "0"}</small></button>`;
+            title="Tồn ${state.diadiem.toUpperCase()}: ${ton}"
+          >${s}<br><small>${ton}</small></button>`;
         }).join("")}
       </div>
       <div id="fitPanel"></div>
