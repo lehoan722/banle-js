@@ -18,6 +18,8 @@ const state = {
   selectedProduct: null,
   selectedSize: null,
   currentSuggestion: null,
+  selectedFit: null,
+  suggestionCache: new Map(),
   stockCache: new Map(),
   productCache: new Map(),
   editingSessionId: null,
@@ -86,52 +88,144 @@ function distanceToRange(v, min, max) {
 }
 
 function seedSuggestionForProfile(profile, loaiTuVan = "AO") {
-  if (!profile) return { primary: null, backup: null, confidence: 0, source: "CHUA_CO" };
+  if (!profile) {
+    return {
+      primary: null, backup: null,
+      rangeMin: null, rangeMax: null,
+      confidence: 0, source: "CHUA_CO"
+    };
+  }
 
   if (loaiTuVan === "GIAY_DEP") {
     const giay = extractInternalSize(profile.size_giay_thuong_di);
     return giay
-      ? { primary: giay, backup: null, confidence: 0.82, source: "SIZE_GIAY_THUONG_DI" }
-      : { primary: null, backup: null, confidence: 0, source: "CAN_HOI_SIZE_GIAY" };
+      ? {
+          primary: giay,
+          backup: null,
+          rangeMin: giay,
+          rangeMax: giay,
+          confidence: 0.82,
+          source: "SIZE_GIAY_THUONG_DI"
+        }
+      : {
+          primary: null,
+          backup: null,
+          rangeMin: null,
+          rangeMax: null,
+          confidence: 0,
+          source: "CAN_HOI_SIZE_GIAY"
+        };
   }
+
   if (loaiTuVan === "PHU_KIEN") {
-    return { primary: null, backup: null, confidence: 1, source: "KHONG_QUAN_SIZE" };
+    return {
+      primary: null, backup: null,
+      rangeMin: null, rangeMax: null,
+      confidence: 1, source: "KHONG_QUAN_SIZE"
+    };
   }
 
   const scored = state.bodyGroups.map(g => {
-    const dc = distanceToRange(profile.chieu_cao_cm, g.cao_min_cm, g.cao_max_cm) / 4;
-    const dk = distanceToRange(profile.can_nang_kg, g.kg_min, g.kg_max) / 4;
-    return { g, score: dc * dc + dk * dk };
-  }).sort((a,b) => a.score - b.score);
+    const dc = distanceToRange(
+      profile.chieu_cao_cm,
+      g.cao_min_cm,
+      g.cao_max_cm
+    ) / 4;
+
+    const dk = distanceToRange(
+      profile.can_nang_kg,
+      g.kg_min,
+      g.kg_max
+    ) / 4;
+
+    return {
+      g,
+      score: dc * dc + dk * dk
+    };
+  }).sort((a, b) => a.score - b.score);
 
   const g = scored[0]?.g;
-  if (!g) return { primary:"40", backup:"39", confidence:.35, source:"BANG_CHUAN" };
 
-  let target = sizeRank(g.size_trung_tam) || 3;
+  if (!g) {
+    return {
+      primary: "40",
+      backup: "39",
+      rangeMin: "39",
+      rangeMax: "40",
+      confidence: .30,
+      source: "BANG_CHUAN"
+    };
+  }
 
-  // Điều chỉnh nhẹ theo vị trí bên trong vùng: khách ở phía trên vùng -> thiên size trên.
+  const minRank = sizeRank(g.size_tu) || 1;
+  const maxRank = sizeRank(g.size_den) || minRank;
+
+  // Chỉ dùng vị trí của khách TRONG chính vùng cao/kg
+  // để chọn size nằm trong khoảng size_tu -> size_den.
+  // KHONG cộng thêm size vì bụng/đùi/vai/ngực ở V1.1.
   const kgSpan = Math.max(1, Number(g.kg_max) - Number(g.kg_min));
   const caoSpan = Math.max(1, Number(g.cao_max_cm) - Number(g.cao_min_cm));
-  const kgPos = (Number(profile.can_nang_kg) - Number(g.kg_min)) / kgSpan;
-  const caoPos = (Number(profile.chieu_cao_cm) - Number(g.cao_min_cm)) / caoSpan;
-  const pos = (kgPos * 0.65 + caoPos * 0.35);
-  if (pos > 0.72) target += 0.45;
-  if (pos < 0.20) target -= 0.35;
 
-  // Modifier chỉ làm hiệu chỉnh 1 bậc tối đa, chưa dùng form ở V1.
-  if (loaiTuVan === "AO" && (profile.ao_vai_rong || profile.ao_nguc_to || profile.ao_bung)) target += 0.65;
-  if (loaiTuVan === "QUAN" && (profile.quan_bung || profile.quan_dui_to || profile.quan_mong_to)) target += 0.65;
+  const kgPos = Math.max(
+    0,
+    Math.min(
+      1,
+      (Number(profile.can_nang_kg) - Number(g.kg_min)) / kgSpan
+    )
+  );
 
-  const primary = sizeFromRank(target);
-  const pRank = sizeRank(primary);
-  let backupRank = pos >= .5 ? pRank + 1 : pRank - 1;
-  backupRank = Math.max(1, Math.min(9, backupRank));
-  let backup = sizeFromRank(backupRank);
-  if (backup === primary) backup = sizeFromRank(Math.min(9, pRank + 1));
+  const caoPos = Math.max(
+    0,
+    Math.min(
+      1,
+      (Number(profile.chieu_cao_cm) - Number(g.cao_min_cm)) / caoSpan
+    )
+  );
+
+  // Cân nặng ảnh hưởng nhiều hơn chiều cao khi chọn size quần áo.
+  const pos = kgPos * 0.65 + caoPos * 0.35;
+
+  const spanRank = Math.max(0, maxRank - minRank);
+  const targetRank = minRank + pos * spanRank;
+
+  let primaryRank = Math.round(targetRank);
+  primaryRank = Math.max(minRank, Math.min(maxRank, primaryRank));
+
+  const primary = sizeFromRank(primaryRank);
+
+  let backup = null;
+  if (maxRank > minRank) {
+    // Chọn size dự phòng ngay sát size chính nhưng vẫn phải ở TRONG range.
+    let backupRank;
+
+    if (primaryRank <= minRank) {
+      backupRank = minRank + 1;
+    } else if (primaryRank >= maxRank) {
+      backupRank = maxRank - 1;
+    } else {
+      backupRank = pos >= 0.5 ? primaryRank + 1 : primaryRank - 1;
+    }
+
+    backupRank = Math.max(minRank, Math.min(maxRank, backupRank));
+    backup = sizeFromRank(backupRank);
+
+    if (backup === primary) {
+      const alt = primaryRank < maxRank
+        ? primaryRank + 1
+        : primaryRank - 1;
+
+      backup = sizeFromRank(
+        Math.max(minRank, Math.min(maxRank, alt))
+      );
+    }
+  }
 
   return {
-    primary, backup,
-    confidence: scored[0]?.score === 0 ? .50 : .40,
+    primary,
+    backup,
+    rangeMin: sizeFromRank(minRank),
+    rangeMax: sizeFromRank(maxRank),
+    confidence: scored[0]?.score === 0 ? .55 : .40,
     source: "BANG_CHUAN",
     group: g.ma_nhom
   };
@@ -188,6 +282,8 @@ async function learnSuggestionForProduct(sp, profile, seed) {
   return {
     primary,
     backup: backup === primary ? seed.backup : backup,
+    rangeMin: seed.rangeMin || null,
+    rangeMax: seed.rangeMax || null,
     confidence,
     source: used === 1 ? "1_DIEM_NEO_SAN_PHAM" : "LICH_SU_SAN_PHAM",
     samples: used
@@ -235,15 +331,41 @@ function nearestAvailable(target, av) {
 }
 function applyAvailability(sug, stockBySize) {
   const av = availableSizes(stockBySize);
-  if (!av.length) return { ...sug, available: [], primaryInStock:false, backupInStock:false };
-  let primary = sug.primary ? nearestAvailable(sug.primary, av) : av[0];
-  let backup = sug.backup ? nearestAvailable(sug.backup, av.filter(x=>x!==primary)) : null;
-  if (!backup) backup = av.find(x=>x!==primary) || null;
+
   return {
-    ...sug, primary, backup, available:av,
-    primaryInStock: stockAtBranch(stockBySize, primary)>0,
-    backupInStock: backup ? stockAtBranch(stockBySize, backup)>0 : false
+    ...sug,
+    available: av,
+    primaryInStock: sug?.primary
+      ? stockAtBranch(stockBySize, sug.primary) > 0
+      : false,
+    backupInStock: sug?.backup
+      ? stockAtBranch(stockBySize, sug.backup) > 0
+      : false
   };
+}
+
+function distanceOutsideSuggestedRange(size, sug) {
+  const r = sizeRank(size);
+  if (!r) return 0;
+
+  const minR =
+    sizeRank(sug?.rangeMin) ||
+    sizeRank(sug?.primary) ||
+    r;
+
+  const maxR =
+    sizeRank(sug?.rangeMax) ||
+    sizeRank(sug?.backup) ||
+    sizeRank(sug?.primary) ||
+    r;
+
+  const lo = Math.min(minR, maxR);
+  const hi = Math.max(minR, maxR);
+
+  if (r < lo) return lo - r;
+  if (r > hi) return r - hi;
+
+  return 0;
 }
 
 async function createOrUpdateSession(payload) {
@@ -286,7 +408,16 @@ function renderTabs() {
     b.className="kh-tab"+(Number(p.id)===Number(state.currentSessionId)?" active":"");
     b.innerHTML=`${p.tenkh ? esc(p.tenkh) : "Khách "+(p.thu_tu_hien_thi||i+1)}
       <small>${p.chieu_cao_cm}cm · ${Number(p.can_nang_kg)}kg · ${p.so_mon_da_chot||0} món</small>`;
-    b.onclick=async()=>{state.currentSessionId=p.id;state.selectedProduct=null;state.selectedSize=null;await touchSession();renderAll();};
+    b.onclick=async()=>{
+      state.currentSessionId=p.id;
+      state.selectedProduct=null;
+      state.selectedSize=null;
+      state.selectedFit=null;
+      state.currentSuggestion=null;
+      await touchSession();
+      await renderAll();
+      await searchProducts();
+    };
     box.appendChild(b);
   });
 }
@@ -376,6 +507,10 @@ async function renderProducts(list) {
     const stockBySize=state.stockCache.get(norm(sp.masp));
     let sug=await learnSuggestionForProduct(sp,p,seed);
     sug=applyAvailability(sug,stockBySize);
+
+    const cacheKey = `${p.id}|${norm(sp.masp)}`;
+    state.suggestionCache.set(cacheKey, { ...sug });
+
     const av=availableSizes(stockBySize);
     const div=document.createElement("div");
     div.className="product";
@@ -387,7 +522,19 @@ async function renderProducts(list) {
         <div class="tensp">${esc(sp.tensp||"")}</div>
         <div class="price">${money(sp.giale)} đ</div>
         <div class="stock">${isSizeManagedGroup(sp.nhomhang)
-          ? (av.length?`Còn size: ${av.map(s=>`<span class="sizebadge ${s===sug.primary?"best":""}">${s}</span>`).join("")}`:"Hết size tại cơ sở")
+          ? (
+              av.length
+                ? `
+                  Gợi ý: <b>${esc(sug.primary || "-")}${sug.backup ? " / " + esc(sug.backup) : ""}</b><br>
+                  Còn size:
+                  ${av.map(s => `
+                    <span class="sizebadge ${
+                      s===sug.primary || s===sug.backup ? "best" : ""
+                    }">${s}</span>
+                  `).join("")}
+                `
+                : "Hết size tại cơ sở"
+            )
           :"Không quản size"}
         </div>
         <div class="product-actions">
@@ -404,14 +551,36 @@ async function renderProducts(list) {
 async function selectProduct(sp) {
   state.selectedProduct=sp;
   state.selectedSize=null;
+  state.selectedFit=null;
   setStep(3);
+
   const p=currentSession();
   const loai=productLoai(sp);
-  let sug=seedSuggestionForProfile(p,loai);
-  sug=await learnSuggestionForProduct(sp,p,sug);
-  const stock=state.stockCache.get(norm(sp.masp)) || (await getStockForMasps([sp.masp])).get(norm(sp.masp));
+  const cacheKey = `${p?.id}|${norm(sp.masp)}`;
+
+  let sug = state.suggestionCache.get(cacheKey);
+
+  if (!sug) {
+    sug=seedSuggestionForProfile(p,loai);
+    sug=await learnSuggestionForProduct(sp,p,sug);
+
+    const stockTemp =
+      state.stockCache.get(norm(sp.masp)) ||
+      (await getStockForMasps([sp.masp])).get(norm(sp.masp));
+
+    sug=applyAvailability(sug,stockTemp);
+    state.suggestionCache.set(cacheKey, { ...sug });
+  }
+
+  const stock =
+    state.stockCache.get(norm(sp.masp)) ||
+    (await getStockForMasps([sp.masp])).get(norm(sp.masp));
+
   if(stock) state.stockCache.set(norm(sp.masp),stock);
+
+  // KHONG thay đổi primary/backup theo tồn kho.
   sug=applyAvailability(sug,stock);
+
   state.currentSuggestion=sug;
   renderProductDetail();
   renderCoach();
@@ -443,13 +612,22 @@ function renderProductDetail() {
       <div class="size-hero">
         <div><div style="font-size:11px;color:#667">NÊN THỬ</div><div class="size-main">${esc(sug?.primary||"?")}</div></div>
         <div class="size-backup">Dự phòng: <b>${esc(sug?.backup||"-")}</b><br>
-          <span class="confidence">${sourceText(sug?.source)} · tin cậy ${Math.round((sug?.confidence||0)*100)}%</span>
+          <span class="confidence">
+            ${sourceText(sug?.source)} · tin cậy ${Math.round((sug?.confidence||0)*100)}%
+            ${sug?.rangeMin ? `<br>Khoảng cơ thể nền: <b>${esc(sug.rangeMin)}–${esc(sug.rangeMax || sug.rangeMin)}</b>` : ""}
+            ${!sug?.primaryInStock && sug?.primary ? `<br><span style="color:#b42318">Size ${esc(sug.primary)} hiện hết tại ${state.diadiem.toUpperCase()}</span>` : ""}
+          </span>
         </div>
       </div>
       <div class="size-buttons">
         ${SIZE_LIST.map(s=>{
           const ton=stockAtBranch(stock,s);
-          const cls=[s===""+sug?.primary?"primary":"",s===""+sug?.backup?"secondary":"",ton<=0?"no-stock":""].filter(Boolean).join(" ");
+          const cls=[
+            s===""+sug?.primary?"primary":"",
+            s===""+sug?.backup?"secondary":"",
+            s===""+state.selectedSize?"selected":"",
+            ton<=0?"no-stock":""
+          ].filter(Boolean).join(" ");
           return `<button class="size-btn ${cls}" data-size="${s}" title="Tồn ${state.diadiem.toUpperCase()}: ${ton}">${s}<br><small>${ton}</small></button>`;
         }).join("")}
       </div>
@@ -465,65 +643,236 @@ function renderProductDetail() {
   if($("btnChotNoSize")) $("btnChotNoSize").onclick=()=>addToCart(null,null);
 }
 
+function fitLabel(fit) {
+  return ({
+    HOI_BO: "Hơi bó",
+    VUA_KHIT: "Vừa khít",
+    HOI_RONG: "Hơi rộng"
+  })[fit] || "";
+}
+
+function renderFitPanel() {
+  const fp=$("fitPanel");
+  if (!fp || !state.selectedSize) return;
+
+  const size=state.selectedSize;
+  const sug=state.currentSuggestion;
+  const outside=distanceOutsideSuggestedRange(size,sug);
+
+  let warningHtml="";
+
+  if (outside === 1) {
+    warningHtml=`
+      <div style="
+        background:#fff7d6;
+        border:1px solid #e9b949;
+        color:#7a4b00;
+        border-radius:9px;
+        padding:8px;
+        margin-bottom:8px
+      ">
+        ⚠️ Size ${size} nằm ngoài khoảng cơ thể nền
+        ${esc(sug?.rangeMin || sug?.primary || "-")}–${esc(sug?.rangeMax || sug?.backup || sug?.primary || "-")}
+        1 bậc. Nên kiểm tra lại trước khi ghi nhận.
+      </div>
+    `;
+  }
+
+  if (outside >= 2) {
+    warningHtml=`
+      <div class="dangerbox">
+        ⚠️ Size ${size} lệch ${outside} bậc ngoài khoảng cơ thể nền
+        ${esc(sug?.rangeMin || sug?.primary || "-")}–${esc(sug?.rangeMax || sug?.backup || sug?.primary || "-")}.
+        Hãy kiểm tra lại số đo hoặc xác nhận đây là trường hợp đặc biệt.
+      </div>
+    `;
+  }
+
+  fp.innerHTML=`
+    ${warningHtml}
+
+    <div class="fit-box">
+      <div style="
+        padding:8px 10px;
+        margin-bottom:8px;
+        border-radius:9px;
+        background:#eef6ff;
+        border:1px solid #9ec9ec;
+        font-weight:800
+      ">
+        Đang thử: <span style="color:#0878d1">SIZE ${size}</span>
+        ${state.selectedFit
+          ? ` · Kết quả: <span style="color:#15945d">${fitLabel(state.selectedFit)}</span>`
+          : " · Chưa chọn kết quả"
+        }
+      </div>
+
+      <div style="font-weight:800;margin-bottom:6px">
+        Khách mặc size ${size} thế nào?
+      </div>
+
+      <div class="fit-actions">
+        <button
+          class="fit-tight ${state.selectedFit==="HOI_BO" ? "fit-selected" : ""}"
+          data-fit="HOI_BO"
+        >Hơi bó</button>
+
+        <button
+          class="fit-good ${state.selectedFit==="VUA_KHIT" ? "fit-selected" : ""}"
+          data-fit="VUA_KHIT"
+        >Vừa khít</button>
+
+        <button
+          class="fit-loose ${state.selectedFit==="HOI_RONG" ? "fit-selected" : ""}"
+          data-fit="HOI_RONG"
+        >Hơi rộng</button>
+      </div>
+
+      ${state.selectedFit
+        ? `<button
+             class="btn btn-green"
+             id="btnChotFit"
+             style="width:100%;margin-top:8px"
+           >✅ Chốt bán size ${size} · ${fitLabel(state.selectedFit)}</button>`
+        : ""
+      }
+    </div>
+  `;
+
+  fp.querySelectorAll("[data-fit]")
+    .forEach(b => b.onclick=()=>saveFit(b.dataset.fit));
+
+  if ($("btnChotFit")) {
+    $("btnChotFit").onclick=()=>addToCart(
+      size,
+      state.selectedFit
+    );
+  }
+}
+
 function chooseSize(size) {
   state.selectedSize=size;
+  state.selectedFit=null;
   setStep(5);
-  const fp=$("fitPanel");
-  const sug=state.currentSuggestion;
-  const diff = sug?.primary ? Math.abs((sizeRank(size)||0)-(sizeRank(sug.primary)||0)) : 0;
-  fp.innerHTML=`
-    ${diff>=3?`<div class="dangerbox">⚠️ Size ${size} lệch ${diff} bậc so với gợi ý ${sug.primary}. Hãy kiểm tra lại số đo hoặc xác nhận đây là trường hợp đặc biệt.</div>`:""}
-    <div class="fit-box">
-      <div style="font-weight:800;margin-bottom:6px">Khách thử size ${size}: kết quả thế nào?</div>
-      <div class="fit-actions">
-        <button class="fit-tight" data-fit="HOI_BO">Hơi bó</button>
-        <button class="fit-good" data-fit="VUA_KHIT">Vừa khít</button>
-        <button class="fit-loose" data-fit="HOI_RONG">Hơi rộng</button>
-      </div>
-    </div>`;
-  fp.querySelectorAll("[data-fit]").forEach(b=>b.onclick=()=>saveFit(b.dataset.fit));
+
+  // Render lại cả detail để nút size đang chọn đổi trạng thái rõ ràng.
+  renderProductDetail();
+  renderFitPanel();
   renderCoach();
 }
 
 async function saveFit(fit) {
-  const p=currentSession(), sp=state.selectedProduct, size=state.selectedSize, sug=state.currentSuggestion;
-  if(!p||!sp||!size)return;
-  const diff=sug?.primary?Math.abs((sizeRank(size)||0)-(sizeRank(sug.primary)||0)):0;
-  let suspicious=diff>=3, level=diff>=4?3:diff>=3?2:0;
+  const p=currentSession();
+  const sp=state.selectedProduct;
+  const size=state.selectedSize;
+  const sug=state.currentSuggestion;
+
+  if(!p||!sp||!size) return;
+
+  const outside=distanceOutsideSuggestedRange(size,sug);
+  const suspicious=outside>=2;
+  const level=outside>=3 ? 3 : outside>=2 ? 2 : outside===1 ? 1 : 0;
+
   if(suspicious){
-    const ok=confirm(`⚠️ Size ${size} lệch nhiều so với gợi ý ${sug.primary}.\nNếu vẫn ghi nhận, dữ liệu này sẽ bị đánh dấu nghi ngờ và KHÔNG dùng để học tự động.\n\nBạn chắc chắn khách đã thử size ${size}?`);
-    if(!ok)return;
+    const ok=confirm(
+      `⚠️ Size ${size} lệch ${outside} bậc ngoài khoảng cơ thể nền ` +
+      `${sug?.rangeMin || sug?.primary}-${sug?.rangeMax || sug?.backup || sug?.primary}.\n\n` +
+      `Nếu vẫn ghi nhận, dữ liệu này sẽ bị đánh dấu nghi ngờ và KHÔNG dùng để học tự động.\n\n` +
+      `Bạn chắc chắn khách đã thử size ${size}?`
+    );
+
+    if(!ok) return;
   }
+
   const row={
-    phien_id:p.id,manv:state.manv,diadiem:state.diadiem,masp:sp.masp,size,ket_qua:fit,
-    nhomhang:sp.nhomhang||null,form:sp.form||null,co_gian:sp.co_gian||null,
-    rong_ong:sp.rong_ong==null?null:Number(sp.rong_ong),
-    size_he_thong_goi_y:sug?.primary||null,size_du_phong:sug?.backup||null,
-    nguon_goi_y_size:sug?.source||null,do_tin_cay_size:sug?.confidence||null,
-    nghi_ngo_du_lieu:suspicious,muc_nghi_ngo:level,
-    ly_do_nghi_ngo:suspicious?`Size thu ${size} lech ${diff} bac so voi goi y ${sug.primary}`:null,
-    da_chot_tu_van:false
+    manv:state.manv,
+    diadiem:state.diadiem,
+    ket_qua:fit,
+
+    nhomhang:sp.nhomhang||null,
+    form:sp.form||null,
+    co_gian:sp.co_gian||null,
+    rong_ong:sp.rong_ong==null
+      ? null
+      : Number(sp.rong_ong),
+
+    size_he_thong_goi_y:sug?.primary||null,
+    size_du_phong:sug?.backup||null,
+    nguon_goi_y_size:sug?.source||null,
+    do_tin_cay_size:sug?.confidence||null,
+
+    nghi_ngo_du_lieu:suspicious,
+    muc_nghi_ngo:level,
+    ly_do_nghi_ngo:outside>0
+      ? `Size thu ${size} nam ngoai khoang co the ${sug?.rangeMin || "-"}-${sug?.rangeMax || "-"} ${outside} bac`
+      : null
   };
-  const {error}=await supabase.from("ket_qua_thu_do").insert(row);
-  if(error){toast("Không lưu được kết quả thử: "+error.message,4000);return;}
+
+  // V1.1: cùng 1 khách + mã + size chỉ giữ KẾT QUẢ MỚI NHẤT.
+  // Nếu NV đổi Hơi bó -> Vừa khít, hệ thống UPDATE thay vì thêm dòng rác.
+  const { data: oldRows, error: oldErr } =
+    await supabase
+      .from("ket_qua_thu_do")
+      .select("id")
+      .eq("phien_id",p.id)
+      .eq("masp",sp.masp)
+      .eq("size",size)
+      .order("id",{ascending:false})
+      .limit(1);
+
+  if(oldErr){
+    toast("Không kiểm tra được kết quả thử cũ: "+oldErr.message,4000);
+    return;
+  }
+
+  let error;
+
+  if(oldRows?.length){
+    ({error} = await supabase
+      .from("ket_qua_thu_do")
+      .update(row)
+      .eq("id",oldRows[0].id));
+  } else {
+    ({error} = await supabase
+      .from("ket_qua_thu_do")
+      .insert({
+        ...row,
+        phien_id:p.id,
+        masp:sp.masp,
+        size,
+        da_chot_tu_van:false
+      }));
+  }
+
+  if(error){
+    toast("Không lưu được kết quả thử: "+error.message,4000);
+    return;
+  }
+
+  state.selectedFit=fit;
   setStep(6);
-  toast("Đã lưu kết quả thử.");
-  const fp=$("fitPanel");
-  fp.innerHTML+=`<button class="btn btn-green" id="btnChotFit" style="width:100%;margin-top:8px">✅ Chốt bán size ${size}</button>`;
-  $("btnChotFit").onclick=()=>addToCart(size,fit);
+  toast(`Đã ghi: size ${size} · ${fitLabel(fit)}`);
+
+  // Render lại để nút đã chọn nổi bật + hiện kết quả ngay trên cùng dòng.
+  renderProductDetail();
+  renderFitPanel();
+  renderPairingHint();
 }
 
 async function addToCart(size,fit) {
   const p=currentSession(), sp=state.selectedProduct, sug=state.currentSuggestion;
   if(!p||!sp)return;
-  const diff=(size&&sug?.primary)?Math.abs((sizeRank(size)||0)-(sizeRank(sug.primary)||0)):0;
+  const diff=size ? distanceOutsideSuggestedRange(size,sug) : 0;
   const row={
     phien_id:p.id,masp:sp.masp,size:size||null,soluong:1,
     giale_hien_thi:Number(sp.giale||0),khuyenmai_hien_thi:0,trang_thai:"DA_CHOT",
     ket_qua_mac:fit||null,size_he_thong_goi_y:sug?.primary||null,size_du_phong:sug?.backup||null,
     nguon_goi_y_size:sug?.source||null,do_tin_cay_size:sug?.confidence||null,
-    nghi_ngo_size:diff>=3,muc_nghi_ngo_size:diff>=4?3:diff>=3?2:0,
-    ly_do_nghi_ngo_size:diff>=3?`Size chot ${size} lech ${diff} bac so voi goi y ${sug.primary}`:null
+    nghi_ngo_size:diff>=2,
+    muc_nghi_ngo_size:diff>=3?3:diff>=2?2:diff===1?1:0,
+    ly_do_nghi_ngo_size:diff>0
+      ? `Size chot ${size} nam ngoai khoang co the ${sug?.rangeMin || "-"}-${sug?.rangeMax || "-"} ${diff} bac`
+      : null
   };
   const {error}=await supabase.from("gio_tu_van").insert(row);
   if(error){toast("Không thêm được giỏ tư vấn: "+error.message,4000);return;}
@@ -649,7 +998,6 @@ async function finalizeMeasurements() {
   $("modalXacNhan").classList.remove("show");
   state.pendingConfirmAction=null;
   if(action==="PUSH") await pushToSale();
-  if(action==="NO_BUY") await endNoBuy();
 }
 
 async function pushToSale() {
@@ -722,7 +1070,16 @@ function bindEvents(){
   $("txtSearch").addEventListener("keydown",e=>{if(e.key==="Enter")searchProducts();});
   $("chkConHang").onchange=searchProducts;
   $("btnDaySangBan").onclick=()=>confirmMeasurements("PUSH");
-  $("btnKetThucKhongMua").onclick=()=>{if(currentSession())confirmMeasurements("NO_BUY");};
+  $("btnKetThucKhongMua").onclick=async()=>{
+    if(!currentSession()) return;
+
+    const ok=confirm(
+      "Kết thúc phiên tư vấn này với trạng thái KHÔNG MUA?\n\n" +
+      "Các kết quả thử đã ghi vẫn được giữ lại."
+    );
+
+    if(ok) await endNoBuy();
+  };
   $("btnXNDongY").onclick=finalizeMeasurements;
   $("btnXNSua").onclick=()=>{$("modalXacNhan").classList.remove("show");openCustomerModal(true);};
   $("btnMoTrangBan").onclick=()=>window.open(state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html","BAN_NV_HOAN_TUYET");
