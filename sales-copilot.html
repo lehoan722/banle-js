@@ -49,7 +49,8 @@
     .groupbtn.on{background:#0878d1;color:#fff;border-color:#0878d1}
     .searchline{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:8px}
     .products{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:9px;margin-top:9px}
-    .product{border:1px solid #d7dee5;border-radius:11px;background:#fff;overflow:hidden;position:relative}
+    .product{border:1px solid #d7dee5;border-radius:11px;background:#fff;overflow:hidden;position:relative;scroll-margin-top:115px}
+    .product.jump-highlight{outline:4px solid #f4a900;outline-offset:2px;box-shadow:0 0 0 6px #fff3c4;transition:.2s}
     .product img{width:100%;height:190px;object-fit:contain;background:#f8f8f8}
     .product-body{padding:8px}
     .masp{font-weight:900;font-size:15px;color:#14283d;word-break:break-word}
@@ -104,9 +105,66 @@
     .dangerbox{background:#fff0f0;border:2px solid #ef4444;color:#8a1c1c;padding:10px;border-radius:9px;margin-top:8px}
     @media(max-width:1050px){.layout{grid-template-columns:280px 1fr}.rightcol{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px}.rightcol .card{margin:0}}
     @media(max-width:720px){
-      .layout{display:block;padding:7px}.leftcol,.midcol,.rightcol{display:block}.rightcol .card{margin-bottom:8px}
-      .steps{grid-template-columns:repeat(8,92px);padding:6px}.products{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-      .product img{height:150px}.product-actions{grid-template-columns:1fr}.title{font-size:17px}.topbar{padding:7px}
+      body{background:#f4f6f8}
+      .topbar{padding:6px 7px}
+      .topline{gap:5px}
+      .title{font-size:15px;min-width:145px;line-height:1.2}
+      .mini{font-size:11px}
+      .topline .btn{padding:7px 9px;font-size:13px}
+      .tabs{padding-top:5px}
+      .kh-tab{padding:6px 9px;font-size:13px}
+      .steps{
+        grid-template-columns:repeat(8,78px);
+        padding:4px 6px;
+        gap:3px
+      }
+      .step{padding:5px 3px;font-size:10px}
+
+      .layout{
+        display:flex;
+        flex-direction:column;
+        padding:6px;
+        gap:0
+      }
+
+      /* Mobile: thông tin khách/tìm kiếm -> sản phẩm đang tư vấn -> danh sách ảnh */
+      .leftcol{order:1}
+      .rightcol{order:2;display:block}
+      .midcol{order:3}
+
+      .card{
+        padding:8px;
+        margin-bottom:7px;
+        border-radius:10px
+      }
+      .card h3{font-size:15px;margin-bottom:7px}
+
+      .products{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:6px
+      }
+      .product img{height:155px}
+      .product-body{padding:7px}
+      .masp{font-size:13px}
+      .tensp{font-size:11px;min-height:22px}
+      .price{font-size:14px}
+      .stock{font-size:11px}
+      .product-actions{grid-template-columns:1fr}
+      .product-actions button{padding:7px 3px;font-size:12px}
+
+      .profile-main{font-size:16px}
+      .profile-sub{font-size:12px}
+      .groupbtn{padding:7px 9px;font-size:12px}
+      .searchline input{padding:8px}
+      .searchline .btn{padding:8px 10px}
+      .size-main{font-size:34px}
+      .size-buttons{grid-template-columns:repeat(5,1fr);gap:4px}
+      .size-btn{padding:7px 2px;font-size:13px}
+      .fit-actions button{padding:8px 2px;font-size:12px}
+      .rightcol .card{margin-bottom:7px}
+
+      /* Trên điện thoại không để giỏ chiếm quá nhiều chỗ khi chưa cần */
+      #cartBox.empty{padding:15px 5px}
     }
   </style>
 </head>
@@ -236,6 +294,7 @@
   </div>
 
   <script src="/scripts/stockQuickPopup.js?v=78"></script>
-  <script type="module" src="/scripts/salesCopilot.js?v=11"></script>
+  <script src="/scripts/stockQuickSimilar.js?v=20260821"></script>
+  <script type="module" src="/scripts/salesCopilot.js?v=12"></script>
 </body>
 </html>
