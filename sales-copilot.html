@@ -104,10 +104,129 @@
     .checkitem{border:1px solid #ccd6df;border-radius:8px;padding:8px}
     .modal-actions{display:flex;gap:7px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
     .dangerbox{background:#fff0f0;border:2px solid #ef4444;color:#8a1c1c;padding:10px;border-radius:9px;margin-top:8px}
+    
+    .consult-mode-wrap{
+      background:#fff;
+      border-bottom:1px solid var(--border);
+      padding:8px 10px;
+      position:relative;
+      z-index:20;
+    }
+    .consult-mode-head{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:6px;
+      font-size:13px;
+    }
+    .consult-mode-head b{
+      color:#075f9f;
+      font-size:14px;
+    }
+    #modeHint{
+      color:#687787;
+      font-size:12px;
+    }
+    .consult-mode-row{
+      display:flex;
+      gap:6px;
+      overflow:auto;
+      padding-bottom:2px;
+    }
+    .mode-btn{
+      border:1px solid #c5d2df;
+      background:#fff;
+      border-radius:999px;
+      padding:8px 13px;
+      font-weight:800;
+      white-space:nowrap;
+      color:#23364a;
+    }
+    .mode-btn.active{
+      background:#142033;
+      color:#fff;
+      border-color:#142033;
+    }
+    .mode-btn[data-mode="discount"].active{
+      background:#d92d20;
+      border-color:#d92d20;
+    }
+    .mode-btn[data-mode="cheaper"].active{
+      background:#15945d;
+      border-color:#15945d;
+    }
+    .mode-btn[data-mode="premium"].active{
+      background:#7c3aed;
+      border-color:#7c3aed;
+    }
+    .price-compare-row{
+      display:none;
+      align-items:center;
+      gap:7px;
+      margin-top:7px;
+      flex-wrap:wrap;
+      padding:7px;
+      background:#f6f8fb;
+      border:1px solid #dbe3eb;
+      border-radius:9px;
+    }
+    .price-compare-row.show{display:flex}
+    .price-compare-row label{
+      display:flex;
+      align-items:center;
+      gap:5px;
+      font-size:12px;
+      font-weight:800;
+      color:#435164;
+      flex:1;
+      min-width:200px;
+    }
+    #txtReferencePrice{
+      width:105px;
+      padding:7px 8px;
+      font-weight:800;
+    }
+    .discount-badge{
+      display:inline-block;
+      background:#d92d20;
+      color:#fff;
+      font-weight:900;
+      font-size:11px;
+      border-radius:6px;
+      padding:3px 6px;
+      margin-top:5px;
+    }
+    .price-diff{
+      display:inline-block;
+      font-size:11px;
+      font-weight:800;
+      margin-top:4px;
+      padding:3px 6px;
+      border-radius:6px;
+      background:#eef2f6;
+      color:#334155;
+    }
+    .price-diff.cheaper{
+      background:#dcfce7;
+      color:#166534;
+    }
+    .price-diff.premium{
+      background:#ede9fe;
+      color:#5b21b6;
+    }
+
     @media(max-width:1050px){.layout{grid-template-columns:280px 1fr}.rightcol{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px}.rightcol .card{margin:0}}
     @media(max-width:720px){
       body{background:#f4f6f8}
       .topbar{padding:6px 7px}
+      .consult-mode-wrap{padding:6px 7px}
+      .consult-mode-head{margin-bottom:4px}
+      .consult-mode-row{gap:4px}
+      .mode-btn{padding:7px 10px;font-size:12px}
+      .price-compare-row{padding:6px;gap:5px}
+      .price-compare-row label{min-width:100%;font-size:11px}
+      #txtReferencePrice{width:90px}
+      .price-compare-row .btn{padding:7px 8px;font-size:11px}
       .topline{gap:5px}
       .title{font-size:15px;min-width:145px;line-height:1.2}
       .mini{font-size:11px}
@@ -191,7 +310,56 @@
     <div class="step" data-step="8">8. Giữ khách</div>
   </div>
 
-  <main class="layout">
+  
+  <section class="consult-mode-wrap">
+    <div class="consult-mode-head">
+      <b>Kiểu tư vấn</b>
+      <span id="modeHint">Hàng phù hợp size khách</span>
+    </div>
+
+    <div class="consult-mode-row">
+      <button class="mode-btn active" data-mode="similar">
+        🎯 Phù hợp
+      </button>
+
+      <button class="mode-btn" data-mode="discount">
+        🔻 Giảm giá
+      </button>
+
+      <button class="mode-btn" data-mode="cheaper">
+        💰 Rẻ hơn
+      </button>
+
+      <button class="mode-btn" data-mode="premium">
+        ⭐ Đắt hơn
+      </button>
+    </div>
+
+    <div class="price-compare-row" id="priceCompareRow">
+      <label>
+        Giá so sánh
+        <input
+          id="txtReferencePrice"
+          type="number"
+          min="0"
+          step="10"
+          inputmode="numeric"
+          placeholder="VD 390"
+        >
+        <span>nghìn</span>
+      </label>
+
+      <button class="btn btn-gray" id="btnLayGiaDangXem">
+        Lấy giá mã đang xem
+      </button>
+
+      <button class="btn btn-blue" id="btnApDungGia">
+        Áp dụng
+      </button>
+    </div>
+  </section>
+
+<main class="layout">
     <section class="leftcol">
       <div class="card">
         <h3>Khách đang tư vấn</h3>
@@ -296,6 +464,6 @@
 
   <script src="/scripts/stockQuickPopup.js?v=78"></script>
   <script src="/scripts/stockQuickSimilar.js?v=20260821"></script>
-  <script type="module" src="/scripts/salesCopilot.js?v=15"></script>
+  <script type="module" src="/scripts/salesCopilot.js?v=16"></script>
 </body>
 </html>
