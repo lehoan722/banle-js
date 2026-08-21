@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Trợ lý bán hàng Hoàn Tuyết V1</title>
+  <style>
+    :root{
+      --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
+      --amber:#e69b00;--bg:#f3f6f9;--card:#fff;--border:#d9e0e7;--text:#172033;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    .topbar{position:sticky;top:0;z-index:100;background:#0878d1;color:#fff;padding:8px 10px;box-shadow:0 2px 8px #0002}
+    .topline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .title{font-size:20px;font-weight:800;flex:1;min-width:210px}
+    .mini{font-size:12px;opacity:.92}
+    .btn{border:0;border-radius:9px;padding:9px 12px;font-weight:700}
+    .btn-white{background:#fff;color:#075f9f}
+    .btn-blue{background:#0878d1;color:#fff}
+    .btn-green{background:#15945d;color:#fff}
+    .btn-red{background:#d92d20;color:#fff}
+    .btn-gray{background:#e8edf2;color:#243244}
+    .btn-amber{background:#f4a900;color:#171717}
+    .tabs{display:flex;gap:6px;overflow:auto;padding:7px 0 0}
+    .kh-tab{white-space:nowrap;border:1px solid #bcd5ed;background:#fff;color:#14324c;border-radius:9px;padding:7px 10px;font-weight:700}
+    .kh-tab.active{background:#ffe9a8;border-color:#e3a600;color:#7b4300}
+    .kh-tab small{display:block;font-weight:400;font-size:10px;margin-top:2px}
+    .steps{display:grid;grid-template-columns:repeat(8,minmax(82px,1fr));gap:4px;padding:8px 10px;background:#fff;border-bottom:1px solid var(--border);overflow:auto}
+    .step{padding:7px 5px;text-align:center;border-radius:7px;background:#eef2f6;font-size:11px;white-space:nowrap}
+    .step.active{background:#fff0b8;color:#793e00;font-weight:800}
+    .layout{display:grid;grid-template-columns:320px minmax(0,1fr) 340px;gap:10px;padding:10px;max-width:1600px;margin:auto}
+    .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:11px;box-shadow:0 1px 4px #0000000d;margin-bottom:10px}
+    .card h3{margin:0 0 9px;font-size:16px;color:#075f9f}
+    .profile-main{font-size:20px;font-weight:800;color:#152a3e;margin-bottom:5px}
+    .profile-sub{font-size:13px;line-height:1.45;color:#4d5b6a}
+    .coach{background:#fff7d5;border:1px solid #efd371;border-radius:10px;padding:9px;font-size:13px;line-height:1.4}
+    .field{margin-bottom:8px}
+    .field label{display:block;font-size:12px;font-weight:700;margin-bottom:3px;color:#435164}
+    input,select{width:100%;padding:9px;border:1px solid #bfcad5;border-radius:8px;background:#fff}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{border:1px solid #c7d1dc;background:#fff;border-radius:999px;padding:7px 10px;font-size:12px}
+    .chip.on{background:#dff2ff;border-color:#39a4e2;color:#075f9f;font-weight:700}
+    .groupbar{display:flex;gap:6px;overflow:auto;padding-bottom:5px}
+    .groupbtn{border:1px solid #b9cadd;background:#fff;border-radius:8px;padding:9px 12px;font-weight:800;white-space:nowrap}
+    .groupbtn.on{background:#0878d1;color:#fff;border-color:#0878d1}
+    .searchline{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:8px}
+    .products{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:9px;margin-top:9px}
+    .product{border:1px solid #d7dee5;border-radius:11px;background:#fff;overflow:hidden;position:relative}
+    .product img{width:100%;height:190px;object-fit:contain;background:#f8f8f8}
+    .product-body{padding:8px}
+    .masp{font-weight:900;font-size:15px;color:#14283d;word-break:break-word}
+    .tensp{font-size:12px;color:#566474;min-height:28px;margin-top:3px}
+    .price{font-weight:800;color:#d92d20;margin-top:5px}
+    .stock{font-size:12px;margin-top:5px;line-height:1.45}
+    .sizebadge{display:inline-block;margin:2px 2px 0 0;border-radius:6px;padding:3px 5px;background:#edf4fb;font-size:11px}
+    .sizebadge.best{background:#ffe9a8;font-weight:900}
+    .product-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px}
+    .product-actions button{padding:8px 4px;border:0;border-radius:7px;font-weight:700;font-size:12px}
+    .empty{text-align:center;color:#687787;padding:30px 10px}
+    .size-hero{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .size-main{font-size:38px;font-weight:900;color:#d92d20;line-height:1}
+    .size-backup{font-size:14px}
+    .confidence{font-size:12px;color:#566474;margin-top:4px}
+    .size-buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:8px}
+    .size-btn{padding:9px 2px;border:1px solid #becbd7;background:#fff;border-radius:8px;font-weight:800}
+    .size-btn.primary{background:#ffe9a8;border-color:#e2a500}
+    .size-btn.secondary{background:#e6f4ff;border-color:#5ca9dc}
+    .size-btn.no-stock{opacity:.38;text-decoration:line-through}
+    .fit-box{margin-top:9px;padding-top:9px;border-top:1px solid #e4e8ed}
+    .fit-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+    .fit-actions button{border:0;border-radius:8px;padding:9px 3px;font-weight:800}
+    .fit-tight{background:#fee2e2;color:#991b1b}
+    .fit-good{background:#dcfce7;color:#166534}
+    .fit-loose{background:#dbeafe;color:#1e40af}
+    .cart-item{border-bottom:1px solid #e5e9ed;padding:8px 0}
+    .cart-item:last-child{border-bottom:0}
+    .cart-top{display:flex;gap:6px;align-items:center}
+    .cart-top b{flex:1}
+    .cart-meta{font-size:12px;color:#5d6b79;margin-top:3px}
+    .cart-buttons{display:flex;gap:5px;margin-top:5px}
+    .cart-buttons button{padding:5px 7px;border:0;border-radius:6px}
+    .statusbar{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:10001;background:#172033;color:#fff;padding:9px 14px;border-radius:999px;font-size:13px;display:none;max-width:92vw}
+    .modal{position:fixed;inset:0;background:#0007;z-index:20000;display:none;align-items:center;justify-content:center;padding:12px}
+    .modal.show{display:flex}
+    .modal-box{width:min(520px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:14px;padding:15px}
+    .modal-title{font-size:19px;font-weight:900;color:#075f9f;margin-bottom:10px}
+    .checkgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+    .checkitem{border:1px solid #ccd6df;border-radius:8px;padding:8px}
+    .modal-actions{display:flex;gap:7px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+    .dangerbox{background:#fff0f0;border:2px solid #ef4444;color:#8a1c1c;padding:10px;border-radius:9px;margin-top:8px}
+    @media(max-width:1050px){.layout{grid-template-columns:280px 1fr}.rightcol{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px}.rightcol .card{margin:0}}
+    @media(max-width:720px){
+      .layout{display:block;padding:7px}.leftcol,.midcol,.rightcol{display:block}.rightcol .card{margin-bottom:8px}
+      .steps{grid-template-columns:repeat(8,92px);padding:6px}.products{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+      .product img{height:150px}.product-actions{grid-template-columns:1fr}.title{font-size:17px}.topbar{padding:7px}
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topline">
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1</div>
+      <div class="mini" id="nvInfo">...</div>
+      <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
+      <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
+    </div>
+    <div class="tabs" id="phienTabs"></div>
+  </header>
+
+  <div class="steps" id="stepBar">
+    <div class="step active" data-step="1">1. Quan sát</div>
+    <div class="step" data-step="2">2. Hỏi nhu cầu</div>
+    <div class="step" data-step="3">3. Chọn size</div>
+    <div class="step" data-step="4">4. Chọn hàng</div>
+    <div class="step" data-step="5">5. Thử đồ</div>
+    <div class="step" data-step="6">6. Bán kèm</div>
+    <div class="step" data-step="7">7. Chốt</div>
+    <div class="step" data-step="8">8. Giữ khách</div>
+  </div>
+
+  <main class="layout">
+    <section class="leftcol">
+      <div class="card">
+        <h3>Khách đang tư vấn</h3>
+        <div id="profileBox" class="empty">Tạo khách mới để bắt đầu.</div>
+        <div style="display:flex;gap:5px;margin-top:8px">
+          <button class="btn btn-gray" id="btnSuaKhach" style="flex:1">✏️ Sửa</button>
+          <button class="btn btn-gray" id="btnKetThucKhongMua" style="flex:1">Kết thúc không mua</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Gợi ý bán hàng</h3>
+        <div class="coach" id="coachBox">Quan sát nhanh chiều cao/cân nặng và tạo phiên khách.</div>
+      </div>
+      <div class="card">
+        <h3>Tìm theo nhóm</h3>
+        <div class="groupbar" id="groupBar"></div>
+        <div class="searchline">
+          <input id="txtSearch" placeholder="Nhập mã hoặc tên sản phẩm">
+          <button class="btn btn-blue" id="btnSearch">Tìm</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-top:7px">
+          <input type="checkbox" id="chkConHang" checked style="width:auto"> Chỉ hiện hàng còn tại cơ sở này
+        </label>
+      </div>
+    </section>
+
+    <section class="midcol">
+      <div class="card">
+        <h3>Sản phẩm phù hợp</h3>
+        <div id="searchSummary" style="font-size:12px;color:#657381">Chọn nhóm hàng hoặc nhập mã.</div>
+        <div id="productList" class="products"></div>
+      </div>
+    </section>
+
+    <aside class="rightcol">
+      <div class="card">
+        <h3>Sản phẩm đang tư vấn</h3>
+        <div id="productDetail" class="empty">Chọn một sản phẩm.</div>
+      </div>
+      <div class="card">
+        <h3>Giỏ tư vấn</h3>
+        <div id="cartBox" class="empty">Chưa chốt sản phẩm.</div>
+        <button class="btn btn-green" id="btnDaySangBan" style="width:100%;margin-top:8px">✅ Đưa sang trang bán</button>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="statusbar"></div>
+
+  <div class="modal" id="modalKhach">
+    <div class="modal-box">
+      <div class="modal-title" id="modalKhachTitle">Khách mới</div>
+      <div class="row2">
+        <div class="field"><label>Chiều cao (cm) *</label><input id="fCao" type="number" min="130" max="220" placeholder="VD 168"></div>
+        <div class="field"><label>Cân nặng (kg) *</label><input id="fKg" type="number" min="30" max="200" step="0.1" placeholder="VD 67"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Tuổi</label><input id="fTuoi" type="number" min="12" max="100" placeholder="VD 30"></div>
+        <div class="field"><label>Size giày thường đi</label>
+          <select id="fGiay"><option value="">-- Không biết --</option></select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Mã KH / SĐT</label><input id="fMakh" inputmode="tel" maxlength="10" placeholder="Có thể để trống"></div>
+        <div class="field"><label>Tên khách</label><input id="fTenkh" placeholder="Có thể để trống"></div>
+      </div>
+
+      <div class="field">
+        <label>Đặc điểm QUẦN (chỉ chọn nếu có)</label>
+        <div class="chips">
+          <button type="button" class="chip body-chip" data-field="quan_bung">Bụng</button>
+          <button type="button" class="chip body-chip" data-field="quan_dui_to">Đùi to</button>
+          <button type="button" class="chip body-chip" data-field="quan_mong_to">Mông to</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Đặc điểm ÁO (chỉ chọn nếu có)</label>
+        <div class="chips">
+          <button type="button" class="chip body-chip" data-field="ao_vai_rong">Vai rộng</button>
+          <button type="button" class="chip body-chip" data-field="ao_nguc_to">Ngực to</button>
+          <button type="button" class="chip body-chip" data-field="ao_bung">Bụng</button>
+        </div>
+      </div>
+      <div id="groupPreview" class="coach">Nhập chiều cao và cân nặng để xem size nền.</div>
+      <div class="modal-actions">
+        <button class="btn btn-gray" id="btnHuyKhach">Hủy</button>
+        <button class="btn btn-blue" id="btnLuuKhach">Bắt đầu tư vấn</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalXacNhan">
+    <div class="modal-box">
+      <div class="modal-title">Xác nhận số đo khách</div>
+      <div id="xacNhanBody"></div>
+      <div class="modal-actions">
+        <button class="btn btn-gray" id="btnXNSua">Sửa lại</button>
+        <button class="btn btn-green" id="btnXNDongY">Đúng - tiếp tục</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/scripts/stockQuickPopup.js?v=78"></script>
+  <script type="module" src="/scripts/salesCopilot.js?v=1"></script>
+</body>
+</html>
