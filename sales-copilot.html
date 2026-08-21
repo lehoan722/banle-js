@@ -70,9 +70,19 @@
     .size-btn.primary{background:#ffe9a8;border-color:#e2a500}
     .size-btn.secondary{background:#e6f4ff;border-color:#5ca9dc}
     .size-btn.no-stock{opacity:.38;text-decoration:line-through}
+    .size-btn.selected{
+      outline:3px solid #0b7bd5;
+      outline-offset:1px;
+      transform:translateY(-1px)
+    }
     .fit-box{margin-top:9px;padding-top:9px;border-top:1px solid #e4e8ed}
     .fit-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
     .fit-actions button{border:0;border-radius:8px;padding:9px 3px;font-weight:800}
+    .fit-actions button.fit-selected{
+      outline:3px solid #111827;
+      outline-offset:2px;
+      box-shadow:0 0 0 2px #fff inset
+    }
     .fit-tight{background:#fee2e2;color:#991b1b}
     .fit-good{background:#dcfce7;color:#166534}
     .fit-loose{background:#dbeafe;color:#1e40af}
@@ -226,6 +236,6 @@
   </div>
 
   <script src="/scripts/stockQuickPopup.js?v=78"></script>
-  <script type="module" src="/scripts/salesCopilot.js?v=1"></script>
+  <script type="module" src="/scripts/salesCopilot.js?v=11"></script>
 </body>
 </html>
