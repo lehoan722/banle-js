@@ -96,7 +96,7 @@ function groupForHeight(h) {
   const n = Number(h || 0);
   if (n <= 154) return {primary:"38", backup:"39", group:"NHOM_1"};
   if (n <= 164) return {primary:"39", backup:"38", group:"NHOM_1"};
-  if (n <= 170) return {primary:"40", backup:"39", group:"NHOM_2"};
+  if (n <= 168) return {primary:"40", backup:"39", group:"NHOM_2"};
   if (n <= 174) return {primary:"41", backup:"42", group:"NHOM_3"};
   if (n <= 180) return {primary:"42", backup:"41", group:"NHOM_3"};
   if (n <= 184) return {primary:"43", backup:"44", group:"NHOM_4"};
@@ -109,7 +109,7 @@ function groupForWeight(kg) {
   const n = Number(kg || 0);
   if (n <= 54) return {primary:"38", backup:"39", group:"NHOM_1"};
   if (n <= 64) return {primary:"39", backup:"38", group:"NHOM_1"};
-  if (n <= 70) return {primary:"40", backup:"39", group:"NHOM_2"};
+  if (n <= 68) return {primary:"40", backup:"39", group:"NHOM_2"};
   if (n <= 74) return {primary:"41", backup:"42", group:"NHOM_3"};
   if (n <= 80) return {primary:"42", backup:"41", group:"NHOM_3"};
   if (n <= 84) return {primary:"43", backup:"44", group:"NHOM_4"};
@@ -1987,13 +1987,13 @@ function setHeightQuick(height, autoWeight=true) {
 }
 
 function stepHeight(delta) {
-  const old = Number($("fCao").value || 170);
+  const old = Number($("fCao").value || 168);
   const next = Math.max(130, Math.min(220, old + Number(delta || 0)));
   setHeightQuick(next, state.autoWeightMode);
 }
 
 function stepWeight(delta) {
-  const old = Number($("fKg").value || autoWeightFromHeight($("fCao").value) || 70);
+  const old = Number($("fKg").value || autoWeightFromHeight($("fCao").value) || 68);
   const next = Math.max(30, Math.min(200, old + Number(delta || 0)));
   $("fKg").value = next;
   state.autoWeightMode = false;
