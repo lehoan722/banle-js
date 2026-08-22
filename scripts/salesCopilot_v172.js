@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.7.1";
-console.log("[SalesCopilot] BUILD 1.7.1");
+window.SALES_COPILOT_BUILD="1.7.2";
+console.log("[SalesCopilot] BUILD 1.7.2");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -96,7 +96,7 @@ function groupForHeight(h) {
   const n = Number(h || 0);
   if (n <= 154) return {primary:"38", backup:"39", group:"NHOM_1"};
   if (n <= 164) return {primary:"39", backup:"38", group:"NHOM_1"};
-  if (n <= 168) return {primary:"40", backup:"39", group:"NHOM_2"};
+  if (n <= 170) return {primary:"40", backup:"39", group:"NHOM_2"};
   if (n <= 174) return {primary:"41", backup:"42", group:"NHOM_3"};
   if (n <= 180) return {primary:"42", backup:"41", group:"NHOM_3"};
   if (n <= 184) return {primary:"43", backup:"44", group:"NHOM_4"};
@@ -109,7 +109,7 @@ function groupForWeight(kg) {
   const n = Number(kg || 0);
   if (n <= 54) return {primary:"38", backup:"39", group:"NHOM_1"};
   if (n <= 64) return {primary:"39", backup:"38", group:"NHOM_1"};
-  if (n <= 68) return {primary:"40", backup:"39", group:"NHOM_2"};
+  if (n <= 70) return {primary:"40", backup:"39", group:"NHOM_2"};
   if (n <= 74) return {primary:"41", backup:"42", group:"NHOM_3"};
   if (n <= 80) return {primary:"42", backup:"41", group:"NHOM_3"};
   if (n <= 84) return {primary:"43", backup:"44", group:"NHOM_4"};
@@ -120,46 +120,132 @@ function groupForWeight(kg) {
 
 function seedSuggestionForProfile(profile, loaiTuVan = "AO") {
   if (!profile) {
-    return {primary:null,backup:null,rangeMin:null,rangeMax:null,confidence:0,source:"CHUA_CO"};
+    return {
+      primary:null,
+      backup:null,
+      rangeMin:null,
+      rangeMax:null,
+      confidence:0,
+      source:"CHUA_CO"
+    };
   }
 
   if (loaiTuVan === "GIAY_DEP") {
-    const giay = extractInternalSize(profile.size_giay_thuong_di);
+    const giay =
+      extractInternalSize(
+        profile.size_giay_thuong_di
+      );
+
     return giay
-      ? {primary:giay,backup:null,rangeMin:giay,rangeMax:giay,confidence:.82,source:"SIZE_GIAY_THUONG_DI"}
-      : {primary:null,backup:null,rangeMin:null,rangeMax:null,confidence:0,source:"CAN_HOI_SIZE_GIAY"};
+      ? {
+          primary:giay,
+          backup:null,
+          rangeMin:giay,
+          rangeMax:giay,
+          confidence:.82,
+          source:"SIZE_GIAY_THUONG_DI"
+        }
+      : {
+          primary:null,
+          backup:null,
+          rangeMin:null,
+          rangeMax:null,
+          confidence:0,
+          source:"CAN_HOI_SIZE_GIAY"
+        };
   }
 
   if (loaiTuVan === "PHU_KIEN") {
-    return {primary:null,backup:null,rangeMin:null,rangeMax:null,confidence:1,source:"KHONG_QUAN_SIZE"};
+    return {
+      primary:null,
+      backup:null,
+      rangeMin:null,
+      rangeMax:null,
+      confidence:1,
+      source:"KHONG_QUAN_SIZE"
+    };
   }
 
-  const byHeight = groupForHeight(profile.chieu_cao_cm);
-  const byWeight = groupForWeight(profile.can_nang_kg);
+  const byHeight =
+    groupForHeight(
+      profile.chieu_cao_cm
+    );
 
-  const rh = sizeRank(byHeight.primary) || 1;
-  const rw = sizeRank(byWeight.primary) || 1;
+  const byWeight =
+    groupForWeight(
+      profile.can_nang_kg
+    );
 
-  const dominant = rw > rh ? byWeight : byHeight;
-  const other = rw > rh ? byHeight : byWeight;
+  const rh =
+    sizeRank(byHeight.primary) || 1;
 
-  let backup = dominant.backup;
-  if (other.primary !== dominant.primary) {
-    backup = other.primary;
-  }
+  const rw =
+    sizeRank(byWeight.primary) || 1;
+
+  // Quy tac chinh:
+  // Chieu cao va can nang doc lap.
+  // Size lon hon la size chinh.
+  const dominant =
+    rw > rh
+      ? byWeight
+      : byHeight;
+
+  const dominantRank =
+    sizeRank(dominant.primary) || 1;
+
+  // V1.7.2:
+  // Size du phong CHI DUOC cach size chinh 1 bac.
+  // Tuyet doi khong lay size cua thong so con lai neu no cach xa.
+  //
+  // Vi du 180cm/60kg:
+  // cao=42, can=39 -> chinh=42, du phong=41.
+  //
+  // Vi du 150cm/90kg:
+  // cao=38, can=44 -> chinh=44, du phong=43.
+  let backupRank =
+    dominantRank > 1
+      ? dominantRank - 1
+      : dominantRank + 1;
+
+  const backup =
+    sizeFromRank(backupRank);
+
+  const rangeMin =
+    sizeFromRank(
+      Math.min(
+        dominantRank,
+        backupRank
+      )
+    );
+
+  const rangeMax =
+    sizeFromRank(
+      Math.max(
+        dominantRank,
+        backupRank
+      )
+    );
 
   return {
-    primary: dominant.primary,
+    primary:dominant.primary,
     backup,
-    rangeMin: sizeFromRank(Math.min(rh,rw)),
-    rangeMax: sizeFromRank(Math.max(rh,rw)),
-    confidence:.65,
+    rangeMin,
+    rangeMax,
+    confidence:.68,
     source:"CAO_CAN_DOC_LAP",
     group:dominant.group,
-    sizeTheoCao:byHeight.primary,
-    sizeTheoCan:byWeight.primary,
-    nhomTheoCao:byHeight.group,
-    nhomTheoCan:byWeight.group
+
+    sizeTheoCao:
+      byHeight.primary,
+
+    sizeTheoCan:
+      byWeight.primary,
+
+    nhomTheoCao:
+      byHeight.group,
+
+    nhomTheoCan:
+      byWeight.group
   };
 }
 
@@ -205,20 +291,72 @@ async function learnSuggestionForProduct(sp, profile, seed) {
   const historyRank = sumRank / sumW;
   const seedRank = sizeRank(seed.primary) || historyRank;
   const historyShare = used >= 8 ? .85 : used >= 4 ? .75 : used >= 2 ? .65 : .55;
-  const blended = historyRank * historyShare + seedRank * (1-historyShare);
-  const primary = sizeFromRank(blended);
-  const pRank = sizeRank(primary);
-  const backup = sizeFromRank(Math.max(1, Math.min(9, blended >= pRank ? pRank+1 : pRank-1)));
-  const confidence = Math.min(.92, .52 + Math.min(used, 10) * .04);
+  const blended =
+    historyRank * historyShare +
+    seedRank * (1-historyShare);
+
+  // V1.7.2:
+  // Lich su san pham chi duoc phep sap xep TRONG khoang
+  // size nen cua khach (thuong 2 size lien ke).
+  // Khong duoc keo size ra xa vi du 42 -> 39.
+  const minAllowedRank =
+    sizeRank(seed.rangeMin) ||
+    Math.max(
+      1,
+      (sizeRank(seed.primary) || 1) - 1
+    );
+
+  const maxAllowedRank =
+    sizeRank(seed.rangeMax) ||
+    (sizeRank(seed.primary) || 1);
+
+  const clampedRank =
+    Math.max(
+      Math.min(minAllowedRank,maxAllowedRank),
+      Math.min(
+        Math.max(minAllowedRank,maxAllowedRank),
+        blended
+      )
+    );
+
+  const primary =
+    sizeFromRank(clampedRank);
+
+  const pRank =
+    sizeRank(primary);
+
+  let backup = null;
+
+  const otherAllowedRank =
+    pRank === minAllowedRank
+      ? maxAllowedRank
+      : minAllowedRank;
+
+  if (
+    otherAllowedRank &&
+    otherAllowedRank !== pRank
+  ) {
+    backup =
+      sizeFromRank(otherAllowedRank);
+  }
+
+  const confidence =
+    Math.min(
+      .92,
+      .52 + Math.min(used,10) * .04
+    );
 
   return {
     primary,
-    backup: backup === primary ? seed.backup : backup,
-    rangeMin: seed.rangeMin || null,
-    rangeMax: seed.rangeMax || null,
+    backup,
+    rangeMin:seed.rangeMin || null,
+    rangeMax:seed.rangeMax || null,
     confidence,
-    source: used === 1 ? "1_DIEM_NEO_SAN_PHAM" : "LICH_SU_SAN_PHAM",
-    samples: used
+    source:
+      used === 1
+        ? "1_DIEM_NEO_SAN_PHAM"
+        : "LICH_SU_SAN_PHAM",
+    samples:used
   };
 }
 
@@ -1987,13 +2125,13 @@ function setHeightQuick(height, autoWeight=true) {
 }
 
 function stepHeight(delta) {
-  const old = Number($("fCao").value || 168);
+  const old = Number($("fCao").value || 170);
   const next = Math.max(130, Math.min(220, old + Number(delta || 0)));
   setHeightQuick(next, state.autoWeightMode);
 }
 
 function stepWeight(delta) {
-  const old = Number($("fKg").value || autoWeightFromHeight($("fCao").value) || 68);
+  const old = Number($("fKg").value || autoWeightFromHeight($("fCao").value) || 70);
   const next = Math.max(30, Math.min(200, old + Number(delta || 0)));
   $("fKg").value = next;
   state.autoWeightMode = false;
@@ -2309,15 +2447,44 @@ function bindEvents(){
 }
 
 
-function debugV171Engine() {
-  const t = seedSuggestionForProfile(
-    {chieu_cao_cm:150, can_nang_kg:90, size_giay_thuong_di:null},
-    "AO"
-  );
-  console.log("[SalesCopilot V1.7.1] TEST 150/90 =>", t);
-  if (String(t?.primary) !== "44") {
-    console.error("[SalesCopilot V1.7.1] ENGINE SAI: 150/90 phai ra 44");
-  }
+function debugV172Engine() {
+  const cases = [
+    {cao:180,kg:60,want:"42",range:"41-42"},
+    {cao:150,kg:90,want:"44",range:"43-44"},
+    {cao:165,kg:65,want:"40",range:"39-40"},
+    {cao:175,kg:70,want:"42",range:"41-42"}
+  ];
+
+  cases.forEach(c => {
+    const t =
+      seedSuggestionForProfile(
+        {
+          chieu_cao_cm:c.cao,
+          can_nang_kg:c.kg,
+          size_giay_thuong_di:null
+        },
+        "AO"
+      );
+
+    console.log(
+      `[SalesCopilot V1.7.2] ${c.cao}/${c.kg} =>`,
+      t
+    );
+
+    const gotRange =
+      `${t?.rangeMin}-${t?.rangeMax}`;
+
+    if (
+      String(t?.primary) !== c.want ||
+      gotRange !== c.range
+    ) {
+      console.error(
+        "[SalesCopilot V1.7.2] ENGINE SAI",
+        c,
+        t
+      );
+    }
+  });
 }
 
 async function init(){
@@ -2328,7 +2495,7 @@ async function init(){
   }
   try{
     await loadConfig();
-    debugV171Engine();
+    debugV172Engine();
     await loadSessions();
     bindEvents();
     renderModeControls();
