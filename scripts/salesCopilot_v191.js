@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.9";
-console.log("[SalesCopilot] BUILD 1.9");
+window.SALES_COPILOT_BUILD="1.9.1";
+console.log("[SalesCopilot] BUILD 1.9.1");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -29,6 +29,55 @@ const MAIN_GROUPS = {
     groups: ["DEP","GIAYDA","GIAYSUC","GIAYTHOITRANG"]
   }
 };
+
+// ============================================================
+// V1.9.1 - CACHE / HIEU NANG
+// ============================================================
+const PERF_CACHE_MS = 60 * 1000;
+const MASTER_CACHE_MS = 5 * 60 * 1000;
+const LEARNING_CACHE_MS = 2 * 60 * 1000;
+const STOCK_CACHE_MS = 45 * 1000;
+
+const candidateSearchCache = new Map();
+const masterFetchedAt = new Map();
+const learningDataCache = new Map();
+const stockFetchedAt = new Map();
+
+let latestSearchSeq = 0;
+
+function nowMs() {
+  return Date.now();
+}
+
+function cacheFresh(ts, ttl) {
+  return ts && (nowMs() - ts) < ttl;
+}
+
+function deepCloneSimple(v) {
+  try {
+    return structuredClone(v);
+  } catch (_) {
+    return JSON.parse(JSON.stringify(v));
+  }
+}
+
+function candidateCacheKey({
+  requestMode,
+  sizes,
+  group,
+  branch,
+  referencePrice
+}) {
+  return [
+    requestMode,
+    [...sizes].sort().join(","),
+    norm(group),
+    norm(branch),
+    Number(referencePrice || 0)
+  ].join("|");
+}
+
+
 
 
 const state = {
@@ -573,78 +622,229 @@ function bodyMismatchPenalty(hist, p, loai) {
   return mismatches * 0.55;
 }
 
+async function preloadLearningData(masps) {
+  const unique = Array.from(
+    new Set(
+      (masps || [])
+        .map(norm)
+        .filter(Boolean)
+    )
+  );
+
+  const need = unique.filter(m => {
+    const c = learningDataCache.get(m);
+    return !c || !cacheFresh(c.ts, LEARNING_CACHE_MS);
+  });
+
+  if (!need.length) {
+    return;
+  }
+
+  const CHUNK = 60;
+  const chunks = [];
+
+  for (let i=0; i<need.length; i+=CHUNK) {
+    chunks.push(need.slice(i, i+CHUNK));
+  }
+
+  // Chay song song toi da 4 lo.
+  for (let i=0; i<chunks.length; i+=4) {
+    const batch = chunks.slice(i, i+4);
+
+    const results = await Promise.all(
+      batch.map(async chunk => {
+        const { data, error } = await supabase
+          .from("v_du_lieu_hoc_size_sach")
+          .select(
+            "masp,size,ket_qua,chieu_cao_cm,can_nang_kg," +
+            "ao_vai_rong,ao_nguc_to,ao_bung," +
+            "quan_bung,quan_dui_to,quan_mong_to,created_at"
+          )
+          .in("masp", chunk)
+          .order("created_at", { ascending:false })
+          .limit(3000);
+
+        if (error) {
+          console.warn(
+            "[SalesCopilot] preload learning lỗi:",
+            error
+          );
+          return { chunk, rows:[] };
+        }
+
+        return {
+          chunk,
+          rows:Array.isArray(data) ? data : []
+        };
+      })
+    );
+
+    results.forEach(({chunk,rows}) => {
+      const grouped = new Map();
+
+      rows.forEach(r => {
+        const m = norm(r.masp);
+        if (!grouped.has(m)) {
+          grouped.set(m, []);
+        }
+
+        // Giữ tối đa 100 dòng/mã giống logic cũ.
+        if (grouped.get(m).length < 100) {
+          grouped.get(m).push(r);
+        }
+      });
+
+      const ts = nowMs();
+
+      chunk.forEach(m => {
+        learningDataCache.set(
+          m,
+          {
+            ts,
+            rows:grouped.get(m) || []
+          }
+        );
+      });
+    });
+  }
+}
+
+async function getLearningRowsForProduct(masp) {
+  const m = norm(masp);
+  const cached = learningDataCache.get(m);
+
+  if (
+    cached &&
+    cacheFresh(cached.ts, LEARNING_CACHE_MS)
+  ) {
+    return cached.rows || [];
+  }
+
+  await preloadLearningData([m]);
+
+  return (
+    learningDataCache.get(m)?.rows ||
+    []
+  );
+}
+
 async function learnSuggestionForProduct(sp, profile, seed) {
   const loai = productLoai(sp);
-  if (!sp || !profile || !isSizeManagedGroup(sp.nhomhang) || loai === "GIAY_DEP") return seed;
 
-  const { data, error } = await supabase
-    .from("v_du_lieu_hoc_size_sach")
-    .select("*")
-    .eq("masp", sp.masp)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  if (
+    !sp ||
+    !profile ||
+    !isSizeManagedGroup(sp.nhomhang) ||
+    loai === "GIAY_DEP"
+  ) {
+    return seed;
+  }
 
-  if (error || !data?.length) return seed;
+  const data =
+    await getLearningRowsForProduct(
+      sp.masp
+    );
 
-  let sumW = 0, sumRank = 0, used = 0;
+  if (!data?.length) {
+    return seed;
+  }
+
+  let sumW = 0;
+  let sumRank = 0;
+  let used = 0;
+
   for (const h of data) {
-    let r = sizeRank(extractInternalSize(h.size));
+    let r =
+      sizeRank(
+        extractInternalSize(h.size)
+      );
+
     if (!r) continue;
 
     if (h.ket_qua === "HOI_BO") r += 1;
     if (h.ket_qua === "HOI_RONG") r -= 1;
-    r = Math.max(1, Math.min(9, r));
 
-    const dCao = Math.abs(Number(profile.chieu_cao_cm) - Number(h.chieu_cao_cm)) / 5;
-    const dKg = Math.abs(Number(profile.can_nang_kg) - Number(h.can_nang_kg)) / 5;
-    const bodyPenalty = bodyMismatchPenalty(h, profile, loai);
-    const dist = Math.sqrt(dCao*dCao + dKg*dKg) + bodyPenalty;
-    const w = 1 / (0.6 + dist);
-    sumW += w; sumRank += r * w; used++;
+    r = Math.max(
+      1,
+      Math.min(9,r)
+    );
+
+    const dCao =
+      Math.abs(
+        Number(profile.chieu_cao_cm) -
+        Number(h.chieu_cao_cm)
+      ) / 5;
+
+    const dKg =
+      Math.abs(
+        Number(profile.can_nang_kg) -
+        Number(h.can_nang_kg)
+      ) / 5;
+
+    const bodyPenalty =
+      bodyMismatchPenalty(
+        h,
+        profile,
+        loai
+      );
+
+    const dist =
+      Math.sqrt(
+        dCao*dCao +
+        dKg*dKg
+      ) +
+      bodyPenalty;
+
+    const w =
+      1 / (0.6 + dist);
+
+    sumW += w;
+    sumRank += r*w;
+    used++;
   }
-  if (!used || !sumW) return seed;
 
-  const historyRank = sumRank / sumW;
-  const seedRank = sizeRank(seed.primary) || historyRank;
-  const historyShare = used >= 8 ? .85 : used >= 4 ? .75 : used >= 2 ? .65 : .55;
+  if (!used || !sumW) {
+    return seed;
+  }
+
+  const historyRank =
+    sumRank / sumW;
+
+  const seedRank =
+    sizeRank(seed.primary) ||
+    historyRank;
+
+  const historyShare =
+    used >= 8 ? .85 :
+    used >= 4 ? .75 :
+    used >= 2 ? .65 : .55;
+
   const blended =
     historyRank * historyShare +
     seedRank * (1-historyShare);
 
-  // V1.7.2:
-  // Lich su san pham chi duoc phep sap xep TRONG khoang
-  // size nen cua khach (thuong 2 size lien ke).
-  // Khong duoc keo size ra xa vi du 42 -> 39.
-  // V1.8:
-  // Chỉ cho lịch sử điều chỉnh trong cặp:
-  // primary + backup của chính nhóm đang chi phối.
-  // Ví dụ mức 5 primary=45 backup=46 thì không được kéo xuống 44.
   const allowedRanks =
     Array.from(
       new Set(
         [
           sizeRank(seed.primary),
           sizeRank(seed.backup)
-        ]
-          .filter(Boolean)
+        ].filter(Boolean)
       )
-    )
-      .sort(
-        (a,b) => a-b
-      );
+    ).sort((a,b)=>a-b);
 
   const minAllowedRank =
     allowedRanks[0] ||
     Math.max(
       1,
-      (sizeRank(seed.primary) || 1) - 1
+      (sizeRank(seed.primary)||1)-1
     );
 
   const maxAllowedRank =
     allowedRanks[
-      allowedRanks.length - 1
+      allowedRanks.length-1
     ] ||
-    (sizeRank(seed.primary) || 1);
+    (sizeRank(seed.primary)||1);
 
   const clampedRank =
     Math.max(
@@ -673,13 +873,15 @@ async function learnSuggestionForProduct(sp, profile, seed) {
     otherAllowedRank !== pRank
   ) {
     backup =
-      sizeFromRank(otherAllowedRank);
+      sizeFromRank(
+        otherAllowedRank
+      );
   }
 
   const confidence =
     Math.min(
       .92,
-      .52 + Math.min(used,10) * .04
+      .52 + Math.min(used,10)*.04
     );
 
   return {
@@ -699,144 +901,202 @@ async function learnSuggestionForProduct(sp, profile, seed) {
 async function getStockForMasps(masps) {
   const out = new Map();
 
-  const uniqueMasps = Array.from(
-    new Set(
-      (masps || [])
-        .map(norm)
-        .filter(Boolean)
-    )
-  );
+  const uniqueMasps =
+    Array.from(
+      new Set(
+        (masps || [])
+          .map(norm)
+          .filter(Boolean)
+      )
+    );
 
   if (!uniqueMasps.length) {
     return out;
   }
 
-  const denNgay =
-    new Date().toISOString().slice(0,10);
+  // Tận dụng full-stock cache nếu còn mới.
+  const need = [];
 
-  function absorbRows(rows) {
+  uniqueMasps.forEach(m => {
+    const ts = stockFetchedAt.get(m);
+    const cached =
+      state.stockCache.get(m);
+
+    if (
+      cached &&
+      cached.size &&
+      cacheFresh(ts, STOCK_CACHE_MS)
+    ) {
+      out.set(m,cached);
+    } else {
+      need.push(m);
+    }
+  });
+
+  if (!need.length) {
+    return out;
+  }
+
+  const denNgay =
+    new Date()
+      .toISOString()
+      .slice(0,10);
+
+  function absorbRows(rows, target) {
     (rows || []).forEach(r => {
       const m = norm(r.masp);
-      const s = extractInternalSize(r.size);
+      const s =
+        extractInternalSize(r.size);
 
       if (!m || !s) return;
 
-      if (!out.has(m)) {
-        out.set(m, new Map());
+      if (!target.has(m)) {
+        target.set(m,new Map());
       }
 
-      out.get(m).set(s, {
+      target.get(m).set(s,{
         ton_cs1:Number(r.ton_cs1||0),
         ton_cs2:Number(r.ton_cs2||0),
         ban_cs1:Number(r.ban_cs1||0),
-        ban_cs2:Number(r.ban_cs2||0),
+        ban_cs2:Number(r.ban_cs2||0)
       });
     });
   }
 
-  // V1.5:
-  // Chia lô nhỏ để tránh RPC trả thiếu dòng khi danh sách mã lớn.
-  // 20 mã * khoảng 9 size = khoảng 180 dòng/lần.
-  const CHUNK_SIZE = 20;
+  // V1.9.1:
+  // lo 50 ma + 4 lo song song thay vi 20 ma tuan tu.
+  const CHUNK_SIZE = 50;
+  const chunks = [];
 
   for (
     let i=0;
-    i<uniqueMasps.length;
+    i<need.length;
     i+=CHUNK_SIZE
   ) {
-    const chunk =
-      uniqueMasps.slice(
-        i,
-        i+CHUNK_SIZE
-      );
+    chunks.push(
+      need.slice(i,i+CHUNK_SIZE)
+    );
+  }
 
-    let { data, error } =
-      await supabase.rpc(
-        "xntnhanh",
-        {
-          p_masps: chunk,
-          p_den_ngay: denNgay,
-          p_tonghop_size: false
-        }
-      );
+  const fetched = new Map();
+  const missingAll = [];
 
-    if (error) {
-      console.warn(
-        "[SalesCopilot] xntnhanh chunk lỗi:",
-        error
-      );
-      data = [];
-    }
+  for (
+    let i=0;
+    i<chunks.length;
+    i+=4
+  ) {
+    const batch =
+      chunks.slice(i,i+4);
 
-    absorbRows(data || []);
+    const results =
+      await Promise.all(
+        batch.map(
+          async chunk => {
+            const res =
+              await supabase.rpc(
+                "xntnhanh",
+                {
+                  p_masps:chunk,
+                  p_den_ngay:denNgay,
+                  p_tonghop_size:false
+                }
+              );
 
-    // Những mã hoàn toàn không xuất hiện trong kết quả chunk
-    // sẽ được gọi lại từng mã một giống cách StockQuickPopup làm.
-    const returnedMasps =
-      new Set(
-        (data || [])
-          .map(r => norm(r.masp))
-          .filter(Boolean)
-      );
-
-    const missing =
-      chunk.filter(
-        m => !returnedMasps.has(m)
-      );
-
-    for (const masp of missing) {
-      let retry =
-        await supabase.rpc(
-          "xntnhanh",
-          {
-            p_masps: [masp],
-            p_den_ngay: denNgay,
-            p_tonghop_size: false
+            return {
+              chunk,
+              data:Array.isArray(res.data)
+                ? res.data
+                : [],
+              error:res.error
+            };
           }
-        );
+        )
+      );
 
-      let rows =
-        Array.isArray(retry?.data)
-          ? retry.data
-          : [];
+    results.forEach(
+      ({chunk,data,error}) => {
+        if (error) {
+          console.warn(
+            "[SalesCopilot] xntnhanh chunk lỗi:",
+            error
+          );
+        }
 
-      // StockQuickPopup cũng có cơ chế gọi lại sau 400ms
-      // nếu lần đầu không có dòng.
-      if (
-        !rows.length &&
-        !retry?.error
-      ) {
-        await new Promise(
-          r => setTimeout(r, 400)
-        );
+        absorbRows(data,fetched);
 
-        retry =
-          await supabase.rpc(
-            "xntnhanh",
-            {
-              p_masps: [masp],
-              p_den_ngay: denNgay,
-              p_tonghop_size: false
-            }
+        const returned =
+          new Set(
+            data
+              .map(r=>norm(r.masp))
+              .filter(Boolean)
           );
 
-        rows =
-          Array.isArray(retry?.data)
-            ? retry.data
-            : [];
+        chunk.forEach(m => {
+          if (!returned.has(m)) {
+            missingAll.push(m);
+          }
+        });
       }
-
-      if (retry?.error) {
-        console.warn(
-          "[SalesCopilot] xntnhanh retry lỗi:",
-          masp,
-          retry.error
-        );
-      }
-
-      absorbRows(rows);
-    }
+    );
   }
+
+  // Retry tất cả mã thiếu SONG SONG, chỉ một vòng.
+  if (missingAll.length) {
+    const retryResults =
+      await Promise.all(
+        missingAll.map(
+          async masp => {
+            const res =
+              await supabase.rpc(
+                "xntnhanh",
+                {
+                  p_masps:[masp],
+                  p_den_ngay:denNgay,
+                  p_tonghop_size:false
+                }
+              );
+
+            return {
+              masp,
+              data:Array.isArray(res.data)
+                ? res.data
+                : [],
+              error:res.error
+            };
+          }
+        )
+      );
+
+    retryResults.forEach(
+      ({masp,data,error}) => {
+        if (error) {
+          console.warn(
+            "[SalesCopilot] xntnhanh retry lỗi:",
+            masp,
+            error
+          );
+        }
+
+        absorbRows(data,fetched);
+      }
+    );
+  }
+
+  const ts = nowMs();
+
+  need.forEach(m => {
+    const map =
+      fetched.get(m) ||
+      new Map();
+
+    out.set(m,map);
+
+    if (map.size) {
+      state.stockCache.set(m,map);
+      stockFetchedAt.set(m,ts);
+    }
+  });
 
   return out;
 }
@@ -1144,31 +1404,85 @@ function buildStockMapFromRecommendationItem(item) {
 }
 
 async function loadProductMastersByMasps(masps) {
-  const unique = Array.from(
-    new Set((masps || []).map(norm).filter(Boolean))
-  );
+  const unique =
+    Array.from(
+      new Set(
+        (masps || [])
+          .map(norm)
+          .filter(Boolean)
+      )
+    );
 
   const out = new Map();
+  const need = [];
 
-  for (let i = 0; i < unique.length; i += 120) {
-    const chunk = unique.slice(i, i + 120);
+  unique.forEach(m => {
+    const cached =
+      state.productCache.get(m);
 
-    const { data, error } = await supabase
-      .from("dmhanghoa")
-      .select(
-        "masp,tensp,giale,nhomhang,chungloai,mausac,form,rong_ong,co_gian,active,giam_gia_pct"
-      )
-      .in("masp", chunk);
+    const ts =
+      masterFetchedAt.get(m);
 
-    if (error) {
-      console.warn("[SalesCopilot] Lỗi đọc master sản phẩm:", error);
-      continue;
+    if (
+      cached &&
+      cacheFresh(ts,MASTER_CACHE_MS)
+    ) {
+      out.set(m,cached);
+    } else {
+      need.push(m);
     }
+  });
 
-    (data || []).forEach(sp => {
-      out.set(norm(sp.masp), sp);
-    });
+  if (!need.length) {
+    return out;
   }
+
+  const chunks = [];
+
+  for (
+    let i=0;
+    i<need.length;
+    i+=150
+  ) {
+    chunks.push(
+      need.slice(i,i+150)
+    );
+  }
+
+  // Danh mục nhẹ, chạy các lô song song.
+  const results =
+    await Promise.all(
+      chunks.map(async chunk => {
+        const {data,error} =
+          await supabase
+            .from("dmhanghoa")
+            .select(
+              "masp,tensp,giale,nhomhang,chungloai," +
+              "mausac,form,rong_ong,co_gian,active,giam_gia_pct"
+            )
+            .in("masp",chunk);
+
+        if (error) {
+          console.warn(
+            "[SalesCopilot] Lỗi đọc master sản phẩm:",
+            error
+          );
+          return [];
+        }
+
+        return data || [];
+      })
+    );
+
+  const ts = nowMs();
+
+  results.flat().forEach(sp => {
+    const m = norm(sp.masp);
+
+    out.set(m,sp);
+    state.productCache.set(m,sp);
+    masterFetchedAt.set(m,ts);
+  });
 
   return out;
 }
@@ -1544,20 +1858,40 @@ function priceModeNote(sp) {
 }
 
 async function searchProducts() {
+  const seq = ++latestSearchSeq;
   const meta = modeMeta(state.searchMode);
 
   showDataLoading(
-    `Đang tải ${meta.label} · ${state.selectedGroup} · vui lòng chờ...`
+    `Đang tải ${meta.label} · ${state.selectedGroup}...`
   );
 
+  const t0 =
+    performance.now();
+
   try {
-    return await searchProductsCore();
+    const result =
+      await searchProductsCore(seq);
+
+    const ms =
+      Math.round(
+        performance.now() - t0
+      );
+
+    console.log(
+      `[SalesCopilot V1.9.1] search ${state.selectedGroup} = ${ms}ms`
+    );
+
+    return result;
   } finally {
-    hideDataLoading();
+    // Chỉ search mới nhất mới được đóng overlay.
+    if (seq === latestSearchSeq) {
+      dataLoadingDepth = 1;
+      hideDataLoading();
+    }
   }
 }
 
-async function searchProductsCore() {
+async function searchProductsCore(searchSeq) {
   const p=currentSession();
 
   if(!p){
@@ -1644,24 +1978,64 @@ async function searchProductsCore() {
       ? "similar"
       : state.searchMode;
 
-  const result =
-    await window.StockQuickSimilar
-      .getRecommendationListByFilters({
-        masp: "",
-        sizes,
-        nhomhangs: [state.selectedGroup],
-        branch: state.diadiem,
-        referencePrice:
-          Number(
-            state.referencePrice ||
-            0
-          ),
-        denNgay:
-          new Date()
-            .toISOString()
-            .slice(0,10),
-        mode: requestMode
-      });
+  const cKey =
+    candidateCacheKey({
+      requestMode,
+      sizes,
+      group:state.selectedGroup,
+      branch:state.diadiem,
+      referencePrice:state.referencePrice
+    });
+
+  let result;
+  const cachedCandidate =
+    candidateSearchCache.get(cKey);
+
+  if (
+    cachedCandidate &&
+    cacheFresh(
+      cachedCandidate.ts,
+      PERF_CACHE_MS
+    )
+  ) {
+    result =
+      deepCloneSimple(
+        cachedCandidate.result
+      );
+  } else {
+    result =
+      await window.StockQuickSimilar
+        .getRecommendationListByFilters({
+          masp:"",
+          sizes,
+          nhomhangs:[state.selectedGroup],
+          branch:state.diadiem,
+          referencePrice:
+            Number(
+              state.referencePrice || 0
+            ),
+          denNgay:
+            new Date()
+              .toISOString()
+              .slice(0,10),
+          mode:requestMode
+        });
+
+    if (result?.ok !== false) {
+      candidateSearchCache.set(
+        cKey,
+        {
+          ts:nowMs(),
+          result:deepCloneSimple(result)
+        }
+      );
+    }
+  }
+
+  // Nếu user đã bấm sang nhóm/khách khác, bỏ kết quả cũ.
+  if (searchSeq !== latestSearchSeq) {
+    return;
+  }
 
   if (result?.ok === false) {
     $("productList").innerHTML =
@@ -1782,6 +2156,17 @@ async function searchProductsCore() {
     );
   }
 
+  // V1.9.1:
+  // Nạp lịch sử học size theo LÔ trước khi render,
+  // thay vì mỗi card gọi Supabase riêng.
+  await preloadLearningData(
+    list.map(x => x.masp)
+  );
+
+  if (searchSeq !== latestSearchSeq) {
+    return;
+  }
+
   // BƯỚC 2:
   // Sau khi đã lọc được danh sách mã phù hợp,
   // tải LẠI TOÀN BỘ tồn 38–46 của các mã bằng xntnhanh.
@@ -1790,6 +2175,10 @@ async function searchProductsCore() {
     await getStockForMasps(
       list.map(x => x.masp)
     );
+
+  if (searchSeq !== latestSearchSeq) {
+    return;
+  }
 
   // StockQuickSimilar ở bước 1 đã xác nhận:
   // mã có ít nhất một size phù hợp và tồn dương tại đúng cơ sở.
@@ -1871,175 +2260,212 @@ async function searchProductsCore() {
     `${list.length} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · ` +
     `size phù hợp ${sizes.join(", ")}${pricePart}`;
 
+  if (searchSeq !== latestSearchSeq) {
+    return;
+  }
+
   await renderProducts(list);
 }
 
 async function renderProducts(list) {
-  const box=$("productList");
-  box.innerHTML="";
+  const box = $("productList");
+  box.innerHTML = "";
 
-  if(!list.length){
-    box.innerHTML=
+  if (!list.length) {
+    box.innerHTML =
       `<div class="empty">
         Không có sản phẩm nào còn đúng size gợi ý tại ${state.diadiem.toUpperCase()}.
       </div>`;
     return;
   }
 
-  const p=currentSession();
+  const p = currentSession();
 
-  for(const sp of list){
-    const stockBySize =
-      state.stockCache.get(norm(sp.masp)) ||
-      new Map();
+  // Tính suggestion song song (learning data đã preload => gần như chỉ CPU).
+  const prepared =
+    await Promise.all(
+      list.map(async sp => {
+        const stockBySize =
+          state.stockCache.get(
+            norm(sp.masp)
+          ) ||
+          new Map();
 
-    // Toàn bộ size còn thực tế của sản phẩm.
-    const allAvailable =
-      availableSizes(stockBySize);
+        const allAvailable =
+          availableSizes(
+            stockBySize
+          );
 
-    // Nếu full-stock thiếu nhưng StockQuickSimilar có matched size,
-    // stockCache đã có fallback tối thiểu nên allAvailable vẫn phải có dữ liệu.
-    // Nếu cả hai đều rỗng thì mới bỏ card.
-    if (!allAvailable.length) {
-      continue;
-    }
-
-    // Chỉ các size vừa nằm trong size gợi ý của khách
-    // vừa thực sự còn tồn tại cơ sở.
-    const matchedSizes = Array.from(
-      new Set(
-        (sp.__matched_sizes || [])
-          .map(extractInternalSize)
-          .filter(Boolean)
-      )
-    ).sort(
-      (a,b)=>(sizeRank(a)||99)-(sizeRank(b)||99)
-    );
-
-    // StockQuickSimilar đã bảo đảm matched_sizes là size tồn dương ở cơ sở.
-    if (!matchedSizes.length) {
-      continue;
-    }
-
-    let sug = {
-      ...(sp.__seed || seedSuggestionForProfile(
-        p,
-        productLoai(sp)
-      ))
-    };
-
-    sug = await learnSuggestionForProduct(
-      sp,
-      p,
-      sug
-    );
-
-    // Gợi ý cuối cùng bắt buộc nằm trong matchedSizes.
-    sug = effectiveSuggestionForMatchedSizes(
-      sug,
-      matchedSizes
-    );
-
-    const cacheKey =
-      `${p.id}|${norm(sp.masp)}`;
-
-    state.suggestionCache.set(
-      cacheKey,
-      { ...sug }
-    );
-
-    const div=document.createElement("div");
-
-    div.className="product";
-    div.id=
-      "sp-card-" + safeDomId(norm(sp.masp));
-
-    div.dataset.masp=norm(sp.masp);
-
-    const img=
-      `${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
-
-    // Theo yêu cầu V1.3:
-    // "Gợi ý phù hợp" chỉ hiển thị MỘT size nên thử.
-    const suggestionText =
-      sug.primary || "-";
-
-    div.innerHTML=`
-      <img
-        src="${img}"
-        onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"
-      >
-
-      <div class="product-body">
-        <div class="masp">${esc(sp.masp)}</div>
-        <div class="tensp">${esc(sp.tensp||"")}</div>
-
-        <div class="price">
-          ${money(sp.giale)} đ
-        </div>
-
-        ${
-          Number(sp.giam_gia_pct || 0) > 0
-            ? `<span class="discount-badge">
-                GIẢM ${Number(sp.giam_gia_pct)}%
-              </span>`
-            : ""
+        if (!allAvailable.length) {
+          return null;
         }
 
-        ${priceModeNote(sp)}
+        const matchedSizes =
+          Array.from(
+            new Set(
+              (sp.__matched_sizes || [])
+                .map(extractInternalSize)
+                .filter(Boolean)
+            )
+          ).sort(
+            (a,b) =>
+              (sizeRank(a)||99) -
+              (sizeRank(b)||99)
+          );
 
-        <div class="stock">
-          Gợi ý phù hợp:
-          <b>${esc(suggestionText)}</b>
-          <br>
+        if (!matchedSizes.length) {
+          return null;
+        }
 
-          Còn size:
-          ${
-            allAvailable.length
-              ? allAvailable.map(s=>`
-                  <span
-                    class="sizebadge ${
-                      s===sug.primary
-                        ? "best"
-                        : ""
-                    }"
-                  >${s}</span>
-                `).join("")
-              : ``
-          }
-        </div>
+        let sug = {
+          ...(
+            sp.__seed ||
+            seedSuggestionForProfile(
+              p,
+              productLoai(sp)
+            )
+          )
+        };
 
-        <div class="product-actions">
-          <button class="btn-blue btn-tv">
-            Tư vấn
-          </button>
+        sug =
+          await learnSuggestionForProduct(
+            sp,
+            p,
+            sug
+          );
 
-          <button class="btn-gray btn-ton">
-            Xem tồn
-          </button>
-        </div>
-      </div>
-    `;
+        sug =
+          effectiveSuggestionForMatchedSizes(
+            sug,
+            matchedSizes
+          );
 
-    div.querySelector(".btn-tv").onclick=
-      async()=>{
-        await selectProduct(
+        return {
           sp,
-          { scrollToDetail:true }
-        );
-      };
+          stockBySize,
+          allAvailable,
+          matchedSizes,
+          sug
+        };
+      })
+    );
 
-    div.querySelector(".btn-ton").onclick=(e)=>{
-      e.stopPropagation();
+  const frag =
+    document.createDocumentFragment();
 
-      window.StockQuick?.showFor(
-        e.currentTarget,
-        sp.masp
+  prepared
+    .filter(Boolean)
+    .forEach(item => {
+      const {
+        sp,
+        allAvailable,
+        sug
+      } = item;
+
+      const cacheKey =
+        `${p.id}|${norm(sp.masp)}`;
+
+      state.suggestionCache.set(
+        cacheKey,
+        { ...sug }
       );
-    };
 
-    box.appendChild(div);
-  }
+      const div =
+        document.createElement("div");
+
+      div.className = "product";
+      div.id =
+        "sp-card-" +
+        safeDomId(norm(sp.masp));
+
+      div.dataset.masp =
+        norm(sp.masp);
+
+      const img =
+        `${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
+
+      const suggestionText =
+        sug.primary || "-";
+
+      div.innerHTML = `
+        <img
+          loading="lazy"
+          decoding="async"
+          src="${img}"
+          onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"
+        >
+
+        <div class="product-body">
+          <div class="masp">${esc(sp.masp)}</div>
+          <div class="tensp">${esc(sp.tensp||"")}</div>
+
+          <div class="price">
+            ${money(sp.giale)} đ
+          </div>
+
+          ${
+            Number(sp.giam_gia_pct || 0) > 0
+              ? `<span class="discount-badge">
+                  GIẢM ${Number(sp.giam_gia_pct)}%
+                </span>`
+              : ""
+          }
+
+          ${priceModeNote(sp)}
+
+          <div class="stock">
+            Gợi ý phù hợp:
+            <b>${esc(suggestionText)}</b>
+            <br>
+
+            Còn size:
+            ${
+              allAvailable.map(s=>`
+                <span
+                  class="sizebadge ${
+                    s===sug.primary
+                      ? "best"
+                      : ""
+                  }"
+                >${s}</span>
+              `).join("")
+            }
+          </div>
+
+          <div class="product-actions">
+            <button class="btn-blue btn-tv">
+              Tư vấn
+            </button>
+
+            <button class="btn-gray btn-ton">
+              Xem tồn
+            </button>
+          </div>
+        </div>
+      `;
+
+      div.querySelector(".btn-tv").onclick =
+        async () => {
+          await selectProduct(
+            sp,
+            {scrollToDetail:true}
+          );
+        };
+
+      div.querySelector(".btn-ton").onclick =
+        e => {
+          e.stopPropagation();
+
+          window.StockQuick?.showFor(
+            e.currentTarget,
+            sp.masp
+          );
+        };
+
+      frag.appendChild(div);
+    });
+
+  box.appendChild(frag);
 }
 
 async function selectProduct(
