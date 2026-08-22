@@ -1225,13 +1225,13 @@ function showBayMauPopup(tasks, context) {
     background: "#f7e0b3",
     zIndex: "2",
   });
-  const yesterdayCount = tasks.filter(x => x.task_age === "YESTERDAY").length;
   const todayCount = tasks.filter(x => x.task_age === "TODAY").length;
+  const oldCount = tasks.length - todayCount;
 
   header.innerHTML = `
   <span>
     YÊU CẦU BÀY MẪU SP
-    <span style="color:#c00;">Hôm qua: ${yesterdayCount}</span>
+    <span style="color:#c00;">10 ngày trước: ${oldCount}</span>
     |
     <span style="color:#0b6;">Hôm nay: ${todayCount}</span>
   </span>
@@ -1294,9 +1294,11 @@ function showBayMauPopup(tasks, context) {
   tasks.forEach((row) => {
     const tr = document.createElement("tr");
     row._tr = tr;
-    if (row.task_age === "YESTERDAY") {
+    if (row.task_age !== "TODAY") {
+      // Tất cả yêu cầu tồn từ ngày trước
       tr.style.background = "#ffd6d6";
     } else {
+      // Hôm nay
       tr.style.background = "#fdf1d6";
     }
 
