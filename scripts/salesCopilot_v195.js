@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.9.4";
-console.log("[SalesCopilot] BUILD 1.9.4");
+window.SALES_COPILOT_BUILD="1.9.5";
+console.log("[SalesCopilot] BUILD 1.9.5");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -2676,6 +2676,36 @@ async function renderProducts(list) {
   box.appendChild(frag);
 }
 
+function jumpToTrialControls() {
+  requestAnimationFrame(() => {
+    const target =
+      document.querySelector(
+        "#productDetail .fit-buttons, " +
+        "#productDetail .trial-status, " +
+        "#productDetail [data-fit-result]"
+      );
+
+    if (!target) return;
+
+    const headerOffset =
+      Math.min(
+        150,
+        document.querySelector(".topbar")?.offsetHeight || 90
+      );
+
+    const y =
+      window.scrollY +
+      target.getBoundingClientRect().top -
+      headerOffset -
+      12;
+
+    window.scrollTo({
+      top:Math.max(0,y),
+      behavior:"auto"
+    });
+  });
+}
+
 async function selectProduct(
   sp,
   options = {}
@@ -2790,6 +2820,8 @@ async function selectProduct(
 
   renderProductDetail();
   renderCoach();
+
+  jumpToTrialControls();
 
   if (options.scrollToDetail) {
     requestAnimationFrame(() => {
@@ -3256,34 +3288,139 @@ async function renderCart() {
 
 
 
-function buildWeightWheel() {
-  const sel = $("fKg");
-  if (!sel) return;
-  const old = Number(sel.dataset.current || sel.value || 0);
-  sel.innerHTML = "";
-  for (let kg=30; kg<=150; kg+=3) {
-    const opt = document.createElement("option");
-    opt.value = String(kg);
-    opt.textContent = `${kg} kg`;
-    sel.appendChild(opt);
+function makeAlternatingSteps(min, max) {
+  const out = [];
+  let v = min;
+  let addThree = true;
+
+  while (v <= max) {
+    out.push(v);
+    v += addThree ? 3 : 2;
+    addThree = !addThree;
   }
-  if (old) setWeightWheelValue(old);
+
+  if (out[out.length - 1] !== max) {
+    out.push(max);
+  }
+
+  return Array.from(new Set(out));
 }
-function nearestWeightStep(value) {
-  const n = Math.max(30, Math.min(150, Number(value || 0)));
-  return 30 + Math.round((n - 30) / 3) * 3;
+
+const WEIGHT_STEPS = makeAlternatingSteps(50,110);
+const HEIGHT_STEPS = makeAlternatingSteps(150,190);
+
+function nearestFromList(value, list) {
+  const n = Number(value || 0);
+  if (!list?.length) return null;
+
+  return list.reduce(
+    (best,x) =>
+      Math.abs(x-n) < Math.abs(best-n)
+        ? x
+        : best,
+    list[0]
+  );
 }
-function setWeightWheelValue(value) {
-  const sel = $("fKg");
+
+function fillWheel(selectId, values, suffix, currentValue) {
+  const sel = $(selectId);
   if (!sel) return;
-  const kg = nearestWeightStep(value);
+
+  sel.innerHTML = "";
+
+  values.forEach(v => {
+    const opt = document.createElement("option");
+    opt.value = String(v);
+    opt.textContent = `${v}${suffix}`;
+    sel.appendChild(opt);
+  });
+
+  const selected = nearestFromList(currentValue, values);
+  if (selected != null) {
+    sel.value = String(selected);
+
+    requestAnimationFrame(() => {
+      const opt =
+        Array.from(sel.options)
+          .find(o => Number(o.value) === selected);
+
+      opt?.scrollIntoView({
+        block:"center",
+        behavior:"auto"
+      });
+    });
+  }
+}
+
+function buildWeightWheel() {
+  fillWheel(
+    "fKg",
+    WEIGHT_STEPS,
+    " kg",
+    Number($("fKg")?.dataset.current || $("fKg")?.value || 70)
+  );
+}
+
+function setWeightWheelValue(value) {
+  const kg = nearestFromList(value, WEIGHT_STEPS);
+  const sel = $("fKg");
+  if (!sel || kg == null) return;
+
   sel.value = String(kg);
   sel.dataset.current = String(kg);
-  const opt = Array.from(sel.options).find(o => Number(o.value) === kg);
-  if (opt) requestAnimationFrame(() => opt.scrollIntoView({block:"center",behavior:"auto"}));
+
+  requestAnimationFrame(() => {
+    Array.from(sel.options)
+      .find(o => Number(o.value) === kg)
+      ?.scrollIntoView({
+        block:"center",
+        behavior:"auto"
+      });
+  });
 }
+
 function getWeightWheelValue() {
   return Number($("fKg")?.value || 0);
+}
+
+function buildHeightWheel() {
+  fillWheel(
+    "fCao",
+    HEIGHT_STEPS,
+    " cm",
+    Number($("fCao")?.dataset.current || $("fCao")?.value || 170)
+  );
+}
+
+function setHeightWheelValue(value, autoWeight=true) {
+  const h = nearestFromList(value, HEIGHT_STEPS);
+  const sel = $("fCao");
+  if (!sel || h == null) return;
+
+  sel.value = String(h);
+  sel.dataset.current = String(h);
+
+  requestAnimationFrame(() => {
+    Array.from(sel.options)
+      .find(o => Number(o.value) === h)
+      ?.scrollIntoView({
+        block:"center",
+        behavior:"auto"
+      });
+  });
+
+  if (autoWeight) {
+    setWeightWheelValue(
+      autoWeightFromHeight(h)
+    );
+    state.autoWeightMode = true;
+  }
+
+  updateGroupPreview();
+}
+
+function getHeightWheelValue() {
+  return Number($("fCao")?.value || 0);
 }
 
 function autoWeightFromHeight(height) {
@@ -3300,16 +3437,8 @@ function markQuickHeightSelected() {
 }
 
 function setHeightQuick(height, autoWeight=true) {
-  const h = Math.max(130, Math.min(220, Number(height || 0)));
-  $("fCao").value = h;
-
-  if (autoWeight) {
-    setWeightWheelValue(autoWeightFromHeight(h));
-    state.autoWeightMode = true;
-  }
-
+  setHeightWheelValue(height, autoWeight);
   markQuickHeightSelected();
-  updateGroupPreview();
 }
 
 function stepHeight(delta) {
@@ -3339,6 +3468,7 @@ function resetAutoWeight() {
 
 function openCustomerModal(edit=false) {
   buildWeightWheel();
+  buildHeightWheel();
   state.editingSessionId=edit?currentSession()?.id:null;
   const p=edit?currentSession():null;
   $("modalKhachTitle").textContent=edit?"Sửa thông tin khách":"Khách mới";
@@ -3605,17 +3735,23 @@ function bindEvents(){
     btn.onclick = () => setHeightQuick(Number(btn.dataset.height), true);
   });
 
-  $("btnCaoTru").onclick = () => stepHeight(-3);
-  $("btnCaoCong").onclick = () => stepHeight(3);
+  // V1.9.5: chiều cao dùng wheel
+  // V1.9.5: chiều cao dùng wheel
   // V1.9.4 wheel can nang
   // V1.9.4 wheel can nang
   $("btnCanTuDong").onclick = resetAutoWeight;
 
-  $("fCao").addEventListener("input", () => {
+  $("fCao").addEventListener("change", () => {
+    $("fCao").dataset.current = $("fCao").value;
+
     if (state.autoWeightMode) {
-      const h = Number($("fCao").value || 0);
-      if (h) setWeightWheelValue(autoWeightFromHeight(h));
+      setWeightWheelValue(
+        autoWeightFromHeight(
+          Number($("fCao").value || 0)
+        )
+      );
     }
+
     markQuickHeightSelected();
     updateGroupPreview();
   });
