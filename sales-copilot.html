@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Trợ lý bán hàng Hoàn Tuyết V1.9.3a</title>
+  <title>Trợ lý bán hàng Hoàn Tuyết V1.9.4</title>
   <style>
     :root{
       --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
@@ -421,14 +421,29 @@
       background:#fff;
     }
 
+  
+    .top-size-preview-wrap{margin:8px 0 12px;padding:8px;border:2px solid #f0b52d;border-radius:12px;background:#fff7d6}
+    .top-size-preview-label{font-size:11px;font-weight:900;color:#8a5700;margin-bottom:5px}
+    .top-size-preview-wrap #groupPreview{margin:0!important;border:0!important;background:transparent!important;padding:0!important}
+    .weight-wheel-shell{position:relative;height:178px;overflow:hidden;border:1px solid #bfd0e2;border-radius:12px;background:#f8fafc}
+    .weight-wheel-select{width:100%;height:178px;border:0!important;outline:0;background:transparent;font-size:25px;font-weight:900;text-align:center;text-align-last:center;color:#172033;padding:52px 0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+    .weight-wheel-select option{height:44px;padding:8px;font-size:24px;font-weight:900;text-align:center}
+    .weight-wheel-center-line{pointer-events:none;position:absolute;left:8px;right:8px;top:50%;transform:translateY(-50%);height:46px;border-top:2px solid #1480d6;border-bottom:2px solid #1480d6;border-radius:8px;background:rgba(20,128,214,.06)}
+    .weight-wheel-note{font-size:11px;text-align:center;color:#64748b;margin-top:5px;font-weight:700}
+    .product-main-image{cursor:zoom-in}
+    .product-image-lightbox{display:none;position:fixed;inset:0;z-index:60000;background:rgba(0,0,0,.94);align-items:center;justify-content:center;padding:8px}
+    .product-image-lightbox.show{display:flex}
+    .product-image-lightbox img{max-width:100%;max-height:94vh;width:auto;height:auto;object-fit:contain;border-radius:5px;cursor:zoom-out}
+    .product-image-lightbox-tip{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);color:#fff;background:#0009;padding:7px 12px;border-radius:999px;font-size:12px;white-space:nowrap}
+
   </style>
 </head>
 <body>
   <div id="app-container" style="display:none;">
   <header class="topbar">
     <div class="topline">
-      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.9.3a</div>
-      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.9.3a</div>
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.9.4</div>
+      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.9.4</div>
       <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
       <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
     </div>
@@ -587,6 +602,10 @@
   <div class="modal" id="modalKhach">
     <div class="modal-box">
       <div class="modal-title" id="modalKhachTitle">Khách mới</div>
+      <div class="top-size-preview-wrap">
+        <div class="top-size-preview-label">GỢI Ý SIZE ÁO / QUẦN</div>
+        <div id="groupPreview" class="coach">Nhập chiều cao và cân nặng để xem size nền.</div>
+      </div>
       <div class="field">
         <label>Chiều cao nhanh *</label>
         <div class="quick-height-grid" id="quickHeightGrid">
@@ -612,13 +631,13 @@
           </div>
         </div>
 
-        <div class="measure-box">
+        <div class="measure-box weight-wheel-box">
           <label>Cân nặng (kg)</label>
-          <div class="measure-control">
-            <button type="button" class="measure-step" id="btnKgTru">−3</button>
-            <input id="fKg" type="number" min="30" max="200" step="1" placeholder="70">
-            <button type="button" class="measure-step" id="btnKgCong">+3</button>
+          <div class="weight-wheel-shell">
+            <select id="fKg" class="weight-wheel-select" size="5" aria-label="Cân nặng"></select>
+            <div class="weight-wheel-center-line"></div>
           </div>
+          <div class="weight-wheel-note">Cuộn để chọn · mỗi bậc 3 kg</div>
           <button type="button" class="auto-weight-btn" id="btnCanTuDong">↺ Cân nặng theo chiều cao</button>
         </div>
       </div>
@@ -649,7 +668,7 @@
           <button type="button" class="chip body-chip" data-field="ao_bung">Bụng</button>
         </div>
       </div>
-      <div id="groupPreview" class="coach">Nhập chiều cao và cân nặng để xem size nền.</div>
+      
       <div class="modal-actions">
         <button class="btn btn-gray" id="btnHuyKhach">Hủy</button>
         <button class="btn btn-blue" id="btnLuuKhach">Bắt đầu tư vấn</button>
@@ -671,6 +690,12 @@
   <script src="/scripts/stockQuickPopup.js?v=78"></script>
   <script src="/scripts/stockQuickSimilar.js?v=20260821"></script>
   
+  
+  <div id="productImageLightbox" class="product-image-lightbox" aria-hidden="true">
+    <img id="productImageLightboxImg" alt="Ảnh sản phẩm">
+    <div class="product-image-lightbox-tip">Chạm ảnh lần nữa để thu nhỏ</div>
+  </div>
+
   </div><!-- /app-container -->
 
   <!-- Đăng nhập độc lập giống các trang bán nhân viên -->
@@ -719,7 +744,7 @@
           window.diadiem = diadiem;
 
           // Chỉ nạp engine sau khi auth thành công.
-          await import("./scripts/salesCopilot_v193a.js?v=1931");
+          await import("./scripts/salesCopilot_v194.js?v=194");
 
           document.getElementById("app-container").style.display = "";
           document.getElementById("login-container").style.display = "none";
