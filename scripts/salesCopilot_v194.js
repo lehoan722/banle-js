@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.9.3a";
-console.log("[SalesCopilot] BUILD 1.9.3a");
+window.SALES_COPILOT_BUILD="1.9.4";
+console.log("[SalesCopilot] BUILD 1.9.4");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -2050,6 +2050,25 @@ async function searchProductsCore(searchSeq) {
     noAutoShoeSize = false;
   }
 
+
+  if (
+    state.searchMode === "discount" &&
+    currentGroupRow?.loai_tu_van !== "GIAY_DEP"
+  ) {
+    const expanded = new Set();
+    sizes.forEach(s => {
+      const r = sizeRank(s);
+      if (!r) return;
+      [r-1,r,r+1].forEach(rr => {
+        if (rr >= 1 && rr <= 9) {
+          const ss = sizeFromRank(rr);
+          if (ss) expanded.add(ss);
+        }
+      });
+    });
+    sizes = Array.from(expanded).sort((a,b)=>(sizeRank(a)||99)-(sizeRank(b)||99));
+  }
+
   if (!sizes.length) {
     $("searchSummary").textContent =
       "Nhóm này chưa có size gợi ý tự động.";
@@ -2416,6 +2435,21 @@ async function searchProductsCore(searchSeq) {
   await renderProducts(list);
 }
 
+
+function openProductImageLightbox(src) {
+  const box=$("productImageLightbox"), img=$("productImageLightboxImg");
+  if (!box || !img || !src) return;
+  img.src=src;
+  box.classList.add("show");
+  box.setAttribute("aria-hidden","false");
+}
+function closeProductImageLightbox() {
+  const box=$("productImageLightbox"), img=$("productImageLightboxImg");
+  box?.classList.remove("show");
+  box?.setAttribute("aria-hidden","true");
+  if (img) img.src="";
+}
+
 async function renderProducts(list) {
   const box = $("productList");
   box.innerHTML = "";
@@ -2554,6 +2588,7 @@ async function renderProducts(list) {
 
       div.innerHTML = `
         <img
+          class="product-main-image"
           loading="lazy"
           decoding="async"
           src="${img}"
@@ -2609,6 +2644,14 @@ async function renderProducts(list) {
         </div>
       `;
 
+      const productImg = div.querySelector(".product-main-image");
+      if (productImg) {
+        productImg.onclick = e => {
+          e.stopPropagation();
+          openProductImageLightbox(productImg.currentSrc || productImg.src);
+        };
+      }
+
       div.querySelector(".btn-tv").onclick =
         async () => {
           await selectProduct(
@@ -2640,6 +2683,13 @@ async function selectProduct(
   state.selectedProduct=sp;
   state.selectedSize=null;
   state.selectedFit=null;
+  const selectedPrice = Number(sp?.giale || 0);
+  if (selectedPrice > 0) {
+    state.referencePrice = selectedPrice;
+    if ($("txtReferencePrice")) {
+      $("txtReferencePrice").value = Math.round(selectedPrice / 1000);
+    }
+  }
 
   // Lưu giá mã đang xem làm giá so sánh gợi ý,
   // nhưng không tự ép thay nếu NV đã nhập giá so sánh thủ công.
@@ -2728,6 +2778,15 @@ async function selectProduct(
       ? stockAtBranch(stockBySize,sug.backup) > 0
       : false
   };
+
+
+  if (
+    !state.selectedSize &&
+    state.currentSuggestion?.primary &&
+    stockAtBranch(stockBySize, state.currentSuggestion.primary) > 0
+  ) {
+    state.selectedSize = state.currentSuggestion.primary;
+  }
 
   renderProductDetail();
   renderCoach();
@@ -3196,6 +3255,37 @@ async function renderCart() {
 }
 
 
+
+function buildWeightWheel() {
+  const sel = $("fKg");
+  if (!sel) return;
+  const old = Number(sel.dataset.current || sel.value || 0);
+  sel.innerHTML = "";
+  for (let kg=30; kg<=150; kg+=3) {
+    const opt = document.createElement("option");
+    opt.value = String(kg);
+    opt.textContent = `${kg} kg`;
+    sel.appendChild(opt);
+  }
+  if (old) setWeightWheelValue(old);
+}
+function nearestWeightStep(value) {
+  const n = Math.max(30, Math.min(150, Number(value || 0)));
+  return 30 + Math.round((n - 30) / 3) * 3;
+}
+function setWeightWheelValue(value) {
+  const sel = $("fKg");
+  if (!sel) return;
+  const kg = nearestWeightStep(value);
+  sel.value = String(kg);
+  sel.dataset.current = String(kg);
+  const opt = Array.from(sel.options).find(o => Number(o.value) === kg);
+  if (opt) requestAnimationFrame(() => opt.scrollIntoView({block:"center",behavior:"auto"}));
+}
+function getWeightWheelValue() {
+  return Number($("fKg")?.value || 0);
+}
+
 function autoWeightFromHeight(height) {
   const h = Number(height || 0);
   if (!h) return null;
@@ -3214,7 +3304,7 @@ function setHeightQuick(height, autoWeight=true) {
   $("fCao").value = h;
 
   if (autoWeight) {
-    $("fKg").value = autoWeightFromHeight(h);
+    setWeightWheelValue(autoWeightFromHeight(h));
     state.autoWeightMode = true;
   }
 
@@ -3231,7 +3321,7 @@ function stepHeight(delta) {
 function stepWeight(delta) {
   const old = Number($("fKg").value || autoWeightFromHeight($("fCao").value) || 70);
   const next = Math.max(30, Math.min(200, old + Number(delta || 0)));
-  $("fKg").value = next;
+  setWeightWheelValue(next);
   state.autoWeightMode = false;
   updateGroupPreview();
 }
@@ -3242,18 +3332,19 @@ function resetAutoWeight() {
     toast("Hãy chọn chiều cao trước.");
     return;
   }
-  $("fKg").value = autoWeightFromHeight(h);
+  setWeightWheelValue(autoWeightFromHeight(h));
   state.autoWeightMode = true;
   updateGroupPreview();
 }
 
 function openCustomerModal(edit=false) {
+  buildWeightWheel();
   state.editingSessionId=edit?currentSession()?.id:null;
   const p=edit?currentSession():null;
   $("modalKhachTitle").textContent=edit?"Sửa thông tin khách":"Khách mới";
   $("btnLuuKhach").textContent=edit?"Lưu thay đổi":"Bắt đầu tư vấn";
   $("fCao").value=p?.chieu_cao_cm||"";
-  $("fKg").value=p?.can_nang_kg||"";
+  setWeightWheelValue(p?.can_nang_kg||"");
   $("fTuoi").value=p?.tuoi||"";
   $("fGiay").value=p?.size_giay_thuong_di||"";
   $("fMakh").value=p?.makh||"";
@@ -3459,6 +3550,12 @@ async function renderAll(){
 }
 
 function bindEvents(){
+  $("productImageLightbox")?.addEventListener("click", closeProductImageLightbox);
+  $("productImageLightboxImg")?.addEventListener("click", e => {
+    e.stopPropagation();
+    closeProductImageLightbox();
+  });
+
   $("shoeSizeSearchSelect")
     ?.addEventListener(
       "change",
@@ -3510,23 +3607,20 @@ function bindEvents(){
 
   $("btnCaoTru").onclick = () => stepHeight(-3);
   $("btnCaoCong").onclick = () => stepHeight(3);
-  $("btnKgTru").onclick = () => stepWeight(-3);
-  $("btnKgCong").onclick = () => stepWeight(3);
+  // V1.9.4 wheel can nang
+  // V1.9.4 wheel can nang
   $("btnCanTuDong").onclick = resetAutoWeight;
 
   $("fCao").addEventListener("input", () => {
     if (state.autoWeightMode) {
       const h = Number($("fCao").value || 0);
-      if (h) $("fKg").value = autoWeightFromHeight(h);
+      if (h) setWeightWheelValue(autoWeightFromHeight(h));
     }
     markQuickHeightSelected();
     updateGroupPreview();
   });
 
-  $("fKg").addEventListener("input", () => {
-    state.autoWeightMode = false;
-    updateGroupPreview();
-  });
+  $("fKg").addEventListener("change", () => { state.autoWeightMode=false; $("fKg").dataset.current=$("fKg").value; updateGroupPreview(); });
 
   document
     .querySelectorAll(".mode-btn")
