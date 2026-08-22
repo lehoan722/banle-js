@@ -555,7 +555,7 @@
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
+                        <label><input id="ghichu" placeholder="Ghi chú hóa đơn" /></label>
                         <!-- khu vuc tìm khách hàng -->
                         <div class="kh-row">
                             <div class="kh-col" style="position: relative;">mã khách
@@ -1002,16 +1002,25 @@
         function precheckNhaCungCapBeforeSave() {
             const makhEl = document.getElementById('makh');
             const tenEl = document.getElementById('khachhang');
+            const ghichuEl = document.getElementById('ghichu');
 
             const ten = (tenEl?.value || '').trim();
+            const ghichu = (ghichuEl?.value || '').trim();
 
             // ✅ BẮT BUỘC: phải có tên khách hàng thì mới cho lưu
             if (!ten) {
                 alert('⚠️ Bạn chưa chọn/nhập khách hàng. Vui lòng chọn khách hàng trước khi lưu!');
-                // ưu tiên đưa con trỏ về mã khách để người dùng tìm/nhập
                 if (makhEl) { makhEl.focus(); makhEl.select?.(); }
                 return false;
             }
+
+            // ✅ BẮT BUỘC: phải ghi chú hàng hóa thì mới cho lưu
+            if (!ghichu) {
+                alert('⚠️ Bắt buộc phải nhập Ghi chú hóa đơn trước khi lưu dữ liệu!');
+                if (ghichuEl) { ghichuEl.focus(); ghichuEl.select?.(); }
+                return false;
+            }
+
             return true;
         }
 
@@ -1023,6 +1032,16 @@
                     e.preventDefault();
                     e.stopImmediatePropagation();
                 }
+            }
+        }, true);
+
+
+        // Chặn cả nút Lưu nếu thiếu khách hàng hoặc ghi chú hàng hóa
+        document.getElementById('btn-luu')?.addEventListener('click', function (e) {
+            const ok = precheckNhaCungCapBeforeSave();
+            if (!ok) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
             }
         }, true);
 
