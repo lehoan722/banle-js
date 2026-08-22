@@ -1,11 +1,35 @@
-window.SALES_COPILOT_BUILD="1.8";
-console.log("[SalesCopilot] BUILD 1.8");
+window.SALES_COPILOT_BUILD="1.9";
+console.log("[SalesCopilot] BUILD 1.9");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
 const IMAGE_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 const ACTIVE_STATES = ["DANG_TU_VAN","CHO_THU","DANG_CHOT","DA_DAY_SANG_BAN"];
 const PENDING_KEY = "sales_copilot_pending_v1";
+
+const MAIN_GROUPS = {
+  AO_HE: {
+    label: "Áo hè",
+    defaultGroup: "AP",
+    groups: ["AP","SM","3LO","BOC"]
+  },
+  QUAN: {
+    label: "Quần",
+    defaultGroup: "QB",
+    groups: ["QB","QT","QV","NGO","QNI"]
+  },
+  AO_RET: {
+    label: "Áo rét",
+    defaultGroup: "AOKHOAC",
+    groups: ["AOKHOAC","TD","SO","LEN","AODA","BOD"]
+  },
+  GIAY_DEP: {
+    label: "Giày dép",
+    defaultGroup: "GIAYTHOITRANG",
+    groups: ["DEP","GIAYDA","GIAYSUC","GIAYTHOITRANG"]
+  }
+};
+
 
 const state = {
   manv: String(localStorage.getItem("manv") || "").trim(),
@@ -17,6 +41,7 @@ const state = {
   sessions: [],
   currentSessionId: null,
   selectedGroup: "AP",
+  selectedMainGroup: "AO_HE",
   searchMode: "similar",
   referencePrice: 0,
   selectedProduct: null,
@@ -887,6 +912,13 @@ async function createOrUpdateSession(payload) {
     state.sessions.unshift(data);
     state.currentSessionId=data.id;
   }
+  // Thông tin cơ thể thay đổi => mọi gợi ý cũ của phiên phải bỏ.
+  state.suggestionCache.clear();
+  state.selectedProduct = null;
+  state.selectedSize = null;
+  state.selectedFit = null;
+  state.currentSuggestion = null;
+
   await renderAll();
   return true;
 }
@@ -1173,15 +1205,146 @@ function coachText() {
 }
 function renderCoach(){$("coachBox").textContent=coachText();}
 
+
+let dataLoadingDepth = 0;
+
+function showDataLoading(message = "Đang tìm sản phẩm phù hợp...") {
+  dataLoadingDepth += 1;
+
+  const overlay = $("dataLoadingOverlay");
+  const text = $("dataLoadingText");
+
+  if (text) {
+    text.textContent = message;
+  }
+
+  overlay?.classList.add("show");
+  overlay?.setAttribute("aria-hidden","false");
+}
+
+function hideDataLoading() {
+  dataLoadingDepth = Math.max(0, dataLoadingDepth - 1);
+
+  if (dataLoadingDepth > 0) {
+    return;
+  }
+
+  const overlay = $("dataLoadingOverlay");
+  overlay?.classList.remove("show");
+  overlay?.setAttribute("aria-hidden","true");
+}
+
+function groupRowByCode(code) {
+  return state.groups.find(
+    g => norm(g.manhom) === norm(code)
+  ) || null;
+}
+
+function validSubGroups(mainKey) {
+  const cfg = MAIN_GROUPS[mainKey];
+  if (!cfg) return [];
+
+  return cfg.groups
+    .map(code => groupRowByCode(code))
+    .filter(Boolean);
+}
+
+function renderMainGroupControls() {
+  document
+    .querySelectorAll(".main-group-btn")
+    .forEach(btn => {
+      btn.classList.toggle(
+        "on",
+        btn.dataset.mainGroup === state.selectedMainGroup
+      );
+    });
+
+  const select = $("subGroupSelect");
+  if (!select) return;
+
+  const rows = validSubGroups(
+    state.selectedMainGroup
+  );
+
+  select.innerHTML = rows
+    .map(g =>
+      `<option value="${esc(g.manhom)}">${esc(g.ten_hien_thi)}</option>`
+    )
+    .join("");
+
+  if (
+    !rows.some(
+      g => norm(g.manhom) === norm(state.selectedGroup)
+    )
+  ) {
+    const cfg = MAIN_GROUPS[state.selectedMainGroup];
+    const preferred =
+      rows.find(
+        g => norm(g.manhom) === norm(cfg?.defaultGroup)
+      ) ||
+      rows[0];
+
+    if (preferred) {
+      state.selectedGroup = preferred.manhom;
+    }
+  }
+
+  select.value = state.selectedGroup;
+}
+
+async function selectMainGroup(mainKey) {
+  const cfg = MAIN_GROUPS[mainKey];
+  if (!cfg) return;
+
+  state.selectedMainGroup = mainKey;
+
+  const rows = validSubGroups(mainKey);
+  const preferred =
+    rows.find(
+      g => norm(g.manhom) === norm(cfg.defaultGroup)
+    ) ||
+    rows[0];
+
+  if (preferred) {
+    state.selectedGroup = preferred.manhom;
+  }
+
+  state.selectedProduct = null;
+  state.selectedSize = null;
+  state.selectedFit = null;
+  state.currentSuggestion = null;
+
+  renderMainGroupControls();
+  renderProductDetail();
+
+  setStep(2);
+
+  if (currentSession()) {
+    await searchProducts();
+  }
+}
+
+async function selectSubGroup(code) {
+  if (!code) return;
+
+  state.selectedGroup = code;
+  state.selectedProduct = null;
+  state.selectedSize = null;
+  state.selectedFit = null;
+  state.currentSuggestion = null;
+
+  renderMainGroupControls();
+  renderProductDetail();
+
+  setStep(2);
+
+  if (currentSession()) {
+    await searchProducts();
+  }
+}
+
 function renderGroups() {
-  const box=$("groupBar");box.innerHTML="";
-  state.groups.forEach(g=>{
-    const b=document.createElement("button");
-    b.className="groupbtn"+(norm(g.manhom)===norm(state.selectedGroup)?" on":"");
-    b.textContent=g.ten_hien_thi;
-    b.onclick=()=>{state.selectedGroup=g.manhom;setStep(2);renderGroups();searchProducts();};
-    box.appendChild(b);
-  });
+  renderMainGroupControls();
 }
 
 
@@ -1381,6 +1544,20 @@ function priceModeNote(sp) {
 }
 
 async function searchProducts() {
+  const meta = modeMeta(state.searchMode);
+
+  showDataLoading(
+    `Đang tải ${meta.label} · ${state.selectedGroup} · vui lòng chờ...`
+  );
+
+  try {
+    return await searchProductsCore();
+  } finally {
+    hideDataLoading();
+  }
+}
+
+async function searchProductsCore() {
   const p=currentSession();
 
   if(!p){
@@ -2565,8 +2742,19 @@ async function saveCustomerModal() {
     trang_thai:state.editingSessionId?currentSession()?.trang_thai||"DANG_TU_VAN":"DANG_TU_VAN"
   };
   try{
-    const ok=await createOrUpdateSession(payload); if(ok)$("modalKhach").classList.remove("show");
-  }catch(e){alert("Không lưu được phiên tư vấn: "+e.message);}
+    const ok = await createOrUpdateSession(payload);
+
+    if (ok) {
+      $("modalKhach").classList.remove("show");
+
+      // V1.9: đổi cao/cân/thể trạng xong tải lại ngay.
+      if (currentSession()) {
+        await searchProducts();
+      }
+    }
+  }catch(e){
+    alert("Không lưu được phiên tư vấn: "+e.message);
+  }
 }
 
 async function touchSession(){
@@ -2662,6 +2850,26 @@ async function renderAll(){
 }
 
 function bindEvents(){
+  document
+    .querySelectorAll(".main-group-btn")
+    .forEach(btn => {
+      btn.onclick = async () => {
+        await selectMainGroup(
+          btn.dataset.mainGroup
+        );
+      };
+    });
+
+  $("subGroupSelect")
+    ?.addEventListener(
+      "change",
+      async e => {
+        await selectSubGroup(
+          e.target.value
+        );
+      }
+    );
+
   document.querySelectorAll(".quick-height-btn").forEach(btn => {
     btn.onclick = () => setHeightQuick(Number(btn.dataset.height), true);
   });
@@ -2848,14 +3056,24 @@ function debugV18Engine() {
 async function init(){
   $("nvInfo").textContent=`${state.tennv||state.manv||"Chưa đăng nhập"} · ${state.diadiem.toUpperCase()}`;
   $("fGiay").innerHTML='<option value="">-- Không biết --</option>'+SIZE_LIST.map(s=>`<option value="${s}">${s}</option>`).join("");
-  if(!state.manv){
-    alert("Chưa có mã nhân viên trong localStorage. Hãy đăng nhập trang bán nhân viên trước rồi mở Trợ lý bán hàng.");
-  }
   try{
     await loadConfig();
     debugV18Engine();
     await loadSessions();
     bindEvents();
+
+    // Xác định nhóm lớn chứa selectedGroup hiện tại.
+    for (const [key,cfg] of Object.entries(MAIN_GROUPS)) {
+      if (
+        cfg.groups.some(
+          code => norm(code) === norm(state.selectedGroup)
+        )
+      ) {
+        state.selectedMainGroup = key;
+        break;
+      }
+    }
+
     renderModeControls();
     renderGroups();
     await renderAll();
