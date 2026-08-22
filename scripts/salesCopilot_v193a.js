@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.9.3";
-console.log("[SalesCopilot] BUILD 1.9.3");
+window.SALES_COPILOT_BUILD="1.9.3a";
+console.log("[SalesCopilot] BUILD 1.9.3a");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -1664,6 +1664,10 @@ function renderMainGroupControls() {
     shoeSelect.value =
       state.selectedShoeSearchSize || "";
   }
+}
+
+function renderGroups() {
+  renderMainGroupControls();
 }
 
 async function selectMainGroup(mainKey) {
