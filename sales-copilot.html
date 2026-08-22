@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Trợ lý bán hàng Hoàn Tuyết V1</title>
+  <title>Trợ lý bán hàng Hoàn Tuyết V1.7.1</title>
   <style>
     :root{
       --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
@@ -286,13 +286,28 @@
       /* Trên điện thoại không để giỏ chiếm quá nhiều chỗ khi chưa cần */
       #cartBox.empty{padding:15px 5px}
     }
+  
+    .quick-height-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:5px}
+    .quick-height-btn{border:1px solid #b9c8d8;background:#fff;border-radius:8px;padding:9px 3px;font-weight:900;color:#075f9f}
+    .quick-height-btn.on{background:#ffe9a8;border-color:#e3a600;color:#7b4300;outline:2px solid #f4b000}
+    .measure-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+    .measure-box{border:1px solid #d8e0e8;border-radius:10px;padding:8px;background:#f8fafc}
+    .measure-box>label{display:block;font-size:12px;font-weight:800;color:#435164;margin-bottom:5px}
+    .measure-control{display:grid;grid-template-columns:54px 1fr 54px;gap:5px;align-items:center}
+    .measure-control input{text-align:center;font-weight:900;font-size:18px;padding:8px 4px}
+    .measure-step{border:0;border-radius:8px;background:#0878d1;color:#fff;font-weight:900;padding:10px 3px}
+    .auto-weight-btn{width:100%;margin-top:6px;border:1px solid #9ec9ec;background:#eef6ff;color:#075f9f;border-radius:7px;padding:6px 4px;font-size:11px;font-weight:800}
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+    input[type="number"]{appearance:textfield;-moz-appearance:textfield}
+
   </style>
 </head>
 <body>
   <header class="topbar">
     <div class="topline">
-      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1</div>
-      <div class="mini" id="nvInfo">...</div>
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.7.1</div>
+      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.7.1</div>
       <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
       <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
     </div>
@@ -412,9 +427,40 @@
   <div class="modal" id="modalKhach">
     <div class="modal-box">
       <div class="modal-title" id="modalKhachTitle">Khách mới</div>
-      <div class="row2">
-        <div class="field"><label>Chiều cao (cm) *</label><input id="fCao" type="number" min="130" max="220" placeholder="VD 168"></div>
-        <div class="field"><label>Cân nặng (kg) *</label><input id="fKg" type="number" min="30" max="200" step="0.1" placeholder="VD 67"></div>
+      <div class="field">
+        <label>Chiều cao nhanh *</label>
+        <div class="quick-height-grid" id="quickHeightGrid">
+          <button type="button" class="quick-height-btn" data-height="150">150</button>
+          <button type="button" class="quick-height-btn" data-height="155">155</button>
+          <button type="button" class="quick-height-btn" data-height="160">160</button>
+          <button type="button" class="quick-height-btn" data-height="165">165</button>
+          <button type="button" class="quick-height-btn" data-height="170">170</button>
+          <button type="button" class="quick-height-btn" data-height="175">175</button>
+          <button type="button" class="quick-height-btn" data-height="180">180</button>
+          <button type="button" class="quick-height-btn" data-height="185">185</button>
+          <button type="button" class="quick-height-btn" data-height="190">190</button>
+        </div>
+      </div>
+
+      <div class="measure-grid">
+        <div class="measure-box">
+          <label>Chiều cao (cm)</label>
+          <div class="measure-control">
+            <button type="button" class="measure-step" id="btnCaoTru">−3</button>
+            <input id="fCao" type="number" min="130" max="220" step="1" placeholder="170">
+            <button type="button" class="measure-step" id="btnCaoCong">+3</button>
+          </div>
+        </div>
+
+        <div class="measure-box">
+          <label>Cân nặng (kg)</label>
+          <div class="measure-control">
+            <button type="button" class="measure-step" id="btnKgTru">−3</button>
+            <input id="fKg" type="number" min="30" max="200" step="1" placeholder="70">
+            <button type="button" class="measure-step" id="btnKgCong">+3</button>
+          </div>
+          <button type="button" class="auto-weight-btn" id="btnCanTuDong">↺ Cân nặng theo chiều cao</button>
+        </div>
       </div>
       <div class="row2">
         <div class="field"><label>Tuổi</label><input id="fTuoi" type="number" min="12" max="100" placeholder="VD 30"></div>
@@ -464,6 +510,6 @@
 
   <script src="/scripts/stockQuickPopup.js?v=78"></script>
   <script src="/scripts/stockQuickSimilar.js?v=20260821"></script>
-  <script type="module" src="/scripts/salesCopilot.js?v=16"></script>
+  <script type="module" src="/scripts/salesCopilot_v171.js?v=171"></script>
 </body>
 </html>
