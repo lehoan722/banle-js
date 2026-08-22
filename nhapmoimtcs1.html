@@ -555,7 +555,7 @@
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
+                        <label><input id="ghichu" placeholder="Ghi chú hóa đơn" /></label>
                         <!-- khu vuc tìm khách hàng -->
                         <div class="kh-row">
                             <div class="kh-col" style="position: relative;">mã khách
@@ -1017,7 +1017,7 @@
 
             // ✅ BẮT BUỘC: phải nhập Ghi chú hàng hóa thì mới cho lưu
             if (!ghichu) {
-                alert('⚠️ Bắt buộc phải nhập Ghi chú hàng hóa trước khi lưu dữ liệu!');
+                alert('⚠️ Bắt buộc phải nhập Ghi chú hóa đơn trước khi lưu dữ liệu!');
                 if (ghichuEl) { ghichuEl.focus(); ghichuEl.select?.(); }
                 return false;
             }
