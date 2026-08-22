@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.7.2";
-console.log("[SalesCopilot] BUILD 1.7.2");
+window.SALES_COPILOT_BUILD="1.8";
+console.log("[SalesCopilot] BUILD 1.8");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -92,33 +92,304 @@ function distanceToRange(v, min, max) {
   return n - Number(max);
 }
 
-function groupForHeight(h) {
-  const n = Number(h || 0);
-  if (n <= 154) return {primary:"38", backup:"39", group:"NHOM_1"};
-  if (n <= 164) return {primary:"39", backup:"38", group:"NHOM_1"};
-  if (n <= 170) return {primary:"40", backup:"39", group:"NHOM_2"};
-  if (n <= 174) return {primary:"41", backup:"42", group:"NHOM_3"};
-  if (n <= 180) return {primary:"42", backup:"41", group:"NHOM_3"};
-  if (n <= 184) return {primary:"43", backup:"44", group:"NHOM_4"};
-  if (n <= 190) return {primary:"44", backup:"43", group:"NHOM_4"};
-  if (n <= 194) return {primary:"45", backup:"44", group:"NHOM_5"};
-  return {primary:"46", backup:"45", group:"NHOM_5"};
+function bodyGroupForValue(value, minField, maxField) {
+  const n = Number(value);
+
+  if (!Number.isFinite(n)) {
+    return null;
+  }
+
+  return (
+    state.bodyGroups
+      .filter(g =>
+        n >= Number(g[minField]) &&
+        n <= Number(g[maxField])
+      )
+      .sort(
+        (a,b) =>
+          Number(a.thu_tu || 0) -
+          Number(b.thu_tu || 0)
+      )[0] || null
+  );
 }
 
-function groupForWeight(kg) {
-  const n = Number(kg || 0);
-  if (n <= 54) return {primary:"38", backup:"39", group:"NHOM_1"};
-  if (n <= 64) return {primary:"39", backup:"38", group:"NHOM_1"};
-  if (n <= 70) return {primary:"40", backup:"39", group:"NHOM_2"};
-  if (n <= 74) return {primary:"41", backup:"42", group:"NHOM_3"};
-  if (n <= 80) return {primary:"42", backup:"41", group:"NHOM_3"};
-  if (n <= 84) return {primary:"43", backup:"44", group:"NHOM_4"};
-  if (n <= 90) return {primary:"44", backup:"43", group:"NHOM_4"};
-  if (n <= 94) return {primary:"45", backup:"44", group:"NHOM_5"};
-  return {primary:"46", backup:"45", group:"NHOM_5"};
+function groupSizeRange(group, loaiTuVan) {
+  if (!group) {
+    return {
+      sizeTu:null,
+      sizeDen:null
+    };
+  }
+
+  if (loaiTuVan === "QUAN") {
+    return {
+      sizeTu:
+        extractInternalSize(
+          group.size_quan_tu ||
+          group.size_tu
+        ),
+
+      sizeDen:
+        extractInternalSize(
+          group.size_quan_den ||
+          group.size_den
+        )
+    };
+  }
+
+  // AO là mặc định cho AP/SM/...;
+  // fallback về size_tu/size_den để không làm hỏng dữ liệu cũ.
+  return {
+    sizeTu:
+      extractInternalSize(
+        group.size_ao_tu ||
+        group.size_tu
+      ),
+
+    sizeDen:
+      extractInternalSize(
+        group.size_ao_den ||
+        group.size_den
+      )
+  };
 }
 
-function seedSuggestionForProfile(profile, loaiTuVan = "AO") {
+function resultForDimension({
+  value,
+  group,
+  loaiTuVan,
+  dimension
+}) {
+  if (!group) {
+    return null;
+  }
+
+  const n = Number(value);
+
+  const min =
+    Number(
+      dimension === "CAO"
+        ? group.cao_min_cm
+        : group.kg_min
+    );
+
+  const max =
+    Number(
+      dimension === "CAO"
+        ? group.cao_max_cm
+        : group.kg_max
+    );
+
+  const { sizeTu, sizeDen } =
+    groupSizeRange(
+      group,
+      loaiTuVan
+    );
+
+  const minRank =
+    sizeRank(sizeTu);
+
+  const maxRank =
+    sizeRank(sizeDen);
+
+  if (
+    !Number.isFinite(n) ||
+    !minRank ||
+    !maxRank
+  ) {
+    return null;
+  }
+
+  const spanRank =
+    maxRank - minRank;
+
+  // MỨC 1-4: luôn là 2 size liền kề.
+  // Chia theo mốc +5:
+  // 150-154 => size nhỏ
+  // 155-159 => size lớn
+  // tương tự cho cân nặng.
+  if (spanRank === 1) {
+    const midpoint =
+      min + 5;
+
+    const primaryRank =
+      n >= midpoint
+        ? maxRank
+        : minRank;
+
+    const backupRank =
+      primaryRank === minRank
+        ? maxRank
+        : minRank;
+
+    return {
+      primary:
+        sizeFromRank(primaryRank),
+
+      backup:
+        sizeFromRank(backupRank),
+
+      rangeMin:sizeTu,
+      rangeMax:sizeDen,
+
+      group:group.ma_nhom,
+      groupOrder:
+        Number(group.thu_tu || 0),
+
+      value:n,
+      min,
+      max,
+      dimension,
+      loaiTuVan
+    };
+  }
+
+  // MỨC 5: 3 size 44-45-46.
+  //
+  // Chiều cao:
+  // 190-191 => 44
+  // 192-194 => 45
+  // 195     => 46
+  //
+  // Cân nặng:
+  // 90-91  => 44
+  // 92-94  => 45
+  // 95-100 => 46
+  if (spanRank >= 2) {
+    let primaryRank;
+    let backupRank;
+
+    const lowerEnd =
+      min + 1;
+
+    const middleStart =
+      min + 2;
+
+    const upperStart =
+      dimension === "CAO"
+        ? 195
+        : 95;
+
+    if (n <= lowerEnd) {
+      primaryRank = minRank;
+      backupRank =
+        Math.min(
+          maxRank,
+          minRank + 1
+        );
+    } else if (n < upperStart) {
+      primaryRank =
+        Math.min(
+          maxRank - 1,
+          minRank + 1
+        );
+
+      // Ở nửa dưới của vùng 45 -> dự phòng 44.
+      // Ở nửa trên -> dự phòng 46.
+      const middlePivot =
+        dimension === "CAO"
+          ? 193
+          : 93;
+
+      backupRank =
+        n < middlePivot
+          ? minRank
+          : maxRank;
+    } else {
+      primaryRank = maxRank;
+      backupRank =
+        Math.max(
+          minRank,
+          maxRank - 1
+        );
+    }
+
+    return {
+      primary:
+        sizeFromRank(primaryRank),
+
+      backup:
+        sizeFromRank(backupRank),
+
+      rangeMin:sizeTu,
+      rangeMax:sizeDen,
+
+      group:group.ma_nhom,
+      groupOrder:
+        Number(group.thu_tu || 0),
+
+      value:n,
+      min,
+      max,
+      dimension,
+      loaiTuVan
+    };
+  }
+
+  return {
+    primary:sizeTu,
+    backup:null,
+    rangeMin:sizeTu,
+    rangeMax:sizeDen,
+    group:group.ma_nhom,
+    groupOrder:
+      Number(group.thu_tu || 0),
+    value:n,
+    min,
+    max,
+    dimension,
+    loaiTuVan
+  };
+}
+
+function dominantSizeResult(
+  byHeight,
+  byWeight
+) {
+  if (!byHeight) return byWeight;
+  if (!byWeight) return byHeight;
+
+  const rh =
+    sizeRank(
+      byHeight.primary
+    ) || 0;
+
+  const rw =
+    sizeRank(
+      byWeight.primary
+    ) || 0;
+
+  if (rh > rw) {
+    return byHeight;
+  }
+
+  if (rw > rh) {
+    return byWeight;
+  }
+
+  // Cùng size thì ưu tiên kết quả có nhóm cao hơn;
+  // nếu vẫn bằng nhau thì ưu tiên chiều cao.
+  if (
+    Number(byHeight.groupOrder || 0) >
+    Number(byWeight.groupOrder || 0)
+  ) {
+    return byHeight;
+  }
+
+  if (
+    Number(byWeight.groupOrder || 0) >
+    Number(byHeight.groupOrder || 0)
+  ) {
+    return byWeight;
+  }
+
+  return byHeight;
+}
+
+function seedSuggestionForProfile(
+  profile,
+  loaiTuVan = "AO"
+) {
   if (!profile) {
     return {
       primary:null,
@@ -166,86 +437,106 @@ function seedSuggestionForProfile(profile, loaiTuVan = "AO") {
     };
   }
 
-  const byHeight =
-    groupForHeight(
-      profile.chieu_cao_cm
+  const normalizedLoai =
+    loaiTuVan === "QUAN"
+      ? "QUAN"
+      : "AO";
+
+  const groupByHeight =
+    bodyGroupForValue(
+      profile.chieu_cao_cm,
+      "cao_min_cm",
+      "cao_max_cm"
     );
+
+  const groupByWeight =
+    bodyGroupForValue(
+      profile.can_nang_kg,
+      "kg_min",
+      "kg_max"
+    );
+
+  const byHeight =
+    resultForDimension({
+      value:
+        profile.chieu_cao_cm,
+
+      group:
+        groupByHeight,
+
+      loaiTuVan:
+        normalizedLoai,
+
+      dimension:"CAO"
+    });
 
   const byWeight =
-    groupForWeight(
-      profile.can_nang_kg
-    );
+    resultForDimension({
+      value:
+        profile.can_nang_kg,
 
-  const rh =
-    sizeRank(byHeight.primary) || 1;
+      group:
+        groupByWeight,
 
-  const rw =
-    sizeRank(byWeight.primary) || 1;
+      loaiTuVan:
+        normalizedLoai,
 
-  // Quy tac chinh:
-  // Chieu cao va can nang doc lap.
-  // Size lon hon la size chinh.
+      dimension:"CAN"
+    });
+
   const dominant =
-    rw > rh
-      ? byWeight
-      : byHeight;
-
-  const dominantRank =
-    sizeRank(dominant.primary) || 1;
-
-  // V1.7.2:
-  // Size du phong CHI DUOC cach size chinh 1 bac.
-  // Tuyet doi khong lay size cua thong so con lai neu no cach xa.
-  //
-  // Vi du 180cm/60kg:
-  // cao=42, can=39 -> chinh=42, du phong=41.
-  //
-  // Vi du 150cm/90kg:
-  // cao=38, can=44 -> chinh=44, du phong=43.
-  let backupRank =
-    dominantRank > 1
-      ? dominantRank - 1
-      : dominantRank + 1;
-
-  const backup =
-    sizeFromRank(backupRank);
-
-  const rangeMin =
-    sizeFromRank(
-      Math.min(
-        dominantRank,
-        backupRank
-      )
+    dominantSizeResult(
+      byHeight,
+      byWeight
     );
 
-  const rangeMax =
-    sizeFromRank(
-      Math.max(
-        dominantRank,
-        backupRank
-      )
-    );
+  if (!dominant) {
+    return {
+      primary:"40",
+      backup:"39",
+      rangeMin:"39",
+      rangeMax:"40",
+      confidence:.30,
+      source:"BANG_CHUAN"
+    };
+  }
 
+  // Quan trọng:
+  // Backup đi theo CHÍNH nhóm/chiều đang quyết định size lớn hơn.
+  // Không lấy size thấp cách xa của chiều còn lại.
   return {
-    primary:dominant.primary,
-    backup,
-    rangeMin,
-    rangeMax,
-    confidence:.68,
-    source:"CAO_CAN_DOC_LAP",
-    group:dominant.group,
+    primary:
+      dominant.primary,
+
+    backup:
+      dominant.backup,
+
+    rangeMin:
+      dominant.rangeMin,
+
+    rangeMax:
+      dominant.rangeMax,
+
+    confidence:.70,
+    source:"CAO_CAN_DOC_LAP_V18",
+
+    group:
+      dominant.group,
 
     sizeTheoCao:
-      byHeight.primary,
+      byHeight?.primary || null,
 
     sizeTheoCan:
-      byWeight.primary,
+      byWeight?.primary || null,
 
     nhomTheoCao:
-      byHeight.group,
+      byHeight?.group || null,
 
     nhomTheoCan:
-      byWeight.group
+      byWeight?.group || null,
+
+    loaiTuVan:
+      normalizedLoai
   };
 }
 
@@ -299,15 +590,35 @@ async function learnSuggestionForProduct(sp, profile, seed) {
   // Lich su san pham chi duoc phep sap xep TRONG khoang
   // size nen cua khach (thuong 2 size lien ke).
   // Khong duoc keo size ra xa vi du 42 -> 39.
+  // V1.8:
+  // Chỉ cho lịch sử điều chỉnh trong cặp:
+  // primary + backup của chính nhóm đang chi phối.
+  // Ví dụ mức 5 primary=45 backup=46 thì không được kéo xuống 44.
+  const allowedRanks =
+    Array.from(
+      new Set(
+        [
+          sizeRank(seed.primary),
+          sizeRank(seed.backup)
+        ]
+          .filter(Boolean)
+      )
+    )
+      .sort(
+        (a,b) => a-b
+      );
+
   const minAllowedRank =
-    sizeRank(seed.rangeMin) ||
+    allowedRanks[0] ||
     Math.max(
       1,
       (sizeRank(seed.primary) || 1) - 1
     );
 
   const maxAllowedRank =
-    sizeRank(seed.rangeMax) ||
+    allowedRanks[
+      allowedRanks.length - 1
+    ] ||
     (sizeRank(seed.primary) || 1);
 
   const clampedRank =
@@ -1658,6 +1969,7 @@ function sourceText(s){
   return ({
     BANG_CHUAN:"Bảng chuẩn ban đầu",
     CAO_CAN_DOC_LAP:"Tính độc lập theo chiều cao và cân nặng",
+    CAO_CAN_DOC_LAP_V18:"Bảng riêng ÁO/QUẦN · cao/cân độc lập",
     "1_DIEM_NEO_SAN_PHAM":"1 dữ liệu thật của mã này",
     LICH_SU_SAN_PHAM:"Lịch sử thử thật của mã này",
     SIZE_GIAY_THUONG_DI:"Size giày khách thường đi",
@@ -2182,27 +2494,59 @@ function formProfileDraft() {
 }
 
 function updateGroupPreview() {
-  const p = formProfileDraft();
+  const p =
+    formProfileDraft();
+
   markQuickHeightSelected();
 
-  if (!p.chieu_cao_cm || !p.can_nang_kg) {
+  if (
+    !p.chieu_cao_cm ||
+    !p.can_nang_kg
+  ) {
     $("groupPreview").textContent =
       "Chọn chiều cao để tự điền cân nặng; có thể điều chỉnh ±3.";
     return;
   }
 
-  const s = seedSuggestionForProfile(p,"AO");
+  const ao =
+    seedSuggestionForProfile(
+      p,
+      "AO"
+    );
 
-  $("groupPreview").innerHTML = `
-    Theo chiều cao: <b>${esc(s.sizeTheoCao || "-")}</b>
-    · Theo cân nặng: <b>${esc(s.sizeTheoCan || "-")}</b><br>
-    Size chính:
-    <b style="font-size:18px;color:#d92d20">${esc(s.primary || "-")}</b>
-    ${s.backup ? ` · dự phòng <b>${esc(s.backup)}</b>` : ""}
-    <br>
-    <span style="font-size:11px;color:#687787">
-      Hai số đo tính độc lập; lấy size lớn hơn.
-    </span>
+  const quan =
+    seedSuggestionForProfile(
+      p,
+      "QUAN"
+    );
+
+  $("groupPreview").innerHTML=`
+    <div style="margin-bottom:5px">
+      <b>ÁO:</b>
+      cao → <b>${esc(ao.sizeTheoCao || "-")}</b>,
+      cân → <b>${esc(ao.sizeTheoCan || "-")}</b>
+      · chính
+      <b style="font-size:18px;color:#d92d20">
+        ${esc(ao.primary || "-")}
+      </b>
+      ${ao.backup ? ` · dự phòng <b>${esc(ao.backup)}</b>` : ""}
+    </div>
+
+    <div>
+      <b>QUẦN:</b>
+      cao → <b>${esc(quan.sizeTheoCao || "-")}</b>,
+      cân → <b>${esc(quan.sizeTheoCan || "-")}</b>
+      · chính
+      <b style="font-size:18px;color:#075f9f">
+        ${esc(quan.primary || "-")}
+      </b>
+      ${quan.backup ? ` · dự phòng <b>${esc(quan.backup)}</b>` : ""}
+    </div>
+
+    <div style="font-size:11px;color:#687787;margin-top:5px">
+      Mỗi loại tính chiều cao và cân nặng độc lập; lấy size lớn hơn.
+      Áo và quần dùng bảng chuẩn riêng.
+    </div>
   `;
 }
 
@@ -2447,12 +2791,29 @@ function bindEvents(){
 }
 
 
-function debugV172Engine() {
+function debugV18Engine() {
   const cases = [
-    {cao:180,kg:60,want:"42",range:"41-42"},
-    {cao:150,kg:90,want:"44",range:"43-44"},
-    {cao:165,kg:65,want:"40",range:"39-40"},
-    {cao:175,kg:70,want:"42",range:"41-42"}
+    // AO
+    {loai:"AO",cao:150,kg:50,want:"38"},
+    {loai:"AO",cao:155,kg:50,want:"39"},
+    {loai:"AO",cao:160,kg:60,want:"39"},
+    {loai:"AO",cao:165,kg:60,want:"40"},
+    {loai:"AO",cao:170,kg:70,want:"41"},
+    {loai:"AO",cao:175,kg:70,want:"42"},
+    {loai:"AO",cao:180,kg:80,want:"43"},
+    {loai:"AO",cao:185,kg:80,want:"44"},
+    {loai:"AO",cao:190,kg:90,want:"44"},
+    {loai:"AO",cao:192,kg:90,want:"45"},
+    {loai:"AO",cao:195,kg:90,want:"46"},
+
+    // QUAN - khác AO ở mức 2
+    {loai:"QUAN",cao:160,kg:60,want:"40"},
+    {loai:"QUAN",cao:165,kg:60,want:"41"},
+    {loai:"QUAN",cao:150,kg:65,want:"41"},
+
+    // lệch cao/cân: lấy size lớn hơn
+    {loai:"AO",cao:150,kg:90,want:"44"},
+    {loai:"QUAN",cao:180,kg:60,want:"43"}
   ];
 
   cases.forEach(c => {
@@ -2463,23 +2824,20 @@ function debugV172Engine() {
           can_nang_kg:c.kg,
           size_giay_thuong_di:null
         },
-        "AO"
+        c.loai
       );
 
     console.log(
-      `[SalesCopilot V1.7.2] ${c.cao}/${c.kg} =>`,
+      `[SalesCopilot V1.8] ${c.loai} ${c.cao}/${c.kg} =>`,
       t
     );
 
-    const gotRange =
-      `${t?.rangeMin}-${t?.rangeMax}`;
-
     if (
-      String(t?.primary) !== c.want ||
-      gotRange !== c.range
+      String(t?.primary) !==
+      String(c.want)
     ) {
       console.error(
-        "[SalesCopilot V1.7.2] ENGINE SAI",
+        "[SalesCopilot V1.8] ENGINE SAI",
         c,
         t
       );
@@ -2495,7 +2853,7 @@ async function init(){
   }
   try{
     await loadConfig();
-    debugV172Engine();
+    debugV18Engine();
     await loadSessions();
     bindEvents();
     renderModeControls();
