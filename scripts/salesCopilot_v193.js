@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.9.1";
-console.log("[SalesCopilot] BUILD 1.9.1");
+window.SALES_COPILOT_BUILD="1.9.3";
+console.log("[SalesCopilot] BUILD 1.9.3");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -91,6 +91,7 @@ const state = {
   currentSessionId: null,
   selectedGroup: "AP",
   selectedMainGroup: "AO_HE",
+  selectedShoeSearchSize: "",
   searchMode: "similar",
   referencePrice: 0,
   selectedProduct: null,
@@ -1368,8 +1369,35 @@ function suggestedSizesForGroup(profile, groupCode) {
     x => norm(x.manhom) === norm(groupCode)
   );
 
-  const loai = g?.loai_tu_van || "AO";
-  const seed = seedSuggestionForProfile(profile, loai);
+  const loai =
+    g?.loai_tu_van || "AO";
+
+  const seed =
+    seedSuggestionForProfile(
+      profile,
+      loai
+    );
+
+  // V1.9.2 - GIAY/DEP:
+  // Nếu chưa biết size giày, vẫn cho tìm tất cả size nội bộ 38-46.
+  // Nhưng KHÔNG tự gán một size "phù hợp" giả.
+  if (
+    loai === "GIAY_DEP" &&
+    !seed.primary
+  ) {
+    return {
+      seed: {
+        ...seed,
+        source:"GIAY_CHUA_CO_SIZE",
+        primary:null,
+        backup:null,
+        rangeMin:null,
+        rangeMax:null
+      },
+      sizes: ALL_SIZES.slice(),
+      noAutoShoeSize:true
+    };
+  }
 
   return {
     seed,
@@ -1379,7 +1407,8 @@ function suggestedSizesForGroup(profile, groupCode) {
           .map(extractInternalSize)
           .filter(Boolean)
       )
-    )
+    ),
+    noAutoShoeSize:false
   };
 }
 
@@ -1604,6 +1633,37 @@ function renderMainGroupControls() {
   }
 
   select.value = state.selectedGroup;
+
+  const shoeRow = $("shoeSizeSearchRow");
+  const shoeSelect = $("shoeSizeSearchSelect");
+
+  const isShoes =
+    state.selectedMainGroup === "GIAY_DEP";
+
+  shoeRow?.classList.toggle(
+    "show",
+    isShoes
+  );
+
+  if (isShoes && shoeSelect) {
+    const p = currentSession();
+
+    const customerShoeSize =
+      extractInternalSize(
+        p?.size_giay_thuong_di
+      );
+
+    if (
+      !state.selectedShoeSearchSize &&
+      customerShoeSize
+    ) {
+      state.selectedShoeSearchSize =
+        customerShoeSize;
+    }
+
+    shoeSelect.value =
+      state.selectedShoeSearchSize || "";
+  }
 }
 
 async function selectMainGroup(mainKey) {
@@ -1612,15 +1672,20 @@ async function selectMainGroup(mainKey) {
 
   state.selectedMainGroup = mainKey;
 
-  const rows = validSubGroups(mainKey);
+  const rows =
+    validSubGroups(mainKey);
+
   const preferred =
     rows.find(
-      g => norm(g.manhom) === norm(cfg.defaultGroup)
+      g =>
+        norm(g.manhom) ===
+        norm(cfg.defaultGroup)
     ) ||
     rows[0];
 
   if (preferred) {
-    state.selectedGroup = preferred.manhom;
+    state.selectedGroup =
+      preferred.manhom;
   }
 
   state.selectedProduct = null;
@@ -1628,20 +1693,32 @@ async function selectMainGroup(mainKey) {
   state.selectedFit = null;
   state.currentSuggestion = null;
 
+  // Nếu chuyển khỏi giày dép thì bỏ size tìm giày tạm.
+  // Nếu quay lại giày dép, render sẽ tự lấy size khách nếu đã có.
+  if (mainKey !== "GIAY_DEP") {
+    state.selectedShoeSearchSize = "";
+  }
+
   renderMainGroupControls();
   renderProductDetail();
 
   setStep(2);
 
-  if (currentSession()) {
-    await searchProducts();
-  }
+  $("searchSummary").textContent =
+    `Đã chọn ${cfg.label} · ${preferred?.ten_hien_thi || state.selectedGroup}. Nhấn Tìm để tải sản phẩm.`;
+
+  $("productList").innerHTML =
+    `<div class="empty">
+      Đã thay đổi nhóm hàng.<br>
+      Nhấn <b>Tìm</b> để tải dữ liệu mới.
+    </div>`;
 }
 
 async function selectSubGroup(code) {
   if (!code) return;
 
   state.selectedGroup = code;
+
   state.selectedProduct = null;
   state.selectedSize = null;
   state.selectedFit = null;
@@ -1652,13 +1729,16 @@ async function selectSubGroup(code) {
 
   setStep(2);
 
-  if (currentSession()) {
-    await searchProducts();
-  }
-}
+  const row = groupRowByCode(code);
 
-function renderGroups() {
-  renderMainGroupControls();
+  $("searchSummary").textContent =
+    `Đã chọn ${row?.ten_hien_thi || code}. Nhấn Tìm để tải sản phẩm.`;
+
+  $("productList").innerHTML =
+    `<div class="empty">
+      Đã thay đổi nhóm chi tiết.<br>
+      Nhấn <b>Tìm</b> để tải dữ liệu mới.
+    </div>`;
 }
 
 
@@ -1905,8 +1985,66 @@ async function searchProductsCore(searchSeq) {
     .trim()
     .toUpperCase();
 
-  const { seed, sizes } =
-    suggestedSizesForGroup(p, state.selectedGroup);
+  let {
+    seed,
+    sizes,
+    noAutoShoeSize
+  } =
+    suggestedSizesForGroup(
+      p,
+      state.selectedGroup
+    );
+
+  const currentGroupRow =
+    groupRowByCode(
+      state.selectedGroup
+    );
+
+  const isShoeSearch =
+    currentGroupRow?.loai_tu_van === "GIAY_DEP";
+
+  if (isShoeSearch) {
+    const shoeSize =
+      extractInternalSize(
+        state.selectedShoeSearchSize ||
+        $("shoeSizeSearchSelect")?.value ||
+        p?.size_giay_thuong_di
+      );
+
+    if (!shoeSize) {
+      alert(
+        "Vui lòng chọn SIZE GIÀY/DÉP cần tìm trước khi bấm Tìm."
+      );
+
+      $("shoeSizeSearchSelect")?.focus();
+
+      $("searchSummary").textContent =
+        "Chưa chọn size giày/dép cần tìm.";
+
+      $("productList").innerHTML =
+        `<div class="empty">
+          Vui lòng chọn <b>Size cần tìm</b> rồi bấm <b>Tìm</b>.
+        </div>`;
+
+      return;
+    }
+
+    state.selectedShoeSearchSize =
+      shoeSize;
+
+    sizes = [shoeSize];
+
+    seed = {
+      primary: shoeSize,
+      backup: null,
+      rangeMin: shoeSize,
+      rangeMax: shoeSize,
+      confidence: 1,
+      source: "SIZE_GIAY_TIM_THU_CONG"
+    };
+
+    noAutoShoeSize = false;
+  }
 
   if (!sizes.length) {
     $("searchSummary").textContent =
@@ -1962,8 +2100,11 @@ async function searchProductsCore(searchSeq) {
   }
 
   $("searchSummary").textContent =
-    `Đang tải ${modeMeta(state.searchMode).label} · ${state.selectedGroup} · ` +
-    `size ${sizes.join(", ")} · ${state.diadiem.toUpperCase()}...`;
+    noAutoShoeSize
+      ? `Đang tải ${modeMeta(state.searchMode).label} · ${state.selectedGroup} · ` +
+        `chưa biết size giày, tìm toàn bộ 38–46 · ${state.diadiem.toUpperCase()}...`
+      : `Đang tải ${modeMeta(state.searchMode).label} · ${state.selectedGroup} · ` +
+        `size ${sizes.join(", ")} · ${state.diadiem.toUpperCase()}...`;
 
   $("productList").innerHTML =
     `<div class="empty">Đang tải dữ liệu...</div>`;
@@ -2076,7 +2217,8 @@ async function searchProductsCore(searchSeq) {
           .map(extractInternalSize)
           .filter(Boolean),
 
-        __seed: seed
+        __seed: seed,
+        __no_auto_shoe_size: !!noAutoShoeSize
       };
     })
     .filter(Boolean);
@@ -2257,8 +2399,11 @@ async function searchProductsCore(searchSeq) {
         : "";
 
   $("searchSummary").textContent =
-    `${list.length} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · ` +
-    `size phù hợp ${sizes.join(", ")}${pricePart}`;
+    noAutoShoeSize
+      ? `${list.length} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · ` +
+        `chưa biết size giày, đang hiển thị hàng còn size 38–46${pricePart}`
+      : `${list.length} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · ` +
+        `size phù hợp ${sizes.join(", ")}${pricePart}`;
 
   if (searchSeq !== latestSearchSeq) {
     return;
@@ -2334,11 +2479,25 @@ async function renderProducts(list) {
             sug
           );
 
-        sug =
-          effectiveSuggestionForMatchedSizes(
-            sug,
-            matchedSizes
-          );
+        if (sp.__no_auto_shoe_size) {
+          // Không biết size giày: giữ primary null.
+          // matchedSizes chỉ dùng để chứng minh sản phẩm còn hàng.
+          sug = {
+            ...sug,
+            primary:null,
+            backup:null,
+            available:allAvailable,
+            primaryInStock:false,
+            backupInStock:false,
+            source:"GIAY_CHUA_CO_SIZE"
+          };
+        } else {
+          sug =
+            effectiveSuggestionForMatchedSizes(
+              sug,
+              matchedSizes
+            );
+        }
 
         return {
           sp,
@@ -2385,7 +2544,9 @@ async function renderProducts(list) {
         `${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
 
       const suggestionText =
-        sug.primary || "-";
+        sp.__no_auto_shoe_size
+          ? "Chọn size thử"
+          : (sug.primary || "-");
 
       div.innerHTML = `
         <img
@@ -2529,11 +2690,20 @@ async function selectProduct(
         .map(extractInternalSize)
         .filter(Boolean);
 
-    sug =
-      effectiveSuggestionForMatchedSizes(
-        base,
-        matchedSizes
-      );
+    if (sp.__no_auto_shoe_size) {
+      sug = {
+        ...base,
+        primary:null,
+        backup:null,
+        source:"GIAY_CHUA_CO_SIZE"
+      };
+    } else {
+      sug =
+        effectiveSuggestionForMatchedSizes(
+          base,
+          matchedSizes
+        );
+    }
 
     state.suggestionCache.set(
       cacheKey,
@@ -2577,6 +2747,8 @@ function sourceText(s){
     LICH_SU_SAN_PHAM:"Lịch sử thử thật của mã này",
     SIZE_GIAY_THUONG_DI:"Size giày khách thường đi",
     CAN_HOI_SIZE_GIAY:"Cần hỏi size giày",
+    GIAY_CHUA_CO_SIZE:"Chưa biết size giày",
+    SIZE_GIAY_TIM_THU_CONG:"Size giày được chọn để tìm",
     KHONG_QUAN_SIZE:"Không quản size"
   })[s]||s||"";
 }
@@ -2611,6 +2783,13 @@ function renderProductDetail() {
       <div class="size-hero">
         <div><div style="font-size:11px;color:#667">NÊN THỬ</div><div class="size-main">${esc(sug?.primary||"?")}</div></div>
         <div class="size-backup">Dự phòng: <b>${esc((sug?.backup && sug?.backupInStock) ? sug.backup : "-")}</b><br>
+          ${
+            sp.__no_auto_shoe_size
+              ? `<span style="display:block;color:#075f9f;font-weight:800;margin-bottom:3px">
+                  Chưa có size giày của khách · chọn trực tiếp một size còn hàng để thử
+                </span>`
+              : ""
+          }
           <span class="confidence">
             ${sourceText(sug?.source)} · tin cậy ${Math.round((sug?.confidence||0)*100)}%
             ${sug?.rangeMin ? `<br>Khoảng cơ thể nền: <b>${esc(sug.rangeMin)}–${esc(sug.rangeMax || sug.rangeMin)}</b>` : ""}
@@ -3276,6 +3455,31 @@ async function renderAll(){
 }
 
 function bindEvents(){
+  $("shoeSizeSearchSelect")
+    ?.addEventListener(
+      "change",
+      e => {
+        state.selectedShoeSearchSize =
+          extractInternalSize(
+            e.target.value
+          ) || "";
+
+        $("searchSummary").textContent =
+          state.selectedShoeSearchSize
+            ? `Đã chọn size ${state.selectedShoeSearchSize}. Nhấn Tìm để tải sản phẩm.`
+            : "Chưa chọn size giày/dép cần tìm.";
+
+        $("productList").innerHTML =
+          `<div class="empty">
+            ${
+              state.selectedShoeSearchSize
+                ? `Đã chọn size <b>${state.selectedShoeSearchSize}</b>.<br>Nhấn <b>Tìm</b> để tải dữ liệu.`
+                : `Vui lòng chọn <b>Size cần tìm</b> rồi bấm <b>Tìm</b>.`
+            }
+          </div>`;
+      }
+    );
+
   document
     .querySelectorAll(".main-group-btn")
     .forEach(btn => {
