@@ -1,3 +1,5 @@
+window.SALES_COPILOT_BUILD="1.7.1";
+console.log("[SalesCopilot] BUILD 1.7.1");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -26,6 +28,7 @@ const state = {
   productCache: new Map(),
   editingSessionId: null,
   pendingConfirmAction: null,
+  autoWeightMode: true,
 };
 
 const $ = id => document.getElementById(id);
@@ -89,147 +92,74 @@ function distanceToRange(v, min, max) {
   return n - Number(max);
 }
 
+function groupForHeight(h) {
+  const n = Number(h || 0);
+  if (n <= 154) return {primary:"38", backup:"39", group:"NHOM_1"};
+  if (n <= 164) return {primary:"39", backup:"38", group:"NHOM_1"};
+  if (n <= 170) return {primary:"40", backup:"39", group:"NHOM_2"};
+  if (n <= 174) return {primary:"41", backup:"42", group:"NHOM_3"};
+  if (n <= 180) return {primary:"42", backup:"41", group:"NHOM_3"};
+  if (n <= 184) return {primary:"43", backup:"44", group:"NHOM_4"};
+  if (n <= 190) return {primary:"44", backup:"43", group:"NHOM_4"};
+  if (n <= 194) return {primary:"45", backup:"44", group:"NHOM_5"};
+  return {primary:"46", backup:"45", group:"NHOM_5"};
+}
+
+function groupForWeight(kg) {
+  const n = Number(kg || 0);
+  if (n <= 54) return {primary:"38", backup:"39", group:"NHOM_1"};
+  if (n <= 64) return {primary:"39", backup:"38", group:"NHOM_1"};
+  if (n <= 70) return {primary:"40", backup:"39", group:"NHOM_2"};
+  if (n <= 74) return {primary:"41", backup:"42", group:"NHOM_3"};
+  if (n <= 80) return {primary:"42", backup:"41", group:"NHOM_3"};
+  if (n <= 84) return {primary:"43", backup:"44", group:"NHOM_4"};
+  if (n <= 90) return {primary:"44", backup:"43", group:"NHOM_4"};
+  if (n <= 94) return {primary:"45", backup:"44", group:"NHOM_5"};
+  return {primary:"46", backup:"45", group:"NHOM_5"};
+}
+
 function seedSuggestionForProfile(profile, loaiTuVan = "AO") {
   if (!profile) {
-    return {
-      primary: null, backup: null,
-      rangeMin: null, rangeMax: null,
-      confidence: 0, source: "CHUA_CO"
-    };
+    return {primary:null,backup:null,rangeMin:null,rangeMax:null,confidence:0,source:"CHUA_CO"};
   }
 
   if (loaiTuVan === "GIAY_DEP") {
     const giay = extractInternalSize(profile.size_giay_thuong_di);
     return giay
-      ? {
-          primary: giay,
-          backup: null,
-          rangeMin: giay,
-          rangeMax: giay,
-          confidence: 0.82,
-          source: "SIZE_GIAY_THUONG_DI"
-        }
-      : {
-          primary: null,
-          backup: null,
-          rangeMin: null,
-          rangeMax: null,
-          confidence: 0,
-          source: "CAN_HOI_SIZE_GIAY"
-        };
+      ? {primary:giay,backup:null,rangeMin:giay,rangeMax:giay,confidence:.82,source:"SIZE_GIAY_THUONG_DI"}
+      : {primary:null,backup:null,rangeMin:null,rangeMax:null,confidence:0,source:"CAN_HOI_SIZE_GIAY"};
   }
 
   if (loaiTuVan === "PHU_KIEN") {
-    return {
-      primary: null, backup: null,
-      rangeMin: null, rangeMax: null,
-      confidence: 1, source: "KHONG_QUAN_SIZE"
-    };
+    return {primary:null,backup:null,rangeMin:null,rangeMax:null,confidence:1,source:"KHONG_QUAN_SIZE"};
   }
 
-  const scored = state.bodyGroups.map(g => {
-    const dc = distanceToRange(
-      profile.chieu_cao_cm,
-      g.cao_min_cm,
-      g.cao_max_cm
-    ) / 4;
+  const byHeight = groupForHeight(profile.chieu_cao_cm);
+  const byWeight = groupForWeight(profile.can_nang_kg);
 
-    const dk = distanceToRange(
-      profile.can_nang_kg,
-      g.kg_min,
-      g.kg_max
-    ) / 4;
+  const rh = sizeRank(byHeight.primary) || 1;
+  const rw = sizeRank(byWeight.primary) || 1;
 
-    return {
-      g,
-      score: dc * dc + dk * dk
-    };
-  }).sort((a, b) => a.score - b.score);
+  const dominant = rw > rh ? byWeight : byHeight;
+  const other = rw > rh ? byHeight : byWeight;
 
-  const g = scored[0]?.g;
-
-  if (!g) {
-    return {
-      primary: "40",
-      backup: "39",
-      rangeMin: "39",
-      rangeMax: "40",
-      confidence: .30,
-      source: "BANG_CHUAN"
-    };
-  }
-
-  const minRank = sizeRank(g.size_tu) || 1;
-  const maxRank = sizeRank(g.size_den) || minRank;
-
-  // Chỉ dùng vị trí của khách TRONG chính vùng cao/kg
-  // để chọn size nằm trong khoảng size_tu -> size_den.
-  // KHONG cộng thêm size vì bụng/đùi/vai/ngực ở V1.1.
-  const kgSpan = Math.max(1, Number(g.kg_max) - Number(g.kg_min));
-  const caoSpan = Math.max(1, Number(g.cao_max_cm) - Number(g.cao_min_cm));
-
-  const kgPos = Math.max(
-    0,
-    Math.min(
-      1,
-      (Number(profile.can_nang_kg) - Number(g.kg_min)) / kgSpan
-    )
-  );
-
-  const caoPos = Math.max(
-    0,
-    Math.min(
-      1,
-      (Number(profile.chieu_cao_cm) - Number(g.cao_min_cm)) / caoSpan
-    )
-  );
-
-  // Cân nặng ảnh hưởng nhiều hơn chiều cao khi chọn size quần áo.
-  const pos = kgPos * 0.65 + caoPos * 0.35;
-
-  const spanRank = Math.max(0, maxRank - minRank);
-  const targetRank = minRank + pos * spanRank;
-
-  let primaryRank = Math.round(targetRank);
-  primaryRank = Math.max(minRank, Math.min(maxRank, primaryRank));
-
-  const primary = sizeFromRank(primaryRank);
-
-  let backup = null;
-  if (maxRank > minRank) {
-    // Chọn size dự phòng ngay sát size chính nhưng vẫn phải ở TRONG range.
-    let backupRank;
-
-    if (primaryRank <= minRank) {
-      backupRank = minRank + 1;
-    } else if (primaryRank >= maxRank) {
-      backupRank = maxRank - 1;
-    } else {
-      backupRank = pos >= 0.5 ? primaryRank + 1 : primaryRank - 1;
-    }
-
-    backupRank = Math.max(minRank, Math.min(maxRank, backupRank));
-    backup = sizeFromRank(backupRank);
-
-    if (backup === primary) {
-      const alt = primaryRank < maxRank
-        ? primaryRank + 1
-        : primaryRank - 1;
-
-      backup = sizeFromRank(
-        Math.max(minRank, Math.min(maxRank, alt))
-      );
-    }
+  let backup = dominant.backup;
+  if (other.primary !== dominant.primary) {
+    backup = other.primary;
   }
 
   return {
-    primary,
+    primary: dominant.primary,
     backup,
-    rangeMin: sizeFromRank(minRank),
-    rangeMax: sizeFromRank(maxRank),
-    confidence: scored[0]?.score === 0 ? .55 : .40,
-    source: "BANG_CHUAN",
-    group: g.ma_nhom
+    rangeMin: sizeFromRank(Math.min(rh,rw)),
+    rangeMax: sizeFromRank(Math.max(rh,rw)),
+    confidence:.65,
+    source:"CAO_CAN_DOC_LAP",
+    group:dominant.group,
+    sizeTheoCao:byHeight.primary,
+    sizeTheoCan:byWeight.primary,
+    nhomTheoCao:byHeight.group,
+    nhomTheoCan:byWeight.group
   };
 }
 
@@ -1589,6 +1519,7 @@ async function selectProduct(
 function sourceText(s){
   return ({
     BANG_CHUAN:"Bảng chuẩn ban đầu",
+    CAO_CAN_DOC_LAP:"Tính độc lập theo chiều cao và cân nặng",
     "1_DIEM_NEO_SAN_PHAM":"1 dữ liệu thật của mã này",
     LICH_SU_SAN_PHAM:"Lịch sử thử thật của mã này",
     SIZE_GIAY_THUONG_DI:"Size giày khách thường đi",
@@ -2028,6 +1959,58 @@ async function renderCart() {
   renderTabs();
 }
 
+
+function autoWeightFromHeight(height) {
+  const h = Number(height || 0);
+  if (!h) return null;
+  return Math.max(30, Math.min(200, Math.round(h - 100)));
+}
+
+function markQuickHeightSelected() {
+  const h = Number($("fCao")?.value || 0);
+  document.querySelectorAll(".quick-height-btn").forEach(btn => {
+    btn.classList.toggle("on", Number(btn.dataset.height) === h);
+  });
+}
+
+function setHeightQuick(height, autoWeight=true) {
+  const h = Math.max(130, Math.min(220, Number(height || 0)));
+  $("fCao").value = h;
+
+  if (autoWeight) {
+    $("fKg").value = autoWeightFromHeight(h);
+    state.autoWeightMode = true;
+  }
+
+  markQuickHeightSelected();
+  updateGroupPreview();
+}
+
+function stepHeight(delta) {
+  const old = Number($("fCao").value || 170);
+  const next = Math.max(130, Math.min(220, old + Number(delta || 0)));
+  setHeightQuick(next, state.autoWeightMode);
+}
+
+function stepWeight(delta) {
+  const old = Number($("fKg").value || autoWeightFromHeight($("fCao").value) || 70);
+  const next = Math.max(30, Math.min(200, old + Number(delta || 0)));
+  $("fKg").value = next;
+  state.autoWeightMode = false;
+  updateGroupPreview();
+}
+
+function resetAutoWeight() {
+  const h = Number($("fCao").value || 0);
+  if (!h) {
+    toast("Hãy chọn chiều cao trước.");
+    return;
+  }
+  $("fKg").value = autoWeightFromHeight(h);
+  state.autoWeightMode = true;
+  updateGroupPreview();
+}
+
 function openCustomerModal(edit=false) {
   state.editingSessionId=edit?currentSession()?.id:null;
   const p=edit?currentSession():null;
@@ -2040,9 +2023,10 @@ function openCustomerModal(edit=false) {
   $("fMakh").value=p?.makh||"";
   $("fTenkh").value=p?.tenkh||"";
   document.querySelectorAll(".body-chip").forEach(ch=>ch.classList.toggle("on",!!p?.[ch.dataset.field]));
+  state.autoWeightMode = !edit;
+  markQuickHeightSelected();
   updateGroupPreview();
   $("modalKhach").classList.add("show");
-  setTimeout(()=>$("fCao").focus(),50);
 }
 
 function formProfileDraft() {
@@ -2060,10 +2044,28 @@ function formProfileDraft() {
 }
 
 function updateGroupPreview() {
-  const p=formProfileDraft();
-  if(!p.chieu_cao_cm||!p.can_nang_kg){$("groupPreview").textContent="Nhập chiều cao và cân nặng để xem size nền.";return;}
-  const s=seedSuggestionForProfile(p,"AO");
-  $("groupPreview").innerHTML=`Size nền ban đầu: <b>${s.primary}</b> · dự phòng <b>${s.backup}</b>. Đây chỉ là mốc khởi tạo; dữ liệu thử thật của từng mã sẽ được ưu tiên.`;
+  const p = formProfileDraft();
+  markQuickHeightSelected();
+
+  if (!p.chieu_cao_cm || !p.can_nang_kg) {
+    $("groupPreview").textContent =
+      "Chọn chiều cao để tự điền cân nặng; có thể điều chỉnh ±3.";
+    return;
+  }
+
+  const s = seedSuggestionForProfile(p,"AO");
+
+  $("groupPreview").innerHTML = `
+    Theo chiều cao: <b>${esc(s.sizeTheoCao || "-")}</b>
+    · Theo cân nặng: <b>${esc(s.sizeTheoCan || "-")}</b><br>
+    Size chính:
+    <b style="font-size:18px;color:#d92d20">${esc(s.primary || "-")}</b>
+    ${s.backup ? ` · dự phòng <b>${esc(s.backup)}</b>` : ""}
+    <br>
+    <span style="font-size:11px;color:#687787">
+      Hai số đo tính độc lập; lấy size lớn hơn.
+    </span>
+  `;
 }
 
 async function saveCustomerModal() {
@@ -2178,6 +2180,30 @@ async function renderAll(){
 }
 
 function bindEvents(){
+  document.querySelectorAll(".quick-height-btn").forEach(btn => {
+    btn.onclick = () => setHeightQuick(Number(btn.dataset.height), true);
+  });
+
+  $("btnCaoTru").onclick = () => stepHeight(-3);
+  $("btnCaoCong").onclick = () => stepHeight(3);
+  $("btnKgTru").onclick = () => stepWeight(-3);
+  $("btnKgCong").onclick = () => stepWeight(3);
+  $("btnCanTuDong").onclick = resetAutoWeight;
+
+  $("fCao").addEventListener("input", () => {
+    if (state.autoWeightMode) {
+      const h = Number($("fCao").value || 0);
+      if (h) $("fKg").value = autoWeightFromHeight(h);
+    }
+    markQuickHeightSelected();
+    updateGroupPreview();
+  });
+
+  $("fKg").addEventListener("input", () => {
+    state.autoWeightMode = false;
+    updateGroupPreview();
+  });
+
   document
     .querySelectorAll(".mode-btn")
     .forEach(btn => {
@@ -2271,7 +2297,7 @@ function bindEvents(){
   $("btnXNDongY").onclick=finalizeMeasurements;
   $("btnXNSua").onclick=()=>{$("modalXacNhan").classList.remove("show");openCustomerModal(true);};
   $("btnMoTrangBan").onclick=()=>window.open(state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html","BAN_NV_HOAN_TUYET");
-  ["fCao","fKg"].forEach(id=>$(id).addEventListener("input",updateGroupPreview));
+  // V1.7.1: fCao/fKg co listener rieng.
   $("fMakh").addEventListener("blur",async()=>{
     const ma=String($("fMakh").value||"").replace(/\D/g,"").slice(0,10);
     $("fMakh").value=ma;
@@ -2282,6 +2308,18 @@ function bindEvents(){
   document.querySelectorAll(".body-chip").forEach(ch=>ch.onclick=()=>{ch.classList.toggle("on");updateGroupPreview();});
 }
 
+
+function debugV171Engine() {
+  const t = seedSuggestionForProfile(
+    {chieu_cao_cm:150, can_nang_kg:90, size_giay_thuong_di:null},
+    "AO"
+  );
+  console.log("[SalesCopilot V1.7.1] TEST 150/90 =>", t);
+  if (String(t?.primary) !== "44") {
+    console.error("[SalesCopilot V1.7.1] ENGINE SAI: 150/90 phai ra 44");
+  }
+}
+
 async function init(){
   $("nvInfo").textContent=`${state.tennv||state.manv||"Chưa đăng nhập"} · ${state.diadiem.toUpperCase()}`;
   $("fGiay").innerHTML='<option value="">-- Không biết --</option>'+SIZE_LIST.map(s=>`<option value="${s}">${s}</option>`).join("");
@@ -2290,6 +2328,7 @@ async function init(){
   }
   try{
     await loadConfig();
+    debugV171Engine();
     await loadSessions();
     bindEvents();
     renderModeControls();
