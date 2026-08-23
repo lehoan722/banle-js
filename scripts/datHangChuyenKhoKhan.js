@@ -399,7 +399,8 @@ async function createUrgentCcnFromChecked(box) {
     if (!grouped.has(code)) grouped.set(code, []);
     grouped.get(code).push({
       size: normSize(r.size),
-      soluong: Number(r.soluong || 1)
+      // Trang CCN hiện tại đọc số lượng từ field `sl` (không phải `soluong`).
+      sl: Number(r.soluong || 1)
     });
   });
 
@@ -416,6 +417,32 @@ async function createUrgentCcnFromChecked(box) {
   localStorage.setItem("dhkhan_pending_ids", JSON.stringify(selectedIds));
   // Quan trọng: không dùng dhck_pending_ids để tránh module chuyển kho tự động xử lý nhầm ID.
   localStorage.removeItem("dhck_pending_ids");
+
+  // Theo nghiệp vụ đặt hàng KHẨN: ngay khi người dùng đã tick Chuyển và
+  // bấm Tạo hóa đơn CCN, các dòng đó được ghi nhận là ĐÃ CHUYỂN ngay.
+  // Vẫn giữ dhkhan_pending_ids + payload để luồng sau khi lưu hóa đơn có thể
+  // đối chiếu lại an toàn, nhưng trạng thái trên panel cập nhật realtime tức thì.
+  const now = new Date().toISOString();
+  const manv = getManv();
+  suppressRealtimeUntil = Date.now() + 900;
+  const { error: markErr } = await ctx.supabase
+    .from(TABLE)
+    .update({
+      trang_thai: "da_chuyen",
+      manv_thuc_hien: manv || null,
+      updated_at: now
+    })
+    .in("id", selectedIds)
+    .eq("tu_coso", coso)
+    .eq("trang_thai", "moi");
+
+  if (markErr) {
+    console.error("[Đặt hàng khẩn] Không cập nhật Đã chuyển khi tạo CCN:", markErr);
+    alert("❌ Không cập nhật được trạng thái Đã chuyển. Chưa mở hóa đơn CCN để tránh lệch dữ liệu.");
+    return;
+  }
+
+  await refreshPanel({ forceOpen: true });
 
   const url = dir === "2v1" ? "/ccn2v1cs2.html" : "/ccn1v2cs1.html";
   window.open(location.origin + url, "_blank");
