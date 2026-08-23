@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kiểm tra bày mẫu</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
+  <script type="module" src="./scripts/kiemtra_baymau.js?v=1.0.0"></script>
+
+  <style>
+    :root {
+      --bg:#f4f6f8; --card:#fff; --line:#dfe3e8; --primary:#1769aa;
+      --success:#15803d; --warning:#b45309; --danger:#b91c1c; --muted:#64748b;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; padding:7px; background:var(--bg);
+      font-family:Arial,Helvetica,sans-serif; color:#172033;
+    }
+    #app-container { max-width:1180px; margin:0 auto; }
+    h1 { font-size:20px; margin:4px 0 7px; }
+    .sticky-top {
+      position:sticky; top:0; z-index:50; background:var(--bg); padding-bottom:6px;
+    }
+    .card {
+      background:var(--card); border:1px solid var(--line); border-radius:12px;
+      padding:8px; box-shadow:0 2px 8px rgba(0,0,0,.04);
+    }
+    .session-row {
+      display:grid; grid-template-columns:1fr auto; gap:7px; align-items:center;
+      margin-bottom:7px; font-size:14px;
+    }
+    #session-summary { font-weight:700; }
+    #scan-stats { color:var(--muted); font-size:13px; white-space:nowrap; }
+    .grid-2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:7px; }
+    .grid-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:7px; }
+    input,button {
+      width:100%; min-height:42px; border:1px solid #cfd5dd; border-radius:9px;
+      padding:8px 10px; font-size:16px; background:#fff;
+    }
+    button { cursor:pointer; font-weight:700; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .btn-primary { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .btn-soft { background:#eef3f8; }
+    #current-location { font-weight:700; border:2px solid #7cb7e8; text-transform:uppercase; }
+    #scan-masp { font-weight:700; text-transform:uppercase; border:2px solid #59a56a; }
+    #message {
+      margin:7px 0; padding:8px 10px; min-height:38px; border:1px solid var(--line);
+      border-radius:10px; background:#fff; font-size:14px;
+    }
+    #message.ok { color:var(--success); border-color:#a7d8b4; }
+    #message.warn { color:var(--warning); border-color:#e7c280; }
+    #message.err { color:var(--danger); border-color:#e6a4a4; }
+    #hot { background:#fff; border-radius:10px; overflow:hidden; min-height:470px; }
+
+    .modal {
+      display:none; position:fixed; inset:0; z-index:99990; background:rgba(15,23,42,.45);
+      padding:12px; align-items:center; justify-content:center;
+    }
+    .modal.show { display:flex; }
+    .modal-box {
+      width:min(760px,100%); max-height:88vh; overflow:auto; background:#fff;
+      border-radius:13px; padding:10px;
+    }
+    .modal-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .modal-head h3 { flex:1; margin:0; font-size:18px; }
+    .modal-close { width:42px; min-height:38px; }
+    .duplicate-info {
+      border:1px solid #f3c174; background:#fff8e8; border-radius:10px; padding:10px;
+      line-height:1.5; margin-bottom:10px;
+    }
+    .session-item {
+      padding:10px 6px; border-bottom:1px solid #e7e9ed; cursor:pointer;
+    }
+    .session-item:hover { background:#f8fafc; }
+    .session-title { font-weight:700; }
+    .session-meta { margin-top:3px; color:#576071; font-size:13px; }
+
+    @media (max-width:520px) {
+      body { padding:5px; }
+      h1 { font-size:18px; }
+      input,button { min-height:40px; font-size:15px; padding:7px 8px; }
+      .session-row { grid-template-columns:1fr; gap:2px; }
+      #scan-stats { white-space:normal; }
+      .handsontable td,.handsontable th { font-size:12px !important; }
+      #hot { min-height:500px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app-container" style="display:none;">
+    <h1>Kiểm tra bày mẫu</h1>
+
+    <div class="sticky-top">
+      <div class="card">
+        <div class="session-row">
+          <div id="session-summary">Chưa có phiên kiểm</div>
+          <div id="scan-stats">0 dòng · 0 mã</div>
+        </div>
+
+        <div class="grid-2">
+          <input id="current-location" type="text" placeholder="Vị trí hiện tại" autocomplete="off">
+          <input id="scan-masp" type="text" placeholder="Quét mã sản phẩm" autocomplete="off" inputmode="text">
+        </div>
+
+        <div class="grid-actions">
+          <button id="btn-new-session" class="btn-primary" type="button">Tạo phiên mới</button>
+          <button id="btn-load-session" class="btn-soft" type="button">Tải phiên cũ</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="message">Tạo phiên mới hoặc tải phiên cũ để bắt đầu.</div>
+    <div id="hot"></div>
+  </div>
+
+  <div id="duplicate-modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>⚠️ Sản phẩm đã có trong phiên</h3>
+      </div>
+      <div id="duplicate-info" class="duplicate-info"></div>
+      <div class="grid-actions">
+        <button id="btn-duplicate-cancel" class="btn-soft" type="button">Hủy</button>
+        <button id="btn-duplicate-confirm" class="btn-primary" type="button">Vẫn thêm</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="session-modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Chọn phiên kiểm</h3>
+        <button id="session-modal-close" class="modal-close" type="button">✕</button>
+      </div>
+      <div id="session-list"></div>
+    </div>
+  </div>
+</body>
+</html>
