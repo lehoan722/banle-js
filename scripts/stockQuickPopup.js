@@ -1150,6 +1150,47 @@ data-color-masp="${targetMasp}"
   }
 
 
+  async function saveFormNhanh(maspRaw, formRaw) {
+    const masp = String(maspRaw || "").trim().toUpperCase();
+    const form = String(formRaw || "").trim().toUpperCase();
+
+    if (!getIsAdminLocal()) {
+      return { ok: false, message: "Chỉ admin được phép sửa form" };
+    }
+    if (!masp) return { ok: false, message: "Mã sản phẩm trống" };
+    if (form && !["RONG", "VUA", "BO"].includes(form)) {
+      return { ok: false, message: "Form chỉ được phép là RONG, VUA hoặc BO" };
+    }
+
+    const client = getSupabaseClient();
+    if (!client) return { ok: false, message: "Supabase chưa sẵn sàng" };
+
+    try {
+      const { data, error } = await client
+        .from("dmhanghoa")
+        .update({ form: form || null })
+        .eq("masp", masp)
+        .select("masp, form")
+        .maybeSingle();
+
+      if (error) {
+        console.warn("[StockQuickPopup] saveFormNhanh error:", error);
+        return { ok: false, message: error.message || "Lỗi lưu form" };
+      }
+      if (!data) return { ok: false, message: "Không tìm thấy mã sản phẩm để cập nhật" };
+
+      return {
+        ok: true,
+        form_moi: String(data.form || "").trim().toUpperCase(),
+        message: form ? "Đã lưu form" : "Đã xóa form"
+      };
+    } catch (e) {
+      console.warn("[StockQuickPopup] saveFormNhanh exception:", e);
+      return { ok: false, message: e?.message || "Có lỗi khi lưu form" };
+    }
+  }
+
+
   async function saveDiscountNhanh(maspRaw, pctRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
     const raw = String(pctRaw ?? "").trim();
@@ -1513,6 +1554,7 @@ data-color-masp="${targetMasp}"
     const nhap_cuoi_ma = payload && payload.nhap_cuoi_ma ? String(payload.nhap_cuoi_ma).trim() : "";
     const giale = payload && payload.giale ? payload.giale : "";
     const nhomhang = payload && payload.nhomhang ? payload.nhomhang : "";
+    const form = payload && payload.form ? String(payload.form).trim().toUpperCase() : "";
     const mau_khac = payload && payload.mau_khac ? payload.mau_khac : "";
     const giam_gia_pct = payload && payload.giam_gia_pct != null ? Number(payload.giam_gia_pct) : null;
     const kiemton = payload && payload.kiemton
@@ -1592,6 +1634,29 @@ data-color-masp="${targetMasp}"
         placeholder="Nhập nhóm hàng"
         autocomplete="off"
       />
+      <span class="sq-vitri-msg"></span>
+    </div>
+  `;
+
+    const formRow = isAdmin
+      ? `
+    <div class="sq-vitri-action-row" data-loai="form">
+      <button type="button" class="sq-vitri-save-btn sq-form-save-btn" data-loai="form">Lưu form</button>
+      <span class="sq-vitri-label">Form:</span>
+      <select class="sq-vitri-input sq-form-input" data-loai="form" style="min-width:120px;max-width:150px;">
+        <option value="" ${!form ? "selected" : ""}>-- Chưa có --</option>
+        <option value="RONG" ${form === "RONG" ? "selected" : ""}>RỘNG</option>
+        <option value="VUA" ${form === "VUA" ? "selected" : ""}>VỪA</option>
+        <option value="BO" ${form === "BO" ? "selected" : ""}>BÓ</option>
+      </select>
+      <span class="sq-vitri-msg"></span>
+    </div>
+  `
+      : `
+    <div class="sq-vitri-action-row" data-loai="form">
+      <button type="button" class="sq-vitri-save-btn" disabled>Lưu form</button>
+      <span class="sq-vitri-label">Form:</span>
+      <span class="sq-vitri-value-readonly">${form || "--"}</span>
       <span class="sq-vitri-msg"></span>
     </div>
   `;
@@ -2086,6 +2151,7 @@ data-color-masp="${targetMasp}"
     ${vitriRowCs2}
     ${baymauRowCs2}
     ${nhomhangRow}
+    ${formRow}
   </div>
 `;
 
@@ -2713,6 +2779,60 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     }
   }
 
+  function bindFormAction(popup) {
+    if (!popup) return;
+    const row = popup.querySelector('.sq-vitri-action-row[data-loai="form"]');
+    if (!row) return;
+    const btn = row.querySelector('.sq-form-save-btn');
+    const input = row.querySelector('.sq-form-input');
+    const msgEl = row.querySelector('.sq-vitri-msg');
+    if (!btn || !input) return;
+
+    const runSave = async () => {
+      if (!getIsAdminLocal()) {
+        if (msgEl) {
+          msgEl.textContent = "Chỉ admin được phép sửa form";
+          msgEl.className = "sq-vitri-msg err";
+        }
+        return;
+      }
+
+      const masp = String(popup.dataset.masp || "").trim().toUpperCase();
+      const formValue = String(input.value || "").trim().toUpperCase();
+      btn.disabled = true;
+      const oldText = btn.textContent;
+      btn.textContent = "Đang lưu...";
+      if (msgEl) { msgEl.textContent = ""; msgEl.className = "sq-vitri-msg"; }
+
+      const rs = await saveFormNhanh(masp, formValue);
+      btn.disabled = false;
+      btn.textContent = oldText;
+
+      if (rs?.ok) {
+        const formMoi = String(rs.form_moi || "").trim().toUpperCase();
+        input.value = formMoi;
+        popup.dataset.form = formMoi;
+        if (msgEl) {
+          msgEl.textContent = rs.message || "Đã lưu form";
+          msgEl.className = "sq-vitri-msg ok";
+        }
+        return;
+      }
+
+      if (msgEl) {
+        msgEl.textContent = rs?.message || "Lưu form thất bại";
+        msgEl.className = "sq-vitri-msg err";
+      }
+      input.focus();
+    };
+
+    btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); runSave(); });
+    input.addEventListener("click", (e) => e.stopPropagation());
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); runSave(); }
+    });
+  }
+
   function bindVitriActions(popup) {
     if (!popup) return;
 
@@ -3225,6 +3345,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
     // bind Lưu kho kho nhanh cho CS1 / CS2
     bindVitriActions(popup);
+    bindFormAction(popup);
 
     // bind lưu/xóa giảm giá và mở hàng giảm giá cùng nhóm
     bindDiscountActions(popup, payload);
