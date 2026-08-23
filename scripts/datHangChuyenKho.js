@@ -1955,6 +1955,92 @@ async function afterCcnSaved(result) {
     payload = null;
   }
 
+  // ===== HÓA ĐƠN TỪ ĐẶT HÀNG KHẨN CẤP =====
+  // Tách xử lý khỏi dat_hang_chuyen_kho để tuyệt đối không cập nhật nhầm ID
+  // của bảng chuyển kho tự động.
+  if (payload?.source === "dat_hang_chuyen_kho_khan") {
+    let urgentIds = [];
+    try {
+      urgentIds = JSON.parse(localStorage.getItem("dhkhan_pending_ids") || "[]");
+    } catch {
+      urgentIds = [];
+    }
+
+    if ((!urgentIds || !urgentIds.length) && Array.isArray(payload?.order_ids)) {
+      urgentIds = payload.order_ids;
+    }
+    urgentIds = (urgentIds || []).map(Number).filter(Boolean);
+
+    if (!urgentIds.length) {
+      console.warn("[Đặt hàng khẩn] Không xác định được order_ids sau khi lưu CCN.");
+      return;
+    }
+
+    const dir = payload?.dir ||
+      (location.pathname.toLowerCase().includes("ccn2v1") ? "2v1" : "1v2");
+    const normMaspUrgent = v => String(v || "").trim().toUpperCase();
+    const normSizeUrgent = v => {
+      const s = String(v || "").replace(/^size\s+/i, "").trim();
+      const m = s.match(/\d{1,2}/);
+      return m ? m[0] : s;
+    };
+
+    const qtyMap = new Map();
+    (result.chitiet || []).forEach(r => {
+      const masp = normMaspUrgent(r.masp);
+      const size = normSizeUrgent(r.size);
+      const sl = Number(r.soluong || 0);
+      if (!masp || !size || !sl) return;
+      const key = `${masp}|${size}|${dir}`;
+      qtyMap.set(key, (qtyMap.get(key) || 0) + sl);
+    });
+
+    const { data: urgentOrders, error: urgentFetchErr } = await ctx.supabase
+      .from("dat_hang_chuyen_kho_khan")
+      .select("id,masp,size,soluong,huong_chuyen,trang_thai")
+      .in("id", urgentIds);
+
+    if (urgentFetchErr) {
+      console.error("[Đặt hàng khẩn] Không đọc được dòng sau khi lưu CCN:", urgentFetchErr);
+      alert("⚠️ Hóa đơn đã lưu nhưng chưa cập nhật được đặt hàng khẩn.");
+      return;
+    }
+
+    const idsDaChuyen = [];
+    (urgentOrders || []).forEach(o => {
+      const key = `${normMaspUrgent(o.masp)}|${normSizeUrgent(o.size)}|${o.huong_chuyen}`;
+      const canCo = Number(o.soluong || 1);
+      const trongPhieu = Number(qtyMap.get(key) || 0);
+      if (trongPhieu >= canCo) {
+        idsDaChuyen.push(Number(o.id));
+        qtyMap.set(key, trongPhieu - canCo);
+      }
+    });
+
+    if (idsDaChuyen.length) {
+      const now = new Date().toISOString();
+      const manv = getManv();
+      const { error: urgentUpdateErr } = await ctx.supabase
+        .from("dat_hang_chuyen_kho_khan")
+        .update({
+          trang_thai: "da_chuyen",
+          manv_thuc_hien: manv || null,
+          updated_at: now
+        })
+        .in("id", idsDaChuyen);
+
+      if (urgentUpdateErr) {
+        console.error("[Đặt hàng khẩn] Lỗi cập nhật đã chuyển:", urgentUpdateErr);
+        alert("⚠️ Hóa đơn đã lưu nhưng chưa cập nhật được trạng thái Đã chuyển của đặt hàng khẩn.");
+        return;
+      }
+    }
+
+    localStorage.removeItem("dhkhan_pending_ids");
+    localStorage.removeItem("ccn_prefill_payload");
+    return;
+  }
+
   if ((!ids || !ids.length) && Array.isArray(payload?.order_ids)) {
     ids = payload.order_ids;
   }
