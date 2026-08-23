@@ -1921,24 +1921,8 @@ export function initDatHangChuyenKho(options = {}) {
     afterCcnSaved
   };
 
-  window.addEventListener("stockquick:rendered", (e) => {
-    const popup = e.detail?.popup;
-    const payload = e.detail?.payload;
-
-    if (popup && payload) {
-      attachStockQuickPopup(popup, payload);
-    }
-  });
-
-  // Nếu stockQuick đã mở trước khi module đặt hàng sẵn sàng
-  setTimeout(() => {
-    if (window.__LAST_STOCKQUICK_POPUP__ && window.__LAST_STOCKQUICK_PAYLOAD__) {
-      attachStockQuickPopup(
-        window.__LAST_STOCKQUICK_POPUP__,
-        window.__LAST_STOCKQUICK_PAYLOAD__
-      );
-    }
-  }, 300);
+  // 2026-08-23: Không còn gắn thao tác đặt hàng thủ công vào StockQuickPopup ở module này.
+  // datHangChuyenKho.js chỉ phụ trách luồng TỰ ĐỘNG. Nút Size / Đặt khẩn do datHangChuyenKhoKhan.js xử lý.
 
   runDatHangCheck();
   setupDatHangRealtime();
@@ -1948,23 +1932,9 @@ export function initDatHangChuyenKho(options = {}) {
 }
 
 export function attachStockQuickPopup(popup, payload) {
-  if (!popup || popup.dataset.dhckBound === "1") return;
-  popup.dataset.dhckBound = "1";
-
-  const thSize = popup.querySelector("thead th:first-child");
-  if (!thSize) return;
-
-  thSize.textContent = "Size / Đặt hàng";
-  thSize.style.cursor = "pointer";
-  thSize.style.color = "#d00000";
-  thSize.title = "Bấm để tạo gợi ý đặt hàng chuyển kho";
-
-  thSize.addEventListener("click", async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    await openFromStockQuick(popup, payload);
-  });
+  // Giữ export để tương thích code cũ, nhưng không còn gắn nút thủ công.
+  // Nút Size / Đặt khẩn được datHangChuyenKhoKhan.js quản lý.
+  return;
 }
 
 async function afterCcnSaved(result) {
