@@ -894,6 +894,24 @@
       }
       try {
         setState('uploading');
+
+        // BẮT BUỘC: mã sản phẩm phải tồn tại chính xác trong dmhanghoa
+        // Kiểm tra TRƯỚC khi resize/upload để tránh tạo ảnh rác trên Storage.
+        setStatus('Đang kiểm tra mã sản phẩm…');
+        const { data: current, error: readError } = await supabase
+          .from('dmhanghoa')
+          .select('masp, form, rong_ong, co_gian')
+          .eq('masp', masp)
+          .maybeSingle();
+
+        if (readError) throw readError;
+
+        if (!current) {
+          setStatus(`Mã sản phẩm "${masp}" không tồn tại trong danh mục hàng hóa. Không được phép lưu.`, 'warn');
+          toast('✖ Mã SP không tồn tại');
+          return;
+        }
+
         setStatus('Đang lưu ảnh và thông số…');
 
         const manv = window.__UPANH_MANV__ || '';
@@ -909,14 +927,6 @@
           });
 
         if (uploadError) throw uploadError;
-
-        const { data: current, error: readError } = await supabase
-          .from('dmhanghoa')
-          .select('masp, form, rong_ong, co_gian')
-          .eq('masp', masp)
-          .maybeSingle();
-
-        if (readError) throw readError;
 
         const updateData = {};
 
