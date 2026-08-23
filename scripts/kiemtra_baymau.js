@@ -15,7 +15,10 @@ let currentSessionStatus = '';
 let currentCoSo = 'cs1';
 let currentManv = '';
 let currentTenNv = '';
+let isAdmin = false;
 let rows = [];
+let selectedRowIndex = -1;
+let selectedSessionId = null;
 let duplicatePending = null;
 let scanBusy = false;
 let cachedSizeSuffixes = null;
@@ -83,6 +86,10 @@ function initTable() {
     filters: false,
     dropdownMenu: false,
     licenseKey: 'non-commercial-and-evaluation',
+    afterSelectionEnd(row) {
+      selectedRowIndex = row >= 0 && row < rows.length ? row : -1;
+      updateDeleteRowButton();
+    },
     cells(row) {
       const props = { readOnly: true };
       if (row === 0) {
@@ -103,6 +110,19 @@ function renderRows() {
   hot.render();
   updateHeader();
   if (rows.length) hot.scrollViewportTo(0, 0);
+}
+
+function updateDeleteRowButton() {
+  const btn = $('btn-delete-row');
+  if (!btn) return;
+  const row = selectedRowIndex >= 0 ? rows[selectedRowIndex] : null;
+  btn.disabled = !currentSessionId || !row?.id;
+}
+
+function clearRowSelection() {
+  selectedRowIndex = -1;
+  try { hot?.deselectCell(); } catch (_) {}
+  updateDeleteRowButton();
 }
 
 function normalizeSizeSuffix(value) {
@@ -209,6 +229,8 @@ function openDuplicateModal(payload, duplicatedRow) {
     Bạn vẫn muốn thêm một dòng mới cho mã này?
   `;
   $('duplicate-modal').classList.add('show');
+  // Mặc định chọn Hủy: nhân viên chỉ cần bấm Enter để bỏ mã trùng.
+  setTimeout(() => $('btn-duplicate-cancel')?.focus(), 0);
 }
 
 function closeDuplicateModal() {
@@ -242,6 +264,7 @@ async function createNewSession(askConfirm = true) {
     currentSessionCode = session.maphien || '';
     currentSessionStatus = session.trangthai || 'DANG_KIEM';
     rows = [];
+    clearRowSelection();
     renderRows();
     setMessage(`Đã tạo ${currentSessionCode}. Nhập vị trí hiện tại rồi quét sản phẩm.`, 'ok');
     $('current-location').focus();
@@ -365,6 +388,40 @@ function cancelDuplicate() {
   setTimeout(() => focusScan(), 0);
 }
 
+async function deleteSelectedRow() {
+  const row = selectedRowIndex >= 0 ? rows[selectedRowIndex] : null;
+  if (!currentSessionId || !row?.id) {
+    setMessage('Hãy chọn một dòng cần xóa trước.', 'warn');
+    return;
+  }
+
+  if (!confirm(`Xóa STT ${row.stt} · ${row.masp}${row.vitri_hientai ? ' · ' + row.vitri_hientai : ''}?`)) {
+    setTimeout(() => focusScan(), 0);
+    return;
+  }
+
+  $('btn-delete-row').disabled = true;
+  try {
+    const { data, error } = await supabase.rpc('ktbm_delete_scan_row', {
+      p_phien_id: currentSessionId,
+      p_row_id: row.id,
+      p_manv: currentManv
+    });
+    if (error) throw error;
+
+    rows = rows.filter((x) => x.id !== row.id);
+    clearRowSelection();
+    renderRows();
+    setMessage(`Đã xóa STT ${row.stt} · ${row.masp}.`, 'ok');
+  } catch (err) {
+    console.error(err);
+    setMessage(`Không xóa được dòng: ${err.message || err}`, 'err');
+  } finally {
+    updateDeleteRowButton();
+    setTimeout(() => focusScan(), 0);
+  }
+}
+
 async function listSessions() {
   const { data, error } = await supabase.rpc('ktbm_list_sessions', { p_coso: currentCoSo });
   if (error) throw error;
@@ -384,19 +441,77 @@ async function openSessionList() {
       sessions.forEach((s) => {
         const el = document.createElement('div');
         el.className = 'session-item';
+        el.dataset.id = s.id;
         el.innerHTML = `
+          ${isAdmin ? '<div style="display:flex;gap:8px;align-items:flex-start"><input class="session-delete-radio" type="radio" name="ktbm-session-delete" style="width:20px;min-height:20px;margin:1px 0 0"><div style="flex:1">' : ''}
           <div class="session-title">${s.maphien || ''}</div>
           <div class="session-meta">${s.ngay_tao || ''} · ${s.tennv_tao || s.manv_tao || ''} · ${Number(s.so_dong || 0)} dòng · ${s.trangthai || ''}</div>
+          ${isAdmin ? '</div></div>' : ''}
         `;
-        el.addEventListener('click', () => loadSession(s.id));
+
+        el.addEventListener('click', (e) => {
+          const radio = el.querySelector('.session-delete-radio');
+          if (isAdmin && (e.target === radio || e.target.closest('.session-delete-radio'))) {
+            e.stopPropagation();
+            selectedSessionId = s.id;
+            radio.checked = true;
+            $('btn-delete-session').disabled = false;
+            return;
+          }
+          loadSession(s.id);
+        });
         list.appendChild(el);
       });
     }
 
+    selectedSessionId = null;
+    $('session-admin-actions').style.display = isAdmin ? '' : 'none';
+    $('btn-delete-session').disabled = true;
     $('session-modal').classList.add('show');
-    setMessage('Chọn một phiên để tải lại.', 'ok');
+    setMessage(isAdmin ? 'Chạm tên phiên để tải; chọn nút tròn rồi bấm Xóa phiên nếu cần.' : 'Chọn một phiên để tải lại.', 'ok');
   } catch (err) {
     setMessage(`Không tải được danh sách phiên: ${err.message || err}`, 'err');
+  }
+}
+
+async function deleteSelectedSession() {
+  if (!isAdmin) {
+    setMessage('Chỉ admin được xóa phiên kiểm.', 'err');
+    return;
+  }
+  if (!selectedSessionId) {
+    setMessage('Hãy chọn phiên cần xóa.', 'warn');
+    return;
+  }
+
+  const selectedEl = document.querySelector(`.session-item[data-id="${selectedSessionId}"]`);
+  const sessionName = selectedEl?.querySelector('.session-title')?.textContent?.trim() || 'phiên đã chọn';
+  if (!confirm(`Xóa ${sessionName} và toàn bộ dữ liệu trong phiên?\n\nThao tác này không thể hoàn tác.`)) return;
+
+  $('btn-delete-session').disabled = true;
+  try {
+    const { data, error } = await supabase.rpc('ktbm_admin_delete_session', {
+      p_phien_id: selectedSessionId,
+      p_manv: currentManv
+    });
+    if (error) throw error;
+
+    if (currentSessionId === selectedSessionId) {
+      currentSessionId = null;
+      currentSessionCode = '';
+      currentSessionStatus = '';
+      rows = [];
+      clearRowSelection();
+      renderRows();
+    }
+
+    selectedSessionId = null;
+    await openSessionList();
+    setMessage(`Đã xóa ${sessionName}.`, 'ok');
+  } catch (err) {
+    console.error(err);
+    setMessage(`Không xóa được phiên: ${err.message || err}`, 'err');
+    $('btn-delete-session').disabled = false;
   }
 }
 
@@ -427,6 +542,7 @@ async function loadSession(id) {
       created_at: r.created_at || ''
     }));
 
+    clearRowSelection();
     renderRows();
     $('session-modal').classList.remove('show');
     setMessage(`Đã tải ${currentSessionCode}, gồm ${rows.length} dòng. Có thể tiếp tục quét.`, 'ok');
@@ -458,9 +574,18 @@ function attachEvents() {
 
   $('btn-new-session').addEventListener('click', () => createNewSession(true));
   $('btn-load-session').addEventListener('click', openSessionList);
+  $('btn-delete-row').addEventListener('click', deleteSelectedRow);
+  $('btn-delete-session').addEventListener('click', deleteSelectedSession);
   $('session-modal-close').addEventListener('click', () => $('session-modal').classList.remove('show'));
   $('btn-duplicate-confirm').addEventListener('click', confirmDuplicate);
   $('btn-duplicate-cancel').addEventListener('click', cancelDuplicate);
+
+  $('duplicate-modal').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && $('duplicate-modal').classList.contains('show')) {
+      e.preventDefault();
+      cancelDuplicate();
+    }
+  });
 
   $('session-modal').addEventListener('click', (e) => {
     if (e.target === $('session-modal')) $('session-modal').classList.remove('show');
@@ -482,6 +607,8 @@ function attachEvents() {
       currentCoSo = String(context?.diadiem || info.diadiem || 'cs1').trim().toLowerCase();
       currentManv = normalizeMasp(nhanvien?.manv || info.manv);
       currentTenNv = normalizeText(nhanvien?.tennv || info.tennv || currentManv);
+      isAdmin = !!(nhanvien?.is_admin || info.is_admin);
+      $('session-admin-actions').style.display = 'none';
       updateHeader();
       setMessage('Đăng nhập thành công. Tạo phiên mới hoặc tải phiên cũ để kiểm.', 'ok');
       setTimeout(() => $('current-location').focus(), 80);
