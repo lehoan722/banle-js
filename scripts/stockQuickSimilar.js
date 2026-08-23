@@ -25,6 +25,60 @@
     return m ? m[1] : s;
   }
 
+  const VALID_FORMS = new Set(["RONG", "VUA", "BO"]);
+
+  function normalizeForm(v) {
+    const form = normText(v);
+    return VALID_FORMS.has(form) ? form : "";
+  }
+
+  // Form chỉ là một tầng ưu tiên mềm:
+  // - mã đúng form được nhấc lên đầu;
+  // - thứ tự hiện có bên trong nhóm đúng form và nhóm còn lại được giữ nguyên.
+  function promotePreferredForm(list, preferredFormRaw) {
+    const preferredForm = normalizeForm(preferredFormRaw);
+    const source = Array.isArray(list) ? list : [];
+    if (!preferredForm || source.length < 2) return source;
+
+    const matched = [];
+    const rest = [];
+
+    source.forEach(item => {
+      if (normalizeForm(item?.form) === preferredForm) matched.push(item);
+      else rest.push(item);
+    });
+
+    return matched.concat(rest);
+  }
+
+  async function fetchFormsByMasps(maspList) {
+    const client = getSupabaseClient();
+    if (!client || !Array.isArray(maspList) || !maspList.length) return new Map();
+
+    const codes = Array.from(new Set(maspList.map(normText).filter(Boolean)));
+    const formMap = new Map();
+    const chunkSize = 200;
+
+    for (let i = 0; i < codes.length; i += chunkSize) {
+      const chunk = codes.slice(i, i + chunkSize);
+      const { data, error } = await client
+        .from("dmhanghoa")
+        .select("masp, form")
+        .in("masp", chunk);
+
+      if (error) {
+        console.warn("[StockQuickSimilar] Không đọc được form sản phẩm:", error);
+        continue;
+      }
+
+      (data || []).forEach(row => {
+        formMap.set(normText(row.masp), normalizeForm(row.form));
+      });
+    }
+
+    return formMap;
+  }
+
   function detectBranch() {
     const path = window.location.pathname.toLowerCase();
     if (path.includes("cs1")) return "cs1";
@@ -65,7 +119,7 @@
 
     const { data, error } = await client
       .from("dmhanghoa")
-      .select("masp, giale, nhomhang, giam_gia_pct")
+      .select("masp, giale, nhomhang, form, giam_gia_pct")
       .ilike("nhomhang", `%${String(nhomhang || "").trim()}%`)
       .order("masp", { ascending: true });
 
@@ -100,7 +154,7 @@
 
       const { data, error } = await client
         .from("dmhanghoa")
-        .select("masp, giale, nhomhang, giam_gia_pct")
+        .select("masp, giale, nhomhang, form, giam_gia_pct")
         .in("nhomhang", chunk)
         .order("masp", { ascending: true });
 
@@ -155,6 +209,7 @@
       masterMap.set(normText(m.masp), {
         giale: Number(m.giale || 0),
         nhomhang: m.nhomhang || "",
+        form: normalizeForm(m.form),
         giam_gia_pct: m.giam_gia_pct == null ? null : Number(m.giam_gia_pct),
       });
     });
@@ -178,6 +233,7 @@
       const item = byMasp.get(masp) || {
         masp,
         giale: masterMap.get(masp)?.giale || 0,
+        form: masterMap.get(masp)?.form || "",
         toncs1: 0,
         toncs2: 0,
         ban_nhanh: false,
@@ -220,6 +276,7 @@
       masterMap.set(normText(m.masp), {
         giale: Number(m.giale || 0),
         nhomhang: m.nhomhang || "",
+        form: normalizeForm(m.form),
         giam_gia_pct:
           m.giam_gia_pct == null
             ? null
@@ -247,6 +304,7 @@
       const item = byMasp.get(masp) || {
         masp,
         giale: masterMap.get(masp)?.giale || 0,
+        form: masterMap.get(masp)?.form || "",
         toncs1: 0,
         toncs2: 0,
         ban_nhanh: false,
@@ -295,7 +353,7 @@
       discountMasters.map(m => normText(m.masp)).filter(Boolean)
     );
 
-    const list = buildListFromGroupData({
+    let list = buildListFromGroupData({
       sourceMasp,
       size,
       branch,
@@ -318,7 +376,7 @@
     });
   }
 
-  function openViewer({ list, masp, size, branch, nhomhang, sourcePrice = 0, mode = "similar" }) {
+  function openViewer({ list, masp, size, branch, nhomhang, form = "", sourcePrice = 0, mode = "similar" }) {
     if (!list.length) {
       alert(mode === "discount" ? `Không có sản phẩm giảm giá cùng nhóm còn size ${size}` : `Không có sản phẩm cùng nhóm còn size ${size}`);
       return;
@@ -330,6 +388,7 @@
       source_size: size,
       branch,
       nhomhang,
+      source_form: normalizeForm(form),
       source_price: Number(sourcePrice || 0),
       mode
     }));
@@ -337,7 +396,7 @@
     window.open("xemanhxnt14.html", "_blank");
   }
 
-  async function openFromPopup({ masp, size, nhomhang, denNgay }) {
+  async function openFromPopup({ masp, size, nhomhang, form = "", denNgay }) {
     const sourceMasp = normText(masp);
     const sourceGroup = String(nhomhang || "").trim();
     const sizeNorm = normalizeSize(size);
@@ -359,11 +418,12 @@
     ]);
     const sourceMaster = sourceFresh || masters.find(x => normText(x.masp) === sourceMasp);
     const sourcePrice = Number(sourceMaster?.giale || 0);
+    const sourceForm = normalizeForm(sourceMaster?.form || form);
     const maspList = masters.map(x => normText(x.masp)).filter(Boolean);
 
     const stockRows = await fetchGroupStockRows(maspList, denNgay);
 
-    const list = buildListFromGroupData({
+    let list = buildListFromGroupData({
       sourceMasp,
       size: sizeNorm,
       branch,
@@ -378,18 +438,21 @@
       return bSource - aSource;
     });
 
+    list = promotePreferredForm(list, sourceForm);
+
     openViewer({
       list,
       masp: sourceMasp,
       size: sizeNorm,
       branch,
       nhomhang: sourceGroup,
+      form: sourceForm,
       sourcePrice
     });
   }
 
 
-  async function openDiscountFromPopup({ masp, size, nhomhang, denNgay }) {
+  async function openDiscountFromPopup({ masp, size, nhomhang, form = "", denNgay }) {
     const sourceMasp = normText(masp);
     const sourceGroup = String(nhomhang || "").trim();
     const sizeNorm = normalizeSize(size);
@@ -408,6 +471,7 @@
     const masters = await fetchGroupMasterProducts(sourceGroup);
     const sourceMaster = masters.find(x => normText(x.masp) === sourceMasp);
     const sourcePrice = Number(sourceMaster?.giale || 0);
+    const sourceForm = normalizeForm(sourceMaster?.form || form);
     const discountMasters = masters.filter(m =>
       ALLOWED_DISCOUNT_PCTS.has(Number(m.giam_gia_pct))
     );
@@ -423,7 +487,7 @@
 
     const stockRows = await fetchGroupStockRows(maspList, denNgay);
 
-    const list = buildDiscountListFromGroupData({
+    let list = buildDiscountListFromGroupData({
       sourceMasp,
       size: sizeNorm,
       branch,
@@ -431,12 +495,15 @@
       stockRows
     });
 
+    list = promotePreferredForm(list, sourceForm);
+
     openViewer({
       list,
       masp: sourceMasp,
       size: sizeNorm,
       branch,
       nhomhang: sourceGroup,
+      form: sourceForm,
       sourcePrice,
       mode: "discount"
     });
@@ -450,7 +517,7 @@
     if (!masp) return null;
     const { data, error } = await client
       .from("dmhanghoa")
-      .select("masp, giale, nhomhang, giam_gia_pct")
+      .select("masp, giale, nhomhang, form, giam_gia_pct")
       .eq("masp", masp)
       .maybeSingle();
     if (error) {
@@ -461,7 +528,7 @@
   }
 
   async function getRecommendationList({
-    masp, size, nhomhang, denNgay, branch, mode = "similar"
+    masp, size, nhomhang, form = "", denNgay, branch, mode = "similar"
   }) {
     const sourceMasp = normText(masp);
     const sizeNorm = normalizeSize(size);
@@ -481,6 +548,7 @@
     const masters = await fetchGroupMasterProducts(sourceGroup);
     const sourceMaster = sourceFresh || masters.find(x => normText(x.masp) === sourceMasp);
     const sourcePrice = Number(sourceMaster?.giale || 0);
+    const preferredForm = normalizeForm(form || sourceMaster?.form);
     let filtered = masters.slice();
 
     if (mode === "discount") filtered = filtered.filter(x => ALLOWED_DISCOUNT_PCTS.has(Number(x.giam_gia_pct)));
@@ -508,7 +576,9 @@
       });
     }
 
-    return { ok:true, source_price:sourcePrice, source_group:sourceGroup, branch:useBranch, list };
+    list = promotePreferredForm(list, preferredForm);
+
+    return { ok:true, source_price:sourcePrice, source_group:sourceGroup, source_form:preferredForm, branch:useBranch, list };
   }
 
 
@@ -519,6 +589,7 @@
     denNgay,
     branch,
     referencePrice = 0,
+    preferredForm = "",
     mode = "similar"
   }) {
     const sourceMasp = normText(masp);
@@ -579,6 +650,7 @@
       : null;
 
     const sourcePrice = Number(referencePrice || sourceFresh?.giale || 0);
+    const usePreferredForm = normalizeForm(preferredForm || sourceFresh?.form);
 
     let masters = await fetchMasterProductsByGroups(groupList);
 
@@ -699,9 +771,14 @@
       });
     }
 
+    // Ưu tiên đúng form nhưng không sắp xếp lại các form còn lại.
+    // Stable partition giúp giữ nguyên toàn bộ thứ tự hiện có của từng tab.
+    list = promotePreferredForm(list, usePreferredForm);
+
     return {
       ok: true,
       source_price: sourcePrice,
+      source_form: usePreferredForm,
       branch: useBranch,
       list
     };
@@ -712,7 +789,8 @@
     sizes,
     nhomhangs,
     denNgay,
-    branch
+    branch,
+    preferredForm = ""
   }) {
     // Size chỉ dùng ở trang xem ảnh để kiểm tra tồn sau kiểm.
     // Doanh số bán chạy của một mã luôn được tính trên TẤT CẢ SIZE.
@@ -762,10 +840,11 @@
       };
     }
 
-    const list = (data || []).map(row => ({
+    let list = (data || []).map(row => ({
       masp: normText(row.masp),
       giale: Number(row.giale || 0),
       nhomhang: row.nhomhang || "",
+      form: "",
       giam_gia_pct:
         row.giam_gia_pct == null
           ? null
@@ -782,6 +861,11 @@
       ban_nhanh: true
     }));
 
+    const formMap = await fetchFormsByMasps(list.map(x => x.masp));
+    list.forEach(item => {
+      item.form = formMap.get(normText(item.masp)) || "";
+    });
+
     // RPC đã sắp xếp, nhưng sắp lại tại trình duyệt để kết quả ổn định.
     list.sort((a, b) =>
       Number(b.diem_ban_chay || 0) - Number(a.diem_ban_chay || 0) ||
@@ -797,8 +881,11 @@
       )
     );
 
+    list = promotePreferredForm(list, preferredForm);
+
     return {
       ok: true,
+      source_form: normalizeForm(preferredForm),
       branch: useBranch,
       den_ngay: endDate,
       sales_scope: "all_sizes_both_branches",
