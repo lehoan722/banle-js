@@ -32,6 +32,7 @@ const COLS = [
   { name: "treomaucs2", label: "treo mau cs2" },
   { name: "vitrikho3", label: "Vị trí kho 3" },
   { name: "commission_group", label: "nhom hoa hong" },
+  { name: "form", label: "Form" },
   { name: "giam_gia_pct", label: "Giảm giá xả hàng (%)" },
 
 ];
@@ -47,6 +48,7 @@ const DISTINCT_WHITELIST = new Set([
   'vitrikho2',
   'vitri',
   'nhacc',
+  'form',
 ]);
 
 const DISTINCT_MAX_UNIQUE = 2000;   // tối đa số giá trị distinct đổ ra bảng
@@ -565,16 +567,29 @@ function initTable(colname = 'vitrikho1') {
   const colLabel = colInfo ? colInfo.label : colname;
 
   const colHeaders = ['Mã sản phẩm', colLabel, 'Trạng thái'];
-  const valueColumn = colname === 'giam_gia_pct'
-    ? {
-        data: colname,
-        type: 'dropdown',
-        source: ['', '10', '20', '30', '50', '60'],
-        strict: true,
-        allowInvalid: false,
-        width: 150
-      }
-    : { data: colname, type: 'text', width: 150 };
+  let valueColumn;
+
+  if (colname === 'giam_gia_pct') {
+    valueColumn = {
+      data: colname,
+      type: 'dropdown',
+      source: ['', '10', '20', '30', '50', '60'],
+      strict: true,
+      allowInvalid: false,
+      width: 150
+    };
+  } else if (colname === 'form') {
+    valueColumn = {
+      data: colname,
+      type: 'dropdown',
+      source: ['', 'RONG', 'VUA', 'BO'],
+      strict: true,
+      allowInvalid: false,
+      width: 150
+    };
+  } else {
+    valueColumn = { data: colname, type: 'text', width: 150 };
+  }
 
   const columns = [
     { data: 'masp', type: 'text', width: 150 },
@@ -1145,6 +1160,31 @@ function validateGiamGiaPctRows(rows) {
   return { ok: true };
 }
 
+function validateFormRows(rows) {
+  const allowed = new Set(['RONG', 'VUA', 'BO']);
+
+  for (const row of rows) {
+    const raw = row.rawVal;
+
+    if (raw === undefined || raw === null || String(raw).trim() === '') {
+      continue;
+    }
+
+    const v = String(raw).trim().toUpperCase();
+
+    if (!allowed.has(v)) {
+      return {
+        ok: false,
+        rowIndex: row.rowIndex,
+        masp: row.masp,
+        value: raw
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
 // ==== Lưu dữ liệu (PATCH từng dòng, chia chunk 100 dòng) ====
 async function luuDuLieu() {
   const colSelect = document.getElementById('col-select');
@@ -1175,6 +1215,25 @@ async function luuDuLieu() {
   if (rows.length === 0) {
     alert("Không có dữ liệu hợp lệ để ghi.");
     return;
+  }
+
+  if (colname === 'form') {
+    const checkForm = validateFormRows(rows);
+
+    if (!checkForm.ok) {
+      const dong = Number(checkForm.rowIndex) + 1;
+      alert(
+        `❌ Form không hợp lệ ở dòng ${dong} (${checkForm.masp}).\n\n` +
+        `Giá trị: ${checkForm.value}\n` +
+        `Chỉ cho phép: RONG, VUA, BO hoặc để trống để xóa Form.`
+      );
+
+      try {
+        hot.selectCell(checkForm.rowIndex, 1);
+      } catch (_) {}
+
+      return;
+    }
   }
 
   if (colname === 'giam_gia_pct') {
