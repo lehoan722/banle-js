@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
   <script src="./scripts/stockQuickPopup.js?v=1.5.1"></script>
-  <script type="module" src="./scripts/kiemtra_baymau.js?v=1.2.0"></script>
+  <script type="module" src="./scripts/kiemtra_baymau.js?v=1.3.0"></script>
 
   <style>
     :root {
@@ -35,6 +35,10 @@
     }
     #session-summary { font-weight:700; }
     #scan-stats { color:var(--muted); font-size:13px; white-space:nowrap; }
+    .status-badge { display:inline-block; margin-left:6px; padding:3px 7px; border-radius:999px; font-size:11px; font-weight:700; vertical-align:1px; }
+    .status-running { background:#fef3c7; color:#92400e; }
+    .status-done { background:#dcfce7; color:#166534; }
+    .session-code { color:#64748b; font-size:12px; font-weight:400; margin-top:2px; }
     .grid-2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:7px; }
     .grid-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:7px; }
     input,button {
@@ -134,6 +138,7 @@
           <button id="btn-new-session" class="btn-primary" type="button">Tạo phiên mới</button>
           <button id="btn-load-session" class="btn-soft" type="button">Tải phiên cũ</button>
           <button id="btn-delete-row" class="btn-danger" type="button" disabled>Xóa dòng đã chọn</button>
+          <button id="btn-complete-session" class="btn-primary" type="button" disabled>Hoàn thành phiên</button>
         </div>
       </div>
     </div>
@@ -167,5 +172,23 @@
       </div>
     </div>
   </div>
+
+  <div id="complete-modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Hoàn thành phiên kiểm</h3>
+        <button id="complete-modal-close" class="modal-close" type="button">✕</button>
+      </div>
+      <div class="duplicate-info">
+        Sau khi hoàn thành, phiên sẽ được khóa trên trang Kiểm tra bày mẫu và dùng làm dữ liệu chuẩn cho trang Kiểm kho bày mẫu sau này.
+      </div>
+      <input id="session-name" type="text" maxlength="120" placeholder="Tên phiên, ví dụ: Gian áo tầng 1 - 23/08" autocomplete="off">
+      <div class="grid-actions">
+        <button id="btn-complete-cancel" class="btn-soft" type="button">Hủy</button>
+        <button id="btn-complete-confirm" class="btn-primary" type="button">Xác nhận hoàn thành</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
