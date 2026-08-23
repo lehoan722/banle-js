@@ -5,7 +5,7 @@
 // - Trạng thái: moi / da_chuyen / het / huy
 // - Ghi NV thực hiện mới nhất khi thay đổi trạng thái
 // - Popup +Đặt khẩn dạng lưới size 38..46, nhập SL từng size
-// - StockQuick vẫn dùng luật gợi ý size hiện có để tạo đơn khẩn
+// - StockQuick luôn cho đặt khẩn; gợi ý (nếu có) chỉ dùng để điền sẵn lưới size
 
 import { calcSuggestionsFromPayload } from "./services/luatChuyenKho.js";
 
@@ -35,6 +35,19 @@ function getCurrentCoso() {
 }
 function getManv() {
   return norm(ctx?.manvDangNhap || localStorage.getItem("manv") || document.getElementById("manv")?.value || "").toUpperCase();
+}
+async function isAdminUser() {
+  try {
+    if (ctx?.isAdmin === true || window.isAdmin === true) return true;
+    const cu = JSON.parse(localStorage.getItem("currentUser") || "null");
+    if (cu?.is_admin === true) return true;
+  } catch (_) {}
+  if (!ctx?.supabase || typeof ctx.supabase.rpc !== "function") return false;
+  try {
+    const { data, error } = await ctx.supabase.rpc("is_admin");
+    if (!error) return data === true;
+  } catch (_) {}
+  return false;
 }
 function otherCoso(coso) { return coso === "cs1" ? "cs2" : "cs1"; }
 function esc(v) {
@@ -135,7 +148,6 @@ function playUrgentSound() {
 
 function openStockQuick(masp) {
   const code = normMasp(masp); if(!code) return;
-  panelMode = "collapsed"; applyPanelMode();
   try {
     if (window.StockQuick?.showFor) return window.StockQuick.showFor(document.body, code);
     if (typeof window.stockQuickPopup === "function") return window.stockQuickPopup(code);
@@ -179,41 +191,51 @@ async function insertUrgentOrders(items,note="",source="stockquick") {
   suppressRealtimeUntil=Date.now()+900;
   const {error}=await ctx.supabase.from(TABLE).insert(rows);
   if(error){ console.error("[Đặt hàng khẩn] Insert lỗi:",error); alert("❌ Không lưu được đặt hàng khẩn cấp: "+(error.message||"Lỗi không xác định")); return false; }
-  panelMode="collapsed";
-  await refreshPanel();
+  if(panelMode==="hidden") panelMode="expanded";
+  await refreshPanel({forceOpen:true});
   return true;
 }
 
-function showStockQuickConfirm(items) {
-  if(!items?.length){ alert("Không có size nào cần gợi ý chuyển kho cho mã này."); return; }
-  document.getElementById("dhkhan-confirm")?.remove();
-  const box=document.createElement("div"); box.id="dhkhan-confirm";
-  box.style.cssText=`position:fixed;top:90px;left:50%;transform:translateX(-50%);z-index:10080;background:#fff;border:2px solid #d00000;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:12px;min-width:360px;max-width:94vw;font-size:14px;`;
-  box.innerHTML=`<div style="font-weight:900;color:#b00000;font-size:16px;margin-bottom:8px;">🚨 TẠO ĐẶT HÀNG KHẨN CẤP</div>
-    <div style="max-height:42vh;overflow:auto;">${items.map((x,i)=>`<label style="display:block;padding:5px 3px;border-bottom:1px solid #eee;cursor:pointer;"><input type="checkbox" class="dhkhan-pick" checked data-i="${i}"> ${esc(x.huong_chuyen)} | <b>${esc(x.masp)}</b> | size ${esc(x.size)} | SL ${Number(x.soluong||1)}</label>`).join("")}</div>
-    <input id="dhkhan-confirm-note" placeholder="Ghi chú (vd: khách đang chờ)" style="width:100%;box-sizing:border-box;margin:9px 0 7px;padding:7px;font-size:14px;">
-    <div style="display:flex;gap:8px;justify-content:flex-end;"><button id="dhkhan-confirm-cancel">Hủy</button><button id="dhkhan-confirm-ok" style="background:#d00000;color:#fff;border:0;border-radius:6px;padding:7px 12px;font-weight:800;">ĐẶT KHẨN</button></div>`;
-  document.body.appendChild(box);
-  box.querySelector("#dhkhan-confirm-cancel").onclick=()=>box.remove();
-  box.querySelector("#dhkhan-confirm-ok").onclick=async()=>{
-    const picked=[...box.querySelectorAll(".dhkhan-pick:checked")].map(el=>items[Number(el.dataset.i)]).filter(Boolean);
-    if(!picked.length) return alert("Bạn chưa chọn size nào.");
-    const ok=await insertUrgentOrders(picked,box.querySelector("#dhkhan-confirm-note")?.value||"","stockquick"); if(ok) box.remove();
-  };
-}
-async function openFromStockQuick(popup,payload) {
-  const masp=normMasp(popup?.dataset?.masp||payload?.masp);
-  if(!masp||!payload) return alert("Thiếu dữ liệu StockQuick để tạo đặt hàng khẩn.");
-  let suggestions=[]; try{ suggestions=calcSuggestionsFromPayload(masp,payload)||[]; }catch(e){ console.error(e); return alert("Không tính được size cần chuyển kho cho mã này."); }
-  if(!suggestions.length) return alert("Không có size nào cần gợi ý chuyển kho cho mã này.");
-  showStockQuickConfirm(suggestions);
+function buildSuggestedQtyMap(items) {
+  const map = new Map();
+  (items || []).forEach(x => {
+    const size = normSize(x.size);
+    if (!SIZE_OPTIONS.includes(size)) return;
+    const qty = Math.max(1, Number(x.soluong || 1));
+    map.set(size, Number(map.get(size) || 0) + qty);
+  });
+  return map;
 }
 
-function renderRows(rows,canMoveSection) {
+async function openFromStockQuick(popup,payload) {
+  const masp=normMasp(popup?.dataset?.masp||payload?.masp);
+  if(!masp) return alert("Thiếu mã sản phẩm để tạo đặt hàng khẩn.");
+
+  let suggestions=[];
+  try {
+    suggestions = payload ? (calcSuggestionsFromPayload(masp,payload)||[]) : [];
+  } catch(e) {
+    console.warn("[Đặt hàng khẩn] Không tính được gợi ý; vẫn cho đặt thủ công:", e);
+    suggestions=[];
+  }
+
+  // Khẩn cấp KHÔNG phụ thuộc luật gợi ý.
+  // Nếu có gợi ý thì chỉ điền sẵn SL vào lưới 38-46; người dùng được sửa/xóa/tự nhập size khác.
+  if (panelMode === "hidden") {
+    panelMode = "expanded";
+    await refreshPanel({ forceOpen:true });
+  }
+  showManualCreate({ masp, suggestedItems:suggestions, source:"stockquick" });
+}
+
+function renderRows(rows,canMoveSection,isAdmin) {
   return rows.map(r=>{
     let st=norm(r.trang_thai).toLowerCase(); if(st==="dang_chuyen") st="moi";
-    const canSelectForFutureCcn=canMoveSection && st==="moi";
+    const canExecute = canMoveSection;
+    const canSelectForFutureCcn=canExecute && st==="moi";
+    const statusDisabled = canExecute ? "" : "disabled title=\"Chỉ cơ sở thực hiện chuyển hàng mới được đổi trạng thái\"";
     return `<tr data-id="${Number(r.id)}" data-status="${esc(st)}">
+      <td style="text-align:center;"><input type="checkbox" class="dhkhan-delete-check" data-id="${Number(r.id)}" ${isAdmin?"":"disabled"} title="${isAdmin?"Chọn để admin xóa đặt hàng":"Chỉ admin được xóa"}"></td>
       <td style="text-align:center;"><input type="checkbox" class="dhkhan-move" data-id="${Number(r.id)}" ${canSelectForFutureCcn?"":"disabled"} title="Bước 2 sẽ dùng để tạo hóa đơn CCN"></td>
       <td><span class="dhkhan-masp-link" data-masp="${esc(r.masp)}">${esc(r.masp)}</span></td>
       <td style="text-align:center;">${Number(r.soluong||1)}</td>
@@ -223,7 +245,7 @@ function renderRows(rows,canMoveSection) {
       <td>${esc(r.manv_thuc_hien||"")}</td>
       <td>${esc(fmtTime(r.created_at))}</td>
       <td><input class="dhkhan-note" data-id="${Number(r.id)}" value="${esc(r.ghichu_dat||"")}"></td>
-      <td><select class="dhkhan-status-select" data-id="${Number(r.id)}">${statusOptions(st)}</select></td>
+      <td><select class="dhkhan-status-select" data-id="${Number(r.id)}" ${statusDisabled}>${statusOptions(st)}</select></td>
     </tr>`;
   }).join("");
 }
@@ -254,17 +276,36 @@ function applyPanelMode(){
 
 async function updateStatus(id,nextStatus,selectEl) {
   if(!VALID_STATUSES.includes(nextStatus)) return;
+  const tr = selectEl?.closest("tr");
+  const section = tr?.closest("tbody")?.dataset?.section || "";
+  if (section !== "canmove") {
+    alert("⛔ Chỉ cơ sở có trách nhiệm chuyển hàng mới được thay đổi trạng thái dòng này.");
+    await refreshPanel();
+    return;
+  }
   const manv=getManv(); const now=new Date().toISOString();
   suppressRealtimeUntil=Date.now()+700;
-  const {error}=await ctx.supabase.from(TABLE).update({trang_thai:nextStatus,manv_thuc_hien:manv||null,updated_at:now}).eq("id",Number(id));
+  const {error}=await ctx.supabase.from(TABLE).update({trang_thai:nextStatus,manv_thuc_hien:manv||null,updated_at:now}).eq("id",Number(id)).eq("tu_coso",getCurrentCoso());
   if(error){ alert("❌ Không cập nhật được trạng thái: "+error.message); await refreshPanel(); return; }
-  const tr=selectEl?.closest("tr"); if(tr){ tr.dataset.status=nextStatus; const cells=tr.children; if(cells?.[6]) cells[6].textContent=manv; const move=tr.querySelector(".dhkhan-move"); if(move) move.disabled=!(nextStatus==="moi" && tr.closest("tbody")?.dataset?.section==="canmove"); }
+  if(tr){ tr.dataset.status=nextStatus; const cells=tr.children; if(cells?.[7]) cells[7].textContent=manv; const move=tr.querySelector(".dhkhan-move"); if(move) move.disabled=!(nextStatus==="moi" && tr.closest("tbody")?.dataset?.section==="canmove"); }
+}
+
+async function deleteSelectedOrders(box) {
+  if (!(await isAdminUser())) return alert("⛔ Chỉ admin được xóa đặt hàng khẩn cấp.");
+  const ids=[...box.querySelectorAll(".dhkhan-delete-check:checked")].map(x=>Number(x.dataset.id)).filter(Boolean);
+  if(!ids.length) return alert("Bạn chưa chọn dòng nào để xóa.");
+  if(!confirm(`Bạn chắc chắn muốn xóa vĩnh viễn ${ids.length} dòng đặt hàng khẩn cấp?`)) return;
+  suppressRealtimeUntil=Date.now()+900;
+  const {error}=await ctx.supabase.from(TABLE).delete().in("id",ids);
+  if(error){ console.error("[Đặt hàng khẩn] Xóa lỗi:",error); return alert("❌ Không xóa được đặt hàng: "+(error.message||"Lỗi")); }
+  await refreshPanel({forceOpen:true});
 }
 
 function bindPanelEvents(box) {
   box.querySelector("#dhkhan-toggle")?.addEventListener("click",e=>{ e.stopPropagation(); panelMode=panelMode==="collapsed"?"expanded":"collapsed"; applyPanelMode(); });
   box.querySelector("#dhkhan-close")?.addEventListener("click",e=>{ e.stopPropagation(); panelMode="hidden"; applyPanelMode(); });
-  box.querySelector("#dhkhan-create")?.addEventListener("click",()=>{ panelMode="collapsed"; applyPanelMode(); showManualCreate(); });
+  box.querySelector("#dhkhan-create")?.addEventListener("click",()=>{ showManualCreate(); });
+  box.querySelector("#dhkhan-delete")?.addEventListener("click",()=>deleteSelectedOrders(box));
 
   box.querySelectorAll(".dhkhan-status-select").forEach(sel=>{
     sel.addEventListener("change",async()=>{ await updateStatus(Number(sel.dataset.id),norm(sel.value).toLowerCase(),sel); });
@@ -281,6 +322,7 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
   if(forceOpen && panelMode==="hidden") panelMode="expanded";
   if(panelMode==="hidden" && !forceOpen) return;
 
+  const isAdmin = await isAdminUser();
   const canMove=rows.filter(r=>norm(r.tu_coso).toLowerCase()===coso);
   const onlyView=rows.filter(r=>norm(r.tu_coso).toLowerCase()!==coso);
   const canMoveNew=canMove.filter(r=>["moi","dang_chuyen"].includes(norm(r.trang_thai).toLowerCase())).length;
@@ -294,6 +336,7 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
       <span>🚨 ĐẶT HÀNG KHẨN CẤP | Cần chuyển: ${canMoveNew} | Theo dõi: ${onlyViewNew}</span>
       <div style="display:flex;gap:5px;align-items:center;">
         <button id="dhkhan-create" style="font-weight:800;color:#9b0000;">+ Đặt khẩn</button>
+        ${isAdmin ? `<button id="dhkhan-delete" style="font-weight:800;color:#9b0000;">Xóa đặt hàng</button>` : ""}
         <button id="dhkhan-toggle" style="border:0;background:transparent;font-size:18px;font-weight:900;">${panelMode==="collapsed"?"▲":"▼"}</button>
         <button id="dhkhan-close" title="Đóng hẳn" style="border:0;background:transparent;font-size:20px;font-weight:900;color:#9b0000;">×</button>
       </div>
@@ -301,13 +344,13 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
     <div id="dhkhan-body" style="display:${panelMode==="collapsed"?"none":"block"};">
       <div style="font-size:12px;color:#7a3630;margin:4px 0 5px;">Hiển thị ${rows.length} dòng mới nhất (tối đa ${HISTORY_LIMIT}), sắp xếp theo thời gian tạo mới nhất.</div>
       <table style="width:100%;border-collapse:collapse;background:#fff;">
-        <thead><tr style="background:#f7b3a9;"><th>Chuyển</th><th>mã sp</th><th>SL</th><th>size</th><th>hướng</th><th>NV đặt</th><th>NV thực hiện</th><th>giờ</th><th>ghi chú</th><th>trạng thái</th></tr></thead>
-        <tbody data-section="canmove">${renderRows(canMove,true)}</tbody>
+        <thead><tr style="background:#f7b3a9;"><th>Xóa</th><th>Chuyển</th><th>mã sp</th><th>SL</th><th>size</th><th>hướng</th><th>NV đặt</th><th>NV thực hiện</th><th>giờ</th><th>ghi chú</th><th>trạng thái</th></tr></thead>
+        <tbody data-section="canmove">${renderRows(canMove,true,isAdmin)}</tbody>
       </table>
       <div style="font-weight:800;margin:8px 0 4px;color:#555;">Theo dõi / yêu cầu từ cơ sở này</div>
       <table style="width:100%;border-collapse:collapse;background:#fafafa;">
-        <thead><tr style="background:#ddd;"><th>Chuyển</th><th>mã sp</th><th>SL</th><th>size</th><th>hướng</th><th>NV đặt</th><th>NV thực hiện</th><th>giờ</th><th>ghi chú</th><th>trạng thái</th></tr></thead>
-        <tbody data-section="onlyview">${renderRows(onlyView,false)}</tbody>
+        <thead><tr style="background:#ddd;"><th>Xóa</th><th>Chuyển</th><th>mã sp</th><th>SL</th><th>size</th><th>hướng</th><th>NV đặt</th><th>NV thực hiện</th><th>giờ</th><th>ghi chú</th><th>trạng thái</th></tr></thead>
+        <tbody data-section="onlyview">${renderRows(onlyView,false,isAdmin)}</tbody>
       </table>
     </div>`;
   document.body.appendChild(box); positionPanel(); bindPanelEvents(box);
@@ -334,8 +377,12 @@ function bindManualCreateKeyboard(box) {
   box.querySelectorAll(".dhkhan-qty").forEach(input=>input.addEventListener("input",()=>sanitizeQtyInput(input)));
 }
 
-function showManualCreate() {
+function showManualCreate(options={}) {
   document.getElementById("dhkhan-create-box")?.remove();
+  if (panelMode === "hidden") { panelMode = "expanded"; refreshPanel({forceOpen:true}); }
+  const presetMasp=normMasp(options.masp||"");
+  const suggestedQty=buildSuggestedQtyMap(options.suggestedItems||[]);
+  const source=options.source||"manual";
   const coso=getCurrentCoso(); const from=otherCoso(coso); if(!coso||!from) return alert("Không xác định được cơ sở hiện tại.");
   const box=document.createElement("div"); box.id="dhkhan-create-box";
   box.style.cssText=`position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:10090;background:#fff;border:2px solid #d00000;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.32);padding:12px;width:760px;max-width:98vw;overflow:auto;`;
@@ -343,13 +390,13 @@ function showManualCreate() {
     <div style="font-weight:900;color:#111;font-size:18px;margin-bottom:10px;">🚨 ĐẶT HÀNG KHẨN CẤP</div>
     <div class="dhkhan-grid">
       <div class="dhkhan-grid-label">Mã SP</div>
-      <input id="dhkhan-masp" class="dhkhan-wide" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;">
+      <input id="dhkhan-masp" class="dhkhan-wide" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;" value="${esc(presetMasp)}">
 
       <div class="dhkhan-grid-label">Size</div>
       ${SIZE_OPTIONS.map(s=>`<div class="dhkhan-size-head">${s}</div>`).join("")}
 
       <div class="dhkhan-grid-label">Số lượng</div>
-      ${SIZE_OPTIONS.map(s=>`<input class="dhkhan-qty" data-size="${s}" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" value="">`).join("")}
+      ${SIZE_OPTIONS.map(s=>`<input class="dhkhan-qty" data-size="${s}" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" value="${suggestedQty.get(s)||""}">`).join("")}
 
       <div class="dhkhan-grid-label">Hướng</div>
       <div class="dhkhan-wide dhkhan-direction">${from.toUpperCase()} → ${coso.toUpperCase()}</div>
@@ -359,7 +406,8 @@ function showManualCreate() {
     </div>
     <div class="dhkhan-actions"><button id="dhkhan-cancel">Hủy</button><button id="dhkhan-save" style="background:#d00000;color:#fff;border:0;border-radius:6px;">ĐẶT KHẨN</button></div>`;
   document.body.appendChild(box); bindManualCreateKeyboard(box);
-  const maspEl=box.querySelector("#dhkhan-masp"); setTimeout(()=>maspEl?.focus(),20);
+  const maspEl=box.querySelector("#dhkhan-masp");
+  setTimeout(()=>{ const firstQty=[...box.querySelectorAll(".dhkhan-qty")].find(x=>!x.value); (presetMasp ? (firstQty||box.querySelector(".dhkhan-qty")) : maspEl)?.focus(); },20);
   box.querySelector("#dhkhan-cancel").onclick=()=>box.remove();
   box.querySelector("#dhkhan-save").onclick=async()=>{
     const masp=normMasp(maspEl?.value); const note=box.querySelector("#dhkhan-note")?.value||"";
@@ -370,7 +418,7 @@ function showManualCreate() {
     if(error||!data) return alert("❌ Mã sản phẩm không tồn tại trong danh mục.");
     const huong=from==="cs1"?"1v2":"2v1";
     const items=qtyEntries.map(x=>({masp,size:x.size,soluong:x.soluong,huong_chuyen:huong,tu_coso:from,den_coso:coso}));
-    const ok=await insertUrgentOrders(items,note,"manual"); if(ok) box.remove();
+    const ok=await insertUrgentOrders(items,note,source); if(ok) box.remove();
   };
 }
 
@@ -399,7 +447,7 @@ function bindStockQuickExisting() {
 
 export function initDatHangChuyenKhoKhan(options={}) {
   ctx=options; ensureStyles(); setupAudioUnlock();
-  window.DatHangChuyenKhoKhan={openFromStockQuick,openManual:()=>{panelMode="collapsed";applyPanelMode();showManualCreate();},refresh:()=>{panelMode="expanded";return refreshPanel({forceOpen:true});}};
+  window.DatHangChuyenKhoKhan={openFromStockQuick,openManual:()=>{if(panelMode==="hidden") panelMode="expanded"; refreshPanel({forceOpen:true}); showManualCreate();},refresh:()=>{panelMode="expanded";return refreshPanel({forceOpen:true});}};
   bindStockQuickExisting(); refreshPanel(); setupRealtime();
   window.addEventListener("resize",schedulePosition); window.visualViewport?.addEventListener("resize",schedulePosition);
   setInterval(()=>{if(document.getElementById("dhkhan-panel")) schedulePosition();},2000);
