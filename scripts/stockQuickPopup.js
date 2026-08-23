@@ -2182,7 +2182,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
             <table>
                             <thead>
                 <tr>
-                  <th class="sq-dhck-open" title="Bấm để tạo đặt hàng chuyển kho">Size / Đặt hàng</th>
+                  <th class="sq-dhck-open" title="Bấm để tạo đặt hàng chuyển kho khẩn cấp">Size / Đặt khẩn</th>
                   <th class="sq-col-k1 sq-ktk-open" data-ktk-coso="cs1" title="Bấm để kiểm tồn nhanh CS1">tk1</th>
 <th class="sq-col-k2 sq-ktk-open" data-ktk-coso="cs2" title="Bấm để kiểm tồn nhanh CS2">tk2</th>
                   <th class="sq-col-b1">B1</th>
@@ -3068,7 +3068,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
   }
 
 
-  function bindDatHangChuyenKhoHeader(popup, payload) {
+  function bindDatHangChuyenKhoKhanHeader(popup, payload) {
     if (!popup) return;
 
     const dhckHead = popup.querySelector(".sq-dhck-open");
@@ -3084,10 +3084,10 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       e.stopPropagation();
       e.stopImmediatePropagation();
 
-      if (window.DatHangChuyenKho?.openFromStockQuick) {
-        window.DatHangChuyenKho.openFromStockQuick(popup, payload);
+      if (window.DatHangChuyenKhoKhan?.openFromStockQuick) {
+        window.DatHangChuyenKhoKhan.openFromStockQuick(popup, payload);
       } else {
-        alert("Module đặt hàng chưa sẵn sàng. Vui lòng bấm lại sau vài giây.");
+        alert("Module đặt hàng KHẨN chưa sẵn sàng. Vui lòng bấm lại sau vài giây.");
       }
     });
   }
@@ -3450,9 +3450,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     popup.style.transform = "none";
 
     try {
-      bindDatHangChuyenKhoHeader(popup, payload);
+      bindDatHangChuyenKhoKhanHeader(popup, payload);
     } catch (e) {
-      console.warn("[StockQuickPopup] lỗi gắn nút đặt hàng:", e);
+      console.warn("[StockQuickPopup] lỗi gắn nút đặt hàng khẩn:", e);
     }
 
     bindGlobalCloseHandlers();
