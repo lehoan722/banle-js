@@ -29,6 +29,34 @@ const normalizeMasp = (v) => String(v || '').trim().toUpperCase();
 const normalizeText = (v) => String(v || '').trim();
 const normalizeLocation = (v) => String(v || '').trim().toUpperCase();
 
+function normalizeDisplayPosition(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '');
+}
+
+function isDisplayPositionMatched(standardPosition, currentPosition) {
+  const current = normalizeDisplayPosition(currentPosition);
+  const standardRaw = normalizeText(standardPosition);
+
+  // Chưa có vị trí chuẩn thì chưa kết luận là sai vị trí.
+  if (!standardRaw) return true;
+  if (!current) return false;
+
+  // Hỗ trợ trường hợp danh mục có nhiều vị trí chuẩn, cách nhau bởi dấu phẩy/chấm phẩy/xuống dòng.
+  const allowed = standardRaw
+    .split(/[,;\n]+/)
+    .map(normalizeDisplayPosition)
+    .filter(Boolean);
+
+  return allowed.includes(current);
+}
+
+function isWrongDisplayPosition(row) {
+  return !!row && !isDisplayPositionMatched(row.vitri_chuan, row.vitri_hientai);
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -130,13 +158,24 @@ function initTable() {
     },
     cells(row) {
       const props = { readOnly: true };
-      if (row === 0) {
-        props.renderer = function (...args) {
-          Handsontable.renderers.TextRenderer.apply(this, args);
+      props.renderer = function (...args) {
+        Handsontable.renderers.TextRenderer.apply(this, args);
+        const rowData = args[0].getSourceDataAtRow(args[2]) || {};
+
+        // Sai vị trí treo mẫu: ưu tiên nền tím nhạt, kể cả dòng mới nhất ở đầu bảng.
+        if (isWrongDisplayPosition(rowData)) {
+          args[1].style.background = '#f3e8ff';
+          args[1].style.color = '#581c87';
+          args[1].style.fontWeight = '700';
+          return;
+        }
+
+        // Dòng mới nhất bình thường vẫn được nhấn nhẹ như phiên bản trước.
+        if (args[2] === 0) {
           args[1].style.background = '#fff5bf';
           args[1].style.fontWeight = '700';
-        };
-      }
+        }
+      };
       return props;
     }
   });
@@ -345,8 +384,23 @@ async function insertScanRow(payload) {
   });
 
   renderRows();
-  playInsertedBeep(); // 1 tiếng tít khi một dòng mới đã được lưu và nhảy vào bảng.
-  setMessage(`Đã thêm ${payload.masp} tại ${payload.vitri_hientai} · STT ${inserted.stt}.`, 'ok');
+
+  const wrongPosition = isWrongDisplayPosition({
+    vitri_chuan: inserted.vitri_chuan,
+    vitri_hientai: inserted.vitri_hientai
+  });
+
+  if (wrongPosition) {
+    // Sai vị trí: vẫn lưu bình thường nhưng phát 1 tiếng cảnh báo thay cho tiếng thành công.
+    try { playAlertBeep(); } catch (_) {}
+    setMessage(
+      `Cảnh báo: ${payload.masp} đang ở ${payload.vitri_hientai} nhưng vị trí treo mẫu chuẩn là ${normalizeText(inserted.vitri_chuan) || 'chưa thiết lập'} · STT ${inserted.stt}.`,
+      'warn'
+    );
+  } else {
+    playInsertedBeep(); // Đúng vị trí: 1 tiếng tít thành công như trước.
+    setMessage(`Đã thêm ${payload.masp} tại ${payload.vitri_hientai} · STT ${inserted.stt}.`, 'ok');
+  }
 }
 
 async function handleScan() {
