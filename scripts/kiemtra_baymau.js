@@ -20,7 +20,7 @@ let isAdmin = false;
 let rows = [];
 let selectedRowIndex = -1;
 let selectedSessionId = null;
-let duplicatePending = null;
+let isDraftNewSession = false;
 let scanBusy = false;
 let cachedSizeSuffixes = null;
 
@@ -92,7 +92,7 @@ function isCompletedSession() {
 
 function updateHeader() {
   const user = `${currentCoSo.toUpperCase()} · ${currentTenNv || currentManv || 'Người dùng'}`;
-  let sessionHtml = ' · Chưa có phiên';
+  let sessionHtml = isDraftNewSession ? ' · Phiên mới <span class="status-badge status-running">CHƯA LƯU</span>' : ' · Chưa có phiên';
   if (currentSessionCode) {
     const label = currentSessionName || currentSessionCode;
     const code = currentSessionName ? ` <span class="session-code">${currentSessionCode}</span>` : '';
@@ -298,77 +298,140 @@ function latestDuplicate(masp) {
     .sort((a, b) => Number(b.stt || 0) - Number(a.stt || 0))[0] || null;
 }
 
-function openDuplicateModal(payload, duplicatedRow) {
-  duplicatePending = payload;
-  $('duplicate-info').innerHTML = `
-    Mã <b>${payload.masp}</b> đã có trong phiên.<br>
-    Đã quét gần nhất tại <b>STT ${duplicatedRow.stt}</b>${duplicatedRow.vitri_hientai ? ` · vị trí <b>${duplicatedRow.vitri_hientai}</b>` : ''}.<br><br>
-    Bạn vẫn muốn thêm một dòng mới cho mã này?
-  `;
-  $('duplicate-modal').classList.add('show');
-  // Mặc định chọn Hủy: nhân viên chỉ cần bấm Enter để bỏ mã trùng.
-  setTimeout(() => $('btn-duplicate-cancel')?.focus(), 0);
-}
-
-function closeDuplicateModal() {
-  $('duplicate-modal').classList.remove('show');
-  duplicatePending = null;
+function resetToBlankDraft() {
+  currentSessionId = null;
+  currentSessionCode = '';
+  currentSessionName = '';
+  currentSessionStatus = '';
+  isDraftNewSession = true;
+  rows = [];
+  $('current-location').value = '';
+  $('scan-masp').value = '';
+  clearRowSelection();
+  renderRows();
+  setMessage('Phiên mới đang ở trạng thái chưa lưu. Phiên chỉ được tạo trong hệ thống khi quét mã hợp lệ đầu tiên.', 'ok');
+  setTimeout(() => $('current-location').focus(), 50);
 }
 
 async function ensureSession() {
   if (currentSessionId) return true;
-  await createNewSession(false);
-  return !!currentSessionId;
+
+  const { data, error } = await supabase.rpc('ktbm_create_session', {
+    p_coso: currentCoSo,
+    p_manv: currentManv,
+    p_tennv: currentTenNv
+  });
+  if (error) throw error;
+
+  const session = Array.isArray(data) ? data[0] : data;
+  if (!session?.id) throw new Error('RPC không trả về phiên kiểm hợp lệ.');
+
+  currentSessionId = session.id;
+  currentSessionCode = session.maphien || '';
+  currentSessionName = session.ten_phien || '';
+  currentSessionStatus = session.trangthai || 'DANG_KIEM';
+  isDraftNewSession = false;
+  updateHeader();
+  return true;
 }
 
-async function createNewSession(askConfirm = true) {
-  if (askConfirm && currentSessionId && !confirm('Tạo phiên mới? Phiên hiện tại đã được lưu tự động và sẽ không mất dữ liệu.')) return;
+function closeNewSessionModal() {
+  $('new-session-modal').classList.remove('show');
+}
 
-  $('btn-new-session').disabled = true;
-  setMessage('Đang tạo phiên kiểm mới...');
+function requestNewSession() {
+  if (isCompletedSession() && currentSessionId) {
+    $('new-session-modal').classList.add('show');
+    setTimeout(() => $('btn-new-clone')?.focus(), 0);
+    return;
+  }
+
+  if (currentSessionId && rows.length) {
+    if (!confirm('Tạo phiên trống mới? Phiên đang kiểm hiện tại đã được lưu tự động và sẽ giữ nguyên dữ liệu.')) return;
+  }
+  resetToBlankDraft();
+}
+
+async function cloneCompletedSession() {
+  if (!currentSessionId || !isCompletedSession()) {
+    setMessage('Chỉ có thể làm tiếp từ một phiên đã hoàn thành.', 'warn');
+    closeNewSessionModal();
+    return;
+  }
+
+  $('btn-new-clone').disabled = true;
+  $('btn-new-blank').disabled = true;
+  setMessage(`Đang tạo phiên mới từ ${currentSessionName || currentSessionCode}...`);
   try {
-    const { data, error } = await supabase.rpc('ktbm_create_session', {
-      p_coso: currentCoSo,
+    const sourceName = currentSessionName || currentSessionCode;
+    const { data, error } = await supabase.rpc('ktbm_clone_completed_session', {
+      p_phien_goc_id: currentSessionId,
       p_manv: currentManv,
       p_tennv: currentTenNv
     });
     if (error) throw error;
 
-    const session = Array.isArray(data) ? data[0] : data;
-    if (!session?.id) throw new Error('RPC không trả về phiên kiểm hợp lệ.');
-
-    currentSessionId = session.id;
-    currentSessionCode = session.maphien || '';
-    currentSessionName = session.ten_phien || '';
-    currentSessionStatus = session.trangthai || 'DANG_KIEM';
-    rows = [];
-    $('current-location').value = '';
-    clearRowSelection();
-    renderRows();
-    setMessage(`Đã tạo ${currentSessionCode}. Nhập vị trí hiện tại rồi quét sản phẩm.`, 'ok');
-    $('current-location').focus();
+    const result = Array.isArray(data) ? data[0] : data;
+    if (!result?.id) throw new Error('Không nhận được phiên mới từ máy chủ.');
+    closeNewSessionModal();
+    await loadSession(result.id);
+    setMessage(`Đã tạo ${result.maphien} làm tiếp từ “${sourceName}”, kế thừa ${Number(result.so_dong || rows.length)} mã. Có thể tiếp tục quét từ STT kế tiếp.`, 'ok');
+    setTimeout(() => $('current-location').focus(), 50);
   } catch (err) {
     console.error(err);
-    setMessage(`Không tạo được phiên kiểm: ${err.message || err}`, 'err');
+    setMessage(`Không tạo được phiên làm tiếp: ${err.message || err}`, 'err');
   } finally {
-    $('btn-new-session').disabled = false;
+    $('btn-new-clone').disabled = false;
+    $('btn-new-blank').disabled = false;
   }
+}
+
+function createBlankFromCompleted() {
+  closeNewSessionModal();
+  resetToBlankDraft();
 }
 
 async function insertScanRow(payload) {
   if (isCompletedSession()) throw new Error('Phiên đã hoàn thành và đang ở chế độ chỉ xem.');
-  const { data, error } = await supabase.rpc('ktbm_add_scan_row', {
-    p_phien_id: currentSessionId,
-    p_masp: payload.masp,
-    p_vitri_chuan: payload.vitri_chuan,
-    p_vitri_hientai: payload.vitri_hientai,
-    p_manv: currentManv,
-    p_tennv: currentTenNv,
-    p_nguon_dong: 'BAY_MAU'
-  });
-  if (error) throw error;
 
-  const inserted = Array.isArray(data) ? data[0] : data;
+  let inserted;
+
+  if (!currentSessionId) {
+    // Lần quét đầu tiên tạo PHIÊN + DÒNG ĐẦU trong cùng một RPC/transaction.
+    // Vì vậy không thể phát sinh phiên 0 dòng nếu người dùng chỉ bấm "Tạo phiên mới" rồi thoát.
+    const { data, error } = await supabase.rpc('ktbm_create_session_with_first_row', {
+      p_coso: currentCoSo,
+      p_masp: payload.masp,
+      p_vitri_chuan: payload.vitri_chuan,
+      p_vitri_hientai: payload.vitri_hientai,
+      p_manv: currentManv,
+      p_tennv: currentTenNv
+    });
+    if (error) throw error;
+
+    const result = Array.isArray(data) ? data[0] : data;
+    if (!result?.session?.id || !result?.row?.id) throw new Error('Không nhận được phiên/dòng đầu tiên từ máy chủ.');
+
+    currentSessionId = result.session.id;
+    currentSessionCode = result.session.maphien || '';
+    currentSessionName = result.session.ten_phien || '';
+    currentSessionStatus = result.session.trangthai || 'DANG_KIEM';
+    isDraftNewSession = false;
+    inserted = result.row;
+  } else {
+    const { data, error } = await supabase.rpc('ktbm_add_scan_row', {
+      p_phien_id: currentSessionId,
+      p_masp: payload.masp,
+      p_vitri_chuan: payload.vitri_chuan,
+      p_vitri_hientai: payload.vitri_hientai,
+      p_manv: currentManv,
+      p_tennv: currentTenNv,
+      p_nguon_dong: 'BAY_MAU'
+    });
+    if (error) throw error;
+    inserted = Array.isArray(data) ? data[0] : data;
+  }
+
   if (!inserted?.id) throw new Error('Không nhận được dòng vừa lưu từ máy chủ.');
 
   rows.unshift({
@@ -391,22 +454,21 @@ async function insertScanRow(payload) {
   });
 
   if (wrongPosition) {
-    // Sai vị trí: vẫn lưu bình thường nhưng phát 1 tiếng cảnh báo thay cho tiếng thành công.
     try { playAlertBeep(); } catch (_) {}
     setMessage(
       `Cảnh báo: ${payload.masp} đang ở ${payload.vitri_hientai} nhưng vị trí treo mẫu chuẩn là ${normalizeText(inserted.vitri_chuan) || 'chưa thiết lập'} · STT ${inserted.stt}.`,
       'warn'
     );
   } else {
-    playInsertedBeep(); // Đúng vị trí: 1 tiếng tít thành công như trước.
+    playInsertedBeep();
     setMessage(`Đã thêm ${payload.masp} tại ${payload.vitri_hientai} · STT ${inserted.stt}.`, 'ok');
   }
 }
 
 async function handleScan() {
-  if (scanBusy || $('duplicate-modal').classList.contains('show')) return;
+  if (scanBusy) return;
   if (isCompletedSession()) {
-    setMessage('Phiên đã hoàn thành và được khóa. Hãy tạo phiên mới hoặc tải một phiên đang kiểm để tiếp tục quét.', 'warn');
+    setMessage('Phiên đã hoàn thành và được khóa. Bấm Tạo phiên mới để làm tiếp từ phiên này hoặc bắt đầu phiên trống.', 'warn');
     return;
   }
 
@@ -424,8 +486,7 @@ async function handleScan() {
   scanBusy = true;
   $('scan-masp').disabled = true;
   try {
-    if (!(await ensureSession())) return;
-
+    // Kiểm tra mã trước khi tạo phiên. Mã sai/trùng không làm phát sinh phiên 0 dòng.
     const resolved = await resolveScannedMasp(scannedMasp);
     if (!resolved.ok) {
       setMessage(`Mã ${scannedMasp} không tồn tại trong danh mục hàng hóa.`, 'err');
@@ -445,46 +506,30 @@ async function handleScan() {
     if (duplicatedRow) {
       $('scan-masp').value = '';
       await playTripleAlertBeep();
-      openDuplicateModal(payload, duplicatedRow);
+      setMessage(
+        `Sản phẩm ${payload.masp} đã có trong phiên tại STT ${duplicatedRow.stt}${duplicatedRow.vitri_hientai ? ` · vị trí ${duplicatedRow.vitri_hientai}` : ''}. Không thêm lại mã trùng.`,
+        'warn'
+      );
       return;
     }
 
+    // Lần quét hợp lệ đầu tiên sẽ tự tạo phiên + dòng đầu tiên trong cùng transaction.
     await insertScanRow(payload);
     $('scan-masp').value = '';
   } catch (err) {
     console.error(err);
-    setMessage(`Quét/lưu dữ liệu thất bại: ${err.message || err}`, 'err');
+    const msg = String(err?.message || err || '');
+    if (msg.includes('Mã sản phẩm đã có trong phiên')) {
+      setMessage(msg, 'warn');
+    } else {
+      setMessage(`Quét/lưu dữ liệu thất bại: ${msg}`, 'err');
+    }
     await playTripleAlertBeep();
   } finally {
     scanBusy = false;
     $('scan-masp').disabled = false;
-    if (!$('duplicate-modal').classList.contains('show')) setTimeout(() => focusScan(), 0);
-  }
-}
-
-async function confirmDuplicate() {
-  if (!duplicatePending) return;
-  const payload = duplicatePending;
-  $('btn-duplicate-confirm').disabled = true;
-  $('btn-duplicate-cancel').disabled = true;
-  try {
-    await insertScanRow(payload);
-    closeDuplicateModal();
-  } catch (err) {
-    console.error(err);
-    setMessage(`Không thêm được mã trùng: ${err.message || err}`, 'err');
-    await playTripleAlertBeep();
-  } finally {
-    $('btn-duplicate-confirm').disabled = false;
-    $('btn-duplicate-cancel').disabled = false;
     setTimeout(() => focusScan(), 0);
   }
-}
-
-function cancelDuplicate() {
-  closeDuplicateModal();
-  setMessage('Đã hủy mã trùng. Tiếp tục quét sản phẩm khác.', 'warn');
-  setTimeout(() => focusScan(), 0);
 }
 
 async function deleteSelectedRow() {
@@ -636,6 +681,7 @@ async function loadSession(id) {
     currentSessionCode = payload.maphien || '';
     currentSessionName = normalizeText(payload.ten_phien);
     currentSessionStatus = payload.trangthai || '';
+    isDraftNewSession = false;
     rows = (payload.rows || []).map((r) => ({
       id: r.id,
       stt: Number(r.stt || 0),
@@ -739,7 +785,7 @@ function attachEvents() {
     $('current-location').value = normalizeLocation($('current-location').value);
   });
 
-  $('btn-new-session').addEventListener('click', () => createNewSession(true));
+  $('btn-new-session').addEventListener('click', requestNewSession);
   $('btn-load-session').addEventListener('click', openSessionList);
   $('btn-delete-row').addEventListener('click', deleteSelectedRow);
   $('btn-delete-session').addEventListener('click', deleteSelectedSession);
@@ -751,14 +797,11 @@ function attachEvents() {
     if (e.key === 'Enter') { e.preventDefault(); completeCurrentSession(); }
   });
   $('session-modal-close').addEventListener('click', () => $('session-modal').classList.remove('show'));
-  $('btn-duplicate-confirm').addEventListener('click', confirmDuplicate);
-  $('btn-duplicate-cancel').addEventListener('click', cancelDuplicate);
-
-  $('duplicate-modal').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && $('duplicate-modal').classList.contains('show')) {
-      e.preventDefault();
-      cancelDuplicate();
-    }
+  $('btn-new-clone').addEventListener('click', cloneCompletedSession);
+  $('btn-new-blank').addEventListener('click', createBlankFromCompleted);
+  $('new-session-modal-close').addEventListener('click', closeNewSessionModal);
+  $('new-session-modal').addEventListener('click', (e) => {
+    if (e.target === $('new-session-modal')) closeNewSessionModal();
   });
 
   $('session-modal').addEventListener('click', (e) => {
