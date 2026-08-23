@@ -68,6 +68,18 @@ async function playTripleAlertBeep() {
   }
 }
 
+// Âm thanh riêng cho mã không tồn tại: Lỗi -> Thành công -> Thành công -> Lỗi.
+// Nhân viên có thể phân biệt bằng tai với lỗi mã trùng (3 tiếng lỗi liên tiếp).
+async function playNotFoundBeep() {
+  try { playAlertBeep(); } catch (_) {}
+  await sleep(260);
+  try { playSuccessBeep(); } catch (_) {}
+  await sleep(260);
+  try { playSuccessBeep(); } catch (_) {}
+  await sleep(260);
+  try { playAlertBeep(); } catch (_) {}
+}
+
 function playInsertedBeep() {
   try { playSuccessBeep(); } catch (_) {}
 }
@@ -490,7 +502,7 @@ async function handleScan() {
     const resolved = await resolveScannedMasp(scannedMasp);
     if (!resolved.ok) {
       setMessage(`Mã ${scannedMasp} không tồn tại trong danh mục hàng hóa.`, 'err');
-      await playTripleAlertBeep();
+      await playNotFoundBeep();
       $('scan-masp').value = '';
       return;
     }
