@@ -90,6 +90,20 @@ function initTable() {
       selectedRowIndex = row >= 0 && row < rows.length ? row : -1;
       updateDeleteRowButton();
     },
+    afterOnCellMouseDown(event, coords) {
+      if (!coords || coords.row < 0 || coords.col !== 1) return;
+      const rowData = this.getSourceDataAtRow(coords.row) || {};
+      const masp = normalizeMasp(rowData.masp);
+      if (!masp) return;
+
+      // Chạm/click cột Mã sản phẩm -> mở StockQuickPopup của đúng mã.
+      // Vẫn giữ selection của Handsontable để nút Xóa dòng hoạt động bình thường.
+      if (typeof window.stockQuickPopup === 'function') {
+        window.stockQuickPopup(masp);
+      } else {
+        setMessage('StockQuickPopup chưa sẵn sàng. Hãy tải lại trang.', 'warn');
+      }
+    },
     cells(row) {
       const props = { readOnly: true };
       if (row === 0) {
