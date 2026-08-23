@@ -1231,6 +1231,7 @@ data-color-masp="${targetMasp}"
     let nhap_cuoi_ma = "";
     let giale = "";
     let nhomhang = "";
+    let form = "";
     let giam_gia_pct = null;
     let mau_khac = "";
     let manocanh = {
@@ -1286,7 +1287,7 @@ data-color-masp="${targetMasp}"
 
         client
           .from("dmhanghoa")
-          .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, giale, nhomhang, giam_gia_pct")
+          .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, giale, nhomhang, form, giam_gia_pct")
           .eq("masp", masp)
           .maybeSingle(),
 
@@ -1422,6 +1423,7 @@ data-color-masp="${targetMasp}"
         baymau_cs2 = hh.treomaucs2 || "";
         giale = hh.giale || "";
         nhomhang = hh.nhomhang || "";
+        form = String(hh.form || "").trim().toUpperCase();
         giam_gia_pct = hh.giam_gia_pct == null ? null : Number(hh.giam_gia_pct);
 
         // ✅ Ưu tiên ND từ dmhanghoa.nhapdau (nếu có)
@@ -1465,6 +1467,7 @@ data-color-masp="${targetMasp}"
     window.__SQ_DATA[masp] = {
       rows,
       nhomhang,
+      form,
       giale,
       mau_khac,
       giam_gia_pct
@@ -1482,6 +1485,7 @@ data-color-masp="${targetMasp}"
       nhap_cuoi_ma,
       giale,
       nhomhang,
+      form,
       mau_khac,
       giam_gia_pct,
       manocanh,
@@ -2452,7 +2456,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
     if (!script) {
       script = document.createElement("script");
-      script.src = "/scripts/stockQuickSimilar.js?v=20260731-discount1";
+      script.src = "/scripts/stockQuickSimilar.js?v=20260823-form-priority1";
       script.dataset.stockquickSimilar = "1";
       document.head.appendChild(script);
     }
@@ -2588,6 +2592,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
             popup.dataset.nhomhang ||
             ""
           ).trim(),
+          form: String(payload?.form || popup.dataset.form || "").trim().toUpperCase(),
           denNgay: getDenNgay()
         });
       });
@@ -2701,6 +2706,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
           masp: String(popup.dataset.masp || "").trim().toUpperCase(),
           size,
           nhomhang: String(payload?.nhomhang || popup.dataset.nhomhang || "").trim(),
+          form: String(payload?.form || popup.dataset.form || "").trim().toUpperCase(),
           denNgay: getDenNgay()
         });
       });
@@ -3103,6 +3109,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       const size = String(tr.dataset.size || "").trim();
       const masp = String(popup.dataset.masp || "").trim().toUpperCase();
       const nhomhang = String(popup.dataset.nhomhang || "").trim();
+      const form = String(popup.dataset.form || "").trim().toUpperCase();
 
       if (!size || !masp || !nhomhang) return;
 
@@ -3122,6 +3129,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
             masp,
             size,
             nhomhang,
+            form,
             denNgay: getDenNgay()
           })
         );
@@ -3210,6 +3218,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     // đảm bảo có data-masp (để toggle theo mã)
     popup.dataset.masp = String(masp || "").trim().toUpperCase();
     popup.dataset.nhomhang = payload.nhomhang || "";
+    popup.dataset.form = String(payload.form || "").trim().toUpperCase();
 
     // auto-fit độ rộng cột theo nội dung
     applyAutoFitInPopup(popup);
