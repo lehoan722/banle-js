@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
   <script src="./scripts/stockQuickPopup.js?v=1.5.1"></script>
-  <script type="module" src="./scripts/kiemtra_baymau.js?v=1.4.0"></script>
+  <script type="module" src="./scripts/kiemtra_baymau.js?v=1.5.0"></script>
 
   <style>
     :root {
@@ -147,15 +147,19 @@
     <div id="hot"></div>
   </div>
 
-  <div id="duplicate-modal" class="modal" role="dialog" aria-modal="true">
+
+  <div id="new-session-modal" class="modal" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-head">
-        <h3>⚠️ Sản phẩm đã có trong phiên</h3>
+        <h3>Tạo phiên mới</h3>
+        <button id="new-session-modal-close" class="modal-close" type="button">✕</button>
       </div>
-      <div id="duplicate-info" class="duplicate-info"></div>
+      <div class="duplicate-info">
+        Phiên hiện tại đã hoàn thành. Bạn muốn làm tiếp từ toàn bộ dữ liệu của phiên này hay bắt đầu một phiên trống hoàn toàn mới?
+      </div>
       <div class="grid-actions">
-        <button id="btn-duplicate-cancel" class="btn-soft" type="button">Hủy</button>
-        <button id="btn-duplicate-confirm" class="btn-primary" type="button">Vẫn thêm</button>
+        <button id="btn-new-blank" class="btn-soft" type="button">Tạo phiên trống</button>
+        <button id="btn-new-clone" class="btn-primary" type="button">Làm tiếp từ phiên này</button>
       </div>
     </div>
   </div>
