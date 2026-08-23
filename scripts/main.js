@@ -21,6 +21,7 @@ import { startSessionKeeper } from "./supabaseClient.js";
 import { initPopupChuyenKhoContext, triggerChuyenKhoCheckNgay } from './popupchuyenkho.js';
 import { showPageLoading, hidePageLoading, setPageLoadingText } from './pageLoading.js';
 import { initDatHangChuyenKho } from './datHangChuyenKho.js';
+import { initDatHangChuyenKhoKhan } from './datHangChuyenKhoKhan.js';
 // ===== tam ngung kiem tra vi tri =====
 const ENABLE_LOCATION_GUARD = false;
 //const ENABLE_LOCATION_GUARD = true;
@@ -399,6 +400,13 @@ export async function khoiTaoUngDung() {
       });
 
       initDatHangChuyenKho({
+        supabase,
+        diadiem,
+        manvDangNhap
+      });
+
+      // Đặt hàng chuyển kho KHẨN CẤP: luồng thủ công, realtime, tách khỏi luồng tự động.
+      initDatHangChuyenKhoKhan({
         supabase,
         diadiem,
         manvDangNhap
