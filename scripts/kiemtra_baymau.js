@@ -11,6 +11,7 @@ startSessionKeeper();
 let hot = null;
 let currentSessionId = null;
 let currentSessionCode = '';
+let currentSessionName = '';
 let currentSessionStatus = '';
 let currentCoSo = 'cs1';
 let currentManv = '';
@@ -57,13 +58,36 @@ function focusScan(selectAll = false) {
   if (selectAll) el.select();
 }
 
+function isCompletedSession() {
+  return currentSessionStatus === 'HOAN_THANH';
+}
+
 function updateHeader() {
   const user = `${currentCoSo.toUpperCase()} · ${currentTenNv || currentManv || 'Người dùng'}`;
-  const session = currentSessionCode ? ` · ${currentSessionCode}` : ' · Chưa có phiên';
-  $('session-summary').textContent = user + session;
+  let sessionHtml = ' · Chưa có phiên';
+  if (currentSessionCode) {
+    const label = currentSessionName || currentSessionCode;
+    const code = currentSessionName ? ` <span class="session-code">${currentSessionCode}</span>` : '';
+    const badge = isCompletedSession()
+      ? '<span class="status-badge status-done">HOÀN THÀNH</span>'
+      : '<span class="status-badge status-running">ĐANG KIỂM</span>';
+    sessionHtml = ` · ${label}${code} ${badge}`;
+  }
+  $('session-summary').innerHTML = user + sessionHtml;
 
   const uniqueCount = new Set(rows.map((r) => normalizeMasp(r.masp)).filter(Boolean)).size;
   $('scan-stats').textContent = `${rows.length} dòng · ${uniqueCount} mã`;
+  updatePageMode();
+}
+
+function updatePageMode() {
+  const completed = isCompletedSession();
+  const hasSession = !!currentSessionId;
+  const canEdit = hasSession && !completed;
+  $('current-location').disabled = completed;
+  $('scan-masp').disabled = completed || scanBusy;
+  $('btn-complete-session').disabled = !canEdit || rows.length === 0;
+  updateDeleteRowButton();
 }
 
 function initTable() {
@@ -130,7 +154,7 @@ function updateDeleteRowButton() {
   const btn = $('btn-delete-row');
   if (!btn) return;
   const row = selectedRowIndex >= 0 ? rows[selectedRowIndex] : null;
-  btn.disabled = !currentSessionId || !row?.id;
+  btn.disabled = !currentSessionId || isCompletedSession() || !row?.id;
 }
 
 function clearRowSelection() {
@@ -276,8 +300,10 @@ async function createNewSession(askConfirm = true) {
 
     currentSessionId = session.id;
     currentSessionCode = session.maphien || '';
+    currentSessionName = session.ten_phien || '';
     currentSessionStatus = session.trangthai || 'DANG_KIEM';
     rows = [];
+    $('current-location').value = '';
     clearRowSelection();
     renderRows();
     setMessage(`Đã tạo ${currentSessionCode}. Nhập vị trí hiện tại rồi quét sản phẩm.`, 'ok');
@@ -291,6 +317,7 @@ async function createNewSession(askConfirm = true) {
 }
 
 async function insertScanRow(payload) {
+  if (isCompletedSession()) throw new Error('Phiên đã hoàn thành và đang ở chế độ chỉ xem.');
   const { data, error } = await supabase.rpc('ktbm_add_scan_row', {
     p_phien_id: currentSessionId,
     p_masp: payload.masp,
@@ -324,6 +351,10 @@ async function insertScanRow(payload) {
 
 async function handleScan() {
   if (scanBusy || $('duplicate-modal').classList.contains('show')) return;
+  if (isCompletedSession()) {
+    setMessage('Phiên đã hoàn thành và được khóa. Hãy tạo phiên mới hoặc tải một phiên đang kiểm để tiếp tục quét.', 'warn');
+    return;
+  }
 
   const vitri = normalizeLocation($('current-location').value);
   const scannedMasp = normalizeMasp($('scan-masp').value);
@@ -403,6 +434,10 @@ function cancelDuplicate() {
 }
 
 async function deleteSelectedRow() {
+  if (isCompletedSession()) {
+    setMessage('Phiên đã hoàn thành nên không thể xóa từng dòng.', 'warn');
+    return;
+  }
   const row = selectedRowIndex >= 0 ? rows[selectedRowIndex] : null;
   if (!currentSessionId || !row?.id) {
     setMessage('Hãy chọn một dòng cần xóa trước.', 'warn');
@@ -458,8 +493,9 @@ async function openSessionList() {
         el.dataset.id = s.id;
         el.innerHTML = `
           ${isAdmin ? '<div style="display:flex;gap:8px;align-items:flex-start"><input class="session-delete-radio" type="radio" name="ktbm-session-delete" style="width:20px;min-height:20px;margin:1px 0 0"><div style="flex:1">' : ''}
-          <div class="session-title">${s.maphien || ''}</div>
-          <div class="session-meta">${s.ngay_tao || ''} · ${s.tennv_tao || s.manv_tao || ''} · ${Number(s.so_dong || 0)} dòng · ${s.trangthai || ''}</div>
+          <div class="session-title">${s.ten_phien || s.maphien || ''}${s.trangthai === 'HOAN_THANH' ? ' <span class="status-badge status-done">HOÀN THÀNH</span>' : ' <span class="status-badge status-running">ĐANG KIỂM</span>'}</div>
+          ${s.ten_phien ? `<div class="session-code">${s.maphien || ''}</div>` : ''}
+          <div class="session-meta">${s.ngay_tao || ''} · ${s.tennv_tao || s.manv_tao || ''} · ${Number(s.so_dong || 0)} dòng${s.ngay_hoan_thanh ? ` · hoàn thành ${s.ngay_hoan_thanh}` : ''}</div>
           ${isAdmin ? '</div></div>' : ''}
         `;
 
@@ -513,6 +549,7 @@ async function deleteSelectedSession() {
     if (currentSessionId === selectedSessionId) {
       currentSessionId = null;
       currentSessionCode = '';
+      currentSessionName = '';
       currentSessionStatus = '';
       rows = [];
       clearRowSelection();
@@ -543,6 +580,7 @@ async function loadSession(id) {
 
     currentSessionId = payload.id;
     currentSessionCode = payload.maphien || '';
+    currentSessionName = normalizeText(payload.ten_phien);
     currentSessionStatus = payload.trangthai || '';
     rows = (payload.rows || []).map((r) => ({
       id: r.id,
@@ -559,10 +597,71 @@ async function loadSession(id) {
     clearRowSelection();
     renderRows();
     $('session-modal').classList.remove('show');
-    setMessage(`Đã tải ${currentSessionCode}, gồm ${rows.length} dòng. Có thể tiếp tục quét.`, 'ok');
-    setTimeout(() => $('current-location').focus(), 50);
+    if (isCompletedSession()) {
+      $('current-location').value = '';
+      setMessage(`Đã tải phiên hoàn thành ${currentSessionName || currentSessionCode}, gồm ${rows.length} dòng. Phiên đang ở chế độ chỉ xem.`, 'ok');
+    } else {
+      setMessage(`Đã tải ${currentSessionName || currentSessionCode}, gồm ${rows.length} dòng. Có thể tiếp tục quét.`, 'ok');
+      setTimeout(() => $('current-location').focus(), 50);
+    }
   } catch (err) {
     setMessage(`Không tải được phiên: ${err.message || err}`, 'err');
+  }
+}
+
+function openCompleteModal() {
+  if (!currentSessionId) {
+    setMessage('Chưa có phiên để hoàn thành.', 'warn');
+    return;
+  }
+  if (isCompletedSession()) {
+    setMessage('Phiên này đã hoàn thành.', 'warn');
+    return;
+  }
+  if (!rows.length) {
+    setMessage('Phiên chưa có dữ liệu quét nên chưa thể hoàn thành.', 'warn');
+    return;
+  }
+  $('session-name').value = currentSessionName || '';
+  $('complete-modal').classList.add('show');
+  setTimeout(() => $('session-name')?.focus(), 0);
+}
+
+function closeCompleteModal() {
+  $('complete-modal').classList.remove('show');
+}
+
+async function completeCurrentSession() {
+  const tenPhien = normalizeText($('session-name').value);
+  if (!tenPhien) {
+    setMessage('Hãy nhập tên phiên kiểm trước khi hoàn thành.', 'warn');
+    $('session-name').focus();
+    return;
+  }
+
+  $('btn-complete-confirm').disabled = true;
+  $('btn-complete-cancel').disabled = true;
+  try {
+    const { data, error } = await supabase.rpc('ktbm_complete_session', {
+      p_phien_id: currentSessionId,
+      p_ten_phien: tenPhien,
+      p_manv: currentManv,
+      p_tennv: currentTenNv
+    });
+    if (error) throw error;
+    const result = Array.isArray(data) ? data[0] : data;
+    currentSessionName = normalizeText(result?.ten_phien || tenPhien);
+    currentSessionStatus = result?.trangthai || 'HOAN_THANH';
+    closeCompleteModal();
+    updateHeader();
+    clearRowSelection();
+    setMessage(`Đã hoàn thành phiên “${currentSessionName}”. Dữ liệu đã được khóa để dùng làm phiên đối chiếu.`, 'ok');
+  } catch (err) {
+    console.error(err);
+    setMessage(`Không hoàn thành được phiên: ${err.message || err}`, 'err');
+  } finally {
+    $('btn-complete-confirm').disabled = false;
+    $('btn-complete-cancel').disabled = false;
   }
 }
 
@@ -590,6 +689,13 @@ function attachEvents() {
   $('btn-load-session').addEventListener('click', openSessionList);
   $('btn-delete-row').addEventListener('click', deleteSelectedRow);
   $('btn-delete-session').addEventListener('click', deleteSelectedSession);
+  $('btn-complete-session').addEventListener('click', openCompleteModal);
+  $('btn-complete-confirm').addEventListener('click', completeCurrentSession);
+  $('btn-complete-cancel').addEventListener('click', closeCompleteModal);
+  $('complete-modal-close').addEventListener('click', closeCompleteModal);
+  $('session-name').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); completeCurrentSession(); }
+  });
   $('session-modal-close').addEventListener('click', () => $('session-modal').classList.remove('show'));
   $('btn-duplicate-confirm').addEventListener('click', confirmDuplicate);
   $('btn-duplicate-cancel').addEventListener('click', cancelDuplicate);
@@ -603,6 +709,9 @@ function attachEvents() {
 
   $('session-modal').addEventListener('click', (e) => {
     if (e.target === $('session-modal')) $('session-modal').classList.remove('show');
+  });
+  $('complete-modal').addEventListener('click', (e) => {
+    if (e.target === $('complete-modal')) closeCompleteModal();
   });
 }
 
