@@ -133,17 +133,64 @@ function setupAudioUnlock() {
   document.addEventListener("pointerdown", fn, { once:true, capture:true });
   document.addEventListener("keydown", fn, { once:true, capture:true });
 }
-// Bước 3 mới nâng âm báo. Bước 1 giữ âm hiện tại để giảm phạm vi thay đổi.
-function ding(freq, when, duration=.13) {
+// Âm báo khẩn: 2 tiếng chuông đa tần, ngân dài và stereo nhẹ.
+// Chỉ dùng Web Audio nên không cần thêm file âm thanh bên ngoài.
+function chimeVoice(freq, when, duration, pan = 0, peak = 0.16) {
   if (!audioCtx || audioCtx.state !== "running") return;
-  const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-  osc.type="sine"; osc.frequency.setValueAtTime(freq,when);
-  gain.gain.setValueAtTime(.0001,when); gain.gain.exponentialRampToValueAtTime(.20,when+.012); gain.gain.exponentialRampToValueAtTime(.0001,when+duration);
-  osc.connect(gain); gain.connect(audioCtx.destination); osc.start(when); osc.stop(when+duration+.02);
+
+  const master = audioCtx.createGain();
+  const panner = typeof audioCtx.createStereoPanner === "function"
+    ? audioCtx.createStereoPanner()
+    : null;
+
+  if (panner) panner.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), when);
+
+  // Fundamental + 2 harmonic nhỏ làm tiếng chuông đầy và bớt "khô".
+  [
+    { mult: 1, gain: 1.00, type: "sine" },
+    { mult: 2.01, gain: 0.30, type: "sine" },
+    { mult: 3.02, gain: 0.12, type: "triangle" }
+  ].forEach(part => {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = part.type;
+    osc.frequency.setValueAtTime(freq * part.mult, when);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * part.gain), when + 0.018);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(when);
+    osc.stop(when + duration + 0.04);
+  });
+
+  // Một lớp ngân trễ rất nhỏ tạo cảm giác chuông điện thoại.
+  const delay = audioCtx.createDelay(0.25);
+  const echoGain = audioCtx.createGain();
+  delay.delayTime.setValueAtTime(0.085, when);
+  echoGain.gain.setValueAtTime(0.16, when);
+
+  if (panner) {
+    master.connect(panner);
+    panner.connect(audioCtx.destination);
+    panner.connect(delay);
+  } else {
+    master.connect(audioCtx.destination);
+    master.connect(delay);
+  }
+  delay.connect(echoGain);
+  echoGain.connect(audioCtx.destination);
 }
 function playUrgentSound() {
-  try { unlockAudioOnce(); if(!audioCtx || audioCtx.state!=="running") return; const t=audioCtx.currentTime+.02; ding(880,t,.14); ding(1175,t+.19,.16); }
-  catch(e){ console.warn("[Đặt hàng khẩn] Không phát được âm thanh:",e); }
+  try {
+    unlockAudioOnce();
+    if (!audioCtx || audioCtx.state !== "running") return;
+    const t = audioCtx.currentTime + 0.025;
+    chimeVoice(783.99, t, 0.48, -0.25, 0.19);   // G5
+    chimeVoice(1046.50, t + 0.33, 0.62, 0.25, 0.21); // C6
+  } catch (e) {
+    console.warn("[Đặt hàng khẩn] Không phát được âm thanh:", e);
+  }
 }
 
 function openStockQuick(masp) {
@@ -236,7 +283,7 @@ function renderRows(rows,canMoveSection,isAdmin) {
     const statusDisabled = canExecute ? "" : "disabled title=\"Chỉ cơ sở thực hiện chuyển hàng mới được đổi trạng thái\"";
     return `<tr data-id="${Number(r.id)}" data-status="${esc(st)}">
       <td style="text-align:center;"><input type="checkbox" class="dhkhan-delete-check" data-id="${Number(r.id)}" ${isAdmin?"":"disabled"} title="${isAdmin?"Chọn để admin xóa đặt hàng":"Chỉ admin được xóa"}"></td>
-      <td style="text-align:center;"><input type="checkbox" class="dhkhan-move" data-id="${Number(r.id)}" ${canSelectForFutureCcn?"":"disabled"} title="Bước 2 sẽ dùng để tạo hóa đơn CCN"></td>
+      <td style="text-align:center;"><input type="checkbox" class="dhkhan-move" data-id="${Number(r.id)}" ${canSelectForFutureCcn?"":"disabled"} title="Chọn dòng để tạo hóa đơn CCN"></td>
       <td><span class="dhkhan-masp-link" data-masp="${esc(r.masp)}">${esc(r.masp)}</span></td>
       <td style="text-align:center;">${Number(r.soluong||1)}</td>
       <td style="text-align:center;">${esc(r.size)}</td>
@@ -254,7 +301,7 @@ function positionPanel() {
   const box=document.getElementById("dhkhan-panel"); if(!box||panelMode==="hidden") return;
   const mobile=window.matchMedia("(max-width:800px)").matches;
   const vh=window.visualViewport?.height||window.innerHeight;
-  box.style.left=mobile?"0":"6px"; box.style.right="auto"; box.style.width=mobile?"100vw":"760px"; box.style.maxWidth=mobile?"100vw":"96vw"; box.style.zIndex="10050";
+  box.style.left=mobile?"0":"6px"; box.style.right="auto"; box.style.width=mobile?"100vw":"760px"; box.style.maxWidth=mobile?"100vw":"96vw"; box.style.zIndex="9800";
   if(panelMode==="collapsed"){
     const bay=document.getElementById("baymau-popup"); const bayTop=bay?.getBoundingClientRect()?.top;
     const top=Number.isFinite(bayTop)?Math.max(6,bayTop-40):Math.max(6,vh-250);
@@ -301,11 +348,85 @@ async function deleteSelectedOrders(box) {
   await refreshPanel({forceOpen:true});
 }
 
+async function createUrgentCcnFromChecked(box) {
+  const coso = getCurrentCoso();
+  if (!coso) return alert("Không xác định được cơ sở hiện tại.");
+
+  const ids = [...box.querySelectorAll('tbody[data-section="canmove"] .dhkhan-move:checked')]
+    .map(x => Number(x.dataset.id))
+    .filter(Boolean);
+
+  if (!ids.length) {
+    alert("Bạn chưa tick dòng nào để tạo hóa đơn CCN.");
+    return;
+  }
+
+  const { data: rows, error } = await ctx.supabase
+    .from(TABLE)
+    .select("id,masp,size,soluong,huong_chuyen,tu_coso,den_coso,trang_thai,ghichu_dat")
+    .in("id", ids)
+    .eq("tu_coso", coso);
+
+  if (error) {
+    console.error("[Đặt hàng khẩn] Không đọc được dòng tạo CCN:", error);
+    alert("❌ Không đọc được dữ liệu để tạo hóa đơn CCN.");
+    return;
+  }
+
+  const selected = (rows || []).filter(r => norm(r.trang_thai).toLowerCase() === "moi");
+  if (!selected.length) {
+    alert("Các dòng đã chọn không còn ở trạng thái Mới.");
+    await refreshPanel({ forceOpen:true });
+    return;
+  }
+
+  const dirs = [...new Set(selected.map(r => norm(r.huong_chuyen).toLowerCase()))];
+  if (dirs.length !== 1) {
+    alert("Chỉ được tạo một hướng chuyển mỗi lần.");
+    return;
+  }
+
+  const dir = dirs[0];
+  const validFrom = dir === "1v2" ? "cs1" : "cs2";
+  if (validFrom !== coso) {
+    alert("⛔ Chỉ cơ sở thực hiện chuyển hàng mới được tạo hóa đơn CCN.");
+    return;
+  }
+
+  const grouped = new Map();
+  selected.forEach(r => {
+    const code = normMasp(r.masp);
+    if (!grouped.has(code)) grouped.set(code, []);
+    grouped.get(code).push({
+      size: normSize(r.size),
+      soluong: Number(r.soluong || 1)
+    });
+  });
+
+  const selectedIds = selected.map(r => Number(r.id)).filter(Boolean);
+  const payload = {
+    dir,
+    note: "ĐẶT HÀNG KHẨN: " + selectedIds.join(","),
+    source: "dat_hang_chuyen_kho_khan",
+    order_ids: selectedIds,
+    items: [...grouped.entries()].map(([masp, items]) => ({ masp, items }))
+  };
+
+  localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+  localStorage.setItem("dhkhan_pending_ids", JSON.stringify(selectedIds));
+  // Quan trọng: không dùng dhck_pending_ids để tránh module chuyển kho tự động xử lý nhầm ID.
+  localStorage.removeItem("dhck_pending_ids");
+
+  const url = dir === "2v1" ? "/ccn2v1cs2.html" : "/ccn1v2cs1.html";
+  window.open(location.origin + url, "_blank");
+}
+
 function bindPanelEvents(box) {
   box.querySelector("#dhkhan-toggle")?.addEventListener("click",e=>{ e.stopPropagation(); panelMode=panelMode==="collapsed"?"expanded":"collapsed"; applyPanelMode(); });
   box.querySelector("#dhkhan-close")?.addEventListener("click",e=>{ e.stopPropagation(); panelMode="hidden"; applyPanelMode(); });
   box.querySelector("#dhkhan-create")?.addEventListener("click",()=>{ showManualCreate(); });
   box.querySelector("#dhkhan-delete")?.addEventListener("click",()=>deleteSelectedOrders(box));
+  box.querySelector("#dhkhan-create-ccn")?.addEventListener("click",()=>createUrgentCcnFromChecked(box));
 
   box.querySelectorAll(".dhkhan-status-select").forEach(sel=>{
     sel.addEventListener("change",async()=>{ await updateStatus(Number(sel.dataset.id),norm(sel.value).toLowerCase(),sel); });
@@ -337,6 +458,7 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
       <div style="display:flex;gap:5px;align-items:center;">
         <button id="dhkhan-create" style="font-weight:800;color:#9b0000;">+ Đặt khẩn</button>
         ${isAdmin ? `<button id="dhkhan-delete" style="font-weight:800;color:#9b0000;">Xóa đặt hàng</button>` : ""}
+        <button id="dhkhan-create-ccn" style="font-weight:800;color:#0b57d0;">Tạo hóa đơn CCN</button>
         <button id="dhkhan-toggle" style="border:0;background:transparent;font-size:18px;font-weight:900;">${panelMode==="collapsed"?"▲":"▼"}</button>
         <button id="dhkhan-close" title="Đóng hẳn" style="border:0;background:transparent;font-size:20px;font-weight:900;color:#9b0000;">×</button>
       </div>
