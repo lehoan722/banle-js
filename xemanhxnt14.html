@@ -159,7 +159,7 @@
             margin: 0 auto;
             display: grid;
             grid-template-columns:
-                minmax(180px, 1.5fr) minmax(120px, .7fr) minmax(220px, 1.8fr) minmax(150px, .8fr) auto;
+                minmax(180px, 1.5fr) minmax(120px, .7fr) minmax(220px, 1.8fr) minmax(120px, .7fr) minmax(150px, .8fr) auto;
             gap: 10px;
             align-items: end;
         }
@@ -634,6 +634,16 @@
             </div>
 
             <div class="viewer-filter-group">
+                <label for="viewerForm">Form</label>
+                <select id="viewerForm">
+                    <option value="">Tất cả form</option>
+                    <option value="RONG">RỘNG</option>
+                    <option value="VUA">VỪA</option>
+                    <option value="BO">BÓ</option>
+                </select>
+            </div>
+
+            <div class="viewer-filter-group">
                 <label for="viewerPrice">Giá so sánh (nghìn đồng)</label>
                 <input id="viewerPrice" type="text" inputmode="numeric" list="viewerPriceOptions"
                     placeholder="Ví dụ: 350" autocomplete="off" />
@@ -731,6 +741,30 @@
             "3LO", "BOC", "BOD", "DEP",
             "GIAYDA", "GIAYSUC", "GIAYTHOITRANG"
         ];
+
+        const VALID_VIEWER_FORMS = new Set(["RONG", "VUA", "BO"]);
+
+        function normalizeViewerForm(value) {
+            const form = String(value || "").trim().toUpperCase();
+            return VALID_VIEWER_FORMS.has(form) ? form : "";
+        }
+
+        // Chỉ nhấc đúng form được chọn lên đầu; phần còn lại giữ nguyên thứ tự.
+        function promoteViewerFormPreservingOrder(list, preferredFormRaw) {
+            const preferredForm = normalizeViewerForm(preferredFormRaw);
+            const source = Array.isArray(list) ? list : [];
+            if (!preferredForm || source.length < 2) return source;
+
+            const matched = [];
+            const rest = [];
+
+            source.forEach(item => {
+                if (normalizeViewerForm(item?.form) === preferredForm) matched.push(item);
+                else rest.push(item);
+            });
+
+            return matched.concat(rest);
+        }
 
 
 
@@ -1045,6 +1079,10 @@
                 document.getElementById("viewerGroups")?.value
             );
 
+            const form = normalizeViewerForm(
+                document.getElementById("viewerForm")?.value || ""
+            );
+
             const branch = String(
                 document.getElementById("viewerBranch")?.value || ""
             ).trim().toLowerCase();
@@ -1057,7 +1095,7 @@
                 document.getElementById("viewerPrice")?.value
             );
 
-            return { sizes, groups, branch, price };
+            return { sizes, groups, form, branch, price };
         }
 
         function saveViewerFilterValues(filters) {
@@ -1166,6 +1204,10 @@
                 CURRENT_CONTEXT.nhomhang || ""
             ).trim();
 
+            const contextForm = normalizeViewerForm(
+                CURRENT_CONTEXT.source_form || ""
+            );
+
             const sizeValue = contextSize || (
                 Array.isArray(saved.sizes) && saved.sizes.length
                     ? saved.sizes.join(",")
@@ -1177,6 +1219,8 @@
                     ? saved.groups.join(",")
                     : ""
             );
+
+            const formValue = contextForm || normalizeViewerForm(saved.form || "");
 
             const priceValue = Number(
                 CURRENT_CONTEXT.source_price || saved.price || 0
@@ -1200,6 +1244,9 @@
             const groupsEl =
                 document.getElementById("viewerGroups");
 
+            const formEl =
+                document.getElementById("viewerForm");
+
             const branchEl =
                 document.getElementById("viewerBranch");
 
@@ -1208,6 +1255,7 @@
 
             if (sizesEl) sizesEl.value = sizeValue;
             if (groupsEl) groupsEl.value = groupValue;
+            if (formEl) formEl.value = formValue;
             if (priceEl) priceEl.value = formatViewerPriceInput(priceValue);
             if (branchEl) {
                 branchEl.value =
@@ -1245,6 +1293,10 @@
                     "viewerGroups"
                 )?.value || "";
 
+            const form = normalizeViewerForm(
+                document.getElementById("viewerForm")?.value || ""
+            );
+
             const branch =
                 document.getElementById(
                     "viewerBranch"
@@ -1266,6 +1318,7 @@
                 `${branch.toUpperCase()} • ` +
                 `Size ${sizes || "Tất cả"} • ` +
                 `Nhóm ${groups || "-"} • ` +
+                `Form ${form || "Tất cả"} • ` +
                 `Giá ${priceText}` +
                 (extraText ? ` • ${extraText}` : "");
         }
@@ -1274,6 +1327,7 @@
             [
                 "viewerSizes",
                 "viewerGroups",
+                "viewerForm",
                 "viewerBranch",
                 "viewerPrice"
             ].forEach(id => {
@@ -1345,6 +1399,7 @@
             if (ctx.source_size) chips.push(`Size: ${ctx.source_size}`);
             if (ctx.branch) chips.push(`Cơ sở: ${String(ctx.branch).toUpperCase()}`);
             if (ctx.nhomhang) chips.push(`Nhóm: ${ctx.nhomhang}`);
+            if (normalizeViewerForm(ctx.source_form)) chips.push(`Form: ${normalizeViewerForm(ctx.source_form)}`);
             if (Number(ctx.source_price || 0) > 0) chips.push(`Giá: ${fmtVND(ctx.source_price)}`);
             if (ctx.mode === "discount") chips.push("Chế độ: Hàng giảm giá");
             else if (ctx.mode === "similar") chips.push("Chế độ: Gần giống");
@@ -1354,7 +1409,7 @@
             sub.innerHTML = chips.map(t => `<span class="ctx-chip">${t}</span>`).join("");
         }
 
-        function createCard({ masp, giale, toncs1, toncs2, ban_nhanh, giam_gia_pct, ban_30_ngay, ban_10_ngay, diem_ban_chay }) {
+        function createCard({ masp, giale, form, toncs1, toncs2, ban_nhanh, giam_gia_pct, ban_30_ngay, ban_10_ngay, diem_ban_chay }) {
             const card = document.createElement("div");
             card.className = "card";
             card.dataset.masp = masp;
@@ -1398,6 +1453,7 @@
             cap.innerHTML = `
                 <a class="cap-link" href="javascript:void(0)">
                     ${masp} / ${fmtVND(giale)} ${Number(toncs1 || 0)}/${Number(toncs2 || 0)}
+                    ${normalizeViewerForm(form) ? `<small>Form: ${normalizeViewerForm(form)}</small>` : ``}
                     ${[10, 20, 30, 50, 60].includes(pct) ? `<span class="discount-line">Giảm ${pct}%</span>` : ``}
                     ${sold30 > 0 ? `<span class="best-line">Bán toàn mã 30 ngày: ${sold30} • 10 ngày: ${sold10} • Điểm: ${Number(diem_ban_chay || 0)}</span>` : ``}
                 </a>`;
@@ -1791,6 +1847,9 @@
                 nhomhang: String(
                     CURRENT_CONTEXT.nhomhang || ""
                 ).trim(),
+                form: normalizeViewerForm(
+                    CURRENT_CONTEXT.source_form || ""
+                ),
                 branch: String(
                     CURRENT_CONTEXT.branch || ""
                 ).trim().toLowerCase(),
@@ -1884,6 +1943,7 @@
                     ),
                     sizes: filters.sizes,
                     nhomhangs: filters.groups,
+                    preferredForm: filters.form,
                     branch: filters.branch,
                     referencePrice: filters.price,
                     denNgay:
@@ -1942,6 +2002,10 @@
                         return bSource - aSource;
                     });
                 }
+
+                // Form là ưu tiên mềm: chỉ đưa đúng form lên đầu.
+                // Các mã còn lại giữ nguyên thứ tự hiện có của tab.
+                list = promoteViewerFormPreservingOrder(list, filters.form);
 
                 TAB_LIST_CACHE.set(tabKey, list);
 
@@ -2003,6 +2067,7 @@
                 list = await enrichListWithStockAfterCheck(list);
                 list = filterListByPositiveStockAtBranch(list);
                 if (tabKey === "discount") list = list.filter(x => [10, 20, 30, 50, 60].includes(Number(x.giam_gia_pct)));
+                list = promoteViewerFormPreservingOrder(list, getContextForRecommendation().form);
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
                 const wrap = document.getElementById(TAB_META[tabKey]?.wrap);
@@ -2023,6 +2088,7 @@
                         sizes: [getContextForRecommendation().size],
                         nhomhangs: [getContextForRecommendation().nhomhang],
                         branch: getContextForRecommendation().branch,
+                        preferredForm: getContextForRecommendation().form,
                         denNgay: getContextForRecommendation().denNgay
                     })
                     : await window.StockQuickSimilar.getRecommendationList({ ...getContextForRecommendation(), mode: tabKey });
@@ -2031,6 +2097,7 @@
                 list = await enrichListWithStockAfterCheck(list);
                 list = filterListByPositiveStockAtBranch(list);
                 if (tabKey === "discount") list = list.filter(x => [10, 20, 30, 50, 60].includes(Number(x.giam_gia_pct)));
+                list = promoteViewerFormPreservingOrder(list, getContextForRecommendation().form);
                 TAB_LIST_CACHE.set(tabKey, list);
                 document.getElementById("count").textContent = `Tổng: ${list.length}`;
                 const wrap = document.getElementById(TAB_META[tabKey]?.wrap);
@@ -2141,7 +2208,7 @@
         }
     </script>
 
-    <script src="scripts/stockQuickSimilar.js?v=20260802-price-equal-sourcefirst"></script>
+    <script src="scripts/stockQuickSimilar.js?v=20260823-form-priority1"></script>
 </body>
 
 </html>
