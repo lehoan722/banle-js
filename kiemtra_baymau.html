@@ -7,7 +7,7 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/10.0.0/handsontable.full.min.js"></script>
-  <script type="module" src="./scripts/kiemtra_baymau.js?v=1.0.0"></script>
+  <script type="module" src="./scripts/kiemtra_baymau.js?v=1.1.0"></script>
 
   <style>
     :root {
@@ -44,6 +44,7 @@
     button:disabled { opacity:.55; cursor:not-allowed; }
     .btn-primary { background:var(--primary); color:#fff; border-color:var(--primary); }
     .btn-soft { background:#eef3f8; }
+    .btn-danger { background:var(--danger); color:#fff; border-color:var(--danger); }
     #current-location { font-weight:700; border:2px solid #7cb7e8; text-transform:uppercase; }
     #scan-masp { font-weight:700; text-transform:uppercase; border:2px solid #59a56a; }
     #message {
@@ -108,6 +109,7 @@
         <div class="grid-actions">
           <button id="btn-new-session" class="btn-primary" type="button">Tạo phiên mới</button>
           <button id="btn-load-session" class="btn-soft" type="button">Tải phiên cũ</button>
+          <button id="btn-delete-row" class="btn-danger" type="button" disabled>Xóa dòng đã chọn</button>
         </div>
       </div>
     </div>
@@ -136,6 +138,9 @@
         <button id="session-modal-close" class="modal-close" type="button">✕</button>
       </div>
       <div id="session-list"></div>
+      <div id="session-admin-actions" class="grid-actions" style="display:none;">
+        <button id="btn-delete-session" class="btn-danger" type="button" disabled>Xóa phiên kiểm đã chọn</button>
+      </div>
     </div>
   </div>
 </body>
