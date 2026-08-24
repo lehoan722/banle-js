@@ -87,10 +87,10 @@ function ensureStyles() {
     #dhkhan-panel .dhkhan-masp-link { color:#9b1c1c;font-weight:800;text-decoration:underline;cursor:pointer; }
     #dhkhan-panel .dhkhan-note { min-width:120px;max-width:230px;width:100%;box-sizing:border-box;padding:3px 5px; }
     #dhkhan-panel .dhkhan-status-select { min-width:100px;padding:3px 4px;font-size:13px; }
-    #dhkhan-panel tr[data-status="moi"] td { background:#fff4f2; }
-    #dhkhan-panel tr[data-status="da_chuyen"] td { background:#eaf8ee; }
-    #dhkhan-panel tr[data-status="het"] td { background:#fff8db;color:#6b5a00; }
-    #dhkhan-panel tr[data-status="huy"] td { background:#f1f1f1;color:#777; }
+    #dhkhan-panel tr[data-status="moi"] td { background:#ffffff; color:#111827; }
+    #dhkhan-panel tr[data-status="da_chuyen"] td { background:#e8f7ec; color:#14532d; }
+    #dhkhan-panel tr[data-status="het"] td { background:#eeeeee; color:#555555; }
+    #dhkhan-panel tr[data-status="huy"] td { background:#eee7ff; color:#5b3f8c; }
     #dhkhan-panel.dhkhan-flash { animation:dhkhanFlash .45s ease-in-out 0s 4 alternate; }
     @keyframes dhkhanFlash { from{box-shadow:0 0 0 2px #d00000,0 3px 14px rgba(0,0,0,.3)} to{box-shadow:0 0 0 6px rgba(208,0,0,.15),0 3px 14px rgba(0,0,0,.3)} }
 
@@ -319,15 +319,27 @@ function positionPanel() {
   const box=document.getElementById("dhkhan-panel"); if(!box||panelMode==="hidden") return;
   const mobile=window.matchMedia("(max-width:800px)").matches;
   const vh=window.visualViewport?.height||window.innerHeight;
-  box.style.left=mobile?"0":"6px"; box.style.right="auto"; box.style.width=mobile?"100vw":"760px"; box.style.maxWidth=mobile?"100vw":"96vw"; box.style.zIndex="9800";
+
+  // Panel khẩn luôn neo sát đáy màn hình.
+  // Không đặt top cố định để khi thay đổi chiều cao, mép dưới vẫn giữ nguyên vị trí.
+  box.style.left=mobile?"0":"6px";
+  box.style.right="auto";
+  box.style.width=mobile?"100vw":"760px";
+  box.style.maxWidth=mobile?"100vw":"96vw";
+  box.style.zIndex="9800";
+  box.style.top="auto";
+  box.style.bottom=mobile?"0":"6px";
+
   if(panelMode==="collapsed"){
-    const bay=document.getElementById("baymau-popup"); const bayTop=bay?.getBoundingClientRect()?.top;
-    const top=Number.isFinite(bayTop)?Math.max(6,bayTop-40):Math.max(6,vh-250);
-    box.style.top=`${Math.round(top)}px`; box.style.height="36px"; box.style.maxHeight="36px"; box.style.overflow="hidden"; return;
+    box.style.height="36px";
+    box.style.maxHeight="36px";
+    box.style.overflow="hidden";
+    return;
   }
-  box.style.top=mobile?"4px":"6px";
+
   box.style.height=mobile?`${Math.max(320,vh-78)}px`:`${Math.max(420,vh-92)}px`;
-  box.style.maxHeight=box.style.height; box.style.overflow="auto";
+  box.style.maxHeight=box.style.height;
+  box.style.overflow="auto";
 }
 function schedulePosition(){ clearTimeout(repositionTimer); repositionTimer=setTimeout(positionPanel,40); }
 function applyPanelMode(){
