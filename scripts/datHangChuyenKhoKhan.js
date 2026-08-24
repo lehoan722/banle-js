@@ -102,7 +102,11 @@ function ensureStyles() {
     #dhkhan-create-box .dhkhan-qty { width:100%;min-width:0;text-align:center; }
     #dhkhan-create-box .dhkhan-wide { grid-column:2 / 11; }
     #dhkhan-create-box .dhkhan-direction { font-weight:900;color:#1745d1;font-size:17px; }
+    #dhkhan-create-box .dhkhan-direction-btn { border:0;background:transparent;padding:2px 4px;color:#1745d1;font-weight:900;font-size:17px;text-decoration:underline;cursor:pointer; }
+    #dhkhan-create-box .dhkhan-direction-btn:hover { color:#d00000; }
+    #dhkhan-create-box .dhkhan-drag-handle { cursor:move;user-select:none;touch-action:none; }
     #dhkhan-create-box .dhkhan-actions { display:flex;gap:10px;justify-content:center;margin-top:12px; }
+    #dhkhan-confirm-direction { font-family:Arial,sans-serif; }
     #dhkhan-create-box .dhkhan-actions button { min-width:110px;padding:8px 14px;font-size:15px;font-weight:800; }
 
     @media(max-width:800px){
@@ -267,12 +271,26 @@ async function openFromStockQuick(popup,payload) {
   }
 
   // Khẩn cấp KHÔNG phụ thuộc luật gợi ý.
-  // Nếu có gợi ý thì chỉ điền sẵn SL vào lưới 38-46; người dùng được sửa/xóa/tự nhập size khác.
+  // Nếu có gợi ý thì dùng để điền sẵn SL và, khi toàn bộ gợi ý cùng một hướng,
+  // dùng luôn hướng đó làm hướng mặc định. Nếu gợi ý lẫn 2 hướng thì dùng hướng
+  // mặc định "cơ sở khác -> cơ sở đang đặt" để người dùng tự quyết định.
+  const suggestedDirs = [...new Set(
+    (suggestions || [])
+      .map(x => norm(x.huong_chuyen).toLowerCase())
+      .filter(x => ["1v2", "2v1"].includes(x))
+  )];
+  const initialDirection = suggestedDirs.length === 1 ? suggestedDirs[0] : null;
+
   if (panelMode === "hidden") {
     panelMode = "expanded";
     await refreshPanel({ forceOpen:true });
   }
-  showManualCreate({ masp, suggestedItems:suggestions, source:"stockquick" });
+  showManualCreate({
+    masp,
+    suggestedItems:suggestions,
+    source:"stockquick",
+    initialDirection
+  });
 }
 
 function renderRows(rows,canMoveSection,isAdmin) {
@@ -526,17 +544,117 @@ function bindManualCreateKeyboard(box) {
   box.querySelectorAll(".dhkhan-qty").forEach(input=>input.addEventListener("input",()=>sanitizeQtyInput(input)));
 }
 
+function dirToCosoPair(dir) {
+  const d = norm(dir).toLowerCase();
+  if (d === "1v2") return { dir:"1v2", from:"cs1", to:"cs2" };
+  if (d === "2v1") return { dir:"2v1", from:"cs2", to:"cs1" };
+  return null;
+}
+
+function defaultIncomingDirection() {
+  const coso = getCurrentCoso();
+  if (coso === "cs1") return "2v1";
+  if (coso === "cs2") return "1v2";
+  return "";
+}
+
+function directionLabel(dir) {
+  const p = dirToCosoPair(dir);
+  return p ? `${p.from.toUpperCase()} → ${p.to.toUpperCase()}` : "-";
+}
+
+function oppositeDirection(dir) {
+  return norm(dir).toLowerCase() === "1v2" ? "2v1" : "1v2";
+}
+
+function makeUrgentCreateDraggable(box, handle) {
+  if (!box || !handle || window.matchMedia("(max-width:800px)").matches) return;
+  let dragging = false;
+  let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+  handle.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest("button,input,select,textarea,a")) return;
+    const r = box.getBoundingClientRect();
+    dragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = r.left;
+    startTop = r.top;
+    box.style.left = `${startLeft}px`;
+    box.style.top = `${startTop}px`;
+    box.style.transform = "none";
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  const move = (e) => {
+    if (!dragging) return;
+    const maxLeft = Math.max(0, window.innerWidth - box.offsetWidth);
+    const maxTop = Math.max(0, window.innerHeight - Math.min(box.offsetHeight, window.innerHeight));
+    const nextLeft = Math.min(maxLeft, Math.max(0, startLeft + e.clientX - startX));
+    const nextTop = Math.min(maxTop, Math.max(0, startTop + e.clientY - startY));
+    box.style.left = `${nextLeft}px`;
+    box.style.top = `${nextTop}px`;
+    e.preventDefault();
+  };
+  const up = () => { dragging = false; };
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", up);
+  box.dataset.dragCleanup = "1";
+}
+
+function confirmUrgentDirection({ masp, direction, totalQty }) {
+  return new Promise((resolve) => {
+    document.getElementById("dhkhan-confirm-direction")?.remove();
+    const overlay = document.createElement("div");
+    overlay.id = "dhkhan-confirm-direction";
+    overlay.style.cssText = "position:fixed;inset:0;z-index:10120;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;padding:14px;";
+    overlay.innerHTML = `
+      <div style="width:min(430px,94vw);background:#fff;border:2px solid #d00000;border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.35);padding:16px;text-align:center;">
+        <div style="font-weight:900;font-size:19px;color:#9b0000;margin-bottom:12px;">XÁC NHẬN ĐẶT HÀNG KHẨN</div>
+        <div style="font-size:16px;line-height:1.55;">
+          Hướng đang đặt:<br>
+          <b style="font-size:22px;color:#1745d1;text-decoration:underline;">${esc(directionLabel(direction))}</b><br>
+          Mã: <b>${esc(masp)}</b> &nbsp;•&nbsp; Tổng SL: <b>${Number(totalQty||0)}</b>
+        </div>
+        <div style="display:flex;justify-content:center;gap:12px;margin-top:16px;">
+          <button id="dhkhan-confirm-cancel" style="min-width:110px;padding:9px 14px;font-weight:800;">Hủy</button>
+          <button id="dhkhan-confirm-ok" style="min-width:110px;padding:9px 14px;font-weight:900;background:#d00000;color:#fff;border:0;border-radius:6px;">Đồng ý</button>
+        </div>
+      </div>`;
+    // Không cho click trong popup xác nhận lan tới global close của StockQuick.
+    overlay.addEventListener("click", e => e.stopPropagation());
+    overlay.addEventListener("mousedown", e => e.stopPropagation());
+    document.body.appendChild(overlay);
+    const done = (v) => { overlay.remove(); resolve(v); };
+    overlay.querySelector("#dhkhan-confirm-cancel").onclick = (e) => { e.preventDefault(); e.stopPropagation(); done(false); };
+    overlay.querySelector("#dhkhan-confirm-ok").onclick = (e) => { e.preventDefault(); e.stopPropagation(); done(true); };
+  });
+}
+
 function showManualCreate(options={}) {
   document.getElementById("dhkhan-create-box")?.remove();
+  document.getElementById("dhkhan-confirm-direction")?.remove();
   if (panelMode === "hidden") { panelMode = "expanded"; refreshPanel({forceOpen:true}); }
-  const presetMasp=normMasp(options.masp||"");
-  const suggestedQty=buildSuggestedQtyMap(options.suggestedItems||[]);
-  const source=options.source||"manual";
-  const coso=getCurrentCoso(); const from=otherCoso(coso); if(!coso||!from) return alert("Không xác định được cơ sở hiện tại.");
-  const box=document.createElement("div"); box.id="dhkhan-create-box";
-  box.style.cssText=`position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:10090;background:#fff;border:2px solid #d00000;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.32);padding:12px;width:760px;max-width:98vw;overflow:auto;`;
-  box.innerHTML=`
-    <div style="font-weight:900;color:#111;font-size:18px;margin-bottom:10px;">🚨 ĐẶT HÀNG KHẨN CẤP</div>
+
+  const presetMasp = normMasp(options.masp || "");
+  const suggestedQty = buildSuggestedQtyMap(options.suggestedItems || []);
+  const source = options.source || "manual";
+  const coso = getCurrentCoso();
+  if (!coso) return alert("Không xác định được cơ sở hiện tại.");
+
+  // +Đặt khẩn trực tiếp: mặc định cơ sở khác -> cơ sở hiện tại.
+  // Mở từ StockQuick: nếu gợi ý có đúng 1 hướng thì ưu tiên hướng gợi ý.
+  let currentDirection = norm(options.initialDirection).toLowerCase();
+  if (!["1v2","2v1"].includes(currentDirection)) currentDirection = defaultIncomingDirection();
+  if (!["1v2","2v1"].includes(currentDirection)) return alert("Không xác định được hướng chuyển.");
+
+  const box = document.createElement("div");
+  box.id = "dhkhan-create-box";
+  box.style.cssText = `position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:10090;background:#fff;border:2px solid #d00000;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.32);padding:12px;width:760px;max-width:98vw;overflow:auto;`;
+  box.innerHTML = `
+    <div id="dhkhan-create-drag" class="dhkhan-drag-handle" style="font-weight:900;color:#111;font-size:18px;margin:-4px -4px 10px;padding:5px 4px;">🚨 ĐẶT HÀNG KHẨN CẤP</div>
     <div class="dhkhan-grid">
       <div class="dhkhan-grid-label">Mã SP</div>
       <input id="dhkhan-masp" class="dhkhan-wide" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;" value="${esc(presetMasp)}">
@@ -548,26 +666,87 @@ function showManualCreate(options={}) {
       ${SIZE_OPTIONS.map(s=>`<input class="dhkhan-qty" data-size="${s}" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" value="${suggestedQty.get(s)||""}">`).join("")}
 
       <div class="dhkhan-grid-label">Hướng</div>
-      <div class="dhkhan-wide dhkhan-direction">${from.toUpperCase()} → ${coso.toUpperCase()}</div>
+      <div class="dhkhan-wide dhkhan-direction">
+        <button id="dhkhan-direction-toggle" type="button" class="dhkhan-direction-btn" title="Bấm để đảo hướng chuyển">⇄ <span id="dhkhan-direction-label">${esc(directionLabel(currentDirection))}</span></button>
+      </div>
 
       <div class="dhkhan-grid-label">Ghi chú</div>
       <input id="dhkhan-note" class="dhkhan-wide" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" placeholder="VD: khách đang đợi">
     </div>
     <div class="dhkhan-actions"><button id="dhkhan-cancel">Hủy</button><button id="dhkhan-save" style="background:#d00000;color:#fff;border:0;border-radius:6px;">ĐẶT KHẨN</button></div>`;
-  document.body.appendChild(box); bindManualCreateKeyboard(box);
-  const maspEl=box.querySelector("#dhkhan-masp");
-  setTimeout(()=>{ const firstQty=[...box.querySelectorAll(".dhkhan-qty")].find(x=>!x.value); (presetMasp ? (firstQty||box.querySelector(".dhkhan-qty")) : maspEl)?.focus(); },20);
-  box.querySelector("#dhkhan-cancel").onclick=()=>box.remove();
-  box.querySelector("#dhkhan-save").onclick=async()=>{
-    const masp=normMasp(maspEl?.value); const note=box.querySelector("#dhkhan-note")?.value||"";
-    const qtyEntries=[...box.querySelectorAll(".dhkhan-qty")].map(input=>({size:input.dataset.size,soluong:Number(String(input.value||"").trim()||0)})).filter(x=>Number.isFinite(x.soluong)&&x.soluong>0);
-    if(!masp) return alert("Bạn cần nhập Mã SP.");
-    if(!qtyEntries.length) return alert("Bạn cần nhập số lượng cho ít nhất một size.");
-    const {data,error}=await ctx.supabase.from("dmhanghoa").select("masp").eq("masp",masp).maybeSingle();
-    if(error||!data) return alert("❌ Mã sản phẩm không tồn tại trong danh mục.");
-    const huong=from==="cs1"?"1v2":"2v1";
-    const items=qtyEntries.map(x=>({masp,size:x.size,soluong:x.soluong,huong_chuyen:huong,tu_coso:from,den_coso:coso}));
-    const ok=await insertUrgentOrders(items,note,source); if(ok) box.remove();
+
+  // Quan trọng: mọi click/mousedown trong popup khẩn không được lan tới document,
+  // nếu không global click handler của StockQuick sẽ đóng StockQuick phía sau.
+  box.addEventListener("click", e => e.stopPropagation());
+  box.addEventListener("mousedown", e => e.stopPropagation());
+  document.body.appendChild(box);
+  bindManualCreateKeyboard(box);
+  makeUrgentCreateDraggable(box, box.querySelector("#dhkhan-create-drag"));
+
+  const maspEl = box.querySelector("#dhkhan-masp");
+  const directionLabelEl = box.querySelector("#dhkhan-direction-label");
+  const refreshDirectionLabel = () => { if (directionLabelEl) directionLabelEl.textContent = directionLabel(currentDirection); };
+
+  box.querySelector("#dhkhan-direction-toggle")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    currentDirection = oppositeDirection(currentDirection);
+    refreshDirectionLabel();
+  });
+
+  setTimeout(() => {
+    const firstQty = [...box.querySelectorAll(".dhkhan-qty")].find(x => !x.value);
+    (presetMasp ? (firstQty || box.querySelector(".dhkhan-qty")) : maspEl)?.focus();
+  }, 20);
+
+  box.querySelector("#dhkhan-cancel").onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Chỉ đóng popup đặt khẩn; StockQuick phía sau giữ nguyên.
+    box.remove();
+  };
+
+  box.querySelector("#dhkhan-save").onclick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const masp = normMasp(maspEl?.value);
+    const note = box.querySelector("#dhkhan-note")?.value || "";
+    const qtyEntries = [...box.querySelectorAll(".dhkhan-qty")]
+      .map(input => ({size:input.dataset.size,soluong:Number(String(input.value||"").trim()||0)}))
+      .filter(x => Number.isFinite(x.soluong) && x.soluong > 0);
+
+    if (!masp) return alert("Bạn cần nhập Mã SP.");
+    if (!qtyEntries.length) return alert("Bạn cần nhập số lượng cho ít nhất một size.");
+
+    const {data,error} = await ctx.supabase.from("dmhanghoa").select("masp").eq("masp",masp).maybeSingle();
+    if (error || !data) return alert("❌ Mã sản phẩm không tồn tại trong danh mục.");
+
+    const pair = dirToCosoPair(currentDirection);
+    if (!pair) return alert("Không xác định được hướng chuyển.");
+
+    // Xác nhận lần cuối để tránh đặt nhầm hướng khi người dùng vừa đảo chiều.
+    const totalQty = qtyEntries.reduce((sum,x)=>sum+Number(x.soluong||0),0);
+    const confirmed = await confirmUrgentDirection({ masp, direction:currentDirection, totalQty });
+    if (!confirmed) {
+      // Giữ nguyên form và toàn bộ dữ liệu để người dùng đổi hướng / sửa SL.
+      return;
+    }
+
+    const items = qtyEntries.map(x => ({
+      masp,
+      size:x.size,
+      soluong:x.soluong,
+      huong_chuyen:pair.dir,
+      tu_coso:pair.from,
+      den_coso:pair.to
+    }));
+
+    const ok = await insertUrgentOrders(items,note,source);
+    if (ok) {
+      // Chỉ đóng popup đặt khẩn; không đóng StockQuick phía sau.
+      box.remove();
+    }
   };
 }
 
