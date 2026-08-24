@@ -3,8 +3,8 @@ import { khoiTaoDangNhapDungChung } from './authModule.js';
 
 window.supabase = supabase;
 
-// Dữ liệu FORM trong CSDL đã chuẩn hóa đúng 3 giá trị: bo / vua / rong
-const VALID_FORM = ['bo', 'vua', 'rong'];
+// Dữ liệu FORM trong CSDL chỉ chấp nhận đúng 3 giá trị viết hoa: BO / VUA / RONG
+const VALID_FORM = ['BO', 'VUA', 'RONG'];
 const VALID_RONG_ONG = ['16', '18', '20', '22'];
 const VALID_CO_GIAN = ['CO', 'KHONG'];
 
@@ -30,7 +30,7 @@ function normalizeText(value) {
 }
 
 function normalizeForm(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '').trim().toUpperCase();
 }
 
 function isMaspDuplicated(masp) {
@@ -89,7 +89,7 @@ function validateForm() {
     return false;
   }
 
-  // Giữ đúng giá trị chuẩn trong CSDL: bo / vua / rong
+  // Giữ đúng giá trị chuẩn trong CSDL: BO / VUA / RONG
   formInput.value = value;
   return true;
 }
@@ -205,9 +205,9 @@ async function processCurrentMasp() {
 
 function displayForm(value) {
   const v = normalizeForm(value);
-  if (v === 'bo') return 'Bó';
-  if (v === 'vua') return 'Vừa';
-  if (v === 'rong') return 'Rộng';
+  if (v === 'BO') return 'Bó';
+  if (v === 'VUA') return 'Vừa';
+  if (v === 'RONG') return 'Rộng';
   return value || '';
 }
 
@@ -316,7 +316,7 @@ async function saveRows() {
 
     // Chỉ ghi khi dữ liệu hiện tại đang trống; tuyệt đối không ghi đè.
     if ((current.form === null || current.form === '') && row.form) {
-      updateData.form = row.form; // bo / vua / rong
+      updateData.form = row.form; // BO / VUA / RONG
     }
 
     if ((current.rong_ong === null || current.rong_ong === '') && row.rong_ong) {
