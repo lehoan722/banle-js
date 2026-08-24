@@ -152,6 +152,13 @@
             background: #dcecff;
         }
 
+        /* Dòng bị bỏ qua khi Lưu: tô đỏ để nhận biết ngay. */
+        tr.row-skipped td {
+            background: #ffd6d6 !important;
+            color: #b00020;
+            font-weight: bold;
+        }
+
         .note {
             font-size: 13px;
             color: #666;
@@ -257,7 +264,7 @@
             <div class="note">
                 Form là bắt buộc. Rộng ống và Co giãn có thể bỏ trống.<br>
                 Sau khi quét Mã SP và nhấn Enter, hệ thống tự đưa xuống bảng và chỉ xóa ô Mã SP; các thông số đã chọn được giữ nguyên cho lần quét tiếp theo.<br>
-                Quy tắc lưu: chỉ cập nhật ô đang trống trong danh mục hàng hóa, không ghi đè dữ liệu cũ.
+                Quy tắc lưu: chỉ cập nhật ô đang trống trong danh mục hàng hóa, không ghi đè dữ liệu cũ. Dòng nào bị bỏ qua sau khi lưu sẽ được đánh dấu đỏ.
             </div>
         </div>
 
@@ -276,6 +283,6 @@
         </div>
     </div>
 
-    <script type="module" src="./scripts/ghithongsosanpham.js?v=20260824-1104"></script>
+    <script type="module" src="./scripts/ghithongsosanpham.js?v=20260824-1114"></script>
 </body>
 </html>
