@@ -11,6 +11,7 @@ const VALID_CO_GIAN = ['CO', 'KHONG'];
 let rows = [];
 let selectedIndex = -1;
 let productSuggestData = [];
+let isProcessingMasp = false;
 
 const maspInput = document.getElementById('maspInput');
 const formInput = document.getElementById('formInput');
@@ -173,6 +174,9 @@ function addCurrentRow() {
 }
 
 async function processCurrentMasp() {
+  if (isProcessingMasp) return;
+
+  // QUAN TRỌNG: tuyệt đối không reset Form / Rộng ống / Co giãn trong luồng Enter.
   if (!validateMasp()) return;
 
   if (isMaspDuplicated(maspInput.value)) {
@@ -184,7 +188,6 @@ async function processCurrentMasp() {
     return;
   }
 
-  // Form là bắt buộc: kiểm tra trước để thao tác quét nhanh và rõ lỗi.
   if (!validateForm()) return;
   if (!validateRongOng()) return;
   if (!validateCoGian()) return;
@@ -193,14 +196,20 @@ async function processCurrentMasp() {
   maspSuggestBox.innerHTML = '';
 
   const masp = normalizeText(maspInput.value);
-  const exists = await checkMaspExists(masp);
-  if (!exists) {
-    maspInput.focus();
-    maspInput.select();
-    return;
-  }
 
-  addCurrentRow();
+  isProcessingMasp = true;
+  try {
+    const exists = await checkMaspExists(masp);
+    if (!exists) {
+      maspInput.focus();
+      maspInput.select();
+      return;
+    }
+
+    addCurrentRow();
+  } finally {
+    isProcessingMasp = false;
+  }
 }
 
 function displayForm(value) {
@@ -359,6 +368,31 @@ maspInput.addEventListener('keydown', async (e) => {
   if (e.key !== 'Enter') return;
   e.preventDefault();
   await processCurrentMasp();
+});
+
+// Nếu đã nhập Mã SP nhưng quên chọn Form: sau khi chọn Form, nhấn Enter
+// sẽ xử lý luôn chính Mã SP đang nằm trong ô, KHÔNG xóa Form.
+formInput.addEventListener('keydown', async (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  if (normalizeText(maspInput.value)) {
+    await processCurrentMasp();
+  } else {
+    maspInput.focus();
+  }
+});
+
+// Rộng ống / Co giãn cũng hỗ trợ Enter tương tự để thao tác bằng bàn phím nhanh.
+[rongOngInput, coGianInput].forEach(el => {
+  el.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (normalizeText(maspInput.value)) {
+      await processCurrentMasp();
+    } else {
+      maspInput.focus();
+    }
+  });
 });
 
 document.getElementById('btnThemMoi').addEventListener('click', resetAll);
