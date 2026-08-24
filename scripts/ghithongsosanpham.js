@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient.js';
+import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 import { khoiTaoDangNhapDungChung } from './authModule.js';
 
 window.supabase = supabase;
@@ -24,6 +25,21 @@ const messageEl = document.getElementById('message');
 function showMessage(msg, isOk = false) {
   messageEl.style.color = isOk ? '#168a2f' : '#d63333';
   messageEl.textContent = msg || '';
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function playTripleAlertBeep() {
+  for (let i = 0; i < 3; i++) {
+    try { playAlertBeep(); } catch (_) {}
+    if (i < 2) await sleep(300);
+  }
+}
+
+function playInsertedBeep() {
+  try { playSuccessBeep(); } catch (_) {}
 }
 
 function normalizeText(value) {
@@ -147,6 +163,7 @@ function addCurrentRow() {
 
   if (isMaspDuplicated(maspInput.value)) {
     showMessage(`Mã sản phẩm ${maspInput.value} đã tồn tại trong bảng kết quả.`);
+    void playTripleAlertBeep();
     maspInput.focus();
     maspInput.select();
     return false;
@@ -166,6 +183,7 @@ function addCurrentRow() {
   rows.push(row);
   selectedIndex = rows.length - 1;
   renderTable();
+  playInsertedBeep();
 
   // Sau khi thêm chỉ xóa Mã SP.
   // Form / Rộng ống / Co giãn được giữ nguyên để quét liên tục.
@@ -183,6 +201,7 @@ async function processCurrentMasp() {
     maspSuggestBox.style.display = 'none';
     maspSuggestBox.innerHTML = '';
     showMessage(`Mã sản phẩm ${maspInput.value} đã tồn tại trong bảng kết quả.`);
+    await playTripleAlertBeep();
     maspInput.focus();
     maspInput.select();
     return;
@@ -427,6 +446,8 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+  try { setupBeepUnlockOnce(document); } catch (_) {}
+
   khoiTaoDangNhapDungChung({
     appContainerId: 'app-container',
     macDinhDiaDiem: 'cs1',
