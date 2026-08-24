@@ -4,7 +4,7 @@ import { khoiTaoDangNhapDungChung } from './authModule.js';
 window.supabase = supabase;
 
 // Dữ liệu FORM trong CSDL đã chuẩn hóa đúng 3 giá trị: bo / vua / rong
-const VALID_FORM = ['bo', 'vua', 'rong'];
+const VALID_FORM = ['BO', 'VUA', 'RONG'];
 const VALID_RONG_ONG = ['16', '18', '20', '22'];
 const VALID_CO_GIAN = ['CO', 'KHONG'];
 
@@ -205,9 +205,9 @@ async function processCurrentMasp() {
 
 function displayForm(value) {
   const v = normalizeForm(value);
-  if (v === 'bo') return 'Bó';
-  if (v === 'vua') return 'Vừa';
-  if (v === 'rong') return 'Rộng';
+  if (v === 'BO') return 'Bó';
+  if (v === 'VUA') return 'Vừa';
+  if (v === 'RONG') return 'Rộng';
   return value || '';
 }
 
