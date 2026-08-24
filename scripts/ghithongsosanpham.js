@@ -233,6 +233,7 @@ function renderTable() {
   rows.forEach((row, index) => {
     const tr = document.createElement('tr');
     if (index === selectedIndex) tr.classList.add('selected');
+    if (row.saveStatus === 'skipped') tr.classList.add('row-skipped');
 
     tr.innerHTML = `
       <td>${row.masp}</td>
@@ -308,6 +309,10 @@ async function saveRows() {
   let skippedCount = 0;
   let errorCount = 0;
 
+  // Mỗi lần bấm Lưu sẽ tính lại trạng thái của toàn bộ dòng.
+  // Chỉ những dòng thực sự bị bỏ qua mới được đánh dấu đỏ.
+  rows.forEach(row => { row.saveStatus = ''; });
+
   for (const row of rows) {
     const { data: current, error: readError } = await supabase
       .from('dmhanghoa')
@@ -337,6 +342,7 @@ async function saveRows() {
     }
 
     if (!Object.keys(updateData).length) {
+      row.saveStatus = 'skipped';
       skippedCount++;
       continue;
     }
@@ -353,6 +359,9 @@ async function saveRows() {
       updatedCount++;
     }
   }
+
+  // Render lại sau khi lưu để các dòng bị bỏ qua hiện màu đỏ ngay.
+  renderTable();
 
   showMessage(
     `Đã lưu xong. Cập nhật: ${updatedCount}, bỏ qua: ${skippedCount}, lỗi: ${errorCount}.`,
