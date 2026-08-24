@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
     <meta charset="UTF-8">
     <title>Ghi thông số sản phẩm</title>
@@ -35,8 +34,8 @@
 
         .form-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr;
-            gap: 8px;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 12px;
             align-items: end;
         }
 
@@ -53,17 +52,28 @@
         input,
         select {
             width: 100%;
-            height: 38px;
+            height: 40px;
             box-sizing: border-box;
             font-size: 16px;
-            padding: 6px 8px;
+            padding: 6px 10px;
+            border: 1px solid #cfd4da;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        .required-mark {
+            color: #d63333;
         }
 
         .suggest-box {
             position: absolute;
             left: 0;
             right: 0;
-            bottom: 66px;
+            top: 66px;
             background: white;
             border: 1px solid #bbb;
             z-index: 99;
@@ -83,33 +93,11 @@
             background: #eaf2ff;
         }
 
-        .quick-options {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-
-        .quick-btn {
-            border: 1px solid #ccc;
-            background: white;
-            color: #333;
-            border-radius: 8px;
-            padding: 10px 14px;
-            font-size: 15px;
-            cursor: pointer;
-            min-width: 70px;
-        }
-
-        .quick-btn.active {
-            background: #1f7ae0;
-            color: white;
-            border-color: #1f7ae0;
-        }
-
         .btn-row {
             display: flex;
             gap: 8px;
-            margin-top: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
         }
 
         button {
@@ -168,6 +156,7 @@
             font-size: 13px;
             color: #666;
             margin-top: 6px;
+            line-height: 1.4;
         }
 
         @media (max-width: 700px) {
@@ -180,12 +169,13 @@
             }
 
             .form-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
             }
 
             .btn-row {
                 display: grid;
-                grid-template-columns: 1fr 1fr 1fr;
+                grid-template-columns: repeat(3, 1fr);
             }
 
             button {
@@ -225,46 +215,39 @@
                 </div>
 
                 <div class="field">
-                    <label>Form</label>
-
-                    <div class="quick-options">
-                        <button type="button" class="quick-btn form-btn" data-value="SLIM">SLIM</button>
-                        <button type="button" class="quick-btn form-btn" data-value="REGULAR">REGULAR</button>
-                        <button type="button" class="quick-btn form-btn" data-value="WIDE">WIDE</button>
-                    </div>
-
-                    <input id="formInput" type="hidden">
+                    <label for="formInput">Form <span class="required-mark">*</span></label>
+                    <select id="formInput">
+                        <option value="">-- Chọn Form --</option>
+                        <option value="bo">Bó</option>
+                        <option value="vua">Vừa</option>
+                        <option value="rong">Rộng</option>
+                    </select>
                 </div>
 
                 <div class="field">
-                    <label>Rộng ống</label>
-
-                    <div class="quick-options">
-                        <button type="button" class="quick-btn rong-btn" data-value="16">16</button>
-                        <button type="button" class="quick-btn rong-btn" data-value="18">18</button>
-                        <button type="button" class="quick-btn rong-btn" data-value="20">20</button>
-                        <button type="button" class="quick-btn rong-btn" data-value="22">22</button>
-                    </div>
-
-                    <input id="rongOngInput" type="hidden">
+                    <label for="rongOngInput">Rộng ống</label>
+                    <select id="rongOngInput">
+                        <option value="">-- Bỏ trống --</option>
+                        <option value="16">16</option>
+                        <option value="18">18</option>
+                        <option value="20">20</option>
+                        <option value="22">22</option>
+                    </select>
                 </div>
 
                 <div class="field">
-                    <label>Co giãn</label>
-
-                    <div class="quick-options">
-                        <button type="button" class="quick-btn cogian-btn" data-value="CO">CO</button>
-                        <button type="button" class="quick-btn cogian-btn" data-value="KHONG">KHONG</button>
-                    </div>
-
-                    <input id="coGianInput" type="hidden">
+                    <label for="coGianInput">Co giãn</label>
+                    <select id="coGianInput">
+                        <option value="">-- Bỏ trống --</option>
+                        <option value="CO">Có</option>
+                        <option value="KHONG">Không</option>
+                    </select>
                 </div>
-
             </div>
 
             <div class="btn-row">
                 <button id="btnOk" class="btn-blue">OK</button>
-                <button id="btnThemMoi" class="btn-blue">Thêm mới</button>                
+                <button id="btnThemMoi" class="btn-blue">Thêm mới</button>
                 <button id="btnLuu" class="btn-blue">Lưu</button>
                 <button id="btnCopy" class="btn-gray">Copy</button>
                 <button id="btnXoaDong" class="btn-red">Xóa dòng</button>
@@ -272,6 +255,8 @@
 
             <div id="message" class="message"></div>
             <div class="note">
+                Form là bắt buộc. Rộng ống và Co giãn có thể bỏ trống.<br>
+                Sau khi quét Mã SP và nhấn Enter, hệ thống tự đưa xuống bảng và chỉ xóa ô Mã SP; các thông số đã chọn được giữ nguyên cho lần quét tiếp theo.<br>
                 Quy tắc lưu: chỉ cập nhật ô đang trống trong danh mục hàng hóa, không ghi đè dữ liệu cũ.
             </div>
         </div>
@@ -293,5 +278,4 @@
 
     <script type="module" src="./scripts/ghithongsosanpham.js"></script>
 </body>
-
 </html>
