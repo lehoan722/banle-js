@@ -3,7 +3,8 @@ import { khoiTaoDangNhapDungChung } from './authModule.js';
 
 window.supabase = supabase;
 
-const VALID_FORM = ['SLIM', 'REGULAR', 'WIDE'];
+// Dữ liệu FORM trong CSDL đã chuẩn hóa đúng 3 giá trị: bo / vua / rong
+const VALID_FORM = ['bo', 'vua', 'rong'];
 const VALID_RONG_ONG = ['16', '18', '20', '22'];
 const VALID_CO_GIAN = ['CO', 'KHONG'];
 
@@ -18,75 +19,39 @@ const coGianInput = document.getElementById('coGianInput');
 const maspSuggestBox = document.getElementById('maspSuggestBox');
 const resultBody = document.getElementById('resultBody');
 const messageEl = document.getElementById('message');
-const formBtns = document.querySelectorAll('.form-btn');
-const rongBtns = document.querySelectorAll('.rong-btn');
-const coGianBtns = document.querySelectorAll('.cogian-btn');
+
 function showMessage(msg, isOk = false) {
   messageEl.style.color = isOk ? '#168a2f' : '#d63333';
   messageEl.textContent = msg || '';
-}
-
-function activeButton(buttons, clickedBtn, inputEl) {
-  if (!clickedBtn) {
-    buttons.forEach(btn => btn.classList.remove('active'));
-    inputEl.value = '';
-    return;
-  }
-
-  const wasActive = clickedBtn.classList.contains('active');
-
-  buttons.forEach(btn => btn.classList.remove('active'));
-
-  if (wasActive) {
-    inputEl.value = '';
-    return;
-  }
-
-  clickedBtn.classList.add('active');
-  inputEl.value = clickedBtn.dataset.value || '';
 }
 
 function normalizeText(value) {
   return String(value || '').trim().toUpperCase();
 }
 
+function normalizeForm(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 function isMaspDuplicated(masp) {
   return rows.some(r => normalizeText(r.masp) === normalizeText(masp));
 }
 
-function openPicker(el) {
-  if (!el) return;
-  el.focus();
-  if (typeof el.showPicker === 'function') {
-    setTimeout(() => el.showPicker(), 80);
-  }
-}
-
-function openPickerDelay(el, delay = 450) {
-  if (!el) return;
-
-  setTimeout(() => {
-    el.focus();
-
-    if (typeof el.showPicker === 'function') {
-      try {
-        el.showPicker();
-      } catch (e) {
-        console.warn('showPicker bị chặn:', e);
-      }
-    }
-  }, delay);
+function resetMaspOnly() {
+  maspInput.value = '';
+  maspSuggestBox.style.display = 'none';
+  maspSuggestBox.innerHTML = '';
+  showMessage('');
+  setTimeout(() => maspInput.focus(), 30);
 }
 
 function resetInputOnly() {
-  formBtns.forEach(btn => btn.classList.remove('active'));
-  rongBtns.forEach(btn => btn.classList.remove('active'));
-  coGianBtns.forEach(btn => btn.classList.remove('active'));
   maspInput.value = '';
   formInput.value = '';
   rongOngInput.value = '';
   coGianInput.value = '';
   maspSuggestBox.style.display = 'none';
+  maspSuggestBox.innerHTML = '';
   showMessage('');
   setTimeout(() => maspInput.focus(), 50);
 }
@@ -110,49 +75,47 @@ function validateMasp() {
 }
 
 function validateForm() {
-  const value = normalizeText(formInput.value);
+  const value = normalizeForm(formInput.value);
+
   if (!value) {
-    formInput.value = '';
-    return true;
-  }
-  if (!VALID_FORM.includes(value)) {
-    showMessage('Form chỉ được nhập: SLIM / REGULAR / WIDE.');
+    showMessage('Bạn bắt buộc phải chọn Form trước khi đưa sản phẩm xuống bảng.');
     formInput.focus();
-    formInput.select();
     return false;
   }
+
+  if (!VALID_FORM.includes(value)) {
+    showMessage('Form chỉ được chọn: Bó / Vừa / Rộng.');
+    formInput.focus();
+    return false;
+  }
+
+  // Giữ đúng giá trị chuẩn trong CSDL: bo / vua / rong
   formInput.value = value;
   return true;
 }
 
 function validateRongOng() {
-  const value = normalizeText(rongOngInput.value);
-  if (!value) {
-    rongOngInput.value = '';
-    return true;
-  }
+  const value = String(rongOngInput.value || '').trim();
+  if (!value) return true;
+
   if (!VALID_RONG_ONG.includes(value)) {
-    showMessage('Rộng ống chỉ được nhập: 16 / 18 / 20 / 22.');
+    showMessage('Rộng ống chỉ được chọn: 16 / 18 / 20 / 22.');
     rongOngInput.focus();
-    rongOngInput.select();
     return false;
   }
-  rongOngInput.value = value;
   return true;
 }
 
 function validateCoGian() {
   const value = normalizeText(coGianInput.value);
-  if (!value) {
-    coGianInput.value = '';
-    return true;
-  }
+  if (!value) return true;
+
   if (!VALID_CO_GIAN.includes(value)) {
-    showMessage('Co giãn chỉ được nhập: CO / KHONG.');
+    showMessage('Co giãn chỉ được chọn: Có / Không.');
     coGianInput.focus();
-    coGianInput.select();
     return false;
   }
+
   coGianInput.value = value;
   return true;
 }
@@ -160,7 +123,7 @@ function validateCoGian() {
 async function checkMaspExists(masp) {
   const { data, error } = await supabase
     .from('dmhanghoa')
-    .select('masp, form')
+    .select('masp')
     .eq('masp', masp)
     .maybeSingle();
 
@@ -175,48 +138,84 @@ async function checkMaspExists(masp) {
     return false;
   }
 
-  if (data.form !== null && String(data.form).trim() !== '') {
-    showMessage(`Mã sản phẩm ${masp} đã có thông số sản phẩm, không cần nhập lại.`);
-    return false;
-  }
-
   return true;
 }
 
 function addCurrentRow() {
-  if (!validateMasp()) return;
+  if (!validateMasp()) return false;
+
   if (isMaspDuplicated(maspInput.value)) {
+    showMessage(`Mã sản phẩm ${maspInput.value} đã tồn tại trong bảng kết quả.`);
+    maspInput.focus();
+    maspInput.select();
+    return false;
+  }
+
+  if (!validateForm()) return false;
+  if (!validateRongOng()) return false;
+  if (!validateCoGian()) return false;
+
+  const row = {
+    masp: normalizeText(maspInput.value),
+    form: normalizeForm(formInput.value),
+    rong_ong: String(rongOngInput.value || '').trim(),
+    co_gian: normalizeText(coGianInput.value)
+  };
+
+  rows.push(row);
+  selectedIndex = rows.length - 1;
+  renderTable();
+
+  // Sau khi thêm chỉ xóa Mã SP.
+  // Form / Rộng ống / Co giãn được giữ nguyên để quét liên tục.
+  resetMaspOnly();
+  return true;
+}
+
+async function processCurrentMasp() {
+  if (!validateMasp()) return;
+
+  if (isMaspDuplicated(maspInput.value)) {
+    maspSuggestBox.style.display = 'none';
+    maspSuggestBox.innerHTML = '';
     showMessage(`Mã sản phẩm ${maspInput.value} đã tồn tại trong bảng kết quả.`);
     maspInput.focus();
     maspInput.select();
     return;
   }
+
+  // Form là bắt buộc: kiểm tra trước để thao tác quét nhanh và rõ lỗi.
   if (!validateForm()) return;
-
-  if (!normalizeText(formInput.value)) {
-    showMessage('Bạn bắt buộc phải chọn Form trước khi đưa sản phẩm xuống bảng.');
-    return;
-  }
-
   if (!validateRongOng()) return;
   if (!validateCoGian()) return;
 
-  const row = {
-    masp: normalizeText(maspInput.value),
-    form: normalizeText(formInput.value),
-    rong_ong: normalizeText(rongOngInput.value),
-    co_gian: normalizeText(coGianInput.value)
-  };
+  maspSuggestBox.style.display = 'none';
+  maspSuggestBox.innerHTML = '';
 
-  if (!row.form && !row.rong_ong && !row.co_gian) {
-    showMessage('Bạn chưa nhập thông số nào để ghi.');
+  const masp = normalizeText(maspInput.value);
+  const exists = await checkMaspExists(masp);
+  if (!exists) {
+    maspInput.focus();
+    maspInput.select();
     return;
   }
 
-  rows.push(row);
-  selectedIndex = rows.length - 1;
-  renderTable();
-  resetInputOnly();
+  addCurrentRow();
+}
+
+function displayForm(value) {
+  const v = normalizeForm(value);
+  if (v === 'bo') return 'Bó';
+  if (v === 'vua') return 'Vừa';
+  if (v === 'rong') return 'Rộng';
+  return value || '';
+}
+
+function displayCoGian(value) {
+  const v = normalizeText(value);
+  if (v === 'CO') return 'Có';
+  if (v === 'KHONG') return 'Không';
+  return value || '';
 }
 
 function renderTable() {
@@ -227,11 +226,11 @@ function renderTable() {
     if (index === selectedIndex) tr.classList.add('selected');
 
     tr.innerHTML = `
-            <td>${row.masp}</td>
-            <td>${row.form || ''}</td>
-            <td>${row.rong_ong || ''}</td>
-            <td>${row.co_gian || ''}</td>
-        `;
+      <td>${row.masp}</td>
+      <td>${displayForm(row.form)}</td>
+      <td>${row.rong_ong || ''}</td>
+      <td>${displayCoGian(row.co_gian)}</td>
+    `;
 
     tr.addEventListener('click', () => {
       selectedIndex = index;
@@ -272,11 +271,11 @@ function renderSuggest() {
   }
 
   maspSuggestBox.innerHTML = productSuggestData.map(sp => `
-        <div class="suggest-item" data-masp="${sp.masp}">
-            <b>${sp.masp}</b><br>
-            <span>${sp.tensp || ''}</span>
-        </div>
-    `).join('');
+    <div class="suggest-item" data-masp="${sp.masp}">
+      <b>${sp.masp}</b><br>
+      <span>${sp.tensp || ''}</span>
+    </div>
+  `).join('');
 
   maspSuggestBox.style.display = 'block';
 
@@ -284,7 +283,8 @@ function renderSuggest() {
     item.addEventListener('mousedown', () => {
       maspInput.value = item.dataset.masp || '';
       maspSuggestBox.style.display = 'none';
-      setTimeout(() => formInput.focus(), 50);
+      maspSuggestBox.innerHTML = '';
+      setTimeout(() => maspInput.focus(), 30);
     });
   });
 }
@@ -314,8 +314,9 @@ async function saveRows() {
 
     const updateData = {};
 
+    // Chỉ ghi khi dữ liệu hiện tại đang trống; tuyệt đối không ghi đè.
     if ((current.form === null || current.form === '') && row.form) {
-      updateData.form = row.form;
+      updateData.form = row.form; // bo / vua / rong
     }
 
     if ((current.rong_ong === null || current.rong_ong === '') && row.rong_ong) {
@@ -356,49 +357,8 @@ maspInput.addEventListener('input', async () => {
 
 maspInput.addEventListener('keydown', async (e) => {
   if (e.key !== 'Enter') return;
-
   e.preventDefault();
-
-  if (!validateMasp()) return;
-  if (isMaspDuplicated(maspInput.value)) {
-    maspSuggestBox.style.display = 'none';
-    maspSuggestBox.innerHTML = '';
-    showMessage(`Mã sản phẩm ${maspInput.value} đã tồn tại trong bảng kết quả.`);
-    maspInput.focus();
-    maspInput.select();
-    return;
-  }
-
-  maspSuggestBox.style.display = 'none';
-  maspSuggestBox.innerHTML = '';
-
-  const exists = await checkMaspExists(maspInput.value);
-  if (!exists) {
-    maspInput.focus();
-    maspInput.select();
-    return;
-  }
-
-  maspSuggestBox.style.display = 'none';
-  openPicker(formInput);
-});
-
-formBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    activeButton(formBtns, btn, formInput);
-  });
-});
-
-rongBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    activeButton(rongBtns, btn, rongOngInput);
-  });
-});
-
-coGianBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    activeButton(coGianBtns, btn, coGianInput);
-  });
+  await processCurrentMasp();
 });
 
 document.getElementById('btnThemMoi').addEventListener('click', resetAll);
@@ -435,8 +395,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-document.getElementById('btnOk').addEventListener('click', () => {
-  addCurrentRow();
+document.getElementById('btnOk').addEventListener('click', async () => {
+  await processCurrentMasp();
 });
 
 document.getElementById('btnCopy').addEventListener('click', async () => {
