@@ -4,214 +4,74 @@
     <meta charset="UTF-8">
     <title>Ghi thông số sản phẩm</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 15px;
-            margin: 0;
-            background: #f4f6f8;
-        }
+        body { font-family: Arial, sans-serif; font-size: 15px; margin: 0; background: #f4f6f8; }
+        #app-container { max-width: 1000px; margin: 0 auto; padding: 12px; }
+        h2 { margin: 8px 0 8px; font-size: 22px; }
+        .top-line { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+        .mode-badge { display:inline-block; border-radius:999px; padding:5px 10px; font-size:12px; font-weight:700; }
+        .mode-badge.entry { background:#e8f5e9; color:#176b2c; }
+        .mode-badge.saved { background:#fff3cd; color:#8a6500; }
+        .mode-badge.history { background:#e8eaf6; color:#303f9f; }
+        .card { background:white; border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:12px; }
+        .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; align-items:end; }
+        .field { position:relative; }
+        label { display:block; font-weight:bold; margin-bottom:4px; }
+        input, select { width:100%; height:40px; box-sizing:border-box; font-size:16px; padding:6px 10px; border:1px solid #cfd4da; border-radius:8px; background:#fff; }
+        select { cursor:pointer; }
+        input:disabled, select:disabled, button:disabled { opacity:.55; cursor:not-allowed; }
+        .required-mark { color:#d63333; }
+        .suggest-box { position:absolute; left:0; right:0; top:66px; background:white; border:1px solid #bbb; z-index:99; max-height:220px; overflow-y:auto; display:none; box-shadow:0 3px 8px rgba(0,0,0,.15); }
+        .suggest-item { padding:7px 8px; border-bottom:1px solid #eee; cursor:pointer; }
+        .suggest-item:hover { background:#eaf2ff; }
+        .btn-row { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+        button { border:none; border-radius:6px; padding:10px 14px; font-size:16px; cursor:pointer; }
+        .btn-blue { background:#1f7ae0; color:white; }
+        .btn-red { background:#d63333; color:white; }
+        .btn-gray { background:#666; color:white; }
+        .btn-green { background:#198754; color:white; }
+        .message { margin-top:8px; color:#d63333; font-weight:bold; min-height:20px; }
+        table { width:100%; border-collapse:collapse; background:white; }
+        th, td { border:1px solid #ccc; padding:7px; text-align:left; font-size:15px; }
+        th { background:#f1f1f1; }
+        tr.selected td { background:#dcecff; }
+        tr.row-skipped td { background:#ffd6d6 !important; color:#b00020; font-weight:bold; }
+        tr.row-error td { background:#ffb8b8 !important; color:#8b0000; font-weight:bold; }
+        .masp-cell { color:#0b57d0; text-decoration:underline; cursor:pointer; font-weight:700; }
+        .note { font-size:13px; color:#666; margin-top:6px; line-height:1.45; }
 
-        #app-container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 12px;
-        }
+        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:10000; padding:18px; box-sizing:border-box; align-items:center; justify-content:center; }
+        .modal.show { display:flex; }
+        .modal-box { width:min(980px, 100%); max-height:88vh; overflow:auto; background:#fff; border-radius:10px; box-shadow:0 12px 34px rgba(0,0,0,.25); }
+        .modal-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid #ddd; position:sticky; top:0; background:#fff; z-index:2; }
+        .modal-head h3 { margin:0; font-size:19px; }
+        .modal-body { padding:12px 14px 16px; }
+        .close-btn { background:#eee; color:#333; padding:7px 11px; }
+        .filter-grid { display:grid; grid-template-columns:180px 1fr auto auto; gap:8px; align-items:end; margin-bottom:10px; }
+        .history-wrap { overflow:auto; max-height:55vh; }
+        .history-row { cursor:pointer; }
+        .history-row:hover td { background:#edf5ff; }
+        .skip-number { color:#b00020; font-weight:700; }
+        #historyStatus { margin:8px 0; font-size:13px; color:#555; }
 
-        h2 {
-            margin: 8px 0 14px;
-            font-size: 22px;
-        }
-
-        .card {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px 12px;
-            align-items: end;
-        }
-
-        .field {
-            position: relative;
-        }
-
-        label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-
-        input,
-        select {
-            width: 100%;
-            height: 40px;
-            box-sizing: border-box;
-            font-size: 16px;
-            padding: 6px 10px;
-            border: 1px solid #cfd4da;
-            border-radius: 8px;
-            background: #fff;
-        }
-
-        select {
-            cursor: pointer;
-        }
-
-        .required-mark {
-            color: #d63333;
-        }
-
-        .suggest-box {
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 66px;
-            background: white;
-            border: 1px solid #bbb;
-            z-index: 99;
-            max-height: 220px;
-            overflow-y: auto;
-            display: none;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        .suggest-item {
-            padding: 7px 8px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-        }
-
-        .suggest-item:hover {
-            background: #eaf2ff;
-        }
-
-        .btn-row {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-            flex-wrap: wrap;
-        }
-
-        button {
-            border: none;
-            border-radius: 6px;
-            padding: 10px 14px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        .btn-blue {
-            background: #1f7ae0;
-            color: white;
-        }
-
-        .btn-red {
-            background: #d63333;
-            color: white;
-        }
-
-        .btn-gray {
-            background: #666;
-            color: white;
-        }
-
-        .message {
-            margin-top: 8px;
-            color: #d63333;
-            font-weight: bold;
-            min-height: 20px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-
-        th,
-        td {
-            border: 1px solid #ccc;
-            padding: 7px;
-            text-align: left;
-            font-size: 15px;
-        }
-
-        th {
-            background: #f1f1f1;
-        }
-
-        tr.selected {
-            background: #dcecff;
-        }
-
-        /* Dòng bị bỏ qua khi Lưu: tô đỏ để nhận biết ngay. */
-        tr.row-skipped td {
-            background: #ffd6d6 !important;
-            color: #b00020;
-            font-weight: bold;
-        }
-
-        .note {
-            font-size: 13px;
-            color: #666;
-            margin-top: 6px;
-            line-height: 1.4;
-        }
-
-        @media (max-width: 700px) {
-            #app-container {
-                padding: 8px;
-            }
-
-            h2 {
-                font-size: 20px;
-            }
-
-            .form-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-            }
-
-            .btn-row {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-            }
-
-            button {
-                padding: 11px 6px;
-                font-size: 15px;
-            }
-
-            th,
-            td {
-                font-size: 13px;
-                padding: 6px 4px;
-            }
-
-            .suggest-box {
-                position: fixed;
-                left: 12px;
-                right: 12px;
-                top: auto;
-                bottom: 16px;
-                max-height: 45vh;
-                z-index: 9999;
-            }
+        @media (max-width:700px) {
+            #app-container { padding:8px; }
+            h2 { font-size:20px; }
+            .form-grid { grid-template-columns:1fr 1fr; gap:8px; }
+            .btn-row { display:grid; grid-template-columns:repeat(3, 1fr); }
+            button { padding:11px 6px; font-size:15px; }
+            th, td { font-size:13px; padding:6px 4px; }
+            .suggest-box { position:fixed; left:12px; right:12px; top:auto; bottom:16px; max-height:45vh; z-index:9999; }
+            .filter-grid { grid-template-columns:1fr 1fr; }
+            .filter-grid button { width:100%; }
+            .modal { padding:8px; }
         }
     </style>
 </head>
-
 <body>
     <div id="app-container">
         <h2>GHI THÔNG SỐ SẢN PHẨM</h2>
+        <div class="top-line"><span id="modeBadge" class="mode-badge entry">ĐANG NHẬP</span></div>
 
         <div class="card">
             <div class="form-grid">
@@ -220,7 +80,6 @@
                     <input id="maspInput" type="text" autocomplete="off" placeholder="Quét hoặc nhập mã SP">
                     <div id="maspSuggestBox" class="suggest-box"></div>
                 </div>
-
                 <div class="field">
                     <label for="formInput">Form <span class="required-mark">*</span></label>
                     <select id="formInput">
@@ -230,7 +89,6 @@
                         <option value="RONG">Rộng</option>
                     </select>
                 </div>
-
                 <div class="field">
                     <label for="rongOngInput">Rộng ống</label>
                     <select id="rongOngInput">
@@ -241,7 +99,6 @@
                         <option value="22">22</option>
                     </select>
                 </div>
-
                 <div class="field">
                     <label for="coGianInput">Co giãn</label>
                     <select id="coGianInput">
@@ -256,34 +113,59 @@
                 <button id="btnOk" class="btn-blue">OK</button>
                 <button id="btnThemMoi" class="btn-blue">Thêm mới</button>
                 <button id="btnLuu" class="btn-blue">Lưu</button>
+                <button id="btnTaiDuLieu" class="btn-green">Tải dữ liệu</button>
                 <button id="btnCopy" class="btn-gray">Copy</button>
                 <button id="btnXoaDong" class="btn-red">Xóa dòng</button>
             </div>
 
             <div id="message" class="message"></div>
             <div class="note">
-                Form là bắt buộc. Rộng ống và Co giãn có thể bỏ trống.<br>
-                Sau khi quét Mã SP và nhấn Enter, hệ thống tự đưa xuống bảng và chỉ xóa ô Mã SP; các thông số đã chọn được giữ nguyên cho lần quét tiếp theo.<br>
-                Quy tắc lưu: chỉ cập nhật ô đang trống trong danh mục hàng hóa, không ghi đè dữ liệu cũ. Dòng nào bị bỏ qua sau khi lưu sẽ được đánh dấu đỏ.<br>
-                Âm thanh: thêm mã thành công = 1 tiếng “tinh”; mã trùng không được thêm = 3 tiếng cảnh báo liên tiếp.
+                Form là bắt buộc; Rộng ống và Co giãn có thể bỏ trống. Enter thành công = 1 tiếng “tinh”. Mọi trường hợp báo lỗi/không đưa được mã xuống bảng = 3 tiếng “tu tu tu”.<br>
+                Khi bấm Lưu, hệ thống vừa cập nhật các ô còn trống trong <b>dmhanghoa</b> vừa tạo lịch sử phiên để biết nhân viên và thời gian nhập. Dòng bị bỏ qua sẽ tô đỏ.<br>
+                Bấm trực tiếp vào <b>Mã SP</b> trong bảng để mở StockQuickPopup. Khi tải phiên cũ, trang chuyển sang chế độ chỉ xem; bấm <b>Thêm mới</b> để nhập tiếp.
             </div>
         </div>
 
         <div class="card">
             <table>
-                <thead>
-                    <tr>
-                        <th>Mã SP</th>
-                        <th>Form</th>
-                        <th>Rộng ống</th>
-                        <th>Co giãn</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Mã SP</th><th>Form</th><th>Rộng ống</th><th>Co giãn</th></tr></thead>
                 <tbody id="resultBody"></tbody>
             </table>
         </div>
     </div>
 
-    <script type="module" src="./scripts/ghithongsosanpham.js?v=20260824-2057"></script>
+    <div id="historyModal" class="modal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h3>Lịch sử ghi thông số sản phẩm</h3>
+                <button id="historyClose" class="close-btn">Đóng</button>
+            </div>
+            <div class="modal-body">
+                <div class="filter-grid">
+                    <div class="field">
+                        <label for="historyDate">Ngày</label>
+                        <input id="historyDate" type="date">
+                    </div>
+                    <div class="field">
+                        <label for="historyEmployee">Mã/Tên nhân viên</label>
+                        <input id="historyEmployee" type="text" placeholder="Ví dụ NV05 hoặc Lan">
+                    </div>
+                    <button id="historySearch" class="btn-blue">Tìm</button>
+                    <button id="historyClearFilter" class="btn-gray">Bỏ lọc</button>
+                </div>
+                <div id="historyStatus"></div>
+                <div class="history-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Phiên</th><th>Ngày giờ</th><th>Nhân viên</th><th>Dòng</th><th>Cập nhật</th><th>Bỏ qua</th><th>Lỗi</th></tr>
+                        </thead>
+                        <tbody id="historyBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./scripts/ghithongsosanpham.js?v=20260824-2121"></script>
 </body>
 </html>
