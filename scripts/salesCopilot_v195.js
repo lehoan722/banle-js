@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.9.8";
-console.log("[SalesCopilot] BUILD 1.9.8");
+window.SALES_COPILOT_BUILD="1.9.9";
+console.log("[SalesCopilot] BUILD 1.9.9");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -2667,9 +2667,10 @@ async function renderProducts(list) {
             </div>
             <button type="button" class="basic-consult-btn">Tư vấn</button>
           </div>`;
-        div.querySelector(".product-main-image")?.addEventListener("click", async e => {
+        div.querySelector(".product-main-image")?.addEventListener("click", e => {
           e.stopPropagation();
-          await selectProduct(sp,{scrollToDetail:true});
+          const imgEl = e.currentTarget;
+          openProductImageLightbox(imgEl.currentSrc || imgEl.src);
         });
         div.querySelector(".basic-stock-link")?.addEventListener("click", e => {
           e.stopPropagation();
@@ -2920,13 +2921,15 @@ async function selectProduct(
   renderProductDetail();
   renderCoach();
 
-  jumpToTrialControls();
+  if (!isBasicMode()) {
+    jumpToTrialControls();
+  }
 
   if (options.scrollToDetail) {
     requestAnimationFrame(() => {
       setTimeout(
         scrollToProductDetail,
-        40
+        isBasicMode() ? 80 : 40
       );
     });
   }
