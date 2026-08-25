@@ -15,7 +15,7 @@ let suppressRealtimeUntil = 0;
 let audioCtx = null;
 let audioUnlocked = false;
 let repositionTimer = null;
-let panelMode = "expanded"; // expanded | collapsed | hidden
+let panelMode = "collapsed"; // expanded | collapsed | hidden
 
 const TABLE = "dat_hang_chuyen_kho_khan";
 const HISTORY_LIMIT = 200;
@@ -320,23 +320,35 @@ function positionPanel() {
   const mobile=window.matchMedia("(max-width:800px)").matches;
   const vh=window.visualViewport?.height||window.innerHeight;
 
-  // Panel khẩn luôn neo sát đáy màn hình.
-  // Không đặt top cố định để khi thay đổi chiều cao, mép dưới vẫn giữ nguyên vị trí.
   box.style.left=mobile?"0":"6px";
   box.style.right="auto";
   box.style.width=mobile?"100vw":"760px";
   box.style.maxWidth=mobile?"100vw":"96vw";
   box.style.zIndex="9800";
-  box.style.top="auto";
-  box.style.bottom=mobile?"0":"6px";
 
   if(panelMode==="collapsed"){
-    box.style.height="36px";
-    box.style.maxHeight="36px";
+    // Ở dạng thanh: đặt ngay PHÍA TRÊN thanh YÊU CẦU BÀY MẪU như phiên bản cũ,
+    // không neo sát đáy để tránh che các nút thao tác của trang bán lẻ.
+    const bay = document.getElementById("baymau-popup");
+    const bayRect = bay?.getBoundingClientRect?.();
+    const barH = 36;
+    const gap = 4;
+
+    box.style.top = bayRect && Number.isFinite(bayRect.top)
+      ? `${Math.max(6, Math.round(bayRect.top - barH - gap))}px`
+      : "auto";
+    box.style.bottom = bayRect && Number.isFinite(bayRect.top)
+      ? "auto"
+      : (mobile ? "145px" : "155px");
+    box.style.height=`${barH}px`;
+    box.style.maxHeight=`${barH}px`;
     box.style.overflow="hidden";
     return;
   }
 
+  // Khi người dùng chủ động mở rộng thì panel mới bung lớn từ phía dưới lên.
+  box.style.top="auto";
+  box.style.bottom=mobile?"0":"6px";
   box.style.height=mobile?`${Math.max(320,vh-78)}px`:`${Math.max(420,vh-92)}px`;
   box.style.maxHeight=box.style.height;
   box.style.overflow="auto";
