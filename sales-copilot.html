@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Trợ lý bán hàng Hoàn Tuyết V1.9.8</title>
+  <title>Trợ lý bán hàng Hoàn Tuyết V1.9.9</title>
   <style>
     :root{
       --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
@@ -508,7 +508,7 @@
     }
 
 
-    /* V1.9.8 - 3 cap giao dien */
+    /* V1.9.9 - 3 cap giao dien */
     .level-switch{display:flex;align-items:center;gap:6px;margin-left:auto}
     .level-switch select{width:auto;min-width:118px;padding:7px 28px 7px 9px;font-weight:800;border:0;border-radius:9px;color:#075f9f}
     .learn-btn{border:0;border-radius:9px;padding:8px 10px;font-weight:800;background:#fff7d5;color:#6f4b00}
@@ -518,7 +518,10 @@
     body[data-ui-mode="basic"] #stepBar{display:none!important}
     body[data-ui-mode="basic"] .layout{grid-template-columns:310px minmax(0,1fr) 300px}
     body[data-ui-mode="basic"] .coach{font-size:12px}
-    body[data-ui-mode="basic"] .rightcol .card:first-child{display:none}
+    body[data-ui-mode="basic"] .rightcol .card:first-child{display:block}
+    /* V1.9.9 - fix luong Tu van + lightbox */
+    body[data-ui-mode="basic"] .rightcol .card:first-child{scroll-margin-top:210px}
+    body[data-ui-mode="basic"] #productDetail{scroll-margin-top:210px}
     body[data-ui-mode="basic"] #cartTitle{font-size:16px}
     body[data-ui-mode="basic"] .products{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
     body[data-ui-mode="basic"] .product img{height:175px}
@@ -550,7 +553,7 @@
       body[data-ui-mode="basic"] .rightcol{order:4}
     }
   
-    /* V1.9.8 - Tối ưu bản Cơ bản theo ảnh xem nhanh */
+    /* V1.9.9 - Tối ưu bản Cơ bản theo ảnh xem nhanh */
     .basic-stock-link{border:0;background:none;padding:0;margin:0;font:inherit;color:#111827;font-weight:900;text-align:left;cursor:pointer;text-decoration:none}
     .basic-stock-link:hover{text-decoration:underline}
     .basic-inline-price{font-weight:800;color:#111827}
@@ -593,7 +596,7 @@
     }
 
   
-    /* V1.9.8 - card Cơ bản: rõ mã/giá/form/size + nút Tư vấn */
+    /* V1.9.9 - card Cơ bản: rõ mã/giá/form/size + nút Tư vấn */
     body[data-ui-mode="basic"] .basic-card-body{padding:6px 7px 7px}
     body[data-ui-mode="basic"] .basic-card-line1{display:block;min-height:0;margin:0 0 2px;line-height:1.15}
     body[data-ui-mode="basic"] .basic-stock-link{
@@ -628,7 +631,7 @@
   <div id="app-container" style="display:none;">
   <header class="topbar">
     <div class="topline">
-      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.9.8</div>
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.9.9</div>
       <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.9.6</div>
       <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
       <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
