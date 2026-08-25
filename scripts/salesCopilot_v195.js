@@ -1,11 +1,12 @@
-window.SALES_COPILOT_BUILD="1.10.0";
-console.log("[SalesCopilot] BUILD 1.10.0");
+window.SALES_COPILOT_BUILD="1.10.1";
+console.log("[SalesCopilot] BUILD 1.10.1");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
 const IMAGE_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 const ACTIVE_STATES = ["DANG_TU_VAN","CHO_THU","DANG_CHOT","DA_DAY_SANG_BAN"];
 const PENDING_KEY = "sales_copilot_pending_v1";
+const ACK_KEY = "sales_copilot_ack_v1";
 
 const MAIN_GROUPS = {
   AO_HE: {
@@ -1617,6 +1618,12 @@ function hideDataLoading() {
   const overlay = $("dataLoadingOverlay");
   overlay?.classList.remove("show");
   overlay?.setAttribute("aria-hidden","true");
+}
+
+async function withDataLoading(message, fn){
+  showDataLoading(message);
+  try { return await fn(); }
+  finally { hideDataLoading(); }
 }
 
 function groupRowByCode(code) {
@@ -3440,65 +3447,68 @@ async function basicQuickAdd(sp,size){
 async function addToCart(size,fit) {
   const p=currentSession(), sp=state.selectedProduct, sug=state.currentSuggestion;
   if(!p||!sp)return;
-  const diff=size ? distanceOutsideSuggestedRange(size,sug) : 0;
+  return await withDataLoading("Đang thêm sản phẩm vào giỏ...", async()=>{
+    const normalizedSize = size ? String(size) : null;
 
-  const stockMap =
-    state.stockCache.get(norm(sp.masp));
+    // Không cho trùng cùng mã + cùng size trong cùng giỏ chưa đẩy.
+    let dupQ = supabase.from("gio_tu_van").select("id").eq("phien_id",p.id)
+      .eq("masp",sp.masp).eq("trang_thai","DA_CHOT").eq("da_day_sang_ban",false).limit(1);
+    dupQ = normalizedSize ? dupQ.eq("size", normalizedSize) : dupQ.is("size", null);
+    const {data:dupRows,error:dupErr}=await dupQ;
+    if(dupErr){toast("Không kiểm tra được giỏ: "+dupErr.message,4000);return;}
+    if(dupRows?.length){toast(`Mã ${sp.masp}${normalizedSize?` size ${normalizedSize}`:""} đã có trong giỏ.`,3000);return;}
 
-  const stockSuspicious =
-    size
-      ? stockAtBranch(stockMap,size) <= 0
-      : false;
-
-  const row={
-    phien_id:p.id,masp:sp.masp,size:size||null,soluong:1,
-    giale_hien_thi:Number(sp.giale||0),khuyenmai_hien_thi:0,trang_thai:"DA_CHOT",
-    ket_qua_mac:fit||null,size_he_thong_goi_y:sug?.primary||null,size_du_phong:sug?.backup||null,
-    nguon_goi_y_size:sug?.source||null,do_tin_cay_size:sug?.confidence||null,
-    nghi_ngo_size:stockSuspicious || diff>=2,
-    muc_nghi_ngo_size:stockSuspicious
-      ? Math.max(2, diff>=3?3:2)
-      : diff>=3?3:diff>=2?2:diff===1?1:0,
-    ly_do_nghi_ngo_size:stockSuspicious
-      ? `Size chot ${size} dang duoc ghi nhan het ton tai ${state.diadiem}`
-      : diff>0
-        ? `Size chot ${size} nam ngoai khoang co the ${sug?.rangeMin || "-"}-${sug?.rangeMax || "-"} ${diff} bac`
-        : null
-  };
-  const {error}=await supabase.from("gio_tu_van").insert(row);
-  if(error){toast("Không thêm được giỏ tư vấn: "+error.message,4000);return;}
-  if(size){
-    await supabase.from("ket_qua_thu_do").update({da_chot_tu_van:true})
-      .eq("phien_id",p.id).eq("masp",sp.masp).eq("size",size);
-  }
-  await supabase.from("phien_tu_van_ban_hang").update({trang_thai:"DANG_CHOT",last_active_at:new Date().toISOString()}).eq("id",p.id);
-  p.trang_thai="DANG_CHOT";
-  setStep(7);
-  await renderCart();
-  toast(isBasicMode()?"Đã thêm vào khách đang lấy.":"Đã thêm vào giỏ tư vấn.");
+    const diff=normalizedSize ? distanceOutsideSuggestedRange(normalizedSize,sug) : 0;
+    const stockMap=state.stockCache.get(norm(sp.masp));
+    const stockSuspicious=normalizedSize ? stockAtBranch(stockMap,normalizedSize)<=0 : false;
+    const row={
+      phien_id:p.id,masp:sp.masp,size:normalizedSize,soluong:1,
+      giale_hien_thi:Number(sp.giale||0),khuyenmai_hien_thi:0,trang_thai:"DA_CHOT",
+      ket_qua_mac:fit||null,size_he_thong_goi_y:sug?.primary||null,size_du_phong:sug?.backup||null,
+      nguon_goi_y_size:sug?.source||null,do_tin_cay_size:sug?.confidence||null,
+      nghi_ngo_size:stockSuspicious || diff>=2,
+      muc_nghi_ngo_size:stockSuspicious ? Math.max(2,diff>=3?3:2) : diff>=3?3:diff>=2?2:diff===1?1:0,
+      ly_do_nghi_ngo_size:stockSuspicious
+        ? `Size chot ${normalizedSize} dang duoc ghi nhan het ton tai ${state.diadiem}`
+        : diff>0 ? `Size chot ${normalizedSize} nam ngoai khoang co the ${sug?.rangeMin || "-"}-${sug?.rangeMax || "-"} ${diff} bac` : null
+    };
+    const {error}=await supabase.from("gio_tu_van").insert(row);
+    if(error){toast("Không thêm được giỏ tư vấn: "+error.message,4000);return;}
+    if(normalizedSize){
+      await supabase.from("ket_qua_thu_do").update({da_chot_tu_van:true})
+        .eq("phien_id",p.id).eq("masp",sp.masp).eq("size",normalizedSize);
+    }
+    await supabase.from("phien_tu_van_ban_hang").update({trang_thai:"DANG_CHOT",last_active_at:new Date().toISOString()}).eq("id",p.id);
+    p.trang_thai="DANG_CHOT";
+    setStep(7);
+    await renderCart();
+    toast(isBasicMode()?"Đã thêm vào khách đang lấy.":"Đã thêm vào giỏ tư vấn.");
+  });
 }
 
 async function renderCart() {
   const p=currentSession(), box=$("cartBox");
   if(!p){box.className="empty";box.innerHTML="Chưa có khách.";return;}
   const {data,error}=await supabase.from("gio_tu_van").select("*")
-    .eq("phien_id",p.id).eq("trang_thai","DA_CHOT").eq("da_day_sang_ban",false).order("created_at");
+    .eq("phien_id",p.id).eq("trang_thai","DA_CHOT").eq("da_day_sang_ban",false).order("created_at",{ascending:false});
   if(error){box.innerHTML="Lỗi tải giỏ.";return;}
   const rows=data||[];
   p.so_mon_da_chot=rows.length;
   if(!rows.length){box.className="empty";box.innerHTML=isBasicMode()?"Chưa chọn sản phẩm.":"Chưa chốt sản phẩm.";renderTabs();return;}
   box.className="";
   box.innerHTML=rows.map(r=>`
-    <div class="cart-item" data-id="${r.id}">
+    <div class="cart-item ${r.nghi_ngo_size?"cart-suspicious":""}" data-id="${r.id}">
       <div class="cart-top"><b>${esc(r.masp)}</b><span>${r.size?`Size ${r.size}`:""}</span></div>
       <div class="cart-meta">${money(r.giale_hien_thi)} đ · SL ${Number(r.soluong||1)} ${r.ket_qua_mac?`· ${r.ket_qua_mac.replaceAll("_"," ")}`:""}</div>
-      ${r.nghi_ngo_size?`<div style="color:#b42318;font-size:11px">⚠️ Size bất thường - dữ liệu không dùng để học</div>`:""}
-      <div class="cart-buttons"><button class="btn-gray btn-remove">Bỏ khỏi giỏ</button></div>
+      ${r.nghi_ngo_size?`<div style="font-size:11px;font-weight:800">⚠️ Size bất thường - kiểm tra lại trước khi bán</div>`:""}
+      <div class="cart-buttons"><button class="btn-remove">Bỏ khỏi giỏ</button></div>
     </div>`).join("");
   box.querySelectorAll(".btn-remove").forEach(b=>b.onclick=async()=>{
-    const id=b.closest(".cart-item").dataset.id;
-    await supabase.from("gio_tu_van").update({trang_thai:"BO",updated_at:new Date().toISOString()}).eq("id",id);
-    renderCart();
+    await withDataLoading("Đang bỏ sản phẩm khỏi giỏ...", async()=>{
+      const id=b.closest(".cart-item").dataset.id;
+      await supabase.from("gio_tu_van").update({trang_thai:"BO",updated_at:new Date().toISOString()}).eq("id",id);
+      await renderCart();
+    });
   });
   renderTabs();
 }
@@ -3789,16 +3799,18 @@ async function saveCustomerModal() {
     trang_thai:state.editingSessionId?currentSession()?.trang_thai||"DANG_TU_VAN":"DANG_TU_VAN"
   };
   try{
-    const ok = await createOrUpdateSession(payload);
+    await withDataLoading("Đang lưu thông tin khách...", async()=>{
+      const ok = await createOrUpdateSession(payload);
 
-    if (ok) {
-      $("modalKhach").classList.remove("show");
+      if (ok) {
+        $("modalKhach").classList.remove("show");
 
-      // V1.9: đổi cao/cân/thể trạng xong tải lại ngay.
-      if (currentSession()) {
-        await searchProducts();
+        // Đổi cao/cân/thể trạng xong tải lại ngay.
+        if (currentSession()) {
+          await searchProducts();
+        }
       }
-    }
+    });
   }catch(e){
     alert("Không lưu được phiên tư vấn: "+e.message);
   }
@@ -3835,26 +3847,78 @@ async function finalizeMeasurements() {
   if(action==="PUSH") await pushToSale();
 }
 
+function waitForSaleAck(payloadId, timeoutMs=12000){
+  return new Promise(resolve=>{
+    const started=Date.now();
+    const timer=setInterval(()=>{
+      try{
+        const raw=localStorage.getItem(ACK_KEY);
+        const ack=raw?JSON.parse(raw):null;
+        if(ack?.id===payloadId){clearInterval(timer);resolve(ack);return;}
+      }catch(_){}
+      if(Date.now()-started>=timeoutMs){clearInterval(timer);resolve(null);}
+    },180);
+  });
+}
+
+async function validateCartRowsForSale(rows){
+  const masps=[...new Set((rows||[]).map(x=>norm(x.masp)).filter(Boolean))];
+  if(!masps.length)return {ok:false,message:"Giỏ tư vấn đang trống."};
+  const {data,error}=await supabase.from("dmhanghoa").select("masp,nhomhang").in("masp",masps);
+  if(error)return {ok:false,message:"Không kiểm tra được mã hàng trước khi đẩy: "+error.message};
+  const map=new Map((data||[]).map(x=>[norm(x.masp),x]));
+  const bad=[];
+  for(const r of rows){
+    const sp=map.get(norm(r.masp));
+    const managed=sp ? isSizeManagedGroup(sp.nhomhang) : true;
+    if(managed && !extractInternalSize(r.size)) bad.push(`${r.masp} (chưa có size hợp lệ)`);
+  }
+  return bad.length ? {ok:false,message:"Không thể đưa sang bán vì có dòng thiếu size:
+"+bad.join("
+")} : {ok:true};
+}
+
 async function pushToSale() {
   const p=currentSession();if(!p)return;
-  const {data,error}=await supabase.from("gio_tu_van").select("*")
-    .eq("phien_id",p.id).eq("trang_thai","DA_CHOT").eq("da_day_sang_ban",false).order("created_at");
-  if(error||!data?.length){toast("Giỏ tư vấn đang trống.");return;}
-  const payload={
-    id:`${Date.now()}_${p.id}`,created_at:new Date().toISOString(),
-    phien_id:p.id,diadiem:state.diadiem,makh:p.makh||null,tenkh:p.tenkh||null,
-    items:data.map(x=>({gio_id:x.id,masp:x.masp,size:x.size||null,soluong:Number(x.soluong||1)}))
-  };
-  localStorage.setItem(PENDING_KEY,JSON.stringify(payload));
-  const ids=data.map(x=>x.id);
-  await supabase.from("gio_tu_van").update({da_day_sang_ban:true,day_sang_ban_luc:new Date().toISOString(),updated_at:new Date().toISOString()}).in("id",ids);
-  await supabase.from("phien_tu_van_ban_hang").update({trang_thai:"DA_DAY_SANG_BAN",last_active_at:new Date().toISOString()}).eq("id",p.id);
-  p.trang_thai="DA_DAY_SANG_BAN";
-  setStep(8);
-  const url=state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html";
-  window.open(url,"BAN_NV_HOAN_TUYET");
-  toast("Đã chuyển dữ liệu sang trang bán.");
-  await renderCart();renderTabs();
+  return await withDataLoading("Đang kiểm tra và đưa dữ liệu sang trang bán...", async()=>{
+    const {data,error}=await supabase.from("gio_tu_van").select("*")
+      .eq("phien_id",p.id).eq("trang_thai","DA_CHOT").eq("da_day_sang_ban",false).order("created_at",{ascending:true});
+    if(error||!data?.length){toast("Giỏ tư vấn đang trống.");return;}
+
+    const valid=await validateCartRowsForSale(data);
+    if(!valid.ok){alert(valid.message);return;}
+
+    const payload={
+      id:`${Date.now()}_${p.id}`,created_at:new Date().toISOString(),
+      phien_id:p.id,diadiem:state.diadiem,makh:p.makh||null,tenkh:p.tenkh||null,
+      items:data.map(x=>({gio_id:x.id,masp:x.masp,size:x.size||null,soluong:Number(x.soluong||1)}))
+    };
+
+    // Xóa payload/ACK cũ trước khi gửi để tránh tab bán đọc nhầm dữ liệu lần trước.
+    localStorage.removeItem(PENDING_KEY);
+    localStorage.removeItem(ACK_KEY);
+    localStorage.setItem(PENDING_KEY,JSON.stringify(payload));
+
+    const url=state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html";
+    window.open(url,"BAN_NV_HOAN_TUYET");
+
+    // Chỉ đánh dấu đã đẩy sau khi trang bán xác nhận đã nhận đủ payload.
+    const ack=await waitForSaleAck(payload.id,12000);
+    if(!ack){
+      toast("Trang bán chưa xác nhận đã nhận dữ liệu. Giỏ vẫn được giữ nguyên để thử lại an toàn.",6000);
+      return;
+    }
+
+    const ids=data.map(x=>x.id);
+    const now=new Date().toISOString();
+    const {error:markErr}=await supabase.from("gio_tu_van").update({da_day_sang_ban:true,day_sang_ban_luc:now,updated_at:now}).in("id",ids);
+    if(markErr){toast("Trang bán đã nhận nhưng chưa đánh dấu được giỏ: "+markErr.message,6000);return;}
+    await supabase.from("phien_tu_van_ban_hang").update({trang_thai:"DA_DAY_SANG_BAN",last_active_at:now}).eq("id",p.id);
+    p.trang_thai="DA_DAY_SANG_BAN";
+    setStep(8);
+    toast(`Đã chuyển đủ ${data.length} sản phẩm sang trang bán.`);
+    await renderCart();renderTabs();
+  });
 }
 
 async function endNoBuy(){
@@ -4153,6 +4217,7 @@ async function init(){
   applyUiMode("basic");
   $("nvInfo").textContent=`${state.tennv||state.manv||"Chưa đăng nhập"} · ${state.diadiem.toUpperCase()}`;
   $("fGiay").innerHTML='<option value="">-- Không biết --</option>'+SIZE_LIST.map(s=>`<option value="${s}">${s}</option>`).join("");
+  showDataLoading("Đang tải dữ liệu Trợ lý bán hàng...");
   try{
     await loadConfig();
     debugV18Engine();
@@ -4180,6 +4245,9 @@ async function init(){
   }catch(e){
     console.error(e);
     alert("Không khởi tạo được Trợ lý bán hàng: "+(e.message||e));
+  }finally{
+    dataLoadingDepth = 1;
+    hideDataLoading();
   }
 }
 
