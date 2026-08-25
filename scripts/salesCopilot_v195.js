@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.9.9";
-console.log("[SalesCopilot] BUILD 1.9.9");
+window.SALES_COPILOT_BUILD="1.10.0";
+console.log("[SalesCopilot] BUILD 1.10.0");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -1640,8 +1640,8 @@ function renderBasicSubgroups(){
   const rows=validSubGroups(state.selectedMainGroup);
   box.innerHTML=rows.map(g=>`<button type="button" class="subgroup-chip ${norm(g.manhom)===norm(state.selectedGroup)?"on":""}" data-group="${esc(g.manhom)}">${esc(g.ten_hien_thi||g.manhom)}</button>`).join("");
   box.querySelectorAll(".subgroup-chip").forEach(b=>b.onclick=async()=>{
-    state.selectedGroup=b.dataset.group;
-    renderMainGroupControls(); renderBasicSubgroups();
+    await selectSubGroup(b.dataset.group);
+    renderBasicSubgroups();
     if(currentSession()) await searchProducts();
   });
 }
@@ -1673,19 +1673,24 @@ function renderMainGroupControls() {
       g => norm(g.manhom) === norm(state.selectedGroup)
     )
   ) {
-    const cfg = MAIN_GROUPS[state.selectedMainGroup];
-    const preferred =
-      rows.find(
-        g => norm(g.manhom) === norm(cfg?.defaultGroup)
-      ) ||
-      rows[0];
+    if (isBasicMode()) {
+      // Cơ bản: chọn nhóm lớn chỉ mở các nhóm chi tiết, không tự chọn nhóm con.
+      state.selectedGroup = "";
+    } else {
+      const cfg = MAIN_GROUPS[state.selectedMainGroup];
+      const preferred =
+        rows.find(
+          g => norm(g.manhom) === norm(cfg?.defaultGroup)
+        ) ||
+        rows[0];
 
-    if (preferred) {
-      state.selectedGroup = preferred.manhom;
+      if (preferred) {
+        state.selectedGroup = preferred.manhom;
+      }
     }
   }
 
-  select.value = state.selectedGroup;
+  select.value = state.selectedGroup || "";
   renderBasicSubgroups();
 
   const shoeRow = $("shoeSizeSearchRow");
@@ -1733,17 +1738,25 @@ async function selectMainGroup(mainKey) {
   const rows =
     validSubGroups(mainKey);
 
-  const preferred =
-    rows.find(
-      g =>
-        norm(g.manhom) ===
-        norm(cfg.defaultGroup)
-    ) ||
-    rows[0];
+  let preferred = null;
 
-  if (preferred) {
-    state.selectedGroup =
-      preferred.manhom;
+  if (isBasicMode()) {
+    // Cơ bản: không tự chọn nhóm chi tiết.
+    // NV phải bấm rõ nhóm con rồi mới tải sản phẩm.
+    state.selectedGroup = "";
+  } else {
+    preferred =
+      rows.find(
+        g =>
+          norm(g.manhom) ===
+          norm(cfg.defaultGroup)
+      ) ||
+      rows[0];
+
+    if (preferred) {
+      state.selectedGroup =
+        preferred.manhom;
+    }
   }
 
   state.selectedProduct = null;
@@ -1751,8 +1764,6 @@ async function selectMainGroup(mainKey) {
   state.selectedFit = null;
   state.currentSuggestion = null;
 
-  // Nếu chuyển khỏi giày dép thì bỏ size tìm giày tạm.
-  // Nếu quay lại giày dép, render sẽ tự lấy size khách nếu đã có.
   if (mainKey !== "GIAY_DEP") {
     state.selectedShoeSearchSize = "";
   }
@@ -1761,6 +1772,17 @@ async function selectMainGroup(mainKey) {
   renderProductDetail();
 
   setStep(2);
+
+  if (isBasicMode()) {
+    $("searchSummary").textContent =
+      `Đã chọn ${cfg.label}. Hãy chọn nhóm chi tiết bên dưới.`;
+
+    $("productList").innerHTML =
+      `<div class="empty">
+        Chọn một <b>nhóm chi tiết</b> để tải sản phẩm.
+      </div>`;
+    return;
+  }
 
   $("searchSummary").textContent =
     `Đã chọn ${cfg.label} · ${preferred?.ten_hien_thi || state.selectedGroup}. Nhấn Tìm để tải sản phẩm.`;
@@ -2070,38 +2092,52 @@ async function searchProductsCore(searchSeq) {
       );
 
     if (!shoeSize) {
-      alert(
-        "Vui lòng chọn SIZE GIÀY/DÉP cần tìm trước khi bấm Tìm."
-      );
+      if (isBasicMode()) {
+        // Cơ bản không có nút Tìm: nếu chưa biết size giày, tải toàn bộ 38–46.
+        sizes = SIZE_LIST.slice();
+        seed = {
+          primary:null,
+          backup:null,
+          rangeMin:null,
+          rangeMax:null,
+          confidence:0,
+          source:"GIAY_CHUA_CO_SIZE"
+        };
+        noAutoShoeSize = true;
+      } else {
+        alert(
+          "Vui lòng chọn SIZE GIÀY/DÉP cần tìm trước khi bấm Tìm."
+        );
 
-      $("shoeSizeSearchSelect")?.focus();
+        $("shoeSizeSearchSelect")?.focus();
 
-      $("searchSummary").textContent =
-        "Chưa chọn size giày/dép cần tìm.";
+        $("searchSummary").textContent =
+          "Chưa chọn size giày/dép cần tìm.";
 
-      $("productList").innerHTML =
-        `<div class="empty">
-          Vui lòng chọn <b>Size cần tìm</b> rồi bấm <b>Tìm</b>.
-        </div>`;
+        $("productList").innerHTML =
+          `<div class="empty">
+            Vui lòng chọn <b>Size cần tìm</b> rồi bấm <b>Tìm</b>.
+          </div>`;
 
-      return;
+        return;
+      }
+    } else {
+      state.selectedShoeSearchSize =
+        shoeSize;
+
+      sizes = [shoeSize];
+
+      seed = {
+        primary: shoeSize,
+        backup: null,
+        rangeMin: shoeSize,
+        rangeMax: shoeSize,
+        confidence: 1,
+        source: "SIZE_GIAY_TIM_THU_CONG"
+      };
+
+      noAutoShoeSize = false;
     }
-
-    state.selectedShoeSearchSize =
-      shoeSize;
-
-    sizes = [shoeSize];
-
-    seed = {
-      primary: shoeSize,
-      backup: null,
-      rangeMin: shoeSize,
-      rangeMax: shoeSize,
-      confidence: 1,
-      source: "SIZE_GIAY_TIM_THU_CONG"
-    };
-
-    noAutoShoeSize = false;
   }
 
 
@@ -3661,7 +3697,7 @@ function openCustomerModal(edit=false) {
   $("fMakh").value=p?.makh||"";
   $("fTenkh").value=p?.tenkh||"";
   document.querySelectorAll(".body-chip").forEach(ch=>ch.classList.toggle("on",!!p?.[ch.dataset.field]));
-  state.autoWeightMode = !edit;
+  state.autoWeightMode = isBasicMode() ? true : !edit;
   markQuickHeightSelected();
   updateGroupPreview();
   $("modalKhach").classList.add("show");
@@ -3881,11 +3917,16 @@ function bindEvents(){
   $("shoeSizeSearchSelect")
     ?.addEventListener(
       "change",
-      e => {
+      async e => {
         state.selectedShoeSearchSize =
           extractInternalSize(
             e.target.value
           ) || "";
+
+        if (isBasicMode() && currentSession() && state.selectedGroup) {
+          await searchProducts();
+          return;
+        }
 
         $("searchSummary").textContent =
           state.selectedShoeSearchSize
@@ -3909,7 +3950,6 @@ function bindEvents(){
       btn.onclick = async () => {
         await selectMainGroup(btn.dataset.mainGroup);
         renderBasicSubgroups();
-        if(isBasicMode() && currentSession()) await searchProducts();
       };
     });
 
@@ -3935,12 +3975,13 @@ function bindEvents(){
   $("fCao").addEventListener("change", () => {
     $("fCao").dataset.current = $("fCao").value;
 
-    if (state.autoWeightMode) {
+    if (isBasicMode() || state.autoWeightMode) {
       setWeightWheelValue(
         autoWeightFromHeight(
           Number($("fCao").value || 0)
         )
       );
+      if (isBasicMode()) state.autoWeightMode = true;
     }
 
     markQuickHeightSelected();
