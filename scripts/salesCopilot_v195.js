@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.9.6";
-console.log("[SalesCopilot] BUILD 1.9.6");
+window.SALES_COPILOT_BUILD="1.9.7";
+console.log("[SalesCopilot] BUILD 1.9.7");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -119,6 +119,20 @@ function normalizeFormValue(v){
   if(["VUA","VỪA","FORM_VUA"].includes(x)) return "VUA";
   if(["BO","BÓ","OM","ÔM","FORM_BO"].includes(x)) return "BO";
   return x;
+}
+function formLabelFromValue(v){
+  return ({RONG:"Rộng",VUA:"Vừa",BO:"Bó"})[normalizeFormValue(v)] || (v || "");
+}
+function promoteFormPreservingOrder(list, preferredFormRaw){
+  const preferred = normalizeFormValue(preferredFormRaw);
+  const source = Array.isArray(list) ? list : [];
+  if (!preferred || source.length < 2) return source;
+  const matched=[]; const rest=[];
+  source.forEach(item => {
+    if (normalizeFormValue(item?.form) === preferred) matched.push(item);
+    else rest.push(item);
+  });
+  return matched.concat(rest);
 }
 function applyUiMode(mode){
   state.uiMode = ["basic","advanced","full"].includes(mode) ? mode : "basic";
@@ -2213,6 +2227,7 @@ async function searchProductsCore(searchSeq) {
           masp:"",
           sizes,
           nhomhangs:[state.selectedGroup],
+          preferredForm: state.selectedForm || "",
           branch:state.diadiem,
           referencePrice:
             Number(
@@ -2286,9 +2301,6 @@ async function searchProductsCore(searchSeq) {
     })
     .filter(Boolean);
 
-  if (isBasicMode() && state.selectedForm) {
-    list = list.filter(sp => normalizeFormValue(sp.form) === state.selectedForm);
-  }
 
   // Lọc theo chế độ tư vấn.
   if (
@@ -2362,6 +2374,13 @@ async function searchProductsCore(searchSeq) {
     list = list.filter(sp =>
       norm(sp.masp).includes(kw) ||
       norm(sp.tensp).includes(kw)
+    );
+  }
+
+  if (state.selectedForm) {
+    list = promoteFormPreservingOrder(
+      list,
+      state.selectedForm
     );
   }
 
@@ -2631,31 +2650,28 @@ async function renderProducts(list) {
           : (sug.primary || "-");
 
       if (isBasicMode()) {
-        const formText = normalizeFormValue(sp.form);
-        const formLabel = ({RONG:"Rộng",VUA:"Vừa",BO:"Bó"})[formText] || (sp.form||"");
+        const formLabel = formLabelFromValue(sp.form);
+        const visibleSizes = allAvailable.length ? allAvailable.join(" ") : "-";
         div.innerHTML = `
-          <img class="product-main-image" loading="lazy" decoding="async" src="${img}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">
-          <div class="product-body">
-            <div class="masp">${esc(sp.masp)}</div>
-            <div class="price">${money(sp.giale)} đ</div>
-            ${Number(sp.giam_gia_pct||0)>0?`<span class="discount-badge">GIẢM ${Number(sp.giam_gia_pct)}%</span>`:""}
-            ${priceModeNote(sp)}
-            <div class="basic-card-meta">${formLabel?`Form: <b>${esc(formLabel)}</b> · `:""}Gợi ý: <b>size ${esc(suggestionText)}</b></div>
-            <div class="basic-size-row">
-              ${SIZE_LIST.map(sz=>{const ton=stockAtBranch(item.stockBySize,sz);return `<button class="basic-size-pick ${sz===sug.primary?"best":""}" data-basic-size="${sz}" ${ton<=0?"disabled":""}>${sz}</button>`}).join("")}
+          <img class="product-main-image" loading="lazy" decoding="async" src="${img}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'" alt="${esc(sp.masp)}">
+          <div class="product-body basic-card-body">
+            <div class="basic-card-line1">
+              <button type="button" class="basic-stock-link" data-stock-masp="${esc(sp.masp)}">${esc(sp.masp)}</button>
+              <span class="sep">/</span>
+              <span class="basic-inline-price">${money(sp.giale)}</span>
             </div>
-            <button class="basic-card-action" data-basic-add="${esc(sug.primary||allAvailable[0]||"")}">+ CHỌN BÁN</button>
+            <div class="basic-card-line2">
+              ${formLabel ? `<span class="basic-card-form">Form: ${esc(formLabel)}</span> · ` : ""}
+              <span class="basic-card-sizes">Còn size: <b>${esc(visibleSizes)}</b></span>
+            </div>
           </div>`;
-        const productImg=div.querySelector(".product-main-image");
-        if(productImg) productImg.onclick=e=>{e.stopPropagation();openProductImageLightbox(productImg.currentSrc||productImg.src)};
-        let picked = sug.primary && allAvailable.includes(sug.primary) ? sug.primary : allAvailable[0];
-        const refreshPick=()=>{
-          div.querySelectorAll("[data-basic-size]").forEach(b=>b.classList.toggle("best",b.dataset.basicSize===picked));
-          const add=div.querySelector("[data-basic-add]"); if(add) add.textContent = picked ? `+ CHỌN BÁN · SIZE ${picked}` : "+ CHỌN BÁN";
+        div.onclick = async () => {
+          await selectProduct(sp,{scrollToDetail:true});
         };
-        div.querySelectorAll("[data-basic-size]").forEach(b=>b.onclick=e=>{e.stopPropagation();picked=b.dataset.basicSize;refreshPick();});
-        div.querySelector("[data-basic-add]").onclick=async e=>{e.stopPropagation();await basicQuickAdd(sp,picked);};
-        refreshPick();
+        div.querySelector(".basic-stock-link")?.addEventListener("click", e => {
+          e.stopPropagation();
+          window.StockQuick?.showFor(e.currentTarget, sp.masp);
+        });
         frag.appendChild(div);
         return;
       }
@@ -2931,6 +2947,65 @@ function renderProductDetail() {
   const stock=state.stockCache.get(norm(sp.masp));
   const av=availableSizes(stock);
   const managed=isSizeManagedGroup(sp.nhomhang);
+
+  if (isBasicMode()) {
+    box.innerHTML=`
+      <div
+        class="masp"
+        id="detailMaspLink"
+        style="cursor:pointer;text-decoration:underline"
+        title="Bấm để quay lại ảnh sản phẩm trong danh sách"
+      >${esc(sp.masp)}</div>
+      <div class="basic-detail-top">
+        <div class="basic-detail-sub">${esc(sp.tensp||"")}<br>${esc(sp.nhomhang||"")}${sp.form?` · Form ${esc(formLabelFromValue(sp.form)||sp.form)}`:""}</div>
+        <div class="detail-price">${money(sp.giale)} đ</div>
+      </div>
+      ${Number(sp.giam_gia_pct || 0) > 0 ? `<span class="discount-badge">GIẢM ${Number(sp.giam_gia_pct)}%</span>` : ""}
+      ${priceModeNote(sp)}
+      ${managed ? `
+        <div class="basic-detail-suggest">
+          Gợi ý: <b>size ${esc(sug?.primary||"?")}</b>
+          ${sug?.backupInStock && sug?.backup ? ` · Dự phòng: <b>${esc(sug.backup)}</b>` : ""}
+          ${sug?.rangeMin ? ` · Khoảng nền: <b>${esc(sug.rangeMin)}–${esc(sug.rangeMax || sug.rangeMin)}</b>` : ""}
+        </div>
+        <div class="basic-detail-stockline">Còn size: <b>${esc(av.join(" ") || "-")}</b></div>
+        <div class="size-buttons">
+          ${SIZE_LIST.map(s=>{
+            const ton=stockAtBranch(stock,s);
+            const cls=[
+              s===""+sug?.primary?"primary":"",
+              s===""+sug?.backup?"secondary":"",
+              s===""+state.selectedSize?"selected":"",
+              ton<=0?"no-stock":""
+            ].filter(Boolean).join(" ");
+            return `<button
+              class="size-btn ${cls}"
+              data-size="${s}"
+              data-ton="${ton}"
+              title="Tồn ${state.diadiem.toUpperCase()}: ${ton}"
+            >${s}<br><small>${ton}</small></button>`;
+          }).join("")}
+        </div>
+        <div class="basic-detail-note">Chạm vào một size để thêm ngay vào <b>Khách đang lấy</b>.</div>
+      ` : `
+        <div class="basic-detail-note">Nhóm này không quản size. Có thể chốt trực tiếp sản phẩm.</div>
+        <button class="btn btn-green" id="btnChotNoSize" style="width:100%;margin-top:8px">Chốt sản phẩm</button>
+      `}
+    `;
+    box.querySelectorAll(".size-btn").forEach(
+      b => b.onclick=()=>chooseSize(
+        b.dataset.size,
+        Number(b.dataset.ton || 0)
+      )
+    );
+    $("detailMaspLink")?.addEventListener(
+      "click",
+      () => scrollToProductCard(sp.masp)
+    );
+    if($("btnChotNoSize")) $("btnChotNoSize").onclick=()=>addToCart(null,null);
+    return;
+  }
+
   box.innerHTML=`
     <div
       class="masp"
@@ -3165,6 +3240,13 @@ async function chooseSize(
   state.selectedFit=null;
 
   setStep(5);
+
+  if (isBasicMode()) {
+    renderProductDetail();
+    renderCoach();
+    await addToCart(size,null);
+    return;
+  }
 
   renderProductDetail();
   renderFitPanel();
