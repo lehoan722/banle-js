@@ -42,6 +42,18 @@
     await sleep(350);
   }
 
+  async function waitStableReady(ms=700){
+    const started=Date.now();
+    while(Date.now()-started<5000){
+      if(ready()){
+        await sleep(ms);
+        if(ready())return true;
+      }
+      await sleep(120);
+    }
+    return false;
+  }
+
   async function addOne(item){
     const masp=String(item?.masp||"").trim().toUpperCase();
     const size=String(item?.size||"").trim();
@@ -54,19 +66,25 @@
 
     if(!maspEl||!slEl||!sizeEl)throw new Error("Không tìm thấy ô mã/size/số lượng trên trang bán.");
 
-    // Hàng có size: tận dụng chính cú pháp MASP_38...MASP_46 mà hoadon.js đang hỗ trợ.
-    // Hàng không size: chỉ gửi MASP để luồng bán cũ tự quyết định size=0.
+    // Gửi size theo HAI đường để tránh dòng đầu tiên bị rơi về size 0:
+    // 1) cú pháp MASP_39 mà luồng bán cũ hỗ trợ;
+    // 2) đồng thời điền ô size riêng trước Enter.
     maspEl.value = size ? `${masp}_${size}` : masp;
     slEl.value = String(qty);
-    sizeEl.value = "";
+    sizeEl.value = size || "";
+    maspEl.dispatchEvent(new Event("input",{bubbles:true}));
+    sizeEl.dispatchEvent(new Event("input",{bubbles:true}));
+    sizeEl.dispatchEvent(new Event("change",{bubbles:true}));
 
     maspEl.focus();
+    await sleep(80);
     maspEl.dispatchEvent(new KeyboardEvent("keydown",{
       key:"Enter",code:"Enter",keyCode:13,which:13,bubbles:true,cancelable:true
     }));
 
-    // xuLyMaSanPham là async; chờ đủ để fetch/cache + thêm vào bảng.
-    await sleep(650);
+    // Chờ luồng bán xử lý xong trước khi gửi dòng kế tiếp.
+    // Dòng đầu tiên thường cần lâu hơn do cache/master vừa khởi tạo.
+    await sleep(900);
   }
 
   async function consume(){
@@ -76,7 +94,12 @@
 
     running=true;
     try{
+      const stable=await waitStableReady(700);
+      if(!stable)throw new Error("Trang bán chưa sẵn sàng nhận dữ liệu.");
       await prefillCustomer(payload);
+
+      // Sau khi điền khách, chờ DOM/handler bán ổn định thêm trước dòng đầu tiên.
+      await sleep(450);
 
       for(const item of payload.items){
         await addOne(item);
