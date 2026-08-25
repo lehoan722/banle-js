@@ -52,7 +52,7 @@ const viettelAccounts = {
     templateCode: "2/001",
     endpoint:
          process.env.VIETTEL_CS2_ENDPOINT ||
-        "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/4600960665",
+        "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createInvoice/019175012540",
 
     //  process.env.VIETTEL_CS2_ENDPOINT ||
     //  "https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/InvoiceAPI/InvoiceWS/createOrUpdateInvoiceDraft/4600960665",
