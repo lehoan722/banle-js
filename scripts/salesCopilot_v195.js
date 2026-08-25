@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.10.2";
-console.log("[SalesCopilot] BUILD 1.10.2");
+window.SALES_COPILOT_BUILD="1.10.3";
+console.log("[SalesCopilot] BUILD 1.10.3");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -107,6 +107,15 @@ const state = {
   autoWeightMode: true,
   uiMode: "basic",
   selectedForm: "",
+  cartRows: [],
+  productPager: {
+    list: [],
+    nextIndex: 0,
+    pageSize: 20,
+    loading: false,
+    searchSeq: 0,
+    observer: null
+  },
 };
 
 const $ = id => document.getElementById(id);
@@ -2427,120 +2436,121 @@ async function searchProductsCore(searchSeq) {
     );
   }
 
-  // V1.9.1:
-  // Nạp lịch sử học size theo LÔ trước khi render,
-  // thay vì mỗi card gọi Supabase riêng.
-  await preloadLearningData(
-    list.map(x => x.masp)
-  );
-
-  if (searchSeq !== latestSearchSeq) {
-    return;
-  }
-
-  // BƯỚC 2:
-  // Sau khi đã lọc được danh sách mã phù hợp,
-  // tải LẠI TOÀN BỘ tồn 38–46 của các mã bằng xntnhanh.
-  // Đây là dữ liệu dùng để hiển thị "Còn size" và chi tiết sản phẩm.
-  const fullStock =
-    await getStockForMasps(
-      list.map(x => x.masp)
-    );
-
-  if (searchSeq !== latestSearchSeq) {
-    return;
-  }
-
-  // StockQuickSimilar ở bước 1 đã xác nhận:
-  // mã có ít nhất một size phù hợp và tồn dương tại đúng cơ sở.
-  //
-  // Full-stock ở bước 2 chỉ dùng để bổ sung TOÀN BỘ size còn lại.
-  // Nếu full-stock bị thiếu vì RPC/network thì KHÔNG được phép
-  // biến một mã đã xác nhận còn hàng thành "Hết hàng".
-  list = list.filter(sp => {
-    const matched =
-      (sp.__matched_sizes || [])
-        .map(extractInternalSize)
-        .filter(Boolean);
-
-    return matched.some(
-      s => sizes.includes(s)
-    );
-  });
-
-  list.forEach(sp => {
-    state.productCache.set(
-      norm(sp.masp),
-      sp
-    );
-
-    let stockMap =
-      fullStock.get(norm(sp.masp));
-
-    // Fallback an toàn:
-    // nếu full-stock không có dữ liệu cho mã,
-    // dùng matched_sizes từ StockQuickSimilar như bằng chứng tồn tối thiểu.
-    if (
-      !stockMap ||
-      !stockMap.size
-    ) {
-      stockMap = new Map();
-
-      (sp.__matched_sizes || [])
-        .map(extractInternalSize)
-        .filter(Boolean)
-        .forEach(size => {
-          stockMap.set(
-            size,
-            {
-              ton_cs1:
-                state.diadiem === "cs1"
-                  ? 1
-                  : 0,
-
-              ton_cs2:
-                state.diadiem === "cs2"
-                  ? 1
-                  : 0,
-
-              ban_cs1:0,
-              ban_cs2:0,
-
-              __fallback:true
-            }
-          );
-        });
-    }
-
-    state.stockCache.set(
-      norm(sp.masp),
-      stockMap
-    );
-  });
-
-  const modeLabel =
-    modeMeta(state.searchMode).label;
-
-  const pricePart =
-    ["cheaper","premium"]
-      .includes(state.searchMode)
-        ? ` · giá so sánh ${money(state.referencePrice)} đ`
-        : "";
+  // V1.10.3: không tải toàn bộ learning + full-stock của cả danh sách nữa.
+  // Chỉ giữ danh sách đã sắp xếp, sau đó tải/rendere từng gói 20 mã khi người dùng cuộn.
+  const modeLabel = modeMeta(state.searchMode).label;
+  const pricePart = ["cheaper","premium"].includes(state.searchMode)
+    ? ` · giá so sánh ${money(state.referencePrice)} đ`
+    : "";
 
   $("searchSummary").textContent =
     noAutoShoeSize
       ? `${list.length} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · ` +
-        `chưa biết size giày, đang hiển thị hàng còn size 38–46${pricePart}`
+        `chưa biết size giày, hiển thị dần 20 sản phẩm/lượt${pricePart}`
       : `${list.length} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · ` +
-        `size phù hợp ${sizes.join(", ")}${pricePart}`;
+        `size phù hợp ${sizes.join(", ")} · hiển thị dần 20 sản phẩm/lượt${pricePart}`;
 
-  if (searchSeq !== latestSearchSeq) {
-    return;
-  }
-
-  await renderProducts(list);
+  if (searchSeq !== latestSearchSeq) return;
+  await startProductPagination(list, searchSeq);
 }
 
+
+
+function disconnectProductPagerObserver(){
+  try{ state.productPager?.observer?.disconnect?.(); }catch(_){}
+  if(state.productPager) state.productPager.observer=null;
+}
+
+async function ensureChunkStock(list){
+  const chunk=Array.isArray(list)?list:[];
+  if(!chunk.length)return;
+  const fullStock=await getStockForMasps(chunk.map(x=>x.masp));
+  chunk.forEach(sp=>{
+    state.productCache.set(norm(sp.masp),sp);
+    let stockMap=fullStock.get(norm(sp.masp));
+    if(!stockMap || !stockMap.size){
+      stockMap=new Map();
+      (sp.__matched_sizes||[])
+        .map(extractInternalSize)
+        .filter(Boolean)
+        .forEach(size=>{
+          stockMap.set(size,{
+            ton_cs1:state.diadiem==="cs1"?1:0,
+            ton_cs2:state.diadiem==="cs2"?1:0,
+            ban_cs1:0,ban_cs2:0,__fallback:true
+          });
+        });
+    }
+    state.stockCache.set(norm(sp.masp),stockMap);
+  });
+}
+
+async function startProductPagination(list, searchSeq){
+  disconnectProductPagerObserver();
+  const box=$("productList");
+  box.innerHTML="";
+  state.productPager={
+    list:Array.isArray(list)?list:[],
+    nextIndex:0,
+    pageSize:20,
+    loading:false,
+    searchSeq,
+    observer:null
+  };
+  if(!state.productPager.list.length){
+    box.innerHTML=`<div class="empty">Không có sản phẩm nào còn đúng size gợi ý tại ${state.diadiem.toUpperCase()}.</div>`;
+    return;
+  }
+  const sentinel=document.createElement("div");
+  sentinel.id="productLoadSentinel";
+  sentinel.style.cssText="grid-column:1/-1;text-align:center;padding:12px;color:#687787;font-size:12px";
+  sentinel.textContent="Cuộn xuống để tải thêm...";
+  box.appendChild(sentinel);
+  await loadNextProductPage(true);
+  if("IntersectionObserver" in window){
+    const obs=new IntersectionObserver(entries=>{
+      if(entries.some(x=>x.isIntersecting)) loadNextProductPage(false);
+    },{root:null,rootMargin:"700px 0px",threshold:0.01});
+    obs.observe(sentinel);
+    state.productPager.observer=obs;
+  }
+}
+
+async function loadNextProductPage(initial=false){
+  const pager=state.productPager;
+  if(!pager || pager.loading || pager.searchSeq!==latestSearchSeq)return;
+  if(pager.nextIndex>=pager.list.length){
+    const s=$("productLoadSentinel");
+    if(s){s.textContent=`Đã hiển thị đủ ${pager.list.length} sản phẩm.`;}
+    disconnectProductPagerObserver();
+    return;
+  }
+  pager.loading=true;
+  const from=pager.nextIndex;
+  const to=Math.min(pager.list.length,from+pager.pageSize);
+  const chunk=pager.list.slice(from,to);
+  const run=async()=>{
+    await preloadLearningData(chunk.map(x=>x.masp));
+    if(pager.searchSeq!==latestSearchSeq)return;
+    await ensureChunkStock(chunk);
+    if(pager.searchSeq!==latestSearchSeq)return;
+    await renderProducts(chunk,{append:true});
+    pager.nextIndex=to;
+    const s=$("productLoadSentinel");
+    if(s){
+      s.textContent=pager.nextIndex<pager.list.length
+        ? `Đã hiện ${pager.nextIndex}/${pager.list.length} · cuộn xuống để tải tiếp`
+        : `Đã hiển thị đủ ${pager.list.length} sản phẩm.`;
+    }
+    if(pager.nextIndex>=pager.list.length) disconnectProductPagerObserver();
+  };
+  try{
+    if(initial) await run();
+    else await withDataLoading(`Đang tải thêm ${chunk.length} sản phẩm...`,run);
+  }finally{
+    pager.loading=false;
+  }
+}
 
 function openProductImageLightbox(src) {
   const box=$("productImageLightbox"), img=$("productImageLightboxImg");
@@ -2556,15 +2566,15 @@ function closeProductImageLightbox() {
   if (img) img.src="";
 }
 
-async function renderProducts(list) {
+async function renderProducts(list, options = {}) {
   const box = $("productList");
-  box.innerHTML = "";
+  const append = !!options.append;
+  if (!append) box.innerHTML = "";
 
   if (!list.length) {
-    box.innerHTML =
-      `<div class="empty">
-        Không có sản phẩm nào còn đúng size gợi ý tại ${state.diadiem.toUpperCase()}.
-      </div>`;
+    if (!append) {
+      box.innerHTML = `<div class="empty">Không có sản phẩm nào còn đúng size gợi ý tại ${state.diadiem.toUpperCase()}.</div>`;
+    }
     return;
   }
 
@@ -2814,7 +2824,9 @@ async function renderProducts(list) {
       frag.appendChild(div);
     });
 
-  box.appendChild(frag);
+  const sentinel=$("productLoadSentinel");
+  if(append && sentinel && sentinel.parentNode===box) box.insertBefore(frag,sentinel);
+  else box.appendChild(frag);
 }
 
 function jumpToTrialControls() {
@@ -3444,59 +3456,19 @@ async function basicQuickAdd(sp,size){
   state.selectedProduct=null; state.selectedSize=null; state.selectedFit=null; state.currentSuggestion=null;
   renderCoach();
 }
-async function addToCart(size,fit) {
-  const p=currentSession(), sp=state.selectedProduct, sug=state.currentSuggestion;
-  if(!p||!sp)return;
-  return await withDataLoading("Đang thêm sản phẩm vào giỏ...", async()=>{
-    const normalizedSize = size ? String(size) : null;
 
-    // Không cho trùng cùng mã + cùng size trong cùng giỏ chưa đẩy.
-    let dupQ = supabase.from("gio_tu_van").select("id").eq("phien_id",p.id)
-      .eq("masp",sp.masp).eq("trang_thai","DA_CHOT").eq("da_day_sang_ban",false).limit(1);
-    dupQ = normalizedSize ? dupQ.eq("size", normalizedSize) : dupQ.is("size", null);
-    const {data:dupRows,error:dupErr}=await dupQ;
-    if(dupErr){toast("Không kiểm tra được giỏ: "+dupErr.message,4000);return;}
-    if(dupRows?.length){toast(`Mã ${sp.masp}${normalizedSize?` size ${normalizedSize}`:""} đã có trong giỏ.`,3000);return;}
-
-    const diff=normalizedSize ? distanceOutsideSuggestedRange(normalizedSize,sug) : 0;
-    const stockMap=state.stockCache.get(norm(sp.masp));
-    const stockSuspicious=normalizedSize ? stockAtBranch(stockMap,normalizedSize)<=0 : false;
-    const row={
-      phien_id:p.id,masp:sp.masp,size:normalizedSize,soluong:1,
-      giale_hien_thi:Number(sp.giale||0),khuyenmai_hien_thi:0,trang_thai:"DA_CHOT",
-      ket_qua_mac:fit||null,size_he_thong_goi_y:sug?.primary||null,size_du_phong:sug?.backup||null,
-      nguon_goi_y_size:sug?.source||null,do_tin_cay_size:sug?.confidence||null,
-      nghi_ngo_size:stockSuspicious || diff>=2,
-      muc_nghi_ngo_size:stockSuspicious ? Math.max(2,diff>=3?3:2) : diff>=3?3:diff>=2?2:diff===1?1:0,
-      ly_do_nghi_ngo_size:stockSuspicious
-        ? `Size chot ${normalizedSize} dang duoc ghi nhan het ton tai ${state.diadiem}`
-        : diff>0 ? `Size chot ${normalizedSize} nam ngoai khoang co the ${sug?.rangeMin || "-"}-${sug?.rangeMax || "-"} ${diff} bac` : null
-    };
-    const {error}=await supabase.from("gio_tu_van").insert(row);
-    if(error){toast("Không thêm được giỏ tư vấn: "+error.message,4000);return;}
-    if(normalizedSize){
-      await supabase.from("ket_qua_thu_do").update({da_chot_tu_van:true})
-        .eq("phien_id",p.id).eq("masp",sp.masp).eq("size",normalizedSize);
-    }
-    await supabase.from("phien_tu_van_ban_hang").update({trang_thai:"DANG_CHOT",last_active_at:new Date().toISOString()}).eq("id",p.id);
-    p.trang_thai="DANG_CHOT";
-    setStep(7);
-    await renderCart();
-    toast(isBasicMode()?"Đã thêm vào khách đang lấy.":"Đã thêm vào giỏ tư vấn.");
-  });
-}
-
-async function renderCart() {
+function renderCartRowsFast(rows){
   const p=currentSession(), box=$("cartBox");
-  if(!p){box.className="empty";box.innerHTML="Chưa có khách.";return;}
-  const {data,error}=await supabase.from("gio_tu_van").select("*")
-    .eq("phien_id",p.id).eq("trang_thai","DA_CHOT").eq("da_day_sang_ban",false).order("created_at",{ascending:false});
-  if(error){box.innerHTML="Lỗi tải giỏ.";return;}
-  const rows=data||[];
-  p.so_mon_da_chot=rows.length;
-  if(!rows.length){box.className="empty";box.innerHTML=isBasicMode()?"Chưa chọn sản phẩm.":"Chưa chốt sản phẩm.";renderTabs();return;}
+  const safeRows=Array.isArray(rows)?rows:[];
+  if(p) p.so_mon_da_chot=safeRows.length;
+  if(!safeRows.length){
+    box.className="empty";
+    box.innerHTML=isBasicMode()?"Chưa chọn sản phẩm.":"Chưa chốt sản phẩm.";
+    renderTabs();
+    return;
+  }
   box.className="";
-  box.innerHTML=rows.map(r=>`
+  box.innerHTML=safeRows.map(r=>`
     <div class="cart-item ${r.nghi_ngo_size?"cart-suspicious":""}" data-id="${r.id}">
       <div class="cart-top"><b>${esc(r.masp)}</b><span>${r.size?`Size ${r.size}`:""}</span></div>
       <div class="cart-meta">${money(r.giale_hien_thi)} đ · SL ${Number(r.soluong||1)} ${r.ket_qua_mac?`· ${r.ket_qua_mac.replaceAll("_"," ")}`:""}</div>
@@ -3504,13 +3476,81 @@ async function renderCart() {
       <div class="cart-buttons"><button class="btn-remove">Bỏ khỏi giỏ</button></div>
     </div>`).join("");
   box.querySelectorAll(".btn-remove").forEach(b=>b.onclick=async()=>{
-    await withDataLoading("Đang bỏ sản phẩm khỏi giỏ...", async()=>{
+    await withDataLoading("Đang bỏ sản phẩm khỏi giỏ...",async()=>{
       const id=b.closest(".cart-item").dataset.id;
-      await supabase.from("gio_tu_van").update({trang_thai:"BO",updated_at:new Date().toISOString()}).eq("id",id);
-      await renderCart();
+      const {error}=await supabase.from("gio_tu_van").update({trang_thai:"BO",updated_at:new Date().toISOString()}).eq("id",id);
+      if(error){toast("Không bỏ được sản phẩm: "+error.message,4000);return;}
+      state.cartRows=state.cartRows.filter(x=>String(x.id)!==String(id));
+      renderCartRowsFast(state.cartRows);
     });
   });
   renderTabs();
+}
+
+async function addToCart(size,fit) {
+  const p=currentSession(), sp=state.selectedProduct, sug=state.currentSuggestion;
+  if(!p||!sp)return;
+  const normalizedSize=size?String(size):null;
+
+  // Kiểm tra trùng ngay từ cache giỏ đã tải, không cần thêm một round-trip DB.
+  const duplicate=(state.cartRows||[]).some(r=>
+    norm(r.masp)===norm(sp.masp) && String(r.size||"")===String(normalizedSize||"")
+  );
+  if(duplicate){toast(`Mã ${sp.masp}${normalizedSize?` size ${normalizedSize}`:""} đã có trong giỏ.`,2500);return;}
+
+  const doInsert=async()=>{
+    const diff=normalizedSize?distanceOutsideSuggestedRange(normalizedSize,sug):0;
+    const stockMap=state.stockCache.get(norm(sp.masp));
+    const stockSuspicious=normalizedSize?stockAtBranch(stockMap,normalizedSize)<=0:false;
+    const row={
+      phien_id:p.id,masp:sp.masp,size:normalizedSize,soluong:1,
+      giale_hien_thi:Number(sp.giale||0),khuyenmai_hien_thi:0,trang_thai:"DA_CHOT",
+      ket_qua_mac:fit||null,size_he_thong_goi_y:sug?.primary||null,size_du_phong:sug?.backup||null,
+      nguon_goi_y_size:sug?.source||null,do_tin_cay_size:sug?.confidence||null,
+      nghi_ngo_size:stockSuspicious||diff>=2,
+      muc_nghi_ngo_size:stockSuspicious?Math.max(2,diff>=3?3:2):diff>=3?3:diff>=2?2:diff===1?1:0,
+      ly_do_nghi_ngo_size:stockSuspicious
+        ? `Size chot ${normalizedSize} dang duoc ghi nhan het ton tai ${state.diadiem}`
+        : diff>0?`Size chot ${normalizedSize} nam ngoai khoang co the ${sug?.rangeMin||"-"}-${sug?.rangeMax||"-"} ${diff} bac`:null
+    };
+    const {data:inserted,error}=await supabase.from("gio_tu_van").insert(row).select("*").single();
+    if(error){toast("Không thêm được giỏ tư vấn: "+error.message,4000);return false;}
+
+    // Cơ bản: cập nhật UI ngay sau đúng 1 lần insert chính.
+    state.cartRows=[inserted,...(state.cartRows||[])];
+    p.trang_thai="DANG_CHOT";
+    setStep(7);
+    renderCartRowsFast(state.cartRows);
+    toast("Đã thêm vào khách đang lấy.",1600);
+
+    // Các cập nhật phụ chạy nền, không chặn thao tác tiếp theo.
+    supabase.from("phien_tu_van_ban_hang")
+      .update({trang_thai:"DANG_CHOT",last_active_at:new Date().toISOString()}).eq("id",p.id)
+      .then(({error:e})=>{if(e)console.warn("[SalesCopilot] update session cart:",e);});
+    return true;
+  };
+
+  if(isBasicMode()){
+    return await withDataLoading("Đang thêm sản phẩm vào giỏ...", doInsert);
+  }
+
+  return await withDataLoading("Đang thêm sản phẩm vào giỏ...",async()=>{
+    const ok=await doInsert();
+    if(ok && normalizedSize){
+      await supabase.from("ket_qua_thu_do").update({da_chot_tu_van:true})
+        .eq("phien_id",p.id).eq("masp",sp.masp).eq("size",normalizedSize);
+    }
+  });
+}
+
+async function renderCart() {
+  const p=currentSession(), box=$("cartBox");
+  if(!p){state.cartRows=[];box.className="empty";box.innerHTML="Chưa có khách.";return;}
+  const {data,error}=await supabase.from("gio_tu_van").select("*")
+    .eq("phien_id",p.id).eq("trang_thai","DA_CHOT").eq("da_day_sang_ban",false).order("created_at",{ascending:false});
+  if(error){box.innerHTML="Lỗi tải giỏ.";return;}
+  state.cartRows=data||[];
+  renderCartRowsFast(state.cartRows);
 }
 
 
