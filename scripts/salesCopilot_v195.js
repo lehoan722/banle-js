@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.10.1";
-console.log("[SalesCopilot] BUILD 1.10.1");
+window.SALES_COPILOT_BUILD="1.10.2";
+console.log("[SalesCopilot] BUILD 1.10.2");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -3873,9 +3873,7 @@ async function validateCartRowsForSale(rows){
     const managed=sp ? isSizeManagedGroup(sp.nhomhang) : true;
     if(managed && !extractInternalSize(r.size)) bad.push(`${r.masp} (chưa có size hợp lệ)`);
   }
-  return bad.length ? {ok:false,message:"Không thể đưa sang bán vì có dòng thiếu size:
-"+bad.join("
-")} : {ok:true};
+  return bad.length ? {ok:false,message:"Không thể đưa sang bán vì có dòng thiếu size:\n"+bad.join("\n")} : {ok:true};
 }
 
 async function pushToSale() {
