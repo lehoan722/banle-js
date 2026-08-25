@@ -4,6 +4,7 @@
 
 (function(){
   const KEY = "sales_copilot_pending_v1";
+  const ACK_KEY = "sales_copilot_ack_v1";
   let running = false;
   let lastId = "";
 
@@ -83,6 +84,11 @@
 
       lastId=payload.id;
       localStorage.removeItem(KEY);
+      localStorage.setItem(ACK_KEY, JSON.stringify({
+        id: payload.id,
+        consumed_at: new Date().toISOString(),
+        count: payload.items.length
+      }));
 
       try{
         window.focus();
