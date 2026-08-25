@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.9.7";
-console.log("[SalesCopilot] BUILD 1.9.7");
+window.SALES_COPILOT_BUILD="1.9.8";
+console.log("[SalesCopilot] BUILD 1.9.8");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -2656,21 +2656,28 @@ async function renderProducts(list) {
           <img class="product-main-image" loading="lazy" decoding="async" src="${img}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'" alt="${esc(sp.masp)}">
           <div class="product-body basic-card-body">
             <div class="basic-card-line1">
-              <button type="button" class="basic-stock-link" data-stock-masp="${esc(sp.masp)}">${esc(sp.masp)}</button>
-              <span class="sep">/</span>
-              <span class="basic-inline-price">${money(sp.giale)}</span>
+              <button type="button" class="basic-stock-link" data-stock-masp="${esc(sp.masp)}" title="Bấm để xem tồn nhanh">${esc(sp.masp)}</button>
+            </div>
+            <div class="basic-card-line-priceform">
+              <span class="basic-inline-price">${money(sp.giale)} đ</span>
+              ${formLabel ? `<span class="basic-card-form">Form: ${esc(formLabel)}</span>` : ""}
             </div>
             <div class="basic-card-line2">
-              ${formLabel ? `<span class="basic-card-form">Form: ${esc(formLabel)}</span> · ` : ""}
               <span class="basic-card-sizes">Còn size: <b>${esc(visibleSizes)}</b></span>
             </div>
+            <button type="button" class="basic-consult-btn">Tư vấn</button>
           </div>`;
-        div.onclick = async () => {
+        div.querySelector(".product-main-image")?.addEventListener("click", async e => {
+          e.stopPropagation();
           await selectProduct(sp,{scrollToDetail:true});
-        };
+        });
         div.querySelector(".basic-stock-link")?.addEventListener("click", e => {
           e.stopPropagation();
           window.StockQuick?.showFor(e.currentTarget, sp.masp);
+        });
+        div.querySelector(".basic-consult-btn")?.addEventListener("click", async e => {
+          e.stopPropagation();
+          await selectProduct(sp,{scrollToDetail:true});
         });
         frag.appendChild(div);
         return;
