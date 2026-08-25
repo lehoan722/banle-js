@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Trợ lý bán hàng Hoàn Tuyết V1.9.5</title>
+  <title>Trợ lý bán hàng Hoàn Tuyết V1.9.6</title>
   <style>
     :root{
       --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
@@ -507,16 +507,66 @@
       .modal-box{padding:14px}
     }
 
+
+    /* V1.9.6 - 3 cap giao dien */
+    .level-switch{display:flex;align-items:center;gap:6px;margin-left:auto}
+    .level-switch select{width:auto;min-width:118px;padding:7px 28px 7px 9px;font-weight:800;border:0;border-radius:9px;color:#075f9f}
+    .learn-btn{border:0;border-radius:9px;padding:8px 10px;font-weight:800;background:#fff7d5;color:#6f4b00}
+    .basic-only{display:none!important}
+    body[data-ui-mode="basic"] .basic-only{display:block!important}
+    body[data-ui-mode="basic"] .advanced-only{display:none!important}
+    body[data-ui-mode="basic"] #stepBar{display:none!important}
+    body[data-ui-mode="basic"] .layout{grid-template-columns:310px minmax(0,1fr) 300px}
+    body[data-ui-mode="basic"] .coach{font-size:12px}
+    body[data-ui-mode="basic"] .rightcol .card:first-child{display:none}
+    body[data-ui-mode="basic"] #cartTitle{font-size:16px}
+    body[data-ui-mode="basic"] .products{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+    body[data-ui-mode="basic"] .product img{height:175px}
+    .basic-form-row{margin-top:9px}
+    .basic-form-row .chips{gap:5px}
+    .basic-form-btn,.subgroup-chip{border:1px solid #c7d1dc;background:#fff;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:800}
+    .basic-form-btn.on,.subgroup-chip.on{background:#142033;color:#fff;border-color:#142033}
+    .basic-subgroups{display:flex!important;gap:5px;overflow:auto;padding-top:7px}
+    .basic-size-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px}
+    .basic-size-pick{border:1px solid #bfcad5;background:#fff;border-radius:7px;padding:6px 8px;font-weight:900}
+    .basic-size-pick.best{background:#ffe9a8;border-color:#e2a500}
+    .basic-size-pick:disabled{opacity:.32;text-decoration:line-through}
+    .basic-card-action{width:100%;margin-top:7px;border:0;border-radius:8px;padding:9px 5px;background:#15945d;color:#fff;font-weight:900}
+    .basic-card-meta{font-size:11px;color:#526171;margin-top:4px;line-height:1.35}
+    .basic-tip{background:#fff7d5;border:1px solid #efd371;border-radius:9px;padding:8px;font-size:12px;line-height:1.4;margin-bottom:8px}
+    .lesson-grid{display:grid;gap:8px}
+    .lesson{border:1px solid #d9e0e7;border-radius:10px;padding:10px;background:#fff}
+    .lesson b{color:#075f9f}
+    body[data-ui-mode="basic"] #modalKhach .top-size-preview-wrap,
+    body[data-ui-mode="basic"] #modalKhach .quick-height-grid,
+    body[data-ui-mode="basic"] #modalKhach .advanced-customer-field{display:none!important}
+    body[data-ui-mode="basic"] #modalKhach .modal-box{width:min(430px,96vw)}
+    body[data-ui-mode="basic"] #modalKhachTitle::after{content:" · Cơ bản";font-size:12px;color:#687787;font-weight:600}
+    @media(max-width:720px){
+      .level-switch{width:100%;margin-left:0}.level-switch select{flex:1}
+      body[data-ui-mode="basic"] .layout{display:flex}
+      body[data-ui-mode="basic"] .products{grid-template-columns:repeat(2,minmax(0,1fr))}
+      body[data-ui-mode="basic"] .product img{height:150px}
+      body[data-ui-mode="basic"] .rightcol{order:4}
+    }
   </style>
 </head>
 <body>
   <div id="app-container" style="display:none;">
   <header class="topbar">
     <div class="topline">
-      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.9.5</div>
-      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.9.5</div>
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.9.6</div>
+      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.9.6</div>
       <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
       <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
+      <div class="level-switch">
+        <select id="uiLevel" aria-label="Chế độ sử dụng">
+          <option value="basic">🟢 Cơ bản</option>
+          <option value="advanced">🔵 Nâng cao</option>
+          <option value="full">🟣 Đầy đủ</option>
+        </select>
+        <button class="learn-btn" id="btnHoc8Buoc" type="button">🎓 8 bước</button>
+      </div>
     </div>
     <div class="tabs" id="phienTabs"></div>
   </header>
@@ -553,7 +603,7 @@
       </button>
 
       <button class="mode-btn" data-mode="premium">
-        ⭐ Đắt hơn
+        💎 Cao cấp hơn
       </button>
     </div>
 
@@ -592,7 +642,7 @@
         </div>
       </div>
       <div class="card">
-        <h3>Gợi ý bán hàng</h3>
+        <h3>💡 Gợi ý nhanh</h3>
         <div class="coach" id="coachBox">Quan sát nhanh chiều cao/cân nặng và tạo phiên khách.</div>
       </div>
       <div class="card">
@@ -605,10 +655,12 @@
           <button type="button" class="main-group-btn" data-main-group="GIAY_DEP">👞 Giày dép</button>
         </div>
 
-        <div class="subgroup-row">
+        <div class="subgroup-row advanced-only">
           <label for="subGroupSelect">Nhóm chi tiết</label>
           <select id="subGroupSelect"></select>
         </div>
+        <div id="basicSubGroupBar" class="basic-subgroups basic-only"></div>
+        <div class="basic-form-row basic-only"><label style="font-size:12px;font-weight:800">Form sản phẩm</label><div class="chips" id="basicFormBar"><button class="basic-form-btn on" data-form="">Tất cả</button><button class="basic-form-btn" data-form="RONG">Rộng</button><button class="basic-form-btn" data-form="VUA">Vừa</button><button class="basic-form-btn" data-form="BO">Bó</button></div></div>
 
         <div class="shoe-size-search-row" id="shoeSizeSearchRow">
           <label for="shoeSizeSearchSelect">Size cần tìm</label>
@@ -626,11 +678,11 @@
           </select>
         </div>
 
-        <div class="searchline">
+        <div class="searchline advanced-only">
           <input id="txtSearch" placeholder="Nhập mã hoặc tên sản phẩm">
           <button class="btn btn-blue" id="btnSearch">Tìm</button>
         </div>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-top:7px">
+        <label class="advanced-only" style="display:flex;align-items:center;gap:6px;font-size:12px;margin-top:7px">
           <input type="checkbox" id="chkConHang" checked style="width:auto"> Chỉ hiện hàng còn tại cơ sở này
         </label>
       </div>
@@ -650,7 +702,7 @@
         <div id="productDetail" class="empty">Chọn một sản phẩm.</div>
       </div>
       <div class="card">
-        <h3>Giỏ tư vấn</h3>
+        <h3 id="cartTitle">Giỏ tư vấn</h3>
         <div id="cartBox" class="empty">Chưa chốt sản phẩm.</div>
         <button class="btn btn-green" id="btnDaySangBan" style="width:100%;margin-top:8px">✅ Đưa sang trang bán</button>
       </div>
@@ -712,18 +764,18 @@
           <button type="button" class="auto-weight-btn" id="btnCanTuDong">↺ Cân nặng theo chiều cao</button>
         </div>
       </div>
-      <div class="row2">
+      <div class="row2 advanced-customer-field">
         <div class="field"><label>Tuổi</label><input id="fTuoi" type="number" min="12" max="100" placeholder="VD 30"></div>
         <div class="field"><label>Size giày thường đi</label>
           <select id="fGiay"><option value="">-- Không biết --</option></select>
         </div>
       </div>
-      <div class="row2">
+      <div class="row2 advanced-customer-field">
         <div class="field"><label>Mã KH / SĐT</label><input id="fMakh" inputmode="tel" maxlength="10" placeholder="Có thể để trống"></div>
         <div class="field"><label>Tên khách</label><input id="fTenkh" placeholder="Có thể để trống"></div>
       </div>
 
-      <div class="field">
+      <div class="field advanced-customer-field">
         <label>Đặc điểm QUẦN (chỉ chọn nếu có)</label>
         <div class="chips">
           <button type="button" class="chip body-chip" data-field="quan_bung">Bụng</button>
@@ -731,7 +783,7 @@
           <button type="button" class="chip body-chip" data-field="quan_mong_to">Mông to</button>
         </div>
       </div>
-      <div class="field">
+      <div class="field advanced-customer-field">
         <label>Đặc điểm ÁO (chỉ chọn nếu có)</label>
         <div class="chips">
           <button type="button" class="chip body-chip" data-field="ao_vai_rong">Vai rộng</button>
@@ -744,6 +796,24 @@
         <button class="btn btn-gray" id="btnHuyKhach">Hủy</button>
         <button class="btn btn-blue" id="btnLuuKhach">Bắt đầu tư vấn</button>
       </div>
+    </div>
+  </div>
+
+
+  <div class="modal" id="modalHoc8Buoc">
+    <div class="modal-box">
+      <div class="modal-title">🎓 Bán hàng 8 bước · học nhanh</div>
+      <div class="lesson-grid">
+        <div class="lesson"><b>1. Chào khách</b><br>“Em chào anh, anh đang tìm quần hay áo để em lấy mẫu cho anh ạ?”</div>
+        <div class="lesson"><b>2. Hỏi nhu cầu</b><br>Hỏi mục đích mặc và form khách thích: rộng, vừa hay ôm.</div>
+        <div class="lesson"><b>3. Chọn size</b><br>Dùng chiều cao + cân nặng ước lượng. Hệ thống gợi ý, thực tế khách mặc size nào thì chọn size đó.</div>
+        <div class="lesson"><b>4. Chọn hàng</b><br>Lấy 2–3 mẫu phù hợp thay vì chỉ một mẫu.</div>
+        <div class="lesson"><b>5. Thử đồ</b><br>Quan sát phần vai/ngực với áo, bụng/đùi/mông với quần; điều chỉnh size nếu cần.</div>
+        <div class="lesson"><b>6. Bán kèm</b><br>Khi khách đã ưng một món, gợi ý thêm món phối cùng.</div>
+        <div class="lesson"><b>7. Chốt</b><br>Xác nhận đúng mã, size và số lượng rồi đưa sang trang bán.</div>
+        <div class="lesson"><b>8. Giữ khách</b><br>Nhắc đổi hàng/tích điểm/chăm sóc khách phù hợp, cảm ơn khách rõ ràng.</div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-blue" id="btnDongHoc8Buoc">Đã hiểu</button></div>
     </div>
   </div>
 
@@ -815,7 +885,7 @@
           window.diadiem = diadiem;
 
           // Chỉ nạp engine sau khi auth thành công.
-          await import("./scripts/salesCopilot_v195.js?v=195");
+          await import("./scripts/salesCopilot_v195.js?v=196");
 
           document.getElementById("app-container").style.display = "";
           document.getElementById("login-container").style.display = "none";
