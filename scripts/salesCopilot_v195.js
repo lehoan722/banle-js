@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.9.5";
-console.log("[SalesCopilot] BUILD 1.9.5");
+window.SALES_COPILOT_BUILD="1.9.6";
+console.log("[SalesCopilot] BUILD 1.9.6");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -104,11 +104,31 @@ const state = {
   editingSessionId: null,
   pendingConfirmAction: null,
   autoWeightMode: true,
+  uiMode: "basic",
+  selectedForm: "",
 };
 
 const $ = id => document.getElementById(id);
 const money = n => Number(n || 0).toLocaleString("vi-VN");
 const norm = v => String(v ?? "").trim().toUpperCase();
+
+function isBasicMode(){ return state.uiMode === "basic"; }
+function normalizeFormValue(v){
+  const x=norm(v).replace(/\s+/g,"_");
+  if(["RONG","RỘNG","FORM_RONG"].includes(x)) return "RONG";
+  if(["VUA","VỪA","FORM_VUA"].includes(x)) return "VUA";
+  if(["BO","BÓ","OM","ÔM","FORM_BO"].includes(x)) return "BO";
+  return x;
+}
+function applyUiMode(mode){
+  state.uiMode = ["basic","advanced","full"].includes(mode) ? mode : "basic";
+  document.body.dataset.uiMode = state.uiMode;
+  if ($("uiLevel")) $("uiLevel").value = state.uiMode;
+  if ($("cartTitle")) $("cartTitle").textContent = isBasicMode() ? "Khách đang lấy" : "Giỏ tư vấn";
+  if ($("btnDaySangBan")) $("btnDaySangBan").textContent = isBasicMode() ? "✅ ĐƯA SANG BÁN HÀNG" : "✅ Đưa sang trang bán";
+  renderCoach();
+  renderBasicSubgroups();
+}
 
 function toast(msg, ms = 2200) {
   const el = $("toast");
@@ -1165,6 +1185,7 @@ async function createOrUpdateSession(payload) {
     state.currentSessionId=data.id;
   } else {
     if (state.sessions.filter(x=>ACTIVE_STATES.includes(x.trang_thai)).length >= 3) {
+      if (isBasicMode()) { toast("Chế độ Cơ bản phục vụ tối đa 3 khách cùng lúc. Hãy kết thúc một khách trước.",3500); return false; }
       if (!confirm("Bạn đang có 3 khách chưa kết thúc. Vẫn tạo thêm khách thứ 4?")) return false;
     }
     const { data, error } = await supabase.from("phien_tu_van_ban_hang")
@@ -1541,10 +1562,17 @@ function renderProfile() {
 
 function coachText() {
   const p=currentSession();
+  if(isBasicMode()){
+    if(!p)return "1/4 Chọn chiều cao khách. Cân nặng sẽ tự ước lượng và có thể chỉnh lại.";
+    const rows=Number(p.so_mon_da_chot||0);
+    if(rows>0)return "4/4 Khách đã chọn hàng. Có thể bán kèm hoặc bấm ĐƯA SANG BÁN HÀNG.";
+    if(!state.selectedProduct)return "2/4 Hỏi khách cần nhóm nào và thích form Rộng / Vừa / Bó. Lấy 2–3 mẫu cho khách xem.";
+    return "3/4 Khách mặc size nào thì chọn đúng size đó và bấm CHỌN BÁN.";
+  }
   if(!p)return "Quan sát nhanh chiều cao/cân nặng và tạo phiên khách.";
   if(!state.selectedProduct)return "Hỏi khách đang cần nhóm hàng nào, sau đó chọn nhóm và lấy 2–3 mẫu để thử.";
   if(!state.selectedSize)return "Cho khách thử size hệ thống ưu tiên trước; luôn chuẩn bị size dự phòng nếu tồn kho có.";
-  return "Sau khi khách thử, bắt buộc ghi Hơi bó / Vừa khít / Hơi rộng. Dữ liệu này giúp hệ thống tư vấn chính xác dần.";
+  return "Sau khi khách thử, ghi Hơi bó / Vừa khít / Hơi rộng để hệ thống học chính xác dần.";
 }
 function renderCoach(){$("coachBox").textContent=coachText();}
 
@@ -1592,6 +1620,17 @@ function validSubGroups(mainKey) {
     .filter(Boolean);
 }
 
+
+function renderBasicSubgroups(){
+  const box=$("basicSubGroupBar"); if(!box) return;
+  const rows=validSubGroups(state.selectedMainGroup);
+  box.innerHTML=rows.map(g=>`<button type="button" class="subgroup-chip ${norm(g.manhom)===norm(state.selectedGroup)?"on":""}" data-group="${esc(g.manhom)}">${esc(g.ten_hien_thi||g.manhom)}</button>`).join("");
+  box.querySelectorAll(".subgroup-chip").forEach(b=>b.onclick=async()=>{
+    state.selectedGroup=b.dataset.group;
+    renderMainGroupControls(); renderBasicSubgroups();
+    if(currentSession()) await searchProducts();
+  });
+}
 function renderMainGroupControls() {
   document
     .querySelectorAll(".main-group-btn")
@@ -1633,6 +1672,7 @@ function renderMainGroupControls() {
   }
 
   select.value = state.selectedGroup;
+  renderBasicSubgroups();
 
   const shoeRow = $("shoeSizeSearchRow");
   const shoeSelect = $("shoeSizeSearchSelect");
@@ -2246,6 +2286,10 @@ async function searchProductsCore(searchSeq) {
     })
     .filter(Boolean);
 
+  if (isBasicMode() && state.selectedForm) {
+    list = list.filter(sp => normalizeFormValue(sp.form) === state.selectedForm);
+  }
+
   // Lọc theo chế độ tư vấn.
   if (
     state.searchMode === "discount"
@@ -2586,6 +2630,36 @@ async function renderProducts(list) {
           ? "Chọn size thử"
           : (sug.primary || "-");
 
+      if (isBasicMode()) {
+        const formText = normalizeFormValue(sp.form);
+        const formLabel = ({RONG:"Rộng",VUA:"Vừa",BO:"Bó"})[formText] || (sp.form||"");
+        div.innerHTML = `
+          <img class="product-main-image" loading="lazy" decoding="async" src="${img}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">
+          <div class="product-body">
+            <div class="masp">${esc(sp.masp)}</div>
+            <div class="price">${money(sp.giale)} đ</div>
+            ${Number(sp.giam_gia_pct||0)>0?`<span class="discount-badge">GIẢM ${Number(sp.giam_gia_pct)}%</span>`:""}
+            ${priceModeNote(sp)}
+            <div class="basic-card-meta">${formLabel?`Form: <b>${esc(formLabel)}</b> · `:""}Gợi ý: <b>size ${esc(suggestionText)}</b></div>
+            <div class="basic-size-row">
+              ${SIZE_LIST.map(sz=>{const ton=stockAtBranch(item.stockBySize,sz);return `<button class="basic-size-pick ${sz===sug.primary?"best":""}" data-basic-size="${sz}" ${ton<=0?"disabled":""}>${sz}</button>`}).join("")}
+            </div>
+            <button class="basic-card-action" data-basic-add="${esc(sug.primary||allAvailable[0]||"")}">+ CHỌN BÁN</button>
+          </div>`;
+        const productImg=div.querySelector(".product-main-image");
+        if(productImg) productImg.onclick=e=>{e.stopPropagation();openProductImageLightbox(productImg.currentSrc||productImg.src)};
+        let picked = sug.primary && allAvailable.includes(sug.primary) ? sug.primary : allAvailable[0];
+        const refreshPick=()=>{
+          div.querySelectorAll("[data-basic-size]").forEach(b=>b.classList.toggle("best",b.dataset.basicSize===picked));
+          const add=div.querySelector("[data-basic-add]"); if(add) add.textContent = picked ? `+ CHỌN BÁN · SIZE ${picked}` : "+ CHỌN BÁN";
+        };
+        div.querySelectorAll("[data-basic-size]").forEach(b=>b.onclick=e=>{e.stopPropagation();picked=b.dataset.basicSize;refreshPick();});
+        div.querySelector("[data-basic-add]").onclick=async e=>{e.stopPropagation();await basicQuickAdd(sp,picked);};
+        refreshPick();
+        frag.appendChild(div);
+        return;
+      }
+
       div.innerHTML = `
         <img
           class="product-main-image"
@@ -2817,6 +2891,8 @@ async function selectProduct(
   ) {
     state.selectedSize = state.currentSuggestion.primary;
   }
+
+  if (options.basicQuick) return;
 
   renderProductDetail();
   renderCoach();
@@ -3220,6 +3296,19 @@ async function saveFit(fit) {
   renderPairingHint();
 }
 
+
+async function basicQuickAdd(sp,size){
+  if(!currentSession()){ toast("Hãy tạo khách trước."); return; }
+  await selectProduct(sp,{basicQuick:true});
+  if(size){
+    const stock=state.stockCache.get(norm(sp.masp));
+    if(stockAtBranch(stock,size)<=0){ toast(`Size ${size} hiện hết tại ${state.diadiem.toUpperCase()}.`,3000); return; }
+    state.selectedSize=size;
+  }
+  await addToCart(size||null,null);
+  state.selectedProduct=null; state.selectedSize=null; state.selectedFit=null; state.currentSuggestion=null;
+  renderCoach();
+}
 async function addToCart(size,fit) {
   const p=currentSession(), sp=state.selectedProduct, sug=state.currentSuggestion;
   if(!p||!sp)return;
@@ -3258,7 +3347,7 @@ async function addToCart(size,fit) {
   p.trang_thai="DANG_CHOT";
   setStep(7);
   await renderCart();
-  toast("Đã thêm vào giỏ tư vấn.");
+  toast(isBasicMode()?"Đã thêm vào khách đang lấy.":"Đã thêm vào giỏ tư vấn.");
 }
 
 async function renderCart() {
@@ -3269,7 +3358,7 @@ async function renderCart() {
   if(error){box.innerHTML="Lỗi tải giỏ.";return;}
   const rows=data||[];
   p.so_mon_da_chot=rows.length;
-  if(!rows.length){box.className="empty";box.innerHTML="Chưa chốt sản phẩm.";renderTabs();return;}
+  if(!rows.length){box.className="empty";box.innerHTML=isBasicMode()?"Chưa chọn sản phẩm.":"Chưa chốt sản phẩm.";renderTabs();return;}
   box.className="";
   box.innerHTML=rows.map(r=>`
     <div class="cart-item" data-id="${r.id}">
@@ -3472,7 +3561,7 @@ function openCustomerModal(edit=false) {
   state.editingSessionId=edit?currentSession()?.id:null;
   const p=edit?currentSession():null;
   $("modalKhachTitle").textContent=edit?"Sửa thông tin khách":"Khách mới";
-  $("btnLuuKhach").textContent=edit?"Lưu thay đổi":"Bắt đầu tư vấn";
+  $("btnLuuKhach").textContent=edit?"Lưu thay đổi":(isBasicMode()?"Bắt đầu":"Bắt đầu tư vấn");
   $("fCao").value=p?.chieu_cao_cm||"";
   setWeightWheelValue(p?.can_nang_kg||"");
   $("fTuoi").value=p?.tuoi||"";
@@ -3680,6 +3769,17 @@ async function renderAll(){
 }
 
 function bindEvents(){
+  $("uiLevel")?.addEventListener("change", async e=>{
+    applyUiMode(e.target.value);
+    if(currentSession()) await searchProducts();
+  });
+  $("btnHoc8Buoc")?.addEventListener("click",()=>$("modalHoc8Buoc")?.classList.add("show"));
+  $("btnDongHoc8Buoc")?.addEventListener("click",()=>$("modalHoc8Buoc")?.classList.remove("show"));
+  document.querySelectorAll(".basic-form-btn").forEach(b=>b.onclick=async()=>{
+    state.selectedForm=b.dataset.form||"";
+    document.querySelectorAll(".basic-form-btn").forEach(x=>x.classList.toggle("on",x===b));
+    if(currentSession()) await searchProducts();
+  });
   $("productImageLightbox")?.addEventListener("click", closeProductImageLightbox);
   $("productImageLightboxImg")?.addEventListener("click", e => {
     e.stopPropagation();
@@ -3715,9 +3815,9 @@ function bindEvents(){
     .querySelectorAll(".main-group-btn")
     .forEach(btn => {
       btn.onclick = async () => {
-        await selectMainGroup(
-          btn.dataset.mainGroup
-        );
+        await selectMainGroup(btn.dataset.mainGroup);
+        renderBasicSubgroups();
+        if(isBasicMode() && currentSession()) await searchProducts();
       };
     });
 
@@ -3725,9 +3825,8 @@ function bindEvents(){
     ?.addEventListener(
       "change",
       async e => {
-        await selectSubGroup(
-          e.target.value
-        );
+        await selectSubGroup(e.target.value);
+        if(isBasicMode() && currentSession()) await searchProducts();
       }
     );
 
@@ -3837,7 +3936,7 @@ function bindEvents(){
   $("btnSearch").onclick=searchProducts;
   $("txtSearch").addEventListener("keydown",e=>{if(e.key==="Enter")searchProducts();});
   $("chkConHang").onchange=searchProducts;
-  $("btnDaySangBan").onclick=()=>confirmMeasurements("PUSH");
+  $("btnDaySangBan").onclick=()=> isBasicMode() ? pushToSale() : confirmMeasurements("PUSH");
   $("btnKetThucKhongMua").onclick=async()=>{
     if(!currentSession()) return;
 
@@ -3918,6 +4017,7 @@ function debugV18Engine() {
 }
 
 async function init(){
+  applyUiMode("basic");
   $("nvInfo").textContent=`${state.tennv||state.manv||"Chưa đăng nhập"} · ${state.diadiem.toUpperCase()}`;
   $("fGiay").innerHTML='<option value="">-- Không biết --</option>'+SIZE_LIST.map(s=>`<option value="${s}">${s}</option>`).join("");
   try{
@@ -3940,6 +4040,7 @@ async function init(){
 
     renderModeControls();
     renderGroups();
+    renderBasicSubgroups();
     await renderAll();
     if(!state.sessions.length) openCustomerModal(false);
     else searchProducts();
