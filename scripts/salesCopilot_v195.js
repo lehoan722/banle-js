@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.10.4";
-console.log("[SalesCopilot] BUILD 1.10.4");
+window.SALES_COPILOT_BUILD="1.10.5";
+console.log("[SalesCopilot] BUILD 1.10.5");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -43,6 +43,8 @@ const candidateSearchCache = new Map();
 const masterFetchedAt = new Map();
 const learningDataCache = new Map();
 const stockFetchedAt = new Map();
+const recentImportDateCache = new Map();
+const RECENT_IMPORT_CACHE_MS = 5 * 60 * 1000;
 
 let latestSearchSeq = 0;
 
@@ -1305,41 +1307,34 @@ function scrollToProductDetail() {
   jumpInstantTo(top);
 }
 
-function scrollToProductCard(masp) {
-  const el =
-    document.getElementById(
-      "sp-card-" +
-      safeDomId(norm(masp))
-    );
+async function scrollToProductCard(masp) {
+  const targetMasp=norm(masp);
+  let el=document.getElementById("sp-card-"+safeDomId(targetMasp));
 
-  if (!el) {
-    toast(
-      "Không tìm thấy ảnh sản phẩm trong danh sách hiện tại."
-    );
+  const pager=state.productPager;
+  if(!el && pager?.list?.length){
+    const idx=pager.list.findIndex(x=>norm(x?.masp)===targetMasp);
+    if(idx>=0){
+      await withDataLoading("Đang mở lại sản phẩm...", async()=>{
+        while(!document.getElementById("sp-card-"+safeDomId(targetMasp)) && pager.nextIndex<=idx){
+          await loadNextProductPage(false);
+          if(pager.searchSeq!==latestSearchSeq)break;
+        }
+      });
+      el=document.getElementById("sp-card-"+safeDomId(targetMasp));
+    }
+  }
+
+  if(!el){
+    toast("Không tìm thấy ảnh sản phẩm trong danh sách hiện tại.");
     return;
   }
 
-  const offset =
-    window.innerWidth <= 720
-      ? 210
-      : 120;
-
-  const top =
-    el.getBoundingClientRect().top +
-    window.pageYOffset -
-    offset;
-
+  const offset=window.innerWidth<=720?210:120;
+  const top=el.getBoundingClientRect().top+window.pageYOffset-offset;
   jumpInstantTo(top);
-
-  el.classList.add(
-    "jump-highlight"
-  );
-
-  setTimeout(() => {
-    el.classList.remove(
-      "jump-highlight"
-    );
-  }, 900);
+  el.classList.add("jump-highlight");
+  setTimeout(()=>el.classList.remove("jump-highlight"),1300);
 }
 
 function effectiveSuggestionForMatchedSizes(baseSug, matchedSizes) {
@@ -1532,7 +1527,8 @@ async function loadProductMastersByMasps(masps) {
             .from("dmhanghoa")
             .select(
               "masp,tensp,giale,nhomhang,chungloai," +
-              "mausac,form,rong_ong,co_gian,active,giam_gia_pct"
+              "mausac,form,rong_ong,co_gian,active,giam_gia_pct," +
+              "treomaucs1,treomaucs2,vitrikho1,vitrikho2"
             )
             .in("masp",chunk);
 
@@ -1559,6 +1555,69 @@ async function loadProductMastersByMasps(masps) {
   });
 
   return out;
+}
+
+
+async function loadRecentImportDates(masps) {
+  const unique = Array.from(new Set((masps || []).map(norm).filter(Boolean)));
+  const out = new Map();
+  const need = [];
+  const now = nowMs();
+
+  unique.forEach(m => {
+    const c = recentImportDateCache.get(m);
+    if (c && cacheFresh(c.ts, RECENT_IMPORT_CACHE_MS)) out.set(m, c.date || null);
+    else need.push(m);
+  });
+
+  if (need.length) {
+    const chunks=[];
+    for(let i=0;i<need.length;i+=100) chunks.push(need.slice(i,i+100));
+    const results = await Promise.all(chunks.map(async chunk => {
+      const {data,error} = await supabase.rpc("sales_copilot_nhap_som_3thang", {
+        p_masps: chunk,
+        p_den_ngay: new Date().toISOString().slice(0,10)
+      });
+      if(error){
+        console.warn("[SalesCopilot] Không đọc được ngày nhập 3 tháng:",error);
+        return [];
+      }
+      return Array.isArray(data) ? data : [];
+    }));
+
+    const got=new Map();
+    results.flat().forEach(r=>{
+      const m=norm(r.masp);
+      if(m) got.set(m, r.ngay_nhap_som_3thang || null);
+    });
+    need.forEach(m=>{
+      const d=got.get(m)||null;
+      recentImportDateCache.set(m,{ts:now,date:d});
+      out.set(m,d);
+    });
+  }
+  return out;
+}
+
+function sortByFormThenRecentFifo(list, preferredFormRaw, importDates){
+  const source=Array.isArray(list)?list:[];
+  if(source.length<2)return source;
+  const preferred=normalizeFormValue(preferredFormRaw);
+  return source
+    .map((sp,index)=>({sp,index}))
+    .sort((a,b)=>{
+      const aForm = preferred && normalizeFormValue(a.sp?.form)===preferred ? 0 : (preferred ? 1 : 0);
+      const bForm = preferred && normalizeFormValue(b.sp?.form)===preferred ? 0 : (preferred ? 1 : 0);
+      if(aForm!==bForm)return aForm-bForm;
+
+      const ad=importDates?.get(norm(a.sp?.masp))||null;
+      const bd=importDates?.get(norm(b.sp?.masp))||null;
+      const aHas=ad?0:1, bHas=bd?0:1;
+      if(aHas!==bHas)return aHas-bHas;
+      if(ad && bd && ad!==bd)return ad<bd?-1:1;
+      return a.index-b.index;
+    })
+    .map(x=>x.sp);
 }
 
 
@@ -2429,12 +2488,12 @@ async function searchProductsCore(searchSeq) {
     );
   }
 
-  if (state.selectedForm) {
-    list = promoteFormPreservingOrder(
-      list,
-      state.selectedForm
-    );
-  }
+  // V1.10.5: ưu tiên form trước, sau đó FIFO mềm theo ngày nhập sớm nhất
+  // trong 3 tháng gần đây (gộp nmcs1 + nmcs2, không phân biệt cơ sở).
+  // Các tiêu chí xếp hạng cũ được giữ nguyên khi cùng mức ưu tiên.
+  const recentImportDates = await loadRecentImportDates(list.map(x=>x.masp));
+  if (searchSeq !== latestSearchSeq) return;
+  list = sortByFormThenRecentFifo(list, state.selectedForm, recentImportDates);
 
   // V1.10.3: không tải toàn bộ learning + full-stock của cả danh sách nữa.
   // Chỉ giữ danh sách đã sắp xếp, sau đó tải/rendere từng gói 20 mã khi người dùng cuộn.
@@ -3457,6 +3516,13 @@ async function basicQuickAdd(sp,size){
   renderCoach();
 }
 
+function cartProductMeta(masp){
+  const sp=state.productCache.get(norm(masp))||{};
+  const treo=state.diadiem==="cs2" ? sp.treomaucs2 : sp.treomaucs1;
+  const kho=state.diadiem==="cs2" ? sp.vitrikho2 : sp.vitrikho1;
+  return {sp,treo:String(treo||"").trim(),kho:String(kho||"").trim()};
+}
+
 function renderCartRowsFast(rows){
   const p=currentSession(), box=$("cartBox");
   const safeRows=Array.isArray(rows)?rows:[];
@@ -3468,13 +3534,30 @@ function renderCartRowsFast(rows){
     return;
   }
   box.className="";
-  box.innerHTML=safeRows.map(r=>`
-    <div class="cart-item ${r.nghi_ngo_size?"cart-suspicious":""}" data-id="${r.id}">
-      <div class="cart-top"><b>${esc(r.masp)}</b><span>${r.size?`Size ${r.size}`:""}</span></div>
-      <div class="cart-meta">${money(r.giale_hien_thi)} đ · SL ${Number(r.soluong||1)} ${r.ket_qua_mac?`· ${r.ket_qua_mac.replaceAll("_"," ")}`:""}</div>
-      ${r.nghi_ngo_size?`<div style="font-size:11px;font-weight:800">⚠️ Size bất thường - kiểm tra lại trước khi bán</div>`:""}
+  box.innerHTML=safeRows.map(r=>{
+    const meta=cartProductMeta(r.masp);
+    const locationText=[
+      meta.treo?`Mẫu: ${esc(meta.treo)}`:"Mẫu: -",
+      meta.kho?`Kho: ${esc(meta.kho)}`:"Kho: -"
+    ].join(" / ");
+    return `
+    <div class="cart-item ${r.nghi_ngo_size?"cart-suspicious":""}" data-id="${r.id}" data-masp="${esc(r.masp)}">
+      <div class="cart-top">
+        <button type="button" class="cart-masp-link" data-cart-stock="${esc(r.masp)}">${esc(r.masp)}</button>
+        <span>${r.size?`Size ${esc(r.size)}`:""}</span>
+      </div>
+      <div class="cart-price-qty">${money(r.giale_hien_thi)} đ · SL ${Number(r.soluong||1)}</div>
+      <div class="cart-location">${locationText}</div>
+      ${r.nghi_ngo_size?`<div class="cart-warning">⚠️ Size bất thường - kiểm tra lại trước khi bán</div>`:""}
       <div class="cart-buttons"><button class="btn-remove">Bỏ khỏi giỏ</button></div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-cart-stock]").forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    window.StockQuick?.showFor(e.currentTarget, btn.dataset.cartStock);
+  });
+
   box.querySelectorAll(".btn-remove").forEach(b=>b.onclick=async()=>{
     await withDataLoading("Đang bỏ sản phẩm khỏi giỏ...",async()=>{
       const id=b.closest(".cart-item").dataset.id;
@@ -3550,6 +3633,7 @@ async function renderCart() {
     .eq("phien_id",p.id).eq("trang_thai","DA_CHOT").eq("da_day_sang_ban",false).order("created_at",{ascending:false});
   if(error){box.innerHTML="Lỗi tải giỏ.";return;}
   state.cartRows=data||[];
+  await loadProductMastersByMasps(state.cartRows.map(x=>x.masp));
   renderCartRowsFast(state.cartRows);
 }
 
@@ -4172,6 +4256,11 @@ function bindEvents(){
   $("txtSearch").addEventListener("keydown",e=>{if(e.key==="Enter")searchProducts();});
   $("chkConHang").onchange=searchProducts;
   $("btnDaySangBan").onclick=()=> isBasicMode() ? pushToSale() : confirmMeasurements("PUSH");
+  $("btnTimTiepSP")?.addEventListener("click", async()=>{
+    const masp=state.selectedProduct?.masp;
+    if(!masp){toast("Chưa có sản phẩm đang tư vấn.");return;}
+    await scrollToProductCard(masp);
+  });
   $("btnKetThucKhongMua").onclick=async()=>{
     if(!currentSession()) return;
 
