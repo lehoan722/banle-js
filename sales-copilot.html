@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Trợ lý bán hàng Hoàn Tuyết V1.10.4</title>
+  <title>Trợ lý bán hàng Hoàn Tuyết V1.10.5</title>
   <style>
     :root{
       --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
@@ -508,7 +508,7 @@
     }
 
 
-    /* V1.10.4 - 3 cap giao dien */
+    /* V1.10.5 - 3 cap giao dien */
     .level-switch{display:flex;align-items:center;gap:6px;margin-left:auto}
     .level-switch select{width:auto;min-width:118px;padding:7px 28px 7px 9px;font-weight:800;border:0;border-radius:9px;color:#075f9f}
     .learn-btn{border:0;border-radius:9px;padding:8px 10px;font-weight:800;background:#fff7d5;color:#6f4b00}
@@ -519,7 +519,7 @@
     body[data-ui-mode="basic"] .layout{grid-template-columns:310px minmax(0,1fr) 300px}
     body[data-ui-mode="basic"] .coach{font-size:12px}
     body[data-ui-mode="basic"] .rightcol .card:first-child{display:block}
-    /* V1.10.4 - fix luong Tu van + lightbox */
+    /* V1.10.5 - fix luong Tu van + lightbox */
     body[data-ui-mode="basic"] .rightcol .card:first-child{scroll-margin-top:210px}
     body[data-ui-mode="basic"] #productDetail{scroll-margin-top:210px}
     body[data-ui-mode="basic"] #cartTitle{font-size:16px}
@@ -554,7 +554,7 @@
       body[data-ui-mode="basic"] .midcol{order:3}
     }
   
-    /* V1.10.4 - Tối ưu bản Cơ bản theo ảnh xem nhanh */
+    /* V1.10.5 - Tối ưu bản Cơ bản theo ảnh xem nhanh */
     .basic-stock-link{border:0;background:none;padding:0;margin:0;font:inherit;color:#111827;font-weight:900;text-align:left;cursor:pointer;text-decoration:none}
     .basic-stock-link:hover{text-decoration:underline}
     .basic-inline-price{font-weight:800;color:#111827}
@@ -597,7 +597,7 @@
     }
 
   
-    /* V1.10.4 - card Cơ bản: rõ mã/giá/form/size + nút Tư vấn */
+    /* V1.10.5 - card Cơ bản: rõ mã/giá/form/size + nút Tư vấn */
     body[data-ui-mode="basic"] .basic-card-body{padding:6px 7px 7px}
     body[data-ui-mode="basic"] .basic-card-line1{display:block;min-height:0;margin:0 0 2px;line-height:1.15}
     body[data-ui-mode="basic"] .basic-stock-link{
@@ -627,10 +627,29 @@
     }
 
   
-    /* V1.10.4 - gio hang/canh bao */
+    /* V1.10.5 - gio hang/canh bao */
     .cart-item.cart-suspicious{color:#b42318!important;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:8px;margin-bottom:6px}
     .cart-item.cart-suspicious .cart-meta,.cart-item.cart-suspicious .cart-top,.cart-item.cart-suspicious b,.cart-item.cart-suspicious span{color:#b42318!important}
     .cart-buttons .btn-remove{background:#15945d!important;color:#fff!important;font-weight:800!important;padding:7px 10px!important}
+
+  
+    /* V1.10.5 - giỏ lấy hàng + nút tìm tiếp */
+    .cart-main-actions{display:flex;gap:6px;margin-top:8px;align-items:stretch}
+    .cart-main-actions #btnTimTiepSP{flex:0 0 40%;padding-left:6px;padding-right:6px}
+    .cart-main-actions #btnDaySangBan{flex:1;min-width:0;padding-left:6px;padding-right:6px}
+    body:not([data-ui-mode="basic"]) #btnTimTiepSP{display:none}
+    .cart-masp-link{border:0;background:none;padding:0;color:#0878d1;text-decoration:underline;font-weight:900;font-size:inherit;cursor:pointer;text-align:left}
+    .cart-price-qty{font-size:15px;font-weight:400;line-height:1.25;margin-top:3px}
+    .cart-location{font-size:12px;font-weight:400;line-height:1.3;margin-top:3px;color:#4b5563}
+    .cart-warning{font-size:11px;font-weight:800;margin-top:3px}
+    .cart-suspicious,.cart-suspicious *{color:#d92d20!important}
+    .cart-suspicious .btn-remove{color:#fff!important}
+    @media(max-width:720px){
+      .cart-main-actions{gap:5px}
+      .cart-main-actions .btn{font-size:11.5px;padding-top:9px;padding-bottom:9px;white-space:nowrap}
+      .cart-price-qty{font-size:14px}
+      .cart-location{font-size:11px}
+    }
 
   </style>
 </head>
@@ -638,7 +657,7 @@
   <div id="app-container" style="display:none;">
   <header class="topbar">
     <div class="topline">
-      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.10.4</div>
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.10.5</div>
       <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.10.3</div>
       <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
       <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
@@ -787,7 +806,10 @@
       <div class="card">
         <h3 id="cartTitle">Giỏ tư vấn</h3>
         <div id="cartBox" class="empty">Chưa chốt sản phẩm.</div>
-        <button class="btn btn-green" id="btnDaySangBan" style="width:100%;margin-top:8px">✅ Đưa sang trang bán</button>
+        <div class="cart-main-actions">
+          <button class="btn btn-gray" id="btnTimTiepSP">🔎 Tìm tiếp SP</button>
+          <button class="btn btn-green" id="btnDaySangBan">✅ Đưa sang bán</button>
+        </div>
       </div>
     </aside>
   </main>
@@ -975,7 +997,7 @@
           window.diadiem = diadiem;
 
           // Chỉ nạp engine sau khi auth thành công.
-          await import("./scripts/salesCopilot_v195.js?v=1104");
+          await import("./scripts/salesCopilot_v195.js?v=1105");
 
           document.getElementById("app-container").style.display = "";
           document.getElementById("login-container").style.display = "none";
