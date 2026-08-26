@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.10.3";
-console.log("[SalesCopilot] BUILD 1.10.3");
+window.SALES_COPILOT_BUILD="1.10.4";
+console.log("[SalesCopilot] BUILD 1.10.4");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -1439,7 +1439,7 @@ function suggestedSizesForGroup(profile, groupCode) {
         rangeMin:null,
         rangeMax:null
       },
-      sizes: ALL_SIZES.slice(),
+      sizes: SIZE_LIST.slice(),
       noAutoShoeSize:true
     };
   }
