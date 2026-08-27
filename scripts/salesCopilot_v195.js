@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.10.6";
-console.log("[SalesCopilot] BUILD 1.10.6");
+window.SALES_COPILOT_BUILD="1.10.7";
+console.log("[SalesCopilot] BUILD 1.10.7");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -109,6 +109,8 @@ const state = {
   autoWeightMode: true,
   uiMode: "basic",
   selectedForm: "",
+  selectedColor: "",
+  colors: [],
   cartRows: [],
   productPager: {
     list: [],
@@ -193,17 +195,29 @@ function productLoai(sp) {
 }
 
 async function loadConfig() {
-  const [g1, g2, g3] = await Promise.all([
+  const [g1, g2, g3, g4] = await Promise.all([
     supabase.from("cauhinh_nhom_tu_van").select("*").eq("active", true).order("thu_tu"),
     supabase.from("cauhinh_thu_tu_size").select("*").eq("active", true).order("thu_tu"),
     supabase.from("cauhinh_nhom_co_the").select("*").eq("active", true).order("thu_tu"),
+    supabase.from("dmmausac").select("mamau,tenmau").order("tenmau"),
   ]);
   if (g1.error) throw g1.error;
   if (g2.error) throw g2.error;
   if (g3.error) throw g3.error;
+  if (g4.error) console.warn("[SalesCopilot] Không tải được danh mục màu:",g4.error);
   state.groups = g1.data || [];
   state.sizeConfig = g2.data || [];
   state.bodyGroups = g3.data || [];
+  state.colors = g4.data || [];
+}
+
+function renderColorPrioritySelect(){
+  const sel=$("colorPrioritySelect");
+  if(!sel)return;
+  const current=state.selectedColor||"";
+  sel.innerHTML='<option value="">-- Không ưu tiên màu --</option>' +
+    (state.colors||[]).map(r=>`<option value="${esc(r.mamau)}">${esc(r.tenmau)}</option>`).join("");
+  sel.value=current;
 }
 
 function distanceToRange(v, min, max) {
@@ -1614,17 +1628,25 @@ async function loadRecentImportDates(masps) {
   return out;
 }
 
-function sortByFormThenRecentFifo(list, preferredFormRaw, importDates){
+function sortByFormColorThenRecentFifo(list, preferredFormRaw, preferredColorRaw, importDates){
   const source=Array.isArray(list)?list:[];
   if(source.length<2)return source;
-  const preferred=normalizeFormValue(preferredFormRaw);
+  const preferredForm=normalizeFormValue(preferredFormRaw);
+  const preferredColor=norm(preferredColorRaw);
   return source
     .map((sp,index)=>({sp,index}))
     .sort((a,b)=>{
-      const aForm = preferred && normalizeFormValue(a.sp?.form)===preferred ? 0 : (preferred ? 1 : 0);
-      const bForm = preferred && normalizeFormValue(b.sp?.form)===preferred ? 0 : (preferred ? 1 : 0);
+      // 1) Form là tầng ưu tiên quan trọng hơn màu.
+      const aForm = preferredForm && normalizeFormValue(a.sp?.form)===preferredForm ? 0 : (preferredForm ? 1 : 0);
+      const bForm = preferredForm && normalizeFormValue(b.sp?.form)===preferredForm ? 0 : (preferredForm ? 1 : 0);
       if(aForm!==bForm)return aForm-bForm;
 
+      // 2) Màu là ưu tiên mềm: đúng màu lên trước, KHÔNG loại màu khác.
+      const aColor = preferredColor && norm(a.sp?.mausac)===preferredColor ? 0 : (preferredColor ? 1 : 0);
+      const bColor = preferredColor && norm(b.sp?.mausac)===preferredColor ? 0 : (preferredColor ? 1 : 0);
+      if(aColor!==bColor)return aColor-bColor;
+
+      // 3) Trong cùng tầng Form + Màu, ưu tiên ngày nhập sớm hơn trong 3 tháng.
       const ad=importDates?.get(norm(a.sp?.masp))||null;
       const bd=importDates?.get(norm(b.sp?.masp))||null;
       const aHas=ad?0:1, bHas=bd?0:1;
@@ -2523,12 +2545,11 @@ async function searchProductsCore(searchSeq) {
     );
   }
 
-  // V1.10.5: ưu tiên form trước, sau đó FIFO mềm theo ngày nhập sớm nhất
-  // trong 3 tháng gần đây (gộp nmcs1 + nmcs2, không phân biệt cơ sở).
-  // Các tiêu chí xếp hạng cũ được giữ nguyên khi cùng mức ưu tiên.
+  // V1.10.7: Form -> màu ưu tiên mềm -> FIFO 3 tháng (nmcs1 + nmcs2 gộp chung).
+  // Màu không lọc cứng; sản phẩm màu khác vẫn được giữ phía sau trong cùng tầng Form.
   const recentImportDates = await loadRecentImportDates(list.map(x=>x.masp));
   if (searchSeq !== latestSearchSeq) return;
-  list = sortByFormThenRecentFifo(list, state.selectedForm, recentImportDates);
+  list = sortByFormColorThenRecentFifo(list, state.selectedForm, state.selectedColor, recentImportDates);
 
   // V1.10.3: không tải toàn bộ learning + full-stock của cả danh sách nữa.
   // Chỉ giữ danh sách đã sắp xếp, sau đó tải/rendere từng gói 20 mã khi người dùng cuộn.
@@ -2825,6 +2846,7 @@ async function renderProducts(list, options = {}) {
         });
         div.querySelector(".basic-consult-btn")?.addEventListener("click", async e => {
           e.stopPropagation();
+          markConsultedProduct(sp.masp);
           await selectProduct(sp,{scrollToDetail:true});
         });
         frag.appendChild(div);
@@ -2899,6 +2921,7 @@ async function renderProducts(list, options = {}) {
 
       div.querySelector(".btn-tv").onclick =
         async () => {
+          markConsultedProduct(sp.masp);
           await selectProduct(
             sp,
             {scrollToDetail:true}
@@ -2951,6 +2974,34 @@ function jumpToTrialControls() {
       behavior:"auto"
     });
   });
+}
+
+async function markConsultedProduct(masp){
+  const p=currentSession();
+  const m=norm(masp);
+  if(!p||!m)return;
+  try{
+    const {data,error}=await supabase.rpc("sales_copilot_ghi_tu_van_san_pham",{
+      p_phien_id:Number(p.id),
+      p_masp:m
+    });
+    if(error){console.warn("[SalesCopilot] Không ghi được mốc tư vấn SP:",error);return;}
+    if(data){
+      p.tu_van_sp_dau_luc=data.tu_van_sp_dau_luc||p.tu_van_sp_dau_luc||null;
+      p.so_sp_da_tu_van=Number(data.so_sp_da_tu_van||p.so_sp_da_tu_van||0);
+    }
+  }catch(e){console.warn("[SalesCopilot] Tracking tư vấn lỗi:",e);}
+}
+
+async function markFirstCartMilestone(phienId){
+  const now=new Date().toISOString();
+  try{
+    const {error}=await supabase.from("phien_tu_van_ban_hang")
+      .update({vao_gio_dau_luc:now})
+      .eq("id",phienId)
+      .is("vao_gio_dau_luc",null);
+    if(error)console.warn("[SalesCopilot] Không ghi được mốc vào giỏ đầu:",error);
+  }catch(e){console.warn("[SalesCopilot] Tracking giỏ lỗi:",e);}
 }
 
 async function selectProduct(
@@ -3645,6 +3696,7 @@ async function addToCart(size,fit) {
     supabase.from("phien_tu_van_ban_hang")
       .update({trang_thai:"DANG_CHOT",last_active_at:new Date().toISOString()}).eq("id",p.id)
       .then(({error:e})=>{if(e)console.warn("[SalesCopilot] update session cart:",e);});
+    markFirstCartMilestone(p.id);
     return true;
   };
 
@@ -4070,7 +4122,7 @@ async function pushToSale() {
     const now=new Date().toISOString();
     const {error:markErr}=await supabase.from("gio_tu_van").update({da_day_sang_ban:true,day_sang_ban_luc:now,updated_at:now}).in("id",ids);
     if(markErr){toast("Trang bán đã nhận nhưng chưa đánh dấu được giỏ: "+markErr.message,6000);return;}
-    await supabase.from("phien_tu_van_ban_hang").update({trang_thai:"DA_DAY_SANG_BAN",last_active_at:now}).eq("id",p.id);
+    await supabase.from("phien_tu_van_ban_hang").update({trang_thai:"DA_DAY_SANG_BAN",last_active_at:now,dua_sang_ban_luc:now,ket_thuc_luc:now}).eq("id",p.id);
     p.trang_thai="DA_DAY_SANG_BAN";
     setStep(8);
     toast(`Đã chuyển đủ ${data.length} sản phẩm sang trang bán.`);
@@ -4080,7 +4132,8 @@ async function pushToSale() {
 
 async function endNoBuy(){
   const p=currentSession();if(!p)return;
-  await supabase.from("phien_tu_van_ban_hang").update({trang_thai:"KET_THUC_KHONG_MUA",last_active_at:new Date().toISOString()}).eq("id",p.id);
+  const now=new Date().toISOString();
+  await supabase.from("phien_tu_van_ban_hang").update({trang_thai:"KET_THUC_KHONG_MUA",last_active_at:now,ket_thuc_luc:now}).eq("id",p.id);
   state.sessions=state.sessions.filter(x=>Number(x.id)!==Number(p.id));
   state.currentSessionId=state.sessions[0]?.id||null;
   state.selectedProduct=null;state.selectedSize=null;
@@ -4128,6 +4181,10 @@ function bindEvents(){
     state.selectedForm=b.dataset.form||"";
     document.querySelectorAll(".basic-form-btn").forEach(x=>x.classList.toggle("on",x===b));
     if(currentSession()) await searchProducts();
+  });
+  $("colorPrioritySelect")?.addEventListener("change",async e=>{
+    state.selectedColor=String(e.target.value||"").trim();
+    if(currentSession() && state.selectedGroup) await searchProducts();
   });
   $("productImageLightbox")?.addEventListener("click", closeProductImageLightbox);
   $("productImageLightboxImg")?.addEventListener("click", e => {
@@ -4382,6 +4439,7 @@ async function init(){
   showDataLoading("Đang tải dữ liệu Trợ lý bán hàng...");
   try{
     await loadConfig();
+    renderColorPrioritySelect();
     debugV18Engine();
     await loadSessions();
     bindEvents();
