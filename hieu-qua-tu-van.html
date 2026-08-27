@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hiệu quả tư vấn - Hoàn Tuyết</title>
+<style>
+:root{--blue:#0878d1;--bg:#f3f6f9;--card:#fff;--border:#d9e0e7;--text:#172033;--green:#168f5b;--red:#cc3b32}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}button,input,select{font:inherit}.top{background:var(--blue);color:white;padding:12px 14px;position:sticky;top:0;z-index:5}.top h1{font-size:20px;margin:0}.top small{opacity:.9}.wrap{max-width:1450px;margin:auto;padding:12px}.card{background:white;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 4px #0000000d}.filters{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:8px}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:#536071}.field input,.field select{width:100%;padding:9px;border:1px solid #bdc8d3;border-radius:8px;background:#fff}.btn{border:0;border-radius:8px;padding:9px 13px;font-weight:800;cursor:pointer}.btn-blue{background:var(--blue);color:#fff}.stats{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:8px}.stat{background:#fff;border:1px solid var(--border);border-radius:11px;padding:12px}.stat b{font-size:25px;display:block;color:#0a5f9e}.stat span{font-size:12px;color:#617080}.section-title{font-size:16px;color:#075f9f;margin:0 0 9px}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:720px}th,td{border-bottom:1px solid #e5e9ee;padding:8px;text-align:left;font-size:13px}th{background:#f7f9fb;position:sticky;top:0}.muted{color:#718091}.good{color:var(--green);font-weight:800}.bad{color:var(--red);font-weight:800}.empty{text-align:center;padding:22px;color:#718091}.notice{background:#fff7d7;border:1px solid #ead174;padding:10px;border-radius:9px;font-size:13px;margin-bottom:10px}.loading{display:none;position:fixed;inset:0;background:#0005;z-index:50;align-items:center;justify-content:center}.loading.show{display:flex}.loading>div{background:#fff;border-radius:12px;padding:18px 22px;font-weight:800}.row-actions{display:flex;justify-content:flex-end;align-items:end}
+@media(max-width:800px){.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.top h1{font-size:18px}.wrap{padding:8px}}
+</style>
+</head>
+<body>
+<div class="top"><h1>HIỆU QUẢ TƯ VẤN</h1><small id="who">Đang kiểm tra đăng nhập...</small></div>
+<div class="wrap">
+  <div class="notice">Số “Khách được phục vụ” được tính từ lúc nhân viên tạo phiên <b>+ Khách mới</b>. Đây chưa phải tổng số người bước vào cửa hàng.</div>
+  <div class="card filters">
+    <div class="field"><label>Từ ngày</label><input type="date" id="tuNgay"></div>
+    <div class="field"><label>Đến ngày</label><input type="date" id="denNgay"></div>
+    <div class="field"><label>Cơ sở</label><select id="coSo"><option value="">Tất cả</option><option value="cs1">CS1</option><option value="cs2">CS2</option></select></div>
+    <div class="field"><label>Nhân viên</label><select id="nhanVien"><option value="">Tất cả</option></select></div>
+    <div class="row-actions"><button class="btn btn-blue" id="btnTai">Tải số liệu</button></div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="card">
+    <h3 class="section-title">Theo khung giờ</h3>
+    <div class="table-wrap"><table><thead><tr><th>Khung giờ</th><th>Khách phục vụ</th><th>Chuyển sang bán</th><th>Tỷ lệ</th></tr></thead><tbody id="hourRows"></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h3 class="section-title">Theo nhân viên</h3>
+    <div class="table-wrap"><table><thead><tr><th>Nhân viên</th><th>Khách</th><th>Sang bán</th><th>Không mua</th><th>Tỷ lệ</th><th>TG phục vụ TB</th><th>TG đến món đầu</th><th>Món/khách sang bán</th></tr></thead><tbody id="staffRows"></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h3 class="section-title">Các phiên tư vấn</h3>
+    <div class="table-wrap"><table><thead><tr><th>Bắt đầu</th><th>NV</th><th>Cơ sở</th><th>Thời gian</th><th>Đã tư vấn</th><th>Món sang bán</th><th>Kết quả</th></tr></thead><tbody id="sessionRows"></tbody></table></div>
+  </div>
+</div>
+<div class="loading" id="loading"><div>Đang tải số liệu...</div></div>
+<script type="module" src="./scripts/hieuQuaTuVan.js?v=1107"></script>
+</body>
+</html>
