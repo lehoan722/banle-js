@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.10.5";
-console.log("[SalesCopilot] BUILD 1.10.5");
+window.SALES_COPILOT_BUILD="1.10.6";
+console.log("[SalesCopilot] BUILD 1.10.6");
 import { supabase } from "./supabaseClient.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
@@ -1240,14 +1240,29 @@ async function loadSessions() {
   if (!state.currentSessionId && state.sessions.length) state.currentSessionId=state.sessions[0].id;
 }
 
+function quickProfileSizes(p) {
+  if (!p) return { ao:null, quan:null };
+  return {
+    ao: seedSuggestionForProfile(p, "AO"),
+    quan: seedSuggestionForProfile(p, "QUAN")
+  };
+}
+
+function quickSizeText(sug) {
+  if (!sug?.primary) return "-";
+  return String(sug.primary);
+}
+
 function renderTabs() {
   const box=$("phienTabs");
   box.innerHTML="";
   state.sessions.filter(x=>ACTIVE_STATES.includes(x.trang_thai)).forEach((p,i)=>{
     const b=document.createElement("button");
     b.className="kh-tab"+(Number(p.id)===Number(state.currentSessionId)?" active":"");
+    const qs=quickProfileSizes(p);
     b.innerHTML=`${p.tenkh ? esc(p.tenkh) : "Khách "+(p.thu_tu_hien_thi||i+1)}
-      <small>${p.chieu_cao_cm}cm · ${Number(p.can_nang_kg)}kg · ${p.so_mon_da_chot||0} món</small>`;
+      <small>${p.chieu_cao_cm}cm · ${Number(p.can_nang_kg)}kg · ${p.so_mon_da_chot||0} món</small>
+      <span class="tab-size-summary">Áo ${esc(quickSizeText(qs.ao))} · Quần ${esc(quickSizeText(qs.quan))}</span>`;
     b.onclick=async()=>{
       state.currentSessionId=p.id;
       state.selectedProduct=null;
@@ -1631,8 +1646,28 @@ function profileModifiers(p) {
 function renderProfile() {
   const p=currentSession(), box=$("profileBox");
   if(!p){box.className="empty";box.innerHTML="Tạo khách mới để bắt đầu.";return;}
-  const m=profileModifiers(p);
   box.className="";
+
+  if (isBasicMode()) {
+    const qs=quickProfileSizes(p);
+    const line=(label,sug)=>{
+      if(!sug?.primary) return `${label}: <b>chưa có gợi ý</b>`;
+      const backup=sug.backup ? ` · Dự phòng: <b>${esc(sug.backup)}</b>` : "";
+      const rmin=sug.rangeMin || sug.primary;
+      const rmax=sug.rangeMax || rmin;
+      const range=rmin ? ` · Khoảng nền: <b>${esc(rmin)}–${esc(rmax)}</b>` : "";
+      return `${label}: Gợi ý: <b>size ${esc(sug.primary)}</b>${backup}${range}`;
+    };
+    box.innerHTML=`
+      <div class="profile-main">${p.chieu_cao_cm}cm · ${Number(p.can_nang_kg)}kg</div>
+      <div class="profile-sub">
+        <div class="profile-size-line">${line("Quần",qs.quan)}</div>
+        <div class="profile-size-line">${line("Áo",qs.ao)}</div>
+      </div>`;
+    return;
+  }
+
+  const m=profileModifiers(p);
   box.innerHTML=`
     <div class="profile-main">${p.chieu_cao_cm}cm · ${Number(p.can_nang_kg)}kg${p.tuoi?" · "+p.tuoi+" tuổi":""}</div>
     <div class="profile-sub">
