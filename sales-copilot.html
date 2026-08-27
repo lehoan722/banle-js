@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Trợ lý bán hàng Hoàn Tuyết V1.10.5</title>
+  <title>Trợ lý bán hàng Hoàn Tuyết V1.10.6</title>
   <style>
     :root{
       --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
@@ -508,7 +508,7 @@
     }
 
 
-    /* V1.10.5 - 3 cap giao dien */
+    /* V1.10.6 - 3 cap giao dien */
     .level-switch{display:flex;align-items:center;gap:6px;margin-left:auto}
     .level-switch select{width:auto;min-width:118px;padding:7px 28px 7px 9px;font-weight:800;border:0;border-radius:9px;color:#075f9f}
     .learn-btn{border:0;border-radius:9px;padding:8px 10px;font-weight:800;background:#fff7d5;color:#6f4b00}
@@ -519,7 +519,7 @@
     body[data-ui-mode="basic"] .layout{grid-template-columns:310px minmax(0,1fr) 300px}
     body[data-ui-mode="basic"] .coach{font-size:12px}
     body[data-ui-mode="basic"] .rightcol .card:first-child{display:block}
-    /* V1.10.5 - fix luong Tu van + lightbox */
+    /* V1.10.6 - fix luong Tu van + lightbox */
     body[data-ui-mode="basic"] .rightcol .card:first-child{scroll-margin-top:210px}
     body[data-ui-mode="basic"] #productDetail{scroll-margin-top:210px}
     body[data-ui-mode="basic"] #cartTitle{font-size:16px}
@@ -554,7 +554,7 @@
       body[data-ui-mode="basic"] .midcol{order:3}
     }
   
-    /* V1.10.5 - Tối ưu bản Cơ bản theo ảnh xem nhanh */
+    /* V1.10.6 - Tối ưu bản Cơ bản theo ảnh xem nhanh */
     .basic-stock-link{border:0;background:none;padding:0;margin:0;font:inherit;color:#111827;font-weight:900;text-align:left;cursor:pointer;text-decoration:none}
     .basic-stock-link:hover{text-decoration:underline}
     .basic-inline-price{font-weight:800;color:#111827}
@@ -597,7 +597,7 @@
     }
 
   
-    /* V1.10.5 - card Cơ bản: rõ mã/giá/form/size + nút Tư vấn */
+    /* V1.10.6 - card Cơ bản: rõ mã/giá/form/size + nút Tư vấn */
     body[data-ui-mode="basic"] .basic-card-body{padding:6px 7px 7px}
     body[data-ui-mode="basic"] .basic-card-line1{display:block;min-height:0;margin:0 0 2px;line-height:1.15}
     body[data-ui-mode="basic"] .basic-stock-link{
@@ -627,13 +627,13 @@
     }
 
   
-    /* V1.10.5 - gio hang/canh bao */
+    /* V1.10.6 - gio hang/canh bao */
     .cart-item.cart-suspicious{color:#b42318!important;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:8px;margin-bottom:6px}
     .cart-item.cart-suspicious .cart-meta,.cart-item.cart-suspicious .cart-top,.cart-item.cart-suspicious b,.cart-item.cart-suspicious span{color:#b42318!important}
     .cart-buttons .btn-remove{background:#15945d!important;color:#fff!important;font-weight:800!important;padding:7px 10px!important}
 
   
-    /* V1.10.5 - giỏ lấy hàng + nút tìm tiếp */
+    /* V1.10.6 - giỏ lấy hàng + nút tìm tiếp */
     .cart-main-actions{display:flex;gap:6px;margin-top:8px;align-items:stretch}
     .cart-main-actions #btnTimTiepSP{flex:0 0 40%;padding-left:6px;padding-right:6px}
     .cart-main-actions #btnDaySangBan{flex:1;min-width:0;padding-left:6px;padding-right:6px}
@@ -651,14 +651,35 @@
       .cart-location{font-size:11px}
     }
 
+    /* V1.10.6 - profile size nhanh + header 1 dong */
+    .profile-size-line{font-size:13px;line-height:1.35;color:#334155;margin-top:2px}
+    .profile-size-line b{color:#111827}
+    .kh-tab .tab-size-summary{display:block;font-size:10px;line-height:1.2;margin-top:2px;font-weight:700;color:inherit}
+    @media(max-width:720px){
+      .topbar{padding:5px 6px}
+      .topline{flex-wrap:nowrap!important;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+      .topline::-webkit-scrollbar{display:none}
+      .title{font-size:12px!important;line-height:1.05!important;min-width:112px!important;max-width:112px;flex:0 0 112px!important}
+      #nvInfo,.topline>.mini[style*="font-weight"]{display:none!important}
+      .topline .btn{padding:6px 7px!important;font-size:11px!important;white-space:nowrap}
+      .level-switch{width:auto!important;margin-left:0!important;display:flex!important;flex:0 0 auto;gap:4px!important}
+      .level-switch select{flex:none!important;min-width:91px!important;width:91px!important;padding:6px 22px 6px 7px!important;font-size:11px!important}
+      .learn-btn{padding:6px 7px!important;font-size:11px!important;white-space:nowrap}
+      .tabs{padding-top:4px!important}
+      .kh-tab{padding:5px 7px!important;font-size:12px!important}
+      .kh-tab small,.kh-tab .tab-size-summary{font-size:9px!important}
+      .profile-main{font-size:18px}
+      .profile-size-line{font-size:12px}
+    }
+
   </style>
 </head>
 <body>
   <div id="app-container" style="display:none;">
   <header class="topbar">
     <div class="topline">
-      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.10.5</div>
-      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.10.3</div>
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.10.6</div>
+      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.10.6</div>
       <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
       <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
       <div class="level-switch">
@@ -997,7 +1018,7 @@
           window.diadiem = diadiem;
 
           // Chỉ nạp engine sau khi auth thành công.
-          await import("./scripts/salesCopilot_v195.js?v=1105");
+          await import("./scripts/salesCopilot_v195.js?v=1106");
 
           document.getElementById("app-container").style.display = "";
           document.getElementById("login-container").style.display = "none";
