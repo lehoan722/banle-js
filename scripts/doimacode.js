@@ -175,6 +175,37 @@ async function handleSubmit(e) {
     return;
   }
 
+  // Riêng đổi mã sản phẩm: nếu người dùng chọn GỘP và mã mới đã tồn tại,
+  // phải cảnh báo rõ rằng dữ liệu danh mục của mã cũ sẽ không được giữ lại.
+  if (mode === "masp" && mergeIfExists) {
+    const { data: existingNewCode, error: checkNewCodeError } = await supabase
+      .from("dmhanghoa")
+      .select("masp")
+      .eq("masp", newCode)
+      .maybeSingle();
+
+    if (checkNewCodeError) {
+      console.error("Lỗi kiểm tra mã mới:", checkNewCodeError);
+      showError(
+        "Không kiểm tra được mã mới có tồn tại hay không. Hệ thống đã dừng để đảm bảo an toàn dữ liệu.\n" +
+        (checkNewCodeError.message || "")
+      );
+      return;
+    }
+
+    if (existingNewCode) {
+      const mergeWarning =
+        `CẢNH BÁO GỘP SẢN PHẨM\n\n` +
+        `Mã mới "${newCode}" đã tồn tại trong danh mục.\n\n` +
+        `Trước khi đổi mã "${oldCode}" sang gộp với "${newCode}", bạn BẮT BUỘC phải sửa lại ` +
+        `thông tin của mã cũ cho khớp với mã mới trước khi thực hiện.\n\n` +
+        `Nếu không, sau khi gộp bạn có thể MẤT TOÀN BỘ THÔNG TIN DỮ LIỆU RIÊNG của mã cũ.\n\n` +
+        `Chỉ bấm OK nếu bạn đã kiểm tra và sửa thông tin mã cũ khớp với mã mới.`;
+
+      if (!window.confirm(mergeWarning)) return;
+    }
+  }
+
   const confirmText =
     `Bạn chắc chắn muốn đổi ${modeLabel} từ "${oldCode}" sang "${newCode}"?\n\n` +
     "Hành động này có thể ảnh hưởng đến nhiều bảng dữ liệu. Chỉ thực hiện khi đã kiểm tra chính xác.";
