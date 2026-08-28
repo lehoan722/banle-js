@@ -14,7 +14,7 @@ import { moPopupNhapHangHoa, luuHangHoa, themTiepSanPham } from './popupHanghoa.
 import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 import { setupBeepUnlockOnce, playSuccessBeep, playWaitSizeBeep, playAlertBeep } from './soundBeep.js';
 setupBeepUnlockOnce(document);
-import { setupScanner } from './scanner.js';
+import { setupScanner } from './scanner.js?v=4';
 import { showFlash, showToast } from './feedback.js';
 import { ensureAccess } from './auth_guard.js';
 import { startSessionKeeper } from "./supabaseClient.js";
@@ -712,39 +712,90 @@ export async function khoiTaoUngDung() {
     window.soundAlert = playAlertBeep;
 
 
-    // Tạo scanner, gắn callback khi đọc được mã
+    // ===== QUÉT MÃ SẢN PHẨM: CAMERA TRỰC TIẾP / CHỤP ẢNH / THƯ VIỆN =====
     const videoEl = document.getElementById("scanVideo");
     const statusEl = document.getElementById("scanStatus");
     const selectEl = document.getElementById("cameraSelect");
     const flashBtn = document.getElementById("flashBtn");
-    const fileInput = document.getElementById("pickImage");
+    const captureInput = document.getElementById("captureImage");
+    const libraryInput = document.getElementById("pickImage");
+    const popupScan = document.getElementById("popupScan");
 
-    const { startScan, stopScan, toggleTorch, changeCamera, decodeFromFile } = setupScanner({
-      videoEl, statusEl, selectEl,
-      onResult: (code) => {
-        if (!code) return;
-        showFlash();
-        showToast(`✅ Đã quét: ${code}`, "info");
-        try { window.soundSuccess?.(); } catch { }
+    function chuanHoaMaQuet(raw) {
+      return String(raw || "").trim().toUpperCase();
+    }
 
-        const maspInput = document.getElementById("masp");
-        maspInput.value = code;
-        maspInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    // Tìm mã trong cache dmhanghoa nhưng không phụ thuộc cách viết hoa/thường của key cũ.
+    function timSanPhamTheoMaQuet(code) {
+      const clean = chuanHoaMaQuet(code);
+      if (!clean) return null;
 
-        document.getElementById("popupScan").style.display = "none";
-        stopScan();
+      const data = window.sanPhamData || {};
+      if (data[clean]) return data[clean];
+      if (data[code]) return data[code];
+
+      // Fallback an toàn cho dữ liệu cache cũ chưa chuẩn hóa key.
+      for (const [key, sp] of Object.entries(data)) {
+        if (chuanHoaMaQuet(key) === clean || chuanHoaMaQuet(sp?.masp) === clean) return sp;
+      }
+      return null;
+    }
+
+    function dongPopupQuet() {
+      if (popupScan) popupScan.style.display = "none";
+      try { stopScan(); } catch { }
+      if (flashBtn) flashBtn.textContent = "🔦 Đèn";
+      if (captureInput) captureInput.value = "";
+      if (libraryInput) libraryInput.value = "";
+    }
+
+    function nhanMaQuetHopLe(code) {
+      const clean = chuanHoaMaQuet(code);
+      if (!clean) return false;
+
+      const sp = timSanPhamTheoMaQuet(clean);
+      if (!sp) {
+        showToast(`❌ Mã ${clean} không tồn tại trong danh mục hàng hóa`, "error");
+        try { window.soundAlert?.(); } catch { }
+        if (statusEl) statusEl.textContent = `Không có mã ${clean}. Hãy quét/chụp lại.`;
+        return false; // GIỮ popup camera mở để quét lại
+      }
+
+      const maspChuan = chuanHoaMaQuet(sp.masp || clean);
+      showFlash();
+      showToast(`✅ Đã nhận mã: ${maspChuan}`, "info");
+      try { window.soundSuccess?.(); } catch { }
+
+      const maspInput = document.getElementById("masp");
+      if (!maspInput) return false;
+      maspInput.value = maspChuan;
+      maspInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+      dongPopupQuet();
+      return true;
+    }
+
+    const {
+      startScan,
+      stopScan,
+      toggleTorch,
+      changeCamera,
+      decodeFromFile
+    } = setupScanner({
+      videoEl,
+      statusEl,
+      selectEl,
+      onResult: nhanMaQuetHopLe,
+      onDecodeError: (message) => {
+        showToast(message || "❌ Không tìm thấy QR/mã vạch trong ảnh", "error");
+        try { window.soundAlert?.(); } catch { }
       }
     });
 
-    // mở popup & mặc định chọn Ultra-Wide/0.5x nếu có
-    // mở popup & mặc định chọn Ultra-Wide/0.5x nếu có
     const btnScan = document.createElement("button");
-
     btnScan.innerHTML = "📷 QUÉT";
-
     btnScan.type = "button";
     btnScan.id = "btnScanQuick";
-
     btnScan.style.cssText = `
 background:#2196f3;
 color:white;
@@ -755,41 +806,69 @@ padding:0 12px;
 font-size:18px;
 height:34px;
 `;
-    btnScan.onclick = () => {
-      document.getElementById("popupScan").style.display = "block";
-      startScan();
+
+    btnScan.onclick = async () => {
+      if (popupScan) popupScan.style.display = "block";
+      if (statusEl) statusEl.textContent = "Đang mở camera sau...";
+      await startScan();
     };
 
-    // Gắn nút quét vào giao diện mới nếu có
     const scanHost =
       document.querySelector(".mobile-mini-actions") ||
       document.querySelector(".top-inputs");
 
-    if (scanHost) {
+    if (scanHost && !document.getElementById("btnScanQuick")) {
       scanHost.appendChild(btnScan);
-    } else {
+    } else if (!scanHost) {
       console.warn("Không tìm thấy chỗ để gắn nút quét.");
     }
 
-    document.getElementById("btnCloseScan").onclick = () => {
-      document.getElementById("popupScan").style.display = "none";
+    document.getElementById("btnCloseScan")?.addEventListener("click", dongPopupQuet);
+
+    if (flashBtn) {
+      flashBtn.onclick = async () => {
+        const on = await toggleTorch();
+        flashBtn.textContent = on ? "🔦 Tắt đèn" : "🔦 Đèn";
+      };
+    }
+
+    if (selectEl) {
+      selectEl.onchange = () => changeCamera(selectEl.value);
+    }
+
+    async function xuLyAnhQuet(file, sourceName) {
+      if (!file) return;
+
+      // Dừng stream camera trong lúc giải mã ảnh để nhẹ máy hơn.
       stopScan();
-    };
+      if (statusEl) statusEl.textContent = `Đang phân tích ${sourceName}...`;
 
-    // bật/tắt đèn
-    flashBtn.onclick = async () => {
-      const on = await toggleTorch();
-      flashBtn.textContent = on ? "🔦 Tắt đèn" : "🔦 Đèn";
-    };
+      const ok = await decodeFromFile(file);
 
-    // đổi camera từ dropdown
-    selectEl.onchange = () => changeCamera(selectEl.value);
+      // Nếu ảnh không đọc được hoặc mã đọc được nhưng không tồn tại => mở lại camera để thử tiếp.
+      if (popupScan?.style.display !== "none") {
+        if (!ok && statusEl) statusEl.textContent = "Không đọc được mã hợp lệ. Đang mở lại camera...";
+        await startScan(selectEl?.value || "");
+      }
+    }
 
-    // ảnh có sẵn
-    fileInput.onchange = (e) => {
-      const f = e.target.files?.[0];
-      if (f) decodeFromFile(f);
-    };
+    // Ảnh vừa chụp: chỉ dùng tạm để giải mã, KHÔNG lưu vào CSDL/Gallery.
+    if (captureInput) {
+      captureInput.onchange = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = ""; // cho phép chụp lại cùng tên file
+        if (file) await xuLyAnhQuet(file, "ảnh vừa chụp");
+      };
+    }
+
+    // Ảnh đã có trong thư viện điện thoại.
+    if (libraryInput) {
+      libraryInput.onchange = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (file) await xuLyAnhQuet(file, "ảnh thư viện");
+      };
+    }
 
     // === TỒN KHO TỨC THÌ: Observer + batch RPC (KHÔNG đụng code render cũ) ===
     {
