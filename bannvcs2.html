@@ -1507,7 +1507,19 @@
         <!-- Thanh điều khiển -->
         <div
             style="position:absolute;left:10px;right:10px;bottom:12px;display:flex;gap:8px;align-items:center;z-index:10001;">
-            <select id="cameraSelect" style="flex:1;max-width:50%;padding:6px;border-radius:8px;"></select>
+            <!-- Giữ select ẩn để main.js hiện tại vẫn hoạt động nguyên vẹn -->
+            <select id="cameraSelect" style="display:none;"></select>
+
+            <!-- 2 nút chọn camera hiển thị trực tiếp để thao tác nhanh -->
+            <button id="btnCameraUltra" type="button"
+                style="padding:7px 11px;border-radius:8px;border:2px solid #fff;background:#1976d2;color:#fff;font-weight:bold;">
+                📷 Rộng
+            </button>
+            <button id="btnCameraNormal" type="button"
+                style="padding:7px 11px;border-radius:8px;border:1px solid #aaa;background:#fff;color:#111;font-weight:bold;">
+                📷 Thường
+            </button>
+
             <button id="flashBtn" style="padding:6px 10px;border-radius:8px;">🔦 Đèn</button>
 
             <label style="padding:6px 10px;border-radius:8px;background:#fff;color:#000;cursor:pointer;">
@@ -1527,7 +1539,7 @@
 
 
     <script type="module" src="scripts/feedback.js"></script>
-    <script type="module" src="scripts/scanner.js"></script>
+    <script type="module" src="scripts/scanner.js?v=9"></script>
 
     <script>
 
