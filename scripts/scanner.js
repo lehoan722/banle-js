@@ -1,8 +1,5 @@
 // scripts/scanner.js
-// Bản gốc giữ nguyên luồng quét/đẩy mã.
-// Chỉ thay đổi chọn camera: ưu tiên camera sau siêu rộng/0.5x,
-// nếu không có thì tự động dùng camera sau thông thường.
-// Không cho người dùng phải chọn camera thủ công.
+// Bản tối ưu theo timkiemhanghoa333: quét nhanh, ưu tiên camera sau siêu rộng iPhone
 
 const ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm';
 
@@ -30,89 +27,126 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
     return String(s || '').trim().toUpperCase();
   }
 
-  function cameraInfo(label = '') {
+  function scoreCameraLabel(label = '') {
     const s = String(label || '').toLowerCase();
-
-    const isFront = /(front|trước|mặt trước|facetime|user)/.test(s);
-    const isBack = /(back|rear|environment|mặt sau|camera sau|world)/.test(s);
-
-    // Dấu hiệu rõ nhất của camera siêu rộng.
-    const isUltraWide =
-      /(ultra[\s_-]*wide|ultrawide|0[\.,]5x|0[\.,]5|cực rộng|siêu rộng)/.test(s);
-
-    // Một số iPhone/Safari chỉ trả camera logic theo cụm ống kính.
-    // "Dual Wide" / "Triple Camera" có khả năng chứa ống kính ultra-wide.
-    const isBackMultiLens =
-      isBack && /(dual[\s_-]*wide|dual|triple|multi|composite)/.test(s);
-
-    const isTele = /(tele|telephoto|2x|3x|5x|chụp xa)/.test(s);
-
     let score = 0;
 
-    // Ưu tiên tuyệt đối camera siêu rộng thật nếu label nhận diện được.
-    if (isUltraWide && isBack) score += 10000;
-    else if (isUltraWide) score += 9000;
+    if (/(back|rear|environment|mặt sau|camera sau)/.test(s)) score += 100;
 
-    // Tiếp theo là cụm camera sau nhiều ống kính vì có thể chuyển được về 0.5x.
-    if (isBackMultiLens) score += 4000;
+    if (/(ultra\s*wide|ultrawide|0\.5x|0,5x|0\.5|0,5|cực rộng|siêu rộng)/.test(s)) {
+      score += 1000;
+    }
 
-    // Sau cùng là camera sau thông thường.
-    if (isBack) score += 2000;
+    if (/(tele|zoom|2x|3x|chụp xa)/.test(s)) score -= 300;
+    if (/(front|trước|mặt trước|facetime)/.test(s)) score -= 1000;
 
-    // Không ưu tiên tele và loại camera trước.
-    if (isTele) score -= 1000;
-    if (isFront) score -= 10000;
-
-    return { score, isBack, isUltraWide, isBackMultiLens, isFront, isTele };
+    return score;
   }
 
   async function listVideoDevices() {
     const ZXING = await ensureZX();
 
-    // Xin quyền trước để browser trả label camera đầy đủ hơn.
-    let permissionStream = null;
     try {
-      permissionStream = await navigator.mediaDevices.getUserMedia({
+      await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' } },
         audio: false
       });
-    } catch (_) {
-      // Nếu quyền đã có / browser xử lý khác, vẫn thử enumerate phía dưới.
-    } finally {
-      try {
-        permissionStream?.getTracks?.().forEach(t => t.stop());
-      } catch (_) {}
-    }
+    } catch (_) {}
 
     const devices = await ZXING.BrowserCodeReader.listVideoInputDevices();
     return devices || [];
   }
 
-  async function chooseBestBackCamera() {
+  async function populateCameraList() {
     const devices = await listVideoDevices();
 
-    // Xếp theo: Ultra-wide/0.5x -> cụm camera sau nhiều lens -> camera sau -> camera khác.
-    const ranked = [...devices].sort((a, b) => {
-      const sa = cameraInfo(a.label).score;
-      const sb = cameraInfo(b.label).score;
-      return sb - sa;
-    });
+    // CHỈ GIỮ 2 LỰA CHỌN:
+    // 1) Camera sau siêu rộng (nếu trình duyệt công khai riêng camera này)
+    // 2) Camera sau thường
+    // Không thay đổi bất kỳ logic quét mã nào khác.
+    const isFront = (label = '') =>
+      /(front|trước|mặt trước|facetime|user)/i.test(String(label));
 
-    const best = ranked[0] || null;
+    const isUltraWide = (label = '') =>
+      /(ultra\s*wide|ultrawide|0\.5x|0,5x|0\.5|0,5|cực rộng|siêu rộng)/i.test(String(label));
 
-    // Giữ selectEl để main.js gốc không lỗi, nhưng giao diện đã ẩn nó.
-    if (selectEl) {
-      selectEl.innerHTML = ranked.map((d, i) => {
-        const label = d.label || `Camera ${i + 1}`;
-        return `<option value="${d.deviceId}">${label}</option>`;
-      }).join('');
+    const isTele = (label = '') =>
+      /(tele|telephoto|zoom|2x|3x|5x|chụp xa)/i.test(String(label));
 
-      if (best) selectEl.value = best.deviceId;
+    const isBack = (label = '') =>
+      /(back|rear|environment|mặt sau|camera sau)/i.test(String(label));
+
+    // Ưu tiên đúng camera siêu rộng mặt sau.
+    const ultraCandidates = devices
+      .filter(d => !isFront(d.label) && isUltraWide(d.label))
+      .sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+
+    const ultra = ultraCandidates[0] || null;
+
+    // Camera thường: ưu tiên camera mặt sau, loại ultra-wide và tele/zoom.
+    let normalCandidates = devices
+      .filter(d =>
+        !isFront(d.label) &&
+        !isUltraWide(d.label) &&
+        !isTele(d.label) &&
+        isBack(d.label)
+      )
+      .sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
+
+    // Một số máy không ghi rõ chữ Back/Rear trong label.
+    // Khi đó fallback sang camera không phải trước, không ultra, không tele.
+    if (!normalCandidates.length) {
+      normalCandidates = devices
+        .filter(d =>
+          !isFront(d.label) &&
+          !isUltraWide(d.label) &&
+          !isTele(d.label)
+        )
+        .sort((a, b) => scoreCameraLabel(b.label) - scoreCameraLabel(a.label));
     }
 
-    if (best) currentDeviceId = best.deviceId;
+    const normal = normalCandidates[0] || null;
 
-    return { best, devices: ranked };
+    // Danh sách dùng thực tế: tối đa 2 camera.
+    const choices = [];
+    if (ultra) {
+      choices.push({
+        deviceId: ultra.deviceId,
+        label: 'Camera siêu rộng'
+      });
+    }
+
+    if (normal && (!ultra || normal.deviceId !== ultra.deviceId)) {
+      choices.push({
+        deviceId: normal.deviceId,
+        label: 'Camera thường'
+      });
+    }
+
+    // Fallback cuối cùng: nếu trình duyệt không cho biết nhãn camera rõ ràng,
+    // vẫn lấy camera khả dụng đầu tiên để chức năng quét không bị mất.
+    if (!choices.length && devices[0]) {
+      choices.push({
+        deviceId: devices[0].deviceId,
+        label: 'Camera thường'
+      });
+    }
+
+    if (selectEl) {
+      selectEl.innerHTML = choices.map(d =>
+        `<option value="${d.deviceId}">${d.label}</option>`
+      ).join('');
+    }
+
+    // Mặc định: siêu rộng nếu có; nếu không thì camera thường.
+    if (choices[0]) {
+      currentDeviceId = choices[0].deviceId;
+      if (selectEl) selectEl.value = currentDeviceId;
+    }
+
+    // startScan() chỉ cần danh sách để biết camera đã được chuẩn bị;
+    // trả về choices giúp đúng với dropdown đã lọc.
+    return choices;
   }
 
   async function applyFastCameraSettings() {
@@ -121,31 +155,12 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
     if (!currentTrack) return;
 
     try {
-      const caps = currentTrack.getCapabilities?.() || {};
-      const advanced = [];
-
-      // Giữ tối ưu focus/exposure của bản gốc.
-      if ('focusMode' in caps) advanced.push({ focusMode: 'continuous' });
-      if ('exposureMode' in caps) advanced.push({ exposureMode: 'continuous' });
-
-      if (advanced.length) {
-        try {
-          await currentTrack.applyConstraints({ advanced });
-        } catch (_) {}
-      }
-
-      // Fallback quan trọng:
-      // Trên một số máy, browser chỉ expose một "Back Camera" logic.
-      // Nếu camera đó cho phép zoom nhỏ hơn 1x thì ép về mức nhỏ nhất,
-      // thường tương ứng góc 0.5x / ultra-wide.
-      const zoomCaps = caps.zoom;
-      if (zoomCaps && Number.isFinite(zoomCaps.min) && zoomCaps.min < 1) {
-        try {
-          await currentTrack.applyConstraints({
-            advanced: [{ zoom: zoomCaps.min }]
-          });
-        } catch (_) {}
-      }
+      await currentTrack.applyConstraints({
+        advanced: [
+          { focusMode: 'continuous' },
+          { exposureMode: 'continuous' }
+        ]
+      });
     } catch (_) {}
   }
 
@@ -176,10 +191,9 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
 
       const ZXING = await ensureZX();
 
-      // Nếu main.js không truyền deviceId, tự chọn camera tốt nhất.
-      const chosen = await chooseBestBackCamera();
+      await populateCameraList();
 
-      const useId = deviceId || chosen.best?.deviceId || currentDeviceId || '';
+      const useId = deviceId || currentDeviceId || '';
 
       if (useId) {
         currentDeviceId = useId;
@@ -197,7 +211,6 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
           (result) => handleResult(result)
         );
       } else {
-        // Không enumerate được camera: fallback chuẩn camera sau.
         controls = await reader.decodeFromConstraints(
           {
             video: {
@@ -215,14 +228,7 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
 
       await applyFastCameraSettings();
 
-      const trackLabel = currentTrack?.label || chosen.best?.label || '';
-      const info = cameraInfo(trackLabel);
-
-      if (info.isUltraWide || info.isBackMultiLens) {
-        setStatus('Đang quét bằng camera sau góc rộng...');
-      } else {
-        setStatus('Đang quét bằng camera sau...');
-      }
+      setStatus('Đang quét... đưa mã vào khung');
     } catch (e) {
       console.error('startScan error:', e);
       setStatus('Không mở được camera');
@@ -249,8 +255,6 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
     setStatus('');
   }
 
-  // Giữ hàm này để tương thích main.js gốc.
-  // Do select camera đã bị ẩn nên người dùng không gọi nó từ giao diện.
   async function changeCamera(newDeviceId) {
     if (!newDeviceId || newDeviceId === currentDeviceId) return;
     currentDeviceId = newDeviceId;
