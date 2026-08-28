@@ -725,22 +725,6 @@ export async function khoiTaoUngDung() {
       return String(raw || "").trim().toUpperCase();
     }
 
-    // Tìm mã trong cache dmhanghoa nhưng không phụ thuộc cách viết hoa/thường của key cũ.
-    function timSanPhamTheoMaQuet(code) {
-      const clean = chuanHoaMaQuet(code);
-      if (!clean) return null;
-
-      const data = window.sanPhamData || {};
-      if (data[clean]) return data[clean];
-      if (data[code]) return data[code];
-
-      // Fallback an toàn cho dữ liệu cache cũ chưa chuẩn hóa key.
-      for (const [key, sp] of Object.entries(data)) {
-        if (chuanHoaMaQuet(key) === clean || chuanHoaMaQuet(sp?.masp) === clean) return sp;
-      }
-      return null;
-    }
-
     function dongPopupQuet() {
       if (popupScan) popupScan.style.display = "none";
       try { stopScan(); } catch { }
@@ -750,18 +734,13 @@ export async function khoiTaoUngDung() {
     }
 
     function nhanMaQuetHopLe(code) {
-      const clean = chuanHoaMaQuet(code);
-      if (!clean) return false;
+      const maspChuan = chuanHoaMaQuet(code);
+      if (!maspChuan) return false;
 
-      const sp = timSanPhamTheoMaQuet(clean);
-      if (!sp) {
-        showToast(`❌ Mã ${clean} không tồn tại trong danh mục hàng hóa`, "error");
-        try { window.soundAlert?.(); } catch { }
-        if (statusEl) statusEl.textContent = `Không có mã ${clean}. Hãy quét/chụp lại.`;
-        return false; // GIỮ popup camera mở để quét lại
-      }
-
-      const maspChuan = chuanHoaMaQuet(sp.masp || clean);
+      // KHÔNG kiểm tra window.sanPhamData tại scanner.
+      // Scanner chỉ chịu trách nhiệm đọc mã và chuyển vào đúng luồng bán hàng.
+      // Việc mã có tồn tại/hợp lệ hay không để nghiệp vụ hiện tại trong hoadon.js xử lý,
+      // giống hệt trường hợp nhân viên gõ mã bằng tay rồi nhấn Enter.
       showFlash();
       showToast(`✅ Đã nhận mã: ${maspChuan}`, "info");
       try { window.soundSuccess?.(); } catch { }
@@ -870,9 +849,9 @@ height:34px;
 
       const ok = await decodeFromFile(file);
 
-      // Nếu ảnh không đọc được hoặc mã đọc được nhưng không tồn tại => mở lại camera để thử tiếp.
+      // Nếu ảnh không đọc được => mở lại camera để thử tiếp.
       if (popupScan?.style.display !== "none") {
-        if (!ok && statusEl) statusEl.textContent = "Không đọc được mã hợp lệ. Đang mở lại camera...";
+        if (!ok && statusEl) statusEl.textContent = "Không đọc được QR/mã vạch. Đang mở lại camera...";
         await startScan(selectEl?.value || "");
       }
     }
