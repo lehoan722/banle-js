@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Trợ lý bán hàng Hoàn Tuyết V1.10.8</title>
+  <title>Trợ lý bán hàng Hoàn Tuyết V1.10.9</title>
   <style>
     :root{
       --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
@@ -676,17 +676,28 @@
     }
 
 
-    /* V1.10.8 - nhập/quét mã sản phẩm trực tiếp */
-    .direct-product-row{margin-top:8px;position:relative}
-    .direct-product-label{display:block;font-size:12px;font-weight:800;margin-bottom:4px;color:#334155}
-    .direct-product-input-wrap{display:flex;gap:5px;align-items:stretch}
-    .direct-product-input-wrap input{flex:1;min-width:0;border:1px solid #c7d1dc;border-radius:8px;padding:9px 10px;font-size:13px}
-    .direct-scan-btn{border:0;border-radius:8px;background:#1677ff;color:#fff;font-size:18px;min-width:44px;padding:0 10px;cursor:pointer}
-    .direct-product-suggest{display:none;position:absolute;left:0;right:49px;top:100%;z-index:1200;max-height:220px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px #0002;margin-top:2px}
-    .direct-product-suggestion{display:flex;width:100%;gap:7px;align-items:flex-start;text-align:left;border:0;border-bottom:1px solid #eef2f7;background:#fff;padding:8px 9px;cursor:pointer}
+    /* V1.10.9 - thanh nhập/quét nhanh cố định dưới tab khách */
+    .quick-product-toolbar{display:grid;grid-template-columns:10% 60% 10% 20%;align-items:stretch;width:100%;margin-top:6px;background:rgba(255,255,255,.12);border-radius:10px;padding:2px;box-sizing:border-box}
+    .quick-product-toolbar>*{min-width:0;box-sizing:border-box;padding:2px}
+    .quick-product-toolbar button,.quick-product-toolbar input,.quick-product-toolbar select{width:100%;height:44px;box-sizing:border-box;border-radius:8px;font-size:14px}
+    .quick-product-toolbar .direct-scan-btn{border:0;background:#fff;color:#0868b5;font-size:21px;font-weight:900;padding:0;cursor:pointer}
+    .quick-product-code-wrap{position:relative}
+    .quick-product-code-wrap input{border:1px solid #b8d8f3;padding:0 10px;font-weight:800;text-transform:uppercase;outline:none}
+    .quick-product-toolbar select{border:1px solid #b8d8f3;background:#fff;color:#172033;padding:0 5px;font-weight:800;outline:none}
+    .direct-product-suggest{display:none;position:absolute;left:2px;right:2px;top:48px;z-index:1200;max-height:240px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px #0003}
+    .direct-product-suggestion{display:flex;width:100%;gap:7px;align-items:flex-start;text-align:left;border:0;border-bottom:1px solid #eef2f7;background:#fff;padding:9px;cursor:pointer}
     .direct-product-suggestion:last-child{border-bottom:0}
     .direct-product-suggestion b{min-width:92px;color:#0b63ce}
     .direct-product-suggestion span{font-size:11px;color:#5b6775;line-height:1.25}
+    @media(max-width:720px){
+      .quick-product-toolbar{margin-top:4px;border-radius:8px;padding:1px}
+      .quick-product-toolbar>*{padding:1px}
+      .quick-product-toolbar button,.quick-product-toolbar input,.quick-product-toolbar select{height:46px;font-size:13px}
+      .quick-product-toolbar .direct-scan-btn{font-size:22px}
+      .quick-product-code-wrap input{padding:0 7px}
+      .quick-product-toolbar select{padding:0 2px;font-size:12px}
+      .direct-product-suggest{top:48px;max-height:210px}
+    }
     .direct-scan-popup{display:none;position:fixed;inset:0;background:#000;z-index:20000}
     .direct-scan-popup video{width:100%;height:100%;object-fit:cover}
     .direct-scan-controls{position:absolute;left:10px;right:10px;bottom:12px;display:flex;gap:7px;align-items:center;z-index:20001;flex-wrap:wrap}
@@ -699,8 +710,8 @@
   <div id="app-container" style="display:none;">
   <header class="topbar">
     <div class="topline">
-      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.10.8</div>
-      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.10.8</div>
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.10.9</div>
+      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.10.9</div>
       <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
       <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
       <div class="level-switch">
@@ -713,6 +724,24 @@
       </div>
     </div>
     <div class="tabs" id="phienTabs"></div>
+    <div class="quick-product-toolbar" id="quickProductToolbar">
+      <div><button type="button" class="direct-scan-btn" id="btnDirectScan" title="Quét mã bằng camera">📷</button></div>
+      <div class="quick-product-code-wrap">
+        <input id="directProductCode" autocomplete="off" autocapitalize="characters" placeholder="Nhập hoặc quét mã SP...">
+        <div class="direct-product-suggest" id="directProductSuggest"></div>
+      </div>
+      <div>
+        <select id="quickSizeSelect" aria-label="Size ưu tiên">
+          <option value="">Size</option>
+          <option value="38">38</option><option value="39">39</option><option value="40">40</option><option value="41">41</option><option value="42">42</option><option value="43">43</option><option value="44">44</option><option value="45">45</option><option value="46">46</option>
+        </select>
+      </div>
+      <div>
+        <select id="colorPrioritySelect" aria-label="Màu sắc ưu tiên">
+          <option value="">Màu sắc</option>
+        </select>
+      </div>
+    </div>
   </header>
 
   <div class="steps" id="stepBar">
@@ -792,15 +821,6 @@
       <div class="card">
         <h3>Tìm theo nhóm</h3>
 
-        <div class="direct-product-row">
-          <label class="direct-product-label" for="directProductCode">Mã sản phẩm</label>
-          <div class="direct-product-input-wrap">
-            <input id="directProductCode" autocomplete="off" autocapitalize="characters" placeholder="Nhập hoặc quét mã SP...">
-            <button type="button" class="direct-scan-btn" id="btnDirectScan" title="Quét mã bằng camera">📷</button>
-          </div>
-          <div class="direct-product-suggest" id="directProductSuggest"></div>
-        </div>
-
         <div class="main-groupbar" id="mainGroupBar">
           <button type="button" class="main-group-btn on" data-main-group="AO_HE">👕 Áo hè</button>
           <button type="button" class="main-group-btn" data-main-group="QUAN">👖 Quần</button>
@@ -814,29 +834,6 @@
         </div>
         <div id="basicSubGroupBar" class="basic-subgroups basic-only"></div>
         <div class="basic-form-row basic-only"><label style="font-size:12px;font-weight:800">Form sản phẩm</label><div class="chips" id="basicFormBar"><button class="basic-form-btn on" data-form="">Tất cả</button><button class="basic-form-btn" data-form="RONG">Rộng</button><button class="basic-form-btn" data-form="VUA">Vừa</button><button class="basic-form-btn" data-form="BO">Bó</button></div></div>
-
-        <div class="color-priority-row">
-          <label for="colorPrioritySelect">Màu sắc</label>
-          <select id="colorPrioritySelect">
-            <option value="">-- Không ưu tiên màu --</option>
-          </select>
-        </div>
-
-        <div class="shoe-size-search-row" id="shoeSizeSearchRow">
-          <label for="shoeSizeSearchSelect">Size cần tìm</label>
-          <select id="shoeSizeSearchSelect">
-            <option value="">-- Chọn size --</option>
-            <option value="38">38</option>
-            <option value="39">39</option>
-            <option value="40">40</option>
-            <option value="41">41</option>
-            <option value="42">42</option>
-            <option value="43">43</option>
-            <option value="44">44</option>
-            <option value="45">45</option>
-            <option value="46">46</option>
-          </select>
-        </div>
 
         <div class="searchline advanced-only">
           <input id="txtSearch" placeholder="Nhập mã hoặc tên sản phẩm">
