@@ -1,6 +1,7 @@
-window.SALES_COPILOT_BUILD="1.10.7";
-console.log("[SalesCopilot] BUILD 1.10.7");
+window.SALES_COPILOT_BUILD="1.10.8";
+console.log("[SalesCopilot] BUILD 1.10.8");
 import { supabase } from "./supabaseClient.js";
+import { setupScanner } from "./scanner.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
 const IMAGE_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
@@ -98,6 +99,7 @@ const state = {
   searchMode: "similar",
   referencePrice: 0,
   selectedProduct: null,
+  selectedProductSource: "RESULT",
   selectedSize: null,
   currentSuggestion: null,
   selectedFit: null,
@@ -1254,11 +1256,26 @@ async function loadSessions() {
   if (!state.currentSessionId && state.sessions.length) state.currentSessionId=state.sessions[0].id;
 }
 
+function suggestionWithSessionReference(p, loai) {
+  const base = seedSuggestionForProfile(p, loai);
+  const ref = extractInternalSize(p?.__size_tham_chieu?.[loai]);
+  if (!ref) return base;
+  return {
+    ...base,
+    primary:ref,
+    backup:null,
+    rangeMin:ref,
+    rangeMax:ref,
+    source:"SAN_PHAM_THAM_CHIEU",
+    confidence:1
+  };
+}
+
 function quickProfileSizes(p) {
   if (!p) return { ao:null, quan:null };
   return {
-    ao: seedSuggestionForProfile(p, "AO"),
-    quan: seedSuggestionForProfile(p, "QUAN")
+    ao: suggestionWithSessionReference(p, "AO"),
+    quan: suggestionWithSessionReference(p, "QUAN")
   };
 }
 
@@ -1441,11 +1458,19 @@ function suggestedSizesForGroup(profile, groupCode) {
   const loai =
     g?.loai_tu_van || "AO";
 
-  const seed =
-    seedSuggestionForProfile(
-      profile,
-      loai
-    );
+  const refSize = extractInternalSize(profile?.__size_tham_chieu?.[loai]);
+  const seedBase = seedSuggestionForProfile(profile, loai);
+  const seed = refSize
+    ? {
+        ...seedBase,
+        primary:refSize,
+        backup:null,
+        rangeMin:refSize,
+        rangeMax:refSize,
+        source:"SAN_PHAM_THAM_CHIEU",
+        confidence:1
+      }
+    : seedBase;
 
   // V1.9.2 - GIAY/DEP:
   // Nếu chưa biết size giày, vẫn cho tìm tất cả size nội bộ 38-46.
@@ -2149,6 +2174,188 @@ function priceModeNote(sp) {
   return "";
 }
 
+function mainGroupKeyForProduct(sp){
+  const g=norm(sp?.nhomhang);
+  for(const [key,cfg] of Object.entries(MAIN_GROUPS)){
+    if(cfg.groups.some(code=>norm(code)===g)) return key;
+  }
+  return state.selectedMainGroup || "AO_HE";
+}
+
+function syncBasicFormButtons(){
+  document.querySelectorAll(".basic-form-btn").forEach(btn=>{
+    btn.classList.toggle("on", norm(btn.dataset.form||"")===norm(state.selectedForm||""));
+  });
+}
+
+async function applyScannedProductContext(sp,size){
+  const p=currentSession();
+  if(!p||!sp)return;
+
+  const loai=productLoai(sp);
+  const ref=extractInternalSize(size);
+  if(ref && ["AO","QUAN","GIAY_DEP"].includes(loai)){
+    p.__size_tham_chieu=p.__size_tham_chieu||{};
+    p.__size_tham_chieu[loai]=ref;
+    if(loai==="GIAY_DEP") state.selectedShoeSearchSize=ref;
+  }
+
+  state.selectedMainGroup=mainGroupKeyForProduct(sp);
+  state.selectedGroup=sp.nhomhang||state.selectedGroup;
+  state.selectedForm=String(sp.form||"").trim();
+  state.selectedColor=String(sp.mausac||"").trim();
+
+  renderMainGroupControls();
+  renderBasicSubgroups();
+  syncBasicFormButtons();
+  if($("colorPrioritySelect")) $("colorPrioritySelect").value=state.selectedColor||"";
+  if($("shoeSizeSearchSelect") && loai==="GIAY_DEP") $("shoeSizeSearchSelect").value=ref||"";
+  renderTabs();
+  renderProfile();
+
+  // Giữ sản phẩm vừa quét làm mã nguồn để nó được promote lên đầu kết quả.
+  state.sourceProductCode=norm(sp.masp);
+  if(currentSession() && state.selectedGroup) await searchProducts();
+}
+
+let productCodeLookupTimer=null;
+let productCodeHandling=false;
+let scannerController=null;
+
+function hideProductCodeSuggestions(){
+  const box=$("directProductSuggest");
+  if(box){box.style.display="none";box.innerHTML="";}
+}
+
+async function loadProductCodeSuggestions(raw){
+  const q=norm(raw);
+  const box=$("directProductSuggest");
+  if(!box)return;
+  if(q.length<1){hideProductCodeSuggestions();return;}
+  const {data,error}=await supabase.from("dmhanghoa")
+    .select("masp,tensp")
+    .eq("active",true)
+    .ilike("masp",`${q}%`)
+    .order("masp")
+    .limit(12);
+  if(error){console.warn("[SalesCopilot] Gợi ý mã lỗi:",error);return;}
+  const rows=data||[];
+  if(!rows.length){hideProductCodeSuggestions();return;}
+  box.innerHTML=rows.map(r=>`<button type="button" class="direct-product-suggestion" data-masp="${esc(r.masp)}"><b>${esc(r.masp)}</b><span>${esc(r.tensp||"")}</span></button>`).join("");
+  box.style.display="block";
+  box.querySelectorAll("[data-masp]").forEach(btn=>btn.onclick=async()=>{
+    const input=$("directProductCode");
+    if(input)input.value=btn.dataset.masp||"";
+    hideProductCodeSuggestions();
+    await consultProductByCode(btn.dataset.masp,"NHAP_MA");
+  });
+}
+
+async function findExactProductByCode(raw){
+  const code=norm(raw);
+  if(!code)return null;
+  const cached=state.productCache.get(code);
+  if(cached)return cached;
+  const {data,error}=await supabase.from("dmhanghoa")
+    .select("masp,tensp,giale,nhomhang,chungloai,mausac,form,rong_ong,co_gian,active,giam_gia_pct,treomaucs1,treomaucs2,vitrikho1,vitrikho2")
+    .ilike("masp",code)
+    .limit(1)
+    .maybeSingle();
+  if(error){console.warn("[SalesCopilot] Kiểm tra mã SP lỗi:",error);return null;}
+  if(data)state.productCache.set(norm(data.masp),data);
+  return data||null;
+}
+
+async function consultProductByCode(raw,source="NHAP_MA"){
+  if(productCodeHandling)return false;
+  const p=currentSession();
+  if(!p){toast("Hãy tạo/chọn khách trước khi nhập mã sản phẩm.",3000);return false;}
+  const code=norm(raw);
+  if(!code)return false;
+  productCodeHandling=true;
+  try{
+    return await withDataLoading("Đang mở sản phẩm để tư vấn...",async()=>{
+      const sp=await findExactProductByCode(code);
+      if(!sp||sp.active===false){
+        toast(`Mã ${code} không tồn tại trong danh mục hàng hóa.`,3000);
+        $("directProductCode")?.focus();
+        return false;
+      }
+      const stock=await getStockForMasps([sp.masp]);
+      state.stockCache.set(norm(sp.masp),stock.get(norm(sp.masp))||new Map());
+      state.selectedProductSource=source;
+      state.sourceProductCode=norm(sp.masp);
+      markConsultedProduct(sp.masp); // chạy nền, không chặn tư vấn
+      await selectProduct(sp,{scrollToDetail:true});
+      const input=$("directProductCode");
+      if(input)input.value="";
+      hideProductCodeSuggestions();
+      toast(`Đang tư vấn mã ${sp.masp}. Chọn size khách thử.`,1800);
+      return true;
+    });
+  }finally{productCodeHandling=false;}
+}
+
+function closeProductScanner(){
+  try{scannerController?.stopScan?.();}catch(_){}
+  const pop=$("directScanPopup");
+  if(pop)pop.style.display="none";
+}
+
+async function openProductScanner(){
+  const pop=$("directScanPopup");
+  if(!pop)return;
+  pop.style.display="block";
+  if(!scannerController){
+    scannerController=setupScanner({
+      videoEl:$("directScanVideo"),
+      selectEl:$("cameraSelect"),
+      statusEl:$("directScanStatus"),
+      onResult:async text=>{
+        closeProductScanner();
+        const input=$("directProductCode");
+        if(input)input.value=norm(text);
+        await consultProductByCode(text,"QUET_MA");
+      }
+    });
+  }
+  await scannerController.startScan();
+}
+
+function bindDirectProductInput(){
+  const input=$("directProductCode");
+  if(!input)return;
+  input.addEventListener("input",()=>{
+    clearTimeout(productCodeLookupTimer);
+    productCodeLookupTimer=setTimeout(()=>loadProductCodeSuggestions(input.value),150);
+  });
+  input.addEventListener("keydown",async e=>{
+    if(e.key!=="Enter")return;
+    e.preventDefault();
+    hideProductCodeSuggestions();
+    if(input.value.trim())await consultProductByCode(input.value,"NHAP_MA");
+  });
+  input.addEventListener("blur",()=>setTimeout(async()=>{
+    const raw=input.value.trim();
+    if(!raw)return;
+    const sp=await findExactProductByCode(raw);
+    if(sp)await consultProductByCode(sp.masp,"NHAP_MA");
+  },180));
+  $("btnDirectScan")?.addEventListener("click",openProductScanner);
+  $("btnCloseDirectScan")?.addEventListener("click",closeProductScanner);
+  $("btnCameraUltra")?.addEventListener("click",()=>{}); // scanner.js tự bind nút
+  $("btnCameraNormal")?.addEventListener("click",()=>{});
+  $("directFlashBtn")?.addEventListener("click",async()=>{
+    const on=await scannerController?.toggleTorch?.();
+    $("directFlashBtn").textContent=on?"🔦 Đèn ON":"🔦 Đèn";
+  });
+  $("directPickImage")?.addEventListener("change",async e=>{
+    const f=e.target.files?.[0]; if(!f)return;
+    await scannerController?.decodeFromFile?.(f);
+    e.target.value="";
+  });
+}
+
 async function searchProducts() {
   const seq = ++latestSearchSeq;
   const meta = modeMeta(state.searchMode);
@@ -2551,6 +2758,16 @@ async function searchProductsCore(searchSeq) {
   if (searchSeq !== latestSearchSeq) return;
   list = sortByFormColorThenRecentFifo(list, state.selectedForm, state.selectedColor, recentImportDates);
 
+  // Nếu luồng bắt đầu từ mã khách đang cầm, giữ chính mã đó ở đầu danh sách tương đồng.
+  const sourceCode=norm(state.sourceProductCode||"");
+  if(sourceCode){
+    const idx=list.findIndex(sp=>norm(sp.masp)===sourceCode);
+    if(idx>0){
+      const [sourceSp]=list.splice(idx,1);
+      list.unshift(sourceSp);
+    }
+  }
+
   // V1.10.3: không tải toàn bộ learning + full-stock của cả danh sách nữa.
   // Chỉ giữ danh sách đã sắp xếp, sau đó tải/rendere từng gói 20 mã khi người dùng cuộn.
   const modeLabel = modeMeta(state.searchMode).label;
@@ -2846,6 +3063,7 @@ async function renderProducts(list, options = {}) {
         });
         div.querySelector(".basic-consult-btn")?.addEventListener("click", async e => {
           e.stopPropagation();
+          state.selectedProductSource="RESULT";
           markConsultedProduct(sp.masp);
           await selectProduct(sp,{scrollToDetail:true});
         });
@@ -2921,6 +3139,7 @@ async function renderProducts(list, options = {}) {
 
       div.querySelector(".btn-tv").onclick =
         async () => {
+          state.selectedProductSource="RESULT";
           markConsultedProduct(sp.masp);
           await selectProduct(
             sp,
@@ -3145,6 +3364,7 @@ function sourceText(s){
     SIZE_GIAY_THUONG_DI:"Size giày khách thường đi",
     CAN_HOI_SIZE_GIAY:"Cần hỏi size giày",
     GIAY_CHUA_CO_SIZE:"Chưa biết size giày",
+    SAN_PHAM_THAM_CHIEU:"Size tham chiếu từ sản phẩm khách đã thử",
     SIZE_GIAY_TIM_THU_CONG:"Size giày được chọn để tìm",
     KHONG_QUAN_SIZE:"Không quản size"
   })[s]||s||"";
@@ -3697,6 +3917,13 @@ async function addToCart(size,fit) {
       .update({trang_thai:"DANG_CHOT",last_active_at:new Date().toISOString()}).eq("id",p.id)
       .then(({error:e})=>{if(e)console.warn("[SalesCopilot] update session cart:",e);});
     markFirstCartMilestone(p.id);
+
+    if(state.selectedProductSource==="NHAP_MA" || state.selectedProductSource==="QUET_MA") {
+      // Không đổi chiều cao/cân nặng. Size vừa chọn chỉ trở thành size tham chiếu
+      // cho đúng loại hàng của khách, đồng thời lấy nhóm/form/màu của sản phẩm làm ngữ cảnh.
+      await applyScannedProductContext(sp,normalizedSize);
+      state.selectedProductSource="RESULT";
+    }
     return true;
   };
 
@@ -4443,6 +4670,7 @@ async function init(){
     debugV18Engine();
     await loadSessions();
     bindEvents();
+    bindDirectProductInput();
 
     // Xác định nhóm lớn chứa selectedGroup hiện tại.
     for (const [key,cfg] of Object.entries(MAIN_GROUPS)) {
