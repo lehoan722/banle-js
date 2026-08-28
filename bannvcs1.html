@@ -810,7 +810,7 @@
                 //    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
                 let okInit = true;
                 try {
-                    const module = await import("./scripts/main.js?v=78");
+                    const module = await import("./scripts/main.js?v=75");
                     if (typeof module.khoiTaoUngDung === "function") {
                         okInit = await module.khoiTaoUngDung();
                     }
@@ -1500,43 +1500,25 @@
         </div>
     </div>
 
-    <!-- Overlay quét mã sản phẩm: trực tiếp / chụp ảnh / thư viện -->
+    <!-- Overlay quét -->
     <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
-        <video id="scanVideo" autoplay playsinline muted
-            style="width:100%;height:100%;object-fit:cover;background:#000;"></video>
-
-        <!-- Khung hướng dẫn quét -->
-        <div style="position:absolute;left:10%;right:10%;top:25%;height:34%;border:3px solid rgba(255,255,255,.88);
-                    border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.12);pointer-events:none;z-index:10000;">
-        </div>
-
-        <div id="scanStatus"
-            style="position:absolute;left:12px;right:12px;top:12px;color:#fff;z-index:10002;
-                   background:rgba(0,0,0,.45);padding:9px 12px;border-radius:10px;font-size:15px;">
-        </div>
+        <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
 
         <!-- Thanh điều khiển -->
-        <div style="position:absolute;left:8px;right:8px;bottom:12px;display:flex;gap:7px;align-items:center;
-                    flex-wrap:wrap;z-index:10002;background:rgba(0,0,0,.45);padding:8px;border-radius:12px;">
-            <select id="cameraSelect"
-                style="flex:1 1 180px;min-width:140px;padding:8px;border-radius:9px;border:none;"></select>
+        <div
+            style="position:absolute;left:10px;right:10px;bottom:12px;display:flex;gap:8px;align-items:center;z-index:10001;">
+            <select id="cameraSelect" style="flex:1;max-width:50%;padding:6px;border-radius:8px;"></select>
+            <button id="flashBtn" style="padding:6px 10px;border-radius:8px;">🔦 Đèn</button>
 
-            <button id="flashBtn" type="button"
-                style="padding:8px 10px;border-radius:9px;border:none;">🔦 Đèn</button>
-
-            <label style="padding:8px 10px;border-radius:9px;background:#fff;color:#000;cursor:pointer;font-weight:700;">
-                📸 Chụp ảnh
-                <input id="captureImage" type="file" accept="image/*" capture="environment" hidden>
+            <label style="padding:6px 10px;border-radius:8px;background:#fff;color:#000;cursor:pointer;">
+                Ảnh có sẵn
+                <input id="pickImage" type="file" accept="image/*" capture="environment" hidden>
             </label>
 
-            <label style="padding:8px 10px;border-radius:9px;background:#fff;color:#000;cursor:pointer;font-weight:700;">
-                🖼️ Thư viện
-                <input id="pickImage" type="file" accept="image/*" hidden>
-            </label>
-
-            <button id="btnCloseScan" type="button"
-                style="padding:8px 10px;border-radius:9px;border:none;background:#e53935;color:#fff;font-weight:700;">Đóng</button>
+            <button id="btnCloseScan" style="padding:6px 10px;border-radius:8px;">Đóng</button>
         </div>
+
+        <div id="scanStatus" style="position:absolute;left:10px;top:10px;color:#fff;z-index:10001;"></div>
     </div>
 
     <!-- Flash + Toast -->
@@ -1545,7 +1527,7 @@
 
 
     <script type="module" src="scripts/feedback.js"></script>
-    <script type="module" src="scripts/scanner.js?v=4"></script>
+    <script type="module" src="scripts/scanner.js"></script>
 
     <script>
 
