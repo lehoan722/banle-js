@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Trợ lý bán hàng Hoàn Tuyết V1.10.9</title>
+  <title>Trợ lý bán hàng Hoàn Tuyết V1.11.0</title>
   <style>
     :root{
       --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
@@ -521,7 +521,7 @@
     body[data-ui-mode="basic"] #stepBar{display:none!important}
     body[data-ui-mode="basic"] .layout{grid-template-columns:310px minmax(0,1fr) 300px}
     body[data-ui-mode="basic"] .coach{font-size:12px}
-    body[data-ui-mode="basic"] .rightcol .card:first-child{display:block}
+    body[data-ui-mode="basic"] .rightcol .card:first-child{display:none!important}
     /* V1.10.6 - fix luong Tu van + lightbox */
     body[data-ui-mode="basic"] .rightcol .card:first-child{scroll-margin-top:210px}
     body[data-ui-mode="basic"] #productDetail{scroll-margin-top:210px}
@@ -676,7 +676,7 @@
     }
 
 
-    /* V1.10.9 - thanh nhập/quét nhanh cố định dưới tab khách */
+    /* V1.11.0 - thanh nhập/quét nhanh cố định dưới tab khách */
     .quick-product-toolbar{display:grid;grid-template-columns:10% 60% 10% 20%;align-items:stretch;width:100%;margin-top:6px;background:rgba(255,255,255,.12);border-radius:10px;padding:2px;box-sizing:border-box}
     .quick-product-toolbar>*{min-width:0;box-sizing:border-box;padding:2px}
     .quick-product-toolbar button,.quick-product-toolbar input,.quick-product-toolbar select{width:100%;height:44px;box-sizing:border-box;border-radius:8px;font-size:14px}
@@ -684,6 +684,16 @@
     .quick-product-code-wrap{position:relative}
     .quick-product-code-wrap input{border:1px solid #b8d8f3;padding:0 10px;font-weight:800;text-transform:uppercase;outline:none}
     .quick-product-toolbar select{border:1px solid #b8d8f3;background:#fff;color:#172033;padding:0 5px;font-weight:800;outline:none}
+    .quick-size-wrap{position:relative}
+    .quick-size-trigger{border:1px solid #b8d8f3;background:#fff;color:#172033;padding:0 4px;font-weight:900;outline:none;cursor:pointer}
+    .quick-size-menu{display:none;position:absolute;left:1px;right:1px;top:48px;z-index:1300;background:#fff;border:1px solid #cbd5e1;border-radius:9px;box-shadow:0 10px 28px #0004;overflow:hidden}
+    .quick-size-menu.show{display:block}
+    .quick-size-option{display:flex;width:100%;align-items:center;justify-content:space-between;gap:5px;border:0;border-bottom:1px solid #edf2f7;background:#fff;padding:8px 7px;font-weight:900;color:#172033;cursor:pointer}
+    .quick-size-option:last-child{border-bottom:0}
+    .quick-size-option .quick-size-stock{font-size:10px;font-weight:700;color:#64748b}
+    .quick-size-option.primary{background:#ffe9a8;color:#7a4300}
+    .quick-size-option.near{background:#e9f5ff;color:#075f9f}
+    .quick-size-option.no-stock{opacity:.62}
     .direct-product-suggest{display:none;position:absolute;left:2px;right:2px;top:48px;z-index:1200;max-height:240px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px #0003}
     .direct-product-suggestion{display:flex;width:100%;gap:7px;align-items:flex-start;text-align:left;border:0;border-bottom:1px solid #eef2f7;background:#fff;padding:9px;cursor:pointer}
     .direct-product-suggestion:last-child{border-bottom:0}
@@ -710,8 +720,8 @@
   <div id="app-container" style="display:none;">
   <header class="topbar">
     <div class="topline">
-      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.10.9</div>
-      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.10.9</div>
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.11.0</div>
+      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.11.0</div>
       <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
       <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
       <div class="level-switch">
@@ -730,11 +740,9 @@
         <input id="directProductCode" autocomplete="off" autocapitalize="characters" placeholder="Nhập hoặc quét mã SP...">
         <div class="direct-product-suggest" id="directProductSuggest"></div>
       </div>
-      <div>
-        <select id="quickSizeSelect" aria-label="Size ưu tiên">
-          <option value="">Size</option>
-          <option value="38">38</option><option value="39">39</option><option value="40">40</option><option value="41">41</option><option value="42">42</option><option value="43">43</option><option value="44">44</option><option value="45">45</option><option value="46">46</option>
-        </select>
+      <div class="quick-size-wrap">
+        <button type="button" id="quickSizeSelect" class="quick-size-trigger" value="" aria-label="Chọn size">Size</button>
+        <div id="quickSizeMenu" class="quick-size-menu"></div>
       </div>
       <div>
         <select id="colorPrioritySelect" aria-label="Màu sắc ưu tiên">
