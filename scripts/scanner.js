@@ -19,6 +19,37 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
   let lastTime = 0;
   let starting = false;
 
+  // Nút chọn camera hiển thị trực tiếp trên giao diện.
+  // Không thay đổi luồng quét; chỉ gọi lại changeCamera() đang có sẵn.
+  const ultraBtn = document.getElementById('btnCameraUltra');
+  const normalBtn = document.getElementById('btnCameraNormal');
+  let ultraDeviceId = '';
+  let normalDeviceId = '';
+
+  function updateCameraButtons() {
+    if (ultraBtn) {
+      const available = !!ultraDeviceId;
+      ultraBtn.style.display = available ? '' : 'none';
+      if (available) {
+        const active = currentDeviceId === ultraDeviceId;
+        ultraBtn.style.background = active ? '#1976d2' : '#fff';
+        ultraBtn.style.color = active ? '#fff' : '#111';
+        ultraBtn.style.border = active ? '2px solid #fff' : '1px solid #aaa';
+      }
+    }
+
+    if (normalBtn) {
+      const available = !!normalDeviceId;
+      normalBtn.style.display = available ? '' : 'none';
+      if (available) {
+        const active = currentDeviceId === normalDeviceId;
+        normalBtn.style.background = active ? '#1976d2' : '#fff';
+        normalBtn.style.color = active ? '#fff' : '#111';
+        normalBtn.style.border = active ? '2px solid #fff' : '1px solid #aaa';
+      }
+    }
+  }
+
   function setStatus(msg) {
     if (statusEl) statusEl.textContent = msg || '';
   }
@@ -107,6 +138,9 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
 
     const normal = normalCandidates[0] || null;
 
+    ultraDeviceId = ultra?.deviceId || '';
+    normalDeviceId = normal?.deviceId || '';
+
     // Danh sách dùng thực tế: tối đa 2 camera.
     const choices = [];
     if (ultra) {
@@ -126,6 +160,7 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
     // Fallback cuối cùng: nếu trình duyệt không cho biết nhãn camera rõ ràng,
     // vẫn lấy camera khả dụng đầu tiên để chức năng quét không bị mất.
     if (!choices.length && devices[0]) {
+      normalDeviceId = devices[0].deviceId;
       choices.push({
         deviceId: devices[0].deviceId,
         label: 'Camera thường'
@@ -143,6 +178,8 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
       currentDeviceId = choices[0].deviceId;
       if (selectEl) selectEl.value = currentDeviceId;
     }
+
+    updateCameraButtons();
 
     // startScan() chỉ cần danh sách để biết camera đã được chuẩn bị;
     // trả về choices giúp đúng với dropdown đã lọc.
@@ -258,9 +295,20 @@ export function setupScanner({ videoEl, onResult, selectEl, statusEl }) {
   async function changeCamera(newDeviceId) {
     if (!newDeviceId || newDeviceId === currentDeviceId) return;
     currentDeviceId = newDeviceId;
+    updateCameraButtons();
     stopScan();
     await startScan(newDeviceId);
+    updateCameraButtons();
   }
+
+  // Hai nút thao tác nhanh: bấm là đổi ngay, không mở dropdown.
+  ultraBtn?.addEventListener('click', () => {
+    if (ultraDeviceId) changeCamera(ultraDeviceId);
+  });
+
+  normalBtn?.addEventListener('click', () => {
+    if (normalDeviceId) changeCamera(normalDeviceId);
+  });
 
   async function toggleTorch() {
     if (!currentTrack) return false;
