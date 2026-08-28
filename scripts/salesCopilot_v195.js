@@ -2,6 +2,7 @@ window.SALES_COPILOT_BUILD="1.10.8";
 console.log("[SalesCopilot] BUILD 1.10.8");
 import { supabase } from "./supabaseClient.js";
 import { setupScanner } from "./scanner.js";
+import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 
 const SIZE_LIST = ["38","39","40","41","42","43","44","45","46"];
 const IMAGE_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
@@ -1342,8 +1343,8 @@ function scrollToProductDetail() {
 
   const offset =
     window.innerWidth <= 720
-      ? 225
-      : 150;
+      ? 275
+      : 200;
 
   const top =
     card.getBoundingClientRect().top +
@@ -2209,6 +2210,7 @@ async function applyScannedProductContext(sp,size){
   renderBasicSubgroups();
   syncBasicFormButtons();
   if($("colorPrioritySelect")) $("colorPrioritySelect").value=state.selectedColor||"";
+  if($("quickSizeSelect")) $("quickSizeSelect").value=ref||"";
   if($("shoeSizeSearchSelect") && loai==="GIAY_DEP") $("shoeSizeSearchSelect").value=ref||"";
   renderTabs();
   renderProfile();
@@ -2281,6 +2283,7 @@ async function consultProductByCode(raw,source="NHAP_MA"){
         $("directProductCode")?.focus();
         return false;
       }
+      if(source==="QUET_MA") playSuccessBeep();
       const stock=await getStockForMasps([sp.masp]);
       state.stockCache.set(norm(sp.masp),stock.get(norm(sp.masp))||new Map());
       state.selectedProductSource=source;
@@ -4393,11 +4396,54 @@ const oldChooseSize=chooseSize;
 const _origSaveFit = saveFit;
 
 async function renderAll(){
-  renderTabs();renderProfile();renderGroups();renderCoach();await renderCart();
+  // V1.10.9: thanh size nhanh luôn bám theo khách/nhóm hiện tại.
+
+  renderTabs();renderProfile();
+  syncQuickSizeSelect(); // V1.10.9
+  renderGroups();renderCoach();await renderCart();
   if(state.selectedProduct)renderProductDetail();else{$("productDetail").className="empty";$("productDetail").innerHTML="Chọn một sản phẩm.";}
 }
 
+function currentAdviceLoai(){
+  const g=state.groups.find(x=>norm(x.manhom)===norm(state.selectedGroup||""));
+  return g?.loai_tu_van || (state.selectedMainGroup==="QUAN"?"QUAN":state.selectedMainGroup==="GIAY_DEP"?"GIAY_DEP":"AO");
+}
+
+function syncQuickSizeSelect(){
+  const el=$("quickSizeSelect");
+  const p=currentSession();
+  if(!el)return;
+  if(!p){el.value="";return;}
+  const loai=currentAdviceLoai();
+  const ref=extractInternalSize(p?.__size_tham_chieu?.[loai]);
+  if(ref){el.value=ref;return;}
+  if(loai==="GIAY_DEP"){
+    el.value=state.selectedShoeSearchSize||extractInternalSize(p?.size_giay_thuong_di)||"";
+    return;
+  }
+  const sug=suggestionWithSessionReference(p,loai);
+  el.value=extractInternalSize(sug?.primary)||"";
+}
+
+async function applyQuickSizePreference(raw){
+  const p=currentSession();
+  if(!p){toast("Hãy tạo/chọn khách trước khi chọn size.",2200);syncQuickSizeSelect();return;}
+  const size=extractInternalSize(raw);
+  const loai=currentAdviceLoai();
+  p.__size_tham_chieu=p.__size_tham_chieu||{};
+  if(size) p.__size_tham_chieu[loai]=size;
+  else delete p.__size_tham_chieu[loai];
+  if(loai==="GIAY_DEP") state.selectedShoeSearchSize=size||"";
+  renderProfile();
+  renderTabs();
+  if(state.selectedGroup) await searchProducts();
+}
+
 function bindEvents(){
+  setupBeepUnlockOnce(document);
+  $("quickSizeSelect")?.addEventListener("change",async e=>{
+    await applyQuickSizePreference(e.target.value);
+  });
   $("uiLevel")?.addEventListener("change", async e=>{
     applyUiMode(e.target.value);
     if(currentSession()) await searchProducts();
