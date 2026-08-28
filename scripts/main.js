@@ -768,8 +768,33 @@ export async function khoiTaoUngDung() {
 
       const maspInput = document.getElementById("masp");
       if (!maspInput) return false;
+
+      // Gán mã vào ô Mã SP và phát input/change để các listener khác thấy giá trị mới.
       maspInput.value = maspChuan;
-      maspInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      maspInput.dispatchEvent(new Event("input", { bubbles: true }));
+      maspInput.dispatchEvent(new Event("change", { bubbles: true }));
+
+      // QUAN TRỌNG: không giả lập KeyboardEvent Enter nữa.
+      // Trên mobile/iOS, synthetic keydown có thể không kích hoạt ổn định luồng bán hàng.
+      // Gọi trực tiếp chuyenFocus() để đi đúng nghiệp vụ hiện tại của hoadon.js
+      // (xuLyMaSanPham -> giá/size -> thêm vào bảng).
+      try {
+        Promise.resolve(chuyenFocus({
+          key: "Enter",
+          target: maspInput,
+          preventDefault() {},
+          stopPropagation() {}
+        })).catch((err) => {
+          console.error("Lỗi đẩy mã scanner vào luồng bán hàng:", err);
+          showToast("❌ Đã đọc được mã nhưng chưa đưa được vào trang bán", "error");
+          try { window.soundAlert?.(); } catch { }
+        });
+      } catch (err) {
+        console.error("Lỗi gọi chuyenFocus từ scanner:", err);
+        showToast("❌ Đã đọc được mã nhưng chưa đưa được vào trang bán", "error");
+        try { window.soundAlert?.(); } catch { }
+        return false;
+      }
 
       dongPopupQuet();
       return true;
