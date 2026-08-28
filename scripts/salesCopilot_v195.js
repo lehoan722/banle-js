@@ -2189,6 +2189,58 @@ function syncBasicFormButtons(){
   });
 }
 
+
+function setQuickSizeButtonValue(raw){
+  const el=$("quickSizeSelect");
+  if(!el)return;
+  const size=extractInternalSize(raw)||"";
+  el.value=size;
+  el.textContent=size||"Size";
+}
+
+function closeQuickSizeMenu(){
+  $("quickSizeMenu")?.classList.remove("show");
+}
+
+function renderQuickSizeMenu(autoOpen=false){
+  const menu=$("quickSizeMenu");
+  if(!menu)return;
+  const sp=state.selectedProduct;
+  const stock=sp?state.stockCache.get(norm(sp.masp)):null;
+  const primary=extractInternalSize(state.currentSuggestion?.primary);
+  const backup=extractInternalSize(state.currentSuggestion?.backup);
+  menu.innerHTML=SIZE_LIST.map(size=>{
+    const ton=sp?stockAtBranch(stock,size):null;
+    const near=!!primary && (size===backup || Math.abs(Number(size)-Number(primary))===1);
+    const cls=[size===primary?"primary":"",near&&size!==primary?"near":"",sp&&Number(ton)<=0?"no-stock":""].filter(Boolean).join(" ");
+    return `<button type="button" class="quick-size-option ${cls}" data-quick-size="${size}"><span>Size ${size}</span>${sp?`<span class="quick-size-stock">Tồn ${state.diadiem.toUpperCase()}: ${Number(ton||0)}</span>`:""}</button>`;
+  }).join("");
+  menu.querySelectorAll("[data-quick-size]").forEach(btn=>btn.addEventListener("click",async()=>{
+    const size=btn.dataset.quickSize;
+    setQuickSizeButtonValue(size);
+    closeQuickSizeMenu();
+    if(state.selectedProduct){
+      const stockMap=state.stockCache.get(norm(state.selectedProduct.masp));
+      await chooseSize(size,stockAtBranch(stockMap,size));
+    }else{
+      await applyQuickSizePreference(size);
+    }
+  }));
+  if(autoOpen)menu.classList.add("show");
+}
+
+function syncToolbarFromSelectedProduct(autoOpenSize=false){
+  const sp=state.selectedProduct;
+  const input=$("directProductCode");
+  if(sp && input){
+    input.value=sp.masp||"";
+    setTimeout(()=>{ try{ input.focus({preventScroll:true}); input.select(); }catch(_){} },0);
+  }
+  if(sp && $("colorPrioritySelect")) $("colorPrioritySelect").value=String(sp.mausac||"").trim();
+  syncQuickSizeSelect();
+  renderQuickSizeMenu(autoOpenSize);
+}
+
 async function applyScannedProductContext(sp,size){
   const p=currentSession();
   if(!p||!sp)return;
@@ -2210,7 +2262,7 @@ async function applyScannedProductContext(sp,size){
   renderBasicSubgroups();
   syncBasicFormButtons();
   if($("colorPrioritySelect")) $("colorPrioritySelect").value=state.selectedColor||"";
-  if($("quickSizeSelect")) $("quickSizeSelect").value=ref||"";
+  setQuickSizeButtonValue(ref||"");
   if($("shoeSizeSearchSelect") && loai==="GIAY_DEP") $("shoeSizeSearchSelect").value=ref||"";
   renderTabs();
   renderProfile();
@@ -2237,11 +2289,14 @@ async function loadProductCodeSuggestions(raw){
   const {data,error}=await supabase.from("dmhanghoa")
     .select("masp,tensp")
     .eq("active",true)
-    .ilike("masp",`${q}%`)
+    .ilike("masp",`%${q}%`)
     .order("masp")
     .limit(12);
   if(error){console.warn("[SalesCopilot] Gợi ý mã lỗi:",error);return;}
-  const rows=data||[];
+  const rows=(data||[]).sort((a,b)=>{
+    const ia=norm(a.masp).indexOf(q), ib=norm(b.masp).indexOf(q);
+    return ia-ib || norm(a.masp).localeCompare(norm(b.masp));
+  });
   if(!rows.length){hideProductCodeSuggestions();return;}
   box.innerHTML=rows.map(r=>`<button type="button" class="direct-product-suggestion" data-masp="${esc(r.masp)}"><b>${esc(r.masp)}</b><span>${esc(r.tensp||"")}</span></button>`).join("");
   box.style.display="block";
@@ -2289,9 +2344,9 @@ async function consultProductByCode(raw,source="NHAP_MA"){
       state.selectedProductSource=source;
       state.sourceProductCode=norm(sp.masp);
       markConsultedProduct(sp.masp); // chạy nền, không chặn tư vấn
-      await selectProduct(sp,{scrollToDetail:true});
+      await selectProduct(sp,{scrollToDetail:!isBasicMode(),openQuickSize:true});
       const input=$("directProductCode");
-      if(input)input.value="";
+      if(input){ input.value=sp.masp||code; setTimeout(()=>{try{input.focus({preventScroll:true});input.select();}catch(_){}},20); }
       hideProductCodeSuggestions();
       toast(`Đang tư vấn mã ${sp.masp}. Chọn size khách thử.`,1800);
       return true;
@@ -3068,7 +3123,7 @@ async function renderProducts(list, options = {}) {
           e.stopPropagation();
           state.selectedProductSource="RESULT";
           markConsultedProduct(sp.masp);
-          await selectProduct(sp,{scrollToDetail:true});
+          await selectProduct(sp,{scrollToDetail:false,openQuickSize:true});
         });
         frag.appendChild(div);
         return;
@@ -3339,6 +3394,12 @@ async function selectProduct(
   }
 
   if (options.basicQuick) return;
+
+  if(isBasicMode()) {
+    syncToolbarFromSelectedProduct(options.openQuickSize !== false);
+    renderCoach();
+    return;
+  }
 
   renderProductDetail();
   renderCoach();
@@ -3675,9 +3736,12 @@ async function chooseSize(
   setStep(5);
 
   if (isBasicMode()) {
-    renderProductDetail();
+    setQuickSizeButtonValue(size);
     renderCoach();
+    const sp=state.selectedProduct;
     await addToCart(size,null);
+    if(sp) await applyScannedProductContext(sp,size);
+    syncToolbarFromSelectedProduct(false);
     return;
   }
 
@@ -4396,12 +4460,13 @@ const oldChooseSize=chooseSize;
 const _origSaveFit = saveFit;
 
 async function renderAll(){
-  // V1.10.9: thanh size nhanh luôn bám theo khách/nhóm hiện tại.
+  // V1.11.0: thanh size nhanh luôn bám theo khách/nhóm hiện tại.
 
   renderTabs();renderProfile();
-  syncQuickSizeSelect(); // V1.10.9
+  syncQuickSizeSelect(); // V1.11.0
   renderGroups();renderCoach();await renderCart();
-  if(state.selectedProduct)renderProductDetail();else{$("productDetail").className="empty";$("productDetail").innerHTML="Chọn một sản phẩm.";}
+  if(isBasicMode()){ syncToolbarFromSelectedProduct(false); }
+  else if(state.selectedProduct)renderProductDetail();else{$("productDetail").className="empty";$("productDetail").innerHTML="Chọn một sản phẩm.";}
 }
 
 function currentAdviceLoai(){
@@ -4413,16 +4478,17 @@ function syncQuickSizeSelect(){
   const el=$("quickSizeSelect");
   const p=currentSession();
   if(!el)return;
-  if(!p){el.value="";return;}
+  if(!p){setQuickSizeButtonValue("");return;}
+  if(state.selectedProduct && state.selectedSize){setQuickSizeButtonValue(state.selectedSize);return;}
   const loai=currentAdviceLoai();
   const ref=extractInternalSize(p?.__size_tham_chieu?.[loai]);
-  if(ref){el.value=ref;return;}
+  if(ref){setQuickSizeButtonValue(ref);return;}
   if(loai==="GIAY_DEP"){
-    el.value=state.selectedShoeSearchSize||extractInternalSize(p?.size_giay_thuong_di)||"";
+    setQuickSizeButtonValue(state.selectedShoeSearchSize||extractInternalSize(p?.size_giay_thuong_di)||"");
     return;
   }
   const sug=suggestionWithSessionReference(p,loai);
-  el.value=extractInternalSize(sug?.primary)||"";
+  setQuickSizeButtonValue(extractInternalSize(sug?.primary)||"");
 }
 
 async function applyQuickSizePreference(raw){
@@ -4441,8 +4507,15 @@ async function applyQuickSizePreference(raw){
 
 function bindEvents(){
   setupBeepUnlockOnce(document);
-  $("quickSizeSelect")?.addEventListener("change",async e=>{
-    await applyQuickSizePreference(e.target.value);
+  $("quickSizeSelect")?.addEventListener("click",e=>{
+    e.preventDefault();
+    const menu=$("quickSizeMenu");
+    if(!menu)return;
+    if(menu.classList.contains("show")) closeQuickSizeMenu();
+    else renderQuickSizeMenu(true);
+  });
+  document.addEventListener("click",e=>{
+    if(!e.target.closest?.(".quick-size-wrap")) closeQuickSizeMenu();
   });
   $("uiLevel")?.addEventListener("change", async e=>{
     applyUiMode(e.target.value);
