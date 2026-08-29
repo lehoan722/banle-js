@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <title>Trợ lý bán hàng Hoàn Tuyết V1.11.2</title>
+  <title>Trợ lý bán hàng Hoàn Tuyết V1.11.3</title>
   <style>
     :root{
       --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
@@ -13,7 +13,7 @@
     body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
     button,input,select{font:inherit}
     button{cursor:pointer}
-    .topbar{position:sticky;top:0;z-index:100;background:#0878d1;color:#fff;padding:8px 10px;box-shadow:0 2px 8px #0002}
+    .topbar{position:static;z-index:100;background:#0878d1;color:#fff;padding:8px 10px;box-shadow:0 2px 8px #0002}
     .topline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .title{font-size:20px;font-weight:800;flex:1;min-width:210px}
     .mini{font-size:12px;opacity:.92}
@@ -676,8 +676,8 @@
     }
 
 
-    /* V1.11.2 - 3 dòng thao tác bán hàng cố định dưới tab khách */
-    .quick-product-toolbar{display:grid;grid-template-columns:10% 50% 20% 20%;align-items:stretch;width:100%;margin-top:6px;background:rgba(255,255,255,.12);border-radius:10px;padding:2px;box-sizing:border-box}
+    /* V1.11.3 - 3 dòng thao tác bán hàng dưới tab khách; header cuộn tự nhiên, không sticky */
+    .quick-product-toolbar{display:grid;grid-template-columns:15% 45% 20% 20%;align-items:stretch;width:100%;margin-top:6px;background:rgba(255,255,255,.12);border-radius:10px;padding:2px;box-sizing:border-box}
     .quick-product-toolbar>*{min-width:0;box-sizing:border-box;padding:2px}
     .quick-product-toolbar button,.quick-product-toolbar input,.quick-product-toolbar select{width:100%;height:44px;box-sizing:border-box;border-radius:8px;font-size:14px}
     .quick-product-toolbar .direct-scan-btn{border:0;background:#fff;color:#0868b5;font-size:21px;font-weight:900;padding:0;cursor:pointer}
@@ -745,8 +745,8 @@
   <div id="app-container" style="display:none;">
   <header class="topbar">
     <div class="topline">
-      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.11.2</div>
-      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.11.2</div>
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.11.3</div>
+      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.11.3</div>
       <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
       <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
       <div class="level-switch">
