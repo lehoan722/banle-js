@@ -1898,6 +1898,9 @@ async function selectMainGroup(mainKey) {
   if (!cfg) return;
 
   state.selectedMainGroup = mainKey;
+  // Đổi nhóm bằng tay = bắt đầu một tìm kiếm độc lập, không neo vào mã trước đó.
+  state.sourceProductCode = "";
+  clearDirectProductCode({clearSourceAnchor:false,focus:false});
 
   const rows =
     validSubGroups(mainKey);
@@ -1962,6 +1965,9 @@ async function selectSubGroup(code) {
   if (!code) return;
 
   state.selectedGroup = code;
+  // Chọn nhóm chi tiết bằng tay không tiếp tục dùng mã sản phẩm cũ làm mốc.
+  state.sourceProductCode = "";
+  clearDirectProductCode({clearSourceAnchor:false,focus:false});
 
   state.selectedProduct = null;
   state.selectedSize = null;
@@ -2205,7 +2211,7 @@ function setQuickSizeButtonValue(raw){
   renderQuickSizeStrip();
 }
 
-function closeQuickSizeMenu(){ /* V1.11.2: size hiển thị cố định, không còn popup */ }
+function closeQuickSizeMenu(){ /* V1.11.3: size hiển thị cố định, không còn popup */ }
 
 function currentQuickSize(){
   return extractInternalSize($("quickSizeSelect")?.value)||"";
@@ -2262,6 +2268,8 @@ async function handleQuickSizePick(raw){
     // nhưng size vẫn trở thành size tham chiếu và tìm kiếm KHÔNG bị chặn.
     await applyScannedProductContext(sp,size,{skipSearch:true});
     if(currentSession() && state.selectedGroup) await searchProducts();
+    // Dù mã hiện tại hết size, size vẫn dùng để tìm mã khác; bỏ neo mã cũ sau lượt tìm này.
+    clearDirectProductCode({clearSourceAnchor:true,focus:false});
     renderQuickSizeStrip();
     return;
   }
@@ -2274,10 +2282,12 @@ async function handleQuickSizePick(raw){
 
 function renderQuickSizeMenu(){ renderQuickSizeStrip(); }
 
-function syncToolbarFromSelectedProduct(autoOpenSize=false){
+function syncToolbarFromSelectedProduct(autoOpenSize=false,fillCode=false){
   const sp=state.selectedProduct;
   const input=$("directProductCode");
-  if(sp && input){
+  // V1.11.3: không tự điền lại mã chỉ vì render lại giao diện.
+  // Mã chỉ hiện khi NV bấm TƯ VẤN từ bảng kết quả; quét/nhập thành công thì để trống.
+  if(fillCode && sp && input){
     input.value=sp.masp||"";
     setTimeout(()=>{ try{ input.focus({preventScroll:true}); input.select(); }catch(_){} },0);
   }
@@ -2326,6 +2336,30 @@ let scannerController=null;
 function hideProductCodeSuggestions(){
   const box=$("directProductSuggest");
   if(box){box.style.display="none";box.innerHTML="";}
+}
+
+function clearDirectProductCode({clearSourceAnchor=false,focus=false}={}){
+  const input=$("directProductCode");
+  if(input){
+    input.value="";
+    if(focus){ setTimeout(()=>{ try{ input.focus({preventScroll:true}); }catch(_){} },0); }
+  }
+  hideProductCodeSuggestions();
+  if(clearSourceAnchor) state.sourceProductCode="";
+}
+
+function scrollToDirectProductCode(){
+  const input=$("directProductCode");
+  if(!input)return;
+  requestAnimationFrame(()=>{
+    try{
+      input.scrollIntoView({behavior:"smooth",block:"center",inline:"nearest"});
+    }catch(_){
+      const y=window.scrollY+input.getBoundingClientRect().top-24;
+      window.scrollTo({top:Math.max(0,y),behavior:"smooth"});
+    }
+    setTimeout(()=>{ try{ input.focus({preventScroll:true}); input.select(); }catch(_){} },220);
+  });
 }
 
 async function loadProductCodeSuggestions(raw){
@@ -2394,9 +2428,9 @@ async function consultProductByCode(raw,source="NHAP_MA"){
       state.sourceProductCode=norm(sp.masp);
       markConsultedProduct(sp.masp); // chạy nền, không chặn tư vấn
       await selectProduct(sp,{scrollToDetail:!isBasicMode(),openQuickSize:true});
-      const input=$("directProductCode");
-      if(input){ input.value=sp.masp||code; setTimeout(()=>{try{input.focus({preventScroll:true});input.select();}catch(_){}},20); }
-      hideProductCodeSuggestions();
+      // V1.11.3: mã quét/nhập chỉ là cửa vào sản phẩm. Sau khi tra cứu thành công
+      // xóa ô mã để các thao tác tìm kiếm tiếp theo không bị hiểu là còn neo vào mã cũ.
+      clearDirectProductCode({clearSourceAnchor:false,focus:false});
       toast(`Đang tư vấn mã ${sp.masp}. Chọn size khách thử.`,1800);
       return true;
     });
@@ -2773,7 +2807,7 @@ async function searchProductsCore(searchSeq) {
     }
   }
 
-  // V1.11.2: Basic không tải candidate/master/FIFO về trình duyệt nữa.
+  // V1.11.3: Basic không tải candidate/master/FIFO về trình duyệt nữa.
   // Database lọc + tính tồn + xếp hạng, client chỉ nhận từng gói 40 sản phẩm.
   if (isBasicMode()) {
     await searchProductsBasicRpc({sizes,seed,noAutoShoeSize,kw,searchSeq});
@@ -3307,6 +3341,11 @@ async function renderProducts(list, options = {}) {
           state.selectedProductSource="RESULT";
           markConsultedProduct(sp.masp);
           await selectProduct(sp,{scrollToDetail:false,openQuickSize:true});
+          // V1.11.3: sản phẩm từ bảng kết quả được đưa lên ô mã và cuộn tới đó
+          // để NV nhìn thấy rõ mã trước khi chạm size.
+          const input=$("directProductCode");
+          if(input) input.value=sp.masp||"";
+          scrollToDirectProductCode();
         });
         frag.appendChild(div);
         return;
@@ -3567,7 +3606,7 @@ async function selectProduct(
       : false
   };
 
-  // V1.11.2: ngay khi quét/chọn mã để tư vấn, thanh cố định phản ánh đúng
+  // V1.11.3: ngay khi quét/chọn mã để tư vấn, thanh cố định phản ánh đúng
   // nhóm chi tiết + form + màu của chính sản phẩm. Không đổi số đo khách.
   state.selectedMainGroup=mainGroupKeyForProduct(sp);
   state.selectedGroup=sp.nhomhang||state.selectedGroup;
@@ -3932,12 +3971,20 @@ async function chooseSize(
     renderCoach();
     const sp=state.selectedProduct;
     const added=await addToCart(size,null);
-    // V1.11.2: chọn size thành công phải đóng popup ngay,
+    // V1.11.3: chọn size thành công phải đóng popup ngay,
     // không để che các dropdown/ô thao tác khác.
     closeQuickSizeMenu();
-    if(added!==false && sp) await applyScannedProductContext(sp,size);
+    if(added!==false && sp){
+      await applyScannedProductContext(sp,size);
+      // V1.11.3: sau khi size đã được đưa vào tư vấn/giỏ thành công,
+      // ô mã trở lại rỗng và bỏ neo mã cho các tìm kiếm kế tiếp.
+      clearDirectProductCode({clearSourceAnchor:true,focus:false});
+    }
     closeQuickSizeMenu();
-    syncToolbarFromSelectedProduct(false);
+    // Giữ ô mã rỗng sau khi chốt size; chỉ đồng bộ Form/Size/hiển thị cần thiết.
+    syncBasicFormButtons();
+    syncQuickSizeSelect();
+    renderQuickSizeStrip();
     return;
   }
 
@@ -4706,6 +4753,8 @@ function bindEvents(){
   setupBeepUnlockOnce(document);
   $("quickFormSelect")?.addEventListener("change",async e=>{
     state.selectedForm=String(e.target.value||"").trim();
+    // Đổi bộ lọc bằng tay = tìm độc lập, không neo vào mã sản phẩm trước đó.
+    state.sourceProductCode="";
     syncBasicFormButtons();
     if(currentSession() && state.selectedGroup) await searchProducts();
   });
@@ -4722,6 +4771,8 @@ function bindEvents(){
   });
   $("colorPrioritySelect")?.addEventListener("change",async e=>{
     state.selectedColor=String(e.target.value||"").trim();
+    // Đổi màu bằng tay cũng là một tìm kiếm mới, không giữ mã cũ làm mốc.
+    state.sourceProductCode="";
     if(currentSession() && state.selectedGroup) await searchProducts();
   });
   $("productImageLightbox")?.addEventListener("click", closeProductImageLightbox);
