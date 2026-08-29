@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.10.8";
-console.log("[SalesCopilot] BUILD 1.10.8");
+window.SALES_COPILOT_BUILD="1.11.1";
+console.log("[SalesCopilot] BUILD 1.11.1");
 import { supabase } from "./supabaseClient.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
@@ -118,7 +118,7 @@ const state = {
   productPager: {
     list: [],
     nextIndex: 0,
-    pageSize: 20,
+    pageSize: 40,
     loading: false,
     searchSeq: 0,
     observer: null
@@ -2286,17 +2286,12 @@ async function loadProductCodeSuggestions(raw){
   const box=$("directProductSuggest");
   if(!box)return;
   if(q.length<1){hideProductCodeSuggestions();return;}
-  const {data,error}=await supabase.from("dmhanghoa")
-    .select("masp,tensp")
-    .eq("active",true)
-    .ilike("masp",`%${q}%`)
-    .order("masp")
-    .limit(12);
-  if(error){console.warn("[SalesCopilot] Gợi ý mã lỗi:",error);return;}
-  const rows=(data||[]).sort((a,b)=>{
-    const ia=norm(a.masp).indexOf(q), ib=norm(b.masp).indexOf(q);
-    return ia-ib || norm(a.masp).localeCompare(norm(b.masp));
+  const {data,error}=await supabase.rpc("sales_copilot_goi_y_ma_v1111",{
+    p_text:q,
+    p_limit:12
   });
+  if(error){console.warn("[SalesCopilot] Gợi ý mã RPC lỗi:",error);return;}
+  const rows=Array.isArray(data)?data:[];
   if(!rows.length){hideProductCodeSuggestions();return;}
   box.innerHTML=rows.map(r=>`<button type="button" class="direct-product-suggestion" data-masp="${esc(r.masp)}"><b>${esc(r.masp)}</b><span>${esc(r.tensp||"")}</span></button>`).join("");
   box.style.display="block";
@@ -2313,14 +2308,19 @@ async function findExactProductByCode(raw){
   if(!code)return null;
   const cached=state.productCache.get(code);
   if(cached)return cached;
-  const {data,error}=await supabase.from("dmhanghoa")
-    .select("masp,tensp,giale,nhomhang,chungloai,mausac,form,rong_ong,co_gian,active,giam_gia_pct,treomaucs1,treomaucs2,vitrikho1,vitrikho2")
-    .ilike("masp",code)
-    .limit(1)
-    .maybeSingle();
-  if(error){console.warn("[SalesCopilot] Kiểm tra mã SP lỗi:",error);return null;}
-  if(data)state.productCache.set(norm(data.masp),data);
-  return data||null;
+  const {data,error}=await supabase.rpc("sales_copilot_lay_san_pham_theo_ma_v1111",{
+    p_masp:code,
+    p_den_ngay:new Date().toISOString().slice(0,10)
+  });
+  if(error){console.warn("[SalesCopilot] Kiểm tra mã SP RPC lỗi:",error);return null;}
+  const row=Array.isArray(data)?data[0]:data;
+  if(!row)return null;
+  const sp={...row};
+  const stockMap=stockMapFromRpcJson(sp.ton_sizes);
+  delete sp.ton_sizes;
+  state.productCache.set(norm(sp.masp),sp);
+  state.stockCache.set(norm(sp.masp),stockMap);
+  return sp;
 }
 
 async function consultProductByCode(raw,source="NHAP_MA"){
@@ -2339,8 +2339,10 @@ async function consultProductByCode(raw,source="NHAP_MA"){
         return false;
       }
       if(source==="QUET_MA") playSuccessBeep();
-      const stock=await getStockForMasps([sp.masp]);
-      state.stockCache.set(norm(sp.masp),stock.get(norm(sp.masp))||new Map());
+      if(!state.stockCache.get(norm(sp.masp))){
+        const stock=await getStockForMasps([sp.masp]);
+        state.stockCache.set(norm(sp.masp),stock.get(norm(sp.masp))||new Map());
+      }
       state.selectedProductSource=source;
       state.sourceProductCode=norm(sp.masp);
       markConsultedProduct(sp.masp); // chạy nền, không chặn tư vấn
@@ -2412,6 +2414,133 @@ function bindDirectProductInput(){
     await scannerController?.decodeFromFile?.(f);
     e.target.value="";
   });
+}
+
+
+function stockMapFromRpcJson(raw){
+  const out=new Map();
+  const obj=raw && typeof raw==="object" ? raw : {};
+  Object.entries(obj).forEach(([size,row])=>{
+    const s=extractInternalSize(size);
+    if(!s)return;
+    out.set(s,{
+      ton_cs1:Number(row?.ton_cs1||0),
+      ton_cs2:Number(row?.ton_cs2||0),
+      ban_cs1:Number(row?.ban_cs1||0),
+      ban_cs2:Number(row?.ban_cs2||0)
+    });
+  });
+  return out;
+}
+
+function rpcRowToProduct(row,seed,noAutoShoeSize){
+  const sp={...row};
+  const stockMap=stockMapFromRpcJson(row?.ton_sizes);
+  const matched=(row?.matched_sizes||[]).map(extractInternalSize).filter(Boolean);
+  delete sp.ton_sizes;
+  delete sp.matched_sizes;
+  delete sp.total_count;
+  sp.__matched_sizes=matched;
+  sp.__seed=seed;
+  sp.__no_auto_shoe_size=!!noAutoShoeSize;
+  sp.__ngay_nhap_som_3thang=row?.ngay_nhap_som_3thang||null;
+  state.productCache.set(norm(sp.masp),sp);
+  state.stockCache.set(norm(sp.masp),stockMap);
+  return sp;
+}
+
+async function fetchBasicRpcProductPage(request,offset){
+  const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",{
+    ...request,
+    p_offset:Number(offset||0),
+    p_limit:40
+  });
+  if(error)throw error;
+  return Array.isArray(data)?data:[];
+}
+
+async function startBasicRpcPagination({rows,totalCount,request,seed,noAutoShoeSize,searchSeq}){
+  disconnectProductPagerObserver();
+  const box=$("productList");
+  box.innerHTML="";
+  state.productPager={
+    list:[],nextIndex:0,pageSize:40,loading:false,searchSeq,observer:null,
+    rpcMode:true,rpcOffset:0,rpcTotal:Number(totalCount||0),rpcRequest:request,
+    rpcSeed:seed,rpcNoAutoShoeSize:!!noAutoShoeSize
+  };
+  if(!rows.length){
+    box.innerHTML=`<div class="empty">Không có sản phẩm nào còn đúng size gợi ý tại ${state.diadiem.toUpperCase()}.</div>`;
+    return;
+  }
+  const first=rows.map(r=>rpcRowToProduct(r,seed,noAutoShoeSize));
+  const sentinel=document.createElement("div");
+  sentinel.id="productLoadSentinel";
+  sentinel.style.cssText="grid-column:1/-1;text-align:center;padding:12px;color:#687787;font-size:12px";
+  sentinel.textContent="Cuộn xuống để tải thêm...";
+  box.appendChild(sentinel);
+  await preloadLearningData(first.map(x=>x.masp));
+  if(searchSeq!==latestSearchSeq)return;
+  await renderProducts(first,{append:true});
+  state.productPager.rpcOffset=first.length;
+  sentinel.textContent=state.productPager.rpcOffset<state.productPager.rpcTotal
+    ? `Đã hiện ${state.productPager.rpcOffset}/${state.productPager.rpcTotal} · cuộn xuống để tải tiếp`
+    : `Đã hiển thị đủ ${state.productPager.rpcTotal} sản phẩm.`;
+  if(state.productPager.rpcOffset>=state.productPager.rpcTotal)return;
+  if("IntersectionObserver" in window){
+    const obs=new IntersectionObserver(entries=>{
+      if(entries.some(x=>x.isIntersecting)) loadNextBasicRpcPage();
+    },{root:null,rootMargin:"700px 0px",threshold:0.01});
+    obs.observe(sentinel);
+    state.productPager.observer=obs;
+  }
+}
+
+async function loadNextBasicRpcPage(){
+  const pager=state.productPager;
+  if(!pager?.rpcMode || pager.loading || pager.searchSeq!==latestSearchSeq)return;
+  if(pager.rpcOffset>=pager.rpcTotal){disconnectProductPagerObserver();return;}
+  pager.loading=true;
+  try{
+    await withDataLoading("Đang tải thêm 40 sản phẩm...",async()=>{
+      const rows=await fetchBasicRpcProductPage(pager.rpcRequest,pager.rpcOffset);
+      if(pager.searchSeq!==latestSearchSeq)return;
+      const products=rows.map(r=>rpcRowToProduct(r,pager.rpcSeed,pager.rpcNoAutoShoeSize));
+      await preloadLearningData(products.map(x=>x.masp));
+      if(pager.searchSeq!==latestSearchSeq)return;
+      await renderProducts(products,{append:true});
+      pager.rpcOffset+=products.length;
+      const s=$("productLoadSentinel");
+      if(s)s.textContent=pager.rpcOffset<pager.rpcTotal
+        ? `Đã hiện ${pager.rpcOffset}/${pager.rpcTotal} · cuộn xuống để tải tiếp`
+        : `Đã hiển thị đủ ${pager.rpcTotal} sản phẩm.`;
+      if(!products.length || pager.rpcOffset>=pager.rpcTotal)disconnectProductPagerObserver();
+    });
+  }finally{pager.loading=false;}
+}
+
+async function searchProductsBasicRpc({sizes,seed,noAutoShoeSize,kw,searchSeq}){
+  const request={
+    p_diadiem:state.diadiem,
+    p_nhomhang:state.selectedGroup,
+    p_sizes:sizes,
+    p_form:state.selectedForm||null,
+    p_mausac:state.selectedColor||null,
+    p_mode:state.searchMode||"similar",
+    p_reference_price:Number(state.referencePrice||0),
+    p_keyword:kw||null,
+    p_source_masp:state.sourceProductCode||null,
+    p_den_ngay:new Date().toISOString().slice(0,10)
+  };
+  const rows=await fetchBasicRpcProductPage(request,0);
+  if(searchSeq!==latestSearchSeq)return;
+  const total=Number(rows?.[0]?.total_count||0);
+  const modeLabel=modeMeta(state.searchMode).label;
+  const pricePart=["cheaper","premium"].includes(state.searchMode)
+    ? ` · giá so sánh ${money(state.referencePrice)} đ`:"";
+  $("searchSummary").textContent=noAutoShoeSize
+    ? `${total} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · chưa biết size giày, tải 40 sản phẩm/lượt${pricePart}`
+    : `${total} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · size phù hợp ${sizes.join(", ")} · tải 40 sản phẩm/lượt${pricePart}`;
+  await startBasicRpcPagination({rows,totalCount:total,request,seed,noAutoShoeSize,searchSeq});
 }
 
 async function searchProducts() {
@@ -2595,6 +2724,13 @@ async function searchProductsCore(searchSeq) {
       $("txtReferencePrice")?.focus();
       return;
     }
+  }
+
+  // V1.11.1: Basic không tải candidate/master/FIFO về trình duyệt nữa.
+  // Database lọc + tính tồn + xếp hạng, client chỉ nhận từng gói 40 sản phẩm.
+  if (isBasicMode()) {
+    await searchProductsBasicRpc({sizes,seed,noAutoShoeSize,kw,searchSeq});
+    return;
   }
 
   if (
@@ -2827,7 +2963,7 @@ async function searchProductsCore(searchSeq) {
   }
 
   // V1.10.3: không tải toàn bộ learning + full-stock của cả danh sách nữa.
-  // Chỉ giữ danh sách đã sắp xếp, sau đó tải/rendere từng gói 20 mã khi người dùng cuộn.
+  // Chỉ giữ danh sách đã sắp xếp, sau đó tải/rendere từng gói 40 mã khi người dùng cuộn.
   const modeLabel = modeMeta(state.searchMode).label;
   const pricePart = ["cheaper","premium"].includes(state.searchMode)
     ? ` · giá so sánh ${money(state.referencePrice)} đ`
@@ -2836,9 +2972,9 @@ async function searchProductsCore(searchSeq) {
   $("searchSummary").textContent =
     noAutoShoeSize
       ? `${list.length} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · ` +
-        `chưa biết size giày, hiển thị dần 20 sản phẩm/lượt${pricePart}`
+        `chưa biết size giày, hiển thị dần 40 sản phẩm/lượt${pricePart}`
       : `${list.length} sản phẩm · ${modeLabel} · ${state.diadiem.toUpperCase()} · ` +
-        `size phù hợp ${sizes.join(", ")} · hiển thị dần 20 sản phẩm/lượt${pricePart}`;
+        `size phù hợp ${sizes.join(", ")} · hiển thị dần 40 sản phẩm/lượt${pricePart}`;
 
   if (searchSeq !== latestSearchSeq) return;
   await startProductPagination(list, searchSeq);
@@ -2882,7 +3018,7 @@ async function startProductPagination(list, searchSeq){
   state.productPager={
     list:Array.isArray(list)?list:[],
     nextIndex:0,
-    pageSize:20,
+    pageSize:40,
     loading:false,
     searchSeq,
     observer:null
@@ -3739,8 +3875,12 @@ async function chooseSize(
     setQuickSizeButtonValue(size);
     renderCoach();
     const sp=state.selectedProduct;
-    await addToCart(size,null);
-    if(sp) await applyScannedProductContext(sp,size);
+    const added=await addToCart(size,null);
+    // V1.11.1: chọn size thành công phải đóng popup ngay,
+    // không để che các dropdown/ô thao tác khác.
+    closeQuickSizeMenu();
+    if(added!==false && sp) await applyScannedProductContext(sp,size);
+    closeQuickSizeMenu();
     syncToolbarFromSelectedProduct(false);
     return;
   }
