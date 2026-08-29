@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <title>Trợ lý bán hàng Hoàn Tuyết V1.11.3</title>
+  <title>Trợ lý bán hàng Hoàn Tuyết V1.11.4</title>
   <style>
     :root{
       --blue:#0878d1;--blue2:#eaf4ff;--green:#169b62;--red:#d92d20;
@@ -676,7 +676,7 @@
     }
 
 
-    /* V1.11.3 - 3 dòng thao tác bán hàng dưới tab khách; header cuộn tự nhiên, không sticky */
+    /* V1.11.4 - 3 dòng thao tác bán hàng dưới tab khách; header cuộn tự nhiên, không sticky */
     .quick-product-toolbar{display:grid;grid-template-columns:15% 45% 20% 20%;align-items:stretch;width:100%;margin-top:6px;background:rgba(255,255,255,.12);border-radius:10px;padding:2px;box-sizing:border-box}
     .quick-product-toolbar>*{min-width:0;box-sizing:border-box;padding:2px}
     .quick-product-toolbar button,.quick-product-toolbar input,.quick-product-toolbar select{width:100%;height:44px;box-sizing:border-box;border-radius:8px;font-size:14px}
@@ -712,13 +712,16 @@
     .quick-size-strip{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:2px;margin-top:3px;padding:2px;background:rgba(255,255,255,.10);border-radius:9px}
     .quick-size-strip button{height:36px;min-width:0;border:1px solid rgba(255,255,255,.48);border-radius:7px;background:#fff;color:#172033;font-size:15px;font-weight:700;padding:0;position:relative}
     .quick-size-strip button.in-stock{font-weight:950;color:#111827;background:#fff}
-    .quick-size-strip button.out-stock{opacity:.42;color:#64748b;background:#eef2f6;font-weight:650}
+    .quick-size-strip button.out-stock{opacity:.42;color:#64748b;background:#eef2f6;font-weight:650;text-decoration:line-through;text-decoration-thickness:2px;text-decoration-color:#64748b}
     .quick-size-strip button.primary{opacity:1!important;background:#ffe39a!important;border-color:#e4a000!important;color:#8a4700!important;font-weight:950!important}
+    .quick-size-strip button.out-stock.primary,.quick-size-strip button.out-stock.near{opacity:.62!important;text-decoration:line-through!important;text-decoration-thickness:2px!important}
     .quick-size-strip button.near{opacity:1!important;background:#e6f4ff!important;border-color:#60a5d8!important;color:#075f9f!important;font-weight:900!important}
     .quick-size-strip button.selected{opacity:1!important;outline:2px solid #16a34a;outline-offset:-2px;box-shadow:inset 0 0 0 1px #fff;font-weight:950}
     .quick-group-area{position:relative;margin-top:3px}
     .quick-main-groupbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:2px;background:rgba(255,255,255,.10);border-radius:9px}
-    .quick-main-groupbar .main-group-btn{height:37px;padding:2px 3px;border:1px solid rgba(255,255,255,.55);border-radius:7px;background:#fff;color:#17324a;font-size:11px;font-weight:900;white-space:normal;line-height:1.05;overflow:hidden}
+    .quick-main-groupbar .main-group-btn{height:42px;padding:2px 3px;border:1px solid rgba(255,255,255,.55);border-radius:7px;background:#fff;color:#17324a;font-size:11px;font-weight:900;white-space:normal;line-height:1.05;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .quick-main-groupbar .main-group-line{display:block;font-size:10px;font-weight:800;line-height:1.05;color:#52606d}
+    .quick-main-groupbar .sub-group-line{display:block;font-size:11.5px;font-weight:950;line-height:1.08;color:#0b63a5;margin-top:2px}
     .quick-main-groupbar .main-group-btn.on{background:#fff7d6;color:#8a5200;border-color:#f0b52d}
     body[data-ui-mode="basic"] #basicSubGroupBar{display:none!important;position:absolute!important;left:2px;right:2px;top:41px;z-index:1500;background:#fff;border:1px solid #cbd5e1;border-radius:9px;box-shadow:0 10px 28px #0004;padding:6px;max-height:220px;overflow:auto;flex-wrap:wrap}
     body[data-ui-mode="basic"] #basicSubGroupBar.show{display:flex!important}
@@ -730,7 +733,7 @@
       html,body{width:100%;max-width:100%;overflow-x:hidden}
       .quick-product-toolbar button,.quick-product-toolbar input,.quick-product-toolbar select{height:46px}
       .quick-size-strip button{height:35px;font-size:15px}
-      .quick-main-groupbar .main-group-btn{height:36px;font-size:10.5px}
+      .quick-main-groupbar .main-group-btn{height:41px;font-size:10.5px}
     }
 
     .direct-scan-popup{display:none;position:fixed;inset:0;background:#000;z-index:20000}
@@ -745,8 +748,8 @@
   <div id="app-container" style="display:none;">
   <header class="topbar">
     <div class="topline">
-      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.11.3</div>
-      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.11.3</div>
+      <div class="title">🧠 Trợ lý bán hàng Hoàn Tuyết V1.11.4</div>
+      <div class="mini" id="nvInfo">...</div><div class="mini" style="font-weight:800">BUILD 1.11.4</div>
       <button class="btn btn-white" id="btnKhachMoi">+ Khách mới</button>
       <button class="btn btn-white" id="btnMoTrangBan">🧾 Trang bán</button>
       <div class="level-switch">
