@@ -1,5 +1,5 @@
 window.SALES_COPILOT_BUILD="1.11.6";
-console.log("[SalesCopilot] BUILD 1.11.6");
+console.log("[SalesCopilot] BUILD 1.11.7");
 import { supabase } from "./supabaseClient.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
@@ -118,6 +118,7 @@ const state = {
   selectedColor: "",
   colors: [],
   cartRows: [],
+  scanCartRows: [], // V1.11.7: giỏ tìm kiếm riêng, chỉ tồn tại trong phiên trang hiện tại
   productPager: {
     list: [],
     nextIndex: 0,
@@ -1347,6 +1348,12 @@ function applyAppModeUi(){
   if(state.appMode==="SCAN" && input && state.selectedProduct?.masp){
     input.value=state.selectedProduct.masp;
   }
+  const cartTitle=$("cartTitle");
+  if(cartTitle){
+    cartTitle.textContent = state.appMode==="SCAN"
+      ? "Sản phẩm đã chọn"
+      : (isBasicMode()?"Khách đang lấy":"Giỏ tư vấn");
+  }
 }
 
 async function switchToScanMode(){
@@ -1994,7 +2001,7 @@ function renderGroups() {
   renderMainGroupControls();
 }
 
-// V1.11.6: Trong chế độ QUÉT MÃ, mã quét chỉ là "mốc" cho tới khi
+// V1.11.7: Trong chế độ QUÉT MÃ, mã quét chỉ là "mốc" cho tới khi
 // người dùng chủ động đổi Nhóm / Form / Màu. Khi đó phải bỏ mốc sản phẩm
 // hoàn toàn để lựa chọn mới không bị RPC kéo ngược về dữ liệu của mã cũ.
 function releaseScanSourceForManualFilter(){
@@ -4278,10 +4285,49 @@ function cartProductMeta(masp){
   return {sp,treo:String(treo||"").trim(),kho:String(kho||"").trim()};
 }
 
+function renderScanCartRows(){
+  const box=$("cartBox");
+  const rows=Array.isArray(state.scanCartRows)?state.scanCartRows:[];
+  if(!box)return;
+  if(!rows.length){
+    box.className="empty";
+    box.innerHTML="Chưa chọn sản phẩm trong chế độ Quét mã.";
+    return;
+  }
+  box.className="";
+  box.innerHTML=rows.map(r=>{
+    const meta=cartProductMeta(r.masp);
+    const locationText=[
+      meta.treo?`Mẫu: ${esc(meta.treo)}`:"Mẫu: -",
+      meta.kho?`Kho: ${esc(meta.kho)}`:"Kho: -"
+    ].join(" / ");
+    return `
+    <div class="cart-item ${r.nghi_ngo_size?"cart-suspicious":""}" data-scan-id="${esc(r.id)}" data-masp="${esc(r.masp)}">
+      <div class="cart-top">
+        <button type="button" class="cart-masp-link" data-cart-stock="${esc(r.masp)}">${esc(r.masp)}</button>
+        <span>${r.size?`Size ${esc(r.size)}`:""}</span>
+      </div>
+      <div class="cart-price-qty">${money(r.giale_hien_thi)} đ · SL ${Number(r.soluong||1)}</div>
+      <div class="cart-location">${locationText}</div>
+      ${r.nghi_ngo_size?`<div class="cart-warning">⚠️ Size này đang được ghi nhận hết tồn tại cơ sở hiện tại</div>`:""}
+      <div class="cart-buttons"><button class="btn-remove">Bỏ khỏi giỏ</button></div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-cart-stock]").forEach(btn=>btn.onclick=e=>{
+    e.stopPropagation();
+    window.StockQuick?.showFor(e.currentTarget,btn.dataset.cartStock);
+  });
+  box.querySelectorAll(".btn-remove").forEach(btn=>btn.onclick=()=>{
+    const id=btn.closest(".cart-item")?.dataset.scanId;
+    state.scanCartRows=state.scanCartRows.filter(x=>String(x.id)!==String(id));
+    renderScanCartRows();
+  });
+}
+
 function renderCartRowsFast(rows){
   const p=currentSession(), box=$("cartBox");
   const safeRows=Array.isArray(rows)?rows:[];
-  if(p) p.so_mon_da_chot=safeRows.length;
+  if(p && state.appMode!=="SCAN") p.so_mon_da_chot=safeRows.length;
   if(!safeRows.length){
     box.className="empty";
     box.innerHTML=isBasicMode()?"Chưa chọn sản phẩm.":"Chưa chốt sản phẩm.";
@@ -4327,9 +4373,30 @@ function renderCartRowsFast(rows){
 
 async function addToCart(size,fit) {
   const p=currentSession(), sp=state.selectedProduct, sug=state.currentSuggestion;
-  if(!p||!sp)return;
+  if(!sp)return;
   const normalizedSize=size?String(size):null;
 
+  // V1.11.7: SCAN có giỏ tìm kiếm riêng, tuyệt đối không ghi vào gio_tu_van của khách.
+  if(state.appMode==="SCAN"){
+    const duplicate=(state.scanCartRows||[]).some(r=>
+      norm(r.masp)===norm(sp.masp) && String(r.size||"")===String(normalizedSize||"")
+    );
+    if(duplicate){toast(`Mã ${sp.masp}${normalizedSize?` size ${normalizedSize}`:""} đã có trong Sản phẩm đã chọn.`,2200);return false;}
+    const stockMap=state.stockCache.get(norm(sp.masp));
+    const stockSuspicious=normalizedSize?stockAtBranch(stockMap,normalizedSize)<=0:false;
+    const row={
+      id:`scan_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+      masp:sp.masp,size:normalizedSize,soluong:1,
+      giale_hien_thi:Number(sp.giale||0),
+      nghi_ngo_size:stockSuspicious
+    };
+    state.scanCartRows=[row,...(state.scanCartRows||[])];
+    renderScanCartRows();
+    toast("Đã thêm vào Sản phẩm đã chọn.",1400);
+    return true;
+  }
+
+  if(!p)return;
   // Kiểm tra trùng ngay từ cache giỏ đã tải, không cần thêm một round-trip DB.
   const duplicate=(state.cartRows||[]).some(r=>
     norm(r.masp)===norm(sp.masp) && String(r.size||"")===String(normalizedSize||"")
@@ -4390,6 +4457,10 @@ async function addToCart(size,fit) {
 
 async function renderCart() {
   const p=currentSession(), box=$("cartBox");
+  if(state.appMode==="SCAN"){
+    renderScanCartRows();
+    return;
+  }
   if(!p){state.cartRows=[];box.className="empty";box.innerHTML="Chưa có khách.";return;}
   const {data,error}=await supabase.from("gio_tu_van").select("*")
     .eq("phien_id",p.id).eq("trang_thai","DA_CHOT").eq("da_day_sang_ban",false).order("created_at",{ascending:false});
