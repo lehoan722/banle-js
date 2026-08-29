@@ -4,7 +4,7 @@
 // - Lưu lịch sử, luôn sắp xếp created_at mới nhất trước
 // - Trạng thái: moi / da_chuyen / het / huy
 // - Ghi NV thực hiện mới nhất khi thay đổi trạng thái
-// - Popup +Đặt khẩn dạng lưới size 38..46, nhập SL từng size
+// - Popup +Đặt khẩn dạng lưới size 0, 38..46, nhập SL từng size
 // - StockQuick luôn cho đặt khẩn; gợi ý (nếu có) chỉ dùng để điền sẵn lưới size
 
 import { calcSuggestionsFromPayload } from "./services/luatChuyenKho.js";
@@ -21,7 +21,7 @@ const TABLE = "dat_hang_chuyen_kho_khan";
 const HISTORY_LIMIT = 200;
 const ACTIVE_STATUS = "moi";
 const VALID_STATUSES = ["moi", "da_chuyen", "het", "huy"];
-const SIZE_OPTIONS = ["38", "39", "40", "41", "42", "43", "44", "45", "46"];
+const SIZE_OPTIONS = ["0", "38", "39", "40", "41", "42", "43", "44", "45", "46"];
 
 function norm(v) { return String(v ?? "").trim(); }
 function normMasp(v) { return norm(v).toUpperCase(); }
@@ -96,11 +96,11 @@ function ensureStyles() {
 
     #dhkhan-create-box { font-family:Arial,sans-serif; }
     #dhkhan-create-box input { font-size:16px;padding:6px;box-sizing:border-box; }
-    #dhkhan-create-box .dhkhan-grid { display:grid;grid-template-columns:90px repeat(9,minmax(42px,1fr));gap:3px;align-items:center; }
+    #dhkhan-create-box .dhkhan-grid { display:grid;grid-template-columns:90px repeat(10,minmax(42px,1fr));gap:3px;align-items:center; }
     #dhkhan-create-box .dhkhan-grid-label { font-weight:700; }
     #dhkhan-create-box .dhkhan-size-head { text-align:center;font-weight:800;padding:4px 0; }
     #dhkhan-create-box .dhkhan-qty { width:100%;min-width:0;text-align:center; }
-    #dhkhan-create-box .dhkhan-wide { grid-column:2 / 11; }
+    #dhkhan-create-box .dhkhan-wide { grid-column:2 / 12; }
     #dhkhan-create-box .dhkhan-direction { font-weight:900;color:#1745d1;font-size:17px; }
     #dhkhan-create-box .dhkhan-direction-btn { border:0;background:transparent;padding:2px 4px;color:#1745d1;font-weight:900;font-size:17px;text-decoration:underline;cursor:pointer; }
     #dhkhan-create-box .dhkhan-direction-btn:hover { color:#d00000; }
@@ -114,7 +114,7 @@ function ensureStyles() {
       #dhkhan-panel th,#dhkhan-panel td { font-size:12px;padding:3px 4px; }
       #dhkhan-panel .dhkhan-note { min-width:100px; }
       #dhkhan-create-box { width:98vw!important;max-width:98vw!important;min-width:0!important;padding:9px!important; }
-      #dhkhan-create-box .dhkhan-grid { grid-template-columns:72px repeat(9,minmax(31px,1fr));gap:2px; }
+      #dhkhan-create-box .dhkhan-grid { grid-template-columns:72px repeat(10,minmax(31px,1fr));gap:2px; }
       #dhkhan-create-box input { font-size:15px;padding:5px 2px; }
       #dhkhan-create-box .dhkhan-size-head { font-size:13px; }
     }
