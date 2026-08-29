@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.11.6";
-console.log("[SalesCopilot] BUILD 1.11.7");
+window.SALES_COPILOT_BUILD="1.11.7-FIX1";
+console.log("[SalesCopilot] BUILD 1.11.7-FIX1");
 import { supabase } from "./supabaseClient.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
@@ -3749,10 +3749,12 @@ async function selectProduct(
       : false
   };
 
-  // Hai luồng tách biệt:
-  // SCAN: sản phẩm quét là nguồn tìm tương đồng, được phép cập nhật nhóm/form/màu.
-  // CUSTOMER: bấm Tư vấn chỉ đổi sản phẩm đang tư vấn, KHÔNG làm thay đổi bộ lọc/danh sách hiện tại.
-  if(state.appMode==="SCAN") {
+  // V1.11.7 FIX1:
+  // Trong SCAN, CHỈ mã được nhập/quét trực tiếp mới được trở thành nguồn tìm tương đồng.
+  // Sản phẩm bấm "Tư vấn" từ bảng kết quả (source=RESULT) chỉ là sản phẩm đang chọn,
+  // tuyệt đối không đổi bộ lọc và không đổi sourceProductCode => không làm đảo/sắp xếp lại bảng kết quả.
+  const isDirectScanSource = state.selectedProductSource === "NHAP_MA" || state.selectedProductSource === "QUET_MA";
+  if(state.appMode==="SCAN" && isDirectScanSource) {
     state.selectedMainGroup=mainGroupKeyForProduct(sp);
     state.selectedGroup=sp.nhomhang||state.selectedGroup;
     state.selectedForm=String(sp.form||"").trim();
@@ -4121,8 +4123,11 @@ async function chooseSize(
     // V1.11.4: chọn size thành công phải đóng popup ngay,
     // không để che các dropdown/ô thao tác khác.
     closeQuickSizeMenu();
-    if(added!==false && sp && state.appMode==="SCAN"){
-      // Chỉ chế độ Quét mã mới xoay tìm kiếm quanh sản phẩm/size vừa chọn.
+    if(added!==false && sp && state.appMode==="SCAN" &&
+       (state.selectedProductSource==="NHAP_MA" || state.selectedProductSource==="QUET_MA")){
+      // Chỉ sản phẩm được nhập/quét trực tiếp mới được phép xoay tìm kiếm quanh mã nguồn.
+      // Sản phẩm bấm "Tư vấn" từ bảng kết quả chỉ thêm vào Sản phẩm đã chọn,
+      // không reload và không promote mã đó lên đầu danh sách.
       await applyScannedProductContext(sp,size);
     }
     // CUSTOMER: chốt size chỉ thêm vào Khách đang lấy; tuyệt đối không thay bộ lọc/kết quả đang xem.
