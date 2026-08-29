@@ -1,5 +1,5 @@
-window.SALES_COPILOT_BUILD="1.11.1";
-console.log("[SalesCopilot] BUILD 1.11.1");
+window.SALES_COPILOT_BUILD="1.11.6";
+console.log("[SalesCopilot] BUILD 1.11.6");
 import { supabase } from "./supabaseClient.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
@@ -1994,14 +1994,39 @@ function renderGroups() {
   renderMainGroupControls();
 }
 
+// V1.11.6: Trong chế độ QUÉT MÃ, mã quét chỉ là "mốc" cho tới khi
+// người dùng chủ động đổi Nhóm / Form / Màu. Khi đó phải bỏ mốc sản phẩm
+// hoàn toàn để lựa chọn mới không bị RPC kéo ngược về dữ liệu của mã cũ.
+function releaseScanSourceForManualFilter(){
+  if(state.appMode!=="SCAN") return false;
+
+  state.sourceProductCode="";
+  state.selectedProduct=null;
+  state.selectedProductSource="RESULT";
+  state.selectedSize=null;
+  state.selectedFit=null;
+  state.currentSuggestion=null;
+
+  const input=$("directProductCode");
+  if(input) input.value="";
+  hideProductCodeSuggestions();
+
+  // Sau khi bỏ mã nguồn, dải size trở lại vai trò size tìm kiếm chung,
+  // không còn hiển thị tồn của sản phẩm vừa quét.
+  syncQuickSizeSelect();
+  renderQuickSizeStrip();
+  return true;
+}
+
 async function selectMainGroup(mainKey) {
   const cfg = MAIN_GROUPS[mainKey];
   if (!cfg) return;
 
+  // Người dùng chủ động đổi nhóm: trong SCAN phải bỏ mã nguồn trước,
+  // còn CUSTOMER vốn dĩ không dùng mã tư vấn để neo tìm kiếm.
+  if(state.appMode==="SCAN") releaseScanSourceForManualFilter();
+  else state.sourceProductCode = "";
   state.selectedMainGroup = mainKey;
-  // Đổi nhóm bằng tay = bắt đầu một tìm kiếm độc lập, không neo vào mã trước đó.
-  if(state.appMode==="CUSTOMER") state.sourceProductCode = "";
-  // CUSTOMER: đổi nhóm không dùng mã tư vấn làm mốc. SCAN: vẫn giữ mã quét làm nguồn tương đồng.
 
   const rows =
     validSubGroups(mainKey);
@@ -2066,13 +2091,12 @@ async function selectMainGroup(mainKey) {
 async function selectSubGroup(code) {
   if (!code) return;
 
+  // Chọn nhóm chi tiết bằng tay là một tìm kiếm độc lập.
+  if(state.appMode==="SCAN") releaseScanSourceForManualFilter();
+  else state.sourceProductCode = "";
   state.selectedGroup = code;
-  // Chọn nhóm chi tiết bằng tay không tiếp tục dùng mã sản phẩm cũ làm mốc.
-  if(state.appMode==="CUSTOMER") state.sourceProductCode = "";
-  // CUSTOMER: đổi nhóm không dùng mã tư vấn làm mốc. SCAN: vẫn giữ mã quét làm nguồn tương đồng.
 
-  // Đổi nhóm tìm kiếm không làm mất sản phẩm đang tư vấn ở CUSTOMER.
-  // Ở SCAN cũng giữ mã nguồn để người dùng có thể nới/đổi nhóm quanh mã quét.
+  // CUSTOMER vẫn giữ sản phẩm đang tư vấn. SCAN đã bỏ sản phẩm nguồn ở trên.
 
   renderMainGroupControls();
   renderProductDetail();
@@ -4866,9 +4890,10 @@ async function applyQuickSizePreference(raw){
 function bindEvents(){
   setupBeepUnlockOnce(document);
   $("quickFormSelect")?.addEventListener("change",async e=>{
+    // Đổi Form bằng tay trong SCAN => bỏ mã nguồn, rồi giữ đúng Form vừa chọn.
+    if(state.appMode==="SCAN") releaseScanSourceForManualFilter();
+    else state.sourceProductCode="";
     state.selectedForm=String(e.target.value||"").trim();
-    // Đổi bộ lọc bằng tay = tìm độc lập, không neo vào mã sản phẩm trước đó.
-    if(state.appMode==="CUSTOMER") state.sourceProductCode="";
     syncBasicFormButtons();
     if(currentSession() && state.selectedGroup) await searchProducts();
   });
@@ -4879,14 +4904,17 @@ function bindEvents(){
   $("btnHoc8Buoc")?.addEventListener("click",()=>$("modalHoc8Buoc")?.classList.add("show"));
   $("btnDongHoc8Buoc")?.addEventListener("click",()=>$("modalHoc8Buoc")?.classList.remove("show"));
   document.querySelectorAll(".basic-form-btn").forEach(b=>b.onclick=async()=>{
+    if(state.appMode==="SCAN") releaseScanSourceForManualFilter();
+    else state.sourceProductCode="";
     state.selectedForm=b.dataset.form||"";
     document.querySelectorAll(".basic-form-btn").forEach(x=>x.classList.toggle("on",x===b));
-    if(currentSession()) await searchProducts();
+    if(currentSession() && state.selectedGroup) await searchProducts();
   });
   $("colorPrioritySelect")?.addEventListener("change",async e=>{
+    // Đổi Màu bằng tay trong SCAN => bỏ mã nguồn, rồi giữ màu vừa chọn.
+    if(state.appMode==="SCAN") releaseScanSourceForManualFilter();
+    else state.sourceProductCode="";
     state.selectedColor=String(e.target.value||"").trim();
-    // Đổi màu bằng tay cũng là một tìm kiếm mới, không giữ mã cũ làm mốc.
-    if(state.appMode==="CUSTOMER") state.sourceProductCode="";
     if(currentSession() && state.selectedGroup) await searchProducts();
   });
   $("productImageLightbox")?.addEventListener("click", closeProductImageLightbox);
