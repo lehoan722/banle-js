@@ -111,6 +111,9 @@ const state = {
   pendingConfirmAction: null,
   autoWeightMode: true,
   uiMode: "basic",
+  appMode: "CUSTOMER", // CUSTOMER = tìm theo khách; SCAN = tìm theo sản phẩm quét/nhập
+  scanModeState: null,
+  customerModeStates: new Map(),
   selectedForm: "",
   selectedColor: "",
   colors: [],
@@ -1239,10 +1242,11 @@ async function createOrUpdateSession(payload) {
   }
   // Thông tin cơ thể thay đổi => mọi gợi ý cũ của phiên phải bỏ.
   state.suggestionCache.clear();
-  state.selectedProduct = null;
-  state.selectedSize = null;
-  state.selectedFit = null;
-  state.currentSuggestion = null;
+  if(state.appMode==="SCAN") {
+    state.selectedSize = null;
+    state.selectedFit = null;
+    state.currentSuggestion = null;
+  }
 
   await renderAll();
   return true;
@@ -1285,28 +1289,119 @@ function quickSizeText(sug) {
   return String(sug.primary);
 }
 
+function captureModeSearchState(){
+  return {
+    selectedMainGroup:state.selectedMainGroup,
+    selectedGroup:state.selectedGroup,
+    selectedShoeSearchSize:state.selectedShoeSearchSize,
+    searchMode:state.searchMode,
+    referencePrice:state.referencePrice,
+    selectedProduct:state.selectedProduct,
+    selectedProductSource:state.selectedProductSource,
+    selectedSize:state.selectedSize,
+    currentSuggestion:state.currentSuggestion,
+    selectedFit:state.selectedFit,
+    selectedForm:state.selectedForm,
+    selectedColor:state.selectedColor,
+    sourceProductCode:state.sourceProductCode||"",
+    scrollY:window.scrollY||0
+  };
+}
+
+function restoreModeSearchState(saved, mode="CUSTOMER"){
+  const x=saved||{};
+  state.selectedMainGroup=x.selectedMainGroup||"AO_HE";
+  state.selectedGroup=x.selectedGroup!==undefined?x.selectedGroup:(mode==="CUSTOMER"?"AP":"");
+  state.selectedShoeSearchSize=x.selectedShoeSearchSize||"";
+  state.searchMode=x.searchMode||"similar";
+  state.referencePrice=Number(x.referencePrice||0);
+  state.selectedProduct=x.selectedProduct||null;
+  state.selectedProductSource=x.selectedProductSource||"RESULT";
+  state.selectedSize=x.selectedSize||null;
+  state.currentSuggestion=x.currentSuggestion||null;
+  state.selectedFit=x.selectedFit||null;
+  state.selectedForm=x.selectedForm||"";
+  state.selectedColor=x.selectedColor||"";
+  state.sourceProductCode=x.sourceProductCode||"";
+}
+
+function saveCurrentModeState(){
+  const snap=captureModeSearchState();
+  if(state.appMode==="SCAN") state.scanModeState=snap;
+  else if(state.currentSessionId) state.customerModeStates.set(String(state.currentSessionId),snap);
+}
+
+function renderAdviceProductCode(){
+  const btn=$("customerAdviceCode");
+  if(!btn)return;
+  const masp=String(state.selectedProduct?.masp||"").trim();
+  btn.textContent=masp?`Mã SP: ${masp}`:"Mã SP: Chưa chọn";
+  btn.classList.toggle("has-product",!!masp);
+  btn.disabled=false;
+}
+
+function applyAppModeUi(){
+  document.body.dataset.appMode=state.appMode==="SCAN"?"scan":"customer";
+  renderAdviceProductCode();
+  const input=$("directProductCode");
+  if(state.appMode==="SCAN" && input && state.selectedProduct?.masp){
+    input.value=state.selectedProduct.masp;
+  }
+}
+
+async function switchToScanMode(){
+  if(state.appMode==="SCAN")return;
+  saveCurrentModeState();
+  state.appMode="SCAN";
+  restoreModeSearchState(state.scanModeState,"SCAN");
+  state.sourceProductCode=state.sourceProductCode||norm(state.selectedProduct?.masp||"");
+  applyAppModeUi();
+  await renderAll();
+  renderTabs();
+  if(state.selectedGroup) await searchProducts();
+  else {
+    $("productList").innerHTML='<div class="empty">Quét hoặc nhập mã sản phẩm để tìm các mẫu tương đồng.</div>';
+    $("searchSummary").textContent="Chế độ Quét mã · nhập hoặc quét một mã sản phẩm.";
+  }
+}
+
+async function switchToCustomerMode(p){
+  if(!p)return;
+  saveCurrentModeState();
+  state.appMode="CUSTOMER";
+  state.currentSessionId=p.id;
+  restoreModeSearchState(state.customerModeStates.get(String(p.id)),"CUSTOMER");
+  // CUSTOMER tuyệt đối không dùng mã đang tư vấn để neo RPC tìm kiếm.
+  state.sourceProductCode="";
+  applyAppModeUi();
+  await touchSession();
+  await renderAll();
+  renderTabs();
+  if(state.selectedGroup) await searchProducts();
+}
+
 function renderTabs() {
   const box=$("phienTabs");
   box.innerHTML="";
+
+  const scan=document.createElement("button");
+  scan.type="button";
+  scan.className="scan-mode-tab"+(state.appMode==="SCAN"?" active":"");
+  scan.innerHTML='📷<small style="display:block;font-size:10px;font-weight:800;margin-top:2px">Quét mã</small>';
+  scan.onclick=switchToScanMode;
+  box.appendChild(scan);
+
   state.sessions.filter(x=>ACTIVE_STATES.includes(x.trang_thai)).forEach((p,i)=>{
     const b=document.createElement("button");
-    b.className="kh-tab"+(Number(p.id)===Number(state.currentSessionId)?" active":"");
+    b.className="kh-tab"+(state.appMode==="CUSTOMER" && Number(p.id)===Number(state.currentSessionId)?" active":"");
     const qs=quickProfileSizes(p);
     b.innerHTML=`${p.tenkh ? esc(p.tenkh) : "Khách "+(p.thu_tu_hien_thi||i+1)}
       <small>${p.chieu_cao_cm}cm · ${Number(p.can_nang_kg)}kg · ${p.so_mon_da_chot||0} món</small>
       <span class="tab-size-summary">Áo ${esc(quickSizeText(qs.ao))} · Quần ${esc(quickSizeText(qs.quan))}</span>`;
-    b.onclick=async()=>{
-      state.currentSessionId=p.id;
-      state.selectedProduct=null;
-      state.selectedSize=null;
-      state.selectedFit=null;
-      state.currentSuggestion=null;
-      await touchSession();
-      await renderAll();
-      await searchProducts();
-    };
+    b.onclick=()=>switchToCustomerMode(p);
     box.appendChild(b);
   });
+  applyAppModeUi();
 }
 
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
@@ -1905,8 +2000,8 @@ async function selectMainGroup(mainKey) {
 
   state.selectedMainGroup = mainKey;
   // Đổi nhóm bằng tay = bắt đầu một tìm kiếm độc lập, không neo vào mã trước đó.
-  state.sourceProductCode = "";
-  // V1.11.4: mã trên thanh chỉ là tham chiếu trực quan; đổi nhóm không xóa mã.
+  if(state.appMode==="CUSTOMER") state.sourceProductCode = "";
+  // CUSTOMER: đổi nhóm không dùng mã tư vấn làm mốc. SCAN: vẫn giữ mã quét làm nguồn tương đồng.
 
   const rows =
     validSubGroups(mainKey);
@@ -1932,10 +2027,11 @@ async function selectMainGroup(mainKey) {
     }
   }
 
-  state.selectedProduct = null;
-  state.selectedSize = null;
-  state.selectedFit = null;
-  state.currentSuggestion = null;
+  if(state.appMode==="SCAN") {
+    state.selectedSize = null;
+    state.selectedFit = null;
+    state.currentSuggestion = null;
+  }
 
   if (mainKey !== "GIAY_DEP") {
     state.selectedShoeSearchSize = "";
@@ -1972,13 +2068,11 @@ async function selectSubGroup(code) {
 
   state.selectedGroup = code;
   // Chọn nhóm chi tiết bằng tay không tiếp tục dùng mã sản phẩm cũ làm mốc.
-  state.sourceProductCode = "";
-  // V1.11.4: mã trên thanh chỉ là tham chiếu trực quan; đổi nhóm không xóa mã.
+  if(state.appMode==="CUSTOMER") state.sourceProductCode = "";
+  // CUSTOMER: đổi nhóm không dùng mã tư vấn làm mốc. SCAN: vẫn giữ mã quét làm nguồn tương đồng.
 
-  state.selectedProduct = null;
-  state.selectedSize = null;
-  state.selectedFit = null;
-  state.currentSuggestion = null;
+  // Đổi nhóm tìm kiếm không làm mất sản phẩm đang tư vấn ở CUSTOMER.
+  // Ở SCAN cũng giữ mã nguồn để người dùng có thể nới/đổi nhóm quanh mã quét.
 
   renderMainGroupControls();
   renderProductDetail();
@@ -2270,13 +2364,14 @@ async function handleQuickSizePick(raw){
         : `/kiem_tonkho_cs1.html?masp=${encodeURIComponent(sp.masp)}&from=stockquick`;
       window.open(url,"_blank");
     }
-    // Không đưa mã hiện tại vào giỏ vì hệ thống đang ghi nhận hết size,
-    // nhưng size vẫn trở thành size tham chiếu và tìm kiếm KHÔNG bị chặn.
-    await applyScannedProductContext(sp,size,{skipSearch:true});
-    if(currentSession() && state.selectedGroup) await searchProducts();
-    // Dù mã hiện tại hết size, size vẫn dùng để tìm mã khác. Giữ mã hiển thị,
-    // nhưng bỏ neo mã khỏi RPC để kết quả không bị khóa vào sản phẩm hiện tại.
-    state.sourceProductCode="";
+    // Size hết tồn vẫn được dùng làm size tìm kiếm. Hai mode xử lý độc lập:
+    // SCAN tìm tương đồng quanh mã quét; CUSTOMER giữ nguyên nhóm/form/màu của khách.
+    if(state.appMode==="SCAN") {
+      await applyScannedProductContext(sp,size,{skipSearch:true});
+      if(currentSession() && state.selectedGroup) await searchProducts();
+    } else {
+      await applyQuickSizePreference(size);
+    }
     renderQuickSizeStrip();
     return;
   }
@@ -2292,13 +2387,11 @@ function renderQuickSizeMenu(){ renderQuickSizeStrip(); }
 function syncToolbarFromSelectedProduct(autoOpenSize=false,fillCode=false){
   const sp=state.selectedProduct;
   const input=$("directProductCode");
-  // V1.11.4: không tự điền lại mã chỉ vì render lại giao diện.
-  // Mã chỉ hiện khi NV bấm TƯ VẤN từ bảng kết quả; quét/nhập thành công thì để trống.
-  if(fillCode && sp && input){
-    input.value=sp.masp||"";
-    setTimeout(()=>{ try{ input.focus({preventScroll:true}); input.select(); }catch(_){} },0);
+  if(state.appMode==="SCAN"){
+    if(sp && input && (fillCode || !input.value)) input.value=sp.masp||"";
+    if(sp && $("colorPrioritySelect")) $("colorPrioritySelect").value=String(state.selectedColor||sp.mausac||"").trim();
   }
-  if(sp && $("colorPrioritySelect")) $("colorPrioritySelect").value=String(sp.mausac||"").trim();
+  renderAdviceProductCode();
   syncBasicFormButtons();
   syncQuickSizeSelect();
   renderQuickSizeStrip();
@@ -2316,22 +2409,24 @@ async function applyScannedProductContext(sp,size,opts={}){
     if(loai==="GIAY_DEP") state.selectedShoeSearchSize=ref;
   }
 
-  state.selectedMainGroup=mainGroupKeyForProduct(sp);
-  state.selectedGroup=sp.nhomhang||state.selectedGroup;
-  state.selectedForm=String(sp.form||"").trim();
-  state.selectedColor=String(sp.mausac||"").trim();
+  if(state.appMode==="SCAN") {
+    state.selectedMainGroup=mainGroupKeyForProduct(sp);
+    state.selectedGroup=sp.nhomhang||state.selectedGroup;
+    state.selectedForm=String(sp.form||"").trim();
+    state.selectedColor=String(sp.mausac||"").trim();
 
-  renderMainGroupControls();
-  renderBasicSubgroups();
-  syncBasicFormButtons();
-  if($("colorPrioritySelect")) $("colorPrioritySelect").value=state.selectedColor||"";
+    renderMainGroupControls();
+    renderBasicSubgroups();
+    syncBasicFormButtons();
+    if($("colorPrioritySelect")) $("colorPrioritySelect").value=state.selectedColor||"";
+  }
   setQuickSizeButtonValue(ref||"");
   if($("shoeSizeSearchSelect") && loai==="GIAY_DEP") $("shoeSizeSearchSelect").value=ref||"";
   renderTabs();
   renderProfile();
 
   // Giữ sản phẩm vừa quét làm mã nguồn để nó được promote lên đầu kết quả.
-  state.sourceProductCode=norm(sp.masp);
+  if(state.appMode==="SCAN") state.sourceProductCode=norm(sp.masp);
   if(!opts.skipSearch && currentSession() && state.selectedGroup) await searchProducts();
   renderQuickSizeStrip();
 }
@@ -2413,6 +2508,8 @@ async function findExactProductByCode(raw){
 
 async function consultProductByCode(raw,source="NHAP_MA"){
   if(productCodeHandling)return false;
+  if(state.appMode!=="SCAN") state.appMode="SCAN";
+  applyAppModeUi();
   const p=currentSession();
   if(!p){toast("Hãy tạo/chọn khách trước khi nhập mã sản phẩm.",3000);return false;}
   const code=norm(raw);
@@ -2620,7 +2717,7 @@ async function searchProductsBasicRpc({sizes,seed,noAutoShoeSize,kw,searchSeq}){
     p_mode:state.searchMode||"similar",
     p_reference_price:Number(state.referencePrice||0),
     p_keyword:kw||null,
-    p_source_masp:state.sourceProductCode||null,
+    p_source_masp:state.appMode==="SCAN"?(state.sourceProductCode||null):null,
     p_den_ngay:new Date().toISOString().slice(0,10)
   };
   const rows=await fetchBasicRpcProductPage(request,0);
@@ -3352,11 +3449,15 @@ async function renderProducts(list, options = {}) {
           state.selectedProductSource="RESULT";
           markConsultedProduct(sp.masp);
           await selectProduct(sp,{scrollToDetail:false,openQuickSize:true});
-          // V1.11.4: sản phẩm từ bảng kết quả được đưa lên ô mã và cuộn tới đó
-          // để NV nhìn thấy rõ mã trước khi chạm size.
-          const input=$("directProductCode");
-          if(input) input.value=sp.masp||"";
-          scrollToDirectProductCode();
+          if(state.appMode==="SCAN") {
+            const input=$("directProductCode");
+            if(input) input.value=sp.masp||"";
+            scrollToDirectProductCode();
+          } else {
+            renderAdviceProductCode();
+            const bar=$("quickProductToolbar");
+            if(bar) bar.scrollIntoView({behavior:"smooth",block:"center"});
+          }
         });
         frag.appendChild(div);
         return;
@@ -3617,15 +3718,19 @@ async function selectProduct(
       : false
   };
 
-  // V1.11.4: ngay khi quét/chọn mã để tư vấn, thanh cố định phản ánh đúng
-  // nhóm chi tiết + form + màu của chính sản phẩm. Không đổi số đo khách.
-  state.selectedMainGroup=mainGroupKeyForProduct(sp);
-  state.selectedGroup=sp.nhomhang||state.selectedGroup;
-  state.selectedForm=String(sp.form||"").trim();
-  state.selectedColor=String(sp.mausac||"").trim();
-  renderMainGroupControls();
-  syncBasicFormButtons();
-  if($("colorPrioritySelect")) $("colorPrioritySelect").value=state.selectedColor||"";
+  // Hai luồng tách biệt:
+  // SCAN: sản phẩm quét là nguồn tìm tương đồng, được phép cập nhật nhóm/form/màu.
+  // CUSTOMER: bấm Tư vấn chỉ đổi sản phẩm đang tư vấn, KHÔNG làm thay đổi bộ lọc/danh sách hiện tại.
+  if(state.appMode==="SCAN") {
+    state.selectedMainGroup=mainGroupKeyForProduct(sp);
+    state.selectedGroup=sp.nhomhang||state.selectedGroup;
+    state.selectedForm=String(sp.form||"").trim();
+    state.selectedColor=String(sp.mausac||"").trim();
+    state.sourceProductCode=norm(sp.masp);
+    renderMainGroupControls();
+    syncBasicFormButtons();
+    if($("colorPrioritySelect")) $("colorPrioritySelect").value=state.selectedColor||"";
+  }
 
   if (
     !state.selectedSize &&
@@ -3985,12 +4090,11 @@ async function chooseSize(
     // V1.11.4: chọn size thành công phải đóng popup ngay,
     // không để che các dropdown/ô thao tác khác.
     closeQuickSizeMenu();
-    if(added!==false && sp){
+    if(added!==false && sp && state.appMode==="SCAN"){
+      // Chỉ chế độ Quét mã mới xoay tìm kiếm quanh sản phẩm/size vừa chọn.
       await applyScannedProductContext(sp,size);
-      // V1.11.4: sau khi chọn size thành công vẫn giữ mã trên thanh để NV nhận biết
-      // sản phẩm vừa/đang tư vấn. Chỉ bỏ neo RPC để các tìm kiếm khác được độc lập.
-      state.sourceProductCode="";
     }
+    // CUSTOMER: chốt size chỉ thêm vào Khách đang lấy; tuyệt đối không thay bộ lọc/kết quả đang xem.
     closeQuickSizeMenu();
     // Giữ mã sản phẩm hiển thị sau khi chốt size; chỉ bỏ neo tìm kiếm phía sau.
     syncBasicFormButtons();
@@ -4239,9 +4343,8 @@ async function addToCart(size,fit) {
       .then(({error:e})=>{if(e)console.warn("[SalesCopilot] update session cart:",e);});
     markFirstCartMilestone(p.id);
 
-    if(state.selectedProductSource==="NHAP_MA" || state.selectedProductSource==="QUET_MA") {
-      // Không đổi chiều cao/cân nặng. Size vừa chọn chỉ trở thành size tham chiếu
-      // cho đúng loại hàng của khách, đồng thời lấy nhóm/form/màu của sản phẩm làm ngữ cảnh.
+    if(state.appMode==="SCAN" && (state.selectedProductSource==="NHAP_MA" || state.selectedProductSource==="QUET_MA")) {
+      // Chỉ chế độ Quét mã mới được phép xoay tìm kiếm quanh sản phẩm quét.
       await applyScannedProductContext(sp,normalizedSize);
       state.selectedProductSource="RESULT";
     }
@@ -4716,7 +4819,7 @@ const _origSaveFit = saveFit;
 async function renderAll(){
   // V1.11.0: thanh size nhanh luôn bám theo khách/nhóm hiện tại.
 
-  renderTabs();renderProfile();
+  renderTabs();renderProfile();applyAppModeUi();
   syncQuickSizeSelect();
   syncBasicFormButtons();
   renderGroups();renderQuickSizeStrip();renderCoach();await renderCart();
@@ -4765,7 +4868,7 @@ function bindEvents(){
   $("quickFormSelect")?.addEventListener("change",async e=>{
     state.selectedForm=String(e.target.value||"").trim();
     // Đổi bộ lọc bằng tay = tìm độc lập, không neo vào mã sản phẩm trước đó.
-    state.sourceProductCode="";
+    if(state.appMode==="CUSTOMER") state.sourceProductCode="";
     syncBasicFormButtons();
     if(currentSession() && state.selectedGroup) await searchProducts();
   });
@@ -4783,7 +4886,7 @@ function bindEvents(){
   $("colorPrioritySelect")?.addEventListener("change",async e=>{
     state.selectedColor=String(e.target.value||"").trim();
     // Đổi màu bằng tay cũng là một tìm kiếm mới, không giữ mã cũ làm mốc.
-    state.sourceProductCode="";
+    if(state.appMode==="CUSTOMER") state.sourceProductCode="";
     if(currentSession() && state.selectedGroup) await searchProducts();
   });
   $("productImageLightbox")?.addEventListener("click", closeProductImageLightbox);
@@ -4944,6 +5047,11 @@ function bindEvents(){
       }
     );
 
+  $("customerAdviceCode")?.addEventListener("click",async()=>{
+    const masp=state.selectedProduct?.masp;
+    if(!masp){toast("Chưa có sản phẩm đang tư vấn.");return;}
+    await scrollToProductCard(masp);
+  });
   $("btnKhachMoi").onclick=()=>openCustomerModal(false);
   $("btnSuaKhach").onclick=()=>{if(currentSession())openCustomerModal(true);};
   $("btnHuyKhach").onclick=()=>$("modalKhach").classList.remove("show");
