@@ -1814,8 +1814,14 @@ function renderMainGroupControls() {
         const def=btn.dataset.defaultLabel || MAIN_GROUPS[btn.dataset.mainGroup]?.label || btn.dataset.mainGroup;
         if(active && state.selectedGroup){
           const row=groupRowByCode(state.selectedGroup);
-          btn.textContent=String(row?.ten_hien_thi||state.selectedGroup||def).toUpperCase();
-        }else btn.textContent=String(def).toUpperCase();
+          const mainLabel=String(def).toUpperCase();
+          const subLabel=String(row?.ten_hien_thi||state.selectedGroup||"").toUpperCase();
+          btn.innerHTML=`<span class="main-group-line">${esc(mainLabel)}</span><span class="sub-group-line">${esc(subLabel)}</span>`;
+          btn.setAttribute("aria-label",`${mainLabel} - ${subLabel}`);
+        }else{
+          btn.innerHTML=`<span class="main-group-line">${esc(String(def).toUpperCase())}</span>`;
+          btn.setAttribute("aria-label",String(def).toUpperCase());
+        }
       }
     });
 
@@ -1900,7 +1906,7 @@ async function selectMainGroup(mainKey) {
   state.selectedMainGroup = mainKey;
   // Đổi nhóm bằng tay = bắt đầu một tìm kiếm độc lập, không neo vào mã trước đó.
   state.sourceProductCode = "";
-  clearDirectProductCode({clearSourceAnchor:false,focus:false});
+  // V1.11.4: mã trên thanh chỉ là tham chiếu trực quan; đổi nhóm không xóa mã.
 
   const rows =
     validSubGroups(mainKey);
@@ -1967,7 +1973,7 @@ async function selectSubGroup(code) {
   state.selectedGroup = code;
   // Chọn nhóm chi tiết bằng tay không tiếp tục dùng mã sản phẩm cũ làm mốc.
   state.sourceProductCode = "";
-  clearDirectProductCode({clearSourceAnchor:false,focus:false});
+  // V1.11.4: mã trên thanh chỉ là tham chiếu trực quan; đổi nhóm không xóa mã.
 
   state.selectedProduct = null;
   state.selectedSize = null;
@@ -2268,8 +2274,9 @@ async function handleQuickSizePick(raw){
     // nhưng size vẫn trở thành size tham chiếu và tìm kiếm KHÔNG bị chặn.
     await applyScannedProductContext(sp,size,{skipSearch:true});
     if(currentSession() && state.selectedGroup) await searchProducts();
-    // Dù mã hiện tại hết size, size vẫn dùng để tìm mã khác; bỏ neo mã cũ sau lượt tìm này.
-    clearDirectProductCode({clearSourceAnchor:true,focus:false});
+    // Dù mã hiện tại hết size, size vẫn dùng để tìm mã khác. Giữ mã hiển thị,
+    // nhưng bỏ neo mã khỏi RPC để kết quả không bị khóa vào sản phẩm hiện tại.
+    state.sourceProductCode="";
     renderQuickSizeStrip();
     return;
   }
@@ -2285,7 +2292,7 @@ function renderQuickSizeMenu(){ renderQuickSizeStrip(); }
 function syncToolbarFromSelectedProduct(autoOpenSize=false,fillCode=false){
   const sp=state.selectedProduct;
   const input=$("directProductCode");
-  // V1.11.3: không tự điền lại mã chỉ vì render lại giao diện.
+  // V1.11.4: không tự điền lại mã chỉ vì render lại giao diện.
   // Mã chỉ hiện khi NV bấm TƯ VẤN từ bảng kết quả; quét/nhập thành công thì để trống.
   if(fillCode && sp && input){
     input.value=sp.masp||"";
@@ -2428,9 +2435,13 @@ async function consultProductByCode(raw,source="NHAP_MA"){
       state.sourceProductCode=norm(sp.masp);
       markConsultedProduct(sp.masp); // chạy nền, không chặn tư vấn
       await selectProduct(sp,{scrollToDetail:!isBasicMode(),openQuickSize:true});
-      // V1.11.3: mã quét/nhập chỉ là cửa vào sản phẩm. Sau khi tra cứu thành công
-      // xóa ô mã để các thao tác tìm kiếm tiếp theo không bị hiểu là còn neo vào mã cũ.
-      clearDirectProductCode({clearSourceAnchor:false,focus:false});
+      // V1.11.4: giữ mã đang tư vấn trên thanh để NV luôn nhìn thấy sản phẩm hiện tại.
+      // Mã hiển thị KHÔNG đồng nghĩa với việc các tìm kiếm sau phải neo theo mã này.
+      const directInput=$("directProductCode");
+      if(directInput){
+        directInput.value=sp.masp||code;
+        setTimeout(()=>{ try{ directInput.select(); }catch(_){} },0);
+      }
       toast(`Đang tư vấn mã ${sp.masp}. Chọn size khách thử.`,1800);
       return true;
     });
@@ -3341,7 +3352,7 @@ async function renderProducts(list, options = {}) {
           state.selectedProductSource="RESULT";
           markConsultedProduct(sp.masp);
           await selectProduct(sp,{scrollToDetail:false,openQuickSize:true});
-          // V1.11.3: sản phẩm từ bảng kết quả được đưa lên ô mã và cuộn tới đó
+          // V1.11.4: sản phẩm từ bảng kết quả được đưa lên ô mã và cuộn tới đó
           // để NV nhìn thấy rõ mã trước khi chạm size.
           const input=$("directProductCode");
           if(input) input.value=sp.masp||"";
@@ -3606,7 +3617,7 @@ async function selectProduct(
       : false
   };
 
-  // V1.11.3: ngay khi quét/chọn mã để tư vấn, thanh cố định phản ánh đúng
+  // V1.11.4: ngay khi quét/chọn mã để tư vấn, thanh cố định phản ánh đúng
   // nhóm chi tiết + form + màu của chính sản phẩm. Không đổi số đo khách.
   state.selectedMainGroup=mainGroupKeyForProduct(sp);
   state.selectedGroup=sp.nhomhang||state.selectedGroup;
@@ -3971,17 +3982,17 @@ async function chooseSize(
     renderCoach();
     const sp=state.selectedProduct;
     const added=await addToCart(size,null);
-    // V1.11.3: chọn size thành công phải đóng popup ngay,
+    // V1.11.4: chọn size thành công phải đóng popup ngay,
     // không để che các dropdown/ô thao tác khác.
     closeQuickSizeMenu();
     if(added!==false && sp){
       await applyScannedProductContext(sp,size);
-      // V1.11.3: sau khi size đã được đưa vào tư vấn/giỏ thành công,
-      // ô mã trở lại rỗng và bỏ neo mã cho các tìm kiếm kế tiếp.
-      clearDirectProductCode({clearSourceAnchor:true,focus:false});
+      // V1.11.4: sau khi chọn size thành công vẫn giữ mã trên thanh để NV nhận biết
+      // sản phẩm vừa/đang tư vấn. Chỉ bỏ neo RPC để các tìm kiếm khác được độc lập.
+      state.sourceProductCode="";
     }
     closeQuickSizeMenu();
-    // Giữ ô mã rỗng sau khi chốt size; chỉ đồng bộ Form/Size/hiển thị cần thiết.
+    // Giữ mã sản phẩm hiển thị sau khi chốt size; chỉ bỏ neo tìm kiếm phía sau.
     syncBasicFormButtons();
     syncQuickSizeSelect();
     renderQuickSizeStrip();
