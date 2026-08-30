@@ -2,8 +2,62 @@
 // scripts/baocaoxnt17.js
 import { supabase } from "./supabaseClient.js";
 import * as authModule from "./authModule.js";
+import { initDatHangChuyenKhoKhan } from "./datHangChuyenKhoKhan.js";
 // THÊM DÒNG NÀY (quan trọng), đảm bảo popup chạy được trên mọi trang kiểu module.
 window.supabase = supabase;
+
+
+// ===================== ĐẶT HÀNG CHUYỂN KHO KHẨN CẤP =====================
+// stockQuickPopup chỉ gọi window.DatHangChuyenKhoKhan.openFromStockQuick().
+// Vì vậy trang XNT17 phải chủ động import + init module này sau khi đăng nhập.
+let datHangKhanXNT17Initialized = false;
+
+function syncDatHangKhanCosoFromFilter() {
+    const dd = (document.getElementById("diadiemSelect")?.value || "").trim().toLowerCase();
+    // Chỉ set khi filter đang chỉ rõ CS1/CS2. Nếu đang "Tất cả", để module
+    // fallback sang localStorage / ngữ cảnh đăng nhập như thiết kế gốc.
+    if (dd === "cs1" || dd === "cs2") {
+        window.__BANLE_PAGE_DIADIEM = dd;
+    } else {
+        delete window.__BANLE_PAGE_DIADIEM;
+    }
+}
+
+window.initDatHangKhanXNT17 = async function initDatHangKhanXNT17(nvFromLogin = null) {
+    if (datHangKhanXNT17Initialized) {
+        syncDatHangKhanCosoFromFilter();
+        window.DatHangChuyenKhoKhan?.refresh?.();
+        return;
+    }
+
+    try {
+        const nv = nvFromLogin || await authModule.getCurrentUserInfo();
+
+        initDatHangChuyenKhoKhan({
+            supabase,
+            // Không truyền ctx.diadiem cố định để khi đổi bộ lọc CS1/CS2 module
+            // luôn đọc được window.__BANLE_PAGE_DIADIEM mới nhất.
+            manvDangNhap: nv?.manv || "",
+            isAdmin: !!nv?.is_admin,
+        });
+
+        datHangKhanXNT17Initialized = true;
+        syncDatHangKhanCosoFromFilter();
+
+        const dd = document.getElementById("diadiemSelect");
+        if (dd && dd.dataset.dhkhanSyncBound !== "1") {
+            dd.dataset.dhkhanSyncBound = "1";
+            dd.addEventListener("change", () => {
+                syncDatHangKhanCosoFromFilter();
+                window.DatHangChuyenKhoKhan?.refresh?.();
+            });
+        }
+
+        console.log("[XNT17] Đã khởi tạo module đặt hàng chuyển kho khẩn cấp");
+    } catch (err) {
+        console.error("[XNT17] Không khởi tạo được đặt hàng khẩn cấp:", err);
+    }
+};
 
 
 let hotInstance;
