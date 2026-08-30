@@ -5,49 +5,43 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Phân tích bán lẻ theo khung giờ</title>
   <style>
-:root{font-family:Arial,Helvetica,sans-serif;color:#123;background:#eef4f9}*{box-sizing:border-box}body{margin:0}.page{max-width:1600px;margin:auto;padding:16px}.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.topbar h1{margin:0;color:#0560b8;font-size:25px}.topbar p{margin:4px 0 12px;color:#64748b}.card{background:white;border:1px solid #d5e0ea;border-radius:10px;box-shadow:0 1px 2px #00000008}.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:end;padding:10px}.filters label{font-size:12px;font-weight:700;color:#425466;display:flex;flex-direction:column;gap:4px}.filters input,.filters select,.panel-head select{height:34px;border:1px solid #cbd5e1;border-radius:6px;padding:0 8px;background:#fff;min-width:110px}.filters #employee{min-width:155px}.btn{height:36px;border-radius:6px;padding:0 14px;border:1px solid #b7d2eb;font-weight:700;cursor:pointer}.btn-primary{background:#0774d5;color:#fff;border-color:#0774d5}.btn-light{background:#f7fbff;color:#075da8}.kpis{display:grid;grid-template-columns:repeat(8,minmax(125px,1fr));gap:8px;margin:10px 0}.kpi{background:#fff;border:1px solid #d5e0ea;border-radius:9px;padding:10px;min-height:75px}.kpi .label{font-size:11px;color:#64748b;font-weight:700}.kpi .value{font-size:19px;font-weight:800;color:#073763;margin-top:6px}.kpi .sub{font-size:10px;color:#718096;margin-top:3px}.status{font-size:12px;color:#4b6478;margin:8px 0}.tabs{display:flex;justify-content:flex-end;gap:6px;margin:8px 0}.tab{border:1px solid #cbd5e1;background:white;border-radius:7px;padding:7px 12px;font-weight:700;cursor:pointer}.tab.active{background:#0877d8;color:white;border-color:#0877d8}.panel{display:none;padding:10px}.panel.active{display:block}.panel h2{font-size:15px;color:#064f91;margin:0 0 10px}.panel-head{display:flex;justify-content:space-between;align-items:center}.table-wrap{max-height:580px;overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #dbe4ec;padding:7px 6px;text-align:right;white-space:nowrap}th{position:sticky;top:0;background:#f1f6fa;color:#153b5e;z-index:1}th:first-child,td:first-child{text-align:left}.badge{padding:3px 7px;border-radius:10px;font-size:10px;font-weight:700}.b-low{background:#dff5e6;color:#157437}.b-mid{background:#fff3c4;color:#8c6500}.b-high{background:#ffe4c7;color:#a95400}.b-peak{background:#ffd8d8;color:#b12222}.chartbox{height:430px}.chartbox.tall{height:520px}.heatmap-wrap{overflow:auto}.heatmap-grid{display:grid;gap:2px;min-width:1100px}.heat-head,.heat-row-title{font-size:11px;font-weight:700;text-align:center;padding:5px}.heat-row-title{text-align:left}.heat-cell{min-width:60px;padding:8px 4px;border-radius:4px;text-align:center;font-size:10px;color:#073763;border:1px solid #fff}.note{font-size:12px;color:#64748b;margin-bottom:8px}@media(max-width:1100px){.kpis{grid-template-columns:repeat(4,1fr)}}@media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}.page{padding:8px}.topbar h1{font-size:19px}.chartbox{height:340px}.tabs{justify-content:flex-start;overflow:auto}}
-
+:root{font-family:Arial,Helvetica,sans-serif;color:#123;background:#eef4f9}*{box-sizing:border-box}body{margin:0}.page{max-width:1600px;margin:auto;padding:16px}.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.topbar-actions{display:flex;gap:7px;align-items:center}.topbar h1{margin:0;color:#0560b8;font-size:25px}.topbar p{margin:4px 0 12px;color:#64748b}.card{background:white;border:1px solid #d5e0ea;border-radius:10px;box-shadow:0 1px 2px #00000008}.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:end;padding:10px}.filters label{font-size:12px;font-weight:700;color:#425466;display:flex;flex-direction:column;gap:4px}.filters input,.filters select,.panel-head select{height:34px;border:1px solid #cbd5e1;border-radius:6px;padding:0 8px;background:#fff;min-width:110px}.filters #employee{min-width:155px}.btn{height:36px;border-radius:6px;padding:0 14px;border:1px solid #b7d2eb;font-weight:700;cursor:pointer}.btn-primary{background:#0774d5;color:#fff;border-color:#0774d5}.btn-light{background:#f7fbff;color:#075da8}.btn-help{background:#fff8df;color:#7a5700;border-color:#e9cf7c}.kpis{display:grid;grid-template-columns:repeat(8,minmax(125px,1fr));gap:8px;margin:10px 0}.kpi{background:#fff;border:1px solid #d5e0ea;border-radius:9px;padding:10px;min-height:75px}.kpi .label{font-size:11px;color:#64748b;font-weight:700}.kpi .value{font-size:19px;font-weight:800;color:#073763;margin-top:6px}.kpi .sub{font-size:10px;color:#718096;margin-top:3px}.status{font-size:12px;color:#4b6478;margin:8px 0}.tabs{display:flex;justify-content:flex-end;gap:6px;margin:8px 0}.tab{border:1px solid #cbd5e1;background:white;border-radius:7px;padding:7px 12px;font-weight:700;cursor:pointer}.tab.active{background:#0877d8;color:white;border-color:#0877d8}.panel{display:none;padding:10px}.panel.active{display:block}.panel h2{font-size:15px;color:#064f91;margin:0 0 10px}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.panel-head .right-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.table-wrap{max-height:580px;overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #dbe4ec;padding:7px 6px;text-align:right;white-space:nowrap}th{position:sticky;top:0;background:#f1f6fa;color:#153b5e;z-index:1}th:first-child,td:first-child{text-align:left}.badge{padding:3px 7px;border-radius:10px;font-size:10px;font-weight:700}.b-low{background:#dff5e6;color:#157437}.b-mid{background:#fff3c4;color:#8c6500}.b-high{background:#ffe4c7;color:#a95400}.b-peak{background:#ffd8d8;color:#b12222}.chartbox{height:430px}.chartbox.tall{height:430px}.heatmap-wrap{overflow:auto}.heatmap-grid{display:grid;gap:2px;min-width:1100px}.heat-head,.heat-row-title{font-size:11px;font-weight:700;text-align:center;padding:5px}.heat-row-title{text-align:left}.heat-cell{min-width:60px;padding:8px 4px;border-radius:4px;text-align:center;font-size:10px;color:#073763;border:1px solid #fff}.heat-total-title{font-weight:800;background:#eaf2f8;border-radius:4px}.heat-total{font-weight:800;background:#dceaf6!important;color:#05345d}.heat-average{font-weight:700;background:#eef5fb!important;color:#31566f}.note{font-size:12px;color:#64748b;margin-bottom:8px}.month-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(420px,.75fr);gap:10px}.month-table-wrap{max-height:430px;overflow:auto}.delta-up{color:#14833b;font-weight:700}.delta-down{color:#c0362c;font-weight:700}.delta-flat{color:#667085;font-weight:700}.modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9999;padding:18px}.modal.show{display:flex}.modal-box{width:min(880px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:12px;box-shadow:0 20px 70px #0005}.modal-head{position:sticky;top:0;background:#fff;border-bottom:1px solid #dde6ed;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2}.modal-head h2{margin:0;color:#075da8;font-size:20px}.modal-body{padding:16px 20px 22px;line-height:1.55;color:#34495e}.modal-body h3{color:#075da8;margin:16px 0 6px}.modal-body ul{margin:6px 0 10px 20px;padding:0}.modal-body .guide-grid{display:grid;grid-template-columns:180px 1fr;gap:7px 12px;border:1px solid #e1e9ef;border-radius:8px;padding:10px}.modal-body .guide-grid b{color:#123f67}.close{font-size:22px;border:0;background:transparent;cursor:pointer}.access-gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}.access-box{max-width:560px;width:100%;padding:28px;text-align:center}.access-box h2{color:#075da8}.access-box .deny{color:#b42318}.hidden{display:none!important}@media(max-width:1200px){.month-layout{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(4,1fr)}}@media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}.page{padding:8px}.topbar h1{font-size:19px}.chartbox{height:340px}.tabs{justify-content:flex-start;overflow:auto}.month-layout{grid-template-columns:1fr}.modal-body .guide-grid{grid-template-columns:1fr}.topbar{flex-direction:column}.topbar-actions{align-self:flex-end}}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <div class="page">
+  <div id="accessGate" class="access-gate">
+    <div class="access-box card">
+      <h2 id="accessTitle">Đang kiểm tra quyền quản trị…</h2>
+      <p id="accessText">Báo cáo này chỉ dành cho tài khoản Admin.</p>
+      <button id="accessBack" class="btn btn-light hidden">← Quay lại</button>
+    </div>
+  </div>
+
+  <div id="appPage" class="page hidden">
     <header class="topbar">
       <div>
         <h1>📈 Phân tích bán lẻ theo khung giờ</h1>
         <p>Phân tích doanh thu, hóa đơn và số sản phẩm theo giờ để tối ưu lịch mở cửa và nhân lực.</p>
       </div>
-      <button id="btnBack" class="btn btn-light">← Quay lại</button>
+      <div class="topbar-actions">
+        <button id="btnHelp" class="btn btn-help">❓ Hướng dẫn</button>
+        <button id="btnBack" class="btn btn-light">← Quay lại</button>
+      </div>
     </header>
 
     <section class="filters card">
       <label>Từ ngày<input id="fromDate" type="date"></label>
       <label>Đến ngày<input id="toDate" type="date"></label>
       <label>Cơ sở
-        <select id="branch">
-          <option value="all">Tất cả</option>
-          <option value="cs1">CS1</option>
-          <option value="cs2">CS2</option>
-        </select>
+        <select id="branch"><option value="all">Tất cả</option><option value="cs1">CS1</option><option value="cs2">CS2</option></select>
       </label>
       <label>Ngày trong tuần
-        <select id="dow">
-          <option value="all">Tất cả</option>
-          <option value="weekday">T2–T6</option>
-          <option value="weekend">T7–CN</option>
-          <option value="1">Thứ 2</option><option value="2">Thứ 3</option>
-          <option value="3">Thứ 4</option><option value="4">Thứ 5</option>
-          <option value="5">Thứ 6</option><option value="6">Thứ 7</option>
-          <option value="0">Chủ nhật</option>
-        </select>
+        <select id="dow"><option value="all">Tất cả</option><option value="weekday">T2–T6</option><option value="weekend">T7–CN</option><option value="1">Thứ 2</option><option value="2">Thứ 3</option><option value="3">Thứ 4</option><option value="4">Thứ 5</option><option value="5">Thứ 6</option><option value="6">Thứ 7</option><option value="0">Chủ nhật</option></select>
       </label>
-      <label>Khung thời gian
-        <select id="bucketMinutes"><option value="30">30 phút</option><option value="60" selected>1 giờ</option><option value="120">2 giờ</option></select>
-      </label>
+      <label>Khung thời gian<select id="bucketMinutes"><option value="30">30 phút</option><option value="60" selected>1 giờ</option><option value="120">2 giờ</option></select></label>
       <label>Nhân viên<input id="employee" type="text" placeholder="Mã hoặc tên NV"></label>
-      <label>Xếp mức độ theo
-        <select id="rankBy"><option value="invoice">Hóa đơn</option><option value="qty">Sản phẩm</option><option value="revenue">Doanh thu</option></select>
-      </label>
+      <label>Xếp mức độ theo<select id="rankBy"><option value="invoice">Hóa đơn</option><option value="qty">Sản phẩm</option><option value="revenue">Doanh thu</option></select></label>
       <button id="btnRun" class="btn btn-primary">🔎 Xem báo cáo</button>
       <button id="btnCopy" class="btn btn-light">📋 Copy bảng</button>
     </section>
@@ -56,47 +50,58 @@
     <div id="status" class="status"></div>
 
     <nav class="tabs">
-      <button class="tab active" data-tab="table">Bảng</button>
-      <button class="tab" data-tab="revenue">Doanh thu</button>
-      <button class="tab" data-tab="volume">Khối lượng</button>
-      <button class="tab" data-tab="heatmap">Heatmap</button>
-      <button class="tab" data-tab="branches">So sánh CS</button>
-      <button class="tab" data-tab="months">So sánh tháng</button>
+      <button class="tab active" data-tab="table">Bảng</button><button class="tab" data-tab="revenue">Doanh thu</button><button class="tab" data-tab="volume">Khối lượng</button><button class="tab" data-tab="heatmap">Heatmap</button><button class="tab" data-tab="branches">So sánh CS</button><button class="tab" data-tab="months">So sánh tháng</button>
     </nav>
 
-    <section id="tab-table" class="panel card active">
-      <div class="table-wrap"><table id="reportTable"><thead></thead><tbody></tbody></table></div>
-    </section>
-
-    <section id="tab-revenue" class="panel card">
-      <h2>Doanh thu trung bình/ngày & lũy kế doanh thu</h2>
-      <div class="chartbox"><canvas id="revenueChart"></canvas></div>
-    </section>
-
-    <section id="tab-volume" class="panel card">
-      <h2>Khối lượng phục vụ trung bình/ngày</h2>
-      <div class="chartbox"><canvas id="volumeChart"></canvas></div>
-    </section>
-
+    <section id="tab-table" class="panel card active"><div class="table-wrap"><table id="reportTable"><thead></thead><tbody></tbody></table></div></section>
+    <section id="tab-revenue" class="panel card"><h2>Doanh thu trung bình/ngày & lũy kế doanh thu</h2><div class="chartbox"><canvas id="revenueChart"></canvas></div></section>
+    <section id="tab-volume" class="panel card"><h2>Khối lượng phục vụ trung bình/ngày</h2><div class="chartbox"><canvas id="volumeChart"></canvas></div></section>
     <section id="tab-heatmap" class="panel card">
-      <div class="panel-head">
-        <h2>Heatmap Thứ × Khung giờ</h2>
-        <select id="heatMetric"><option value="revenue">Doanh thu/ngày</option><option value="invoice">Hóa đơn/ngày</option><option value="qty">Sản phẩm/ngày</option></select>
-      </div>
+      <div class="panel-head"><h2>Heatmap Thứ × Khung giờ</h2><div class="right-tools"><select id="heatMetric"><option value="revenue">Doanh thu/ngày</option><option value="invoice">Hóa đơn/ngày</option><option value="qty">Sản phẩm/ngày</option></select></div></div>
+      <div class="note">Các dòng T2–CN là mức trung bình của riêng thứ đó. Hai dòng cuối cho biết <b>tổng thực tế trong cả khoảng chọn</b> và <b>trung bình trên mỗi ngày được chọn</b> theo từng khung giờ.</div>
       <div id="heatmap" class="heatmap-wrap"></div>
     </section>
-
-    <section id="tab-branches" class="panel card">
-      <h2>So sánh CS1 ↔ CS2 theo giờ</h2>
-      <div class="chartbox"><canvas id="branchChart"></canvas></div>
-    </section>
-
+    <section id="tab-branches" class="panel card"><h2>So sánh CS1 ↔ CS2 theo giờ</h2><div class="chartbox"><canvas id="branchChart"></canvas></div></section>
     <section id="tab-months" class="panel card">
-      <h2>So sánh doanh thu trung bình/ngày theo tháng và khung giờ</h2>
-      <div id="monthNote" class="note"></div>
-      <div class="chartbox tall"><canvas id="monthChart"></canvas></div>
+      <div class="panel-head">
+        <div><h2>So sánh tháng</h2><div id="monthNote" class="note"></div></div>
+        <div class="right-tools"><label style="font-size:12px;font-weight:700">Chỉ số <select id="monthMetric"><option value="revenue">Tổng doanh thu</option><option value="revenueDay">Doanh thu/ngày</option><option value="invoiceDay">Hóa đơn/ngày</option><option value="qtyDay">Sản phẩm/ngày</option><option value="avgInvoice">TB/HĐ</option><option value="spInvoice">SP/HĐ</option></select></label></div>
+      </div>
+      <div class="month-layout">
+        <div class="chartbox tall"><canvas id="monthChart"></canvas></div>
+        <div class="month-table-wrap"><table id="monthTable"><thead></thead><tbody></tbody></table></div>
+      </div>
     </section>
   </div>
+
+  <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modal-box">
+      <div class="modal-head"><h2 id="helpTitle">Hướng dẫn đọc Báo cáo bán lẻ theo giờ</h2><button id="btnCloseHelp" class="close" title="Đóng">×</button></div>
+      <div class="modal-body">
+        <p>Báo cáo chỉ lấy hai nghiệp vụ bán chính <b>bancs1</b> và <b>bancs2</b>. Giờ bán lấy theo thời điểm tạo hóa đơn <b>created_at</b>; doanh thu lấy theo <b>thanhtoan</b>.</p>
+        <h3>1. Cách chọn dữ liệu</h3>
+        <ul><li>Chọn <b>Từ ngày – Đến ngày</b>, cơ sở, ngày trong tuần và khung 30 phút/1 giờ/2 giờ.</li><li>Muốn đánh giá lịch nhân viên, nên xem tối thiểu 4–8 tuần; với mùa vụ nên chọn 6–12 tháng.</li><li>Ô Nhân viên dùng khi cần phân tích riêng hóa đơn theo mã/tên nhân viên.</li></ul>
+        <h3>2. Ý nghĩa các chỉ số</h3>
+        <div class="guide-grid">
+          <b>HĐ/ngày</b><span>Số hóa đơn trung bình mỗi ngày trong khung giờ. Hữu ích để đánh giá lượng khách/giao dịch.</span>
+          <b>SP/ngày</b><span>Số sản phẩm bán trung bình mỗi ngày trong khung giờ. Phản ánh khối lượng lấy hàng, thử đồ, phục vụ.</span>
+          <b>TB/HĐ</b><span>Doanh thu trung bình của một hóa đơn.</span>
+          <b>SP/HĐ</b><span>Số sản phẩm trung bình trong một hóa đơn; cao hơn thường cho thấy khả năng bán kèm tốt hơn.</span>
+          <b>Tỷ trọng</b><span>Khung giờ này đóng góp bao nhiêu % doanh thu trong toàn bộ khoảng thời gian đã chọn.</span>
+          <b>Lũy kế DT</b><span>Đến hết khung giờ này cửa hàng đã tạo ra bao nhiêu % doanh thu ngày.</span>
+          <b>Còn lại sau giờ</b><span>Nếu đóng cửa sau khung giờ đó thì về lịch sử còn bỏ lại trung bình bao nhiêu doanh thu/ngày và bao nhiêu %.</span>
+          <b>Mức độ</b><span>Phân loại tương đối Thấp/Trung bình/Cao/Cao điểm theo chỉ số bạn chọn ở “Xếp mức độ theo”.</span>
+        </div>
+        <h3>3. Cách đọc Heatmap</h3>
+        <p>Ô càng đậm thì mức bán càng cao. Dòng T2–CN là trung bình riêng của từng thứ. Dòng <b>TỔNG</b> là tổng thực tế trong cả khoảng chọn của từng giờ; dòng <b>TB/ngày</b> chia tổng đó cho số ngày được chọn.</p>
+        <h3>4. Cách đọc So sánh tháng</h3>
+        <p>Trục ngang là <b>tháng</b>, không còn là giờ. Mỗi tháng có tổng doanh thu, số HĐ, số SP, DT/ngày, TB/HĐ, SP/HĐ và % thay đổi so tháng trước. Nhờ vậy có thể nhìn xu hướng và mùa vụ đúng nghĩa.</p>
+        <h3>5. Dùng báo cáo để quyết định</h3>
+        <ul><li>Tăng người ở giờ có HĐ/ngày và SP/ngày cao, không chỉ dựa vào doanh thu.</li><li>Giảm người ở giờ thấp kéo dài, nhưng cần so thêm theo thứ và theo mùa.</li><li>Dùng “Còn lại sau giờ” để đánh giá lợi ích của việc kéo dài giờ mở cửa.</li><li>Dùng So sánh CS để xếp ca khác nhau cho CS1 và CS2 thay vì áp một lịch chung.</li></ul>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="scripts/baocao_banle_theogio.js"></script>
 </body>
 </html>
