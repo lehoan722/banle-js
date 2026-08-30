@@ -621,7 +621,12 @@
           }
         }
 
-        // 2. Nếu được phép → tải báo cáo XNT17 lần đầu (nếu muốn auto-load)
+        // 2. Khởi tạo module ĐẶT HÀNG KHẨN để StockQuick gọi được ngay trên XNT17
+        if (window.initDatHangKhanXNT17) {
+          await window.initDatHangKhanXNT17(nv);
+        }
+
+        // 3. Nếu được phép → tải báo cáo XNT17 lần đầu (nếu muốn auto-load)
         if (window.taiBaoCaoXNT) {
           await window.taiBaoCaoXNT();
         }
