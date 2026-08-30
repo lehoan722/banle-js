@@ -132,9 +132,8 @@ function renderBranches(){const mins=Number($('bucketMinutes').value),rows=snaps
 
 function monthSummary(){
   const br=$('branch').value,dow=$('dow').value,rows=snapshot.monthly.filter(r=>br==='all'||r.coso===br),months=[...new Set(rows.map(r=>r.month_key))].sort();
-  return months.map(month=>{const rr=rows.filter(r=>r.month_key===month),days=selectedDaysInMonth(month,dow),invoice=rr.reduce((s,r)=>s+Number(r.invoice_count||0),0),qty=rr.reduce((s,r)=>s+Number(r.item_qty||0),0),revenue=rr.reduce((s,r)=>s+Number(r.revenue||0),0);return {month,days,invoice,qty,revenue,revenueDay:revenue/days,invoiceDay:invoice/days,qtyDay:qty/days,avgInvoice:invoice?revenue/invoice:0,spInvoice:invoice?qty/invoice:0}}
+  return months.map(month=>{const rr=rows.filter(r=>r.month_key===month),days=selectedDaysInMonth(month,dow),invoice=rr.reduce((s,r)=>s+Number(r.invoice_count||0),0),qty=rr.reduce((s,r)=>s+Number(r.item_qty||0),0),revenue=rr.reduce((s,r)=>s+Number(r.revenue||0),0);return {month,days,invoice,qty,revenue,revenueDay:revenue/days,invoiceDay:invoice/days,qtyDay:qty/days,avgInvoice:invoice?revenue/invoice:0,spInvoice:invoice?qty/invoice:0}})
 }
-
 function renderMonths(){
   const data=monthSummary(),metric=$('monthMetric').value;
   $('monthNote').innerHTML=data.length?`Hiển thị <b>${data.length} tháng</b> từ bảng tổng hợp ngày. So sánh tháng không còn tải từng hóa đơn/từng dòng chi tiết.`:'Không có dữ liệu tháng trong khoảng đã chọn.';
