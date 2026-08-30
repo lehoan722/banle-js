@@ -388,12 +388,23 @@ function aggregateForSelectedDays(rows, filters) {
 
   const result = Array.from(map.values()).sort((a, b) => a.bucketMinute - b.bucketMinute);
   const totalRevenue = result.reduce((s, r) => s + r.revenue, 0);
+  let cumulativeRevenue = 0;
   result.forEach((r) => {
     r.invoicesPerDay = r.invoiceCount / days;
     r.itemsPerDay = r.itemQty / days;
     r.revenuePerDay = r.revenue / days;
     r.avgBill = r.invoiceCount ? r.revenue / r.invoiceCount : 0;
     r.share = totalRevenue ? (r.revenue / totalRevenue) * 100 : 0;
+
+    // Hai chỉ số phục vụ quyết định giờ đóng cửa:
+    // 1) Doanh thu lũy kế đến hết khung giờ hiện tại.
+    // 2) Doanh thu còn lại sau khi kết thúc khung giờ hiện tại.
+    cumulativeRevenue += r.revenue;
+    r.cumulativeRevenue = cumulativeRevenue;
+    r.cumulativeShare = totalRevenue ? (cumulativeRevenue / totalRevenue) * 100 : 0;
+    r.remainingRevenue = Math.max(0, totalRevenue - cumulativeRevenue);
+    r.remainingRevenuePerDay = r.remainingRevenue / days;
+    r.remainingShare = totalRevenue ? (r.remainingRevenue / totalRevenue) * 100 : 0;
   });
 
   classifyLevels(result, filters.rankBasis);
@@ -429,7 +440,7 @@ function renderKpis(rows, filters) {
 
 function renderTable(rows, filters) {
   if (!rows.length) {
-    el.hourlyTableBody.innerHTML = `<tr><td colspan="10">Không có hóa đơn đã thanh toán trong điều kiện đã chọn.</td></tr>`;
+    el.hourlyTableBody.innerHTML = `<tr><td colspan="12">Không có hóa đơn đã thanh toán trong điều kiện đã chọn.</td></tr>`;
     return;
   }
 
@@ -444,6 +455,11 @@ function renderTable(rows, filters) {
       <td class="text-right">${money(r.revenuePerDay)}</td>
       <td class="text-right">${money(r.avgBill)}</td>
       <td class="text-right">${fmt1.format(r.share)}%</td>
+      <td class="text-right cumulative-cell"><b>${fmt1.format(r.cumulativeShare)}%</b></td>
+      <td class="text-right remaining-cell" title="Nếu đóng cửa sau ${bucketLabel(r.bucketMinute, filters.bucketMinutes)}, phần doanh thu này sẽ không còn">
+        <b>${money(r.remainingRevenuePerDay)}/ngày</b>
+        <small>${fmt1.format(r.remainingShare)}%</small>
+      </td>
       <td><span class="level-badge ${r.level.cls}">${r.level.text}</span></td>
     </tr>
   `).join("");
@@ -468,24 +484,63 @@ function renderCharts(rows, filters) {
     type: "bar",
     data: {
       labels,
-      datasets: [{
-        label: "Doanh thu TB/ngày",
-        data: rows.map((r) => Math.round(r.revenuePerDay)),
-        backgroundColor: "rgba(5, 115, 217, 0.72)",
-        borderColor: "rgba(5, 115, 217, 1)",
-        borderWidth: 1,
-      }],
+      datasets: [
+        {
+          type: "bar",
+          label: "Doanh thu TB/ngày",
+          data: rows.map((r) => Math.round(r.revenuePerDay)),
+          backgroundColor: "rgba(5, 115, 217, 0.72)",
+          borderColor: "rgba(5, 115, 217, 1)",
+          borderWidth: 1,
+          yAxisID: "y",
+        },
+        {
+          type: "line",
+          label: "Doanh thu lũy kế (%)",
+          data: rows.map((r) => Number(r.cumulativeShare.toFixed(1))),
+          borderColor: "rgba(220, 38, 38, 0.95)",
+          backgroundColor: "rgba(220, 38, 38, 0.08)",
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          tension: 0.2,
+          yAxisID: "y1",
+        },
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
-        tooltip: { callbacks: { label: (ctx) => ` ${money(ctx.raw)}/ngày` } },
-        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ctx.dataset.yAxisID === "y1"
+              ? ` Lũy kế: ${fmt1.format(ctx.raw)}%`
+              : ` Doanh thu: ${money(ctx.raw)}/ngày`,
+            afterBody: (items) => {
+              const idx = items?.[0]?.dataIndex;
+              const row = Number.isInteger(idx) ? rows[idx] : null;
+              return row ? [`Còn lại sau khung: ${money(row.remainingRevenuePerDay)}/ngày (${fmt1.format(row.remainingShare)}%)`] : [];
+            },
+          },
+        },
+        legend: { display: true },
       },
       scales: {
-        y: { beginAtZero: true, ticks: { callback: (v) => shortMoney(v) } },
+        y: {
+          beginAtZero: true,
+          position: "left",
+          ticks: { callback: (v) => shortMoney(v) },
+          title: { display: true, text: "Doanh thu/ngày" },
+        },
+        y1: {
+          beginAtZero: true,
+          max: 100,
+          position: "right",
+          grid: { drawOnChartArea: false },
+          ticks: { callback: (v) => `${v}%` },
+          title: { display: true, text: "Lũy kế %" },
+        },
         x: { ticks: { maxRotation: 60, minRotation: 0, autoSkip: filters.bucketMinutes === 30 } },
       },
     },
@@ -615,7 +670,7 @@ async function runReport() {
 
   el.btnXemBaoCao.disabled = true;
   el.btnXemBaoCao.textContent = "⏳ Đang tải...";
-  el.hourlyTableBody.innerHTML = `<tr><td colspan="10">Đang tổng hợp dữ liệu...</td></tr>`;
+  el.hourlyTableBody.innerHTML = `<tr><td colspan="12">Đang tổng hợp dữ liệu...</td></tr>`;
   showMessage("");
 
   try {
@@ -630,7 +685,7 @@ async function runReport() {
   } catch (error) {
     console.error(error);
     showMessage(`Không tải được báo cáo: ${error.message || error}`, "error");
-    el.hourlyTableBody.innerHTML = `<tr><td colspan="10">Lỗi tải dữ liệu.</td></tr>`;
+    el.hourlyTableBody.innerHTML = `<tr><td colspan="12">Lỗi tải dữ liệu.</td></tr>`;
   } finally {
     el.btnXemBaoCao.disabled = false;
     el.btnXemBaoCao.textContent = "🔍 Xem báo cáo";
