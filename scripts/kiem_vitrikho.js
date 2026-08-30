@@ -764,12 +764,12 @@ async function showMultiLocations() {
         (data || []).forEach(r => map.set(normalizeMasp(r.masp), normalizeText(r[field])));
       }
       results = results.map(r => {
+        // Luôn hiển thị vị trí kho chuẩn đã lưu trong danh mục hàng hóa,
+        // kể cả vị trí chuẩn đó KHÔNG nằm trong các vị trí vừa kiểm của phiên.
+        // Trước đây code chỉ điền khi vị trí chuẩn duy nhất trùng với một vị trí hiện có,
+        // nên các trường hợp lệch vị trí bị để trống và gây hiểu nhầm là chưa có vị trí chuẩn.
         const catalogRaw = map.get(r.masp) || '';
-        const catalogPositions = catalogRaw.split(',').map(normalizeText).filter(Boolean);
-        const auto = catalogPositions.length === 1 && r.positions.some(p => p.toLowerCase() === catalogPositions[0].toLowerCase())
-          ? r.positions.find(p => p.toLowerCase() === catalogPositions[0].toLowerCase())
-          : '';
-        return { ...r, vitri_chuan: auto || '' };
+        return { ...r, vitri_chuan: catalogRaw };
       });
     }
   } catch (err) {
