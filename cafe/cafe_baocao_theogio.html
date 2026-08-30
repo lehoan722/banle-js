@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phân tích bán hàng theo khung giờ - Cafe</title>
+  <link rel="stylesheet" href="./css/cafe_report.css" />
+  <link rel="stylesheet" href="./css/cafe_baocao_theogio.css" />
+</head>
+<body>
+  <div id="app-container" class="report-app hourly-report-app">
+    <div class="page-title-row">
+      <div>
+        <h2>📈 Phân tích bán hàng theo khung giờ</h2>
+        <div class="page-subtitle">Theo dõi giờ đông/vắng để tối ưu lịch làm việc và nhân lực phục vụ.</div>
+      </div>
+      <a class="secondary-btn back-link" href="./cafe_banhang.html">← Bán hàng</a>
+    </div>
+
+    <div class="filter-box hourly-filter-box">
+      <label>Từ ngày <input type="date" id="tuNgay" /></label>
+      <label>Đến ngày <input type="date" id="denNgay" /></label>
+
+      <label>
+        Ngày trong tuần
+        <select id="locThu">
+          <option value="all">Tất cả</option>
+          <option value="weekday">T2 - T6</option>
+          <option value="weekend">T7 - CN</option>
+          <option value="1">Thứ 2</option>
+          <option value="2">Thứ 3</option>
+          <option value="3">Thứ 4</option>
+          <option value="4">Thứ 5</option>
+          <option value="5">Thứ 6</option>
+          <option value="6">Thứ 7</option>
+          <option value="0">Chủ nhật</option>
+        </select>
+      </label>
+
+      <label>
+        Khu vực
+        <select id="locKhuVuc">
+          <option value="">Tất cả</option>
+        </select>
+      </label>
+
+      <label>
+        Loại đơn
+        <select id="locLoaiDon">
+          <option value="">Tất cả</option>
+          <option value="tai_ban">Tại bàn</option>
+          <option value="mang_ve">Mang về</option>
+        </select>
+      </label>
+
+      <label>
+        Khung thời gian
+        <select id="bucketMinutes">
+          <option value="30">30 phút</option>
+          <option value="60" selected>1 giờ</option>
+          <option value="120">2 giờ</option>
+        </select>
+      </label>
+
+      <label>
+        Căn cứ thời gian
+        <select id="timeBasis">
+          <option value="gio_vao" selected>Giờ vào</option>
+          <option value="gio_thanh_toan">Giờ thanh toán</option>
+        </select>
+      </label>
+
+      <label>
+        Xếp mức độ theo
+        <select id="rankBasis">
+          <option value="invoice" selected>Số hóa đơn</option>
+          <option value="item">Số món</option>
+          <option value="revenue">Doanh thu</option>
+        </select>
+      </label>
+
+      <button id="btnXemBaoCao" class="primary-btn">🔍 Xem báo cáo</button>
+      <button id="btnCopyTable" class="secondary-btn">📋 Copy bảng</button>
+    </div>
+
+    <div id="reportMessage" class="report-message" hidden></div>
+
+    <section class="kpi-grid" aria-label="Chỉ số tổng hợp">
+      <article class="kpi-card">
+        <span>Tổng doanh thu</span>
+        <strong id="kpiRevenue">0 đ</strong>
+      </article>
+      <article class="kpi-card">
+        <span>Hóa đơn</span>
+        <strong id="kpiInvoices">0</strong>
+      </article>
+      <article class="kpi-card">
+        <span>Số món</span>
+        <strong id="kpiItems">0</strong>
+      </article>
+      <article class="kpi-card">
+        <span>TB / hóa đơn</span>
+        <strong id="kpiAvgBill">0 đ</strong>
+      </article>
+      <article class="kpi-card kpi-peak">
+        <span>Khung đông nhất</span>
+        <strong id="kpiPeak">--</strong>
+        <small id="kpiPeakValue">--</small>
+      </article>
+      <article class="kpi-card kpi-low">
+        <span>Khung vắng nhất</span>
+        <strong id="kpiLow">--</strong>
+        <small id="kpiLowValue">--</small>
+      </article>
+    </section>
+
+    <div class="report-meta-row">
+      <div id="reportMeta">Chưa tải dữ liệu.</div>
+      <div class="view-tabs" role="tablist">
+        <button class="view-tab active" data-view="table">Bảng</button>
+        <button class="view-tab" data-view="revenue">Doanh thu</button>
+        <button class="view-tab" data-view="workload">Khối lượng</button>
+        <button class="view-tab" data-view="heatmap">Heatmap</button>
+      </div>
+    </div>
+
+    <section id="view-table" class="report-view active">
+      <div class="table-wrap hourly-table-wrap">
+        <table id="hourlyTable">
+          <thead>
+            <tr>
+              <th>Khung giờ</th>
+              <th class="text-right">HĐ</th>
+              <th class="text-right">HĐ/ngày</th>
+              <th class="text-right">SL món</th>
+              <th class="text-right">Món/ngày</th>
+              <th class="text-right">Doanh thu</th>
+              <th class="text-right">DT/ngày</th>
+              <th class="text-right">TB/HĐ</th>
+              <th class="text-right">Tỷ trọng</th>
+              <th>Mức độ</th>
+            </tr>
+          </thead>
+          <tbody id="hourlyTableBody">
+            <tr><td colspan="10">Chưa có dữ liệu.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-hint">Nhấn vào một dòng để xem các hóa đơn thuộc khung giờ đó.</div>
+    </section>
+
+    <section id="view-revenue" class="report-view chart-view">
+      <div class="chart-card">
+        <div class="chart-title">Doanh thu trung bình/ngày theo khung giờ</div>
+        <div class="chart-shell"><canvas id="revenueChart"></canvas></div>
+      </div>
+    </section>
+
+    <section id="view-workload" class="report-view chart-view">
+      <div class="chart-card">
+        <div class="chart-title">Khối lượng phục vụ trung bình/ngày</div>
+        <div class="chart-shell"><canvas id="workloadChart"></canvas></div>
+      </div>
+    </section>
+
+    <section id="view-heatmap" class="report-view heatmap-view">
+      <div class="chart-card">
+        <div class="chart-title">Heatmap Thứ × Khung giờ</div>
+        <div class="heatmap-legend">
+          <span>Thấp</span><i class="heat-0"></i><i class="heat-1"></i><i class="heat-2"></i><i class="heat-3"></i><i class="heat-4"></i><span>Cao</span>
+        </div>
+        <div id="heatmapContainer" class="heatmap-container"></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="detailOverlay" class="detail-overlay" hidden>
+    <div class="detail-modal">
+      <div class="detail-header">
+        <div>
+          <strong id="detailTitle">Chi tiết hóa đơn</strong>
+          <div id="detailSubtitle" class="detail-subtitle"></div>
+        </div>
+        <button id="btnCloseDetail" class="detail-close" aria-label="Đóng">×</button>
+      </div>
+      <div class="detail-body">
+        <div id="detailLoading" class="detail-loading" hidden>Đang tải hóa đơn...</div>
+        <div class="table-wrap detail-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ngày</th>
+                <th>Số HĐ</th>
+                <th>Giờ vào</th>
+                <th>Thanh toán</th>
+                <th>Khu vực/Bàn</th>
+                <th>Loại đơn</th>
+                <th>NV</th>
+                <th class="text-right">Số món</th>
+                <th class="text-right">Doanh thu</th>
+              </tr>
+            </thead>
+            <tbody id="detailTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script type="module" src="./scripts/cafe_baocao_theogio.js"></script>
+</body>
+</html>
