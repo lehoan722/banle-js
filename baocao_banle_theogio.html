@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Phân tích bán lẻ theo khung giờ</title>
+  <link rel="stylesheet" href="css/baocao_banle_theogio.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div>
+        <h1>📈 Phân tích bán lẻ theo khung giờ</h1>
+        <p>Phân tích doanh thu, hóa đơn và số sản phẩm theo giờ để tối ưu lịch mở cửa và nhân lực.</p>
+      </div>
+      <button id="btnBack" class="btn btn-light">← Quay lại</button>
+    </header>
+
+    <section class="filters card">
+      <label>Từ ngày<input id="fromDate" type="date"></label>
+      <label>Đến ngày<input id="toDate" type="date"></label>
+      <label>Cơ sở
+        <select id="branch">
+          <option value="all">Tất cả</option>
+          <option value="cs1">CS1</option>
+          <option value="cs2">CS2</option>
+        </select>
+      </label>
+      <label>Ngày trong tuần
+        <select id="dow">
+          <option value="all">Tất cả</option>
+          <option value="weekday">T2–T6</option>
+          <option value="weekend">T7–CN</option>
+          <option value="1">Thứ 2</option><option value="2">Thứ 3</option>
+          <option value="3">Thứ 4</option><option value="4">Thứ 5</option>
+          <option value="5">Thứ 6</option><option value="6">Thứ 7</option>
+          <option value="0">Chủ nhật</option>
+        </select>
+      </label>
+      <label>Khung thời gian
+        <select id="bucketMinutes"><option value="30">30 phút</option><option value="60" selected>1 giờ</option><option value="120">2 giờ</option></select>
+      </label>
+      <label>Nhân viên<input id="employee" type="text" placeholder="Mã hoặc tên NV"></label>
+      <label>Xếp mức độ theo
+        <select id="rankBy"><option value="invoice">Hóa đơn</option><option value="qty">Sản phẩm</option><option value="revenue">Doanh thu</option></select>
+      </label>
+      <button id="btnRun" class="btn btn-primary">🔎 Xem báo cáo</button>
+      <button id="btnCopy" class="btn btn-light">📋 Copy bảng</button>
+    </section>
+
+    <section class="kpis" id="kpis"></section>
+    <div id="status" class="status"></div>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="table">Bảng</button>
+      <button class="tab" data-tab="revenue">Doanh thu</button>
+      <button class="tab" data-tab="volume">Khối lượng</button>
+      <button class="tab" data-tab="heatmap">Heatmap</button>
+      <button class="tab" data-tab="branches">So sánh CS</button>
+      <button class="tab" data-tab="months">So sánh tháng</button>
+    </nav>
+
+    <section id="tab-table" class="panel card active">
+      <div class="table-wrap"><table id="reportTable"><thead></thead><tbody></tbody></table></div>
+    </section>
+
+    <section id="tab-revenue" class="panel card">
+      <h2>Doanh thu trung bình/ngày & lũy kế doanh thu</h2>
+      <div class="chartbox"><canvas id="revenueChart"></canvas></div>
+    </section>
+
+    <section id="tab-volume" class="panel card">
+      <h2>Khối lượng phục vụ trung bình/ngày</h2>
+      <div class="chartbox"><canvas id="volumeChart"></canvas></div>
+    </section>
+
+    <section id="tab-heatmap" class="panel card">
+      <div class="panel-head">
+        <h2>Heatmap Thứ × Khung giờ</h2>
+        <select id="heatMetric"><option value="revenue">Doanh thu/ngày</option><option value="invoice">Hóa đơn/ngày</option><option value="qty">Sản phẩm/ngày</option></select>
+      </div>
+      <div id="heatmap" class="heatmap-wrap"></div>
+    </section>
+
+    <section id="tab-branches" class="panel card">
+      <h2>So sánh CS1 ↔ CS2 theo giờ</h2>
+      <div class="chartbox"><canvas id="branchChart"></canvas></div>
+    </section>
+
+    <section id="tab-months" class="panel card">
+      <h2>So sánh doanh thu trung bình/ngày theo tháng và khung giờ</h2>
+      <div id="monthNote" class="note"></div>
+      <div class="chartbox tall"><canvas id="monthChart"></canvas></div>
+    </section>
+  </div>
+  <script type="module" src="scripts/baocao_banle_theogio.js"></script>
+</body>
+</html>
