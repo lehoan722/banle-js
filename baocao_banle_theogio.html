@@ -6,7 +6,9 @@
   <title>Phân tích bán lẻ theo khung giờ</title>
   <style>
 :root{font-family:Arial,Helvetica,sans-serif;color:#123;background:#eef4f9}*{box-sizing:border-box}body{margin:0}.page{max-width:1600px;margin:auto;padding:16px}.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.topbar-actions{display:flex;gap:7px;align-items:center}.topbar h1{margin:0;color:#0560b8;font-size:25px}.topbar p{margin:4px 0 12px;color:#64748b}.card{background:white;border:1px solid #d5e0ea;border-radius:10px;box-shadow:0 1px 2px #00000008}.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:end;padding:10px}.filters label{font-size:12px;font-weight:700;color:#425466;display:flex;flex-direction:column;gap:4px}.filters input,.filters select,.panel-head select{height:34px;border:1px solid #cbd5e1;border-radius:6px;padding:0 8px;background:#fff;min-width:110px}.filters #employee{min-width:155px}.btn{height:36px;border-radius:6px;padding:0 14px;border:1px solid #b7d2eb;font-weight:700;cursor:pointer}.btn-primary{background:#0774d5;color:#fff;border-color:#0774d5}.btn-light{background:#f7fbff;color:#075da8}.btn-help{background:#fff8df;color:#7a5700;border-color:#e9cf7c}.kpis{display:grid;grid-template-columns:repeat(8,minmax(125px,1fr));gap:8px;margin:10px 0}.kpi{background:#fff;border:1px solid #d5e0ea;border-radius:9px;padding:10px;min-height:75px}.kpi .label{font-size:11px;color:#64748b;font-weight:700}.kpi .value{font-size:19px;font-weight:800;color:#073763;margin-top:6px}.kpi .sub{font-size:10px;color:#718096;margin-top:3px}.status{font-size:12px;color:#4b6478;margin:8px 0}.tabs{display:flex;justify-content:flex-end;gap:6px;margin:8px 0}.tab{border:1px solid #cbd5e1;background:white;border-radius:7px;padding:7px 12px;font-weight:700;cursor:pointer}.tab.active{background:#0877d8;color:white;border-color:#0877d8}.panel{display:none;padding:10px}.panel.active{display:block}.panel h2{font-size:15px;color:#064f91;margin:0 0 10px}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.panel-head .right-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.table-wrap{max-height:580px;overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #dbe4ec;padding:7px 6px;text-align:right;white-space:nowrap}th{position:sticky;top:0;background:#f1f6fa;color:#153b5e;z-index:1}th:first-child,td:first-child{text-align:left}.badge{padding:3px 7px;border-radius:10px;font-size:10px;font-weight:700}.b-low{background:#dff5e6;color:#157437}.b-mid{background:#fff3c4;color:#8c6500}.b-high{background:#ffe4c7;color:#a95400}.b-peak{background:#ffd8d8;color:#b12222}.chartbox{height:430px}.chartbox.tall{height:430px}.heatmap-wrap{overflow:auto}.heatmap-grid{display:grid;gap:2px;min-width:1100px}.heat-head,.heat-row-title{font-size:11px;font-weight:700;text-align:center;padding:5px}.heat-row-title{text-align:left}.heat-cell{min-width:60px;padding:8px 4px;border-radius:4px;text-align:center;font-size:10px;color:#073763;border:1px solid #fff}.heat-total-title{font-weight:800;background:#eaf2f8;border-radius:4px}.heat-total{font-weight:800;background:#dceaf6!important;color:#05345d}.heat-average{font-weight:700;background:#eef5fb!important;color:#31566f}.note{font-size:12px;color:#64748b;margin-bottom:8px}.month-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(420px,.75fr);gap:10px}.month-table-wrap{max-height:430px;overflow:auto}.delta-up{color:#14833b;font-weight:700}.delta-down{color:#c0362c;font-weight:700}.delta-flat{color:#667085;font-weight:700}.modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9999;padding:18px}.modal.show{display:flex}.modal-box{width:min(880px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:12px;box-shadow:0 20px 70px #0005}.modal-head{position:sticky;top:0;background:#fff;border-bottom:1px solid #dde6ed;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2}.modal-head h2{margin:0;color:#075da8;font-size:20px}.modal-body{padding:16px 20px 22px;line-height:1.55;color:#34495e}.modal-body h3{color:#075da8;margin:16px 0 6px}.modal-body ul{margin:6px 0 10px 20px;padding:0}.modal-body .guide-grid{display:grid;grid-template-columns:180px 1fr;gap:7px 12px;border:1px solid #e1e9ef;border-radius:8px;padding:10px}.modal-body .guide-grid b{color:#123f67}.close{font-size:22px;border:0;background:transparent;cursor:pointer}.access-gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}.access-box{max-width:560px;width:100%;padding:28px;text-align:center}.access-box h2{color:#075da8}.access-box .deny{color:#b42318}.hidden{display:none!important}@media(max-width:1200px){.month-layout{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(4,1fr)}}@media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}.page{padding:8px}.topbar h1{font-size:19px}.chartbox{height:340px}.tabs{justify-content:flex-start;overflow:auto}.month-layout{grid-template-columns:1fr}.modal-body .guide-grid{grid-template-columns:1fr}.topbar{flex-direction:column}.topbar-actions{align-self:flex-end}}
-  </style>
+  
+.refresh-status{display:flex;align-items:center;gap:8px;font-size:11px;color:#49667c;margin-left:auto;white-space:nowrap}.refresh-dot{width:8px;height:8px;border-radius:50%;background:#98a2b3;display:inline-block}.refresh-dot.ok{background:#18a957}.refresh-dot.warn{background:#e5a100}.refresh-dot.run{background:#0d6efd;box-shadow:0 0 0 3px #0d6efd22}.refresh-dot.err{background:#d92d20}.btn-refresh{background:#e8f3ff;border-color:#9cc9f4;color:#075da8}.refresh-options{display:grid;grid-template-columns:1fr;gap:10px}.refresh-option{border:1px solid #dbe6ef;border-radius:10px;padding:12px;cursor:pointer;background:#fff;text-align:left}.refresh-option:hover{border-color:#83b9e8;background:#f7fbff}.refresh-option b{display:block;color:#075da8;margin-bottom:4px}.refresh-option small{color:#667085}.refresh-danger{border-color:#f1b4ad;background:#fff8f7}.refresh-danger b{color:#b42318}.refresh-progress{margin-top:12px;padding:10px;border-radius:8px;background:#f5f8fb;color:#34495e;font-size:12px;display:none}.refresh-progress.show{display:block}.refresh-meta{font-size:11px;color:#667085;margin-top:8px;line-height:1.45}@media(max-width:900px){.refresh-status{width:100%;margin-left:0}}
+</style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -43,11 +45,13 @@
       <label>Nhân viên<input id="employee" type="text" placeholder="Mã hoặc tên NV"></label>
       <label>Xếp mức độ theo<select id="rankBy"><option value="invoice">Hóa đơn</option><option value="qty">Sản phẩm</option><option value="revenue">Doanh thu</option></select></label>
       <button id="btnRun" class="btn btn-primary">🔎 Xem báo cáo</button>
+      <button id="btnRefresh" class="btn btn-refresh">🔄 Nạp dữ liệu</button>
       <button id="btnCopy" class="btn btn-light">📋 Copy bảng</button>
     </section>
 
     <section class="kpis" id="kpis"></section>
     <div id="status" class="status"></div>
+    <div id="refreshStatus" class="refresh-status"><span id="refreshDot" class="refresh-dot"></span><span id="refreshText">Chưa kiểm tra dữ liệu tổng hợp</span></div>
 
     <nav class="tabs">
       <button class="tab active" data-tab="table">Bảng</button><button class="tab" data-tab="revenue">Doanh thu</button><button class="tab" data-tab="volume">Khối lượng</button><button class="tab" data-tab="heatmap">Heatmap</button><button class="tab" data-tab="branches">So sánh CS</button><button class="tab" data-tab="months">So sánh tháng</button>
@@ -74,11 +78,28 @@
     </section>
   </div>
 
+
+  <div id="refreshModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="refreshTitle">
+    <div class="modal-box" style="width:min(680px,96vw)">
+      <div class="modal-head"><h2 id="refreshTitle">🔄 Nạp dữ liệu báo cáo</h2><button id="btnCloseRefresh" class="close" title="Đóng">×</button></div>
+      <div class="modal-body">
+        <p>Báo cáo hiện đọc từ hai bảng tổng hợp nhanh <b>hourly</b> và <b>daily</b>. Chỉ khi nạp dữ liệu, hệ thống mới đọc lại hóa đơn gốc để làm mới cache báo cáo.</p>
+        <div class="refresh-options">
+          <button id="refreshQuick" class="refresh-option"><b>⚡ Cập nhật nhanh</b><small>Tính lại hôm nay và 7 ngày gần nhất. Dùng thường xuyên để lấy số liệu mới nhất.</small></button>
+          <button id="refreshRange" class="refresh-option"><b>📅 Cập nhật khoảng đang xem</b><small>Tính lại đúng khoảng Từ ngày → Đến ngày trên màn hình. Dùng khi vừa sửa hóa đơn cũ.</small></button>
+          <button id="refreshFull" class="refresh-option refresh-danger"><b>🧱 Tái tạo toàn bộ lịch sử</b><small>Đọc lại toàn bộ bancs1/bancs2 từ ngày đầu tiên. Chỉ dùng khi cần kiểm tra hoặc xây lại toàn bộ dữ liệu.</small></button>
+        </div>
+        <div id="refreshProgress" class="refresh-progress"></div>
+        <div id="refreshMeta" class="refresh-meta"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
     <div class="modal-box">
       <div class="modal-head"><h2 id="helpTitle">Hướng dẫn đọc Báo cáo bán lẻ theo giờ</h2><button id="btnCloseHelp" class="close" title="Đóng">×</button></div>
       <div class="modal-body">
-        <p>Báo cáo chỉ lấy hai nghiệp vụ bán chính <b>bancs1</b> và <b>bancs2</b>. Giờ bán lấy theo thời điểm tạo hóa đơn <b>created_at</b>; doanh thu lấy theo <b>thanhtoan</b>.</p>
+        <p>Báo cáo chỉ lấy hai nghiệp vụ bán chính <b>bancs1</b> và <b>bancs2</b>. Giờ bán lấy theo thời điểm tạo hóa đơn <b>created_at</b>; doanh thu lấy theo <b>thanhtoan</b>.</p><p><b>Nguồn báo cáo:</b> trang không quét trực tiếp toàn bộ hóa đơn mỗi lần xem. Dữ liệu được đọc từ hai bảng tổng hợp nhanh theo giờ/ngày. Nút <b>🔄 Nạp dữ liệu</b> dùng để đồng bộ lại từ hóa đơn gốc khi cần.</p>
         <h3>1. Cách chọn dữ liệu</h3>
         <ul><li>Chọn <b>Từ ngày – Đến ngày</b>, cơ sở, ngày trong tuần và khung 30 phút/1 giờ/2 giờ.</li><li>Muốn đánh giá lịch nhân viên, nên xem tối thiểu 4–8 tuần; với mùa vụ nên chọn 6–12 tháng.</li><li>Ô Nhân viên dùng khi cần phân tích riêng hóa đơn theo mã/tên nhân viên.</li></ul>
         <h3>2. Ý nghĩa các chỉ số</h3>
