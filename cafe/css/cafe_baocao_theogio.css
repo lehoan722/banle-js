@@ -170,3 +170,11 @@
   .chart-card { padding: 9px; min-height: 360px; }
   .chart-shell { min-height: 300px; height: 55vh; }
 }
+
+
+/* Chỉ số quyết định giờ đóng cửa */
+.cumulative-cell b { color: #0f5ea8; }
+.remaining-cell { min-width: 145px; }
+.remaining-cell b { display: block; color: #9a3412; white-space: nowrap; }
+.remaining-cell small { display: block; margin-top: 2px; color: #64748b; font-size: 11px; }
+.hourly-table-wrap table { min-width: 1240px; }
