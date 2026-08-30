@@ -34,13 +34,36 @@ function denyAccess(msg){$('accessTitle').textContent='Không có quyền truy c
 async function load(){
   const from=$('fromDate').value,to=$('toDate').value,emp=$('employee').value.trim();
   if(!from||!to||from>to){alert('Khoảng ngày không hợp lệ');return}
-  $('status').textContent='Đang tải dữ liệu…';$('btnRun').disabled=true;
+  $('status').textContent='Đang tải toàn bộ dữ liệu…';$('btnRun').disabled=true;
   try{
-    const {data,error}=await sb.rpc('bao_cao_banle_theogio_daily',{p_tu_ngay:from,p_den_ngay:to,p_nhanvien:emp||null});
-    if(error)throw error;raw=data||[];renderAll();
-    $('status').textContent=`${from} → ${to} • nguồn RPC tổng hợp • chỉ bancs1/bancs2 • quyền Admin`;
-  }catch(e){console.error(e);$('status').textContent='Không tải được RPC báo cáo. Hãy chạy lại file SQL Step 1 trong Supabase SQL Editor. '+(e.message||e);raw=[];renderAll()}
-  finally{$('btnRun').disabled=false}
+    // Supabase/PostgREST thường giới hạn tối đa 1000 dòng mỗi response.
+    // RPC này trả theo ngày × cơ sở × bucket 30 phút, nên khoảng nhiều tháng dễ vượt 1000 dòng.
+    // Phải phân trang đến khi lấy hết, nếu không báo cáo chỉ chứa các tháng đầu tiên.
+    const PAGE_SIZE=1000;
+    let all=[],offset=0,page=0;
+    while(true){
+      page++;
+      $('status').textContent=`Đang tải dữ liệu… trang ${page} (${VND.format(all.length)} dòng đã nhận)`;
+      const {data,error}=await sb
+        .rpc('bao_cao_banle_theogio_daily',{p_tu_ngay:from,p_den_ngay:to,p_nhanvien:emp||null})
+        .range(offset,offset+PAGE_SIZE-1);
+      if(error)throw error;
+      const chunk=data||[];
+      all.push(...chunk);
+      if(chunk.length<PAGE_SIZE)break;
+      offset+=PAGE_SIZE;
+      // chặn vòng lặp bất thường nhưng vẫn cho phép báo cáo lịch sử rất dài
+      if(page>500)throw new Error('Số trang dữ liệu vượt giới hạn an toàn.');
+    }
+    raw=all;
+    renderAll();
+    const monthCount=new Set(raw.map(r=>String(r.sale_date||'').slice(0,7)).filter(Boolean)).size;
+    $('status').textContent=`${from} → ${to} • đã tải đủ ${VND.format(raw.length)} dòng RPC / ${monthCount} tháng • chỉ bancs1/bancs2 • quyền Admin`;
+  }catch(e){
+    console.error(e);
+    $('status').textContent='Không tải được đầy đủ RPC báo cáo. '+(e.message||e);
+    raw=[];renderAll();
+  }finally{$('btnRun').disabled=false}
 }
 function filtered(){const br=$('branch').value,dow=$('dow').value;return raw.filter(r=>(br==='all'||r.coso===br)&&matchesDow(r.sale_date,dow))}
 function aggregate(rows){const mins=Number($('bucketMinutes').value),map=new Map();for(const r of rows){const k=bucketKey(r.bucket_30,mins),x=map.get(k)||{key:k,invoice:0,qty:0,revenue:0,gross:0,discount:0};x.invoice+=Number(r.invoice_count||0);x.qty+=Number(r.item_qty||0);x.revenue+=Number(r.revenue||0);x.gross+=Number(r.gross_revenue||0);x.discount+=Number(r.discount_value||0);map.set(k,x)}return [...map.values()].sort((a,b)=>a.key-b.key)}
