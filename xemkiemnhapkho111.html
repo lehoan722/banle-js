@@ -144,6 +144,7 @@
     <label><input type="text" id="locNVKiem" placeholder="Nhân viên kiểm"></label>
     <label><input type="text" id="locSoHDCCN" placeholder="Số HĐ CCN"></label>
     <label><input type="text" id="locNVXuat" placeholder="Nhân viên xuất"></label>
+    <label><input type="text" id="locMaSP" placeholder="Mã sản phẩm"></label>
 
     <label>
       <select id="locTuCoSo">
@@ -295,6 +296,8 @@
     let totalPages = 1;
     let lastParamsBase = null;
     let lastTotalRows = 0;
+    let clientFilteredRows = null;
+    let currentMaSPFilter = "";
 
     function normalizePgTimestamp(input) {
       if (!input) return input;
@@ -353,6 +356,70 @@
       return `${datePart} ${timePart.replace(":", "h")}`;
     }
 
+    function chuanHoaMaSP(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function chiTietCoMaSP(row, maCanTim) {
+      const key = chuanHoaMaSP(maCanTim);
+      if (!key) return true;
+
+      const chiTietHoaDon = row?.chi_tiet_hoa_don || [];
+      const chiTietLech = row?.chi_tiet_lech || [];
+
+      return chiTietHoaDon.some(r =>
+        [r.masp_nhap, r.masp_xuat, r.masp_key].some(v => chuanHoaMaSP(v) === key)
+      ) || chiTietLech.some(r => chuanHoaMaSP(r.masp) === key);
+    }
+
+    async function locDanhSachTheoMaSP(paramsBase, totalRows, maSP) {
+      const tbody = document.getElementById("dsPhieu");
+      const batchSize = 1000;
+      const allRows = [];
+
+      for (let offset = 0; offset < totalRows; offset += batchSize) {
+        tbody.innerHTML = `<tr><td colspan="19">Đang tìm mã <b>${maSP}</b>... Đã đọc ${Math.min(offset, totalRows).toLocaleString()}/${totalRows.toLocaleString()} phiếu</td></tr>`;
+
+        const { data, error } = await window.supabase.rpc("xem_kiemnhapkho111_paged", {
+          ...paramsBase,
+          p_limit: batchSize,
+          p_offset: offset
+        });
+        if (error) throw error;
+        allRows.push(...(data || []));
+      }
+
+      const matched = [];
+      for (let i = 0; i < allRows.length; i++) {
+        const r = allRows[i];
+        if (i % 20 === 0) {
+          tbody.innerHTML = `<tr><td colspan="19">Đang kiểm tra mã <b>${maSP}</b>... ${i.toLocaleString()}/${allRows.length.toLocaleString()} phiếu</td></tr>`;
+        }
+
+        const { data, error } = await window.supabase.rpc("xem_kiemnhapkho111_chitiet", {
+          p_so_hd_kiemnhap: r.so_hd_kiemnhap
+        });
+        if (error) {
+          console.warn('Không đọc được chi tiết phiếu', r.so_hd_kiemnhap, error);
+          continue;
+        }
+        const detail = data?.[0] || {};
+        if (chiTietCoMaSP(detail, maSP)) matched.push(r);
+      }
+
+      return matched;
+    }
+
+    function capNhatTongHopTuRows(rows) {
+      const arr = rows || [];
+      document.getElementById("tongMatHang").textContent = arr.reduce((s, r) => s + Number(r.tong_so_mat_hang || 0), 0).toLocaleString();
+      document.getElementById("tongSLXuat").textContent = arr.reduce((s, r) => s + Number(r.tong_so_luong_xuat || 0), 0).toLocaleString();
+      document.getElementById("tongSLNhan").textContent = arr.reduce((s, r) => s + Number(r.tong_so_luong_nhan || 0), 0).toLocaleString();
+      document.getElementById("tongMaLech").textContent = arr.reduce((s, r) => s + Number(r.so_ma_lech || 0), 0).toLocaleString();
+      document.getElementById("tongLechThieu").textContent = arr.reduce((s, r) => s + Number(r.tong_sl_lech_thieu || 0), 0).toLocaleString();
+      document.getElementById("tongLechThua").textContent = arr.reduce((s, r) => s + Number(r.tong_sl_lech_thua || 0), 0).toLocaleString();
+    }
+
     async function taiDanhSachPhieu() {
       const paramsBase = {
         p_tu_ngay: document.getElementById("tuNgay").value || null,
@@ -379,13 +446,26 @@
       lastTotalRows = Number(row.total_rows || 0);
       lastParamsBase = paramsBase;
       currentPage = 1;
+      currentMaSPFilter = document.getElementById("locMaSP").value.trim();
+      clientFilteredRows = null;
 
-      document.getElementById("tongMatHang").textContent = Number(row.total_mat_hang || 0).toLocaleString();
-      document.getElementById("tongSLXuat").textContent = Number(row.total_sl_xuat || 0).toLocaleString();
-      document.getElementById("tongSLNhan").textContent = Number(row.total_sl_nhan || 0).toLocaleString();
-      document.getElementById("tongMaLech").textContent = Number(row.total_ma_lech || 0).toLocaleString();
-      document.getElementById("tongLechThieu").textContent = Number(row.total_sl_lech_thieu || 0).toLocaleString();
-      document.getElementById("tongLechThua").textContent = Number(row.total_sl_lech_thua || 0).toLocaleString();
+      if (currentMaSPFilter) {
+        try {
+          clientFilteredRows = await locDanhSachTheoMaSP(paramsBase, lastTotalRows, currentMaSPFilter);
+          lastTotalRows = clientFilteredRows.length;
+          capNhatTongHopTuRows(clientFilteredRows);
+        } catch (e) {
+          tbody.innerHTML = `<tr><td colspan="19">❌ Lỗi lọc mã sản phẩm: ${e.message || e}</td></tr>`;
+          return;
+        }
+      } else {
+        document.getElementById("tongMatHang").textContent = Number(row.total_mat_hang || 0).toLocaleString();
+        document.getElementById("tongSLXuat").textContent = Number(row.total_sl_xuat || 0).toLocaleString();
+        document.getElementById("tongSLNhan").textContent = Number(row.total_sl_nhan || 0).toLocaleString();
+        document.getElementById("tongMaLech").textContent = Number(row.total_ma_lech || 0).toLocaleString();
+        document.getElementById("tongLechThieu").textContent = Number(row.total_sl_lech_thieu || 0).toLocaleString();
+        document.getElementById("tongLechThua").textContent = Number(row.total_sl_lech_thua || 0).toLocaleString();
+      }
 
       const pageSize = Number(document.getElementById("pageSize").value || 1000);
       totalPages = Math.max(1, Math.ceil(lastTotalRows / pageSize));
@@ -402,18 +482,22 @@
       const pageSize = Number(document.getElementById("pageSize").value || 1000);
       const offset = (currentPage - 1) * pageSize;
 
-      const { data, error } = await window.supabase.rpc("xem_kiemnhapkho111_paged", {
-        ...lastParamsBase,
-        p_limit: pageSize,
-        p_offset: offset
-      });
+      let rows = [];
+      if (clientFilteredRows !== null) {
+        rows = clientFilteredRows.slice(offset, offset + pageSize);
+      } else {
+        const { data, error } = await window.supabase.rpc("xem_kiemnhapkho111_paged", {
+          ...lastParamsBase,
+          p_limit: pageSize,
+          p_offset: offset
+        });
 
-      if (error) {
-        tbody.innerHTML = `<tr><td colspan="19">❌ Lỗi tải dữ liệu: ${error.message}</td></tr>`;
-        return;
+        if (error) {
+          tbody.innerHTML = `<tr><td colspan="19">❌ Lỗi tải dữ liệu: ${error.message}</td></tr>`;
+          return;
+        }
+        rows = data || [];
       }
-
-      const rows = data || [];
       tbody.innerHTML = "";
 
       if (!rows.length) {
@@ -471,8 +555,9 @@
       });
 
       document.getElementById("pageInfo").textContent = `Trang ${currentPage}/${totalPages}`;
-      document.getElementById("dangHienThiInfo").textContent =
-        `Đang hiển thị ${rows.length.toLocaleString()} phiếu của trang này`;
+      document.getElementById("dangHienThiInfo").textContent = currentMaSPFilter
+        ? `Tìm thấy ${lastTotalRows.toLocaleString()} phiếu có mã ${currentMaSPFilter} · đang hiển thị ${rows.length.toLocaleString()} phiếu`
+        : `Đang hiển thị ${rows.length.toLocaleString()} phiếu của trang này`;
     }
 
     async function xemChiTietPhieu(soPhieu) {
@@ -814,6 +899,10 @@
         document.getElementById('chonTatCa').onclick = function () {
           document.querySelectorAll('.chonPhieu').forEach(cb => cb.checked = this.checked);
         };
+
+        document.getElementById('locMaSP').addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') taiDanhSachPhieu();
+        });
 
         await taiDanhSachPhieu();
         return true;
