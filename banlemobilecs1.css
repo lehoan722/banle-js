@@ -289,11 +289,12 @@
     grid-template-columns: repeat(4, 1fr);
   }
 
-  /* Ẩn nút phụ  #btn-logout */
+  /* Ẩn nút phụ */
   #tieptuc,
   #xemin,
   #btnCopy,
-  #xuatexcel {
+  #xuatexcel,
+  #btnDanExcel {
     display: none !important;
   }
 
