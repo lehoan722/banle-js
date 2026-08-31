@@ -12,12 +12,150 @@
   <link rel="stylesheet" href="./css/cafe_mobile.css" />
   <link rel="stylesheet" href="./css/cafe.css" />
   <link rel="stylesheet" href="./css/cafe_mobile_pos.css?v=8" />
+
+  <!-- V1.3: menu nhanh mobile - chỉ override nhỏ, không thay CSS hiện có -->
+  <style>
+    .cafe-mobile-main-menu-btn {
+      display: none;
+      border: 1px solid #d6deea;
+      background: #fff;
+      color: #172033;
+      border-radius: 9px;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .cafe-mobile-main-menu-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .38);
+      z-index: 9998;
+    }
+
+    .cafe-mobile-main-menu-backdrop.open {
+      display: block;
+    }
+
+    .cafe-mobile-main-menu-panel {
+      position: absolute;
+      top: 54px;
+      left: 8px;
+      width: min(88vw, 330px);
+      max-height: calc(100vh - 70px);
+      overflow-y: auto;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, .28);
+      border: 1px solid #e2e8f0;
+      padding: 8px;
+    }
+
+    .cafe-mobile-main-menu-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px 10px;
+      font-weight: 800;
+      color: #0f172a;
+      border-bottom: 1px solid #edf2f7;
+      margin-bottom: 4px;
+    }
+
+    .cafe-mobile-main-menu-title button {
+      border: 0;
+      background: #eef2f7;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .cafe-mobile-main-menu-panel a,
+    .cafe-mobile-main-menu-panel button.menu-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: #1e293b;
+      text-decoration: none;
+      text-align: left;
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .cafe-mobile-main-menu-panel a:hover,
+    .cafe-mobile-main-menu-panel button.menu-item:hover {
+      background: #f1f5f9;
+    }
+
+    .cafe-mobile-main-menu-panel .menu-primary {
+      color: #0b6ffb;
+      background: #eff6ff;
+    }
+
+    .cafe-mobile-main-menu-panel .menu-danger {
+      color: #b91c1c;
+    }
+
+    @media (max-width: 800px) {
+      /* Nhường chỗ cho nút menu ☰ bên trái */
+      .cafe-mobile-main-menu-btn {
+        display: inline-flex !important;
+        flex: 0 0 34px;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        margin-right: 1px;
+      }
+
+      .cafe-header-left {
+        gap: 4px !important;
+        min-width: 0;
+      }
+
+      /* Chỉ thu nhỏ 3 nút điều hướng trên mobile, không ảnh hưởng desktop */
+      #btnViewTables,
+      #btnViewProducts,
+      #btnViewOrder {
+        min-width: 0 !important;
+        padding: 7px 7px !important;
+        font-size: 12px !important;
+        line-height: 1.15 !important;
+        white-space: nowrap;
+      }
+
+      #btnViewTables,
+      #btnViewProducts {
+        flex: 1 1 auto;
+      }
+
+      #btnViewOrder {
+        flex: 0 1 auto;
+      }
+    }
+  </style>
 </head>
 
 <body>
   <div id="cafeApp" class="cafe-app">
     <header class="cafe-header">
       <div class="cafe-header-left">
+        <!-- V1.3: menu nhanh chỉ hiện trên mobile -->
+        <button id="btnMobileMainMenu" class="cafe-mobile-main-menu-btn cafe-mobile-only" type="button"
+          aria-label="Mở menu" aria-expanded="false">☰</button>
+
         <button id="btnViewTables" class="cafe-header-tab active">Phòng bàn</button>
         <button id="btnViewProducts" class="cafe-header-tab">Thực đơn</button>
         <button id="btnViewOrder" class="cafe-header-tab cafe-mobile-only">Hóa đơn</button>
@@ -42,6 +180,7 @@
           <div id="headerMenuPopup" class="cafe-header-dropdown">
             <a href="/cafe/cafe_xemhoadon_nv.html" target="_blank">📊 Báo cáo hóa đơn</a>
             <a href="/cafe/cafe_baocao_theogio.html" target="_blank">📈 Bán hàng theo giờ</a>
+            <a href="/cafe/cafe_nguyenlieu.html" target="_blank">📦 Nhập nguyên liệu</a>
             <a href="#" data-soon="1">🍳 Màn hình bếp</a>
             <a href="#" data-soon="1">🛎 Quản lý bàn</a>
             <a href="#" data-soon="1">📦 Danh mục hàng hóa</a>
@@ -194,6 +333,27 @@
     </main>
   </div>
 
+  <!-- V1.3: menu nhanh mobile -->
+  <div id="mobileMainMenuBackdrop" class="cafe-mobile-main-menu-backdrop" aria-hidden="true">
+    <div class="cafe-mobile-main-menu-panel" role="dialog" aria-modal="true" aria-label="Menu Cafe">
+      <div class="cafe-mobile-main-menu-title">
+        <span>☰ MENU CAFE</span>
+        <button id="btnCloseMobileMainMenu" type="button" aria-label="Đóng menu">×</button>
+      </div>
+
+      <a href="/cafe/cafe_xemhoadon_nv.html" target="_blank">📊 Báo cáo hóa đơn</a>
+      <a href="/cafe/cafe_baocao_theogio.html" target="_blank">📈 Bán hàng theo giờ</a>
+      <a href="/cafe/cafe_nguyenlieu.html" class="menu-primary">📦 Nhập nguyên liệu</a>
+      <button class="menu-item" type="button" data-mobile-soon="1">🍳 Màn hình bếp</button>
+      <button class="menu-item" type="button" data-mobile-soon="1">🛎 Quản lý bàn</button>
+      <button class="menu-item" type="button" data-mobile-soon="1">📦 Danh mục hàng hóa</button>
+      <button class="menu-item" type="button" data-mobile-soon="1">👨‍🍳 Danh mục món</button>
+      <button class="menu-item" type="button" data-mobile-soon="1">👤 Người dùng</button>
+      <button class="menu-item" type="button" data-mobile-soon="1">⚙ Thiết lập</button>
+      <button id="btnMobileLogout" class="menu-item menu-danger" type="button">🚪 Đăng xuất</button>
+    </div>
+  </div>
+
   <div id="mobileOrderBar" class="mobile-order-bar">
     <button id="btnMobileChooseAgain">Chọn lại</button>
     <button id="btnMobileViewOrder">
@@ -275,6 +435,72 @@
     });
 
     window.dangXuatCafe = dangXuatCafe;
+  </script>
+
+  <!-- V1.3: JS độc lập cho menu nhanh mobile -->
+  <script>
+    (() => {
+      const btnOpen = document.getElementById('btnMobileMainMenu');
+      const backdrop = document.getElementById('mobileMainMenuBackdrop');
+      const btnClose = document.getElementById('btnCloseMobileMainMenu');
+      const btnLogout = document.getElementById('btnMobileLogout');
+
+      if (!btnOpen || !backdrop) return;
+
+      const openMenu = () => {
+        backdrop.classList.add('open');
+        backdrop.setAttribute('aria-hidden', 'false');
+        btnOpen.setAttribute('aria-expanded', 'true');
+        document.body.style.overflow = 'hidden';
+      };
+
+      const closeMenu = () => {
+        backdrop.classList.remove('open');
+        backdrop.setAttribute('aria-hidden', 'true');
+        btnOpen.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      };
+
+      btnOpen.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openMenu();
+      });
+
+      btnClose?.addEventListener('click', closeMenu);
+
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) closeMenu();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && backdrop.classList.contains('open')) closeMenu();
+      });
+
+      backdrop.querySelectorAll('a').forEach(a => {
+        a.addEventListener('click', () => closeMenu());
+      });
+
+      backdrop.querySelectorAll('[data-mobile-soon="1"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          alert('Tính năng này sẽ được bổ sung sau.');
+        });
+      });
+
+      btnLogout?.addEventListener('click', async () => {
+        closeMenu();
+        try {
+          if (typeof window.dangXuatCafe === 'function') {
+            await window.dangXuatCafe();
+          } else {
+            const desktopLogout = document.querySelector('#headerMenuPopup [data-logout="1"]');
+            if (desktopLogout) desktopLogout.click();
+          }
+        } catch (err) {
+          console.error('Lỗi đăng xuất:', err);
+        }
+      });
+    })();
   </script>
 
 </body>
