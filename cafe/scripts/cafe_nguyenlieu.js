@@ -22,6 +22,7 @@ function codeFromName(s=''){return norm(s)}
 function matchesNL(n,q){const k=norm(q); if(!k)return true; return norm(n.ma_nguyenlieu).includes(k)||norm(n.ten_nguyenlieu).includes(k)}
 function rankNL(n,q){const k=norm(q),m=norm(n.ma_nguyenlieu),t=norm(n.ten_nguyenlieu);if(!k)return 9;if(m===k)return 0;if(m.startsWith(k))return 1;if(m.includes(k))return 2;if(t.startsWith(k))return 3;if(t.includes(k))return 4;return 9}
 function filterNL(q=''){return nguyenlieus.filter(n=>matchesNL(n,q)).sort((a,b)=>rankNL(a,q)-rankNL(b,q)||a.ten_nguyenlieu.localeCompare(b.ten_nguyenlieu,'vi'))}
+function selectAllOnEdit(input){if(!input)return;const all=()=>{try{input.select()}catch{}};input.addEventListener('focus',()=>setTimeout(all,0));input.addEventListener('click',all)}
 
 async function bootstrap(){
  try{
@@ -62,6 +63,7 @@ function addPurchaseRow(){
  function onDvt(src){if(src===dvt)sync(dvt,mdvt);else sync(mdvt,dvt)}
  function onGia(src){if(src===gia)sync(gia,mgia);else sync(mgia,gia);updateWarn(div);updateRowMoney(div)}
  sl.oninput=()=>onQty(sl);msl.oninput=()=>onQty(msl);dvt.oninput=()=>onDvt(dvt);mdvt.oninput=()=>onDvt(mdvt);gia.oninput=()=>onGia(gia);mgia.oninput=()=>onGia(mgia);
+ [sl,dvt,gia,msl,mdvt,mgia].forEach(selectAllOnEdit);
 
  search.oninput=()=>{div.dataset.nlid='';renderSuggestions(div,search.value)};
  search.onfocus=()=>{if(search.value && !div.dataset.nlid)renderSuggestions(div,search.value)};
@@ -118,6 +120,10 @@ $('#btnSaveNL').onclick=async()=>{if(!isAdmin)return toast('Chỉ admin được
 async function loadHistory(){
  if(!$('#tuNgay').value)$('#tuNgay').value=homNay;if(!$('#denNgay').value)$('#denNgay').value=homNay;
  try{const rows=await layLichSu({tuNgay:$('#tuNgay').value,denNgay:$('#denNgay').value});
+  const phieuHopLe=rows.filter(p=>p.trang_thai!=='da_huy');
+  const tongGiaTri=phieuHopLe.reduce((sum,p)=>sum+Number(p.tong_tien||0),0);
+  $('#tongGiaTriMua').textContent=`${fmt(tongGiaTri)} đ`;
+  $('#tongGiaTriMuaNote').textContent=`${phieuHopLe.length} phiếu hợp lệ${rows.length-phieuHopLe.length?` · ${rows.length-phieuHopLe.length} phiếu đã hủy không tính`:''}`;
   const empty=`<tr><td colspan="7" class="muted" style="text-align:center;padding:24px">Không có phiếu trong khoảng ngày đã chọn.</td></tr>`;
   $('#historyBody').innerHTML=rows.length?rows.map(p=>`<tr><td><b>${esc(p.so_phieu)}</b></td><td>${esc(p.ngay_mua)}</td><td>${esc(p.nguoi_tao||'')}</td><td>${esc(p.nha_cung_cap||'')}</td><td class="num">${fmt(p.tong_tien)}</td><td><span class="pill ${p.trang_thai==='da_huy'?'cancel':''}">${p.trang_thai==='da_huy'?'Đã hủy':'Đã lưu'}</span></td><td><button class="btn btn-light view-p" data-id="${p.id}">Xem</button>${isAdmin&&p.trang_thai!=='da_huy'?` <button class="btn btn-danger cancel-p" data-id="${p.id}">Hủy</button>`:''}</td></tr>`).join(''):empty;
   $('#historyCards').innerHTML=rows.length?rows.map(p=>`<div class="history-card"><div class="history-top"><div><div class="history-no">${esc(p.so_phieu)}</div><div class="muted">${esc(p.ngay_mua)}</div></div><div><div class="history-money">${fmt(p.tong_tien)} đ</div><span class="pill ${p.trang_thai==='da_huy'?'cancel':''}">${p.trang_thai==='da_huy'?'Đã hủy':'Đã lưu'}</span></div></div><div class="history-grid"><div><b>Người nhập:</b> ${esc(p.nguoi_tao||'')}</div><div><b>Nơi mua:</b> ${esc(p.nha_cung_cap||'-')}</div></div><div class="history-actions"><button class="btn btn-light view-p" data-id="${p.id}">Xem chi tiết</button>${isAdmin&&p.trang_thai!=='da_huy'?`<button class="btn btn-danger cancel-p" data-id="${p.id}">Hủy</button>`:''}</div></div>`).join(''):'<div class="card muted" style="text-align:center">Không có phiếu trong khoảng ngày đã chọn.</div>';
