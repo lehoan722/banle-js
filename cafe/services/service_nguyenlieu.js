@@ -5,11 +5,10 @@ export async function layNhomNguyenLieu(){
   const {data,error}=await db().from('cafe_nhom_nguyenlieu').select('*').eq('dang_su_dung',true).order('thu_tu');
   if(error) throw error; return data||[];
 }
-export async function layNguyenLieu({tuKhoa='',nhomId=null,caAn=false}={}){
+export async function layNguyenLieu({nhomId=null,caAn=false}={}){
   let q=db().from('cafe_nguyenlieu').select('*, nhom:cafe_nhom_nguyenlieu(id,ten_nhom)').order('ten_nguyenlieu');
   if(!caAn) q=q.eq('dang_su_dung',true);
   if(nhomId) q=q.eq('nhom_id',nhomId);
-  if(tuKhoa.trim()) q=q.ilike('ten_nguyenlieu',`%${tuKhoa.trim()}%`);
   const {data,error}=await q; if(error) throw error; return data||[];
 }
 export async function themNguyenLieu(payload){
@@ -25,9 +24,9 @@ export async function taoPhieuNhap(payload){
   if(error) throw error; return data;
 }
 export async function layLichSu({tuNgay,denNgay,gioiHan=100}={}){
-  let q=db().from('cafe_phieunhap_nguyenlieu')
-    .select('*').order('ngay_mua',{ascending:false}).order('id',{ascending:false}).limit(gioiHan);
-  if(tuNgay) q=q.gte('ngay_mua',tuNgay); if(denNgay) q=q.lte('ngay_mua',denNgay);
+  let q=db().from('cafe_phieunhap_nguyenlieu').select('*').order('ngay_mua',{ascending:false}).order('id',{ascending:false}).limit(gioiHan);
+  if(tuNgay) q=q.gte('ngay_mua',tuNgay);
+  if(denNgay) q=q.lte('ngay_mua',denNgay);
   const {data,error}=await q; if(error) throw error; return data||[];
 }
 export async function layChiTietPhieu(phieuId){
