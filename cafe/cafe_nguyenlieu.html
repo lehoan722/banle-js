@@ -1,0 +1,37 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nguyên liệu Cafe</title>
+<style>
+:root{--c:#1677ff;--bd:#e5e7eb;--mut:#64748b;--bg:#f6f8fb;--danger:#dc2626}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#111827}
+.nl-top{height:58px;background:#0f172a;color:white;display:flex;align-items:center;justify-content:space-between;padding:0 18px;position:sticky;top:0;z-index:5}
+.nl-title{font-weight:800;font-size:20px}.nl-user{font-size:13px;color:#cbd5e1}
+.nl-tabs{display:flex;gap:8px;padding:14px 16px 0}.nl-tab{border:1px solid var(--bd);background:white;padding:10px 15px;border-radius:9px;font-weight:700;cursor:pointer}.nl-tab.active{background:var(--c);color:white;border-color:var(--c)}
+.nl-wrap{padding:14px 16px 28px}.nl-panel{display:none}.nl-panel.active{display:block}.card{background:white;border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px #0000000a}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:flex;flex-direction:column;gap:5px;min-width:150px}.field.grow{flex:1}.field label{font-size:12px;font-weight:700;color:#475569}.field input,.field select,.field textarea{border:1px solid #cbd5e1;border-radius:8px;padding:9px 10px;font-size:14px;background:white}
+.btn{border:0;border-radius:8px;padding:10px 13px;font-weight:700;cursor:pointer}.btn-primary{background:var(--c);color:white}.btn-light{background:#eef2f7}.btn-danger{background:#fee2e2;color:#991b1b}.btn:disabled{opacity:.45;cursor:not-allowed}
+table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--bd);padding:9px 8px;text-align:left;font-size:13px;vertical-align:middle}th{background:#f8fafc;position:sticky;top:58px;z-index:2}.num{text-align:right;font-variant-numeric:tabular-nums}.muted{color:var(--mut);font-size:12px}.pill{padding:3px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#e2e8f0}.pill.cancel{background:#fee2e2;color:#991b1b}
+.purchase-row{display:grid;grid-template-columns:minmax(240px,2fr) 100px 100px 140px 140px 44px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)}.purchase-row input,.purchase-row select{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:7px}.purchase-head{font-size:12px;font-weight:700;color:#475569}.totalbox{text-align:right;font-size:18px;font-weight:800;padding:12px 0}.warn{color:#b45309;font-size:12px}.ok{color:#15803d}.hidden{display:none!important}
+.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:30}.modal-box{background:white;border-radius:12px;max-width:720px;width:94%;max-height:88vh;overflow:auto;padding:18px}.modal h3{margin-top:0}
+@media(max-width:800px){.purchase-row{grid-template-columns:1fr 80px 90px 115px 44px}.purchase-row .qc{display:none}th{top:58px}.hide-mobile{display:none}}
+
+</style>
+</head><body>
+<header class="nl-top"><div class="nl-title">📦 NGUYÊN LIỆU CAFE</div><div><span id="who" class="nl-user"></span> <button class="btn btn-light" onclick="location.href='./cafe_banhang.html'">← Bán hàng</button></div></header>
+<nav class="nl-tabs"><button class="nl-tab active" data-tab="mua">Nhập mua nguyên liệu</button><button class="nl-tab" data-tab="lichsu">Lịch sử mua</button><button class="nl-tab" data-tab="danhmuc">Danh mục nguyên liệu</button></nav>
+<main class="nl-wrap">
+<section id="p-mua" class="nl-panel active">
+ <div class="card"><div class="row">
+  <div class="field"><label>Ngày mua</label><input type="date" id="ngayMua"></div>
+  <div class="field grow"><label>Nhà cung cấp / nơi mua</label><input id="nhaCungCap" placeholder="VD: Chợ, Winmart, nhà cung cấp cà phê..."></div>
+  <div class="field"><label>Người mua</label><input id="nguoiMua"></div>
+  <div class="field grow"><label>Ghi chú phiếu</label><input id="ghiChuPhieu"></div>
+ </div></div>
+ <div class="card"><div class="purchase-row purchase-head"><div>Nguyên liệu</div><div>SL</div><div>ĐVT</div><div class="qc">Quy cách</div><div>Đơn giá thực tế</div><div></div></div><div id="purchaseRows"></div>
+ <div class="row" style="margin-top:10px"><button id="btnAddRow" class="btn btn-light">＋ Thêm dòng</button><div style="flex:1"></div><div class="totalbox">Tổng: <span id="tongTien">0</span> đ</div><button id="btnSave" class="btn btn-primary">LƯU PHIẾU</button></div>
+ <div class="muted">Giá danh mục chỉ dùng để gợi ý. Nhân viên có thể nhập giá thực tế của từng lần mua trước khi lưu.</div></div>
+</section>
+<section id="p-lichsu" class="nl-panel"><div class="card"><div class="row"><div class="field"><label>Từ ngày</label><input type="date" id="tuNgay"></div><div class="field"><label>Đến ngày</label><input type="date" id="denNgay"></div><button id="btnLoadHistory" class="btn btn-primary">Nạp lịch sử</button></div></div><div class="card" style="overflow:auto"><table><thead><tr><th>Số phiếu</th><th>Ngày</th><th>Người nhập</th><th>Nơi mua</th><th class="num">Tổng tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody id="historyBody"></tbody></table></div></section>
+<section id="p-danhmuc" class="nl-panel"><div class="card"><div class="row"><div class="field grow"><label>Tìm nguyên liệu</label><input id="searchNL" placeholder="Gõ tên nguyên liệu..."></div><div class="field"><label>Nhóm</label><select id="filterNhom"><option value="">Tất cả</option></select></div><button id="btnNewNL" class="btn btn-primary admin-only">＋ Thêm nguyên liệu</button></div></div><div class="card" style="overflow:auto"><table><thead><tr><th>Mã</th><th>Nhóm</th><th>Tên nguyên liệu</th><th>ĐVT</th><th>Quy cách</th><th class="num">Giá tham khảo</th><th class="admin-only"></th></tr></thead><tbody id="nlBody"></tbody></table></div></section>
+</main>
+<div id="modal" class="modal hidden"><div class="modal-box"><h3 id="modalTitle">Nguyên liệu</h3><input type="hidden" id="editId"><div class="row"><div class="field"><label>Mã</label><input id="fMa"></div><div class="field grow"><label>Tên nguyên liệu</label><input id="fTen"></div><div class="field"><label>Nhóm</label><select id="fNhom"></select></div><div class="field"><label>ĐVT mua mặc định</label><input id="fDvt"></div><div class="field grow"><label>Quy cách</label><input id="fQuyCach"></div><div class="field"><label>Giá tham khảo</label><input type="number" id="fGia" min="0"></div><div class="field grow"><label>Ghi chú</label><input id="fGhiChu"></div></div><div class="row" style="justify-content:flex-end;margin-top:15px"><button id="btnCloseModal" class="btn btn-light">Đóng</button><button id="btnSaveNL" class="btn btn-primary">Lưu</button></div></div></div>
+<script type="module" src="./scripts/cafe_nguyenlieu.js"></script></body></html>
