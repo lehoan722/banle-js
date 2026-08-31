@@ -292,9 +292,7 @@
   /* Ẩn nút phụ */
   #tieptuc,
   #xemin,
-  #btnCopy,
-  #xuatexcel,
-  #btnDanExcel {
+  #xuatexcel {
     display: none !important;
   }
 
@@ -327,12 +325,17 @@
     order: 2;
     width: 100% !important;
     display: grid !important;
-    grid-template-columns: 34% 34% 28%;
+
+    /* makh | tenkh | diem | zalo */
+    grid-template-columns: 30% 23% 12% 35%;
+
     gap: 4px;
     padding: 4px 6px;
+
     background: #f7f7f7;
     border-top: 1px solid #ccc;
     border-bottom: 1px solid #ccc;
+
     box-sizing: border-box;
   }
 
@@ -383,17 +386,79 @@
   }
 
   /* Chỉ giữ: mã khách, tên khách, điểm khách */
+  /* Ẩn các ô không cần trên mobile */
+
   .khach-footer-info label:has(#hang_khach),
   .khach-footer-info label:has(#diem_tru),
   .khach-footer-info label:has(#tien_doi_diem) {
     display: none !important;
   }
 
-  /* Nếu iPhone Safari không hỗ trợ :has thì ẩn theo thứ tự label */
-  .khach-footer-info label:nth-of-type(3),
-  .khach-footer-info label:nth-of-type(4),
-  .khach-footer-info label:nth-of-type(5) {
+  /* Safari fallback */
+
+  .khach-footer-info label.hide-mobile {
     display: none !important;
+  }
+
+  /* ===== Ô trạng thái Zalo ===== */
+
+  .zalo-status-wrap {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 2px;
+
+    width: 100%;
+    min-width: 0;
+  }
+
+  .zalo-invited-label,
+  .zalo-joined-label {
+
+    flex: 1;
+
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+
+    gap: 1px;
+
+    font-size: 10px !important;
+
+    background: #fff;
+
+    border: 1px solid #ccc;
+    border-radius: 4px;
+
+    height: 26px;
+
+    padding: 0 2px;
+
+    box-sizing: border-box;
+
+    white-space: nowrap;
+  }
+
+  #zalo_da_moi,
+  #zalo_da_vao_nhom {
+
+    width: 14px !important;
+    height: 14px !important;
+
+    margin: 0;
+  }
+
+  #zalo_da_vao_nhom {
+    width: 18px !important;
+    height: 18px !important;
+    margin: 0;
+  }
+
+  #zalo_joined_text {
+    font-size: 11px !important;
+    white-space: nowrap;
   }
 
   /* Popup gợi ý khách mở phía dưới ô mã khách, không làm vỡ ngang */
@@ -409,6 +474,75 @@
   /* Ẩn nút CCN trên mobile */
   #btnCCN {
     display: none !important;
+  }
+
+  /* ===== FIX MOBILE SAU KHI TÁCH CỘT TRÁI / PHẢI TRÊN PC ===== */
+
+  .banle-layout-moi {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .banle-left {
+    display: contents !important;
+  }
+
+  .banle-left>.top-inputs {
+    order: 1;
+  }
+
+  .khach-footer-info {
+    order: 2;
+  }
+
+  .main {
+    order: 3;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .banle-right {
+    order: 4;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    border-left: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .banle-right .sidebar {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border-left: none !important;
+  }
+
+  .footer-buttons {
+    order: 5;
+  }
+
+  .banle-right .tab-content {
+    padding: 10px !important;
+  }
+
+  .banle-right .btn-big {
+    width: 100% !important;
+    margin: 6px 0 !important;
+    box-sizing: border-box;
+  }
+
+  .banle-right .product-image {
+    width: 50px !important;
+    height: 50px !important;
+    margin: 6px auto !important;
+    object-fit: contain !important;
   }
 
 }
@@ -427,5 +561,53 @@
   #bangketqua[data-mode="ngang"] td {
     display: table-cell !important;
     visibility: visible !important;
+  }
+}
+
+@media (max-width: 480px) {
+  #baymau-overlay {
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    pointer-events: auto !important;
+    z-index: 9996 !important;
+  }
+
+  #baymau-popup {
+    margin-top: 140px !important;
+    margin-left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    height: 36vh !important;
+    max-height: 36vh !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    box-sizing: border-box !important;
+    pointer-events: auto !important;
+    border-radius: 0 !important;
+  }
+
+  #baymau-popup table {
+    min-width: 620px !important;
+  }
+
+  #dhck-panel {
+    left: 0 !important;
+    right: 0 !important;
+    top: 50vh !important;
+    bottom: 54px !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: auto !important;
+    max-height: calc(38vh - 54px) !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+    z-index: 9997 !important;
+  }
+
+  #dhck-panel table {
+    min-width: 620px !important;
   }
 }
