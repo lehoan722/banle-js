@@ -2,8 +2,8 @@ import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.0";
-console.log("[TimKiemNhanh] BUILD 1.2.0");
+window.TIM_KIEM_NHANH_BUILD = "1.2.1";
+console.log("[TimKiemNhanh] BUILD 1.2.1");
 
 const supabase = getSupabaseClient();
 
@@ -32,7 +32,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.0 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.1 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -331,11 +331,37 @@ function scrollToProduct(masp){
   card.classList.add("product-focus");setTimeout(()=>card.classList.remove("product-focus"),1600);
 }
 
+function resetToInitialState(){
+  closeMissingSizePrompt();
+  try{state.scanner?.stopScan?.()}catch{}
+  $("scanOverlay")?.classList.remove("show");
+  $("suggestBox").style.display="none";
+  $("codeInput").value="";
+  state.mainGroup="";state.group="";state.form="";state.color="";state.size="";
+  state.mode="similar";state.referencePrice=0;state.sourceMasp="";state.sourceProduct=null;state.sourceStockAfterCheck=null;
+  state.products=[];state.offset=0;state.total=0;state.loading=false;
+  state.selected=[];saveSelected();
+  $("formSelect").value="";$("colorSelect").value="";$("refPrice").value="";
+  hideSizeWarning();renderSelected();renderSizes();renderGroups();renderModes();
+  clearResults("Quét mã hoặc nhập mã sản phẩm rồi nhấn Enter để bắt đầu.");
+  jumpToElement($("selectedSection"),"start");
+  setTimeout(()=>$("codeInput")?.focus(),0);
+  toast("Đã tạo lượt tìm kiếm mới.");
+}
+
+async function researchSelected(id){
+  const row=state.selected.find(x=>String(x.id)===String(id));
+  if(!row)return;
+  await processCode(row.masp,{preselectedSize:String(row.size||""),autoSearch:true});
+  jumpToElement(document.querySelector("main.wrap > section.card:not(#selectedSection)"),"start");
+}
+
 function renderSelected(){
   const box=$("selectedList");$("selectedCount").textContent=`${state.selected.length} sản phẩm`;
   if(!state.selected.length){box.innerHTML='<div class="empty selected-empty">Chưa chọn sản phẩm.</div>';return}
-  box.innerHTML=state.selected.map(r=>`<div class="selected-item"><div class="sel-line"><button type="button" class="sel-code" data-sel-stock="${esc(r.masp)}">${esc(r.masp)}</button><span class="sel-size">Size ${esc(r.size)}</span></div><div class="sel-actions"><button type="button" class="continue" data-continue="${esc(r.masp)}">Tìm tiếp</button><button type="button" class="remove" data-remove="${esc(r.id)}">Bỏ</button><button type="button" class="sale" data-sale="${esc(r.id)}">Sang bán</button></div></div>`).join("");
+  box.innerHTML=state.selected.map(r=>`<div class="selected-item"><div class="sel-line"><button type="button" class="sel-code" data-sel-stock="${esc(r.masp)}">${esc(r.masp)}</button><span class="sel-size">Size ${esc(r.size)}</span></div><div class="sel-actions"><button type="button" class="research" data-research="${esc(r.id)}">Tìm lại</button><button type="button" class="continue" data-continue="${esc(r.masp)}">Tìm tiếp</button><button type="button" class="remove" data-remove="${esc(r.id)}">Bỏ</button><button type="button" class="sale" data-sale="${esc(r.id)}">Sang bán</button></div></div>`).join("");
   box.querySelectorAll("[data-sel-stock]").forEach(b=>b.onclick=e=>window.StockQuick?.showFor(e.currentTarget,b.dataset.selStock));
+  box.querySelectorAll("[data-research]").forEach(b=>b.onclick=()=>researchSelected(b.dataset.research));
   box.querySelectorAll("[data-continue]").forEach(b=>b.onclick=()=>scrollToProduct(b.dataset.continue));
   box.querySelectorAll("[data-remove]").forEach(b=>b.onclick=()=>{state.selected=state.selected.filter(x=>String(x.id)!==String(b.dataset.remove));saveSelected();renderSelected()});
   box.querySelectorAll("[data-sale]").forEach(b=>b.onclick=()=>pushOneToSale(b.dataset.sale));
@@ -360,7 +386,7 @@ async function loadSuggestions(text){
   box.querySelectorAll("button").forEach(b=>b.onclick=()=>processCode(b.dataset.code));
 }
 
-async function processCode(raw){
+async function processCode(raw,options={}){
   const code=norm(raw);if(!code||state.loading)return;
   if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",6000);return}
   setLoading(true);
@@ -370,16 +396,23 @@ async function processCode(raw){
 
     $("codeInput").value=sp.masp;$("suggestBox").style.display="none";
     state.sourceMasp=sp.masp;state.sourceProduct={...sp};state.group=String(sp.nhomhang||"").trim();state.mainGroup=mainKeyForGroup(state.group);
-    state.form=formNorm(sp.form);state.color=String(sp.mausac||"").trim();state.referencePrice=Number(sp.giale||0);state.size="";
+    state.form=formNorm(sp.form);state.color=String(sp.mausac||"").trim();state.referencePrice=Number(sp.giale||0);state.size=SIZE_LIST.includes(String(options.preselectedSize||""))?String(options.preselectedSize):"";
     state.sourceStockAfterCheck=null;
     $("formSelect").value=state.form||"";$("colorSelect").value=state.color||"";$("refPrice").value=state.referencePrice||"";
     renderGroups();renderSizes();clearResults("Đang đọc tồn sau kiểm của mã vừa quét...");
 
     const stock=await fetchAfterCheckStockForMasp(sp.masp,{force:true});
     state.sourceStockAfterCheck=stock;state.sourceProduct.ton_sizes=stock;renderSizes();
-    const any=SIZE_LIST.some(s=>sourceQty(s)>0);
-    if(any){showSizeWarning("Chọn size để tìm sản phẩm phù hợp");clearResults("Chọn size để bắt đầu tìm sản phẩm. Size nền vàng đang còn tồn sau kiểm.")}
-    else{showSizeWarning(`Mã này hiện không còn size tồn tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm. Bạn vẫn có thể chọn size cần tìm.`);clearResults("Chọn size cần tìm; hệ thống có thể gợi ý kiểm kho trước khi tìm sản phẩm khác.")}
+    if(options.autoSearch&&state.size){
+      hideSizeWarning();
+      // processCode đang giữ loading=true; nhả khóa trước khi gọi search().
+      setLoading(false);
+      await search(true);
+    }else{
+      const any=SIZE_LIST.some(s=>sourceQty(s)>0);
+      if(any){showSizeWarning("Chọn size để tìm sản phẩm phù hợp");clearResults("Chọn size để bắt đầu tìm sản phẩm. Size nền vàng đang còn tồn sau kiểm.")}
+      else{showSizeWarning(`Mã này hiện không còn size tồn tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm. Bạn vẫn có thể chọn size cần tìm.`);clearResults("Chọn size cần tìm; hệ thống có thể gợi ý kiểm kho trước khi tìm sản phẩm khác.")}
+    }
     playSuccessBeep();$("codeInput").blur();
   }catch(e){console.error(e);toast("Không lấy được mã sản phẩm: "+(e.message||e),5000)}finally{setLoading(false)}
 }
@@ -390,6 +423,7 @@ function clearSourceForManualFilter(){
 
 function bind(){
   setupBeepUnlockOnce(document);
+  $("btnNew").onclick=resetToInitialState;
   $("codeInput").addEventListener("input",e=>{clearTimeout(suggestTimer);suggestTimer=setTimeout(()=>loadSuggestions(e.target.value),150)});
   $("codeInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();processCode(e.currentTarget.value)}});
   document.addEventListener("click",e=>{if(!e.target.closest(".codebox"))$("suggestBox").style.display="none"});
