@@ -975,6 +975,10 @@
                         </div>
                     </div>
 
+                    <div id="dienGiaiTongPhaiTra"
+                        style="display:none;width:calc(100% - 20px);margin:2px 10px 0 10px;padding:5px 8px;box-sizing:border-box;background:#fff7e6;border:1px solid #f1c27d;border-radius:6px;font-size:14px;font-weight:700;line-height:1.35;text-align:right;white-space:normal;overflow-wrap:anywhere;">
+                    </div>
+
                     <div class="btn-big red" style="font-size:20px;padding:6px 10px;">
                         Tổng phải trả
                         <input id="phaithanhtoan"
@@ -1080,6 +1084,94 @@
                 }
             }, true); // capture: chặn từ sớm
 
+        });
+    </script>
+
+    <script>
+        // ===== DIỄN GIẢI TỔNG PHẢI TRẢ: Tổng hàng - CK - Điểm = Phải trả =====
+        document.addEventListener("DOMContentLoaded", () => {
+            const fmt = (n) => (Number(n || 0)).toLocaleString("vi-VN");
+            const money = (id) => {
+                const el = document.getElementById(id);
+                return Number(String(el?.value || "0").replace(/[^\d-]/g, "")) || 0;
+            };
+
+            function tongHangTuBang() {
+                let total = 0;
+                document.querySelectorAll("#bangketqua tbody tr").forEach(tr => {
+                    const cells = tr.cells;
+                    if (!cells || cells.length < 8) return;
+                    const raw = String(cells[7]?.textContent || "0");
+                    const n = Number(raw.replace(/[^\d-]/g, "")) || 0;
+                    total += n;
+                });
+                return total;
+            }
+
+            function capNhatDienGiaiTongPhaiTra() {
+                const box = document.getElementById("dienGiaiTongPhaiTra");
+                if (!box) return;
+
+                const tongHang = tongHangTuBang();
+                const chietKhau = Math.max(0, money("chietkhau"));
+                const tienDiem = Math.max(0, money("tien_doi_diem"));
+                const phaiTra = Math.max(0, money("phaithanhtoan"));
+
+                // Không có khoản giảm tổng hóa đơn thì ẩn dòng diễn giải để giao diện gọn.
+                if (chietKhau <= 0 && tienDiem <= 0) {
+                    box.style.display = "none";
+                    box.textContent = "";
+                    return;
+                }
+
+                const parts = [];
+                parts.push(`<span style="color:#333;">${fmt(tongHang)}</span>`);
+                if (chietKhau > 0) {
+                    parts.push(`<span style="color:#8a4b08;">− CK ${fmt(chietKhau)}</span>`);
+                }
+                if (tienDiem > 0) {
+                    parts.push(`<span style="color:#b91c1c;">− Điểm ${fmt(tienDiem)}</span>`);
+                }
+                parts.push(`<span style="color:#0f5132;">= ${fmt(phaiTra)}</span>`);
+
+                box.innerHTML = parts.join(" &nbsp; ");
+                box.style.display = "block";
+            }
+
+            window.capNhatDienGiaiTongPhaiTra = capNhatDienGiaiTongPhaiTra;
+
+            ["chietkhau", "tien_doi_diem", "phaithanhtoan", "diem_tru"].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                ["input", "change", "blur"].forEach(evt =>
+                    el.addEventListener(evt, () => setTimeout(capNhatDienGiaiTongPhaiTra, 0))
+                );
+            });
+
+            const tbody = document.querySelector("#bangketqua tbody");
+            if (tbody) {
+                const observer = new MutationObserver(() => {
+                    setTimeout(capNhatDienGiaiTongPhaiTra, 0);
+                });
+                observer.observe(tbody, { childList: true, subtree: true, characterData: true });
+            }
+
+            // Theo dõi cả việc các script khác gán .value trực tiếp cho input.
+            let lastKey = "";
+            setInterval(() => {
+                const key = [
+                    tongHangTuBang(),
+                    money("chietkhau"),
+                    money("tien_doi_diem"),
+                    money("phaithanhtoan")
+                ].join("|");
+                if (key !== lastKey) {
+                    lastKey = key;
+                    capNhatDienGiaiTongPhaiTra();
+                }
+            }, 300);
+
+            capNhatDienGiaiTongPhaiTra();
         });
     </script>
 
