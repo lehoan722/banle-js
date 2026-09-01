@@ -1,9 +1,11 @@
-import { supabase } from "./supabaseClient.js";
+import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 
-window.TIM_KIEM_NHANH_BUILD = "1.1.1";
-console.log("[TimKiemNhanh] BUILD 1.1.1");
+window.TIM_KIEM_NHANH_BUILD = "1.2.0";
+console.log("[TimKiemNhanh] BUILD 1.2.0");
+
+const supabase = getSupabaseClient();
 
 const SIZE_LIST=["38","39","40","41","42","43","44","45","46"];
 const IMAGE_BASE="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
@@ -24,6 +26,14 @@ const state={
   groups:[],colors:[],mainGroup:"",group:"",form:"",color:"",size:"",mode:"similar",referencePrice:0,
   sourceMasp:"",sourceProduct:null,sourceStockAfterCheck:null,products:[],offset:0,total:0,loading:false,selected:[],scanner:null
 };
+
+function refreshAuthState(){
+  state.manv=String(localStorage.getItem("manv")||"").trim();
+  state.tennv=String(localStorage.getItem("tennv")||"").trim();
+  state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
+  const info=$("nvInfo");
+  if(info)info.textContent=`V1.2.0 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+}
 
 const AFTER_CHECK_CACHE=new Map();
 let pendingMissingSize="";
@@ -101,6 +111,13 @@ function renderSizes(){
       clearResults("Chọn size để bắt đầu tìm sản phẩm.");
       return;
     }
+
+    // Mã vừa quét/nhập là sản phẩm đầu tiên khách đang quan tâm:
+    // khi xác nhận size, tự đưa mã nguồn vào khu vực Sản phẩm đã chọn.
+    if(state.sourceMasp&&state.sourceProduct){
+      addSelected(state.sourceMasp,state.size);
+    }
+
     if(state.sourceMasp&&state.sourceStockAfterCheck&&sourceQty(state.size)<=0){
       showMissingSizePrompt(state.size);
       return;
@@ -298,11 +315,20 @@ function addSelected(masp,size){
   state.selected=[{id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,masp:sp.masp,size:String(size),soluong:1,giale:sp.giale,form:sp.form,mausac:sp.mausac},...state.selected];
   saveSelected();renderSelected();toast(`Đã chọn ${sp.masp} / ${size}`);scrollSelectedIntoView();
 }
-function scrollSelectedIntoView(){setTimeout(()=>$("selectedSection")?.scrollIntoView({behavior:"smooth",block:"start"}),40)}
+function jumpToElement(el,block="start"){
+  if(!el)return;
+  const root=document.documentElement;
+  const prev=root.style.scrollBehavior;
+  root.style.scrollBehavior="auto";
+  el.scrollIntoView({behavior:"auto",block});
+  requestAnimationFrame(()=>{root.style.scrollBehavior=prev});
+}
+function scrollSelectedIntoView(){setTimeout(()=>jumpToElement($("selectedSection"),"start"),0)}
 function scrollToProduct(masp){
   const card=$("productList").querySelector(`[data-card="${CSS.escape(String(masp))}"]`);
   if(!card){toast("Sản phẩm này không còn trong danh sách kết quả hiện tại.",3800);return}
-  card.scrollIntoView({behavior:"smooth",block:"center"});card.classList.add("product-focus");setTimeout(()=>card.classList.remove("product-focus"),1600);
+  jumpToElement(card,"center");
+  card.classList.add("product-focus");setTimeout(()=>card.classList.remove("product-focus"),1600);
 }
 
 function renderSelected(){
@@ -393,15 +419,31 @@ async function initScanner(){
   state.scanner=setupScanner({videoEl:$("scanVideo"),selectEl:$("cameraSelect"),statusEl:$("scanStatus"),onResult:async text=>{state.scanner.stopScan();$("scanOverlay").classList.remove("show");await processCode(text)}})
 }
 
-async function init(){
-  $("nvInfo").textContent=`V1.1.1 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+let appStarted=false;
+async function startApp(){
+  if(appStarted)return;
+  appStarted=true;
+  refreshAuthState();
   loadSelected();renderSelected();renderSizes();renderModes();clearResults("Quét mã hoặc nhập mã sản phẩm rồi nhấn Enter để bắt đầu.");
   try{
-    const {data:{user}}=await supabase.auth.getUser();
-    if(!user)toast("Chưa có phiên đăng nhập Supabase. Hãy đăng nhập hệ thống trước.",6000);
-    if(!validBranch())toast("Không xác định được CS1/CS2 từ phiên đăng nhập. Vui lòng đăng nhập lại.",7000);
+    if(!validBranch())throw new Error("Không xác định được CS1/CS2 từ phiên đăng nhập.");
     await loadConfig();renderGroups();bind();await initScanner();
-  }catch(e){console.error(e);toast("Không khởi tạo được Tìm kiếm nhanh: "+(e.message||e),7000)}
+    setTimeout(()=>$("codeInput")?.focus(),50);
+  }catch(e){
+    appStarted=false;
+    console.error(e);
+    toast("Không khởi tạo được Tìm kiếm nhanh: "+(e.message||e),7000);
+  }
 }
 
-init();
+khoiTaoDangNhapDungChung({
+  loginContainerId:"login-container",
+  appContainerId:"app-container",
+  macDinhDiaDiem:"cs1",
+  tuDongKhoaCoSo:false,
+  onLoginSuccess:async()=>{
+    refreshAuthState();
+    await startApp();
+    return true;
+  }
+});
