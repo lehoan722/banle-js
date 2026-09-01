@@ -2,8 +2,8 @@ import { supabase } from "./supabaseClient.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 
-window.TIM_KIEM_NHANH_BUILD = "1.1.0";
-console.log("[TimKiemNhanh] BUILD 1.1.0");
+window.TIM_KIEM_NHANH_BUILD = "1.1.1";
+console.log("[TimKiemNhanh] BUILD 1.1.1");
 
 const SIZE_LIST=["38","39","40","41","42","43","44","45","46"];
 const IMAGE_BASE="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
@@ -26,11 +26,16 @@ const state={
 };
 
 const AFTER_CHECK_CACHE=new Map();
+let pendingMissingSize="";
 const $=id=>document.getElementById(id);
 const norm=v=>String(v??"").trim().toUpperCase();
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money=n=>Number(n||0).toLocaleString("vi-VN");
 const validBranch=()=>["cs1","cs2"].includes(state.diadiem);
+function sourceQty(size){
+  const row=state.sourceStockAfterCheck?.[String(size)]||{};
+  return Number(state.diadiem==="cs2"?row.ton_cs2:row.ton_cs1)||0;
+}
 
 function businessDate(){
   try{
@@ -77,19 +82,18 @@ async function loadConfig(){
 
 function renderSizes(){
   const hasSource=!!state.sourceMasp;
-  const stock=state.sourceStockAfterCheck||{};
+  const hasStock=!!state.sourceStockAfterCheck;
   const box=$("sizeRow");
   box.innerHTML=SIZE_LIST.map(s=>{
-    const qty=Number(stock?.[s]?.[state.diadiem]||0);
+    const qty=hasStock?sourceQty(s):0;
     const cls=["size"];
     if(state.size===s)cls.push("on");
-    if(hasSource&&state.sourceStockAfterCheck){cls.push(qty>0?"has":"no")}
-    return `<button type="button" class="${cls.join(" ")}" data-size="${s}" ${hasSource&&state.sourceStockAfterCheck&&qty<=0?"disabled":""} title="${hasSource&&state.sourceStockAfterCheck?`Tồn sau kiểm ${state.diadiem.toUpperCase()}: ${qty}`:""}">${s}</button>`;
+    if(hasSource&&hasStock)cls.push(qty>0?"has":"no");
+    return `<button type="button" class="${cls.join(" ")}" data-size="${s}" title="${hasSource&&hasStock?`Tồn sau kiểm ${state.diadiem.toUpperCase()}: ${qty}`:""}">${s}</button>`;
   }).join("");
 
   box.querySelectorAll(".size").forEach(b=>b.onclick=async()=>{
     const selected=b.dataset.size;
-    if(b.disabled)return;
     state.size=state.size===selected?"":selected;
     renderSizes();
     if(!state.size){
@@ -97,9 +101,59 @@ function renderSizes(){
       clearResults("Chọn size để bắt đầu tìm sản phẩm.");
       return;
     }
+    if(state.sourceMasp&&state.sourceStockAfterCheck&&sourceQty(state.size)<=0){
+      showMissingSizePrompt(state.size);
+      return;
+    }
     hideSizeWarning();
     if(state.group)await search(true);
   });
+}
+
+function showMissingSizePrompt(size){
+  pendingMissingSize=String(size||"");
+  const qty=sourceQty(pendingMissingSize);
+  const text=$("stockCheckText");
+  if(text)text.textContent=`Mã ${state.sourceMasp} hiện không còn tồn size ${pendingMissingSize} tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm (tồn ${qty}). Bạn có muốn kiểm kho cho sản phẩm này không?`;
+  const modal=$("stockCheckModal");
+  modal?.classList.add("show");
+  modal?.setAttribute("aria-hidden","false");
+}
+function closeMissingSizePrompt(){
+  const modal=$("stockCheckModal");
+  modal?.classList.remove("show");
+  modal?.setAttribute("aria-hidden","true");
+}
+function openStockCheckPage(maspRaw){
+  const masp=norm(maspRaw);
+  if(!masp||!validBranch())return;
+  const page=state.diadiem==="cs2"?"kiem_tonkho_cs2.html":"kiem_tonkho_cs1.html";
+  const child=window.open(`${location.origin}/${page}`,"_blank");
+  if(!child){toast("Trình duyệt đang chặn mở trang kiểm kho.",5000);return}
+  let attempts=0;
+  const timer=setInterval(()=>{
+    attempts++;
+    try{
+      if(child.closed){clearInterval(timer);return}
+      const doc=child.document;
+      const input=doc?.getElementById("masp");
+      if(input&&doc.readyState==="complete"){
+        clearInterval(timer);
+        setTimeout(()=>{
+          try{
+            input.value=masp;
+            input.dispatchEvent(new child.Event("input",{bubbles:true}));
+            input.dispatchEvent(new child.Event("change",{bubbles:true}));
+            input.focus();
+            input.dispatchEvent(new child.KeyboardEvent("keydown",{key:"Enter",code:"Enter",bubbles:true,cancelable:true}));
+          }catch(e){console.warn("[TimKiemNhanh] Không đẩy được mã sang kiểm kho",e)}
+        },500);
+      }
+    }catch(e){
+      // Cùng domain app.hoantuyet.vn thì sẽ truy cập được sau khi trang tải xong.
+    }
+    if(attempts>=60){clearInterval(timer);toast("Đã mở trang kiểm kho nhưng chưa tự điền được mã. Hãy nhập mã thủ công.",5000)}
+  },250);
 }
 
 function renderGroups(){
@@ -297,9 +351,9 @@ async function processCode(raw){
 
     const stock=await fetchAfterCheckStockForMasp(sp.masp,{force:true});
     state.sourceStockAfterCheck=stock;state.sourceProduct.ton_sizes=stock;renderSizes();
-    const any=SIZE_LIST.some(s=>Number(stock?.[s]?.[state.diadiem]||0)>0);
-    if(any){showSizeWarning("Chọn size để tìm sản phẩm phù hợp");clearResults("Chọn size còn hàng (màu vàng) để bắt đầu tìm sản phẩm.")}
-    else{showSizeWarning(`Mã này hiện không còn size tồn tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm.`);clearResults("Mã nguồn hiện không còn hàng tại cơ sở này.")}
+    const any=SIZE_LIST.some(s=>sourceQty(s)>0);
+    if(any){showSizeWarning("Chọn size để tìm sản phẩm phù hợp");clearResults("Chọn size để bắt đầu tìm sản phẩm. Size nền vàng đang còn tồn sau kiểm.")}
+    else{showSizeWarning(`Mã này hiện không còn size tồn tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm. Bạn vẫn có thể chọn size cần tìm.`);clearResults("Chọn size cần tìm; hệ thống có thể gợi ý kiểm kho trước khi tìm sản phẩm khác.")}
     playSuccessBeep();$("codeInput").blur();
   }catch(e){console.error(e);toast("Không lấy được mã sản phẩm: "+(e.message||e),5000)}finally{setLoading(false)}
 }
@@ -322,6 +376,16 @@ function bind(){
   $("btnCloseScan").onclick=()=>{state.scanner.stopScan();$("scanOverlay").classList.remove("show")};
   $("flashBtn").onclick=()=>state.scanner.toggleTorch();
   $("pickImage").onchange=e=>state.scanner.decodeFromFile(e.target.files?.[0]);
+  $("btnStockCheckLater").onclick=async()=>{
+    closeMissingSizePrompt();
+    hideSizeWarning();
+    if(state.group&&state.size)await search(true);
+  };
+  $("btnStockCheckYes").onclick=()=>{
+    closeMissingSizePrompt();
+    openStockCheckPage(state.sourceMasp);
+  };
+  $("stockCheckModal").addEventListener("click",e=>{if(e.target===$("stockCheckModal"))closeMissingSizePrompt()});
   $("imageOverlay").onclick=closeImage;
 }
 
@@ -330,7 +394,7 @@ async function initScanner(){
 }
 
 async function init(){
-  $("nvInfo").textContent=`V1.1.0 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  $("nvInfo").textContent=`V1.1.1 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
   loadSelected();renderSelected();renderSizes();renderModes();clearResults("Quét mã hoặc nhập mã sản phẩm rồi nhấn Enter để bắt đầu.");
   try{
     const {data:{user}}=await supabase.auth.getUser();
