@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <title>Tìm kiếm nhanh Hoàn Tuyết V1.2.4</title>
+  <title>Tìm kiếm nhanh Hoàn Tuyết V1.2.5</title>
   <style>
     :root{--blue:#0878d1;--green:#15945d;--red:#d92d20;--amber:#f4a900;--bg:#f3f6f9;--card:#fff;--border:#d7e0e8;--text:#172033}
     *{box-sizing:border-box}html,body{margin:0;max-width:100%;overflow-x:hidden;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
     button,input,select{font:inherit;font-size:16px}button{cursor:pointer}.top{background:var(--blue);color:#fff;padding:9px 10px}.top-row{display:flex;align-items:center;gap:8px}.title{font-size:20px;font-weight:900;flex:1;min-width:0}.new-btn{border:1px solid rgba(255,255,255,.7);background:#fff;color:#0878d1;border-radius:8px;padding:7px 11px;font-weight:900;white-space:nowrap}.mini{font-size:12px;margin-top:3px;opacity:.95}
     .wrap{max-width:1100px;margin:auto;padding:8px}.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:9px;margin-bottom:9px;box-shadow:0 1px 4px #0000000d}
     .quickbar{display:grid;grid-template-columns:15% 45% 20% 20%;gap:5px;align-items:stretch}.quickbar>*{min-width:0;height:46px}.scan-btn{border:0;border-radius:9px;background:#0b7bd5;color:#fff;font-weight:900}.codebox{position:relative}.codebox input{height:46px;width:100%;border:1px solid #b8c7d5;border-radius:9px;padding:0 8px}.suggest{display:none;position:absolute;left:0;right:0;top:48px;max-height:240px;overflow:auto;background:#fff;border:1px solid #aebdca;border-radius:8px;z-index:500;box-shadow:0 6px 18px #0002}.suggest button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #edf0f3;background:#fff;padding:9px}.suggest button b{display:block}.suggest button small{color:#657586}.quickbar select{width:100%;border:1px solid #b8c7d5;border-radius:9px;padding:0 6px;background:#fff}
-    .location-line{font-size:16px;font-weight:400;line-height:1.22;color:#334155;overflow-wrap:anywhere}.source-location{display:none;margin:6px 2px 0}.source-location.show{display:block}.product-location{margin-top:1px}.selected-location{margin-top:2px}.info-kho{color:#087a55;font-weight:400}.info-mau{color:#7c3aed;font-weight:400}
+    .location-line{font-size:16px;font-weight:400;line-height:1.22;color:#334155;overflow-wrap:anywhere}.source-location{display:none;margin:6px 2px 0;font-size:16px!important;font-weight:400!important;line-height:1.25;color:#d92d20;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;text-transform:uppercase;cursor:pointer;user-select:none;-webkit-tap-highlight-color:rgba(217,45,32,.12)}.source-location.show{display:block}.source-location:active{opacity:.65}.product-location{margin-top:1px}.selected-location{margin-top:2px}.info-kho{color:#087a55;font-weight:400}.info-mau{color:#7c3aed;font-weight:400}
     .size-warning{display:none;color:#c82118;font-size:12px;font-weight:900;margin:5px 2px -1px;line-height:1.25}.size-warning.show{display:block}
     .sizes{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-top:7px}.size{min-width:0;border:1px solid #bdcbd7;background:#fff;border-radius:8px;padding:9px 0;font-weight:800}.size.on{background:#f4c542!important;border-color:#c58b00!important;color:#4d3400!important;box-shadow:inset 0 0 0 2px #a97300}.size.has{background:#fff0a8;border-color:#deb33b;color:#604800;font-weight:900}.size.no{opacity:.38;text-decoration:line-through;background:#f1f3f5}.size.no{cursor:pointer}.size:disabled{cursor:not-allowed}.size.hint{box-shadow:inset 0 0 0 2px #55a9df}
     .sizes.guide-open{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:3px;align-items:stretch;margin-top:7px}.size-guide-col{min-width:0;border:1px solid #bdcbd7;background:#fff;border-radius:7px;padding:0;overflow:hidden;font-weight:800;color:#172033}.size-guide-col.has{background:#fff0a8;border-color:#d5a928}.size-guide-col.no{background:#f6f7f8;color:#687480}.size-guide-col:active{transform:scale(.98)}.size-guide-cell{min-height:27px;display:flex;align-items:center;justify-content:center;padding:3px 1px;border-bottom:1px solid rgba(130,145,160,.26);font-size:12px;line-height:1.05;white-space:nowrap}.size-guide-cell:last-child{border-bottom:0}.size-guide-cell:first-child{font-size:14px;font-weight:900}.size-guide-col.has .size-guide-cell:first-child{color:#7a4b00}.size-guide-stock{font-size:9px;font-weight:700;opacity:.72}
@@ -31,7 +31,7 @@
 <body>
   <div id="login-container"></div>
   <div id="app-container">
-  <div class="top"><div class="top-row"><div class="title">🔎 TÌM KIẾM NHANH</div><button id="btnNew" class="new-btn" type="button">＋ Thêm mới</button></div><div class="mini" id="nvInfo">V1.2.4</div></div>
+  <div class="top"><div class="top-row"><div class="title">🔎 TÌM KIẾM NHANH</div><button id="btnNew" class="new-btn" type="button">＋ Thêm mới</button></div><div class="mini" id="nvInfo">V1.2.5</div></div>
   <main class="wrap">
     <section class="card" id="selectedSection">
       <div class="section-head"><h3>Sản phẩm đã chọn</h3><span id="selectedCount" class="count"></span></div>
@@ -45,7 +45,7 @@
         <select id="formSelect"><option value="">Form</option><option value="RONG">Rộng</option><option value="VUA">Vừa</option><option value="BO">Bó</option></select>
         <select id="colorSelect"><option value="">Màu</option></select>
       </div>
-      <div id="sourceLocation" class="location-line source-location"></div>
+      <div id="sourceLocation" class="location-line source-location" role="button" tabindex="0" aria-label="Mở tồn nhanh của sản phẩm đang nhập"></div>
       <div id="sizeWarning" class="size-warning"></div>
       <div id="sizeRow" class="sizes"></div>
       <div id="mainGroups" class="main-groups"></div>
@@ -103,6 +103,6 @@
 
 
   <script src="/scripts/stockQuickPopup.js?v=77"></script>
-  <script type="module" src="/scripts/timKiemNhanh.js?v=124"></script>
+  <script type="module" src="/scripts/timKiemNhanh.js?v=125"></script>
 </body>
 </html>
