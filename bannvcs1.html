@@ -810,7 +810,7 @@
                 //    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
                 let okInit = true;
                 try {
-                    const module = await import("./scripts/main.js?v=76");
+                    const module = await import("./scripts/main.js?v=75");
                     if (typeof module.khoiTaoUngDung === "function") {
                         okInit = await module.khoiTaoUngDung();
                     }
