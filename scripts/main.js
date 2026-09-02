@@ -1531,9 +1531,9 @@ function showBayMauPopup(tasks, context) {
       body.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
 
       // Khi mở: nằm trên đầu trang và chỉ cao 70% viewport để hàng cuối ít bị bàn phím iPhone che.
-      box.style.setProperty("height", "70vh", "important");
+      box.style.setProperty("height", "60vh", "important");
       box.style.setProperty("min-height", "0", "important");
-      box.style.setProperty("max-height", "70vh", "important");
+      box.style.setProperty("max-height", "60vh", "important");
       box.style.setProperty("padding", "0", "important");
       box.style.setProperty("overflow", "hidden", "important");
       // Khi MỞ: mới đưa popup lên phía trên trang.
