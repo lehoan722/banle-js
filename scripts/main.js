@@ -1215,7 +1215,7 @@ function showBayMauPopup(tasks, context) {
     borderRadius: "6px",
     boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
     padding: "8px 10px",
-    fontSize: "13px",
+    fontSize: "16px",
     overflow: "auto",
   });
 
@@ -1412,6 +1412,7 @@ function showBayMauPopup(tasks, context) {
     inpNote.type = "text";
     inpNote.style.width = "100%";
     inpNote.style.boxSizing = "border-box";
+    inpNote.style.fontSize = "16px";
     inpNote.value = row.baymau_note || "";
     inpNote.dataset.idCt = row.id_ct;
     tdNote.appendChild(inpNote);
@@ -1455,21 +1456,39 @@ function showBayMauPopup(tasks, context) {
 
   function applyBayMauCollapsed() {
     if (bayMauCollapsed) {
+
+      // Ẩn hoàn toàn phần dữ liệu
       body.style.display = "none";
 
-      box.style.maxHeight = "34px";
-      box.style.height = "34px";
+      // Khi thu gọn chỉ còn đúng thanh tiêu đề
+      box.style.height = "auto";
+      box.style.maxHeight = "none";
       box.style.overflow = "hidden";
-      box.style.padding = "6px 10px";
+
+      // Không để padding phía dưới tạo thành "đế vàng"
+      box.style.padding = "4px 10px";
+
+      // Giữ NGUYÊN vị trí thanh như phiên bản gốc
       box.style.marginTop = "calc(100vh - 198px)";
+
+      // Header không được có khoảng trống phía dưới
+      header.style.marginBottom = "0";
+
     } else {
-      body.style.display = "";
+
+      // Hiện lại dữ liệu
+      body.style.display = "block";
 
       box.style.height = "auto";
       box.style.maxHeight = "45vh";
       box.style.overflow = "auto";
       box.style.padding = "8px 10px";
+
+      // Khi mở vẫn đưa popup lên phía trên như code gốc
       box.style.marginTop = "96px";
+
+      // Trả lại khoảng cách giữa tiêu đề và bảng
+      header.style.marginBottom = "4px";
     }
   }
 
