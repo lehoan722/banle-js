@@ -1284,6 +1284,10 @@ function showBayMauPopup(tasks, context) {
   const thConfirm = mkTh("");
   const chkAllConfirm = document.createElement("input");
   chkAllConfirm.type = "checkbox";
+
+  chkAllConfirm.style.transform = "scale(2)";
+  chkAllConfirm.style.transformOrigin = "center";
+
   if (!isAdmin) chkAllConfirm.disabled = true;
   thConfirm.appendChild(chkAllConfirm);
   trHead.appendChild(thConfirm);
@@ -1350,6 +1354,10 @@ function showBayMauPopup(tasks, context) {
 
     const cb = document.createElement("input");
     cb.type = "checkbox";
+
+    cb.style.transform = "scale(2)";
+    cb.style.transformOrigin = "center";
+
     cb.dataset.idCt = row.id_ct;
     cb.addEventListener("change", () => {
       if (cb.checked && row.can_chup_anh_baymau) {
@@ -1425,6 +1433,10 @@ function showBayMauPopup(tasks, context) {
     tdConfirm.style.textAlign = "center";
     const chkConfirm = document.createElement("input");
     chkConfirm.type = "checkbox";
+
+    chkConfirm.style.transform = "scale(2)";
+    chkConfirm.style.transformOrigin = "center";
+
     chkConfirm.dataset.idCt = row.id_ct;
     chkConfirm.checked = !!row.baymau_admin_confirm_by;
     if (!isAdmin) chkConfirm.disabled = true;
