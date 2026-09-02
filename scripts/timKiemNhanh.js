@@ -1,7 +1,7 @@
 import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
-import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=2";
+import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 
 window.TIM_KIEM_NHANH_BUILD = "1.2.5";
 console.log("[TimKiemNhanh] BUILD 1.2.5");
