@@ -2,8 +2,8 @@ import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.4";
-console.log("[TimKiemNhanh] BUILD 1.2.4");
+window.TIM_KIEM_NHANH_BUILD = "1.2.5";
+console.log("[TimKiemNhanh] BUILD 1.2.5");
 
 const supabase = getSupabaseClient();
 
@@ -43,7 +43,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.4 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.5 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -100,9 +100,16 @@ function locationText(sp){
 function renderSourceLocation(){
   const el=$("sourceLocation");
   if(!el)return;
-  const text=locationText(state.sourceProduct);
-  el.textContent=text;
-  el.classList.toggle("show",!!text);
+  if(!state.sourceMasp){
+    el.textContent="";
+    el.classList.remove("show");
+    el.removeAttribute("data-stock");
+    return;
+  }
+  const {kho,mau}=locationParts(state.sourceProduct);
+  el.textContent=`KHO: ${(kho||"-").toUpperCase()}   MẪU: ${(mau||"-").toUpperCase()}`;
+  el.dataset.stock=state.sourceMasp;
+  el.classList.add("show");
 }
 function mainKeyForGroup(code){for(const [k,cfg] of Object.entries(MAIN_GROUPS))if(cfg.groups.some(x=>norm(x)===norm(code)))return k;return""}
 function groupRow(code){return state.groups.find(x=>norm(x.manhom)===norm(code))||null}
@@ -173,7 +180,6 @@ async function selectSizeFromUi(selected,fromGuide=false){
 
   if(!state.size){
     if(state.sourceMasp)showSizeWarning();
-    clearResults("Chọn size để bắt đầu tìm sản phẩm.");
     return;
   }
 
@@ -251,7 +257,7 @@ function renderGroups(){
     if(!cfg.groups.some(x=>norm(x)===norm(state.group)))state.group=cfg.defaultGroup;
     clearSourceForManualFilter();
     renderGroups();renderSubgroups(true);renderSizes();
-    if(state.size)await search(true);else clearResults("Chọn size để bắt đầu tìm sản phẩm.");
+    if(state.size)await search(true);
   });
   renderSubgroups(false);
 }
@@ -266,7 +272,7 @@ function renderSubgroups(forceOpen=false){
   box.classList.toggle("show",forceOpen);
   box.querySelectorAll(".subgroup").forEach(b=>b.onclick=async()=>{
     state.group=b.dataset.group;clearSourceForManualFilter();renderGroups();box.classList.remove("show");renderSizes();
-    if(state.size)await search(true);else clearResults("Chọn size để bắt đầu tìm sản phẩm.");
+    if(state.size)await search(true);
   });
 }
 
@@ -337,20 +343,34 @@ async function search(reset=true){
   if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",5000);return}
   if(!state.group||!state.size||state.loading)return;
   const off=reset?0:state.offset;
-  if(reset){state.offset=0;state.products=[];$("productList").innerHTML=""}
+
+  // Quan trọng: tìm mới không xóa bảng cũ trước khi RPC thành công.
+  // Chỉ khi đã nhận/xử lý được bộ kết quả mới mới thay bảng đang xem.
   setLoading(true,reset);
   try{
     const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",params(off));if(error)throw error;
     const raw=(data||[]).map(x=>({...x}));
-    state.total=Number(raw[0]?.total_count||state.total||0);
+    const nextTotal=Number(raw[0]?.total_count||(reset?0:state.total)||0);
     const checked=await enrichProductsAfterCheck(raw);
     const rows=checked.filter(sp=>stockFor(sp,state.size)>0);
-    state.products=reset?rows:state.products.concat(rows);
-    state.offset=off+raw.length;
+
+    if(reset){
+      state.products=rows;
+      state.offset=raw.length;
+      state.total=nextTotal;
+    }else{
+      state.products=state.products.concat(rows);
+      state.offset=off+raw.length;
+      state.total=nextTotal||state.total;
+    }
+
     renderProducts({reset,rows});
     $("resultCount").textContent=`${state.products.length}/${state.total||state.products.length}`;
     $("btnMore").style.display="none";
-  }catch(e){console.error(e);toast("Lỗi tìm sản phẩm: "+(e.message||e),5000)}finally{
+  }catch(e){
+    console.error(e);
+    toast("Lỗi tìm sản phẩm: "+(e.message||e),5000);
+  }finally{
     setLoading(false,reset);
     requestAnimationFrame(maybeAutoLoadMore);
   }
@@ -495,7 +515,8 @@ async function loadSuggestions(text){
 async function processCode(raw,options={}){
   const code=norm(raw);if(!code||state.loading)return;
   if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",6000);return}
-  setLoading(true);
+  // Đọc mã nguồn là thao tác xem nhanh: không làm mờ/xóa bảng kết quả hiện tại.
+  setLoading(true,false);
   try{
     const {data,error}=await supabase.rpc("sales_copilot_lay_san_pham_theo_ma_v1111",{p_masp:code,p_den_ngay:businessDate()});
     if(error)throw error;const sp=(data||[])[0];if(!sp){toast("Mã sản phẩm không tồn tại.");return}
@@ -505,7 +526,7 @@ async function processCode(raw,options={}){
     state.form=formNorm(sp.form);state.color=String(sp.mausac||"").trim();state.referencePrice=Number(sp.giale||0);state.size=SIZE_LIST.includes(String(options.preselectedSize||""))?String(options.preselectedSize):"";
     state.sourceStockAfterCheck=null;state.sizeGuideOpen=false;
     $("formSelect").value=state.form||"";$("colorSelect").value=state.color||"";$("refPrice").value=state.referencePrice||"";
-    renderSourceLocation();renderGroups();renderSizes();clearResults("Đang đọc tồn sau kiểm của mã vừa quét...");
+    renderSourceLocation();renderGroups();renderSizes();
 
     const stock=await fetchAfterCheckStockForMasp(sp.masp,{force:true});
     state.sourceStockAfterCheck=stock;state.sourceProduct.ton_sizes=stock;state.sizeGuideOpen=!(options.autoSearch&&state.size);renderSizes();
@@ -516,8 +537,11 @@ async function processCode(raw,options={}){
       await search(true);
     }else{
       const any=SIZE_LIST.some(s=>sourceQty(s)>0);
-      if(any){showSizeWarning("Chọn size để tìm sản phẩm phù hợp");clearResults("Chọn size để bắt đầu tìm sản phẩm. Size nền vàng đang còn tồn sau kiểm.")}
-      else{showSizeWarning(`Mã này hiện không còn size tồn tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm. Bạn vẫn có thể chọn size cần tìm.`);clearResults("Chọn size cần tìm; hệ thống có thể gợi ý kiểm kho trước khi tìm sản phẩm khác.")}
+      if(any){
+        showSizeWarning("Chọn size để tìm sản phẩm phù hợp");
+      }else{
+        showSizeWarning(`Mã này hiện không còn size tồn tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm. Bạn vẫn có thể chọn size cần tìm.`);
+      }
     }
     playSuccessBeep();$("codeInput").blur();
   }catch(e){console.error(e);toast("Không lấy được mã sản phẩm: "+(e.message||e),5000)}finally{setLoading(false)}
@@ -532,6 +556,13 @@ function bind(){
   $("btnNew").onclick=resetToInitialState;
   $("codeInput").addEventListener("input",e=>{clearTimeout(suggestTimer);suggestTimer=setTimeout(()=>loadSuggestions(e.target.value),150)});
   $("codeInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();processCode(e.currentTarget.value)}});
+  $("sourceLocation").onclick=e=>{
+    const masp=state.sourceMasp||norm($("codeInput")?.value);
+    if(masp)window.StockQuick?.showFor(e.currentTarget,masp);
+  };
+  $("sourceLocation").onkeydown=e=>{
+    if(e.key==="Enter"||e.key===" "){e.preventDefault();e.currentTarget.click()}
+  };
   document.addEventListener("click",e=>{if(!e.target.closest(".codebox"))$("suggestBox").style.display="none"});
   $("formSelect").onchange=async e=>{state.form=e.target.value;clearSourceForManualFilter();renderSizes();if(state.group&&state.size)await search(true)};
   $("colorSelect").onchange=async e=>{state.color=e.target.value;clearSourceForManualFilter();renderSizes();if(state.group&&state.size)await search(true)};
