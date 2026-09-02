@@ -2,8 +2,8 @@ import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.3";
-console.log("[TimKiemNhanh] BUILD 1.2.3");
+window.TIM_KIEM_NHANH_BUILD = "1.2.4";
+console.log("[TimKiemNhanh] BUILD 1.2.4");
 
 const supabase = getSupabaseClient();
 
@@ -43,7 +43,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.3 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.4 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -77,6 +77,11 @@ function setLoading(v,visual=true){
 }
 function stockFor(sp,size){const x=sp?.ton_sizes?.[String(size)]||{};return Number(state.diadiem==="cs2"?x.ton_cs2:x.ton_cs1)||0}
 function availableSizes(sp){return SIZE_LIST.filter(s=>stockFor(sp,s)>0)}
+function compactFormSizes(sp){
+  const form=formLabel(sp?.form)||"-";
+  const sizes=availableSizes(sp);
+  return `${form} . ${sizes.join(" ")||"-"}`;
+}
 function locationParts(sp){
   if(!sp)return {kho:"",mau:""};
   const isCs2=state.diadiem==="cs2";
@@ -357,9 +362,10 @@ function openImage(src,alt=""){
 function closeImage(){$("imageOverlay").classList.remove("show");$("imageOverlayImg").src="";document.body.classList.remove("image-open")}
 
 function productCardHtml(sp){
-  const av=availableSizes(sp);const img=`${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
-  const loc=locationText(sp);
-  return `<article class="product" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"></div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button>${loc?`<div class="location-line product-location">${esc(loc)}</div>`:""}<div class="price">${money(sp.giale)} đ</div><div class="meta">${esc(formLabel(sp.form)||"-")} · Còn size: <b>${esc(av.join(" ")||"-")}</b></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
+  const img=`${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
+  const {kho,mau}=locationParts(sp);
+  const formSizes=compactFormSizes(sp);
+  return `<article class="product" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"></div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div><div class="price">${money(sp.giale)} đ</div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
 }
 function bindProductCards(cards){
   cards.forEach(card=>{
@@ -408,7 +414,7 @@ function initAutoLoad(){
 function addSelected(masp,size){
   const sp=state.products.find(x=>norm(x.masp)===norm(masp))||state.sourceProduct;if(!sp)return;
   if(state.selected.some(x=>norm(x.masp)===norm(masp)&&String(x.size)===String(size))){toast("Mã + size này đã có trong Sản phẩm đã chọn.");scrollSelectedIntoView();return}
-  state.selected=[{id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,masp:sp.masp,size:String(size),soluong:1,giale:sp.giale,form:sp.form,mausac:sp.mausac,treomaucs1:sp.treomaucs1,treomaucs2:sp.treomaucs2,vitrikho1:sp.vitrikho1,vitrikho2:sp.vitrikho2},...state.selected];
+  state.selected=[{id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,masp:sp.masp,size:String(size),soluong:1,giale:sp.giale,form:sp.form,mausac:sp.mausac,treomaucs1:sp.treomaucs1,treomaucs2:sp.treomaucs2,vitrikho1:sp.vitrikho1,vitrikho2:sp.vitrikho2,ton_sizes:sp.ton_sizes||{}},...state.selected];
   saveSelected();renderSelected();toast(`Đã chọn ${sp.masp} / ${size}`);scrollSelectedIntoView();
 }
 function jumpToElement(el,block="start"){
@@ -455,7 +461,11 @@ async function researchSelected(id){
 function renderSelected(){
   const box=$("selectedList");$("selectedCount").textContent=`${state.selected.length} sản phẩm`;
   if(!state.selected.length){box.innerHTML='<div class="empty selected-empty">Chưa chọn sản phẩm.</div>';return}
-  box.innerHTML=state.selected.map(r=>{const loc=locationText(r);return `<div class="selected-item"><div class="sel-line"><button type="button" class="sel-code" data-sel-stock="${esc(r.masp)}">${esc(r.masp)}</button><span class="sel-size">Size ${esc(r.size)}</span></div>${loc?`<div class="location-line selected-location">${esc(loc)}</div>`:""}<div class="sel-actions"><button type="button" class="research" data-research="${esc(r.id)}">Tìm lại</button><button type="button" class="continue" data-continue="${esc(r.masp)}">Tìm tiếp</button><button type="button" class="remove" data-remove="${esc(r.id)}">Bỏ</button><button type="button" class="sale" data-sale="${esc(r.id)}">Sang bán</button></div></div>`}).join("");
+  box.innerHTML=state.selected.map(r=>{
+    const {kho,mau}=locationParts(r);
+    const formSizes=compactFormSizes(r);
+    return `<div class="selected-item"><div class="sel-line"><button type="button" class="sel-code" data-sel-stock="${esc(r.masp)}">${esc(r.masp)}</button><span class="sel-size">Size ${esc(r.size)}</span></div><div class="selected-info-line"><span class="selected-kho">Kho: ${esc(kho||"-")}</span><span class="selected-mau">Mẫu: ${esc(mau||"-")}</span><span class="selected-formstock">${esc(formSizes)}</span></div><div class="sel-actions"><button type="button" class="research" data-research="${esc(r.id)}">Tìm lại</button><button type="button" class="continue" data-continue="${esc(r.masp)}">Tìm tiếp</button><button type="button" class="remove" data-remove="${esc(r.id)}">Bỏ</button><button type="button" class="sale" data-sale="${esc(r.id)}">Sang bán</button></div></div>`
+  }).join("");
   box.querySelectorAll("[data-sel-stock]").forEach(b=>b.onclick=e=>window.StockQuick?.showFor(e.currentTarget,b.dataset.selStock));
   box.querySelectorAll("[data-research]").forEach(b=>b.onclick=()=>researchSelected(b.dataset.research));
   box.querySelectorAll("[data-continue]").forEach(b=>b.onclick=()=>scrollToProduct(b.dataset.continue));
