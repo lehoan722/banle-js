@@ -1,7 +1,7 @@
 import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
-import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=1";
+import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=2";
 
 window.TIM_KIEM_NHANH_BUILD = "1.2.5";
 console.log("[TimKiemNhanh] BUILD 1.2.5");
@@ -523,15 +523,54 @@ function renderSelected(){
   box.querySelectorAll("[data-sale]").forEach(b=>b.onclick=()=>pushOneToSale(b.dataset.sale));
 }
 
-function waitAck(id,timeout=12000){return new Promise(resolve=>{const start=Date.now();const t=setInterval(()=>{try{const a=JSON.parse(localStorage.getItem(ACK_KEY)||"null");if(a?.id===id){clearInterval(t);return resolve(a)}}catch{}if(Date.now()-start>timeout){clearInterval(t);resolve(null)}},180)})}
+function saleBridgeName(){return `BAN_NV_HOAN_TUYET_${state.diadiem.toUpperCase()}`}
+function saleBridgeChannelName(){return `sales_copilot_bridge_v2_${state.diadiem}`}
+function waitAck(id,timeout=20000){
+  return new Promise(resolve=>{
+    let finished=false;
+    let channel=null;
+    const finish=value=>{
+      if(finished)return;finished=true;
+      clearInterval(timer);clearTimeout(timeoutTimer);
+      window.removeEventListener("storage",onStorage);
+      try{channel?.close()}catch{}
+      resolve(value);
+    };
+    const check=value=>{
+      try{
+        const ack=typeof value==="string"?JSON.parse(value):value;
+        if(ack?.id===id)finish(ack);
+      }catch{}
+    };
+    const onStorage=event=>{if(event.key===ACK_KEY&&event.newValue)check(event.newValue)};
+    window.addEventListener("storage",onStorage);
+    try{
+      channel=new BroadcastChannel(saleBridgeChannelName());
+      channel.onmessage=event=>{if(event?.data?.type==="ACK")check(event.data.ack)};
+    }catch{}
+    const timer=setInterval(()=>check(localStorage.getItem(ACK_KEY)),200);
+    const timeoutTimer=setTimeout(()=>finish(null),timeout);
+    check(localStorage.getItem(ACK_KEY));
+  });
+}
 async function pushOneToSale(id){
   const row=state.selected.find(x=>String(x.id)===String(id));if(!row)return;
   if(!validBranch()){toast("Không xác định được cơ sở bán.",5000);return}
   const payloadId=`TKN_${Date.now()}_${row.masp}_${row.size}`;
   const payload={id:payloadId,created_at:new Date().toISOString(),phien_id:null,diadiem:state.diadiem,makh:null,tenkh:null,items:[{masp:row.masp,size:row.size,soluong:Number(row.soluong||1)}]};
+  const ackPromise=waitAck(payloadId);
   localStorage.removeItem(PENDING_KEY);localStorage.removeItem(ACK_KEY);localStorage.setItem(PENDING_KEY,JSON.stringify(payload));
-  window.open(state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html","BAN_NV_HOAN_TUYET");toast("Đang đưa sang trang bán...");
-  const ack=await waitAck(payloadId);if(!ack){toast("Trang bán chưa xác nhận. Sản phẩm vẫn được giữ lại.",5000);return}toast(`Đã đưa ${row.masp} / ${row.size} sang trang bán.`)
+  try{
+    const signalChannel=new BroadcastChannel(saleBridgeChannelName());
+    signalChannel.postMessage({type:"PENDING",payload});
+    setTimeout(()=>signalChannel.close(),1000);
+  }catch{}
+  const saleWindow=window.open(state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html",saleBridgeName());
+  try{saleWindow?.focus()}catch{}
+  toast("Đã gửi sang trang bán. Đang chờ trang bán xác nhận...");
+  const ack=await ackPromise;
+  if(!ack){toast("Trang bán chưa xác nhận. Hãy chuyển sang tab bán để nhận sản phẩm.",7000);return}
+  toast(`Đã đưa ${row.masp} / ${row.size} sang trang bán.`)
 }
 
 let suggestTimer=null;
