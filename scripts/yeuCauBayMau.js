@@ -4,6 +4,10 @@
 let moduleContext = null;
 let popupOpen = false;
 let saving = false;
+let taskCache = null;
+let taskCacheAt = 0;
+let taskRequest = null;
+let prefetchTimer = null;
 
 const STYLE_ID = "yeu-cau-bay-mau-style";
 const BUTTON_ID = "yeu-cau-bay-mau-btn";
@@ -156,9 +160,33 @@ async function fetchTasks() {
   return data || [];
 }
 
+async function loadTasks({ force = false } = {}) {
+  const cacheIsFresh = Array.isArray(taskCache) && Date.now() - taskCacheAt < 120000;
+  if (!force && cacheIsFresh) return taskCache;
+  if (taskRequest) return taskRequest;
+  taskRequest = fetchTasks()
+    .then(tasks => {
+      taskCache = tasks;
+      taskCacheAt = Date.now();
+      return tasks;
+    })
+    .finally(() => { taskRequest = null; });
+  return taskRequest;
+}
+
 function removePopup() {
   document.getElementById(OVERLAY_ID)?.remove();
   popupOpen = false;
+}
+
+function showLoadingPopup() {
+  const overlay = document.createElement("div");
+  overlay.id = OVERLAY_ID;
+  const message = document.createElement("div");
+  message.className = "ybm-empty";
+  message.textContent = "Đang tải yêu cầu bày mẫu…";
+  overlay.appendChild(message);
+  document.body.appendChild(overlay);
 }
 
 function td(className = "") {
@@ -234,6 +262,8 @@ async function saveAndClose(tasks, refs, closeButton) {
       });
       if (error) throw error;
     }
+    taskCache = null;
+    taskCacheAt = 0;
     removePopup();
   } catch (error) {
     console.error("Lỗi lưu yêu cầu bày mẫu:", error);
@@ -248,6 +278,7 @@ async function saveAndClose(tasks, refs, closeButton) {
 }
 
 function showPopup(tasks) {
+  document.getElementById(OVERLAY_ID)?.remove();
   const oldCount = tasks.filter(row => row.task_age !== "TODAY").length;
   const todayCount = tasks.length - oldCount;
   const isAdmin = getAdminStatus();
@@ -272,7 +303,7 @@ function showPopup(tasks) {
   const table = document.createElement("table");
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  headRow.append(th("Bày mẫu", "ybm-check-cell"));
+  headRow.append(th("Bày mẫu", "ybm-check-cell"), th("Ảnh"));
   const confirmHead = th("", "ybm-check-cell");
   const confirmAll = document.createElement("input");
   confirmAll.type = "checkbox";
@@ -280,7 +311,7 @@ function showPopup(tasks) {
   confirmAll.disabled = !isAdmin;
   confirmAll.title = "Duyệt tất cả";
   confirmHead.appendChild(confirmAll);
-  headRow.append(confirmHead, th("Mã SP"), th("NV bán"), th("Ghi chú"), th("Ảnh"));
+  headRow.append(th("Mã SP"), th("NV bán"), th("Ghi chú"), confirmHead);
   thead.appendChild(headRow);
   table.appendChild(thead);
   const tbody = document.createElement("tbody");
@@ -353,7 +384,7 @@ function showPopup(tasks) {
       }
     };
     imageCell.append(camera, fileInput, photoStatus);
-    tr.append(doneCell, confirmCell, codeCell, sellerCell, noteCell, imageCell);
+    tr.append(doneCell, imageCell, codeCell, sellerCell, noteCell, confirmCell);
     tbody.appendChild(tr);
     refs.set(rowId, { done, confirm, note, oldNote: row.baymau_note || "", getFile: () => selectedFile });
   });
@@ -380,23 +411,21 @@ async function openFromButton(button) {
   if (!moduleContext || popupOpen || saving) return;
   popupOpen = true;
   button.disabled = true;
-  const oldText = button.textContent;
-  button.textContent = "…";
+  showLoadingPopup();
   try {
-    const tasks = await fetchTasks();
+    const tasks = await loadTasks();
     if (!tasks.length) {
+      removePopup();
       alert("Hiện tại không có yêu cầu bày mẫu sản phẩm.");
-      popupOpen = false;
       return;
     }
     showPopup(tasks);
   } catch (error) {
-    popupOpen = false;
+    removePopup();
     console.error("Lỗi tải yêu cầu bày mẫu:", error);
     alert("Không tải được yêu cầu bày mẫu: " + (error?.message || error));
   } finally {
     button.disabled = false;
-    button.textContent = oldText;
   }
 }
 
@@ -419,4 +448,11 @@ export function initYeuCauBayMau({ supabase, diadiem, manvDangNhap }) {
     document.body.appendChild(button);
   }
   button.onclick = () => openFromButton(button);
+
+  // Tải trước dữ liệu nhưng tuyệt đối không tự mở popup.
+  setTimeout(() => loadTasks({ force: true }).catch(error => {
+    console.warn("Chưa tải trước được yêu cầu bày mẫu:", error);
+  }), 350);
+  if (prefetchTimer) clearInterval(prefetchTimer);
+  prefetchTimer = setInterval(() => loadTasks({ force: true }).catch(() => {}), 120000);
 }
