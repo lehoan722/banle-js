@@ -1187,7 +1187,7 @@ function showBayMauPopup(tasks, context) {
   const currentManv =
     localStorage.getItem("manv") || context.manvDangNhap || "";
 
-  // Tạo overlay mờ để bắt sự kiện click ra ngoài
+  // Overlay chỉ làm lớp chứa popup. Khi popup thu gọn, không để overlay chặn thao tác trang bán hàng.
   const overlay = document.createElement("div");
   overlay.id = "baymau-overlay";
   Object.assign(overlay.style, {
@@ -1195,28 +1195,26 @@ function showBayMauPopup(tasks, context) {
     inset: "0",
     background: "transparent",
     zIndex: "9998",
-    display: "flex",
-    justifyContent: "flex-start",
-    alignItems: "flex-start",
-    pointerEvents: "auto",
+    pointerEvents: "none",
   });
 
-  // Khối popup chính (ở gần cuối màn hình)
+  // Khối popup chính. Dùng position:fixed thay cho marginTop để iPhone/Safari không giữ chiều cao cũ.
   const box = document.createElement("div");
   box.id = "baymau-popup";
   Object.assign(box.style, {
-    marginTop: "calc(100vh - 198px)",
-    marginLeft: "6px",
-    minWidth: "320px",
+    position: "fixed",
+    left: "6px",
+    width: "min(520px, calc(100vw - 12px))",
+    minWidth: "0",
     maxWidth: "520px",
-    maxHeight: "45vh",
+    boxSizing: "border-box",
     pointerEvents: "auto",
     background: "#f7e0b3",
     borderRadius: "6px",
     boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-    padding: "8px 10px",
-    fontSize: "13px",
-    overflow: "auto",
+    fontSize: "18px",
+    lineHeight: "1.15",
+    overflow: "hidden",
   });
 
   // Header
@@ -1225,8 +1223,14 @@ function showBayMauPopup(tasks, context) {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: "4px",
+    gap: "4px",
+    margin: "0",
+    padding: "3px 5px",
+    minHeight: "34px",
+    boxSizing: "border-box",
     fontWeight: "600",
+    fontSize: "18px",
+    lineHeight: "1.1",
     cursor: "pointer",
     position: "sticky",
     top: "0",
@@ -1251,8 +1255,10 @@ function showBayMauPopup(tasks, context) {
     border: "none",
     background: "transparent",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "18px",
     fontWeight: "bold",
+    padding: "0 3px",
+    lineHeight: "1",
   });
   header.appendChild(btnClose);
 
@@ -1270,7 +1276,9 @@ function showBayMauPopup(tasks, context) {
     const th = document.createElement("th");
     th.textContent = text;
     th.style.border = "1px solid #ccc";
-    th.style.padding = "4px 6px";
+    th.style.padding = "2px 3px";
+    th.style.fontSize = "18px";
+    th.style.lineHeight = "1.1";
     return th;
   }
 
@@ -1285,6 +1293,11 @@ function showBayMauPopup(tasks, context) {
   const chkAllConfirm = document.createElement("input");
   chkAllConfirm.type = "checkbox";
   if (!isAdmin) chkAllConfirm.disabled = true;
+  Object.assign(chkAllConfirm.style, {
+    transform: "scale(1.42)", // diện tích hiển thị xấp xỉ gấp đôi, không làm lớn ô chứa
+    transformOrigin: "center",
+    margin: "0",
+  });
   thConfirm.appendChild(chkAllConfirm);
   trHead.appendChild(thConfirm);
 
@@ -1315,11 +1328,12 @@ function showBayMauPopup(tasks, context) {
     // === ẢNH BÀY MẪU ===
     const tdImage = document.createElement("td");
     tdImage.style.border = "1px solid #ccc";
-    tdImage.style.padding = "4px";
+    tdImage.style.padding = "1px 2px";
 
     const btnCam = document.createElement("button");
     btnCam.textContent = "📷";
-    btnCam.style.fontSize = "14px";
+    btnCam.style.fontSize = "18px";
+    btnCam.style.padding = "1px 3px";
     btnCam.style.display = "none";
 
     const fileInput = document.createElement("input");
@@ -1329,7 +1343,7 @@ function showBayMauPopup(tasks, context) {
     fileInput.style.display = "none";
 
     const status = document.createElement("div");
-    status.style.fontSize = "11px";
+    status.style.fontSize = "16px";
     status.style.color = "green";
 
     let selectedFile = null;
@@ -1345,12 +1359,17 @@ function showBayMauPopup(tasks, context) {
 
     const tdCheck = document.createElement("td");
     tdCheck.style.border = "1px solid #ccc";
-    tdCheck.style.padding = "4px 6px";
+    tdCheck.style.padding = "1px 2px";
     tdCheck.style.textAlign = "center";
 
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.dataset.idCt = row.id_ct;
+    Object.assign(cb.style, {
+      transform: "scale(1.42)", // diện tích hiển thị xấp xỉ gấp đôi, không làm lớn ô chứa
+      transformOrigin: "center",
+      margin: "0",
+    });
     cb.addEventListener("change", () => {
       if (cb.checked && row.can_chup_anh_baymau) {
         btnCam.style.display = "";
@@ -1379,7 +1398,7 @@ function showBayMauPopup(tasks, context) {
     // 2. MÃ SP (click = mở popup nhanh)
     const tdMasp = document.createElement("td");
     tdMasp.style.border = "1px solid #ccc";
-    tdMasp.style.padding = "4px 6px";
+    tdMasp.style.padding = "2px 3px";
     tdMasp.style.cursor = "pointer";
     tdMasp.style.textAlign = "left";
     tdMasp.textContent = row.masp;
@@ -1400,18 +1419,21 @@ function showBayMauPopup(tasks, context) {
     // 3. NV BÁN
     const tdNvBan = document.createElement("td");
     tdNvBan.style.border = "1px solid #ccc";
-    tdNvBan.style.padding = "4px 6px";
+    tdNvBan.style.padding = "2px 3px";
     tdNvBan.textContent = row.nvban || "";
     tr.appendChild(tdNvBan);
 
     // 4. GHI CHÚ
     const tdNote = document.createElement("td");
     tdNote.style.border = "1px solid #ccc";
-    tdNote.style.padding = "2px 4px";
+    tdNote.style.padding = "1px 2px";
     const inpNote = document.createElement("input");
     inpNote.type = "text";
     inpNote.style.width = "100%";
     inpNote.style.boxSizing = "border-box";
+    inpNote.style.fontSize = "18px";
+    inpNote.style.padding = "2px 3px";
+    inpNote.style.minHeight = "28px";
     inpNote.value = row.baymau_note || "";
     inpNote.dataset.idCt = row.id_ct;
     tdNote.appendChild(inpNote);
@@ -1425,6 +1447,11 @@ function showBayMauPopup(tasks, context) {
     const chkConfirm = document.createElement("input");
     chkConfirm.type = "checkbox";
     chkConfirm.dataset.idCt = row.id_ct;
+    Object.assign(chkConfirm.style, {
+      transform: "scale(1.42)", // diện tích hiển thị xấp xỉ gấp đôi, không làm lớn ô chứa
+      transformOrigin: "center",
+      margin: "0",
+    });
     chkConfirm.checked = !!row.baymau_admin_confirm_by;
     if (!isAdmin) chkConfirm.disabled = true;
     tdConfirm.appendChild(chkConfirm);
@@ -1444,6 +1471,11 @@ function showBayMauPopup(tasks, context) {
 
   const body = document.createElement("div");
   body.id = "baymau-body";
+  Object.assign(body.style, {
+    fontSize: "18px",
+    lineHeight: "1.1",
+    boxSizing: "border-box",
+  });
   body.appendChild(table);
 
   box.appendChild(header);
@@ -1451,25 +1483,52 @@ function showBayMauPopup(tasks, context) {
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 
+  // Mặc định luôn thu gọn: chỉ còn đúng thanh tiêu đề.
   let bayMauCollapsed = true;
 
   function applyBayMauCollapsed() {
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    const collapsedBottom = isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 118px)" : "164px";
+
     if (bayMauCollapsed) {
-      body.style.display = "none";
+      // setProperty(..., important) để thắng các rule mobile cũ có !important.
+      body.style.setProperty("display", "none", "important");
+      body.style.setProperty("height", "0", "important");
+      body.style.setProperty("min-height", "0", "important");
+      body.style.setProperty("max-height", "0", "important");
+      body.style.setProperty("overflow", "hidden", "important");
 
-      box.style.maxHeight = "34px";
-      box.style.height = "34px";
-      box.style.overflow = "hidden";
-      box.style.padding = "6px 10px";
-      box.style.marginTop = "calc(100vh - 198px)";
+      box.style.setProperty("height", "34px", "important");
+      box.style.setProperty("min-height", "34px", "important");
+      box.style.setProperty("max-height", "34px", "important");
+      box.style.setProperty("padding", "0", "important");
+      box.style.setProperty("overflow", "hidden", "important");
+      box.style.setProperty("top", "auto", "important");
+      box.style.setProperty("bottom", collapsedBottom, "important");
+
+      // Thu gọn thì chỉ thanh popup nhận click; phần còn lại của trang vẫn thao tác bình thường.
+      overlay.style.pointerEvents = "none";
+      box.style.pointerEvents = "auto";
     } else {
-      body.style.display = "";
+      body.style.setProperty("display", "block", "important");
+      body.style.removeProperty("height");
+      body.style.removeProperty("min-height");
+      body.style.setProperty("max-height", "calc(80vh - 42px)", "important");
+      body.style.setProperty("overflow", "auto", "important");
+      body.style.setProperty("overscroll-behavior", "contain", "important");
+      body.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
 
-      box.style.height = "auto";
-      box.style.maxHeight = "45vh";
-      box.style.overflow = "auto";
-      box.style.padding = "8px 10px";
-      box.style.marginTop = "96px";
+      // Khi mở: popup chiếm 80% chiều cao giao diện.
+      box.style.setProperty("height", "80vh", "important");
+      box.style.setProperty("min-height", "0", "important");
+      box.style.setProperty("max-height", "80vh", "important");
+      box.style.setProperty("padding", "0", "important");
+      box.style.setProperty("overflow", "hidden", "important");
+      box.style.setProperty("top", "10vh", "important");
+      box.style.setProperty("bottom", "auto", "important");
+
+      overlay.style.pointerEvents = "auto";
+      box.style.pointerEvents = "auto";
     }
   }
 
