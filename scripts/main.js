@@ -1283,12 +1283,8 @@ function showBayMauPopup(tasks, context) {
   }
 
   trHead.appendChild(mkTh("bày mẫu"));
-  trHead.appendChild(mkTh("ảnh"));
-  trHead.appendChild(mkTh("mã sp"));
-  trHead.appendChild(mkTh("nv bán"));
-  trHead.appendChild(mkTh("GHI CHÚ"));
 
-  // Cột X.NHẬN với checkbox tổng
+  // Cột X.NHẬN ADMIN: chuyển sang vị trí cũ của cột ẢNH
   const thConfirm = mkTh("");
   const chkAllConfirm = document.createElement("input");
   chkAllConfirm.type = "checkbox";
@@ -1300,6 +1296,11 @@ function showBayMauPopup(tasks, context) {
   });
   thConfirm.appendChild(chkAllConfirm);
   trHead.appendChild(thConfirm);
+
+  trHead.appendChild(mkTh("mã sp"));
+  trHead.appendChild(mkTh("nv bán"));
+  trHead.appendChild(mkTh("GHI CHÚ"));
+  trHead.appendChild(mkTh("ảnh"));
 
   thead.appendChild(trHead);
   table.appendChild(thead);
@@ -1388,7 +1389,6 @@ function showBayMauPopup(tasks, context) {
     tdImage.appendChild(btnCam);
     tdImage.appendChild(fileInput);
     tdImage.appendChild(status);
-    tr.appendChild(tdImage);
 
     // lưu lại
     row._fileInput = fileInput;
@@ -1455,9 +1455,11 @@ function showBayMauPopup(tasks, context) {
     chkConfirm.checked = !!row.baymau_admin_confirm_by;
     if (!isAdmin) chkConfirm.disabled = true;
     tdConfirm.appendChild(chkConfirm);
-    tr.appendChild(tdConfirm);
+    // Vị trí cột: Bày mẫu | Xác nhận admin | Mã SP | NV bán | Ghi chú | Ảnh
+    tr.insertBefore(tdConfirm, tr.children[1] || null);
     confirmCheckboxes.push(chkConfirm);
 
+    tr.appendChild(tdImage);
     tbody.appendChild(tr);
   });
 
@@ -1488,10 +1490,11 @@ function showBayMauPopup(tasks, context) {
 
   function applyBayMauCollapsed() {
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    const collapsedBottom = isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 118px)" : "164px";
+    // Giữ popup ở phía trên giao diện như cách cũ. Trên mobile dùng safe-area để tránh tai thỏ.
+    const topPos = isMobile ? "calc(env(safe-area-inset-top, 0px) + 96px)" : "96px";
 
     if (bayMauCollapsed) {
-      // setProperty(..., important) để thắng các rule mobile cũ có !important.
+      // Thu gọn thật sự: chỉ còn thanh tiêu đề, không còn nền rỗng.
       body.style.setProperty("display", "none", "important");
       body.style.setProperty("height", "0", "important");
       body.style.setProperty("min-height", "0", "important");
@@ -1503,28 +1506,27 @@ function showBayMauPopup(tasks, context) {
       box.style.setProperty("max-height", "34px", "important");
       box.style.setProperty("padding", "0", "important");
       box.style.setProperty("overflow", "hidden", "important");
-      box.style.setProperty("top", "auto", "important");
-      box.style.setProperty("bottom", collapsedBottom, "important");
+      box.style.setProperty("top", topPos, "important");
+      box.style.setProperty("bottom", "auto", "important");
 
-      // Thu gọn thì chỉ thanh popup nhận click; phần còn lại của trang vẫn thao tác bình thường.
       overlay.style.pointerEvents = "none";
       box.style.pointerEvents = "auto";
     } else {
       body.style.setProperty("display", "block", "important");
       body.style.removeProperty("height");
       body.style.removeProperty("min-height");
-      body.style.setProperty("max-height", "calc(80vh - 42px)", "important");
+      body.style.setProperty("max-height", "calc(70vh - 42px)", "important");
       body.style.setProperty("overflow", "auto", "important");
       body.style.setProperty("overscroll-behavior", "contain", "important");
       body.style.setProperty("-webkit-overflow-scrolling", "touch", "important");
 
-      // Khi mở: popup chiếm 80% chiều cao giao diện.
-      box.style.setProperty("height", "80vh", "important");
+      // Khi mở: nằm trên đầu trang và chỉ cao 70% viewport để hàng cuối ít bị bàn phím iPhone che.
+      box.style.setProperty("height", "70vh", "important");
       box.style.setProperty("min-height", "0", "important");
-      box.style.setProperty("max-height", "80vh", "important");
+      box.style.setProperty("max-height", "70vh", "important");
       box.style.setProperty("padding", "0", "important");
       box.style.setProperty("overflow", "hidden", "important");
-      box.style.setProperty("top", "10vh", "important");
+      box.style.setProperty("top", topPos, "important");
       box.style.setProperty("bottom", "auto", "important");
 
       overlay.style.pointerEvents = "auto";
@@ -1699,10 +1701,11 @@ function showBayMauPopup(tasks, context) {
     closePopup();
   });
 
-  // Click ra ngoài box thì đóng
+  // Click ra ngoài box: KHÔNG đóng/mất popup, chỉ thu gọn về một thanh tiêu đề.
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) {
-      closePopup();
+    if (e.target === overlay && !bayMauCollapsed) {
+      bayMauCollapsed = true;
+      applyBayMauCollapsed();
     }
   });
 }
