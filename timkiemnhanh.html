@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <title>Tìm kiếm nhanh Hoàn Tuyết V1.2.8</title>
+  <title>Tìm kiếm nhanh Hoàn Tuyết V1.2.9</title>
   <style>
     :root{--blue:#0878d1;--green:#15945d;--red:#d92d20;--amber:#f4a900;--bg:#f3f6f9;--card:#fff;--border:#d7e0e8;--text:#172033}
     *{box-sizing:border-box}html,body{margin:0;max-width:100%;overflow-x:hidden;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -47,7 +47,7 @@
       #formSelect { font-size:20px !important; }
     }
 
-    /* V1.2.8 - Cho thông tin SP đã chọn tự xuống dòng + tăng chiều cao khay ảnh kết quả */
+    /* V1.2.9 - Cho thông tin SP đã chọn tự xuống dòng + tăng chiều cao khay ảnh kết quả */
     .selected-info-line{
       flex-wrap:wrap !important;
       align-items:flex-start !important;
@@ -74,12 +74,36 @@
       .selected-info-line{column-gap:6px !important;row-gap:2px !important;}
       .product-image-wrap{height:270px !important;}
     }
+  
+    /* V1.2.9 - Điều hướng nhanh, header, nút 16px, size compact */
+    .top-row .title{order:2;text-align:right;}
+    .top-row .new-btn{order:1;}
+    #codeInput{font-size:18px !important;}
+    .sel-actions button{font-size:16px !important;padding:7px 1px !important;line-height:1.1;}
+    .main-group{font-size:16px !important;padding:6px 1px !important;}
+    .main-group small{font-size:11px;}
+    .page-jump-btn{
+      position:fixed;left:10px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:26000;
+      width:44px;height:44px;border:1px solid rgba(255,255,255,.85);border-radius:50%;
+      background:rgba(11,63,120,.90);color:#fff;font-size:25px;font-weight:900;line-height:1;
+      display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.25);
+      backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);touch-action:manipulation;
+    }
+    .page-jump-btn:active{transform:scale(.94);}
+    @media(max-width:520px){
+      .sel-actions{gap:3px !important;}
+      .sel-actions button{font-size:16px !important;padding:7px 0 !important;}
+      .main-groups{gap:3px !important;}
+      .main-group{font-size:16px !important;padding:6px 0 !important;min-height:50px;}
+      .main-group small{font-size:10px;}
+      #codeInput{font-size:18px !important;}
+    }
   </style>
 </head>
 <body>
   <div id="login-container"></div>
   <div id="app-container">
-  <div class="top"><div class="top-row"><div class="title">🔎 TÌM KIẾM NHANH</div><button id="btnNew" class="new-btn" type="button">＋ Thêm mới</button></div><div class="mini" id="nvInfo">V1.2.8</div></div>
+  <div class="top"><div class="top-row"><button id="btnNew" class="new-btn" type="button">＋ Thêm mới</button><div class="title">🔎 TÌM KIẾM NHANH</div></div><div class="mini" id="nvInfo">V1.2.9</div></div>
   <main class="wrap">
     <section class="card" id="selectedSection">
       <div class="section-head"><h3>Sản phẩm đã chọn</h3><span id="selectedCount" class="count"></span></div>
@@ -121,6 +145,7 @@
     </section>
   </main>
 
+  <button id="pageJumpBtn" class="page-jump-btn" type="button" aria-label="Đi đến cuối trang" title="Cuối trang">↓</button>
   <div id="toast" class="status"></div>
   <div id="scanOverlay" class="overlay">
     <video id="scanVideo" autoplay playsinline></video>
@@ -151,6 +176,6 @@
 
 
   <script src="/scripts/stockQuickPopup.js?v=77"></script>
-  <script type="module" src="/scripts/timKiemNhanh.js?v=128"></script>
+  <script type="module" src="/scripts/timKiemNhanh.js?v=129"></script>
 </body>
 </html>
