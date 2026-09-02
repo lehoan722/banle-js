@@ -1,12 +1,21 @@
 // scripts/salesCopilotBridgeBannv.js
-// Cầu nối V1: nhận masp + size + soluong từ Sales Copilot.
+// Cầu nối V2: nhận masp + size + soluong từ Tìm kiếm nhanh/Sales Copilot.
 // KHÔNG lưu hóa đơn. Chỉ đưa hàng vào đúng luồng nhập mã hiện tại của bannv.
 
 (function(){
   const KEY = "sales_copilot_pending_v1";
   const ACK_KEY = "sales_copilot_ack_v1";
+  const PAGE_BRANCH = location.pathname.toLowerCase().includes("bannvcs2") ? "cs2" : "cs1";
+  const WINDOW_NAME = `BAN_NV_HOAN_TUYET_${PAGE_BRANCH.toUpperCase()}`;
+  const CHANNEL_NAME = `sales_copilot_bridge_v2_${PAGE_BRANCH}`;
   let running = false;
   let lastId = "";
+
+  // Giúp Tìm kiếm nhanh nhận diện đúng tab bán đã được mở trực tiếp từ menu.
+  try{ window.name = WINDOW_NAME; }catch(_){}
+
+  let bridgeChannel = null;
+  try{ bridgeChannel = new BroadcastChannel(CHANNEL_NAME); }catch(_){}
 
   function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
@@ -91,6 +100,7 @@
     if(running || !ready())return;
     const payload=getPayload();
     if(!payload || payload.id===lastId)return;
+    if(payload.diadiem && String(payload.diadiem).toLowerCase()!==PAGE_BRANCH)return;
 
     running=true;
     try{
@@ -107,11 +117,13 @@
 
       lastId=payload.id;
       localStorage.removeItem(KEY);
-      localStorage.setItem(ACK_KEY, JSON.stringify({
+      const ack = {
         id: payload.id,
         consumed_at: new Date().toISOString(),
         count: payload.items.length
-      }));
+      };
+      localStorage.setItem(ACK_KEY, JSON.stringify(ack));
+      try{ bridgeChannel?.postMessage({type:"ACK",ack}); }catch(_){}
 
       try{
         window.focus();
@@ -133,6 +145,16 @@
   window.addEventListener("storage",(e)=>{
     if(e.key===KEY && e.newValue) setTimeout(consume,200);
   });
+  if(bridgeChannel){
+    bridgeChannel.onmessage=(event)=>{
+      const message=event?.data;
+      if(message?.type!=="PENDING" || !message.payload)return;
+      const payload=message.payload;
+      if(payload.diadiem && String(payload.diadiem).toLowerCase()!==PAGE_BRANCH)return;
+      try{ localStorage.setItem(KEY,JSON.stringify(payload)); }catch(_){}
+      setTimeout(consume,50);
+    };
+  }
   window.addEventListener("focus",()=>setTimeout(consume,200));
   document.addEventListener("visibilitychange",()=>{
     if(document.visibilityState==="visible")setTimeout(consume,200);
