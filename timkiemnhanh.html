@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <title>Tìm kiếm nhanh Hoàn Tuyết V1.2.7</title>
+  <title>Tìm kiếm nhanh Hoàn Tuyết V1.2.8</title>
   <style>
     :root{--blue:#0878d1;--green:#15945d;--red:#d92d20;--amber:#f4a900;--bg:#f3f6f9;--card:#fff;--border:#d7e0e8;--text:#172033}
     *{box-sizing:border-box}html,body{margin:0;max-width:100%;overflow-x:hidden;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -46,12 +46,40 @@
       .info-kho, .info-mau, .product-kho, .product-mau, .selected-kho, .selected-mau,
       #formSelect { font-size:20px !important; }
     }
+
+    /* V1.2.8 - Cho thông tin SP đã chọn tự xuống dòng + tăng chiều cao khay ảnh kết quả */
+    .selected-info-line{
+      flex-wrap:wrap !important;
+      align-items:flex-start !important;
+      white-space:normal !important;
+      overflow:visible !important;
+      row-gap:2px !important;
+      column-gap:7px !important;
+      height:auto !important;
+    }
+    .selected-info-line span{
+      max-width:100%;
+      white-space:normal !important;
+      overflow:visible !important;
+      text-overflow:clip !important;
+      overflow-wrap:anywhere;
+    }
+    .selected-formstock{
+      overflow:visible !important;
+      text-overflow:clip !important;
+      white-space:normal !important;
+    }
+    .product-image-wrap{height:300px;}
+    @media(max-width:520px){
+      .selected-info-line{column-gap:6px !important;row-gap:2px !important;}
+      .product-image-wrap{height:270px !important;}
+    }
   </style>
 </head>
 <body>
   <div id="login-container"></div>
   <div id="app-container">
-  <div class="top"><div class="top-row"><div class="title">🔎 TÌM KIẾM NHANH</div><button id="btnNew" class="new-btn" type="button">＋ Thêm mới</button></div><div class="mini" id="nvInfo">V1.2.7</div></div>
+  <div class="top"><div class="top-row"><div class="title">🔎 TÌM KIẾM NHANH</div><button id="btnNew" class="new-btn" type="button">＋ Thêm mới</button></div><div class="mini" id="nvInfo">V1.2.8</div></div>
   <main class="wrap">
     <section class="card" id="selectedSection">
       <div class="section-head"><h3>Sản phẩm đã chọn</h3><span id="selectedCount" class="count"></span></div>
@@ -123,6 +151,6 @@
 
 
   <script src="/scripts/stockQuickPopup.js?v=77"></script>
-  <script type="module" src="/scripts/timKiemNhanh.js?v=127"></script>
+  <script type="module" src="/scripts/timKiemNhanh.js?v=128"></script>
 </body>
 </html>
