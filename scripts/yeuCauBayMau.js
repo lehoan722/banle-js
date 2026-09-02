@@ -1,0 +1,422 @@
+// Module YÊU CẦU BÀY MẪU cho trang Tìm kiếm nhanh.
+// Chỉ hiện nút BM; dữ liệu chỉ được tải và popup chỉ mở khi người dùng bấm nút.
+
+let moduleContext = null;
+let popupOpen = false;
+let saving = false;
+
+const STYLE_ID = "yeu-cau-bay-mau-style";
+const BUTTON_ID = "yeu-cau-bay-mau-btn";
+const OVERLAY_ID = "yeu-cau-bay-mau-overlay";
+
+function addStyles() {
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.textContent = `
+    #${BUTTON_ID}{
+      position:fixed;right:10px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:26000;
+      width:44px;height:44px;border:1px solid rgba(128,91,0,.55);border-radius:50%;
+      background:rgba(255,210,48,.96);color:#513900;font-size:16px;font-weight:900;line-height:1;
+      display:flex;align-items:center;justify-content:center;padding:0;
+      box-shadow:0 4px 14px rgba(0,0,0,.25);touch-action:manipulation;
+      -webkit-tap-highlight-color:transparent;
+    }
+    #${BUTTON_ID}:active{transform:scale(.94)}
+    #${BUTTON_ID}[disabled]{opacity:.65;cursor:wait}
+    #${OVERLAY_ID}{
+      position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.24);
+      display:flex;align-items:flex-start;justify-content:center;padding:8px 6px;
+    }
+    #${OVERLAY_ID} .ybm-box{
+      width:min(860px,calc(100vw - 12px));height:70vh;height:70dvh;
+      max-height:70vh;max-height:70dvh;background:#f7e0b3;border-radius:8px;
+      box-shadow:0 8px 28px rgba(0,0,0,.34);overflow:hidden;
+      display:flex;flex-direction:column;font-size:16px;color:#172033;
+    }
+    #${OVERLAY_ID} .ybm-header{
+      flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:7px 8px;
+      background:#f4c985;border-bottom:1px solid #cda75f;font-weight:800;
+    }
+    #${OVERLAY_ID} .ybm-title{flex:1;min-width:0;line-height:1.25}
+    #${OVERLAY_ID} .ybm-close{
+      flex:0 0 38px;width:38px;height:38px;border:0;border-radius:7px;
+      background:#fff3d2;color:#a22018;font-size:22px;font-weight:900;padding:0;
+    }
+    #${OVERLAY_ID} .ybm-body{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+    #${OVERLAY_ID} table{width:100%;min-width:720px;border-collapse:collapse;background:#fdf1d6}
+    #${OVERLAY_ID} th,#${OVERLAY_ID} td{border:1px solid #cfc2a9;padding:4px 5px;vertical-align:middle}
+    #${OVERLAY_ID} th{position:sticky;top:0;z-index:2;background:#f4c985;text-align:center}
+    #${OVERLAY_ID} tr.ybm-old{background:#ffd6d6}
+    #${OVERLAY_ID} tr.ybm-today{background:#fdf1d6}
+    #${OVERLAY_ID} .ybm-check-cell{text-align:center;width:72px}
+    #${OVERLAY_ID} .ybm-check{transform:scale(2);transform-origin:center;margin:0}
+    #${OVERLAY_ID} .ybm-code{font-weight:800;color:#075f9f;cursor:pointer;white-space:nowrap}
+    #${OVERLAY_ID} .ybm-note{width:100%;min-width:175px;font-size:16px;padding:5px 6px;box-sizing:border-box}
+    #${OVERLAY_ID} .ybm-camera{font-size:18px;padding:5px 8px;border:1px solid #b6934e;border-radius:6px;background:#fff3d2}
+    #${OVERLAY_ID} .ybm-photo-status{font-size:13px;color:#087b43;margin-top:2px;white-space:nowrap}
+    #${OVERLAY_ID} .ybm-empty{margin:auto;background:#fff;padding:18px;border-radius:10px;font-size:17px;font-weight:800}
+    @media(max-width:520px){
+      #${OVERLAY_ID}{padding-top:6px}
+      #${OVERLAY_ID} .ybm-box{width:calc(100vw - 8px);height:70vh;height:70dvh;font-size:16px}
+      #${OVERLAY_ID} th,#${OVERLAY_ID} td{padding:3px 4px}
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function getAdminStatus() {
+  const truthy = value => ["true", "1", "yes"].includes(String(value || "").toLowerCase());
+  let currentUser = null;
+  try { currentUser = JSON.parse(localStorage.getItem("currentUser") || "null"); } catch (_) {}
+  return !!(
+    currentUser?.is_admin || truthy(localStorage.getItem("is_admin")) ||
+    truthy(localStorage.getItem("sua_hoadon")) || truthy(localStorage.getItem("xoa_hoadon")) ||
+    String(localStorage.getItem("role") || "").toLowerCase() === "admin"
+  );
+}
+
+function buildNoteWithStaff(note, manv) {
+  const clean = String(note || "").trim().replace(/\s*\[NV\s*:\s*[^\]]+\]\s*$/i, "").trim();
+  const staff = String(manv || "").trim().toUpperCase();
+  return clean && staff ? `${clean} [NV:${staff}]` : clean;
+}
+
+function fileToImage(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+    image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Không đọc được ảnh")); };
+    image.src = url;
+  });
+}
+
+function formatTime(date = new Date()) {
+  const pad = value => String(value).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+async function resizeImage(file, masp, manv, diadiem) {
+  const image = await fileToImage(file);
+  const landscape = image.width >= image.height;
+  const width = landscape ? 480 : 360;
+  const height = landscape ? 360 : 480;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { alpha: false });
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, width, height);
+  const scale = Math.min(width / image.width, height / image.height);
+  const drawWidth = Math.round(image.width * scale);
+  const drawHeight = Math.round(image.height * scale);
+  ctx.drawImage(image, Math.round((width - drawWidth) / 2), Math.round((height - drawHeight) / 2), drawWidth, drawHeight);
+
+  const lines = [
+    `MÃ SP: ${String(masp || "").toUpperCase()}`,
+    `THỜI GIAN: ${formatTime()}`,
+    `NHÂN VIÊN: ${String(manv || "").toUpperCase()}`,
+    `CƠ SỞ: ${String(diadiem || "").toUpperCase()}`
+  ];
+  const fontSize = Math.max(15, Math.round(Math.min(width, height) * .045));
+  const pad = 10;
+  const lineHeight = Math.round(fontSize * 1.35);
+  const boxHeight = lineHeight * lines.length + pad * 2;
+  const boxX = 8;
+  const boxY = height - boxHeight - 8;
+  ctx.fillStyle = "rgba(0,0,0,.58)";
+  ctx.fillRect(boxX, boxY, Math.round(width * .82), boxHeight);
+  ctx.font = `700 ${fontSize}px Arial,sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#ffeb3b";
+  ctx.strokeStyle = "rgba(0,0,0,.9)";
+  ctx.lineWidth = 2;
+  lines.forEach((text, index) => {
+    const x = boxX + pad;
+    const y = boxY + pad + index * lineHeight;
+    ctx.strokeText(text, x, y);
+    ctx.fillText(text, x, y);
+  });
+  return new Promise((resolve, reject) => canvas.toBlob(
+    blob => blob ? resolve(blob) : reject(new Error("Không nén được ảnh")),
+    "image/jpeg", .62
+  ));
+}
+
+async function fetchTasks() {
+  const { supabase, diadiem } = moduleContext;
+  const { data, error } = await supabase.rpc("baymau_get_tasks", {
+    p_diadiem: diadiem,
+    p_mode: "mt",
+    p_manv: null
+  });
+  if (error) throw error;
+  return data || [];
+}
+
+function removePopup() {
+  document.getElementById(OVERLAY_ID)?.remove();
+  popupOpen = false;
+}
+
+function td(className = "") {
+  const cell = document.createElement("td");
+  if (className) cell.className = className;
+  return cell;
+}
+
+function th(text, className = "") {
+  const cell = document.createElement("th");
+  cell.textContent = text;
+  if (className) cell.className = className;
+  return cell;
+}
+
+async function saveAndClose(tasks, refs, closeButton) {
+  if (saving) return;
+  saving = true;
+  closeButton.disabled = true;
+  closeButton.textContent = "…";
+  const { supabase, diadiem, manvDangNhap } = moduleContext;
+
+  try {
+    const rowsToFinish = [];
+    for (const row of tasks) {
+      const ref = refs.get(Number(row.id_ct));
+      if (!ref?.done.checked) continue;
+      const file = ref.getFile();
+      if (row.can_chup_anh_baymau && !file && !row.baymau_image_path) {
+        alert(`Mã ${row.masp}: đã tick bày mẫu nhưng chưa chụp ảnh.`);
+        return;
+      }
+      rowsToFinish.push({ row, ref, file });
+    }
+
+    for (const item of rowsToFinish) {
+      if (!item.file) continue;
+      const blob = await resizeImage(item.file, item.row.masp, manvDangNhap, diadiem);
+      const date = new Date().toISOString().slice(0, 10);
+      const path = `${diadiem}/${manvDangNhap}/${date}/${item.row.id_ct}_${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from("ANHBAYMAU").upload(path, blob, {
+        upsert: true, cacheControl: "3600", contentType: "image/jpeg"
+      });
+      if (uploadError) throw new Error(`Lỗi lưu ảnh mã ${item.row.masp}: ${uploadError.message || uploadError}`);
+      const { error: imageError } = await supabase.rpc("baymau_update_image", {
+        p_id_ct: Number(item.row.id_ct), p_path: path, p_manv: manvDangNhap
+      });
+      if (imageError) throw new Error(`Ảnh mã ${item.row.masp} đã tải lên nhưng chưa lưu được đường dẫn.`);
+    }
+
+    const doneIds = rowsToFinish.map(item => Number(item.row.id_ct)).filter(Number.isFinite);
+    if (doneIds.length) {
+      const { error } = await supabase.rpc("baymau_set_done", { p_ids: doneIds, p_manv: manvDangNhap });
+      if (error) throw error;
+    }
+
+    const noteUpdates = [];
+    refs.forEach((ref, id) => {
+      const note = ref.note.value.trim();
+      if (note && note !== ref.oldNote.trim()) {
+        noteUpdates.push({ id_ct: id, note: buildNoteWithStaff(note, manvDangNhap) });
+      }
+    });
+
+    const confirmIds = getAdminStatus()
+      ? [...refs.entries()].filter(([, ref]) => ref.confirm.checked).map(([id]) => id)
+      : [];
+    if (noteUpdates.length || confirmIds.length) {
+      const { error } = await supabase.rpc("baymau_update_note_and_confirm", {
+        p_note_updates: noteUpdates,
+        p_confirm_ids: confirmIds,
+        p_admin: getAdminStatus() ? manvDangNhap : null
+      });
+      if (error) throw error;
+    }
+    removePopup();
+  } catch (error) {
+    console.error("Lỗi lưu yêu cầu bày mẫu:", error);
+    alert("Không lưu được yêu cầu bày mẫu: " + (error?.message || error));
+  } finally {
+    saving = false;
+    if (closeButton.isConnected) {
+      closeButton.disabled = false;
+      closeButton.textContent = "✕";
+    }
+  }
+}
+
+function showPopup(tasks) {
+  const oldCount = tasks.filter(row => row.task_age !== "TODAY").length;
+  const todayCount = tasks.length - oldCount;
+  const isAdmin = getAdminStatus();
+  const overlay = document.createElement("div");
+  overlay.id = OVERLAY_ID;
+  const box = document.createElement("div");
+  box.className = "ybm-box";
+  const header = document.createElement("div");
+  header.className = "ybm-header";
+  const title = document.createElement("div");
+  title.className = "ybm-title";
+  title.innerHTML = `YÊU CẦU BÀY MẪU SP <span style="color:#c00">10 ngày trước: ${oldCount}</span> | <span style="color:#087b43">Hôm nay: ${todayCount}</span>`;
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "ybm-close";
+  close.textContent = "✕";
+  close.title = "Lưu và đóng";
+  header.append(title, close);
+
+  const body = document.createElement("div");
+  body.className = "ybm-body";
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  headRow.append(th("Bày mẫu", "ybm-check-cell"));
+  const confirmHead = th("", "ybm-check-cell");
+  const confirmAll = document.createElement("input");
+  confirmAll.type = "checkbox";
+  confirmAll.className = "ybm-check";
+  confirmAll.disabled = !isAdmin;
+  confirmAll.title = "Duyệt tất cả";
+  confirmHead.appendChild(confirmAll);
+  headRow.append(confirmHead, th("Mã SP"), th("NV bán"), th("Ghi chú"), th("Ảnh"));
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+  const tbody = document.createElement("tbody");
+  const refs = new Map();
+
+  tasks.forEach(row => {
+    const rowId = Number(row.id_ct);
+    const tr = document.createElement("tr");
+    tr.className = row.task_age === "TODAY" ? "ybm-today" : "ybm-old";
+
+    const doneCell = td("ybm-check-cell");
+    const done = document.createElement("input");
+    done.type = "checkbox";
+    done.className = "ybm-check";
+    doneCell.appendChild(done);
+
+    const confirmCell = td("ybm-check-cell");
+    const confirm = document.createElement("input");
+    confirm.type = "checkbox";
+    confirm.className = "ybm-check";
+    confirm.checked = !!row.baymau_admin_confirm_by;
+    confirm.disabled = !isAdmin;
+    confirmCell.appendChild(confirm);
+
+    const codeCell = td("ybm-code");
+    codeCell.textContent = row.masp || "";
+    codeCell.onclick = event => {
+      event.stopPropagation();
+      if (typeof window.stockQuickPopup === "function") window.stockQuickPopup(String(row.masp || "").toUpperCase());
+      else if (window.StockQuick?.showFor) window.StockQuick.showFor(codeCell, String(row.masp || "").toUpperCase());
+    };
+
+    const sellerCell = td();
+    sellerCell.textContent = row.nvban || "";
+    const noteCell = td();
+    const note = document.createElement("input");
+    note.type = "text";
+    note.className = "ybm-note";
+    note.value = row.baymau_note || "";
+    noteCell.appendChild(note);
+
+    const imageCell = td();
+    const camera = document.createElement("button");
+    camera.type = "button";
+    camera.className = "ybm-camera";
+    camera.textContent = "📷";
+    camera.style.display = "none";
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.capture = "environment";
+    fileInput.hidden = true;
+    const photoStatus = document.createElement("div");
+    photoStatus.className = "ybm-photo-status";
+    let selectedFile = null;
+    camera.onclick = () => fileInput.click();
+    fileInput.onchange = event => {
+      selectedFile = event.target.files?.[0] || null;
+      photoStatus.textContent = selectedFile ? "Đã chọn ảnh" : "";
+    };
+    done.onchange = () => {
+      if (done.checked && row.can_chup_anh_baymau) {
+        camera.style.display = "inline-block";
+        setTimeout(() => fileInput.click(), 50);
+      } else {
+        camera.style.display = "none";
+        fileInput.value = "";
+        selectedFile = null;
+        photoStatus.textContent = "";
+      }
+    };
+    imageCell.append(camera, fileInput, photoStatus);
+    tr.append(doneCell, confirmCell, codeCell, sellerCell, noteCell, imageCell);
+    tbody.appendChild(tr);
+    refs.set(rowId, { done, confirm, note, oldNote: row.baymau_note || "", getFile: () => selectedFile });
+  });
+
+  confirmAll.onchange = () => {
+    if (!isAdmin) return;
+    refs.forEach(ref => { if (!ref.confirm.disabled) ref.confirm.checked = confirmAll.checked; });
+  };
+  table.appendChild(tbody);
+  body.appendChild(table);
+  box.append(header, body);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  // Không đóng khi chạm ra ngoài để tránh mất dữ liệu vừa nhập.
+  box.addEventListener("click", event => event.stopPropagation());
+  close.onclick = event => {
+    event.stopPropagation();
+    saveAndClose(tasks, refs, close);
+  };
+}
+
+async function openFromButton(button) {
+  if (!moduleContext || popupOpen || saving) return;
+  popupOpen = true;
+  button.disabled = true;
+  const oldText = button.textContent;
+  button.textContent = "…";
+  try {
+    const tasks = await fetchTasks();
+    if (!tasks.length) {
+      alert("Hiện tại không có yêu cầu bày mẫu sản phẩm.");
+      popupOpen = false;
+      return;
+    }
+    showPopup(tasks);
+  } catch (error) {
+    popupOpen = false;
+    console.error("Lỗi tải yêu cầu bày mẫu:", error);
+    alert("Không tải được yêu cầu bày mẫu: " + (error?.message || error));
+  } finally {
+    button.disabled = false;
+    button.textContent = oldText;
+  }
+}
+
+export function initYeuCauBayMau({ supabase, diadiem, manvDangNhap }) {
+  if (!supabase) throw new Error("Thiếu Supabase client cho Yêu cầu bày mẫu.");
+  moduleContext = {
+    supabase,
+    diadiem: String(diadiem || "").trim().toLowerCase(),
+    manvDangNhap: String(manvDangNhap || "").trim()
+  };
+  addStyles();
+  let button = document.getElementById(BUTTON_ID);
+  if (!button) {
+    button = document.createElement("button");
+    button.id = BUTTON_ID;
+    button.type = "button";
+    button.textContent = "BM";
+    button.title = "Yêu cầu bày mẫu";
+    button.setAttribute("aria-label", "Mở yêu cầu bày mẫu");
+    document.body.appendChild(button);
+  }
+  button.onclick = () => openFromButton(button);
+}
