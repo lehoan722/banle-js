@@ -1490,8 +1490,17 @@ function showBayMauPopup(tasks, context) {
 
   function applyBayMauCollapsed() {
     const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    // Giữ popup ở phía trên giao diện như cách cũ. Trên mobile dùng safe-area để tránh tai thỏ.
-    const topPos = isMobile ? "calc(env(safe-area-inset-top, 0px) + 96px)" : "96px";
+
+    // VỊ TRÍ THU GỌN: giữ đúng vị trí của phiên bản trước mà bạn đã sắp xếp.
+    // Mobile nằm phía dưới, ngay trên khu vực nút thao tác; desktop giữ vị trí cũ tương ứng.
+    const collapsedBottom = isMobile
+      ? "calc(env(safe-area-inset-bottom, 0px) + 118px)"
+      : "164px";
+
+    // VỊ TRÍ KHI MỞ: đưa popup lên phía trên để bàn phím điện thoại ít che dữ liệu.
+    const expandedTop = isMobile
+      ? "calc(env(safe-area-inset-top, 0px) + 96px)"
+      : "96px";
 
     if (bayMauCollapsed) {
       // Thu gọn thật sự: chỉ còn thanh tiêu đề, không còn nền rỗng.
@@ -1506,8 +1515,9 @@ function showBayMauPopup(tasks, context) {
       box.style.setProperty("max-height", "34px", "important");
       box.style.setProperty("padding", "0", "important");
       box.style.setProperty("overflow", "hidden", "important");
-      box.style.setProperty("top", topPos, "important");
-      box.style.setProperty("bottom", "auto", "important");
+      // Khi THU: trả đúng về vị trí bản trước, KHÔNG nằm trên đầu trang.
+      box.style.setProperty("top", "auto", "important");
+      box.style.setProperty("bottom", collapsedBottom, "important");
 
       overlay.style.pointerEvents = "none";
       box.style.pointerEvents = "auto";
@@ -1526,7 +1536,8 @@ function showBayMauPopup(tasks, context) {
       box.style.setProperty("max-height", "70vh", "important");
       box.style.setProperty("padding", "0", "important");
       box.style.setProperty("overflow", "hidden", "important");
-      box.style.setProperty("top", topPos, "important");
+      // Khi MỞ: mới đưa popup lên phía trên trang.
+      box.style.setProperty("top", expandedTop, "important");
       box.style.setProperty("bottom", "auto", "important");
 
       overlay.style.pointerEvents = "auto";
