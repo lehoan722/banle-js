@@ -8,6 +8,7 @@ let taskCache = null;
 let taskCacheAt = 0;
 let taskRequest = null;
 let prefetchTimer = null;
+let cacheVersion = 0;
 
 const STYLE_ID = "yeu-cau-bay-mau-style";
 const BUTTON_ID = "yeu-cau-bay-mau-btn";
@@ -164,10 +165,14 @@ async function loadTasks({ force = false } = {}) {
   const cacheIsFresh = Array.isArray(taskCache) && Date.now() - taskCacheAt < 120000;
   if (!force && cacheIsFresh) return taskCache;
   if (taskRequest) return taskRequest;
+  const requestCacheVersion = cacheVersion;
   taskRequest = fetchTasks()
     .then(tasks => {
-      taskCache = tasks;
-      taskCacheAt = Date.now();
+      // Không cho một request cũ ghi đè cache vừa được cập nhật sau khi lưu.
+      if (requestCacheVersion === cacheVersion) {
+        taskCache = tasks;
+        taskCacheAt = Date.now();
+      }
       return tasks;
     })
     .finally(() => { taskRequest = null; });
@@ -262,9 +267,40 @@ async function saveAndClose(tasks, refs, closeButton) {
       });
       if (error) throw error;
     }
-    taskCache = null;
-    taskCacheAt = 0;
+    // Cập nhật cache ngay tại máy để lần mở BM kế tiếp không phải chờ RPC.
+    // Những dòng đã hoàn thành được bỏ ngay; ghi chú/xác nhận còn lại được cập nhật
+    // theo đúng dữ liệu vừa lưu.
+    const doneIdSet = new Set(doneIds);
+    cacheVersion += 1;
+    taskCache = tasks
+      .filter(row => !doneIdSet.has(Number(row.id_ct)))
+      .map(row => {
+        const ref = refs.get(Number(row.id_ct));
+        if (!ref) return row;
+        const typedNote = ref.note.value.trim();
+        return {
+          ...row,
+          baymau_note: typedNote
+            ? buildNoteWithStaff(typedNote, manvDangNhap)
+            : (row.baymau_note || ""),
+          baymau_admin_confirm_by:
+            row.baymau_admin_confirm_by ||
+            (getAdminStatus() && ref.confirm.checked ? manvDangNhap : null)
+        };
+      });
+    taskCacheAt = Date.now();
     removePopup();
+
+    // Chờ request cũ (nếu có) kết thúc rồi đồng bộ lại âm thầm từ máy chủ.
+    // Popup đã đóng và cache tại máy vẫn sẵn sàng nên người dùng không phải chờ.
+    const pendingRequest = taskRequest;
+    Promise.resolve(pendingRequest)
+      .catch(() => {})
+      .finally(() => setTimeout(() => {
+        loadTasks({ force: true }).catch(error => {
+          console.warn("Chưa đồng bộ lại được yêu cầu bày mẫu:", error);
+        });
+      }, 0));
   } catch (error) {
     console.error("Lỗi lưu yêu cầu bày mẫu:", error);
     alert("Không lưu được yêu cầu bày mẫu: " + (error?.message || error));
