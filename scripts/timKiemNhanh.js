@@ -43,7 +43,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.8 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.9 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -152,7 +152,7 @@ function renderSizes(){
     box.innerHTML=SIZE_LIST.map(s=>{
       const qty=sourceQty(s);
       const vals=SIZE_CONVERSION[s]||[s,"-","-","-","-","-"];
-      return `<button type="button" class="size-guide-col ${qty>0?"has":"no"}" data-size="${s}" title="Tồn sau kiểm ${state.diadiem.toUpperCase()}: ${qty}">${vals.map((v,i)=>`<span class="size-guide-cell">${esc(v)}${i===0&&qty>0?`<small class="size-guide-stock">&nbsp;(${qty})</small>`:""}</span>`).join("")}</button>`;
+      return `<button type="button" class="size-guide-col ${qty>0?"has":"no"}" data-size="${s}" title="Tồn sau kiểm ${state.diadiem.toUpperCase()}: ${qty}">${vals.map((v,i)=>`<span class="size-guide-cell">${esc(i===0&&qty>0?`${v}.${qty}`:v)}</span>`).join("")}</button>`;
     }).join("");
     box.querySelectorAll(".size-guide-col").forEach(b=>b.onclick=()=>selectSizeFromUi(b.dataset.size,true));
     return;
@@ -431,10 +431,39 @@ function initAutoLoad(){
     window.addEventListener("scroll",maybeAutoLoadMore,{passive:true});
   }
 }
+let pageJumpTicking=false;
+function isNearPageTop(){
+  return (window.scrollY||document.documentElement.scrollTop||0) <= 80;
+}
+function updatePageJumpButton(){
+  const btn=$("pageJumpBtn");if(!btn)return;
+  const goBottom=isNearPageTop();
+  btn.textContent=goBottom?"↓":"↑";
+  btn.title=goBottom?"Cuối trang":"Đầu trang";
+  btn.setAttribute("aria-label",goBottom?"Đi đến cuối trang":"Trở về đầu trang");
+}
+function jumpPageEdge(){
+  const goBottom=isNearPageTop();
+  const root=document.documentElement;
+  const prev=root.style.scrollBehavior;root.style.scrollBehavior="auto";
+  if(goBottom){window.scrollTo({top:Math.max(document.body.scrollHeight,document.documentElement.scrollHeight),behavior:"auto"});}
+  else{window.scrollTo({top:0,behavior:"auto"});}
+  requestAnimationFrame(()=>{root.style.scrollBehavior=prev;updatePageJumpButton();});
+}
+function initPageJump(){
+  const btn=$("pageJumpBtn");if(!btn)return;
+  btn.addEventListener("click",jumpPageEdge);
+  window.addEventListener("scroll",()=>{
+    if(pageJumpTicking)return;pageJumpTicking=true;
+    requestAnimationFrame(()=>{pageJumpTicking=false;updatePageJumpButton();});
+  },{passive:true});
+  updatePageJumpButton();
+}
+
 function addSelected(masp,size){
   const sp=state.products.find(x=>norm(x.masp)===norm(masp))||state.sourceProduct;if(!sp)return;
   if(state.selected.some(x=>norm(x.masp)===norm(masp)&&String(x.size)===String(size))){toast("Mã + size này đã có trong Sản phẩm đã chọn.");scrollSelectedIntoView();return}
-  state.selected=[{id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,masp:sp.masp,size:String(size),soluong:1,giale:sp.giale,form:sp.form,mausac:sp.mausac,treomaucs1:sp.treomaucs1,treomaucs2:sp.treomaucs2,vitrikho1:sp.vitrikho1,vitrikho2:sp.vitrikho2,ton_sizes:sp.ton_sizes||{}},...state.selected];
+  state.selected=[...state.selected,{id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,masp:sp.masp,size:String(size),soluong:1,giale:sp.giale,form:sp.form,mausac:sp.mausac,treomaucs1:sp.treomaucs1,treomaucs2:sp.treomaucs2,vitrikho1:sp.vitrikho1,vitrikho2:sp.vitrikho2,ton_sizes:sp.ton_sizes||{}}];
   saveSelected();renderSelected();toast(`Đã chọn ${sp.masp} / ${size}`);scrollSelectedIntoView();
 }
 function jumpToElement(el,block="start"){
@@ -484,7 +513,7 @@ function renderSelected(){
   box.innerHTML=state.selected.map(r=>{
     const {kho,mau}=locationParts(r);
     const formSizes=compactFormSizes(r);
-    return `<div class="selected-item"><div class="sel-line"><button type="button" class="sel-code" data-sel-stock="${esc(r.masp)}">${esc(r.masp)}</button><span class="sel-size">Size ${esc(r.size)}</span></div><div class="selected-info-line"><span class="selected-kho">Kho: ${esc(kho||"-")}</span><span class="selected-mau">Mẫu: ${esc(mau||"-")}</span><span class="selected-formstock">${esc(formSizes)}</span></div><div class="sel-actions"><button type="button" class="research" data-research="${esc(r.id)}">Tìm lại</button><button type="button" class="continue" data-continue="${esc(r.masp)}">Tìm tiếp</button><button type="button" class="remove" data-remove="${esc(r.id)}">Bỏ</button><button type="button" class="sale" data-sale="${esc(r.id)}">Sang bán</button></div></div>`
+    return `<div class="selected-item"><div class="sel-line"><button type="button" class="sel-code" data-sel-stock="${esc(r.masp)}">${esc(r.masp)}</button><span class="sel-size">Size ${esc(r.size)}</span></div><div class="selected-info-line"><span class="selected-kho">Kho: ${esc(kho||"-")}</span><span class="selected-mau">Mẫu: ${esc(mau||"-")}</span><span class="selected-formstock">${esc(formSizes)}</span></div><div class="sel-actions"><button type="button" class="continue" data-continue="${esc(r.masp)}">Tìm tiếp</button><button type="button" class="research" data-research="${esc(r.id)}">Tìm lại</button><button type="button" class="remove" data-remove="${esc(r.id)}">Bỏ</button><button type="button" class="sale" data-sale="${esc(r.id)}">Sang bán</button></div></div>`
   }).join("");
   box.querySelectorAll("[data-sel-stock]").forEach(b=>b.onclick=e=>window.StockQuick?.showFor(e.currentTarget,b.dataset.selStock));
   box.querySelectorAll("[data-research]").forEach(b=>b.onclick=()=>researchSelected(b.dataset.research));
@@ -584,6 +613,7 @@ function bind(){
   $("stockCheckModal").addEventListener("click",e=>{if(e.target===$("stockCheckModal"))closeMissingSizePrompt()});
   $("imageOverlay").onclick=closeImage;
   initAutoLoad();
+  initPageJump();
 }
 
 async function initScanner(){
