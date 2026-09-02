@@ -1,6 +1,7 @@
 import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
+import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=1";
 
 window.TIM_KIEM_NHANH_BUILD = "1.2.5";
 console.log("[TimKiemNhanh] BUILD 1.2.5");
@@ -629,6 +630,11 @@ async function startApp(){
   try{
     if(!validBranch())throw new Error("Không xác định được CS1/CS2 từ phiên đăng nhập.");
     await loadConfig();renderGroups();bind();await initScanner();
+    initYeuCauBayMau({
+      supabase,
+      diadiem: state.diadiem,
+      manvDangNhap: state.manv
+    });
     setTimeout(()=>$("codeInput")?.focus(),50);
   }catch(e){
     appStarted=false;
