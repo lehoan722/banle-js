@@ -16,6 +16,7 @@ let audioCtx = null;
 let audioUnlocked = false;
 let repositionTimer = null;
 let panelMode = "collapsed"; // expanded | collapsed | hidden
+let selectedUrgentRowId = null; // dòng đặt khẩn đang được chọn để mở StockQuick
 
 const TABLE = "dat_hang_chuyen_kho_khan";
 const HISTORY_LIMIT = 200;
@@ -85,6 +86,11 @@ function ensureStyles() {
     #dhkhan-panel { font-family:Arial,sans-serif; }
     #dhkhan-panel th,#dhkhan-panel td { border:1px solid #efb0a9;padding:3px 5px;white-space:nowrap;font-size:13px; }
     #dhkhan-panel .dhkhan-masp-link { color:#9b1c1c;font-weight:800;text-decoration:underline;cursor:pointer; }
+    #dhkhan-panel .dhkhan-masp-cell { cursor:pointer; }
+    #dhkhan-panel tr.dhkhan-selected-row td { background:#fff2a8 !important; }
+    #dhkhan-header { cursor:pointer; }
+    #dhkhan-header button, #dhkhan-header input, #dhkhan-header select { cursor:pointer; }
+    #dhkhan-toggle { display:flex;align-items:center;justify-content:center;align-self:center;line-height:1;height:28px;min-width:28px;padding:0 4px;margin:0; }
     #dhkhan-panel .dhkhan-note { min-width:120px;max-width:230px;width:100%;box-sizing:border-box;padding:3px 5px; }
     #dhkhan-panel .dhkhan-status-select { min-width:100px;padding:3px 4px;font-size:13px; }
     #dhkhan-panel tr[data-status="moi"] td { background:#ffffff; color:#111827; }
@@ -312,10 +318,11 @@ function renderRows(rows,canMoveSection,isAdmin) {
     const canExecute = canMoveSection;
     const canSelectForFutureCcn=canExecute && st==="moi";
     const statusDisabled = canExecute ? "" : "disabled title=\"Chỉ cơ sở thực hiện chuyển hàng mới được đổi trạng thái\"";
-    return `<tr data-id="${Number(r.id)}" data-status="${esc(st)}">
+    const selectedClass = Number(r.id) === Number(selectedUrgentRowId) ? " dhkhan-selected-row" : "";
+    return `<tr class="${selectedClass.trim()}" data-id="${Number(r.id)}" data-status="${esc(st)}">
       <td style="text-align:center;"><input type="checkbox" class="dhkhan-delete-check" data-id="${Number(r.id)}" ${isAdmin?"":"disabled"} title="${isAdmin?"Chọn để admin xóa đặt hàng":"Chỉ admin được xóa"}"></td>
       <td style="text-align:center;"><input type="checkbox" class="dhkhan-move" data-id="${Number(r.id)}" ${canSelectForFutureCcn?"":"disabled"} title="Chọn dòng để tạo hóa đơn CCN"></td>
-      <td><span class="dhkhan-masp-link" data-masp="${esc(r.masp)}">${esc(r.masp)}</span></td>
+      <td class="dhkhan-masp-cell" data-id="${Number(r.id)}" data-masp="${esc(r.masp)}" title="Bấm vào ô này để mở StockQuick"><span class="dhkhan-masp-link">${esc(r.masp)}</span></td>
       <td style="text-align:center;">${Number(r.soluong||1)}</td>
       <td style="text-align:center;">${esc(r.size)}</td>
       <td style="font-weight:700;">${esc(r.huong_chuyen)}</td>
@@ -344,7 +351,7 @@ function positionPanel() {
     // không neo sát đáy để tránh che các nút thao tác của trang bán lẻ.
     const bay = document.getElementById("baymau-popup");
     const bayRect = bay?.getBoundingClientRect?.();
-    const barH = 36;
+    const barH = 42;
     const gap = 4;
 
     box.style.top = bayRect && Number.isFinite(bayRect.top)
@@ -371,6 +378,7 @@ function applyPanelMode(){
   const box=document.getElementById("dhkhan-panel"); if(!box) return;
   const body=box.querySelector("#dhkhan-body"); const toggle=box.querySelector("#dhkhan-toggle");
   if(panelMode==="hidden"){ box.remove(); return; }
+  box.classList.toggle("dhkhan-collapsed", panelMode === "collapsed");
   if(body) body.style.display=panelMode==="collapsed"?"none":"block";
   if(toggle) toggle.textContent=panelMode==="collapsed"?"▲":"▼";
   positionPanel();
@@ -504,7 +512,22 @@ async function createUrgentCcnFromChecked(box) {
 }
 
 function bindPanelEvents(box) {
-  box.querySelector("#dhkhan-toggle")?.addEventListener("click",e=>{ e.stopPropagation(); panelMode=panelMode==="collapsed"?"expanded":"collapsed"; applyPanelMode(); });
+  const togglePanel = () => {
+    panelMode = panelMode === "collapsed" ? "expanded" : "collapsed";
+    applyPanelMode();
+  };
+
+  box.querySelector("#dhkhan-toggle")?.addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); togglePanel(); });
+
+  // Có thể bấm vào phần trống/tiêu đề của cả thanh để thu gọn hoặc mở rộng.
+  // Các nút thao tác riêng vẫn hoạt động độc lập, không làm panel đổi trạng thái.
+  box.querySelector("#dhkhan-header")?.addEventListener("click", e => {
+    if (e.target.closest("button,input,select,textarea,a")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    togglePanel();
+  });
+
   box.querySelector("#dhkhan-close")?.addEventListener("click",e=>{ e.stopPropagation(); panelMode="hidden"; applyPanelMode(); });
   box.querySelector("#dhkhan-create")?.addEventListener("click",()=>{ showManualCreate(); });
   box.querySelector("#dhkhan-delete")?.addEventListener("click",()=>deleteSelectedOrders(box));
@@ -516,7 +539,17 @@ function bindPanelEvents(box) {
   box.querySelectorAll(".dhkhan-note").forEach(input=>{
     input.addEventListener("change",async()=>{ suppressRealtimeUntil=Date.now()+600; const {error}=await ctx.supabase.from(TABLE).update({ghichu_dat:input.value||"",updated_at:new Date().toISOString()}).eq("id",Number(input.dataset.id)); input.style.background=error?"#ffd6d6":"#e8f7e8"; setTimeout(()=>input.style.background="",650); });
   });
-  box.querySelectorAll(".dhkhan-masp-link").forEach(el=>el.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openStockQuick(el.dataset.masp);}));
+  // Bấm ở BẤT KỲ vị trí nào trong ô mã SP đều mở StockQuick.
+  // Đồng thời chỉ giữ một dòng được tô vàng để nhận biết dòng đang chọn.
+  box.querySelectorAll(".dhkhan-masp-cell").forEach(cell => cell.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = Number(cell.dataset.id);
+    selectedUrgentRowId = Number.isFinite(id) ? id : null;
+    box.querySelectorAll("tr.dhkhan-selected-row").forEach(tr => tr.classList.remove("dhkhan-selected-row"));
+    cell.closest("tr")?.classList.add("dhkhan-selected-row");
+    openStockQuick(cell.dataset.masp);
+  }));
 }
 
 async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
@@ -541,7 +574,7 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
         <button id="dhkhan-create" style="font-weight:800;color:#9b0000;">+ Đặt khẩn</button>
         ${isAdmin ? `<button id="dhkhan-delete" style="font-weight:800;color:#9b0000;">Xóa đặt hàng</button>` : ""}
         <button id="dhkhan-create-ccn" style="font-weight:800;color:#0b57d0;">Tạo hóa đơn CCN</button>
-        <button id="dhkhan-toggle" style="border:0;background:transparent;font-size:18px;font-weight:900;">${panelMode==="collapsed"?"▲":"▼"}</button>
+        <button id="dhkhan-toggle" title="Thu gọn / mở rộng" style="border:0;background:transparent;font-size:18px;font-weight:900;">${panelMode==="collapsed"?"▲":"▼"}</button>
         <button id="dhkhan-close" title="Đóng hẳn" style="border:0;background:transparent;font-size:20px;font-weight:900;color:#9b0000;">×</button>
       </div>
     </div>
@@ -557,7 +590,10 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
         <tbody data-section="onlyview">${renderRows(onlyView,false,isAdmin)}</tbody>
       </table>
     </div>`;
-  document.body.appendChild(box); positionPanel(); bindPanelEvents(box);
+  document.body.appendChild(box);
+  box.classList.toggle("dhkhan-collapsed", panelMode === "collapsed");
+  positionPanel();
+  bindPanelEvents(box);
   if(flash){ box.classList.add("dhkhan-flash"); setTimeout(()=>box.classList.remove("dhkhan-flash"),2200); }
 }
 async function refreshPanel(options={}) { const rows=await fetchOrders(); await renderPanel(rows,options); }
