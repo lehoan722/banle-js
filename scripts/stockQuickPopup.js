@@ -102,7 +102,8 @@
     position: fixed;
     min-width: 260px;
     max-width: 900px;              /* PC: đủ chỗ cho bảng + ảnh */
-    max-height: 88vh;
+    height: calc(100vh - 16px);
+    max-height: calc(100vh - 16px);
     background: rgba(255,255,255,0.98);
     border-radius: 8px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);
@@ -671,26 +672,6 @@
   .sq-discount-msg.ok { color: #15803d; }
   .sq-discount-msg.err { color: #dc2626; }
 
-  .sq-discount-view-link {
-    margin-top: 7px;
-    text-align: center;
-    color: #dc2626;
-    font-weight: 800;
-    cursor: pointer;
-    user-select: none;
-    text-decoration: underline;
-    animation: sqDiscountBlink 1.05s ease-in-out infinite;
-  }
-
-  .sq-discount-view-link:hover {
-    color: #991b1b;
-  }
-
-  @keyframes sqDiscountBlink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: .28; }
-  }
-
   .sq-discount-size-backdrop {
     position: fixed;
     inset: 0;
@@ -750,9 +731,9 @@
       width: 68vw;
       max-width: 68vw;
 
-      /* GIẢM CHIỀU CAO POPUP */
-      height: 78vh;
-      max-height: 78vh;
+      /* Tăng chiều cao popup gần hết màn hình, giữ nguyên chiều rộng */
+      height: calc(100vh - 12px);
+      max-height: calc(100vh - 12px);
 
       overflow-y: auto;
       overflow-x: hidden;
@@ -908,6 +889,12 @@
       right: 2px;
       font-size: 18px;
     }
+  }
+
+  /* ===== Đồng bộ toàn bộ cỡ chữ StockQuickPopup ===== */
+  .sq-stock-popup,
+  .sq-stock-popup * {
+    font-size: 16px !important;
   }
 
   `;
@@ -2125,10 +2112,6 @@ data-color-masp="${targetMasp}"
             </datalist>
             <span class="sq-discount-msg"></span>
           </div>
-          <div
-            class="sq-discount-view-link"
-            title="Xem sản phẩm giảm giá cùng nhóm và đúng size"
-          >XEM HÀNG GIẢM GIÁ CÙNG NHÓM${nhomhang ? `: ${nhomhang}` : ""}</div>
         </div>
       `
       : `
@@ -2137,10 +2120,6 @@ data-color-masp="${targetMasp}"
             <span class="sq-discount-label">Giảm giá:</span>
             <span class="sq-vitri-value-readonly">${giam_gia_pct == null ? "Không giảm" : `${giam_gia_pct}%`}</span>
           </div>
-          <div
-            class="sq-discount-view-link"
-            title="Xem sản phẩm giảm giá cùng nhóm và đúng size"
-          >XEM HÀNG GIẢM GIÁ CÙNG NHÓM${nhomhang ? `: ${nhomhang}` : ""}</div>
         </div>
       `;
 
@@ -2152,6 +2131,7 @@ data-color-masp="${targetMasp}"
     ${baymauRowCs2}
     ${nhomhangRow}
     ${formRow}
+    ${discountEditorBlock}
   </div>
 `;
 
@@ -2200,7 +2180,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
           </div>
           ${imgBlock}
         </div>
-        ${discountEditorBlock}
         ${vitriEditorBlock}
       </div>`;
   }
@@ -2670,7 +2649,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
     const input = popup.querySelector(".sq-discount-input");
     const msgEl = popup.querySelector(".sq-discount-msg");
-    const link = popup.querySelector(".sq-discount-view-link");
 
     if (input && input.dataset.discountBound !== "1") {
       input.dataset.discountBound = "1";
@@ -2751,32 +2729,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       input.addEventListener("click", e => e.stopPropagation());
     }
 
-    if (link && link.dataset.discountLinkBound !== "1") {
-      link.dataset.discountLinkBound = "1";
-
-      link.addEventListener("click", async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-
-        const size = await pickDiscountSize();
-        if (!size) return;
-
-        const ready = await ensureStockQuickSimilarReady();
-        if (!ready || typeof window.StockQuickSimilar?.openDiscountFromPopup !== "function") {
-          alert("Module xem hàng giảm giá chưa sẵn sàng. Hãy cập nhật stockQuickSimilar.js rồi thử lại.");
-          return;
-        }
-
-        await window.StockQuickSimilar.openDiscountFromPopup({
-          masp: String(popup.dataset.masp || "").trim().toUpperCase(),
-          size,
-          nhomhang: String(payload?.nhomhang || popup.dataset.nhomhang || "").trim(),
-          form: String(payload?.form || popup.dataset.form || "").trim().toUpperCase(),
-          denNgay: getDenNgay()
-        });
-      });
-    }
   }
 
   function bindFormAction(popup) {
