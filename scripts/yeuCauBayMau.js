@@ -54,6 +54,8 @@ function addStyles() {
     #${OVERLAY_ID} th{position:sticky;top:0;z-index:2;background:#f4c985;text-align:center}
     #${OVERLAY_ID} tr.ybm-old{background:#ffd6d6}
     #${OVERLAY_ID} tr.ybm-today{background:#fdf1d6}
+    /* Dòng đang được người dùng chọn để xem StockQuick */
+    #${OVERLAY_ID} tr.ybm-selected>td{background:#fff3b0 !important}
     #${OVERLAY_ID} .ybm-check-cell{text-align:center;width:72px}
     #${OVERLAY_ID} .ybm-check{transform:scale(2);transform-origin:center;margin:0}
     #${OVERLAY_ID} .ybm-code{font-weight:800;color:#075f9f;cursor:pointer;white-space:nowrap}
@@ -353,6 +355,20 @@ function showPopup(tasks) {
   const tbody = document.createElement("tbody");
   const refs = new Map();
 
+  // Chỉ giữ đúng 1 dòng được chọn. Dòng được chọn tô vàng để người dùng
+  // dễ nhận biết mã đang mở trong StockQuickPopup.
+  let selectedRow = null;
+  const selectAndOpenStockQuick = (tr, masp, anchorEl) => {
+    if (selectedRow && selectedRow !== tr) selectedRow.classList.remove("ybm-selected");
+    selectedRow = tr;
+    tr.classList.add("ybm-selected");
+
+    const code = String(masp || "").trim().toUpperCase();
+    if (!code) return;
+    if (typeof window.stockQuickPopup === "function") window.stockQuickPopup(code);
+    else if (window.StockQuick?.showFor) window.StockQuick.showFor(anchorEl || tr, code);
+  };
+
   tasks.forEach(row => {
     const rowId = Number(row.id_ct);
     const tr = document.createElement("tr");
@@ -374,10 +390,10 @@ function showPopup(tasks) {
 
     const codeCell = td("ybm-code");
     codeCell.textContent = row.masp || "";
+    // Bấm ở bất kỳ vị trí nào trong ô Mã SP đều chọn dòng + mở StockQuick.
     codeCell.onclick = event => {
       event.stopPropagation();
-      if (typeof window.stockQuickPopup === "function") window.stockQuickPopup(String(row.masp || "").toUpperCase());
-      else if (window.StockQuick?.showFor) window.StockQuick.showFor(codeCell, String(row.masp || "").toUpperCase());
+      selectAndOpenStockQuick(tr, row.masp, codeCell);
     };
 
     const sellerCell = td();
@@ -403,7 +419,10 @@ function showPopup(tasks) {
     const photoStatus = document.createElement("div");
     photoStatus.className = "ybm-photo-status";
     let selectedFile = null;
-    camera.onclick = () => fileInput.click();
+    camera.onclick = event => {
+      event.stopPropagation();
+      fileInput.click();
+    };
     fileInput.onchange = event => {
       selectedFile = event.target.files?.[0] || null;
       photoStatus.textContent = selectedFile ? "Đã chọn ảnh" : "";
@@ -420,6 +439,15 @@ function showPopup(tasks) {
       }
     };
     imageCell.append(camera, fileInput, photoStatus);
+
+    // Bấm phần trống của cột Ảnh cũng chọn dòng + mở StockQuick.
+    // Riêng nút camera / input ảnh vẫn giữ đúng nghiệp vụ chụp ảnh, không mở StockQuick.
+    imageCell.addEventListener("click", event => {
+      if (event.target === camera || event.target === fileInput || event.target.closest?.(".ybm-camera")) return;
+      event.stopPropagation();
+      selectAndOpenStockQuick(tr, row.masp, imageCell);
+    });
+
     tr.append(doneCell, imageCell, codeCell, sellerCell, noteCell, confirmCell);
     tbody.appendChild(tr);
     refs.set(rowId, { done, confirm, note, oldNote: row.baymau_note || "", getFile: () => selectedFile });
@@ -435,8 +463,13 @@ function showPopup(tasks) {
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 
-  // Không đóng khi chạm ra ngoài để tránh mất dữ liệu vừa nhập.
+  // Click trong hộp không lan ra overlay. Click ra vùng tối bên ngoài hộp sẽ
+  // tự động LƯU rồi đóng, giống nút X, để không làm mất ghi chú/tick vừa nhập.
   box.addEventListener("click", event => event.stopPropagation());
+  overlay.addEventListener("click", event => {
+    if (event.target !== overlay || saving) return;
+    saveAndClose(tasks, refs, close);
+  });
   close.onclick = event => {
     event.stopPropagation();
     saveAndClose(tasks, refs, close);
