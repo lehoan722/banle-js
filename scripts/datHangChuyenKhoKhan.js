@@ -247,15 +247,28 @@ async function insertUrgentOrders(items,note="",source="stockquick") {
   return true;
 }
 
-function buildSuggestedQtyMap(items) {
-  const map = new Map();
+function buildSuggestedPresetMaps(items) {
+  const qtyMap = new Map();
+  const dirMap = new Map();
+
   (items || []).forEach(x => {
     const size = normSize(x.size);
+    const dir = norm(x.huong_chuyen).toLowerCase();
     if (!SIZE_OPTIONS.includes(size)) return;
+
     const qty = Math.max(1, Number(x.soluong || 1));
-    map.set(size, Number(map.get(size) || 0) + qty);
+    qtyMap.set(size, Number(qtyMap.get(size) || 0) + qty);
+
+    // Gợi ý của StockQuick là theo TỪNG SIZE. Không được gom mất hướng.
+    // Nếu cùng một size bất thường xuất hiện cả 2 hướng thì để trống để người dùng
+    // quyết định bằng hướng mặc định, tránh tự gán sai.
+    if (["1v2", "2v1"].includes(dir)) {
+      const oldDir = dirMap.get(size);
+      dirMap.set(size, !oldDir || oldDir === dir ? dir : "");
+    }
   });
-  return map;
+
+  return { qtyMap, dirMap };
 }
 
 async function openFromStockQuick(popup,payload) {
@@ -663,8 +676,11 @@ function showManualCreate(options={}) {
   if (panelMode === "hidden") { panelMode = "expanded"; refreshPanel({forceOpen:true}); }
 
   const presetMasp = normMasp(options.masp || "");
-  const suggestedQty = buildSuggestedQtyMap(options.suggestedItems || []);
+  const { qtyMap:suggestedQty, dirMap:suggestedDirBySize } = buildSuggestedPresetMaps(options.suggestedItems || []);
   const source = options.source || "manual";
+  const hasMixedSuggestedDirections = new Set(
+    [...suggestedDirBySize.values()].filter(d => ["1v2", "2v1"].includes(d))
+  ).size > 1;
   const coso = getCurrentCoso();
   if (!coso) return alert("Không xác định được cơ sở hiện tại.");
 
@@ -687,11 +703,17 @@ function showManualCreate(options={}) {
       ${SIZE_OPTIONS.map(s=>`<div class="dhkhan-size-head">${s}</div>`).join("")}
 
       <div class="dhkhan-grid-label">Số lượng</div>
-      ${SIZE_OPTIONS.map(s=>`<input class="dhkhan-qty" data-size="${s}" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" value="${suggestedQty.get(s)||""}">`).join("")}
+      ${SIZE_OPTIONS.map(s=>{
+        const suggestedDir = suggestedDirBySize.get(s) || "";
+        const bg = suggestedDir === "1v2" ? "#d9fbe6" : suggestedDir === "2v1" ? "#eee5ff" : "";
+        const title = suggestedDir ? `Gợi ý StockQuick: ${directionLabel(suggestedDir)}` : "";
+        return `<input class="dhkhan-qty" data-size="${s}" data-suggested-dir="${esc(suggestedDir)}" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" value="${suggestedQty.get(s)||""}" style="${bg ? `background:${bg};font-weight:800;` : ""}" title="${esc(title)}">`;
+      }).join("")}
 
       <div class="dhkhan-grid-label">Hướng</div>
       <div class="dhkhan-wide dhkhan-direction">
-        <button id="dhkhan-direction-toggle" type="button" class="dhkhan-direction-btn" title="Bấm để đảo hướng chuyển">⇄ <span id="dhkhan-direction-label">${esc(directionLabel(currentDirection))}</span></button>
+        <button id="dhkhan-direction-toggle" type="button" class="dhkhan-direction-btn" title="Hướng này chỉ áp dụng cho size nhập thêm/không có gợi ý StockQuick">⇄ <span id="dhkhan-direction-label">${esc(directionLabel(currentDirection))}</span></button>
+        ${hasMixedSuggestedDirections ? `<span style="margin-left:10px;font-size:13px;color:#7c3aed;font-weight:800;">Các size tô màu sẽ giữ đúng hướng gợi ý riêng của StockQuick</span>` : ""}
       </div>
 
       <div class="dhkhan-grid-label">Ghi chú</div>
@@ -737,7 +759,11 @@ function showManualCreate(options={}) {
     const masp = normMasp(maspEl?.value);
     const note = box.querySelector("#dhkhan-note")?.value || "";
     const qtyEntries = [...box.querySelectorAll(".dhkhan-qty")]
-      .map(input => ({size:input.dataset.size,soluong:Number(String(input.value||"").trim()||0)}))
+      .map(input => ({
+        size:input.dataset.size,
+        soluong:Number(String(input.value||"").trim()||0),
+        suggestedDir:norm(input.dataset.suggestedDir).toLowerCase()
+      }))
       .filter(x => Number.isFinite(x.soluong) && x.soluong > 0);
 
     if (!masp) return alert("Bạn cần nhập Mã SP.");
@@ -746,25 +772,40 @@ function showManualCreate(options={}) {
     const {data,error} = await ctx.supabase.from("dmhanghoa").select("masp").eq("masp",masp).maybeSingle();
     if (error || !data) return alert("❌ Mã sản phẩm không tồn tại trong danh mục.");
 
-    const pair = dirToCosoPair(currentDirection);
-    if (!pair) return alert("Không xác định được hướng chuyển.");
+    // QUAN TRỌNG: hướng được xác định theo từng size.
+    // - Size được StockQuick gợi ý: giữ nguyên hướng gợi ý của chính size đó.
+    // - Size người dùng nhập thêm / không có gợi ý: dùng hướng mặc định đang chọn.
+    const items = qtyEntries.map(x => {
+      const dir = ["1v2", "2v1"].includes(x.suggestedDir) ? x.suggestedDir : currentDirection;
+      const pair = dirToCosoPair(dir);
+      return pair ? {
+        masp,
+        size:x.size,
+        soluong:x.soluong,
+        huong_chuyen:pair.dir,
+        tu_coso:pair.from,
+        den_coso:pair.to
+      } : null;
+    }).filter(Boolean);
 
-    // Xác nhận lần cuối để tránh đặt nhầm hướng khi người dùng vừa đảo chiều.
-    const totalQty = qtyEntries.reduce((sum,x)=>sum+Number(x.soluong||0),0);
-    const confirmed = await confirmUrgentDirection({ masp, direction:currentDirection, totalQty });
-    if (!confirmed) {
-      // Giữ nguyên form và toàn bộ dữ liệu để người dùng đổi hướng / sửa SL.
-      return;
-    }
+    if (items.length !== qtyEntries.length) return alert("Không xác định được hướng chuyển cho một số size.");
 
-    const items = qtyEntries.map(x => ({
-      masp,
-      size:x.size,
-      soluong:x.soluong,
-      huong_chuyen:pair.dir,
-      tu_coso:pair.from,
-      den_coso:pair.to
-    }));
+    // Xác nhận lần cuối theo TỪNG HƯỚNG để tránh trường hợp gợi ý có cả 1v2 và 2v1.
+    const groupedConfirm = new Map();
+    items.forEach(x => {
+      const key = x.huong_chuyen;
+      if (!groupedConfirm.has(key)) groupedConfirm.set(key, { qty:0, sizes:[] });
+      const g = groupedConfirm.get(key);
+      g.qty += Number(x.soluong || 0);
+      g.sizes.push(`${x.size}×${x.soluong}`);
+    });
+
+    const confirmText = [...groupedConfirm.entries()]
+      .map(([dir,g]) => `${directionLabel(dir)}: ${g.sizes.join(", ")} (SL ${g.qty})`)
+      .join("\n");
+
+    const confirmed = window.confirm(`XÁC NHẬN ĐẶT HÀNG KHẨN\n\nMã: ${masp}\n${confirmText}`);
+    if (!confirmed) return;
 
     const ok = await insertUrgentOrders(items,note,source);
     if (ok) {
