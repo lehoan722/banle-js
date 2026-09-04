@@ -431,45 +431,32 @@ async function fetchSummary(params) {
 
 // XNT19 V3: 1 RPC tra ve cung luc DU LIEU TRANG + TOTAL ROWS + SUMMARY TOAN BO.
 // Metadata duoc lap lai tren moi dong; client chi doc dong dau roi loai khoi rows render.
-async function fetchPageBundleV3(params) {
-    const { data, error } = await supabase.rpc("baocaoxnt19_page_v3", params);
+async function fetchPageBundleV4(params) {
+    // V4 tra DUNG 1 JSONB nen khong bi Supabase/PostgREST cat response tai 1000 rows.
+    const { data, error } = await supabase.rpc("baocaoxnt19_bundle_v4", params);
     if (error) throw error;
 
-    const raw = Array.isArray(data) ? data : [];
-    if (!raw.length) {
-        return { rows: [], totalRows: 0, summary: null };
-    }
-
-    const m = raw[0];
+    // Scalar jsonb thuong ve truc tiep object; giu fallback neu client tra array 1 phan tu.
+    const payload = Array.isArray(data) ? (data[0] || {}) : (data || {});
+    const rows = Array.isArray(payload.rows)
+        ? payload.rows.filter(r => r && r.masp && String(r.masp).trim() !== '')
+        : [];
+    const sm = payload.summary || {};
     const summary = {
-        dauky: Number(m.sum_dauky || 0),
-        nhapmua: Number(m.sum_nhapmua || 0),
-        tongnhap: Number(m.sum_tongnhap || 0),
-        xuatban_cs1: Number(m.sum_xuatban_cs1 || 0),
-        xuatchinhanh_cs1: Number(m.sum_xuatchinhanh_cs1 || 0),
-        xuatban_cs2: Number(m.sum_xuatban_cs2 || 0),
-        xuatchinhanh_cs2: Number(m.sum_xuatchinhanh_cs2 || 0),
-        xuatban: Number(m.sum_xuatban || 0),
-        tongxuat: Number(m.sum_tongxuat || 0),
-        cuoiky: Number(m.sum_cuoiky || 0),
-        ton_cs1: Number(m.sum_ton_cs1 || 0),
-        ton_cs2: Number(m.sum_ton_cs2 || 0)
+        dauky: Number(sm.dauky || 0),
+        nhapmua: Number(sm.nhapmua || 0),
+        tongnhap: Number(sm.tongnhap || 0),
+        xuatban_cs1: Number(sm.xuatban_cs1 || 0),
+        xuatchinhanh_cs1: Number(sm.xuatchinhanh_cs1 || 0),
+        xuatban_cs2: Number(sm.xuatban_cs2 || 0),
+        xuatchinhanh_cs2: Number(sm.xuatchinhanh_cs2 || 0),
+        xuatban: Number(sm.xuatban || 0),
+        tongxuat: Number(sm.tongxuat || 0),
+        cuoiky: Number(sm.cuoiky || 0),
+        ton_cs1: Number(sm.ton_cs1 || 0),
+        ton_cs2: Number(sm.ton_cs2 || 0)
     };
-
-    const metaKeys = new Set([
-        'total_rows','sum_dauky','sum_nhapmua','sum_tongnhap','sum_xuatban_cs1',
-        'sum_xuatchinhanh_cs1','sum_xuatban_cs2','sum_xuatchinhanh_cs2',
-        'sum_xuatban','sum_tongxuat','sum_cuoiky','sum_ton_cs1','sum_ton_cs2'
-    ]);
-    const rows = raw
-        .filter(r => r && r.masp && String(r.masp).trim() !== '')
-        .map(r => {
-            const out = {};
-            for (const [k, v] of Object.entries(r)) if (!metaKeys.has(k)) out[k] = v;
-            return out;
-        });
-
-    return { rows, totalRows: Number(m.total_rows || 0), summary };
+    return { rows, totalRows: Number(payload.total_rows || 0), summary };
 }
 
 // Đồng bộ các khóa dirty trước khi đọc báo cáo. Thường chỉ 1 batch; giới hạn vòng để tránh treo UI.
@@ -499,13 +486,13 @@ window.taiBaoCaoXNT = async function () {
 
         // V3: chỉ 1 RPC cho count + page + summary.
         loading.textContent = "Đang tổng hợp báo cáo...";
-        let bundle = await fetchPageBundleV3(params);
+        let bundle = await fetchPageBundleV4(params);
 
         // Nếu đang ở trang >1 nhưng bộ lọc mới làm trang đó không còn dữ liệu, tự quay về trang 1.
         if (!bundle.rows.length && currentPage > 1) {
             currentPage = 1;
             params = buildParams(1);
-            bundle = await fetchPageBundleV3(params);
+            bundle = await fetchPageBundleV4(params);
         }
 
         totalRows = Number(bundle.totalRows || 0);
@@ -523,7 +510,7 @@ window.taiBaoCaoXNT = async function () {
 
         updatePagingBar();
         loading.textContent = "";
-        console.info(`[XNT19 V3] ${rows.length}/${totalRows} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
+        console.info(`[XNT19 V4] ${rows.length}/${totalRows} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
     } catch (err) {
         console.error(err);
         loading.textContent = "Lỗi tải dữ liệu: " + (err?.message || err);
@@ -533,91 +520,96 @@ window.taiBaoCaoXNT = async function () {
 // ===================== EXCEL EXPORT (song song) =====================
 window.xuatExcelToanBoXNT19 = async function () {
     if (typeof XLSX === "undefined") { alert("Thiếu thư viện XLSX."); return; }
-    const psEl = document.getElementById("pageSize");
-    const ps = psEl ? Number(psEl.value) || 1000 : 1000;
-    const fn = "baocaoxnt19_paged";
-    const ok = confirm(`Xuất XLSX nhanh (song song 3 luồng, ${ps}/trang). Tiếp tục?`);
+
+    // Export dung batch JSON rieng, KHONG dung RPC paged/count cu.
+    // 5000/batch giup payload vua phai, 17796 dong chi can 4 request.
+    const batchSize = 5000;
+    const ok = confirm(`Xuất toàn bộ dữ liệu XNT19 ra Excel (${batchSize.toLocaleString('vi-VN')} dòng/lượt). Tiếp tục?`);
     if (!ok) return;
 
-    async function fetchPage(p) {
-        // Dùng chính ps đã chốt cho export, không phụ thuộc global pageSize
-        const par = { ...buildParams(1), p_limit: ps, p_offset: (p - 1) * ps };
-        const { data, error } = await supabase.rpc(fn, par);
-        if (error) {
-            const msg = error?.message || String(error || "");
-            // PostgREST 404 / PGRST202: hàm chưa có trong schema cache
-            if (msg.includes("PGRST202") || msg.includes("Not Found")) {
-                alert("Không tìm thấy RPC 'baocaoxnt19_paged'. Hãy tạo hàm và cấp quyền EXECUTE.");
-                throw error;
+    const loading = document.getElementById("loadingMsg");
+    const oldText = loading?.textContent || "";
+    const t0 = performance.now();
+
+    try {
+        if (loading) loading.textContent = "Đang đồng bộ dữ liệu trước khi xuất Excel...";
+        await ensureXnt19Fresh();
+
+        const base = buildParams(1);
+        const firstParams = { ...base, p_limit: batchSize, p_offset: 0 };
+        if (loading) loading.textContent = "Đang tải dữ liệu Excel: lượt 1...";
+        const first = await fetchPageBundleV4(firstParams);
+        const total = Number(first.totalRows || 0);
+        const totalBatches = Math.max(1, Math.ceil(total / batchSize));
+        const all = new Array(totalBatches);
+        all[0] = first.rows || [];
+
+        // 2 luong la du nhanh va nhe DB hon 3 luong cu.
+        let nextBatch = 2;
+        async function worker() {
+            while (true) {
+                const b = nextBatch++;
+                if (b > totalBatches) return;
+                const offset = (b - 1) * batchSize;
+                if (loading) loading.textContent = `Đang tải dữ liệu Excel: ${Math.min(b,totalBatches)}/${totalBatches}...`;
+                const bundle = await fetchPageBundleV4({ ...base, p_limit: batchSize, p_offset: offset });
+                all[b - 1] = bundle.rows || [];
             }
-            throw error;
         }
-        return data || [];
-    }
-
-    // lấy total
-    const cnt = await fetchCount(buildParams(1));
-
-    const totalPages = Math.max(1, Math.ceil(cnt / ps));
-    const all = new Array(totalPages);
-    const concurrency = 3;
-    let nextPage = 1;
-    let ended = false;
-
-    async function worker() {
-        while (!ended) {
-            const myP = nextPage++;
-            if (myP > totalPages) break;
-            const rows = await fetchPage(myP);
-            all[myP - 1] = rows;
+        if (totalBatches > 1) {
+            await Promise.all([worker(), worker()]);
         }
-    }
 
-    const workers = [];
-    for (let i = 0; i < concurrency; i++) workers.push(worker());
-    await Promise.all(workers);
+        const rows = all.flat();
+        if (!rows.length) {
+            alert("Không có dữ liệu để xuất Excel.");
+            return;
+        }
 
-    const headers = [
-        "STT", "Mã hàng", "Kích cỡ",
-        "Xuất bán CS1", "Xuất CN 2v1",     // ⬅️ MỚI
-        "Xuất bán CS2", "Xuất CN 1v2",     // ⬅️ MỚI
-        "Xuất bán (gộp)",
-        "Tồn CS1", "Tồn CS2",
-        "Nhập mua", "Cuối kỳ", "Giá lẻ",
-        "Đầu kỳ", "Xuất khác", "Tổng xuất",
-        "Nhập khác", "Tổng nhập", "Tên hàng"
-    ];
-
-    const aoa = [headers];
-
-    let sttOffset = 0;
-    for (let p = 0; p < all.length; p++) {
-        const pageRows = all[p];
-        if (!pageRows) break;
-        for (let i = 0; i < pageRows.length; i++) {
-            const r = pageRows[i];
+        const headers = [
+            "STT", "Mã hàng", "Kích cỡ",
+            "Xuất bán CS1", "Xuất CN 2v1",
+            "Xuất bán CS2", "Xuất CN 1v2",
+            "Xuất bán (gộp)",
+            "Tồn CS1", "Tồn CS2",
+            "Nhập mua", "Cuối kỳ", "Giá lẻ",
+            "Đầu kỳ", "Xuất khác", "Tổng xuất",
+            "Nhập khác", "Tổng nhập", "Tên hàng"
+        ];
+        const aoa = [headers];
+        rows.forEach((r, i) => {
             aoa.push([
-                sttOffset + i + 1,
+                i + 1,
                 r.masp ?? "", r.size ?? "",
-
-                r.xuatban_cs1 ?? 0, r.xuatchinhanh_cs2 ?? 0,   // ⬅️ MỚI
-                r.xuatban_cs2 ?? 0, r.xuatchinhanh_cs1 ?? 0,   // ⬅️ MỚI
-
+                r.xuatban_cs1 ?? 0, r.xuatchinhanh_cs2 ?? 0,
+                r.xuatban_cs2 ?? 0, r.xuatchinhanh_cs1 ?? 0,
                 r.xuatban ?? 0,
                 r.ton_cs1 ?? 0, r.ton_cs2 ?? 0,
                 r.nhapmua ?? 0, r.cuoiky ?? 0, r.giale ?? 0,
                 r.dauky ?? 0, r.xuatkhac ?? 0, r.tongxuat ?? 0,
-                r.nhapkhac ?? 0, r.tongnhap ?? 0, r.tensp ?? ""
+                r.nhapkhac ?? 0, r.tongnhap ?? 0, r.tenhang ?? ""
             ]);
+        });
 
-        }
-        sttOffset += pageRows.length;
+        if (loading) loading.textContent = `Đang tạo file Excel ${rows.length.toLocaleString('vi-VN')} dòng...`;
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        XLSX.utils.book_append_sheet(wb, ws, "XNT19");
+
+        const d = new Date();
+        const pad = n => String(n).padStart(2,'0');
+        const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+        XLSX.writeFile(wb, `baocaoxnt19_${stamp}.xlsx`, { compression: true });
+
+        if (loading) loading.textContent = "";
+        console.info(`[XNT19 V4 Excel] ${rows.length}/${total} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
+    } catch (err) {
+        console.error("[XNT19 V4 Excel]", err);
+        if (loading) loading.textContent = "Lỗi xuất Excel: " + (err?.message || err);
+        alert("Không xuất được Excel: " + (err?.message || err));
+    } finally {
+        if (loading && loading.textContent === oldText) loading.textContent = oldText;
     }
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    XLSX.utils.book_append_sheet(wb, ws, "XNT17");
-    XLSX.writeFile(wb, `baocaoxnt17_${Date.now()}.xlsx`, { compression: false });
 };
 
 // ===================== COPY BẢNG =====================
