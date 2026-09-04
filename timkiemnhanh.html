@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <title>Tìm kiếm nhanh Hoàn Tuyết V1.2.9</title>
+  <title>Tìm kiếm nhanh Hoàn Tuyết V1.2.10</title>
   <style>
     :root{--blue:#0878d1;--green:#15945d;--red:#d92d20;--amber:#f4a900;--bg:#f3f6f9;--card:#fff;--border:#d7e0e8;--text:#172033}
     *{box-sizing:border-box}html,body{margin:0;max-width:100%;overflow-x:hidden;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -75,6 +75,23 @@
       .product-image-wrap{height:270px !important;}
     }
   
+    /* V1.2.10 - Mã sản phẩm xanh lam, vị trí kho đỏ tươi để nổi bật */
+    #codeInput,
+    .suggest button b,
+    .stock-link,
+    .sel-code {
+      color:#0000FF !important;
+    }
+    .source-kho,
+    .product-kho,
+    .selected-kho,
+    .info-kho {
+      color:#FF0000 !important;
+    }
+    .source-mau {
+      color:#7c3aed !important;
+    }
+
     /* V1.2.9 - Điều hướng nhanh, header, nút 16px, size compact */
     .top-row .title{order:2;text-align:right;}
     .top-row .new-btn{order:1;}
@@ -103,7 +120,7 @@
 <body>
   <div id="login-container"></div>
   <div id="app-container">
-  <div class="top"><div class="top-row"><button id="btnNew" class="new-btn" type="button">＋ Thêm mới</button><div class="title">🔎 TÌM KIẾM NHANH</div></div><div class="mini" id="nvInfo">V1.2.9</div></div>
+  <div class="top"><div class="top-row"><button id="btnNew" class="new-btn" type="button">＋ Thêm mới</button><div class="title">🔎 TÌM KIẾM NHANH</div></div><div class="mini" id="nvInfo">V1.2.10</div></div>
   <main class="wrap">
     <section class="card" id="selectedSection">
       <div class="section-head"><h3>Sản phẩm đã chọn</h3><span id="selectedCount" class="count"></span></div>
@@ -176,6 +193,6 @@
 
 
   <script src="/scripts/stockQuickPopup.js?v=77"></script>
-  <script type="module" src="/scripts/timKiemNhanh.js?v=132"></script>
+  <script type="module" src="/scripts/timKiemNhanh.js?v=133"></script>
 </body>
 </html>
