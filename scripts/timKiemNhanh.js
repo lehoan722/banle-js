@@ -108,7 +108,7 @@ function renderSourceLocation(){
     return;
   }
   const {kho,mau}=locationParts(state.sourceProduct);
-  el.textContent=`KHO: ${(kho||"-").toUpperCase()}   MẪU: ${(mau||"-").toUpperCase()}`;
+  el.innerHTML=`<span class="source-kho">KHO: ${esc((kho||"-").toUpperCase())}</span>   <span class="source-mau">MẪU: ${esc((mau||"-").toUpperCase())}</span>`;
   el.dataset.stock=state.sourceMasp;
   el.classList.add("show");
 }
