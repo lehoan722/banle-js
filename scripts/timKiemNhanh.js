@@ -3,8 +3,8 @@ import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.5";
-console.log("[TimKiemNhanh] BUILD 1.2.5");
+window.TIM_KIEM_NHANH_BUILD = "1.2.11";
+console.log("[TimKiemNhanh] BUILD 1.2.11");
 
 const supabase = getSupabaseClient();
 
@@ -382,11 +382,12 @@ function openImage(src,alt=""){
 }
 function closeImage(){$("imageOverlay").classList.remove("show");$("imageOverlayImg").src="";document.body.classList.remove("image-open")}
 
-function productCardHtml(sp){
+function productCardHtml(sp,orderNo=0,totalNo=0){
   const img=`${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
   const {kho,mau}=locationParts(sp);
   const formSizes=compactFormSizes(sp);
-  return `<article class="product" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"></div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div><div class="price">${money(sp.giale)} đ</div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
+  const orderText=orderNo>0?`${orderNo}/${totalNo||orderNo}`:"";
+  return `<article class="product" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"></div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div><div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order">${esc(orderText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
 }
 function bindProductCards(cards){
   cards.forEach(card=>{
@@ -400,14 +401,15 @@ function renderProducts({reset=true,rows=[]}={}){
   const box=$("productList");
   if(reset){
     if(!state.products.length){box.innerHTML='<div class="empty" style="grid-column:1/-1">Không có sản phẩm còn đúng size tại cơ sở này theo tồn sau kiểm.</div>';return}
-    box.innerHTML=state.products.map(productCardHtml).join("");
+    box.innerHTML=state.products.map((sp,i)=>productCardHtml(sp,i+1,state.total||state.products.length)).join("");
     bindProductCards(Array.from(box.querySelectorAll(".product")));
     return;
   }
   if(!rows.length)return;
   box.querySelector(".empty")?.remove();
   const holder=document.createElement("div");
-  holder.innerHTML=rows.map(productCardHtml).join("");
+  const startNo=Math.max(0,state.products.length-rows.length);
+  holder.innerHTML=rows.map((sp,i)=>productCardHtml(sp,startNo+i+1,state.total||state.products.length)).join("");
   const cards=Array.from(holder.children);
   cards.forEach(card=>box.appendChild(card));
   bindProductCards(cards);
