@@ -75,7 +75,7 @@
       .product-image-wrap{height:270px !important;}
     }
   
-    /* V1.2.10 - Mã sản phẩm xanh lam, vị trí kho đỏ tươi để nổi bật */
+    /* V1.2.11 - Mã SP đồng bộ + STT sản phẩm */
     #codeInput,
     .suggest button b,
     .stock-link,
@@ -91,11 +91,23 @@
     .source-mau {
       color:#7c3aed !important;
     }
+    #codeInput{
+      font-size:20px !important;
+    }
+    .price-row{
+      display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:1px;
+    }
+    .price-row .price{
+      margin-top:0 !important;font-size:16px !important;color:#d92d20 !important;
+    }
+    .product-order{
+      margin-left:auto;font-size:16px !important;font-weight:400;color:#111 !important;line-height:1.2;white-space:nowrap;
+    }
 
     /* V1.2.9 - Điều hướng nhanh, header, nút 16px, size compact */
     .top-row .title{order:2;text-align:right;}
     .top-row .new-btn{order:1;}
-    #codeInput{font-size:18px !important;}
+    #codeInput{font-size:20px !important;}
     .sel-actions button{font-size:16px !important;padding:7px 1px !important;line-height:1.1;}
     .main-group{font-size:16px !important;padding:6px 1px !important;}
     .main-group small{font-size:11px;}
@@ -113,14 +125,14 @@
       .main-groups{gap:3px !important;}
       .main-group{font-size:16px !important;padding:6px 0 !important;min-height:50px;}
       .main-group small{font-size:10px;}
-      #codeInput{font-size:18px !important;}
+      #codeInput{font-size:20px !important;}
     }
   </style>
 </head>
 <body>
   <div id="login-container"></div>
   <div id="app-container">
-  <div class="top"><div class="top-row"><button id="btnNew" class="new-btn" type="button">＋ Thêm mới</button><div class="title">🔎 TÌM KIẾM NHANH</div></div><div class="mini" id="nvInfo">V1.2.10</div></div>
+  <div class="top"><div class="top-row"><button id="btnNew" class="new-btn" type="button">＋ Thêm mới</button><div class="title">🔎 TÌM KIẾM NHANH</div></div><div class="mini" id="nvInfo">V1.2.11</div></div>
   <main class="wrap">
     <section class="card" id="selectedSection">
       <div class="section-head"><h3>Sản phẩm đã chọn</h3><span id="selectedCount" class="count"></span></div>
