@@ -455,13 +455,17 @@ window.taiBaoCaoXNT = async function () {
         const params = buildParams(currentPage);
         loading.textContent = "Đang tải dữ liệu...";
 
-        // COUNT + SUMMARY đều chạy trên cùng dataset backend với PAGED
-        const [countData, summaryData, rows] = await Promise.all([
-            fetchCount(params),
-            fetchSummary(params),
-            fetchPaged(params)
-        ]);
+        // HOTFIX XNT19: không bắn 3 truy vấn tổng hợp nặng cùng lúc.
+        // Chạy tuần tự để tránh 3 RPC tranh CPU/IO và cùng chạm statement_timeout của Supabase.
+        loading.textContent = "Đang đếm dữ liệu...";
+        const countData = await fetchCount(params);
         totalRows = Number(countData || 0);
+
+        loading.textContent = "Đang tải trang dữ liệu...";
+        const rows = await fetchPaged(params);
+
+        loading.textContent = "Đang tính tổng báo cáo...";
+        const summaryData = await fetchSummary(params);
         // Lấy danh sách mã theo thứ tự trang hiện tại rồi render ảnh
         const masps = Array.from(new Map((rows || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
         renderPreviewForMasps(masps);
