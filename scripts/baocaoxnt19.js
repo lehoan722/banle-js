@@ -429,6 +429,49 @@ async function fetchSummary(params) {
     return Array.isArray(data) ? (data[0] || null) : data;
 }
 
+// XNT19 V3: 1 RPC tra ve cung luc DU LIEU TRANG + TOTAL ROWS + SUMMARY TOAN BO.
+// Metadata duoc lap lai tren moi dong; client chi doc dong dau roi loai khoi rows render.
+async function fetchPageBundleV3(params) {
+    const { data, error } = await supabase.rpc("baocaoxnt19_page_v3", params);
+    if (error) throw error;
+
+    const raw = Array.isArray(data) ? data : [];
+    if (!raw.length) {
+        return { rows: [], totalRows: 0, summary: null };
+    }
+
+    const m = raw[0];
+    const summary = {
+        dauky: Number(m.sum_dauky || 0),
+        nhapmua: Number(m.sum_nhapmua || 0),
+        tongnhap: Number(m.sum_tongnhap || 0),
+        xuatban_cs1: Number(m.sum_xuatban_cs1 || 0),
+        xuatchinhanh_cs1: Number(m.sum_xuatchinhanh_cs1 || 0),
+        xuatban_cs2: Number(m.sum_xuatban_cs2 || 0),
+        xuatchinhanh_cs2: Number(m.sum_xuatchinhanh_cs2 || 0),
+        xuatban: Number(m.sum_xuatban || 0),
+        tongxuat: Number(m.sum_tongxuat || 0),
+        cuoiky: Number(m.sum_cuoiky || 0),
+        ton_cs1: Number(m.sum_ton_cs1 || 0),
+        ton_cs2: Number(m.sum_ton_cs2 || 0)
+    };
+
+    const metaKeys = new Set([
+        'total_rows','sum_dauky','sum_nhapmua','sum_tongnhap','sum_xuatban_cs1',
+        'sum_xuatchinhanh_cs1','sum_xuatban_cs2','sum_xuatchinhanh_cs2',
+        'sum_xuatban','sum_tongxuat','sum_cuoiky','sum_ton_cs1','sum_ton_cs2'
+    ]);
+    const rows = raw
+        .filter(r => r && r.masp && String(r.masp).trim() !== '')
+        .map(r => {
+            const out = {};
+            for (const [k, v] of Object.entries(r)) if (!metaKeys.has(k)) out[k] = v;
+            return out;
+        });
+
+    return { rows, totalRows: Number(m.total_rows || 0), summary };
+}
+
 // Đồng bộ các khóa dirty trước khi đọc báo cáo. Thường chỉ 1 batch; giới hạn vòng để tránh treo UI.
 async function ensureXnt19Fresh(maxLoops = 5) {
     for (let i = 0; i < maxLoops; i++) {
@@ -443,45 +486,44 @@ async function ensureXnt19Fresh(maxLoops = 5) {
 
 window.taiBaoCaoXNT = async function () {
     const loading = document.getElementById("loadingMsg");
+    const t0 = performance.now();
     loading.textContent = "Đang tải dữ liệu...";
 
     try {
-        // Đảm bảo bảng tổng hợp đã nhận các phát sinh mới nhất trước khi báo cáo.
+        // Đồng bộ phát sinh mới trước khi đọc bảng tổng hợp.
         loading.textContent = "Đang đồng bộ phát sinh mới...";
         await ensureXnt19Fresh();
 
-        // Cập nhật pageSize và tham số gọi RPC
         pageSize = Number(document.getElementById("pageSize")?.value || 1000);
-        const params = buildParams(currentPage);
-        loading.textContent = "Đang tải dữ liệu...";
+        let params = buildParams(currentPage);
 
-        // HOTFIX XNT19: không bắn 3 truy vấn tổng hợp nặng cùng lúc.
-        // Chạy tuần tự để tránh 3 RPC tranh CPU/IO và cùng chạm statement_timeout của Supabase.
-        loading.textContent = "Đang đếm dữ liệu...";
-        const countData = await fetchCount(params);
-        totalRows = Number(countData || 0);
+        // V3: chỉ 1 RPC cho count + page + summary.
+        loading.textContent = "Đang tổng hợp báo cáo...";
+        let bundle = await fetchPageBundleV3(params);
 
-        loading.textContent = "Đang tải trang dữ liệu...";
-        const rows = await fetchPaged(params);
+        // Nếu đang ở trang >1 nhưng bộ lọc mới làm trang đó không còn dữ liệu, tự quay về trang 1.
+        if (!bundle.rows.length && currentPage > 1) {
+            currentPage = 1;
+            params = buildParams(1);
+            bundle = await fetchPageBundleV3(params);
+        }
 
-        loading.textContent = "Đang tính tổng báo cáo...";
-        const summaryData = await fetchSummary(params);
-        // Lấy danh sách mã theo thứ tự trang hiện tại rồi render ảnh
-        const masps = Array.from(new Map((rows || []).map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
+        totalRows = Number(bundle.totalRows || 0);
+        const rows = bundle.rows || [];
+
+        const masps = Array.from(new Map(rows.map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
         renderPreviewForMasps(masps);
 
-
-        // Render
         renderTable(rows);
-        // Tổng toàn bộ báo cáo, không còn chỉ cộng trang hiện tại
-        renderSummary(summaryData ? [summaryData] : []);
-        // focus ảnh của hàng đầu tiên (nếu có)
-        if (rows && rows.length) {
+        renderSummary(bundle.summary ? [bundle.summary] : []);
+
+        if (rows.length) {
             focusPreview(String(rows[0].masp || '').toUpperCase());
         }
 
         updatePagingBar();
         loading.textContent = "";
+        console.info(`[XNT19 V3] ${rows.length}/${totalRows} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
     } catch (err) {
         console.error(err);
         loading.textContent = "Lỗi tải dữ liệu: " + (err?.message || err);
