@@ -18,6 +18,19 @@ let autoRecheckRunning = false;
 let suggestedDeleteIds = new Set();
 let suggestedNeedCheckIds = new Set();
 
+// ===== TỐI ƯU HIỆU NĂNG =====
+// Không đọc lại toàn bộ hàng đợi nhiều lần trong thời gian ngắn.
+let ordersCache = null;
+let ordersCacheAt = 0;
+let ordersRequest = null;
+const ORDERS_CACHE_MS = 15000;
+
+// Quyền admin gần như không đổi trong một phiên; tránh RPC mỗi lần mở panel.
+let adminCacheValue = null;
+let adminCacheAt = 0;
+const ADMIN_CACHE_MS = 5 * 60 * 1000;
+
+
 function getCurrentCoso() {
   return String(
     ctx?.diadiem ||
@@ -36,19 +49,42 @@ function getManv() {
   ).trim();
 }
 
-async function isAdminUser() {
-  if (ctx?.isAdmin === true || window.isAdmin === true) return true;
+async function isAdminUser({ force = false } = {}) {
+  const now = Date.now();
+  if (!force && adminCacheValue !== null && now - adminCacheAt < ADMIN_CACHE_MS) {
+    return adminCacheValue;
+  }
 
-  if (!ctx?.supabase) return false;
+  if (ctx?.isAdmin === true || window.isAdmin === true) {
+    adminCacheValue = true;
+    adminCacheAt = now;
+    return true;
+  }
+
+  try {
+    const cu = JSON.parse(localStorage.getItem("currentUser") || "null");
+    if (cu?.is_admin === true) {
+      adminCacheValue = true;
+      adminCacheAt = now;
+      return true;
+    }
+  } catch (_) {}
+
+  if (!ctx?.supabase) {
+    adminCacheValue = false;
+    adminCacheAt = now;
+    return false;
+  }
 
   const { data, error } = await ctx.supabase.rpc("is_admin");
-
   if (error) {
     console.warn("[Đặt hàng CK] Không kiểm tra được admin:", error);
     return false;
   }
 
-  return data === true;
+  adminCacheValue = data === true;
+  adminCacheAt = Date.now();
+  return adminCacheValue;
 }
 
 function escAttr(v) {
@@ -142,6 +178,7 @@ async function insertOrders(items, note = "") {
   }
 
   alert(`✅ Đã tạo ${rows.length} dòng đặt hàng chuyển kho.`);
+  invalidateOrdersCache();
   userClosedPanel = false;
   await runDatHangCheck(true);
   return true;
@@ -520,24 +557,45 @@ async function analyzeOutdatedOrders(rows) {
   }
 }
 
-async function fetchOrders() {
-  // QUAN TRỌNG:
-  // Hàm tải danh sách chỉ được phép SELECT, tuyệt đối không tự đổi trạng thái.
-  // Việc kiểm tra lỗi thời chỉ chạy khi người dùng bấm nút thủ công.
-  const { data, error } = await ctx.supabase
-    .from("dat_hang_chuyen_kho")
-    .select("*")
-    .or(
-      "trang_thai.in.(moi,dang_chuyen,da_tao_phieu,yeu_cau_kiem_kho),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
-    )
-    .order("created_at", { ascending: false });
+async function fetchOrders({ force = false } = {}) {
+  const now = Date.now();
 
-  if (error) {
-    console.error("[Đặt hàng CK] fetch lỗi:", error);
-    return [];
+  if (!force && Array.isArray(ordersCache) && now - ordersCacheAt < ORDERS_CACHE_MS) {
+    return ordersCache;
   }
 
-  return sortOrdersForDisplay(data || []);
+  if (ordersRequest) return ordersRequest;
+
+  ordersRequest = (async () => {
+    // Chỉ lấy đúng các cột giao diện/nghiệp vụ đang dùng, tránh select(*) nặng không cần thiết.
+    const { data, error } = await ctx.supabase
+      .from("dat_hang_chuyen_kho")
+      .select("id,masp,size,soluong,huong_chuyen,tu_coso,den_coso,manv_dat,ghichu_dat,trang_thai,chon_chuyen,created_at,updated_at")
+      .or(
+        "trang_thai.in.(moi,dang_chuyen,da_tao_phieu,yeu_cau_kiem_kho),and(trang_thai.eq.loi_thoi,chon_chuyen.eq.true)"
+      )
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[Đặt hàng CK] fetch lỗi:", error);
+      return Array.isArray(ordersCache) ? ordersCache : [];
+    }
+
+    const rows = sortOrdersForDisplay(data || []);
+    ordersCache = rows;
+    ordersCacheAt = Date.now();
+    return rows;
+  })();
+
+  try {
+    return await ordersRequest;
+  } finally {
+    ordersRequest = null;
+  }
+}
+
+function invalidateOrdersCache() {
+  ordersCacheAt = 0;
 }
 
 function openStockQuickFromDatHang(masp) {
@@ -633,6 +691,7 @@ async function saveInlineNote(id, value, input = null) {
   if (input) {
     input.dataset.saving = "0";
     input.style.background = error ? "#ffe0e0" : "";
+    if (!error) input.dataset.dirty = "0";
   }
 
   if (error) {
@@ -646,6 +705,7 @@ async function saveInlineNote(id, value, input = null) {
 function bindInlineNoteAutosave(box) {
   box.querySelectorAll(".dhck-note-inline:not([readonly])").forEach(input => {
     input.addEventListener("input", () => {
+      input.dataset.dirty = "1";
       const id = input.dataset.id;
       clearTimeout(noteSaveTimers.get(id));
 
@@ -665,13 +725,21 @@ function bindInlineNoteAutosave(box) {
 }
 
 async function flushInlineNotes(box) {
+  if (!box) return;
+
   const inputs = Array.from(
     box.querySelectorAll(".dhck-note-inline:not([readonly])")
-  );
+  ).filter(input => {
+    const id = input.dataset.id;
+    return input.dataset.dirty === "1" || noteSaveTimers.has(id);
+  });
+
+  if (!inputs.length) return;
 
   await Promise.all(inputs.map(input => {
     const id = input.dataset.id;
     clearTimeout(noteSaveTimers.get(id));
+    noteSaveTimers.delete(id);
     return saveInlineNote(id, input.value, input);
   }));
 }
@@ -710,6 +778,7 @@ async function saveMoveCheck(id, checked) {
     return false;
   }
 
+  invalidateOrdersCache();
   return true;
 }
 
@@ -1021,15 +1090,25 @@ function ensureAutoDhFab() {
 
       const panel = document.getElementById("dhck-panel");
       if (panel && popupOpen) {
-        suppressRealtimeUntil = Date.now() + 1500;
-        await flushInlineNotes(panel);
-        popupOpen = false;
         userClosedPanel = true;
+        suppressRealtimeUntil = Date.now() + 1500;
+        const savePromise = flushInlineNotes(panel);
+        popupOpen = false;
         panel.remove();
+        try { await savePromise; } catch (_) {}
         return;
       }
 
-      await runDatHangCheck(true);
+      if (fab.dataset.loading === "1") return;
+      fab.dataset.loading = "1";
+      const oldHtml = fab.innerHTML;
+      fab.innerHTML = '<span class="l1">...</span><span class="l2">ĐH</span>';
+      try {
+        await runDatHangCheck(true);
+      } finally {
+        fab.innerHTML = oldHtml;
+        fab.dataset.loading = "0";
+      }
     });
   } else {
     bindAutoDhFabDrag(fab);
@@ -1037,7 +1116,7 @@ function ensureAutoDhFab() {
   return fab;
 }
 
-async function showPanel(allRows) {
+async function showPanel(allRows, prefetchedAdmin = null) {
   const coso = getCurrentCoso();
   if (!coso || !allRows.length || popupOpen) return;
 
@@ -1046,7 +1125,7 @@ async function showPanel(allRows) {
 
   const canMove = allRows.filter(r => String(r.tu_coso).toLowerCase() === coso);
   const onlyView = allRows.filter(r => String(r.tu_coso).toLowerCase() !== coso);
-  const isAdmin = await isAdminUser();
+  const isAdmin = prefetchedAdmin === null ? await isAdminUser() : prefetchedAdmin;
 
   const box = document.createElement("div");
   box.id = "dhck-panel";
@@ -1253,9 +1332,18 @@ async function showPanel(allRows) {
   const closePanelToFab = async () => {
     userClosedPanel = true;
     suppressRealtimeUntil = Date.now() + 1500;
-    await flushInlineNotes(box);
+
+    // Thu giao diện ngay lập tức để thao tác không có cảm giác lag.
+    // flushInlineNotes chỉ lưu các ô thực sự thay đổi và chạy sau khi panel đã biến mất.
+    const savePromise = flushInlineNotes(box);
     popupOpen = false;
     box.remove();
+
+    try {
+      await savePromise;
+    } catch (e) {
+      console.warn("[Đặt hàng CK] Không lưu hết ghi chú khi đóng panel:", e);
+    }
   };
 
   box.querySelector("#dhck-close").onclick = async (e) => {
@@ -1777,23 +1865,28 @@ async function createCcnFromChecked(box, canMove) {
 }
 
 async function runDatHangCheck(forceShow = false) {
-  if (!ctx?.supabase) return;
+  if (!ctx?.supabase) return [];
 
-  const rows = await fetchOrders();
-
-  // Mặc định chỉ chạy nền. Không tự bật popup nữa.
-  if (!forceShow) return rows;
+  // Khi panel đang ẩn: tuyệt đối không query DB. Đây là điểm quan trọng nhất
+  // để trang bán nhân viên tải nhẹ trên điện thoại.
+  if (!forceShow) return Array.isArray(ordersCache) ? ordersCache : [];
 
   userClosedPanel = false;
   popupOpen = false;
   document.getElementById("dhck-panel")?.remove();
+
+  // Chạy song song tải hàng đợi + kiểm tra quyền admin thay vì nối tiếp 2 request.
+  const [rows, isAdmin] = await Promise.all([
+    fetchOrders({ force: false }),
+    isAdminUser()
+  ]);
 
   if (!rows.length) {
     alert("Hiện tại không có đặt hàng chuyển kho tự động đang chờ.");
     return rows;
   }
 
-  await showPanel(rows);
+  await showPanel(rows, isAdmin);
   return rows;
 }
 
@@ -1889,7 +1982,7 @@ async function refreshPanelSmooth() {
     return;
   }
 
-  const rows = await fetchOrders();
+  const rows = await fetchOrders({ force: true });
 
   if (!rows.length) {
     popupOpen = false;
@@ -1942,9 +2035,14 @@ function setupDatHangRealtime() {
         table: "dat_hang_chuyen_kho"
       },
       async () => {
+        invalidateOrdersCache();
+
         if (Date.now() < suppressRealtimeUntil) {
           return;
         }
+
+        // Panel đóng: chỉ đánh dấu cache cũ, không query/DOM render.
+        if (!document.getElementById("dhck-panel")) return;
 
         await refreshPanelSmooth();
       }
@@ -1967,11 +2065,17 @@ export function initDatHangChuyenKho(options = {}) {
   // 2026-08-23: Không còn gắn thao tác đặt hàng thủ công vào StockQuickPopup ở module này.
   // datHangChuyenKho.js chỉ phụ trách luồng TỰ ĐỘNG. Nút Size / Đặt khẩn do datHangChuyenKhoKhan.js xử lý.
 
-  runDatHangCheck();
+  // Không fetch hàng đợi lúc vừa mở trang. Chỉ tạo nút AUTO ĐH + realtime nhẹ.
   setupDatHangRealtime();
 
   if (timer) clearInterval(timer);
-  timer = setInterval(() => runDatHangCheck(), 5 * 60 * 1000);
+  timer = setInterval(() => {
+    // Chỉ refresh định kỳ khi người dùng đang mở panel.
+    if (document.getElementById("dhck-panel")) {
+      invalidateOrdersCache();
+      refreshPanelSmooth();
+    }
+  }, 5 * 60 * 1000);
 }
 
 export function attachStockQuickPopup(popup, payload) {
