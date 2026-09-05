@@ -879,6 +879,164 @@ function bindDeleteCheckAll(box) {
   updateDeleteCheckAllState(box);
 }
 
+
+function bindAutoDhFabDrag(button) {
+  if (!button || button.dataset.dragBound === "1") return;
+  button.dataset.dragBound = "1";
+
+  const STORAGE_KEY = "hoantuyet_fab_pos_auto_dh_v1";
+  const DEFAULT_RIGHT = 118;
+  const DEFAULT_BOTTOM = 14;
+  const MARGIN = 4;
+  let drag = null;
+
+  const clamp = (v, min, max) => Math.min(Math.max(v, min), Math.max(min, max));
+
+  const applySavedPosition = () => {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch (_) {}
+
+    const rect = button.getBoundingClientRect();
+    const w = rect.width || button.offsetWidth || 48;
+    const h = rect.height || button.offsetHeight || 48;
+
+    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+      const x = clamp(saved.x, MARGIN, window.innerWidth - w - MARGIN);
+      const y = clamp(saved.y, MARGIN, window.innerHeight - h - MARGIN);
+      button.style.left = x + "px";
+      button.style.top = y + "px";
+      button.style.right = "auto";
+      button.style.bottom = "auto";
+    } else {
+      button.style.left = "auto";
+      button.style.top = "auto";
+      button.style.right = DEFAULT_RIGHT + "px";
+      button.style.bottom = `calc(${DEFAULT_BOTTOM}px + env(safe-area-inset-bottom))`;
+    }
+  };
+
+  const saveCurrentPosition = () => {
+    const r = button.getBoundingClientRect();
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) }));
+    } catch (_) {}
+  };
+
+  button.addEventListener("pointerdown", e => {
+    if (e.button != null && e.button !== 0) return;
+    const r = button.getBoundingClientRect();
+    drag = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      left: r.left,
+      top: r.top,
+      moved: false
+    };
+    try { button.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  button.addEventListener("pointermove", e => {
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+
+    if (!drag.moved && Math.hypot(dx, dy) < 7) return;
+    drag.moved = true;
+    e.preventDefault();
+
+    const w = button.offsetWidth || 48;
+    const h = button.offsetHeight || 48;
+    const x = clamp(drag.left + dx, MARGIN, window.innerWidth - w - MARGIN);
+    const y = clamp(drag.top + dy, MARGIN, window.innerHeight - h - MARGIN);
+
+    button.style.left = x + "px";
+    button.style.top = y + "px";
+    button.style.right = "auto";
+    button.style.bottom = "auto";
+  });
+
+  const endDrag = e => {
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const moved = drag.moved;
+    drag = null;
+    try { button.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (moved) {
+      button.dataset.suppressClickUntil = String(Date.now() + 350);
+      saveCurrentPosition();
+    }
+  };
+
+  button.addEventListener("pointerup", endDrag);
+  button.addEventListener("pointercancel", endDrag);
+  window.addEventListener("resize", applySavedPosition);
+  window.visualViewport?.addEventListener("resize", applySavedPosition);
+
+  applySavedPosition();
+}
+
+function ensureAutoDhFab() {
+  let fab = document.getElementById("dhck-auto-fab");
+  if (!fab) {
+    const styleId = "dhck-auto-fab-style";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        #dhck-auto-fab{
+          position:fixed;
+          right:118px;
+          bottom:calc(14px + env(safe-area-inset-bottom));
+          z-index:26020;
+          width:48px;height:48px;
+          border:2px solid #d39a21;border-radius:50%;
+          background:#fff0b8;color:#6b4700;
+          box-shadow:0 4px 14px rgba(0,0,0,.25);
+          padding:0;display:flex;align-items:center;justify-content:center;
+          flex-direction:column;font-family:Arial,sans-serif;font-weight:900;
+          cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;
+          user-select:none;-webkit-user-select:none;
+        }
+        #dhck-auto-fab .l1{font-size:10px;line-height:1.02}
+        #dhck-auto-fab .l2{font-size:10px;line-height:1.02}
+        #dhck-auto-fab:active{transform:scale(.94)}
+      `;
+      document.head.appendChild(style);
+    }
+
+    fab = document.createElement("button");
+    fab.id = "dhck-auto-fab";
+    fab.type = "button";
+    fab.title = "Đặt hàng chuyển kho tự động – bấm mở/đóng, giữ và kéo để di chuyển";
+    fab.setAttribute("aria-label", "Mở hoặc đóng đặt hàng chuyển kho tự động");
+    fab.innerHTML = '<span class="l1">AUTO</span><span class="l2">ĐH</span>';
+    document.body.appendChild(fab);
+
+    bindAutoDhFabDrag(fab);
+
+    fab.addEventListener("click", async e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (Date.now() < Number(fab.dataset.suppressClickUntil || 0)) return;
+
+      const panel = document.getElementById("dhck-panel");
+      if (panel && popupOpen) {
+        suppressRealtimeUntil = Date.now() + 1500;
+        await flushInlineNotes(panel);
+        popupOpen = false;
+        userClosedPanel = true;
+        panel.remove();
+        return;
+      }
+
+      await runDatHangCheck(true);
+    });
+  } else {
+    bindAutoDhFabDrag(fab);
+  }
+  return fab;
+}
+
 async function showPanel(allRows) {
   const coso = getCurrentCoso();
   if (!coso || !allRows.length || popupOpen) return;
@@ -1092,143 +1250,30 @@ async function showPanel(allRows) {
   bindMoveCheck(box);
   bindDeleteCheckAll(box);
 
-  box.querySelector("#dhck-close").onclick = async () => {
+  const closePanelToFab = async () => {
     userClosedPanel = true;
-    suppressRealtimeUntil = Date.now() + 3000;
-
+    suppressRealtimeUntil = Date.now() + 1500;
     await flushInlineNotes(box);
-
     popupOpen = false;
     box.remove();
   };
-  let dhckCollapsed = false;
 
-  const oldTop = box.style.top;
-  const oldBottom = box.style.bottom;
-  const oldHeight = box.style.height;
-  const oldMaxHeight = box.style.maxHeight;
-  const oldOverflowY = box.style.overflowY;
-  const oldOverflowX = box.style.overflowX;
-  const oldOverflow = box.style.overflow;
+  box.querySelector("#dhck-close").onclick = async (e) => {
+    e?.stopPropagation?.();
+    await closePanelToFab();
+  };
 
-  function placeCollapsedBox() {
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    const h = isMobile ? 36 : 34;
-
-    if (isMobile) {
-      const footer =
-        document.querySelector(".footer-buttons") ||
-        document.querySelector(".bottom-buttons") ||
-        document.querySelector("#footer-buttons") ||
-        document.querySelector("#bottomButtons");
-
-      if (footer) {
-        const r = footer.getBoundingClientRect();
-        const top = Math.max(0, Math.round(r.top - h - 4));
-        box.style.setProperty("top", top + "px", "important");
-      } else {
-        box.style.setProperty("top", "auto", "important");
-        box.style.setProperty("bottom", "84px", "important");
-      }
-
-      box.style.setProperty("left", "0", "important");
-      box.style.setProperty("right", "0", "important");
-      box.style.setProperty("width", "100vw", "important");
-      box.style.setProperty("max-width", "100vw", "important");
-    } else {
-      const maKhach =
-        document.querySelector('input[placeholder*="mã khách"]') ||
-        document.getElementById("makhach") ||
-        document.querySelector("#maKhach");
-
-      if (maKhach) {
-        const r = maKhach.getBoundingClientRect();
-        const top = Math.max(0, Math.round(r.top - h - 38));
-        box.style.setProperty("top", top + "px", "important");
-      }
-
-      box.style.setProperty("bottom", "auto", "important");
-    }
-
-    box.style.setProperty("height", h + "px", "important");
-    box.style.setProperty("min-height", h + "px", "important");
-    box.style.setProperty("max-height", h + "px", "important");
-    box.style.setProperty("overflow", "hidden", "important");
-    box.style.setProperty("overflow-y", "hidden", "important");
-    box.style.setProperty("overflow-x", "hidden", "important");
-    box.style.setProperty("padding", "4px 6px", "important");
-  }
-
-  function toggleDhckPanel() {
-    dhckCollapsed = !dhckCollapsed;
-
-    const body = box.querySelector("#dhck-body");
-    const btn = box.querySelector("#dhck-toggle");
-
-    if (dhckCollapsed) {
-      body.style.setProperty("display", "none", "important");
-      body.style.setProperty("height", "0", "important");
-      body.style.setProperty("max-height", "0", "important");
-      body.style.setProperty("overflow", "hidden", "important");
-
-      btn.textContent = "▲";
-
-      placeCollapsedBox();
-    } else {
-      body.style.removeProperty("display");
-      body.style.removeProperty("height");
-      body.style.removeProperty("max-height");
-      body.style.removeProperty("overflow");
-
-      btn.textContent = "▼";
-
-      box.style.top = oldTop;
-      box.style.bottom = oldBottom;
-      box.style.height = oldHeight;
-      box.style.maxHeight = oldMaxHeight;
-      box.style.overflow = oldOverflow || "auto";
-      box.style.overflowY = oldOverflowY || "auto";
-      box.style.overflowX = oldOverflowX || "auto";
-      box.style.padding = "6px";
-    }
-  }
-
-  box.querySelector("#dhck-toggle").onclick = (e) => {
+  // Đồng nhất trải nghiệm với BM/CK KHẨN: không còn thu thành thanh ngang.
+  // Bấm mũi tên hoặc cả dòng tiêu đề sẽ đóng về nút tròn AUTO ĐH.
+  box.querySelector("#dhck-toggle").onclick = async (e) => {
     e.stopPropagation();
-    toggleDhckPanel();
+    await closePanelToFab();
   };
 
-  box.querySelector("#dhck-header").onclick = (e) => {
-    if (e.target?.id === "dhck-close") return;
-    if (e.target?.id === "dhck-toggle") return;
-    toggleDhckPanel();
+  box.querySelector("#dhck-header").onclick = async (e) => {
+    if (e.target?.id === "dhck-close" || e.target?.id === "dhck-toggle") return;
+    await closePanelToFab();
   };
-
-  // Mặc định mở lần đầu thì thu gọn.
-  // Nhưng nếu realtime cập nhật khi người dùng đang mở bảng,
-  // thì giữ nguyên trạng thái mở, không tự thu gọn.
-  setTimeout(() => {
-    const body = box.querySelector("#dhck-body");
-    const btn = box.querySelector("#dhck-toggle");
-
-    if (restorePanelExpandedOnce) {
-      dhckCollapsed = false;
-      btn.textContent = "▼";
-      restorePanelExpandedOnce = false;
-      return;
-    }
-
-    dhckCollapsed = true;
-
-    body.style.setProperty("display", "none", "important");
-    body.style.setProperty("height", "0", "important");
-    body.style.setProperty("max-height", "0", "important");
-    body.style.setProperty("overflow", "hidden", "important");
-
-    btn.textContent = "▲";
-
-    placeCollapsedBox();
-  }, 0);
 
   box.querySelector("#dhck-create-ccn").onclick = () => {
     createCcnFromChecked(box, canMove);
@@ -1245,10 +1290,9 @@ async function showPanel(allRows) {
     deleteCheckedOrders(box, canMove);
   });
 
-  document.addEventListener("keydown", function esc(e) {
+  document.addEventListener("keydown", async function esc(e) {
     if (e.key === "Escape" && document.getElementById("dhck-panel")) {
-      popupOpen = false;
-      box.remove();
+      await closePanelToFab();
       document.removeEventListener("keydown", esc, true);
     }
   }, true);
@@ -1735,23 +1779,22 @@ async function createCcnFromChecked(box, canMove) {
 async function runDatHangCheck(forceShow = false) {
   if (!ctx?.supabase) return;
 
-  if (forceShow) {
-    userClosedPanel = false;
-  }
-
-  if (userClosedPanel && !forceShow) {
-    return;
-  }
-
   const rows = await fetchOrders();
-  if (!rows.length) return;
 
-  if (forceShow) {
-    popupOpen = false;
-    document.getElementById("dhck-panel")?.remove();
+  // Mặc định chỉ chạy nền. Không tự bật popup nữa.
+  if (!forceShow) return rows;
+
+  userClosedPanel = false;
+  popupOpen = false;
+  document.getElementById("dhck-panel")?.remove();
+
+  if (!rows.length) {
+    alert("Hiện tại không có đặt hàng chuyển kho tự động đang chờ.");
+    return rows;
   }
 
-  showPanel(rows);
+  await showPanel(rows);
+  return rows;
 }
 
 async function filterSuggestionsNotPending(items) {
@@ -1841,9 +1884,8 @@ async function openFromStockQuick(popup, payload) {
 async function refreshPanelSmooth() {
   const panel = document.getElementById("dhck-panel");
 
-  // Nếu panel chưa có thì mở như bình thường
+  // Panel đang đóng thì realtime chỉ cập nhật nền, tuyệt đối không tự bật giao diện.
   if (!panel) {
-    await runDatHangCheck(false);
     return;
   }
 
@@ -1912,6 +1954,7 @@ function setupDatHangRealtime() {
 
 export function initDatHangChuyenKho(options = {}) {
   ctx = options;
+  ensureAutoDhFab();
 
   window.DatHangChuyenKho = {
     attachStockQuickPopup,
