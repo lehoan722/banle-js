@@ -44,6 +44,47 @@
     }
   }
 
+  // ===== TỰ ĐỘNG LOAD MODULE ĐẶT HÀNG CHUYỂN KHO KHẨN =====
+  // Mục tiêu: trang nào chỉ cần nạp stockQuickPopup.js thì tự có luôn module đặt khẩn.
+  // Không cần từng trang phải import/init datHangChuyenKhoKhan.js riêng nữa.
+  let stockQuickDhkhanLoadPromise = null;
+
+  async function loadDatHangChuyenKhoKhanModule() {
+    if (window.DatHangChuyenKhoKhan?.openFromStockQuick) return true;
+    if (stockQuickDhkhanLoadPromise) return stockQuickDhkhanLoadPromise;
+
+    stockQuickDhkhanLoadPromise = (async () => {
+      try {
+        // datHangChuyenKhoKhan.js là ES module nên dùng dynamic import từ file StockQuick dạng script thường.
+        const mod = await import("/scripts/datHangChuyenKhoKhan.js?v=7");
+
+        // Có thể một trang cũ đã init module trong lúc dynamic import đang chạy.
+        if (window.DatHangChuyenKhoKhan?.openFromStockQuick) return true;
+
+        const client = await waitForSupabaseReady(5000);
+        if (!client) {
+          throw new Error("Supabase chưa sẵn sàng để khởi tạo đặt hàng khẩn");
+        }
+
+        if (typeof mod.initDatHangChuyenKhoKhan !== "function") {
+          throw new Error("Không tìm thấy initDatHangChuyenKhoKhan() trong module đặt hàng khẩn");
+        }
+
+        // Chỉ truyền Supabase. Cơ sở/NV được module đọc động từ localStorage/global,
+        // nhờ vậy vẫn đúng cả khi StockQuick được load trước khi người dùng đăng nhập xong.
+        mod.initDatHangChuyenKhoKhan({ supabase: client });
+        return !!window.DatHangChuyenKhoKhan?.openFromStockQuick;
+      } catch (err) {
+        console.warn("[StockQuickPopup] Không tự tải được datHangChuyenKhoKhan.js:", err);
+        // Cho phép lần bấm sau thử nạp lại nếu lỗi mạng/cache tạm thời.
+        stockQuickDhkhanLoadPromise = null;
+        return false;
+      }
+    })();
+
+    return stockQuickDhkhanLoadPromise;
+  }
+
   function getSupabaseClient() {
     if (typeof window === "undefined") return null;
     const client = window.supabase;
@@ -3031,15 +3072,19 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     dhckHead.style.color = "#d00000";
     dhckHead.style.fontWeight = "700";
 
-    dhckHead.addEventListener("click", (e) => {
+    dhckHead.addEventListener("click", async (e) => {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
 
+      if (!window.DatHangChuyenKhoKhan?.openFromStockQuick) {
+        await loadDatHangChuyenKhoKhanModule();
+      }
+
       if (window.DatHangChuyenKhoKhan?.openFromStockQuick) {
         window.DatHangChuyenKhoKhan.openFromStockQuick(popup, payload);
       } else {
-        alert("Module đặt hàng KHẨN chưa sẵn sàng. Vui lòng bấm lại sau vài giây.");
+        alert("Không tải được module đặt hàng KHẨN. Hãy kiểm tra file /scripts/datHangChuyenKhoKhan.js rồi bấm lại.");
       }
     });
   }
@@ -3470,6 +3515,10 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     window.stockQuickPopup = function (masp) {
       return window.StockQuick.showFor(document.body, masp);
     };
+
+    // Nạp song song ngay từ khi stockQuickPopup.js được gọi. Nếu Supabase/auth chưa xong,
+    // hàm loader sẽ chờ tối đa vài giây; khi bấm Đặt khẩn cũng có cơ chế thử lại.
+    setTimeout(() => { loadDatHangChuyenKhoKhanModule(); }, 0);
 
     // BỎ tự động mở stockQuickPopup khi click vào ô nhập #masp
     // document.addEventListener("DOMContentLoaded", () => {
