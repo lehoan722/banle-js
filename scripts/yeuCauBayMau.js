@@ -9,6 +9,7 @@ let taskCacheAt = 0;
 let taskRequest = null;
 let prefetchTimer = null;
 let cacheVersion = 0;
+let currentToggleClose = null;
 
 const STYLE_ID = "yeu-cau-bay-mau-style";
 const BUTTON_ID = "yeu-cau-bay-mau-btn";
@@ -184,6 +185,7 @@ async function loadTasks({ force = false } = {}) {
 function removePopup() {
   document.getElementById(OVERLAY_ID)?.remove();
   popupOpen = false;
+  currentToggleClose = null;
 }
 
 function showLoadingPopup() {
@@ -470,9 +472,18 @@ function showPopup(tasks) {
     if (event.target !== overlay || saving) return;
     saveAndClose(tasks, refs, close);
   });
+  const closeCurrentPopup = () => {
+    if (saving) return;
+    saveAndClose(tasks, refs, close);
+  };
+
+  // Nút BM luôn hiện. Khi popup đang mở, bấm BM lần nữa
+  // sẽ lưu + đóng đúng như nút X.
+  currentToggleClose = closeCurrentPopup;
+
   close.onclick = event => {
     event.stopPropagation();
-    saveAndClose(tasks, refs, close);
+    closeCurrentPopup();
   };
 }
 
@@ -516,7 +527,17 @@ export function initYeuCauBayMau({ supabase, diadiem, manvDangNhap }) {
     button.setAttribute("aria-label", "Mở yêu cầu bày mẫu");
     document.body.appendChild(button);
   }
-  button.onclick = () => openFromButton(button);
+  button.onclick = () => {
+    if (saving) return;
+
+    if (popupOpen) {
+      if (typeof currentToggleClose === "function") currentToggleClose();
+      else removePopup();
+      return;
+    }
+
+    openFromButton(button);
+  };
 
   // Tải trước dữ liệu nhưng tuyệt đối không tự mở popup.
   setTimeout(() => loadTasks({ force: true }).catch(error => {
