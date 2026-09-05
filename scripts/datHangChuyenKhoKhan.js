@@ -101,6 +101,43 @@ function ensureStyles() {
     #dhkhan-panel.dhkhan-flash { animation:dhkhanFlash .45s ease-in-out 0s 4 alternate; }
     @keyframes dhkhanFlash { from{box-shadow:0 0 0 2px #d00000,0 3px 14px rgba(0,0,0,.3)} to{box-shadow:0 0 0 6px rgba(208,0,0,.15),0 3px 14px rgba(0,0,0,.3)} }
 
+    #dhkhan-fab{
+      position:fixed;
+      right:64px;
+      bottom:calc(14px + env(safe-area-inset-bottom));
+      z-index:26010;
+      width:48px;
+      height:48px;
+      border:2px solid #d00000;
+      border-radius:50%;
+      background:#ffe5df;
+      color:#9b0000;
+      box-shadow:0 4px 14px rgba(0,0,0,.25);
+      padding:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      font-family:Arial,sans-serif;
+      font-weight:900;
+      cursor:pointer;
+      touch-action:manipulation;
+      -webkit-tap-highlight-color:transparent;
+    }
+    #dhkhan-fab .l1{font-size:11px;line-height:1.02}
+    #dhkhan-fab .l2{font-size:9px;line-height:1.02}
+    #dhkhan-fab:active{transform:scale(.94)}
+    @media(min-width:801px){
+      #dhkhan-fab{
+        right:8px;
+        bottom:8px;
+        width:58px;
+        height:58px;
+      }
+      #dhkhan-fab .l1{font-size:12px}
+      #dhkhan-fab .l2{font-size:10px}
+    }
+
     #dhkhan-create-box { font-family:Arial,sans-serif; }
     #dhkhan-create-box input { font-size:16px;padding:6px;box-sizing:border-box; }
     #dhkhan-create-box .dhkhan-grid { display:grid;grid-template-columns:90px repeat(10,minmax(42px,1fr));gap:3px;align-items:center; }
@@ -337,6 +374,27 @@ function renderRows(rows,canMoveSection,isAdmin) {
   }).join("");
 }
 
+function ensureDhkhanFab() {
+  let fab = document.getElementById("dhkhan-fab");
+  if (!fab) {
+    fab = document.createElement("button");
+    fab.id = "dhkhan-fab";
+    fab.type = "button";
+    fab.title = "Mở / thu gọn Chuyển kho khẩn";
+    fab.setAttribute("aria-label", "Mở hoặc thu gọn Chuyển kho khẩn");
+    fab.innerHTML = '<span class="l1">CK</span><span class="l2">KHẨN</span>';
+    document.body.appendChild(fab);
+
+    fab.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      panelMode = panelMode === "expanded" ? "collapsed" : "expanded";
+      applyPanelMode();
+    });
+  }
+  return fab;
+}
+
 function positionPanel() {
   const box=document.getElementById("dhkhan-panel");
   if(!box) return;
@@ -345,36 +403,11 @@ function positionPanel() {
   const vh=window.visualViewport?.height||window.innerHeight;
 
   if(panelMode==="collapsed"){
-    box.style.left="auto";
-    box.style.top="auto";
-    box.style.bottom="calc(14px + env(safe-area-inset-bottom))";
-    box.style.padding="0";
-    box.style.overflow="hidden";
-    box.style.zIndex="25990";
-
-    if(mobile){
-      // Mobile: chỉ hiện 1 nút tròn nhỏ như BM để không che nội dung.
-      box.style.right="64px";
-      box.style.width="48px";
-      box.style.minWidth="48px";
-      box.style.maxWidth="48px";
-      box.style.height="48px";
-      box.style.maxHeight="48px";
-      box.style.borderRadius="999px";
-    } else {
-      // Desktop: giữ dạng nút chữ nhật ngắn.
-      box.style.right="62px";
-      box.style.width="112px";
-      box.style.minWidth="112px";
-      box.style.maxWidth="112px";
-      box.style.height="44px";
-      box.style.maxHeight="44px";
-      box.style.borderRadius="9px";
-    }
+    box.style.display="none";
     return;
   }
 
-  // Khi mở đầy đủ thì trở lại panel lớn như trước.
+  box.style.display="block";
   box.style.left=mobile?"0":"6px";
   box.style.right="auto";
   box.style.top="auto";
@@ -399,11 +432,11 @@ function applyPanelMode(){
   const box=document.getElementById("dhkhan-panel");
   if(!box) return;
 
-  // Từ phiên bản này không dùng trạng thái ẩn trong thao tác thông thường.
-  // Nếu trạng thái cũ còn sót lại thì tự chuyển về dạng nút rút gọn.
   if(panelMode==="hidden") panelMode="collapsed";
 
-  const mobile=window.matchMedia("(max-width:800px)").matches;
+  const fab = ensureDhkhanFab();
+  fab.style.display = "flex";
+
   const body=box.querySelector("#dhkhan-body");
   const title=box.querySelector("#dhkhan-header-title");
   const actions=box.querySelector("#dhkhan-header-actions");
@@ -413,27 +446,6 @@ function applyPanelMode(){
 
   if(panelMode==="collapsed"){
     if(body) body.style.display="none";
-    if(actions) actions.style.display="none";
-    if(title){
-      title.innerHTML = mobile
-        ? '<span style="display:block;font-size:11px;font-weight:900;line-height:1.02;text-align:center;">CK</span><span style="display:block;font-size:9px;font-weight:900;line-height:1.02;text-align:center;">KHẨN</span>'
-        : 'CK KHẨN';
-    }
-    if(header){
-      header.style.position="static";
-      header.style.height="100%";
-      header.style.minHeight=mobile?"48px":"44px";
-      header.style.padding="0";
-      header.style.justifyContent="center";
-      header.style.alignItems="center";
-      header.style.flexDirection=mobile?"column":"row";
-      header.style.gap=mobile?"0":"8px";
-      header.style.cursor="pointer";
-      header.style.background="#ffe5df";
-      header.style.whiteSpace="nowrap";
-      header.style.borderRadius=mobile?"999px":"0";
-      header.title="Bấm để mở Chuyển kho khẩn";
-    }
   }else{
     if(body) body.style.display="block";
     if(title) title.innerHTML=box.dataset.fullTitleHtml||"🚨 ĐẶT HÀNG KHẨN CẤP";
@@ -451,7 +463,7 @@ function applyPanelMode(){
       header.style.background="#ffe5df";
       header.style.whiteSpace="normal";
       header.style.borderRadius="0";
-      header.title="Bấm dòng tiêu đề để thu gọn";
+      header.title="Bấm dòng tiêu đề hoặc nút CK KHẨN để thu gọn";
     }
   }
 
@@ -653,8 +665,8 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
 
   box.innerHTML=`
     <div id="dhkhan-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:5;background:#ffe5df;min-height:26px;font-weight:900;color:#9b0000;">
-      <span id="dhkhan-header-title">${panelMode==="collapsed" ? "CK KHẨN" : fullTitleHtml}</span>
-      <div id="dhkhan-header-actions" style="display:${panelMode==="collapsed" ? "none" : "flex"};gap:5px;align-items:center;">
+      <span id="dhkhan-header-title">${fullTitleHtml}</span>
+      <div id="dhkhan-header-actions" style="display:flex;gap:5px;align-items:center;">
         <button id="dhkhan-create" style="font-weight:800;color:#9b0000;">+ Đặt khẩn</button>
         ${isAdmin ? `<button id="dhkhan-delete" style="font-weight:800;color:#9b0000;">Xóa đặt hàng</button>` : ""}
         <button id="dhkhan-create-ccn" style="font-weight:800;color:#0b57d0;">Tạo hóa đơn CCN</button>
@@ -970,6 +982,8 @@ function bindStockQuickExisting() {
 export function initDatHangChuyenKhoKhan(options={}) {
   // Gộp context để tương thích cả trang cũ đang init riêng và cơ chế StockQuick tự nạp.
   ctx = { ...(ctx || {}), ...(options || {}) };
+  ensureStyles();
+  ensureDhkhanFab();
 
   // API global luôn được bảo đảm tồn tại, nhưng listener/realtime/interval chỉ khởi tạo 1 lần.
   window.DatHangChuyenKhoKhan={
@@ -985,7 +999,7 @@ export function initDatHangChuyenKhoKhan(options={}) {
   }
 
   moduleInitialized = true;
-  ensureStyles(); setupAudioUnlock();
+  setupAudioUnlock();
   bindStockQuickExisting(); refreshPanel(); setupRealtime();
   window.addEventListener("resize",schedulePosition); window.visualViewport?.addEventListener("resize",schedulePosition);
   setInterval(()=>{if(document.getElementById("dhkhan-panel")) schedulePosition();},2000);
