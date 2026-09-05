@@ -17,6 +17,7 @@ let audioUnlocked = false;
 let repositionTimer = null;
 let panelMode = "collapsed"; // expanded | collapsed | hidden
 let selectedUrgentRowId = null; // dòng đặt khẩn đang được chọn để mở StockQuick
+let moduleInitialized = false; // chống init trùng khi trang cũ và StockQuick cùng nạp module
 
 const TABLE = "dat_hang_chuyen_kho_khan";
 const HISTORY_LIMIT = 200;
@@ -875,9 +876,26 @@ function bindStockQuickExisting() {
 }
 
 export function initDatHangChuyenKhoKhan(options={}) {
-  ctx=options; ensureStyles(); setupAudioUnlock();
-  window.DatHangChuyenKhoKhan={openFromStockQuick,openManual:()=>{if(panelMode==="hidden") panelMode="expanded"; refreshPanel({forceOpen:true}); showManualCreate();},refresh:()=>{panelMode="expanded";return refreshPanel({forceOpen:true});}};
+  // Gộp context để tương thích cả trang cũ đang init riêng và cơ chế StockQuick tự nạp.
+  ctx = { ...(ctx || {}), ...(options || {}) };
+
+  // API global luôn được bảo đảm tồn tại, nhưng listener/realtime/interval chỉ khởi tạo 1 lần.
+  window.DatHangChuyenKhoKhan={
+    openFromStockQuick,
+    openManual:()=>{if(panelMode==="hidden") panelMode="expanded"; refreshPanel({forceOpen:true}); showManualCreate();},
+    refresh:()=>{panelMode="expanded";return refreshPanel({forceOpen:true});}
+  };
+
+  if (moduleInitialized) {
+    // Nếu một trang cũ gọi init lần 2 với context đầy đủ hơn thì chỉ cập nhật dữ liệu/panel.
+    refreshPanel();
+    return window.DatHangChuyenKhoKhan;
+  }
+
+  moduleInitialized = true;
+  ensureStyles(); setupAudioUnlock();
   bindStockQuickExisting(); refreshPanel(); setupRealtime();
   window.addEventListener("resize",schedulePosition); window.visualViewport?.addEventListener("resize",schedulePosition);
   setInterval(()=>{if(document.getElementById("dhkhan-panel")) schedulePosition();},2000);
+  return window.DatHangChuyenKhoKhan;
 }
