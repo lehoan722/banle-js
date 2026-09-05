@@ -374,6 +374,102 @@ function renderRows(rows,canMoveSection,isAdmin) {
   }).join("");
 }
 
+
+function bindDhkhanFabDrag(button) {
+  if (!button || button.dataset.dragBound === "1") return;
+  button.dataset.dragBound = "1";
+
+  const STORAGE_KEY = "hoantuyet_fab_pos_ck_khan_v1";
+  const DEFAULT_RIGHT = 64;
+  const DEFAULT_BOTTOM = 14;
+  const MARGIN = 4;
+  let drag = null;
+
+  const clamp = (v, min, max) => Math.min(Math.max(v, min), Math.max(min, max));
+
+  const applySavedPosition = () => {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch (_) {}
+
+    const rect = button.getBoundingClientRect();
+    const w = rect.width || button.offsetWidth || 48;
+    const h = rect.height || button.offsetHeight || 48;
+
+    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+      const x = clamp(saved.x, MARGIN, window.innerWidth - w - MARGIN);
+      const y = clamp(saved.y, MARGIN, window.innerHeight - h - MARGIN);
+      button.style.left = x + "px";
+      button.style.top = y + "px";
+      button.style.right = "auto";
+      button.style.bottom = "auto";
+    } else {
+      button.style.left = "auto";
+      button.style.top = "auto";
+      button.style.right = DEFAULT_RIGHT + "px";
+      button.style.bottom = `calc(${DEFAULT_BOTTOM}px + env(safe-area-inset-bottom))`;
+    }
+  };
+
+  const saveCurrentPosition = () => {
+    const r = button.getBoundingClientRect();
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) }));
+    } catch (_) {}
+  };
+
+  button.addEventListener("pointerdown", e => {
+    if (e.button != null && e.button !== 0) return;
+    const r = button.getBoundingClientRect();
+    drag = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      left: r.left,
+      top: r.top,
+      moved: false
+    };
+    try { button.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  button.addEventListener("pointermove", e => {
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+
+    if (!drag.moved && Math.hypot(dx, dy) < 7) return;
+    drag.moved = true;
+    e.preventDefault();
+
+    const w = button.offsetWidth || 48;
+    const h = button.offsetHeight || 48;
+    const x = clamp(drag.left + dx, MARGIN, window.innerWidth - w - MARGIN);
+    const y = clamp(drag.top + dy, MARGIN, window.innerHeight - h - MARGIN);
+
+    button.style.left = x + "px";
+    button.style.top = y + "px";
+    button.style.right = "auto";
+    button.style.bottom = "auto";
+  });
+
+  const endDrag = e => {
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const moved = drag.moved;
+    drag = null;
+    try { button.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (moved) {
+      button.dataset.suppressClickUntil = String(Date.now() + 350);
+      saveCurrentPosition();
+    }
+  };
+
+  button.addEventListener("pointerup", endDrag);
+  button.addEventListener("pointercancel", endDrag);
+  window.addEventListener("resize", applySavedPosition);
+  window.visualViewport?.addEventListener("resize", applySavedPosition);
+
+  applySavedPosition();
+}
+
 function ensureDhkhanFab() {
   let fab = document.getElementById("dhkhan-fab");
   if (!fab) {
@@ -385,12 +481,17 @@ function ensureDhkhanFab() {
     fab.innerHTML = '<span class="l1">CK</span><span class="l2">KHẨN</span>';
     document.body.appendChild(fab);
 
+    bindDhkhanFabDrag(fab);
+
     fab.addEventListener("click", e => {
       e.preventDefault();
       e.stopPropagation();
+      if (Date.now() < Number(fab.dataset.suppressClickUntil || 0)) return;
       panelMode = panelMode === "expanded" ? "collapsed" : "expanded";
       applyPanelMode();
     });
+  } else {
+    bindDhkhanFabDrag(fab);
   }
   return fab;
 }
