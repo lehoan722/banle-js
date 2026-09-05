@@ -117,7 +117,8 @@ function ensureStyles() {
     #dhkhan-create-box .dhkhan-actions button { min-width:110px;padding:8px 14px;font-size:15px;font-weight:800; }
 
     @media(max-width:800px){
-      #dhkhan-panel { left:0!important;right:0!important;width:100vw!important;max-width:100vw!important;font-size:12px!important; }
+      #dhkhan-panel:not(.dhkhan-collapsed) { left:0!important;right:0!important;width:100vw!important;max-width:100vw!important;font-size:12px!important; }
+      #dhkhan-panel.dhkhan-collapsed { font-size:11px!important; }
       #dhkhan-panel th,#dhkhan-panel td { font-size:12px;padding:3px 4px; }
       #dhkhan-panel .dhkhan-note { min-width:100px; }
       #dhkhan-create-box { width:98vw!important;max-width:98vw!important;min-width:0!important;padding:9px!important; }
@@ -344,21 +345,32 @@ function positionPanel() {
   const vh=window.visualViewport?.height||window.innerHeight;
 
   if(panelMode==="collapsed"){
-    // Dạng rút gọn mới: luôn hiện như một nút chữ nhật "CK KHẨN",
-    // đặt cạnh nút BM của Yêu cầu bày mẫu.
     box.style.left="auto";
-    box.style.right="62px";
     box.style.top="auto";
     box.style.bottom="calc(14px + env(safe-area-inset-bottom))";
-    box.style.width="112px";
-    box.style.minWidth="112px";
-    box.style.maxWidth="112px";
-    box.style.height="44px";
-    box.style.maxHeight="44px";
     box.style.padding="0";
     box.style.overflow="hidden";
-    box.style.borderRadius="9px";
     box.style.zIndex="25990";
+
+    if(mobile){
+      // Mobile: chỉ hiện 1 nút tròn nhỏ như BM để không che nội dung.
+      box.style.right="64px";
+      box.style.width="48px";
+      box.style.minWidth="48px";
+      box.style.maxWidth="48px";
+      box.style.height="48px";
+      box.style.maxHeight="48px";
+      box.style.borderRadius="999px";
+    } else {
+      // Desktop: giữ dạng nút chữ nhật ngắn.
+      box.style.right="62px";
+      box.style.width="112px";
+      box.style.minWidth="112px";
+      box.style.maxWidth="112px";
+      box.style.height="44px";
+      box.style.maxHeight="44px";
+      box.style.borderRadius="9px";
+    }
     return;
   }
 
@@ -391,6 +403,7 @@ function applyPanelMode(){
   // Nếu trạng thái cũ còn sót lại thì tự chuyển về dạng nút rút gọn.
   if(panelMode==="hidden") panelMode="collapsed";
 
+  const mobile=window.matchMedia("(max-width:800px)").matches;
   const body=box.querySelector("#dhkhan-body");
   const title=box.querySelector("#dhkhan-header-title");
   const actions=box.querySelector("#dhkhan-header-actions");
@@ -400,17 +413,25 @@ function applyPanelMode(){
 
   if(panelMode==="collapsed"){
     if(body) body.style.display="none";
-    if(title) title.textContent="CK KHẨN";
     if(actions) actions.style.display="none";
+    if(title){
+      title.innerHTML = mobile
+        ? '<span style="display:block;font-size:11px;font-weight:900;line-height:1.02;text-align:center;">CK</span><span style="display:block;font-size:9px;font-weight:900;line-height:1.02;text-align:center;">KHẨN</span>'
+        : 'CK KHẨN';
+    }
     if(header){
       header.style.position="static";
       header.style.height="100%";
-      header.style.minHeight="44px";
-      header.style.padding="0 10px";
+      header.style.minHeight=mobile?"48px":"44px";
+      header.style.padding="0";
       header.style.justifyContent="center";
+      header.style.alignItems="center";
+      header.style.flexDirection=mobile?"column":"row";
+      header.style.gap=mobile?"0":"8px";
       header.style.cursor="pointer";
       header.style.background="#ffe5df";
       header.style.whiteSpace="nowrap";
+      header.style.borderRadius=mobile?"999px":"0";
       header.title="Bấm để mở Chuyển kho khẩn";
     }
   }else{
@@ -423,9 +444,13 @@ function applyPanelMode(){
       header.style.minHeight="26px";
       header.style.padding="0";
       header.style.justifyContent="space-between";
+      header.style.alignItems="center";
+      header.style.flexDirection="row";
+      header.style.gap="8px";
       header.style.cursor="pointer";
       header.style.background="#ffe5df";
       header.style.whiteSpace="normal";
+      header.style.borderRadius="0";
       header.title="Bấm dòng tiêu đề để thu gọn";
     }
   }
