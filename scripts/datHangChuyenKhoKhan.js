@@ -15,7 +15,7 @@ let suppressRealtimeUntil = 0;
 let audioCtx = null;
 let audioUnlocked = false;
 let repositionTimer = null;
-let panelMode = "collapsed"; // expanded | collapsed | hidden
+let panelMode = "collapsed"; // expanded | collapsed; "hidden" chỉ giữ tương thích dữ liệu cũ
 let selectedUrgentRowId = null; // dòng đặt khẩn đang được chọn để mở StockQuick
 let moduleInitialized = false; // chống init trùng khi trang cũ và StockQuick cùng nạp module
 
@@ -337,51 +337,99 @@ function renderRows(rows,canMoveSection,isAdmin) {
 }
 
 function positionPanel() {
-  const box=document.getElementById("dhkhan-panel"); if(!box||panelMode==="hidden") return;
+  const box=document.getElementById("dhkhan-panel");
+  if(!box) return;
+
   const mobile=window.matchMedia("(max-width:800px)").matches;
   const vh=window.visualViewport?.height||window.innerHeight;
 
-  box.style.left=mobile?"0":"6px";
-  box.style.right="auto";
-  box.style.width=mobile?"100vw":"760px";
-  box.style.maxWidth=mobile?"100vw":"96vw";
-  box.style.zIndex="9800";
-
   if(panelMode==="collapsed"){
-    // Ở dạng thanh: đặt ngay PHÍA TRÊN thanh YÊU CẦU BÀY MẪU như phiên bản cũ,
-    // không neo sát đáy để tránh che các nút thao tác của trang bán lẻ.
-    const bay = document.getElementById("baymau-popup");
-    const bayRect = bay?.getBoundingClientRect?.();
-    const barH = 42;
-    const gap = 4;
-
-    box.style.top = bayRect && Number.isFinite(bayRect.top)
-      ? `${Math.max(6, Math.round(bayRect.top - barH - gap))}px`
-      : "auto";
-    box.style.bottom = bayRect && Number.isFinite(bayRect.top)
-      ? "auto"
-      : (mobile ? "145px" : "155px");
-    box.style.height=`${barH}px`;
-    box.style.maxHeight=`${barH}px`;
+    // Dạng rút gọn mới: luôn hiện như một nút chữ nhật "CK KHẨN",
+    // đặt cạnh nút BM của Yêu cầu bày mẫu.
+    box.style.left="auto";
+    box.style.right="62px";
+    box.style.top="auto";
+    box.style.bottom="calc(14px + env(safe-area-inset-bottom))";
+    box.style.width="112px";
+    box.style.minWidth="112px";
+    box.style.maxWidth="112px";
+    box.style.height="44px";
+    box.style.maxHeight="44px";
+    box.style.padding="0";
     box.style.overflow="hidden";
+    box.style.borderRadius="9px";
+    box.style.zIndex="25990";
     return;
   }
 
-  // Khi người dùng chủ động mở rộng thì panel mới bung lớn từ phía dưới lên.
+  // Khi mở đầy đủ thì trở lại panel lớn như trước.
+  box.style.left=mobile?"0":"6px";
+  box.style.right="auto";
   box.style.top="auto";
   box.style.bottom=mobile?"0":"6px";
+  box.style.width=mobile?"100vw":"760px";
+  box.style.minWidth="0";
+  box.style.maxWidth=mobile?"100vw":"96vw";
   box.style.height=mobile?`${Math.max(320,vh-78)}px`:`${Math.max(420,vh-92)}px`;
   box.style.maxHeight=box.style.height;
+  box.style.padding="6px";
   box.style.overflow="auto";
+  box.style.borderRadius="7px";
+  box.style.zIndex="9800";
 }
-function schedulePosition(){ clearTimeout(repositionTimer); repositionTimer=setTimeout(positionPanel,40); }
+
+function schedulePosition(){
+  clearTimeout(repositionTimer);
+  repositionTimer=setTimeout(positionPanel,40);
+}
+
 function applyPanelMode(){
-  const box=document.getElementById("dhkhan-panel"); if(!box) return;
-  const body=box.querySelector("#dhkhan-body"); const toggle=box.querySelector("#dhkhan-toggle");
-  if(panelMode==="hidden"){ box.remove(); return; }
+  const box=document.getElementById("dhkhan-panel");
+  if(!box) return;
+
+  // Từ phiên bản này không dùng trạng thái ẩn trong thao tác thông thường.
+  // Nếu trạng thái cũ còn sót lại thì tự chuyển về dạng nút rút gọn.
+  if(panelMode==="hidden") panelMode="collapsed";
+
+  const body=box.querySelector("#dhkhan-body");
+  const title=box.querySelector("#dhkhan-header-title");
+  const actions=box.querySelector("#dhkhan-header-actions");
+  const header=box.querySelector("#dhkhan-header");
+
   box.classList.toggle("dhkhan-collapsed", panelMode === "collapsed");
-  if(body) body.style.display=panelMode==="collapsed"?"none":"block";
-  if(toggle) toggle.textContent=panelMode==="collapsed"?"▲":"▼";
+
+  if(panelMode==="collapsed"){
+    if(body) body.style.display="none";
+    if(title) title.textContent="CK KHẨN";
+    if(actions) actions.style.display="none";
+    if(header){
+      header.style.position="static";
+      header.style.height="100%";
+      header.style.minHeight="44px";
+      header.style.padding="0 10px";
+      header.style.justifyContent="center";
+      header.style.cursor="pointer";
+      header.style.background="#ffe5df";
+      header.style.whiteSpace="nowrap";
+      header.title="Bấm để mở Chuyển kho khẩn";
+    }
+  }else{
+    if(body) body.style.display="block";
+    if(title) title.innerHTML=box.dataset.fullTitleHtml||"🚨 ĐẶT HÀNG KHẨN CẤP";
+    if(actions) actions.style.display="flex";
+    if(header){
+      header.style.position="sticky";
+      header.style.height="auto";
+      header.style.minHeight="26px";
+      header.style.padding="0";
+      header.style.justifyContent="space-between";
+      header.style.cursor="pointer";
+      header.style.background="#ffe5df";
+      header.style.whiteSpace="normal";
+      header.title="Bấm dòng tiêu đề để thu gọn";
+    }
+  }
+
   positionPanel();
 }
 
@@ -529,7 +577,7 @@ function bindPanelEvents(box) {
     togglePanel();
   });
 
-  box.querySelector("#dhkhan-close")?.addEventListener("click",e=>{ e.stopPropagation(); panelMode="hidden"; applyPanelMode(); });
+  box.querySelector("#dhkhan-close")?.addEventListener("click",e=>{ e.stopPropagation(); panelMode="collapsed"; applyPanelMode(); });
   box.querySelector("#dhkhan-create")?.addEventListener("click",()=>{ showManualCreate(); });
   box.querySelector("#dhkhan-delete")?.addEventListener("click",()=>deleteSelectedOrders(box));
   box.querySelector("#dhkhan-create-ccn")?.addEventListener("click",()=>createUrgentCcnFromChecked(box));
@@ -554,10 +602,14 @@ function bindPanelEvents(box) {
 }
 
 async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
-  ensureStyles(); const coso=getCurrentCoso(); if(!coso) return;
-  if(!rows.length){ document.getElementById("dhkhan-panel")?.remove(); return; }
-  if(forceOpen && panelMode==="hidden") panelMode="expanded";
-  if(panelMode==="hidden" && !forceOpen) return;
+  ensureStyles();
+  const coso=getCurrentCoso();
+  if(!coso) return;
+
+  rows = Array.isArray(rows) ? rows : [];
+
+  // Không tự ẩn nữa. Nếu code cũ còn truyền trạng thái hidden thì đưa về collapsed.
+  if(panelMode==="hidden") panelMode = forceOpen ? "expanded" : "collapsed";
 
   const isAdmin = await isAdminUser();
   const canMove=rows.filter(r=>norm(r.tu_coso).toLowerCase()===coso);
@@ -566,17 +618,23 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
   const onlyViewNew=onlyView.filter(r=>["moi","dang_chuyen"].includes(norm(r.trang_thai).toLowerCase())).length;
 
   document.getElementById("dhkhan-panel")?.remove();
-  const box=document.createElement("div"); box.id="dhkhan-panel";
+
+  const box=document.createElement("div");
+  box.id="dhkhan-panel";
   box.style.cssText=`position:fixed;background:#ffe5df;border:2px solid #d00000;border-radius:7px;box-shadow:0 3px 14px rgba(0,0,0,.3);overflow:auto;padding:6px;box-sizing:border-box;`;
+
+  const fullTitleHtml = `🚨 ĐẶT HÀNG KHẨN CẤP | Cần chuyển: ${canMoveNew} | Theo dõi: ${onlyViewNew}`;
+  box.dataset.fullTitleHtml = fullTitleHtml;
+
   box.innerHTML=`
     <div id="dhkhan-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:5;background:#ffe5df;min-height:26px;font-weight:900;color:#9b0000;">
-      <span>🚨 ĐẶT HÀNG KHẨN CẤP | Cần chuyển: ${canMoveNew} | Theo dõi: ${onlyViewNew}</span>
-      <div style="display:flex;gap:5px;align-items:center;">
+      <span id="dhkhan-header-title">${panelMode==="collapsed" ? "CK KHẨN" : fullTitleHtml}</span>
+      <div id="dhkhan-header-actions" style="display:${panelMode==="collapsed" ? "none" : "flex"};gap:5px;align-items:center;">
         <button id="dhkhan-create" style="font-weight:800;color:#9b0000;">+ Đặt khẩn</button>
         ${isAdmin ? `<button id="dhkhan-delete" style="font-weight:800;color:#9b0000;">Xóa đặt hàng</button>` : ""}
         <button id="dhkhan-create-ccn" style="font-weight:800;color:#0b57d0;">Tạo hóa đơn CCN</button>
-        <button id="dhkhan-toggle" title="Thu gọn / mở rộng" style="border:0;background:transparent;font-size:18px;font-weight:900;">${panelMode==="collapsed"?"▲":"▼"}</button>
-        <button id="dhkhan-close" title="Đóng hẳn" style="border:0;background:transparent;font-size:20px;font-weight:900;color:#9b0000;">×</button>
+        <button id="dhkhan-toggle" title="Thu gọn" style="border:0;background:transparent;font-size:18px;font-weight:900;">▼</button>
+        <button id="dhkhan-close" title="Thu gọn" style="border:0;background:transparent;font-size:20px;font-weight:900;color:#9b0000;">×</button>
       </div>
     </div>
     <div id="dhkhan-body" style="display:${panelMode==="collapsed"?"none":"block"};">
@@ -591,11 +649,15 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
         <tbody data-section="onlyview">${renderRows(onlyView,false,isAdmin)}</tbody>
       </table>
     </div>`;
+
   document.body.appendChild(box);
-  box.classList.toggle("dhkhan-collapsed", panelMode === "collapsed");
-  positionPanel();
   bindPanelEvents(box);
-  if(flash){ box.classList.add("dhkhan-flash"); setTimeout(()=>box.classList.remove("dhkhan-flash"),2200); }
+  applyPanelMode();
+
+  if(flash){
+    box.classList.add("dhkhan-flash");
+    setTimeout(()=>box.classList.remove("dhkhan-flash"),2200);
+  }
 }
 async function refreshPanel(options={}) { const rows=await fetchOrders(); await renderPanel(rows,options); }
 
@@ -859,8 +921,13 @@ function setupRealtime() {
       if(Date.now()<suppressRealtimeUntil) return;
       const eventType=payload?.eventType||payload?.event||""; const row=payload?.new||{}; const current=getCurrentCoso();
       const incoming=eventType==="INSERT" && norm(row.tu_coso).toLowerCase()===current;
-      if(incoming){ panelMode="expanded"; playUrgentSound(); await refreshPanel({forceOpen:true,flash:true}); }
-      else if(panelMode!=="hidden") await refreshPanel();
+      if(incoming){
+        // Có đơn mới: phát âm thanh + nháy nút/panel, nhưng KHÔNG tự bung panel.
+        playUrgentSound();
+        await refreshPanel({flash:true});
+      } else {
+        await refreshPanel();
+      }
     }).subscribe(status=>{ if(status==="CHANNEL_ERROR") console.warn("[Đặt hàng khẩn] Realtime channel lỗi"); });
 }
 
@@ -882,8 +949,8 @@ export function initDatHangChuyenKhoKhan(options={}) {
   // API global luôn được bảo đảm tồn tại, nhưng listener/realtime/interval chỉ khởi tạo 1 lần.
   window.DatHangChuyenKhoKhan={
     openFromStockQuick,
-    openManual:()=>{if(panelMode==="hidden") panelMode="expanded"; refreshPanel({forceOpen:true}); showManualCreate();},
-    refresh:()=>{panelMode="expanded";return refreshPanel({forceOpen:true});}
+    openManual:()=>{panelMode="expanded"; refreshPanel({forceOpen:true}); showManualCreate();},
+    refresh:()=>refreshPanel()
   };
 
   if (moduleInitialized) {
