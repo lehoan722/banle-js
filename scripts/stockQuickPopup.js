@@ -986,6 +986,18 @@
     return n.toLocaleString("vi-VN");
   }
 
+  // Giá nhập hiển thị kín: bỏ đơn vị nghìn ở cuối.
+  // Ví dụ: 65.000 -> 65; 650.000 -> 650; 1 -> 1.
+  function formatGiaNhapAn(v) {
+    if (v === null || v === undefined || v === "") return "";
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "";
+    if (Math.abs(n) >= 1000) {
+      return String(n / 1000).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
+    }
+    return String(n);
+  }
+
   function buildOtherColorLinksHtml(currentMasp, mauKhacText) {
     const { base } = getMaspBaseAndColor(currentMasp);
 
@@ -1299,6 +1311,7 @@ data-color-masp="${targetMasp}"
     let nhap_dau_ma = "";
     let nhap_cuoi_ma = "";
     let giale = "";
+    let gianhap = "";
     let nhomhang = "";
     let form = "";
     let giam_gia_pct = null;
@@ -1356,7 +1369,7 @@ data-color-masp="${targetMasp}"
 
         client
           .from("dmhanghoa")
-          .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, giale, nhomhang, form, giam_gia_pct")
+          .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, gianhap, giale, nhomhang, form, giam_gia_pct")
           .eq("masp", masp)
           .maybeSingle(),
 
@@ -1491,6 +1504,7 @@ data-color-masp="${targetMasp}"
         baymau_cs1 = hh.treomaucs1 || "";
         baymau_cs2 = hh.treomaucs2 || "";
         giale = hh.giale || "";
+        gianhap = hh.gianhap ?? "";
         nhomhang = hh.nhomhang || "";
         form = String(hh.form || "").trim().toUpperCase();
         giam_gia_pct = hh.giam_gia_pct == null ? null : Number(hh.giam_gia_pct);
@@ -1538,6 +1552,7 @@ data-color-masp="${targetMasp}"
       nhomhang,
       form,
       giale,
+      gianhap,
       mau_khac,
       giam_gia_pct
     };
@@ -1553,6 +1568,7 @@ data-color-masp="${targetMasp}"
       nhap_dau_ma,
       nhap_cuoi_ma,
       giale,
+      gianhap,
       nhomhang,
       form,
       mau_khac,
@@ -1581,6 +1597,7 @@ data-color-masp="${targetMasp}"
     const nhap_dau_ma = payload && payload.nhap_dau_ma ? String(payload.nhap_dau_ma).trim() : "";
     const nhap_cuoi_ma = payload && payload.nhap_cuoi_ma ? String(payload.nhap_cuoi_ma).trim() : "";
     const giale = payload && payload.giale ? payload.giale : "";
+    const gianhap = payload && payload.gianhap !== undefined && payload.gianhap !== null ? payload.gianhap : "";
     const nhomhang = payload && payload.nhomhang ? payload.nhomhang : "";
     const form = payload && payload.form ? String(payload.form).trim().toUpperCase() : "";
     const mau_khac = payload && payload.mau_khac ? payload.mau_khac : "";
@@ -2192,7 +2209,7 @@ data-color-masp="${targetMasp}"
   <span class="sq-title-masp" data-masp="${upper}" title="Bấm để copy mã và mở chuyển chi nhánh">${upper}</span>
 ${mau_khac ? ` / ${buildOtherColorLinksHtml(upper, mau_khac)}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
-${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}
+${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}${formatGiaNhapAn(gianhap) ? `-${formatGiaNhapAn(gianhap)}` : ""}
 ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 </span>
   <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh/copy</button>
