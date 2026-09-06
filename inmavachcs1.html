@@ -468,8 +468,9 @@
                                 <div style="display:flex; gap:5px; width:100%;">
                                     <input id="loiNhuanTienOutput" type="text" readonly tabindex="-1"
                                         style="flex:1 1 50%; min-width:0; background:#f3f4f6; font-weight:700;" />
-                                    <input id="loiNhuanPctOutput" type="text" readonly tabindex="-1"
-                                        style="flex:1 1 50%; min-width:0; background:#f3f4f6; font-weight:700;" />
+                                    <input id="loiNhuanPctOutput" type="text" inputmode="decimal" autocomplete="off"
+                                        placeholder="% LN" title="Có thể nhập % lợi nhuận trên doanh thu để tính ngược khuyến mãi"
+                                        style="flex:1 1 50%; min-width:0; background:#fff; font-weight:700;" />
                                 </div>
                             </div>
                         </div>
@@ -2643,6 +2644,26 @@ Bạn chưa nhập màu sắc.
                 return !!giuChietKhauCheckbox?.checked;
             }
 
+            let dangTinhTuPctLoiNhuan = false;
+
+            function formatPctLoiNhuan(value) {
+                const n = Number(value);
+                if (!Number.isFinite(n)) return '';
+                const rounded = Math.round(n * 100) / 100;
+                return `${String(rounded).replace('.', ',')}%`;
+            }
+
+            function parsePctLoiNhuan(value) {
+                const raw = String(value || '')
+                    .trim()
+                    .replace('%', '')
+                    .replace(',', '.')
+                    .replace(/[^\d.-]/g, '');
+                if (!raw) return null;
+                const n = Number(raw);
+                return Number.isFinite(n) ? n : null;
+            }
+
             function capNhatThongTinLoiNhuan() {
                 if (!giaSauKhuyenMaiOutput || !loiNhuanTienOutput || !loiNhuanPctOutput) return;
 
@@ -2652,7 +2673,7 @@ Bạn chưa nhập màu sắc.
                 if (giale <= 0) {
                     giaSauKhuyenMaiOutput.value = '';
                     loiNhuanTienOutput.value = '';
-                    loiNhuanPctOutput.value = '';
+                    if (!dangTinhTuPctLoiNhuan) loiNhuanPctOutput.value = '';
                     return;
                 }
 
@@ -2669,9 +2690,62 @@ Bạn chưa nhập màu sắc.
                 loiNhuanTienOutput.value = gianhap > 0
                     ? (loiNhuan < 0 ? '-' : '') + Math.abs(Math.round(loiNhuan)).toLocaleString('vi-VN')
                     : '';
-                loiNhuanPctOutput.value = pctLoiNhuan === null
-                    ? ''
-                    : `${Math.round(pctLoiNhuan * 100) / 100}%`;
+
+                // Khi đang tính ngược từ chính ô % lợi nhuận thì không ghi đè giá trị người dùng đang gõ.
+                if (!dangTinhTuPctLoiNhuan) {
+                    loiNhuanPctOutput.value = pctLoiNhuan === null ? '' : formatPctLoiNhuan(pctLoiNhuan);
+                }
+            }
+
+            function tinhNguocTuPctLoiNhuan({ showMessage = false } = {}) {
+                const giale = parseMoney(gialeInput?.value);
+                const gianhap = parseMoney(gianhapInput?.value);
+                const pct = parsePctLoiNhuan(loiNhuanPctOutput?.value);
+
+                if (pct === null) {
+                    capNhatThongTinLoiNhuan();
+                    return false;
+                }
+
+                if (giale <= 0 || gianhap <= 0) {
+                    if (showMessage) alert('Cần có Giá lẻ và Giá nhập trước khi tính theo % lợi nhuận.');
+                    return false;
+                }
+
+                if (pct < 0 || pct >= 100) {
+                    if (showMessage) alert('% lợi nhuận phải từ 0 đến nhỏ hơn 100.');
+                    return false;
+                }
+
+                // % lợi nhuận trên doanh thu = (Giá thực thu - Giá vốn) / Giá thực thu.
+                // => Giá thực thu = Giá vốn / (1 - %LN).
+                const giaThuVe = Math.round(gianhap / (1 - pct / 100));
+
+                // Nếu giá thu về cần thiết lớn hơn Giá lẻ thì mục tiêu %LN này không thể đạt bằng khuyến mãi.
+                if (giaThuVe > giale) {
+                    const pctToiDa = giale > 0 ? ((giale - gianhap) / giale) * 100 : 0;
+                    if (showMessage) {
+                        alert(`Không thể đạt ${formatPctLoiNhuan(pct)} bằng cách giảm giá.\n% lợi nhuận tối đa ở Giá lẻ hiện tại khoảng ${formatPctLoiNhuan(pctToiDa)}.`);
+                    }
+                    return false;
+                }
+
+                const tienKhuyenMai = Math.max(0, Math.round(giale - giaThuVe));
+                const loiNhuan = Math.round(giaThuVe - gianhap);
+
+                dangTinhTuPctLoiNhuan = true;
+                try {
+                    // Ghi luôn TIỀN khuyến mãi vào ô KM. Giá trị 0 cũng được giữ rõ ràng.
+                    khuyenmaiInput.value = tienKhuyenMai > 0
+                        ? tienKhuyenMai.toLocaleString('vi-VN')
+                        : '0';
+                    giaSauKhuyenMaiOutput.value = formatMoneyInput(giaThuVe);
+                    loiNhuanTienOutput.value = (loiNhuan < 0 ? '-' : '') + Math.abs(loiNhuan).toLocaleString('vi-VN');
+                    loiNhuanPctOutput.value = formatPctLoiNhuan(pct);
+                } finally {
+                    dangTinhTuPctLoiNhuan = false;
+                }
+                return true;
             }
 
             function getChietKhauPct() {
@@ -3459,8 +3533,45 @@ Bạn chưa nhập màu sắc.
 
             gianhapInput?.addEventListener('input', capNhatThongTinLoiNhuan);
             gianhapInput?.addEventListener('change', capNhatThongTinLoiNhuan);
-            khuyenmaiInput?.addEventListener('input', capNhatThongTinLoiNhuan);
-            khuyenmaiInput?.addEventListener('change', capNhatThongTinLoiNhuan);
+
+            // Hướng 1: nhập Khuyến mãi -> tự tính Giá thu về / Lợi nhuận / % lợi nhuận.
+            khuyenmaiInput?.addEventListener('input', () => {
+                if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan();
+            });
+            khuyenmaiInput?.addEventListener('change', () => {
+                if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan();
+            });
+
+            // Hướng 2: nhập % lợi nhuận trên doanh thu -> tính ngược và ghi luôn TIỀN KM.
+            loiNhuanPctOutput?.addEventListener('focus', function () {
+                this.value = String(this.value || '').replace('%', '').replace(',', '.');
+                setTimeout(() => this.select?.(), 10);
+            });
+            loiNhuanPctOutput?.addEventListener('input', function () {
+                dangTinhTuPctLoiNhuan = true;
+                try {
+                    tinhNguocTuPctLoiNhuan({ showMessage: false });
+                } finally {
+                    dangTinhTuPctLoiNhuan = false;
+                }
+            });
+            loiNhuanPctOutput?.addEventListener('change', function () {
+                tinhNguocTuPctLoiNhuan({ showMessage: true });
+            });
+            loiNhuanPctOutput?.addEventListener('blur', function () {
+                const pct = parsePctLoiNhuan(this.value);
+                if (pct !== null) this.value = formatPctLoiNhuan(pct);
+            });
+            loiNhuanPctOutput?.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (tinhNguocTuPctLoiNhuan({ showMessage: true })) {
+                    const next = document.getElementById('nhaccInput');
+                    next?.focus();
+                    setTimeout(() => next?.select?.(), 10);
+                }
+            });
 
             giuChietKhauCheckbox?.addEventListener('change', () => {
                 if (dangGiuChietKhau()) {
