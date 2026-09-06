@@ -8,6 +8,7 @@ import { capNhatSoHoaDonTuDong } from './sohoadon.js';
 import { luuHoaDonQuaAPI } from './luuhoadon.js';
 import { capNhatThongTinTong } from './utils.js';
 import { napLaiChiTietHoaDon } from './hoadon.js';
+import { moYeuCauBayMau } from './yeuCauBayMau.js';
 
 function resetTrangThaiZaloKhachHang() {
   if (typeof window.resetZaloJoinedUI === "function") {
@@ -107,10 +108,8 @@ export function ganSuKienNutLenh() {
 
     document.getElementById("masp").focus();
 
-    // 🔔 Sau khi bắt đầu hóa đơn mới -> nhắc bày mẫu (nếu đang rảnh)
-    if (window.triggerBayMauCheckNgay) {
-      window.triggerBayMauCheckNgay();
-    }
+    // 🔔 Sau khi bắt đầu hóa đơn mới -> gọi trực tiếp module Yêu cầu bày mẫu
+    moYeuCauBayMau();
 
   });
 
