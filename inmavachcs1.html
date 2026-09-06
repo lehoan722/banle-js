@@ -2050,7 +2050,17 @@
 
                     // Mã mới: tự gán nhóm hàng theo hậu tố sau dấu "-"
                     autoFillNhomHangFromMasp({ force: true });
-                    // Nếu đã có % lợi nhuận mục tiêu và bộ giá hiện tại đủ dữ liệu, áp dụng ngay.
+
+                    // Tiền KM của mã trước tuyệt đối không được dùng làm đầu vào cho mã mới.
+                    // Giữ %LN mục tiêu, xóa KM cũ rồi mới tính ngược KM mới từ %LN.
+                    if (pctLoiNhuanMucTieu !== null) {
+                        if (khuyenmaiInput) khuyenmaiInput.value = '';
+                        if (giaSauKhuyenMaiOutput) giaSauKhuyenMaiOutput.value = '';
+                        if (loiNhuanTienOutput) loiNhuanTienOutput.value = '';
+                        if (loiNhuanPctOutput) loiNhuanPctOutput.value = formatPctLoiNhuan(pctLoiNhuanMucTieu);
+                    }
+                    // Nếu đã có % lợi nhuận mục tiêu và bộ giá hiện tại đủ dữ liệu,
+                    // áp dụng theo chiều %LN -> KM; không bao giờ lấy KM cũ -> %LN.
                     apDungPctLoiNhuanDaGiu();
                 }
             }
@@ -2121,9 +2131,14 @@
                 syncPopupChecksFromInput();
 
                 // % lợi nhuận luôn được giữ qua Thêm mới/Lưu, độc lập với checkbox giữ bộ giá.
+                // QUAN TRỌNG: tiền Khuyến mãi là KẾT QUẢ theo từng sản phẩm nên không được giữ lại.
+                // Xóa KM cũ trước; khi có đủ Giá nhập/Giá lẻ, %LN mục tiêu sẽ là nguồn để tính lại KM mới.
                 pctLoiNhuanMucTieu = pctLoiNhuanDangGiu !== null && Number.isFinite(Number(pctLoiNhuanDangGiu))
                     ? Number(pctLoiNhuanDangGiu)
                     : null;
+                if (khuyenmaiInput) khuyenmaiInput.value = '';
+                if (giaSauKhuyenMaiOutput) giaSauKhuyenMaiOutput.value = '';
+                if (loiNhuanTienOutput) loiNhuanTienOutput.value = '';
                 if (loiNhuanPctOutput) {
                     loiNhuanPctOutput.value = pctLoiNhuanMucTieu === null ? '' : formatPctLoiNhuan(pctLoiNhuanMucTieu);
                 }
@@ -3587,7 +3602,12 @@ Bạn chưa nhập màu sắc.
             loiNhuanPctOutput?.addEventListener('focus', function () {
                 dangSuaPctLoiNhuan = true;
                 this.value = String(this.value || '').replace('%', '').replace(',', '.');
-                // Không auto-select toàn bộ: người dùng có thể đặt caret và Backspace từng ký tự.
+                // Khi vào ô %LN: bôi đen toàn bộ để gõ số mới thay ngay,
+                // hoặc bấm Backspace/Delete một lần là xóa sạch.
+                setTimeout(() => this.select?.(), 0);
+            });
+            loiNhuanPctOutput?.addEventListener('click', function () {
+                setTimeout(() => this.select?.(), 0);
             });
             loiNhuanPctOutput?.addEventListener('input', function () {
                 const raw = String(this.value || '').trim();
