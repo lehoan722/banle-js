@@ -2030,17 +2030,22 @@
                     originalGiaLe = null;
                     document.getElementById('addProductForm').style.border = '';
 
-                    // Mã sản phẩm mới luôn bắt đầu với Giá nhập = 1.
-                    // Giá trị 1 chỉ là giá trị tạm để người dùng có thể Enter nhanh sang Giá lẻ.
-                    // Khi hoàn tất Giá lẻ, hệ thống sẽ chặn nếu Giá nhập vẫn = 1
-                    // và đưa focus về ô % CK để người dùng nhập chiết khấu.
-                    if (gianhapInput) {
-                        gianhapInput.value = '1';
+                    // Nếu checkbox GIỮ BỘ GIÁ đang bật thì đây là mã mới kế tiếp
+                    // trong cùng lô hàng: GIỮ NGUYÊN Giá nhập + Giá lẻ + % CK.
+                    // Tuyệt đối không được ép Giá nhập về 1 hoặc xóa % CK ở bước kiểm tra mã mới.
+                    if (dangGiuChietKhau()) {
+                        chietKhauDoNguoiDungNhap = getChietKhauPct() > 0;
+                    } else {
+                        // Chế độ thường: giữ nguyên đúng luồng cũ.
+                        // Mã sản phẩm mới bắt đầu với Giá nhập = 1; % CK được xóa.
+                        if (gianhapInput) {
+                            gianhapInput.value = '1';
+                        }
+                        if (chietKhauInput) {
+                            chietKhauInput.value = '';
+                        }
+                        chietKhauDoNguoiDungNhap = false;
                     }
-                    if (chietKhauInput) {
-                        chietKhauInput.value = '';
-                    }
-                    chietKhauDoNguoiDungNhap = false;
 
                     // Mã mới: tự gán nhóm hàng theo hậu tố sau dấu "-"
                     autoFillNhomHangFromMasp({ force: true });
