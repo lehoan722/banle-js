@@ -400,7 +400,7 @@
                                     <input name="gianhap" id="gianhapInput" type="text" inputmode="numeric"
                                         placeholder="Nhập giá nhập" style="flex: 1 1 65%; min-width:0;" />
 
-                                    <div style="position:relative; flex:0 0 32%;">
+                                    <div style="position:relative; flex:1 1 27%; min-width:0;">
                                         <input id="chietKhauInput" type="text" inputmode="decimal" placeholder="% CK"
                                             autocomplete="off" style="
                         width:100%;
@@ -416,6 +416,12 @@
                     pointer-events:none;
                 ">%</span>
                                     </div>
+
+                                    <label title="Giữ % chiết khấu cho các sản phẩm tiếp theo"
+                                        style="flex:0 0 20px; margin:0; display:flex; align-items:center; justify-content:center;">
+                                        <input id="giuChietKhauCheckbox" type="checkbox"
+                                            style="width:16px; height:16px; margin:0; cursor:pointer;" />
+                                    </label>
 
                                 </div>
                             </div>
@@ -448,7 +454,23 @@
                         <div class="form-row">
                             <label for="khuyenmaiInput">Khuyến mãi</label>
                             <div class="form-input">
-                                <input name="khuyenmai" id="khuyenmaiInput" type="text" />
+                                <div style="display:flex; gap:5px; width:100%;">
+                                    <input name="khuyenmai" id="khuyenmaiInput" type="text"
+                                        style="flex:1 1 50%; min-width:0;" />
+                                    <input id="giaSauKhuyenMaiOutput" type="text" readonly tabindex="-1"
+                                        style="flex:1 1 50%; min-width:0; background:#f3f4f6; font-weight:700;" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <label></label>
+                            <div class="form-input">
+                                <div style="display:flex; gap:5px; width:100%;">
+                                    <input id="loiNhuanTienOutput" type="text" readonly tabindex="-1"
+                                        style="flex:1 1 50%; min-width:0; background:#f3f4f6; font-weight:700;" />
+                                    <input id="loiNhuanPctOutput" type="text" readonly tabindex="-1"
+                                        style="flex:1 1 50%; min-width:0; background:#f3f4f6; font-weight:700;" />
+                                </div>
                             </div>
                         </div>
                         <div class="form-row">
@@ -1999,6 +2021,7 @@
                     document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                     // [ADD] Khi load form sửa, cũng xét lại theo Giá lẻ đang có
                     syncQuanLyKichCoByGiaLe();
+                    capNhatThongTinLoiNhuan();
                     document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
                 } else {
                     // Mã mới không tồn tại -> chuyển sang chế độ THÊM MỚI
@@ -2032,6 +2055,10 @@
             };
 
             function resetForm(keepMasp = false) {
+                // Nếu bật chế độ giữ CK, giữ cả checkbox và % CK qua sản phẩm mới.
+                const giuCK = dangGiuChietKhau();
+                const ckDangGiu = giuCK ? String(chietKhauInput?.value || '').trim() : '';
+
                 // Lấy giá trị các trường giữ lại hiện tại
                 const data = {};
                 GIU_LAI_FIELDS.forEach(field => {
@@ -2046,11 +2073,10 @@
                     gianhapInput.value = '1';
                 }
 
-                // Luôn xóa % CK khi bắt đầu sản phẩm mới.
-                if (chietKhauInput) {
-                    chietKhauInput.value = '';
-                }
-                chietKhauDoNguoiDungNhap = false;
+                // Bình thường vẫn xóa % CK như cũ. Khi bật giữ CK thì giữ lại cho mã tiếp theo.
+                if (giuChietKhauCheckbox) giuChietKhauCheckbox.checked = giuCK;
+                if (chietKhauInput) chietKhauInput.value = giuCK ? ckDangGiu : '';
+                chietKhauDoNguoiDungNhap = giuCK && getChietKhauPct() > 0;
 
                 // Điền lại các trường giữ lại (trừ khi reset hoàn toàn)
                 GIU_LAI_FIELDS.forEach(field => {
@@ -2072,6 +2098,7 @@
                 selectedColorOrder = parseColorsFromInput(document.getElementById('mausacInput').value || '');
                 updateMauSacPreview();
                 syncPopupChecksFromInput();
+                capNhatThongTinLoiNhuan();
             }
 
             // ==== Validate các trường bắt buộc ====
@@ -2573,6 +2600,11 @@ Bạn chưa nhập màu sắc.
             const gianhapInput = document.getElementById('gianhapInput');
             const chietKhauInput = document.getElementById('chietKhauInput');
             const gialeInput = document.getElementById('gialeInput');
+            const giuChietKhauCheckbox = document.getElementById('giuChietKhauCheckbox');
+            const khuyenmaiInput = document.getElementById('khuyenmaiInput');
+            const giaSauKhuyenMaiOutput = document.getElementById('giaSauKhuyenMaiOutput');
+            const loiNhuanTienOutput = document.getElementById('loiNhuanTienOutput');
+            const loiNhuanPctOutput = document.getElementById('loiNhuanPctOutput');
 
             // =====================================================
             // GIÁ NHẬP / % CHIẾT KHẤU / GIÁ LẺ
@@ -2590,6 +2622,41 @@ Bạn chưa nhập màu sắc.
             function formatMoneyInput(value) {
                 const n = Number(value) || 0;
                 return n > 0 ? n.toLocaleString('vi-VN') : '';
+            }
+
+            function dangGiuChietKhau() {
+                return !!giuChietKhauCheckbox?.checked;
+            }
+
+            function capNhatThongTinLoiNhuan() {
+                if (!giaSauKhuyenMaiOutput || !loiNhuanTienOutput || !loiNhuanPctOutput) return;
+
+                const giale = parseMoney(gialeInput?.value);
+                const gianhap = parseMoney(gianhapInput?.value);
+
+                if (giale <= 0) {
+                    giaSauKhuyenMaiOutput.value = '';
+                    loiNhuanTienOutput.value = '';
+                    loiNhuanPctOutput.value = '';
+                    return;
+                }
+
+                // Dùng DUY NHẤT logic sẵn có trong khuyenmai.js.
+                // Ô KM có dữ liệu => truyền như khuyến mãi nhập tay.
+                // Ô KM trống => tinhKhuyenMai tự áp dụng quy tắc mặc định hiện hành.
+                const kmRaw = String(khuyenmaiInput?.value || '').trim();
+                const tienKhuyenMai = Number(tinhKhuyenMai({ khuyenmai: kmRaw }, giale, kmRaw || undefined)) || 0;
+                const giaSauKm = Math.max(0, giale - tienKhuyenMai);
+                const loiNhuan = gianhap > 0 ? giaSauKm - gianhap : 0;
+                const pctLoiNhuan = gianhap > 0 ? (loiNhuan / gianhap) * 100 : null;
+
+                giaSauKhuyenMaiOutput.value = formatMoneyInput(giaSauKm);
+                loiNhuanTienOutput.value = gianhap > 0
+                    ? (loiNhuan < 0 ? '-' : '') + Math.abs(Math.round(loiNhuan)).toLocaleString('vi-VN')
+                    : '';
+                loiNhuanPctOutput.value = pctLoiNhuan === null
+                    ? ''
+                    : `${Math.round(pctLoiNhuan * 100) / 100}%`;
             }
 
             function getChietKhauPct() {
@@ -2655,6 +2722,7 @@ Bạn chưa nhập màu sắc.
                 );
 
                 gianhapInput.value = formatMoneyInput(gianhap);
+                capNhatThongTinLoiNhuan();
 
                 return true;
             }
@@ -3213,12 +3281,14 @@ Bạn chưa nhập màu sắc.
                 // Nếu Giá lẻ đã có thì tính Giá nhập ngay
                 tinhGiaNhapTuChietKhau();
 
-                // Sau đó chuyển thẳng xuống Giá lẻ
-                gialeInput.focus();
+                // Chế độ giữ CK: nhập CK xong đi thẳng xuống Màu sắc.
+                // Chế độ thường: giữ nguyên luồng cũ, quay về Giá lẻ.
+                const target = dangGiuChietKhau()
+                    ? document.getElementById('mausacInput')
+                    : gialeInput;
 
-                setTimeout(() => {
-                    gialeInput.select();
-                }, 10);
+                target?.focus();
+                setTimeout(() => target?.select?.(), 10);
             });
 
             // [ADD]
@@ -3251,13 +3321,34 @@ Bạn chưa nhập màu sắc.
                             // Không bắt buộc gọi checkExistAndFillForm() ở đây vì blur ngay sau đó sẽ gọi.
                         }
 
+                        // Chế độ giữ CK: từ Tên sản phẩm bỏ qua Giá nhập, nhảy thẳng Giá lẻ.
+                        if (order[idx] === 'tenspInput' && dangGiuChietKhau()) {
+                            gialeInput.focus();
+                            setTimeout(() => gialeInput.select?.(), 10);
+                            return;
+                        }
+
                         // Riêng Giá lẻ: kiểm tra Giá nhập trước khi cho đi tiếp
                         if (order[idx] === 'gialeInput') {
 
-                            // Chỉ tính Giá nhập từ % CK nếu % này do người dùng chủ động nhập.
-                            // Nếu % CK đang là giá trị tự hiển thị thì giữ nguyên Giá nhập.
-                            if (chietKhauDoNguoiDungNhap && getChietKhauPct() > 0) {
+                            if (dangGiuChietKhau()) {
+                                const pct = getChietKhauPct();
+
+                                // Chưa có CK: quay lên ô CK để nhập, chưa kiểm tra Giá nhập tạm = 1.
+                                if (!(pct > 0 && pct < 100)) {
+                                    chietKhauInput.focus();
+                                    setTimeout(() => chietKhauInput.select?.(), 10);
+                                    return;
+                                }
+
+                                // Có CK đang giữ: tính giá vốn trực tiếp từ Giá lẻ.
+                                chietKhauDoNguoiDungNhap = true;
                                 tinhGiaNhapTuChietKhau();
+                            } else {
+                                // Luồng cũ khi không bật giữ CK.
+                                if (chietKhauDoNguoiDungNhap && getChietKhauPct() > 0) {
+                                    tinhGiaNhapTuChietKhau();
+                                }
                             }
 
                             const okGia = kiemTraGiaNhapSauGiaLe({
@@ -3265,11 +3356,10 @@ Bạn chưa nhập màu sắc.
                                 showMessage: true
                             });
 
-                            if (!okGia) {
-                                return;
-                            }
+                            if (!okGia) return;
 
                             syncQuanLyKichCoByGiaLe();
+                            capNhatThongTinLoiNhuan();
                         }
 
                         if (idx < order.length - 1) {
@@ -3314,17 +3404,34 @@ Bạn chưa nhập màu sắc.
             attachEnterNav(formOrder);
             // [ADD] Đồng bộ khi rời ô và khi nhấn Enter tại ô Giá lẻ
             if (gialeInput) {
-                // Người dùng sửa Giá lẻ -> giữ nguyên Giá nhập và tự tính lại % CK.
+                // Chế độ thường: sửa Giá lẻ -> giữ Giá nhập và tự tính lại % CK.
+                // Chế độ giữ CK: giữ nguyên % CK và tính Giá nhập theo % đó.
                 gialeInput.addEventListener('input', () => {
-                    chietKhauDoNguoiDungNhap = false;
-                    tinhChietKhauTuGia();
+                    if (dangGiuChietKhau()) {
+                        if (getChietKhauPct() > 0) {
+                            chietKhauDoNguoiDungNhap = true;
+                            tinhGiaNhapTuChietKhau();
+                        }
+                    } else {
+                        chietKhauDoNguoiDungNhap = false;
+                        tinhChietKhauTuGia();
+                    }
+                    capNhatThongTinLoiNhuan();
                 });
 
                 gialeInput.addEventListener('change', () => {
                     const giale = parseMoney(gialeInput.value);
                     if (giale > 0) gialeInput.value = formatMoneyInput(giale);
-                    tinhChietKhauTuGia();
+                    if (dangGiuChietKhau()) {
+                        if (getChietKhauPct() > 0) {
+                            chietKhauDoNguoiDungNhap = true;
+                            tinhGiaNhapTuChietKhau();
+                        }
+                    } else {
+                        tinhChietKhauTuGia();
+                    }
                     syncQuanLyKichCoByGiaLe();
+                    capNhatThongTinLoiNhuan();
                 });
 
                 gialeInput.addEventListener('blur', syncQuanLyKichCoByGiaLe);
@@ -3334,6 +3441,22 @@ Bạn chưa nhập màu sắc.
                     }
                 });
             }
+
+            gianhapInput?.addEventListener('input', capNhatThongTinLoiNhuan);
+            gianhapInput?.addEventListener('change', capNhatThongTinLoiNhuan);
+            khuyenmaiInput?.addEventListener('input', capNhatThongTinLoiNhuan);
+            khuyenmaiInput?.addEventListener('change', capNhatThongTinLoiNhuan);
+
+            giuChietKhauCheckbox?.addEventListener('change', () => {
+                if (dangGiuChietKhau()) {
+                    // Nếu đã có CK hợp lệ và Giá lẻ thì áp dụng ngay.
+                    if (getChietKhauPct() > 0 && parseMoney(gialeInput.value) > 0) {
+                        chietKhauDoNguoiDungNhap = true;
+                        tinhGiaNhapTuChietKhau();
+                    }
+                }
+                capNhatThongTinLoiNhuan();
+            });
 
 
             function pushProductToGrid(product) {
