@@ -2015,14 +2015,38 @@
                     selectedColorOrder = parseColorsFromInput(data.mausac || '');
                     updateMauSacPreview();
                     syncPopupChecksFromInput();
-                    document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
+                    // Nếu đã có % lợi nhuận MỤC TIÊU được người dùng giữ từ trước,
+                    // thì % này phải là NGUỒN ĐIỀU KHIỂN ngay cả khi mã SP đã tồn tại.
+                    // KHÔNG nạp KM cũ từ database vào để tránh KM cũ ghi đè mục tiêu %LN.
+                    const dangCoPctLoiNhuanMucTieu =
+                        pctLoiNhuanMucTieu !== null && Number.isFinite(Number(pctLoiNhuanMucTieu));
+
+                    if (dangCoPctLoiNhuanMucTieu) {
+                        document.getElementById('khuyenmaiInput').value = '';
+                        if (giaSauKhuyenMaiOutput) giaSauKhuyenMaiOutput.value = '';
+                        if (loiNhuanTienOutput) loiNhuanTienOutput.value = '';
+                        if (loiNhuanPctOutput) {
+                            loiNhuanPctOutput.value = formatPctLoiNhuan(Number(pctLoiNhuanMucTieu));
+                        }
+                    } else {
+                        document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
+                    }
+
                     document.getElementById('nhaccInput').value = data.nhacc || '';
                     document.getElementById('nhomhangInput').value = data.nhomhang || '';
                     document.getElementById('chungloaiInput').value = data.chungloai || '';
                     document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                     // [ADD] Khi load form sửa, cũng xét lại theo Giá lẻ đang có
                     syncQuanLyKichCoByGiaLe();
-                    capNhatThongTinLoiNhuan();
+
+                    if (dangCoPctLoiNhuanMucTieu) {
+                        // Tính lại KM từ %LN mục tiêu theo Giá nhập/Giá lẻ của mã vừa nạp.
+                        // Từ đây trở đi KM chỉ là KẾT QUẢ, không phải dữ liệu điều khiển.
+                        apDungPctLoiNhuanDaGiu();
+                    } else {
+                        capNhatThongTinLoiNhuan();
+                    }
+
                     document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
                 } else {
                     // Mã mới không tồn tại -> chuyển sang chế độ THÊM MỚI
