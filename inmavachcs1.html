@@ -2080,9 +2080,12 @@
                 const giaNhapDangGiu = giuBoGia ? String(gianhapInput?.value || '').trim() : '';
                 const giaLeDangGiu = giuBoGia ? String(gialeInput?.value || '').trim() : '';
                 const ckDangGiu = giuBoGia ? String(chietKhauInput?.value || '').trim() : '';
+                // Chỉ giữ % lợi nhuận MỤC TIÊU đã được xác lập rõ ràng.
+                // Tuyệt đối không lấy % đang HIỂN THỊ (có thể chỉ là kết quả tính từ KM)
+                // để biến thành % mục tiêu cho sản phẩm kế tiếp.
                 const pctLoiNhuanDangGiu = pctLoiNhuanMucTieu !== null
                     ? Number(pctLoiNhuanMucTieu)
-                    : parsePctLoiNhuan(loiNhuanPctOutput?.value);
+                    : null;
 
                 // Lấy giá trị các trường giữ lại hiện tại
                 const data = {};
@@ -2725,12 +2728,21 @@ Bạn chưa nhập màu sắc.
 
                 // Khi đang gõ trực tiếp ô % lợi nhuận thì không ghi đè nội dung/caret.
                 if (!dangTinhTuPctLoiNhuan && !dangSuaPctLoiNhuan) {
-                    loiNhuanPctOutput.value = pctLoiNhuan === null ? '' : formatPctLoiNhuan(pctLoiNhuan);
-                    // CHỈ cập nhật % lợi nhuận mục tiêu khi người dùng CHỦ ĐỘNG sửa ô Khuyến mãi.
-                    // Thay đổi Giá lẻ / Giá nhập chỉ được tính lại phần hiển thị, tuyệt đối không
-                    // được ghi đè % lợi nhuận mục tiêu đang giữ cho sản phẩm kế tiếp.
-                    if (capNhatPctMucTieu && pctLoiNhuan !== null && Number.isFinite(pctLoiNhuan)) {
-                        pctLoiNhuanMucTieu = pctLoiNhuan;
+                    if (capNhatPctMucTieu) {
+                        // Chỉ khi NGƯỜI DÙNG chủ động sửa ô Khuyến mãi mới cho phép
+                        // chiều KM -> %LN cập nhật lại mục tiêu.
+                        loiNhuanPctOutput.value = pctLoiNhuan === null ? '' : formatPctLoiNhuan(pctLoiNhuan);
+                        if (pctLoiNhuan !== null && Number.isFinite(pctLoiNhuan)) {
+                            pctLoiNhuanMucTieu = pctLoiNhuan;
+                        }
+                    } else if (pctLoiNhuanMucTieu !== null && Number.isFinite(Number(pctLoiNhuanMucTieu))) {
+                        // Đã có %LN mục tiêu: luôn hiển thị đúng % cố định này.
+                        // Không cho kết quả tính từ KM/Giá bán tự ghi đè lên nó.
+                        loiNhuanPctOutput.value = formatPctLoiNhuan(pctLoiNhuanMucTieu);
+                    } else {
+                        // Chưa có mục tiêu: chỉ hiển thị % thực tế để tham khảo,
+                        // nhưng KHÔNG tự biến nó thành mục tiêu.
+                        loiNhuanPctOutput.value = pctLoiNhuan === null ? '' : formatPctLoiNhuan(pctLoiNhuan);
                     }
                 }
             }
@@ -3571,7 +3583,9 @@ Bạn chưa nhập màu sắc.
                         tinhChietKhauTuGia();
                     }
                     syncQuanLyKichCoByGiaLe();
-                    capNhatThongTinLoiNhuan();
+                    // Nếu đã có % lợi nhuận mục tiêu thì % này là NGUỒN ĐIỀU KHIỂN:
+                    // luôn tính lại KM từ % mục tiêu, không lấy KM hiện tại để tính ngược %.
+                    if (!apDungPctLoiNhuanDaGiu()) capNhatThongTinLoiNhuan();
                 });
 
                 gialeInput.addEventListener('blur', syncQuanLyKichCoByGiaLe);
