@@ -2097,6 +2097,10 @@
             };
 
             function resetForm(keepMasp = false) {
+                // Trước khi reset/Lưu sang mã kế tiếp, nếu chưa có mục tiêu riêng thì
+                // chốt %LN đang hiển thị để tiếp tục giữ đúng % này cho sản phẩm sau.
+                chotPctLoiNhuanDangHienThiLamMucTieu();
+
                 // Checkbox bật = giữ nguyên trọn bộ 3 thông tin giá qua Lưu / Thêm mới:
                 // Giá nhập + Giá lẻ + % chiết khấu.
                 // Checkbox tắt = giữ nguyên luồng reset cũ của trang.
@@ -2721,6 +2725,21 @@ Bạn chưa nhập màu sắc.
                 if (!raw) return null;
                 const n = Number(raw);
                 return Number.isFinite(n) ? n : null;
+            }
+
+            // Chốt %LN đang hiển thị thành mục tiêu trước khi người dùng sửa Giá lẻ/Giá nhập
+            // hoặc chuyển sang sản phẩm mới. Điều này bảo đảm %LN là giá trị được GIỮ,
+            // còn Khuyến mãi chỉ là KẾT QUẢ phải tính lại theo từng mức giá.
+            function chotPctLoiNhuanDangHienThiLamMucTieu() {
+                if (pctLoiNhuanMucTieu !== null && Number.isFinite(Number(pctLoiNhuanMucTieu))) {
+                    return Number(pctLoiNhuanMucTieu);
+                }
+                const pctDangHienThi = parsePctLoiNhuan(loiNhuanPctOutput?.value);
+                if (pctDangHienThi !== null && Number.isFinite(Number(pctDangHienThi))) {
+                    pctLoiNhuanMucTieu = Number(pctDangHienThi);
+                    return pctLoiNhuanMucTieu;
+                }
+                return null;
             }
 
             function capNhatThongTinLoiNhuan({ capNhatPctMucTieu = false } = {}) {
@@ -3580,6 +3599,12 @@ Bạn chưa nhập màu sắc.
             attachEnterNav(formOrder);
             // [ADD] Đồng bộ khi rời ô và khi nhấn Enter tại ô Giá lẻ
             if (gialeInput) {
+                // Khi người dùng bắt đầu sửa Giá lẻ, chốt %LN đang hiển thị làm mục tiêu.
+                // Từ thời điểm này KM cũ không còn là nguồn điều khiển.
+                gialeInput.addEventListener('focus', () => {
+                    chotPctLoiNhuanDangHienThiLamMucTieu();
+                });
+
                 // Chế độ thường: sửa Giá lẻ -> giữ Giá nhập và tự tính lại % CK.
                 // Chế độ giữ CK: giữ nguyên % CK và tính Giá nhập theo % đó.
                 gialeInput.addEventListener('input', () => {
@@ -3620,6 +3645,9 @@ Bạn chưa nhập màu sắc.
                 });
             }
 
+            gianhapInput?.addEventListener('focus', () => {
+                chotPctLoiNhuanDangHienThiLamMucTieu();
+            });
             gianhapInput?.addEventListener('input', () => {
                 if (!apDungPctLoiNhuanDaGiu()) capNhatThongTinLoiNhuan();
             });
