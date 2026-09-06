@@ -417,7 +417,7 @@
                 ">%</span>
                                     </div>
 
-                                    <label title="Giữ % chiết khấu cho các sản phẩm tiếp theo"
+                                    <label title="Giữ Giá nhập, Giá lẻ và % chiết khấu cho các sản phẩm tiếp theo"
                                         style="flex:0 0 20px; margin:0; display:flex; align-items:center; justify-content:center;">
                                         <input id="giuChietKhauCheckbox" type="checkbox"
                                             style="width:16px; height:16px; margin:0; cursor:pointer;" />
@@ -2055,9 +2055,13 @@
             };
 
             function resetForm(keepMasp = false) {
-                // Nếu bật chế độ giữ CK, giữ cả checkbox và % CK qua sản phẩm mới.
-                const giuCK = dangGiuChietKhau();
-                const ckDangGiu = giuCK ? String(chietKhauInput?.value || '').trim() : '';
+                // Checkbox bật = giữ nguyên trọn bộ 3 thông tin giá qua Lưu / Thêm mới:
+                // Giá nhập + Giá lẻ + % chiết khấu.
+                // Checkbox tắt = giữ nguyên luồng reset cũ của trang.
+                const giuBoGia = dangGiuChietKhau();
+                const giaNhapDangGiu = giuBoGia ? String(gianhapInput?.value || '').trim() : '';
+                const giaLeDangGiu = giuBoGia ? String(gialeInput?.value || '').trim() : '';
+                const ckDangGiu = giuBoGia ? String(chietKhauInput?.value || '').trim() : '';
 
                 // Lấy giá trị các trường giữ lại hiện tại
                 const data = {};
@@ -2067,16 +2071,22 @@
                 // Xóa trắng toàn bộ form
                 document.getElementById('addProductForm').reset();
 
-                // Sản phẩm mới luôn bắt đầu với Giá nhập = 1.
-                // Đây chỉ là giá trị tạm để cho phép Enter nhanh qua ô Giá nhập.
-                if (gianhapInput) {
-                    gianhapInput.value = '1';
-                }
+                if (giuChietKhauCheckbox) giuChietKhauCheckbox.checked = giuBoGia;
 
-                // Bình thường vẫn xóa % CK như cũ. Khi bật giữ CK thì giữ lại cho mã tiếp theo.
-                if (giuChietKhauCheckbox) giuChietKhauCheckbox.checked = giuCK;
-                if (chietKhauInput) chietKhauInput.value = giuCK ? ckDangGiu : '';
-                chietKhauDoNguoiDungNhap = giuCK && getChietKhauPct() > 0;
+                if (giuBoGia) {
+                    // Chế độ giữ bộ giá: khôi phục đúng 3 giá trị vừa dùng cho sản phẩm kế tiếp.
+                    if (gianhapInput) gianhapInput.value = giaNhapDangGiu;
+                    if (gialeInput) gialeInput.value = giaLeDangGiu;
+                    if (chietKhauInput) chietKhauInput.value = ckDangGiu;
+                    chietKhauDoNguoiDungNhap = getChietKhauPct() > 0;
+                } else {
+                    // Chế độ thường: hoạt động đúng như phiên bản cũ.
+                    // Sản phẩm mới bắt đầu Giá nhập = 1 và xóa % CK / Giá lẻ.
+                    if (gianhapInput) gianhapInput.value = '1';
+                    if (gialeInput) gialeInput.value = '';
+                    if (chietKhauInput) chietKhauInput.value = '';
+                    chietKhauDoNguoiDungNhap = false;
+                }
 
                 // Điền lại các trường giữ lại (trừ khi reset hoàn toàn)
                 GIU_LAI_FIELDS.forEach(field => {
