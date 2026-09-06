@@ -2696,7 +2696,7 @@ Bạn chưa nhập màu sắc.
                 return Number.isFinite(n) ? n : null;
             }
 
-            function capNhatThongTinLoiNhuan() {
+            function capNhatThongTinLoiNhuan({ capNhatPctMucTieu = false } = {}) {
                 if (!giaSauKhuyenMaiOutput || !loiNhuanTienOutput || !loiNhuanPctOutput) return;
 
                 const giale = parseMoney(gialeInput?.value);
@@ -2726,9 +2726,10 @@ Bạn chưa nhập màu sắc.
                 // Khi đang gõ trực tiếp ô % lợi nhuận thì không ghi đè nội dung/caret.
                 if (!dangTinhTuPctLoiNhuan && !dangSuaPctLoiNhuan) {
                     loiNhuanPctOutput.value = pctLoiNhuan === null ? '' : formatPctLoiNhuan(pctLoiNhuan);
-                    // Nếu người dùng đang điều khiển bằng ô Khuyến mãi, kết quả % mới trở thành
-                    // giá trị sẽ được giữ cho sản phẩm kế tiếp.
-                    if (pctLoiNhuan !== null && Number.isFinite(pctLoiNhuan)) {
+                    // CHỈ cập nhật % lợi nhuận mục tiêu khi người dùng CHỦ ĐỘNG sửa ô Khuyến mãi.
+                    // Thay đổi Giá lẻ / Giá nhập chỉ được tính lại phần hiển thị, tuyệt đối không
+                    // được ghi đè % lợi nhuận mục tiêu đang giữ cho sản phẩm kế tiếp.
+                    if (capNhatPctMucTieu && pctLoiNhuan !== null && Number.isFinite(pctLoiNhuan)) {
                         pctLoiNhuanMucTieu = pctLoiNhuan;
                     }
                 }
@@ -3590,10 +3591,10 @@ Bạn chưa nhập màu sắc.
 
             // Hướng 1: nhập Khuyến mãi -> tự tính Giá thu về / Lợi nhuận / % lợi nhuận.
             khuyenmaiInput?.addEventListener('input', () => {
-                if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan();
+                if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan({ capNhatPctMucTieu: true });
             });
             khuyenmaiInput?.addEventListener('change', () => {
-                if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan();
+                if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan({ capNhatPctMucTieu: true });
             });
 
             // Hướng 2: nhập % lợi nhuận trên doanh thu -> tính ngược và ghi luôn TIỀN KM.
