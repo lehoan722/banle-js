@@ -2648,7 +2648,7 @@ Bạn chưa nhập màu sắc.
                 const tienKhuyenMai = Number(tinhKhuyenMai({ khuyenmai: kmRaw }, giale, kmRaw || undefined)) || 0;
                 const giaSauKm = Math.max(0, giale - tienKhuyenMai);
                 const loiNhuan = gianhap > 0 ? giaSauKm - gianhap : 0;
-                const pctLoiNhuan = gianhap > 0 ? (loiNhuan / gianhap) * 100 : null;
+                const pctLoiNhuan = gianhap > 0 && giaSauKm > 0 ? (loiNhuan / giaSauKm) * 100 : null;
 
                 giaSauKhuyenMaiOutput.value = formatMoneyInput(giaSauKm);
                 loiNhuanTienOutput.value = gianhap > 0
