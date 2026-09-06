@@ -605,6 +605,19 @@ async function openFromButton(button) {
   }
 }
 
+export function moYeuCauBayMau() {
+  if (!moduleContext || saving || popupOpen) return;
+
+  const button = document.getElementById(BUTTON_ID);
+
+  if (!button) {
+    console.warn("Yêu cầu bày mẫu chưa được khởi tạo.");
+    return;
+  }
+
+  openFromButton(button);
+}
+
 export function initYeuCauBayMau({ supabase, diadiem, manvDangNhap }) {
   if (!supabase) throw new Error("Thiếu Supabase client cho Yêu cầu bày mẫu.");
   moduleContext = {
