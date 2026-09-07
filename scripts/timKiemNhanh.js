@@ -3,8 +3,8 @@ import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.11";
-console.log("[TimKiemNhanh] BUILD 1.2.11");
+window.TIM_KIEM_NHANH_BUILD = "1.2.12";
+console.log("[TimKiemNhanh] BUILD 1.2.12");
 
 const supabase = getSupabaseClient();
 
@@ -583,6 +583,24 @@ async function loadSuggestions(text){
   box.querySelectorAll("button").forEach(b=>b.onclick=()=>processCode(b.dataset.code));
 }
 
+function getIncomingMaspFromUrl(){
+  try{
+    return norm(new URLSearchParams(window.location.search).get("masp")||"");
+  }catch{
+    return "";
+  }
+}
+
+async function processIncomingMaspFromUrl(){
+  const masp=getIncomingMaspFromUrl();
+  if(!masp)return false;
+  const input=$("codeInput");
+  if(input)input.value=masp;
+  // Gọi đúng luồng đang dùng khi người dùng nhập mã và nhấn Enter.
+  await processCode(masp);
+  return true;
+}
+
 async function processCode(raw,options={}){
   const code=norm(raw);if(!code||state.loading)return;
   if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",6000);return}
@@ -676,7 +694,10 @@ async function startApp(){
       diadiem: state.diadiem,
       manvDangNhap: state.manv
     });
-    setTimeout(()=>$("codeInput")?.focus(),50);
+
+    // Nếu được mở từ StockQuickPopup với ?masp=..., xử lý đúng như nhập mã + Enter.
+    const openedFromStockQuick=await processIncomingMaspFromUrl();
+    if(!openedFromStockQuick)setTimeout(()=>$("codeInput")?.focus(),50);
   }catch(e){
     appStarted=false;
     console.error(e);
