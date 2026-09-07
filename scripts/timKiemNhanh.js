@@ -44,7 +44,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.9 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.12 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -591,12 +591,24 @@ function getIncomingMaspFromUrl(){
   }
 }
 
-async function processIncomingMaspFromUrl(){
-  const masp=getIncomingMaspFromUrl();
+function removeIncomingMaspFromUrl(){
+  try{
+    const url=new URL(window.location.href);
+    if(!url.searchParams.has("masp"))return;
+    url.searchParams.delete("masp");
+    const next=url.pathname+(url.searchParams.toString()?`?${url.searchParams.toString()}`:"")+url.hash;
+    window.history.replaceState({},document.title,next);
+  }catch(e){
+    console.warn("[TimKiemNhanh] Không xóa được MASP khỏi URL:",e);
+  }
+}
+
+async function processIncomingMaspFromUrl(maspRaw=""){
+  const masp=norm(maspRaw||getIncomingMaspFromUrl());
   if(!masp)return false;
   const input=$("codeInput");
   if(input)input.value=masp;
-  // Gọi đúng luồng đang dùng khi người dùng nhập mã và nhấn Enter.
+  removeIncomingMaspFromUrl();
   await processCode(masp);
   return true;
 }
@@ -685,19 +697,32 @@ async function startApp(){
   if(appStarted)return;
   appStarted=true;
   refreshAuthState();
+
+  // Nhận MASP từ StockQuick thật sớm để mã xuất hiện ngay trên ô nhập.
+  const incomingMasp=getIncomingMaspFromUrl();
+  const input=$("codeInput");
+  if(incomingMasp&&input)input.value=incomingMasp;
+
   loadSelected();renderSourceLocation();renderSelected();renderSizes();renderModes();clearResults("Quét mã hoặc nhập mã sản phẩm rồi nhấn Enter để bắt đầu.");
   try{
     if(!validBranch())throw new Error("Không xác định được CS1/CS2 từ phiên đăng nhập.");
-    await loadConfig();renderGroups();bind();await initScanner();
-    initYeuCauBayMau({
-      supabase,
-      diadiem: state.diadiem,
-      manvDangNhap: state.manv
-    });
+    await loadConfig();
+    renderGroups();
+    bind();
 
-    // Nếu được mở từ StockQuickPopup với ?masp=..., xử lý đúng như nhập mã + Enter.
-    const openedFromStockQuick=await processIncomingMaspFromUrl();
-    if(!openedFromStockQuick)setTimeout(()=>$("codeInput")?.focus(),50);
+    // Xử lý MASP trước scanner/bày mẫu để module phụ không thể chặn luồng này.
+    const openedFromStockQuick=await processIncomingMaspFromUrl(incomingMasp);
+
+    try{await initScanner();}
+    catch(scannerErr){console.warn("[TimKiemNhanh] Scanner lỗi nhưng không chặn tìm kiếm:",scannerErr);}
+
+    try{
+      initYeuCauBayMau({supabase,diadiem:state.diadiem,manvDangNhap:state.manv});
+    }catch(bayMauErr){
+      console.warn("[TimKiemNhanh] Yêu cầu bày mẫu lỗi nhưng không chặn tìm kiếm:",bayMauErr);
+    }
+
+    if(!openedFromStockQuick)setTimeout(()=>$('codeInput')?.focus(),50);
   }catch(e){
     appStarted=false;
     console.error(e);
