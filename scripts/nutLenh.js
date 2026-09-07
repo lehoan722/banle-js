@@ -109,7 +109,7 @@ export function ganSuKienNutLenh() {
     document.getElementById("masp").focus();
 
     // 🔔 Sau khi bắt đầu hóa đơn mới -> gọi trực tiếp module Yêu cầu bày mẫu
-    moYeuCauBayMau();
+    // moYeuCauBayMau();
 
   });
 
