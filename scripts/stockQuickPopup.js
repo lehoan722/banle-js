@@ -3240,17 +3240,10 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       if (opening) return;
       if (now - lastOpenAt < 450) return;
 
-      const size = String(tr.dataset.size || "").trim();
+      // V20260907: Bấm bất kỳ dòng size nào chỉ chuyển MÃ SẢN PHẨM sang Tìm kiếm nhanh.
+      // Không truyền size / nhóm / form / giá. Tìm kiếm nhanh tự xử lý như người dùng nhập mã + Enter.
       const masp = String(popup.dataset.masp || "").trim().toUpperCase();
-      const nhomhang = String(popup.dataset.nhomhang || "").trim();
-      const form = String(popup.dataset.form || "").trim().toUpperCase();
-
-      if (!size || !masp || !nhomhang) return;
-
-      if (!window.StockQuickSimilar || typeof window.StockQuickSimilar.openFromPopup !== "function") {
-        console.warn("[StockQuickPopup] StockQuickSimilar chưa sẵn sàng");
-        return;
-      }
+      if (!masp) return;
 
       opening = true;
       lastOpenAt = now;
@@ -3258,17 +3251,16 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       tr.classList.add("sq-row-press");
 
       try {
-        await Promise.resolve(
-          window.StockQuickSimilar.openFromPopup({
-            masp,
-            size,
-            nhomhang,
-            form,
-            denNgay: getDenNgay()
-          })
-        );
+        const url = `${window.location.origin}/timkiemnhanh.html?masp=${encodeURIComponent(masp)}`;
+        const child = window.open(url, "_blank");
+        if (!child) {
+          console.warn("[StockQuickPopup] Trình duyệt chặn mở Tìm kiếm nhanh");
+          alert("Trình duyệt đang chặn mở trang Tìm kiếm nhanh. Hãy cho phép mở tab mới rồi thử lại.");
+        } else {
+          try { child.focus(); } catch (_) { }
+        }
       } catch (err) {
-        console.warn("[StockQuickPopup] openFromPopup error:", err);
+        console.warn("[StockQuickPopup] Lỗi mở Tìm kiếm nhanh:", err);
       } finally {
         setTimeout(() => {
           tr.classList.remove("sq-row-press");
