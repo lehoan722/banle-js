@@ -181,9 +181,22 @@ function getAdminStatus() {
 }
 
 function buildNoteWithStaff(note, manv) {
-  const clean = String(note || "").trim().replace(/\s*\[NV\s*:\s*[^\]]+\]\s*$/i, "").trim();
+  // Chỉ dùng hàm này khi người dùng THỰC SỰ sửa ghi chú.
+  // Xóa toàn bộ các thẻ [NV:...] liên tiếp ở cuối để tự làm sạch dữ liệu cũ bị lặp.
+  const clean = String(note || "")
+    .trim()
+    .replace(/(?:\s*\[NV\s*:\s*[^\]]+\]\s*)+$/i, "")
+    .trim();
   const staff = String(manv || "").trim().toUpperCase();
   return clean && staff ? `${clean} [NV:${staff}]` : clean;
+}
+
+function getCurrentStaffCode() {
+  // Giữ cách lấy mã NV giống main.js cũ đã chạy ổn định:
+  // ưu tiên mã đăng nhập hiện tại trong localStorage, fallback về context lúc init.
+  return String(
+    localStorage.getItem("manv") || moduleContext?.manvDangNhap || ""
+  ).trim().toUpperCase();
 }
 
 function fileToImage(file) {
@@ -312,7 +325,8 @@ async function saveAndClose(tasks, refs, closeButton) {
   saving = true;
   closeButton.disabled = true;
   closeButton.textContent = "…";
-  const { supabase, diadiem, manvDangNhap } = moduleContext;
+  const { supabase, diadiem } = moduleContext;
+  const currentManv = getCurrentStaffCode();
 
   try {
     const rowsToFinish = [];
@@ -329,22 +343,22 @@ async function saveAndClose(tasks, refs, closeButton) {
 
     for (const item of rowsToFinish) {
       if (!item.file) continue;
-      const blob = await resizeImage(item.file, item.row.masp, manvDangNhap, diadiem);
+      const blob = await resizeImage(item.file, item.row.masp, currentManv, diadiem);
       const date = new Date().toISOString().slice(0, 10);
-      const path = `${diadiem}/${manvDangNhap}/${date}/${item.row.id_ct}_${Date.now()}.jpg`;
+      const path = `${diadiem}/${currentManv}/${date}/${item.row.id_ct}_${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage.from("ANHBAYMAU").upload(path, blob, {
         upsert: true, cacheControl: "3600", contentType: "image/jpeg"
       });
       if (uploadError) throw new Error(`Lỗi lưu ảnh mã ${item.row.masp}: ${uploadError.message || uploadError}`);
       const { error: imageError } = await supabase.rpc("baymau_update_image", {
-        p_id_ct: Number(item.row.id_ct), p_path: path, p_manv: manvDangNhap
+        p_id_ct: Number(item.row.id_ct), p_path: path, p_manv: currentManv
       });
       if (imageError) throw new Error(`Ảnh mã ${item.row.masp} đã tải lên nhưng chưa lưu được đường dẫn.`);
     }
 
     const doneIds = rowsToFinish.map(item => Number(item.row.id_ct)).filter(Number.isFinite);
     if (doneIds.length) {
-      const { error } = await supabase.rpc("baymau_set_done", { p_ids: doneIds, p_manv: manvDangNhap });
+      const { error } = await supabase.rpc("baymau_set_done", { p_ids: doneIds, p_manv: currentManv });
       if (error) throw error;
     }
 
@@ -352,7 +366,7 @@ async function saveAndClose(tasks, refs, closeButton) {
     refs.forEach((ref, id) => {
       const note = ref.note.value.trim();
       if (note && note !== ref.oldNote.trim()) {
-        noteUpdates.push({ id_ct: id, note: buildNoteWithStaff(note, manvDangNhap) });
+        noteUpdates.push({ id_ct: id, note: buildNoteWithStaff(note, currentManv) });
       }
     });
 
@@ -363,7 +377,7 @@ async function saveAndClose(tasks, refs, closeButton) {
       const { error } = await supabase.rpc("baymau_update_note_and_confirm", {
         p_note_updates: noteUpdates,
         p_confirm_ids: confirmIds,
-        p_admin: getAdminStatus() ? manvDangNhap : null
+        p_admin: getAdminStatus() ? currentManv : null
       });
       if (error) throw error;
     }
@@ -378,14 +392,18 @@ async function saveAndClose(tasks, refs, closeButton) {
         const ref = refs.get(Number(row.id_ct));
         if (!ref) return row;
         const typedNote = ref.note.value.trim();
+        const oldNote = String(ref.oldNote || "").trim();
+        const noteChanged = typedNote !== oldNote;
         return {
           ...row,
-          baymau_note: typedNote
-            ? buildNoteWithStaff(typedNote, manvDangNhap)
+          // QUAN TRỌNG: nếu chỉ mở/xem rồi đóng thì giữ nguyên ghi chú từ server,
+          // tuyệt đối không thay [NV:người ghi cũ] bằng người đang đăng nhập.
+          baymau_note: noteChanged
+            ? buildNoteWithStaff(typedNote, currentManv)
             : (row.baymau_note || ""),
           baymau_admin_confirm_by:
             row.baymau_admin_confirm_by ||
-            (getAdminStatus() && ref.confirm.checked ? manvDangNhap : null)
+            (getAdminStatus() && ref.confirm.checked ? currentManv : null)
         };
       });
     taskCacheAt = Date.now();
