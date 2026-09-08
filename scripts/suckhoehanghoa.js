@@ -1,4 +1,10 @@
-(function(){
+import { supabase, startSessionKeeper } from './supabaseClient.js';
+
+// Dùng đúng Supabase client chung của hệ thống Hoàn Tuyết.
+window.supabase = supabase;
+try { startSessionKeeper(); } catch (e) { console.warn('[SucKhoeHangHoa] session keeper:', e); }
+
+
   const $=s=>document.querySelector(s);
   const nf=new Intl.NumberFormat('vi-VN');
   const money=v=>nf.format(Math.round(Number(v||0)));
@@ -50,9 +56,34 @@
     return {phan_loai:null,flag:null};
   }
 
-  async function getClient(){
-    for(let i=0;i<30;i++){if(window.supabase?.rpc)return window.supabase;await new Promise(r=>setTimeout(r,100));}
-    throw new Error('Supabase chưa sẵn sàng');
+  let stockQuickLoadPromise = null;
+
+  function ensureStockQuickLoaded(){
+    if (window.StockQuick?.showFor || typeof window.stockQuickPopup === 'function') {
+      return Promise.resolve(true);
+    }
+    if (stockQuickLoadPromise) return stockQuickLoadPromise;
+
+    stockQuickLoadPromise = new Promise((resolve) => {
+      const existed = document.querySelector('script[data-suckhoe-stockquick="1"]');
+      if (existed) {
+        existed.addEventListener('load', () => resolve(true), { once: true });
+        existed.addEventListener('error', () => resolve(false), { once: true });
+        setTimeout(() => resolve(!!(window.StockQuick?.showFor || window.stockQuickPopup)), 1200);
+        return;
+      }
+      const sc = document.createElement('script');
+      sc.src = '/scripts/stockQuickPopup.js?v=20260908b';
+      sc.dataset.suckhoeStockquick = '1';
+      sc.onload = () => resolve(true);
+      sc.onerror = () => {
+        console.warn('[SucKhoeHangHoa] Không tải được StockQuickPopup');
+        stockQuickLoadPromise = null;
+        resolve(false);
+      };
+      document.head.appendChild(sc);
+    });
+    return stockQuickLoadPromise;
   }
 
   async function loadSummary(){
@@ -106,7 +137,9 @@
   }
 
   async function init(){
-    $('#snapshotDate').value=today(); sb=await getClient();
+    $('#snapshotDate').value=today(); sb=supabase;
+    // Chỉ nạp StockQuick sau khi Supabase global đã được tạo xong. Không chặn tải báo cáo nếu popup lỗi.
+    ensureStockQuickLoaded().catch(()=>{});
     try{await loadSummary();}catch(e){console.warn(e)} await loadPage(true);
     $('#btnRefresh').onclick=refresh;$('#btnExport').onclick=exportExcel;$('#btnSearch').onclick=()=>loadPage(true);$('#pageSize').onchange=()=>loadPage(true);
     $('#q').addEventListener('keydown',e=>{if(e.key==='Enter')loadPage(true)});$('#nhacc').addEventListener('keydown',e=>{if(e.key==='Enter')loadPage(true)});
@@ -115,4 +148,3 @@
     $('#snapshotDate').onchange=async()=>{currentSnapshot=$('#snapshotDate').value||null;await loadSummary();await loadPage(true)};
   }
   init().catch(e=>{$('#status').textContent='Lỗi khởi tạo: '+(e.message||e)});
-})();
