@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sức khỏe hàng hóa</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    *{box-sizing:border-box} body{margin:0;background:#f6f7f9;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;font-size:14px}
+    .page{max-width:1800px;margin:auto;padding:12px}.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.title{font-size:23px;font-weight:800;margin-right:auto}
+    .btn{border:0;border-radius:9px;padding:9px 13px;font-weight:700;cursor:pointer;background:#2563eb;color:#fff}.btn.gray{background:#e5e7eb;color:#111}.btn.green{background:#047857}.btn:disabled{opacity:.55;cursor:not-allowed}
+    .summary{display:grid;grid-template-columns:repeat(8,minmax(120px,1fr));gap:8px;margin:10px 0}.kpi{background:#fff;border-radius:10px;padding:10px;box-shadow:0 2px 10px rgba(0,0,0,.05)}.kpi .v{font-size:20px;font-weight:800}.kpi .l{font-size:11px;color:#6b7280;margin-top:2px}
+    .filters{background:#fff;border-radius:10px;padding:10px;box-shadow:0 2px 10px rgba(0,0,0,.05);display:flex;gap:8px;flex-wrap:wrap;align-items:end}.f{display:flex;flex-direction:column;gap:4px;min-width:130px}.f.grow{flex:1;min-width:220px}.f label{font-size:11px;color:#6b7280;font-weight:700}.f input,.f select{border:1px solid #d1d5db;border-radius:7px;padding:7px 8px;background:#fff}
+    .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.tab{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:7px 11px;cursor:pointer;font-weight:700}.tab.active{background:#111827;color:#fff;border-color:#111827}
+    .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.muted{color:#6b7280}.spacer{flex:1}.table-card{background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.05);overflow:hidden}.pager{display:flex;gap:8px;align-items:center;padding:8px 10px;border-top:1px solid #eee}.warn{color:#b91c1c;font-weight:700}.ok{color:#047857;font-weight:700}
+    .htCore td.flag-dead{background:#fee2e2!important}.htCore td.flag-over{background:#fff7ed!important}.htCore td.flag-strong{background:#ecfdf5!important}.htCore td.flag-error{background:#fef2f2!important;color:#b91c1c!important;font-weight:700}
+    @media(max-width:1000px){.summary{grid-template-columns:repeat(2,1fr)}.page{padding:8px}.title{font-size:19px}}
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div class="title">SỨC KHỎE HÀNG HÓA</div>
+    <input id="snapshotDate" type="date" />
+    <button id="btnRefresh" class="btn">⟳ Nạp lại dữ liệu</button>
+    <button id="btnExport" class="btn green">⬇ Xuất Excel toàn bộ</button>
+  </div>
+
+  <div id="summary" class="summary"></div>
+
+  <div class="filters">
+    <div class="f grow"><label>Tìm mã / tên sản phẩm</label><input id="q" placeholder="Nhập mã hoặc tên..." /></div>
+    <div class="f"><label>Nhóm chính</label><select id="mainGroup"><option value="">Tất cả</option><option>AO_HE</option><option>QUAN</option><option>AO_RET</option><option>GIAY_DEP</option><option>PK</option><option>OTHER</option></select></div>
+    <div class="f"><label>Nhà cung cấp</label><input id="nhacc" placeholder="Để trống = tất cả" /></div>
+    <div class="f"><label>Số dòng/trang</label><select id="pageSize"><option>100</option><option selected>300</option><option>500</option><option>1000</option></select></div>
+    <button id="btnSearch" class="btn gray">Lọc</button>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-mode="ALL">Tất cả</button>
+    <button class="tab" data-mode="MANH">🔥 Mạnh</button>
+    <button class="tab" data-mode="TRUNG_BINH">🟡 Trung bình</button>
+    <button class="tab" data-mode="YEU">🔴 Yếu</button>
+    <button class="tab" data-mode="MOI_THEO_DOI">🆕 Mới</button>
+    <button class="tab" data-mode="DEAD">💀 Dead</button>
+    <button class="tab" data-mode="TAIL">🏁 Đuôi</button>
+    <button class="tab" data-mode="OVERSTOCK">📦 Overstock</button>
+    <button class="tab" data-mode="DATA_ERROR">⚠ Lỗi tồn</button>
+  </div>
+
+  <div class="bar">
+    <span id="status" class="muted"></span><span class="spacer"></span>
+    <span class="muted">Bấm đúp mã SP để mở StockQuickPopup.</span>
+  </div>
+
+  <div class="table-card"><div id="hot"></div><div class="pager"><button id="prev" class="btn gray">← Trước</button><span id="pageText"></span><button id="next" class="btn gray">Sau →</button></div></div>
+</div>
+
+<script src="/scripts/supabaseClient.js"></script>
+<script src="/scripts/stockQuickPopup.js"></script>
+<script src="/scripts/suckhoehanghoa.js"></script>
+</body>
+</html>
