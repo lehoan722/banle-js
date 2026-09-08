@@ -120,11 +120,23 @@ try { startSessionKeeper(); } catch (e) { console.warn('[SucKhoeHangHoa] session
     if(!currentSnapshot){alert('Chưa có snapshot để xuất.');return;}
     const btn=$('#btnExport');btn.disabled=true;const old=btn.textContent;btn.textContent='Đang xuất...';
     try{
-      const batch=5000, all=[]; let offset=0;
+      // Dùng RPC JSON bundle để tránh giới hạn PostgREST/Supabase 1.000 rows mỗi response.
+      // Mỗi lần RPC chỉ trả 1 JSON object, bên trong chứa tối đa 5.000 SKU.
+      const batch=5000, all=[]; let offset=0, total=null;
       for(;;){
-        $('#status').textContent=`Đang lấy Excel: ${nf.format(all.length)} dòng...`;
-        const {data,error}=await sb.rpc('rpc_suckhoe_hanghoa_export_v1',{p_snapshot_date:currentSnapshot,p_limit:batch,p_offset:offset}); if(error)throw error;
-        const part=data||[]; all.push(...part); if(part.length<batch)break; offset+=batch;
+        $('#status').textContent=total==null
+          ? `Đang lấy Excel: ${nf.format(all.length)} dòng...`
+          : `Đang lấy Excel: ${nf.format(all.length)}/${nf.format(total)} dòng...`;
+        const {data,error}=await sb.rpc('rpc_suckhoe_hanghoa_export_bundle_v1',{
+          p_snapshot_date:currentSnapshot,p_limit:batch,p_offset:offset
+        });
+        if(error)throw error;
+        const bundle=data||{};
+        const part=Array.isArray(bundle.rows)?bundle.rows:[];
+        total=Number(bundle.total_rows||0);
+        all.push(...part);
+        offset+=part.length;
+        if(!part.length || offset>=total)break;
       }
       const {data:summary,error:se}=await sb.rpc('rpc_suckhoe_hanghoa_summary_v1',{p_snapshot_date:currentSnapshot}); if(se)throw se;
       const wb=XLSX.utils.book_new();
