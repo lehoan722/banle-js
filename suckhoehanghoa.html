@@ -25,17 +25,24 @@
     <div class="title">SỨC KHỎE HÀNG HÓA</div>
     <input id="snapshotDate" type="date" />
     <button id="btnRefresh" class="btn">⟳ Nạp lại dữ liệu</button>
-    <button id="btnExport" class="btn green">⬇ Xuất Excel toàn bộ</button>
+    <button id="btnExportFiltered" class="btn green">⬇ Xuất theo bộ lọc</button>
+    <button id="btnExport" class="btn gray">Xuất toàn bộ</button>
   </div>
 
   <div id="summary" class="summary"></div>
 
   <div class="filters">
+    <div class="f"><label>Từ ngày phân tích</label><input id="fromDate" type="date" /></div>
+    <div class="f"><label>Đến ngày phân tích</label><input id="toDate" type="date" /></div>
+    <div class="f"><label>Phát sinh trong kỳ</label><select id="activity"><option value="ANY_RELEVANT" selected>Có phát sinh hoặc còn tồn</option><option value="ANY">Có nhập hoặc bán</option><option value="NHAP">Chỉ có nhập</option><option value="BAN">Chỉ có bán</option><option value="BOTH">Có cả nhập và bán</option><option value="NONE">Không nhập, không bán</option><option value="ALL">Tất cả</option></select></div>
+    <div class="f"><label>Trạng thái tồn hiện tại</label><select id="stockStatus"><option value="ALL">Tất cả</option><option value="POSITIVE">Tồn dương (&gt;0)</option><option value="ZERO">Tồn = 0</option><option value="NEGATIVE">Tồn âm / lỗi</option></select></div>
     <div class="f grow"><label>Tìm mã / tên sản phẩm</label><input id="q" placeholder="Nhập mã hoặc tên..." /></div>
     <div class="f"><label>Nhóm chính</label><select id="mainGroup"><option value="">Tất cả</option><option>AO_HE</option><option>QUAN</option><option>AO_RET</option><option>GIAY_DEP</option><option>PK</option><option>OTHER</option></select></div>
     <div class="f"><label>Nhà cung cấp</label><input id="nhacc" placeholder="Để trống = tất cả" /></div>
     <div class="f"><label>Số dòng/trang</label><select id="pageSize"><option>100</option><option selected>300</option><option>500</option><option>1000</option></select></div>
-    <button id="btnSearch" class="btn gray">Lọc</button>
+    <div class="f" style="min-width:170px"><label><input id="currentGroupsOnly" type="checkbox" checked /> Chỉ nhóm đang dùng</label><label><input id="activeOnly" type="checkbox" checked /> Chỉ mã active</label></div>
+    <button id="btnSearch" class="btn gray">Áp dụng bộ lọc</button>
+    <button id="btnRecalcPeriod" class="btn gray">Tính lại kỳ</button>
   </div>
 
   <div class="tabs" id="tabs">
@@ -58,6 +65,6 @@
   <div class="table-card"><div id="hot"></div><div class="pager"><button id="prev" class="btn gray">← Trước</button><span id="pageText"></span><button id="next" class="btn gray">Sau →</button></div></div>
 </div>
 
-<script type="module" src="/scripts/suckhoehanghoa.js?v=20260908b"></script>
+<script type="module" src="/scripts/suckhoehanghoa.js?v=20260908v11"></script>
 </body>
 </html>
