@@ -1,167 +1,298 @@
 // scripts/salesCopilotBridgeBannv.js
-// Cầu nối V2: nhận masp + size + soluong từ Tìm kiếm nhanh/Sales Copilot.
+// Cầu nối V3: nhận masp + size + soluong từ Tìm kiếm nhanh/Sales Copilot.
+// Tối ưu tốc độ + đảm bảo đúng SIZE bằng đúng luồng của trang bán:
+// MASP -> Enter -> SIZE -> Enter -> xác nhận dòng đã xuất hiện trong bảng.
 // KHÔNG lưu hóa đơn. Chỉ đưa hàng vào đúng luồng nhập mã hiện tại của bannv.
 
 (function(){
+  "use strict";
+
   const KEY = "sales_copilot_pending_v1";
   const ACK_KEY = "sales_copilot_ack_v1";
   const PAGE_BRANCH = location.pathname.toLowerCase().includes("bannvcs2") ? "cs2" : "cs1";
   const WINDOW_NAME = `BAN_NV_HOAN_TUYET_${PAGE_BRANCH.toUpperCase()}`;
   const CHANNEL_NAME = `sales_copilot_bridge_v2_${PAGE_BRANCH}`;
+
   let running = false;
   let lastId = "";
 
-  // Giúp Tìm kiếm nhanh nhận diện đúng tab bán đã được mở trực tiếp từ menu.
-  try{ window.name = WINDOW_NAME; }catch(_){}
+  // Giúp Tìm kiếm nhanh nhận diện/tái sử dụng đúng tab bán đã mở sẵn.
+  try { window.name = WINDOW_NAME; } catch (_) {}
 
   let bridgeChannel = null;
-  try{ bridgeChannel = new BroadcastChannel(CHANNEL_NAME); }catch(_){}
+  try { bridgeChannel = new BroadcastChannel(CHANNEL_NAME); } catch (_) {}
 
-  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+  function sleep(ms){
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function text(v){
+    return String(v == null ? "" : v).trim();
+  }
+
+  function normMasp(v){
+    return text(v).toUpperCase();
+  }
+
+  function normSize(v){
+    return text(v).toUpperCase();
+  }
+
+  async function waitUntil(check, timeout=1500, interval=40){
+    const started = Date.now();
+    while(Date.now() - started < timeout){
+      try{
+        const value = check();
+        if(value) return value;
+      }catch(_){}
+      await sleep(interval);
+    }
+    return null;
+  }
 
   function getPayload(){
     try{
-      const raw=localStorage.getItem(KEY);
-      if(!raw)return null;
-      const p=JSON.parse(raw);
-      if(!p || !Array.isArray(p.items) || !p.items.length)return null;
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return null;
+      const p = JSON.parse(raw);
+      if(!p || !Array.isArray(p.items) || !p.items.length) return null;
       return p;
-    }catch(e){console.warn("[COPILOT BRIDGE] payload lỗi",e);return null;}
+    }catch(e){
+      console.warn("[COPILOT BRIDGE] payload lỗi", e);
+      return null;
+    }
+  }
+
+  function getControls(){
+    return {
+      maspEl: document.getElementById("masp"),
+      slEl: document.getElementById("soluong"),
+      sizeEl: document.getElementById("size")
+    };
   }
 
   function ready(){
+    const { maspEl, slEl, sizeEl } = getControls();
     return !!(
-      document.getElementById("masp") &&
-      document.getElementById("soluong") &&
-      document.getElementById("size") &&
+      maspEl &&
+      slEl &&
+      sizeEl &&
       window.sanPhamData &&
       Object.keys(window.sanPhamData).length
     );
   }
 
-  async function prefillCustomer(payload){
-    const makh=String(payload?.makh||"").trim();
-    if(!makh)return;
-    const el=document.getElementById("makh");
-    if(!el)return;
-    el.value=makh;
-    el.dispatchEvent(new Event("input",{bubbles:true}));
-    await sleep(250);
-    el.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",code:"Enter",bubbles:true,cancelable:true}));
-    await sleep(350);
+  // Xác nhận bằng chính bảng bán, không chỉ dựa vào timer.
+  function findSaleRow(maspRaw, sizeRaw){
+    const masp = normMasp(maspRaw);
+    const size = normSize(sizeRaw);
+    const tbody = document.querySelector("#bangketqua tbody");
+    if(!tbody || !masp) return null;
+
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    return rows.find(row => {
+      const cells = row.cells || [];
+      const rowMasp = normMasp(cells[0]?.textContent || "");
+      const rowSize = normSize(cells[2]?.textContent || "");
+      if(rowMasp !== masp) return false;
+      return size ? rowSize === size : true;
+    }) || null;
   }
 
-  async function waitStableReady(ms=700){
-    const started=Date.now();
-    while(Date.now()-started<5000){
-      if(ready()){
-        await sleep(ms);
-        if(ready())return true;
-      }
-      await sleep(120);
-    }
-    return false;
+  async function prefillCustomer(payload){
+    const makh = text(payload?.makh);
+    if(!makh) return;
+
+    const el = document.getElementById("makh");
+    if(!el) return;
+
+    el.value = makh;
+    el.dispatchEvent(new Event("input", { bubbles:true }));
+    el.focus();
+    el.dispatchEvent(new KeyboardEvent("keydown", {
+      key:"Enter", code:"Enter", keyCode:13, which:13,
+      bubbles:true, cancelable:true
+    }));
+
+    // Chỉ chờ ngắn để handler khách hàng kịp hoàn tất.
+    await sleep(180);
+  }
+
+  async function waitStableReady(){
+    // Nếu trang đã mở sẵn, thường trả về gần như ngay lập tức.
+    const ok = await waitUntil(() => ready(), 5000, 60);
+    if(!ok) return false;
+
+    // Một nhịp nhỏ để các listener cuối cùng gắn xong; bỏ chờ cố định 700ms cũ.
+    await sleep(80);
+    return ready();
+  }
+
+  function dispatchEnter(el){
+    el.dispatchEvent(new KeyboardEvent("keydown", {
+      key:"Enter",
+      code:"Enter",
+      keyCode:13,
+      which:13,
+      bubbles:true,
+      cancelable:true
+    }));
   }
 
   async function addOne(item){
-    const masp=String(item?.masp||"").trim().toUpperCase();
-    const size=String(item?.size||"").trim();
-    const qty=Math.max(1,parseInt(item?.soluong||1,10)||1);
-    if(!masp)return;
+    const masp = normMasp(item?.masp);
+    const size = normSize(item?.size);
+    const qty = Math.max(1, parseInt(item?.soluong || 1, 10) || 1);
+    if(!masp) return;
 
-    const maspEl=document.getElementById("masp");
-    const slEl=document.getElementById("soluong");
-    const sizeEl=document.getElementById("size");
+    const { maspEl, slEl, sizeEl } = getControls();
+    if(!maspEl || !slEl || !sizeEl){
+      throw new Error("Không tìm thấy ô mã/size/số lượng trên trang bán.");
+    }
 
-    if(!maspEl||!slEl||!sizeEl)throw new Error("Không tìm thấy ô mã/size/số lượng trên trang bán.");
+    // Nếu vì một tín hiệu lặp mà đúng dòng đã có sẵn, không thêm lần hai.
+    if(findSaleRow(masp, size)) return;
 
-    // Gửi size theo HAI đường để tránh dòng đầu tiên bị rơi về size 0:
-    // 1) cú pháp MASP_39 mà luồng bán cũ hỗ trợ;
-    // 2) đồng thời điền ô size riêng trước Enter.
-    maspEl.value = size ? `${masp}_${size}` : masp;
+    // 1) Số lượng trước.
     slEl.value = String(qty);
-    sizeEl.value = size || "";
-    maspEl.dispatchEvent(new Event("input",{bubbles:true}));
-    sizeEl.dispatchEvent(new Event("input",{bubbles:true}));
-    sizeEl.dispatchEvent(new Event("change",{bubbles:true}));
+    slEl.dispatchEvent(new Event("input", { bubbles:true }));
+    slEl.dispatchEvent(new Event("change", { bubbles:true }));
 
+    // 2) Nhập MÃ GỐC, không ghép MASP_SIZE nữa.
+    // Việc chọn size được thực hiện ở đúng ô #size sau khi trang bán xử lý mã.
+    maspEl.value = masp;
+    maspEl.dispatchEvent(new Event("input", { bubbles:true }));
+    maspEl.dispatchEvent(new Event("change", { bubbles:true }));
     maspEl.focus();
-    await sleep(80);
-    maspEl.dispatchEvent(new KeyboardEvent("keydown",{
-      key:"Enter",code:"Enter",keyCode:13,which:13,bubbles:true,cancelable:true
-    }));
+    maspEl.select?.();
+    dispatchEnter(maspEl);
 
-    // Chờ luồng bán xử lý xong trước khi gửi dòng kế tiếp.
-    // Dòng đầu tiên thường cần lâu hơn do cache/master vừa khởi tạo.
-    await sleep(900);
+    // 3) Chờ luồng bán xử lý mã và chuyển sang ô size.
+    // Nếu tab/page rất nhanh thì chỉ mất vài chục ms; fallback tối đa 1.4s.
+    await waitUntil(() => {
+      if(findSaleRow(masp, size)) return "added";
+      if(document.activeElement === sizeEl) return "size-focus";
+      return null;
+    }, 1400, 35);
+
+    if(findSaleRow(masp, size)) return;
+
+    // 4) Điền SIZE sau khi mã đã được xử lý, rồi Enter tại chính ô size.
+    if(size){
+      sizeEl.value = size;
+      sizeEl.dispatchEvent(new Event("input", { bubbles:true }));
+      sizeEl.dispatchEvent(new Event("change", { bubbles:true }));
+      sizeEl.focus();
+      sizeEl.select?.();
+      dispatchEnter(sizeEl);
+    }
+
+    // 5) Chờ đúng MASP + SIZE xuất hiện trong bảng.
+    // Đây là điều kiện xác nhận thực tế, thay cho sleep(900) cũ.
+    const added = await waitUntil(
+      () => findSaleRow(masp, size),
+      2200,
+      45
+    );
+
+    if(!added){
+      // Một lần retry nhẹ cho trường hợp handler của trang bán vừa bận lúc Enter đầu.
+      if(size){
+        sizeEl.value = size;
+        sizeEl.dispatchEvent(new Event("input", { bubbles:true }));
+        sizeEl.dispatchEvent(new Event("change", { bubbles:true }));
+        sizeEl.focus();
+        dispatchEnter(sizeEl);
+      }
+
+      const retryAdded = await waitUntil(
+        () => findSaleRow(masp, size),
+        1200,
+        50
+      );
+
+      if(!retryAdded){
+        throw new Error(`Đã nhận mã ${masp} nhưng chưa xác nhận được size ${size || "-"} trong bảng bán.`);
+      }
+    }
   }
 
   async function consume(){
-    if(running || !ready())return;
-    const payload=getPayload();
-    if(!payload || payload.id===lastId)return;
-    if(payload.diadiem && String(payload.diadiem).toLowerCase()!==PAGE_BRANCH)return;
+    if(running || !ready()) return;
 
-    running=true;
+    const payload = getPayload();
+    if(!payload || payload.id === lastId) return;
+    if(payload.diadiem && text(payload.diadiem).toLowerCase() !== PAGE_BRANCH) return;
+
+    running = true;
     try{
-      const stable=await waitStableReady(700);
-      if(!stable)throw new Error("Trang bán chưa sẵn sàng nhận dữ liệu.");
-      await prefillCustomer(payload);
+      const stable = await waitStableReady();
+      if(!stable) throw new Error("Trang bán chưa sẵn sàng nhận dữ liệu.");
 
-      // Sau khi điền khách, chờ DOM/handler bán ổn định thêm trước dòng đầu tiên.
-      await sleep(450);
+      await prefillCustomer(payload);
 
       for(const item of payload.items){
         await addOne(item);
       }
 
-      lastId=payload.id;
+      // Chỉ ACK sau khi tất cả dòng đã thực sự được xác nhận trong bảng bán.
+      lastId = payload.id;
       localStorage.removeItem(KEY);
+
       const ack = {
         id: payload.id,
         consumed_at: new Date().toISOString(),
         count: payload.items.length
       };
+
       localStorage.setItem(ACK_KEY, JSON.stringify(ack));
-      try{ bridgeChannel?.postMessage({type:"ACK",ack}); }catch(_){}
+      try { bridgeChannel?.postMessage({ type:"ACK", ack }); } catch (_) {}
 
       try{
         window.focus();
-        const masp=document.getElementById("masp");
+        const masp = document.getElementById("masp");
         masp?.focus();
         masp?.select?.();
       }catch(_){}
 
-      alert(`✅ Đã nhận ${payload.items.length} sản phẩm từ Trợ lý bán hàng.\nHãy kiểm tra bảng bán trước khi lưu hóa đơn.`);
+      alert(`✅ Đã nhận ${payload.items.length} sản phẩm từ Trợ lý bán hàng.\nĐã xác nhận mã + size trong bảng bán.`);
     }catch(e){
-      console.error("[COPILOT BRIDGE] lỗi nhận dữ liệu:",e);
-      alert("❌ Không nhận được dữ liệu từ Trợ lý bán hàng: "+(e?.message||e));
-      // Không xóa payload để người dùng có thể thử lại.
+      console.error("[COPILOT BRIDGE] lỗi nhận dữ liệu:", e);
+      alert("❌ Không nhận được dữ liệu từ Trợ lý bán hàng: " + (e?.message || e));
+      // Không xóa payload để khi tab được focus/visible hoặc người dùng thử lại vẫn còn dữ liệu.
     }finally{
-      running=false;
+      running = false;
     }
   }
 
-  window.addEventListener("storage",(e)=>{
-    if(e.key===KEY && e.newValue) setTimeout(consume,200);
+  // Tab khác ghi localStorage.
+  window.addEventListener("storage", (e) => {
+    if(e.key === KEY && e.newValue) setTimeout(consume, 40);
   });
+
+  // BroadcastChannel: đường nhanh nhất khi tab bán vẫn đang hoạt động nền.
   if(bridgeChannel){
-    bridgeChannel.onmessage=(event)=>{
-      const message=event?.data;
-      if(message?.type!=="PENDING" || !message.payload)return;
-      const payload=message.payload;
-      if(payload.diadiem && String(payload.diadiem).toLowerCase()!==PAGE_BRANCH)return;
-      try{ localStorage.setItem(KEY,JSON.stringify(payload)); }catch(_){}
-      setTimeout(consume,50);
+    bridgeChannel.onmessage = (event) => {
+      const message = event?.data;
+      if(message?.type !== "PENDING" || !message.payload) return;
+
+      const payload = message.payload;
+      if(payload.diadiem && text(payload.diadiem).toLowerCase() !== PAGE_BRANCH) return;
+
+      try { localStorage.setItem(KEY, JSON.stringify(payload)); } catch (_) {}
+      setTimeout(consume, 0);
     };
   }
-  window.addEventListener("focus",()=>setTimeout(consume,200));
-  document.addEventListener("visibilitychange",()=>{
-    if(document.visibilityState==="visible")setTimeout(consume,200);
+
+  // iOS/Safari có thể tạm dừng tab nền; khi tab được mở lại thì nhận ngay.
+  window.addEventListener("focus", () => setTimeout(consume, 20));
+  document.addEventListener("visibilitychange", () => {
+    if(document.visibilityState === "visible") setTimeout(consume, 20);
   });
 
-  setInterval(consume,1000);
-  setTimeout(consume,1000);
+  // Fallback nhẹ; giảm từ 1000ms xuống 350ms để tab desktop bắt nhanh hơn.
+  setInterval(consume, 350);
+  setTimeout(consume, 120);
 
-  window.SalesCopilotBridge={consume};
+  window.SalesCopilotBridge = { consume };
 })();
