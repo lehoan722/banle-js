@@ -730,12 +730,48 @@ async function startApp(){
   }
 }
 
+// Xác định cơ sở khi mở Tìm kiếm nhanh.
+// Thứ tự ưu tiên: URL (?cs=cs1/cs2) -> sessionStorage -> localStorage -> để trống cho người dùng chọn.
+function getInitialBranch(){
+  let fromUrl="";
+  try{
+    const qs=new URLSearchParams(location.search);
+    fromUrl=String(qs.get("cs")||qs.get("diadiem")||"").trim().toLowerCase();
+  }catch{}
+
+  if(["cs1","cs2"].includes(fromUrl)){
+    // authModule hiện dùng localStorage để auto-hydrate; đồng bộ ngay để session sẵn cũng vào đúng cơ sở.
+    try{sessionStorage.setItem("diadiem",fromUrl)}catch{}
+    try{localStorage.setItem("diadiem",fromUrl)}catch{}
+    return fromUrl;
+  }
+
+  let fromSession="";
+  try{fromSession=String(sessionStorage.getItem("diadiem")||"").trim().toLowerCase()}catch{}
+  if(["cs1","cs2"].includes(fromSession))return fromSession;
+
+  let fromLocal="";
+  try{fromLocal=String(localStorage.getItem("diadiem")||"").trim().toLowerCase()}catch{}
+  if(["cs1","cs2"].includes(fromLocal))return fromLocal;
+
+  return "";
+}
+
+const initialBranch=getInitialBranch();
+
 khoiTaoDangNhapDungChung({
   loginContainerId:"login-container",
   appContainerId:"app-container",
-  macDinhDiaDiem:"cs1",
+  macDinhDiaDiem:initialBranch,
   tuDongKhoaCoSo:false,
-  onLoginSuccess:async()=>{
+  onLoginSuccess:async(_nhanvien,context)=>{
+    // Nếu người dùng chọn lại CS trên form đăng nhập, bảo đảm tab Tìm kiếm nhanh ghi nhận đúng CS đó.
+    const cs=String(context?.diadiem||localStorage.getItem("diadiem")||initialBranch||"").trim().toLowerCase();
+    if(["cs1","cs2"].includes(cs)){
+      try{sessionStorage.setItem("diadiem",cs)}catch{}
+      try{localStorage.setItem("diadiem",cs)}catch{}
+    }
+
     refreshAuthState();
     await startApp();
     return true;
