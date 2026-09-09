@@ -3251,7 +3251,22 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       tr.classList.add("sq-row-press");
 
       try {
-        const url = `${window.location.origin}/timkiemnhanh.html?masp=${encodeURIComponent(masp)}`;
+        // Truyền cơ sở hiện tại sang Tìm kiếm nhanh để tab mới không rơi về CS1 mặc định.
+        // Ưu tiên sessionStorage (theo tab), sau đó localStorage/global để tương thích các trang cũ.
+        const coso = String(
+          sessionStorage.getItem("diadiem") ||
+          localStorage.getItem("diadiem") ||
+          window.diadiem ||
+          ""
+        ).trim().toLowerCase();
+
+        const params = new URLSearchParams();
+        params.set("masp", masp);
+        if (["cs1", "cs2"].includes(coso)) {
+          params.set("cs", coso);
+        }
+
+        const url = `${window.location.origin}/timkiemnhanh.html?${params.toString()}`;
         const child = window.open(url, "_blank");
         if (!child) {
           console.warn("[StockQuickPopup] Trình duyệt chặn mở Tìm kiếm nhanh");
