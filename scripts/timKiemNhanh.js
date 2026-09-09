@@ -591,25 +591,47 @@ function getIncomingMaspFromUrl(){
   }
 }
 
-function removeIncomingMaspFromUrl(){
+function getIncomingSizeFromUrl(){
+  try{
+    const raw=new URLSearchParams(window.location.search).get("size")||"";
+    return String(raw).replace(/^size\s+/i,"").trim();
+  }catch{
+    return "";
+  }
+}
+
+function removeIncomingProductParamsFromUrl(){
   try{
     const url=new URL(window.location.href);
-    if(!url.searchParams.has("masp"))return;
+    const hadMasp=url.searchParams.has("masp");
+    const hadSize=url.searchParams.has("size");
+    if(!hadMasp&&!hadSize)return;
     url.searchParams.delete("masp");
+    url.searchParams.delete("size");
     const next=url.pathname+(url.searchParams.toString()?`?${url.searchParams.toString()}`:"")+url.hash;
     window.history.replaceState({},document.title,next);
   }catch(e){
-    console.warn("[TimKiemNhanh] Không xóa được MASP khỏi URL:",e);
+    console.warn("[TimKiemNhanh] Không xóa được MASP/SIZE khỏi URL:",e);
   }
 }
 
 async function processIncomingMaspFromUrl(maspRaw=""){
   const masp=norm(maspRaw||getIncomingMaspFromUrl());
   if(!masp)return false;
+
+  const incomingSize=getIncomingSizeFromUrl();
+  const validIncomingSize=SIZE_LIST.includes(incomingSize)?incomingSize:"";
+
   const input=$("codeInput");
   if(input)input.value=masp;
-  removeIncomingMaspFromUrl();
-  await processCode(masp);
+
+  // Xóa masp/size khỏi thanh địa chỉ sau khi đã đọc; giữ lại cs để phiên cơ sở vẫn rõ ràng.
+  removeIncomingProductParamsFromUrl();
+
+  await processCode(masp,{
+    preselectedSize:validIncomingSize,
+    autoSearch:!!validIncomingSize
+  });
   return true;
 }
 
