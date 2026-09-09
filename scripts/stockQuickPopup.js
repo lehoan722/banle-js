@@ -3240,9 +3240,12 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       if (opening) return;
       if (now - lastOpenAt < 450) return;
 
-      // V20260907: Bấm bất kỳ dòng size nào chỉ chuyển MÃ SẢN PHẨM sang Tìm kiếm nhanh.
-      // Không truyền size / nhóm / form / giá. Tìm kiếm nhanh tự xử lý như người dùng nhập mã + Enter.
+      // V20260909: Bấm dòng size sẽ chuyển MÃ SẢN PHẨM + SIZE sang Tìm kiếm nhanh.
+      // Tìm kiếm nhanh vẫn nạp thông tin/tồn kho của mã như cũ, sau đó tự chọn đúng size và tìm luôn.
       const masp = String(popup.dataset.masp || "").trim().toUpperCase();
+      const size = String(tr.dataset.size || "")
+        .replace(/^size\s+/i, "")
+        .trim();
       if (!masp) return;
 
       opening = true;
@@ -3262,6 +3265,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
         const params = new URLSearchParams();
         params.set("masp", masp);
+        if (size) {
+          params.set("size", size);
+        }
         if (["cs1", "cs2"].includes(coso)) {
           params.set("cs", coso);
         }
