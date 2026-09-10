@@ -1,7 +1,7 @@
 // scripts/salesCopilotBridgeBannv.js
-// Cầu nối V3.1: nhận masp + size + soluong từ Tìm kiếm nhanh/Sales Copilot.
-// Dùng đúng cơ chế hậu tố MASP_SIZE mà hoadon.js của trang bán đã hỗ trợ sẵn.
-// Chỉ Enter MỘT LẦN tại ô mã; không giả lập Enter ở ô size để tránh kích hoạt validation lặp.
+// Cầu nối V3.2 STABLE: nhận masp + size + soluong từ Tìm kiếm nhanh/Sales Copilot.
+// Chờ đầy đủ catalog sản phẩm + danh mục size trước khi gửi MASP_SIZE và Enter MỘT LẦN.
+// Mục tiêu: loại bỏ lỗi ngẫu nhiên khi trang bán đã có handler Enter nhưng dm_size chưa tải xong.
 // KHÔNG lưu hóa đơn. Chỉ đưa hàng vào đúng luồng nhập mã hiện tại của bannv.
 
 (function(){
@@ -26,7 +26,7 @@
   function normMasp(v){ return text(v).toUpperCase(); }
   function normSize(v){ return text(v).toUpperCase(); }
 
-  async function waitUntil(check, timeout=2500, interval=50){
+  async function waitUntil(check, timeout=12000, interval=60){
     const start = Date.now();
     while(Date.now() - start < timeout){
       try{
@@ -51,14 +51,41 @@
     }
   }
 
-  function ready(){
+  function baseDomReady(){
     return !!(
       document.getElementById("masp") &&
       document.getElementById("soluong") &&
       document.getElementById("size") &&
-      window.sanPhamData &&
-      Object.keys(window.sanPhamData).length
+      document.querySelector("#bangketqua tbody")
     );
+  }
+
+  function productReady(maspRaw){
+    const masp = normMasp(maspRaw);
+    if(!masp) return false;
+    return !!(
+      window.sanPhamData &&
+      typeof window.sanPhamData === "object" &&
+      window.sanPhamData[masp]
+    );
+  }
+
+  function sizeCatalogReady(sizeRaw){
+    const size = normSize(sizeRaw);
+    if(!size) return true;
+
+    // hoadon.js chỉ công nhận hậu tố _NN khi size đã tồn tại trong window.danhMucSize.
+    // Vì vậy KHÔNG được Enter trước khi danh mục này tải xong.
+    if(!Array.isArray(window.danhMucSize) || !window.danhMucSize.length) return false;
+
+    const sizes = window.danhMucSize.map(s => normSize(s));
+    return sizes.includes(size);
+  }
+
+  function itemReady(item){
+    const masp = normMasp(item?.masp);
+    const size = normSize(item?.size);
+    return baseDomReady() && productReady(masp) && sizeCatalogReady(size);
   }
 
   function findSaleRow(maspRaw, sizeRaw){
@@ -89,14 +116,9 @@
       key:"Enter", code:"Enter", keyCode:13, which:13,
       bubbles:true, cancelable:true
     }));
-    await sleep(180);
-  }
 
-  async function waitStableReady(){
-    const ok = await waitUntil(() => ready(), 5000, 60);
-    if(!ok) return false;
-    await sleep(80);
-    return ready();
+    // Chỉ chờ nhẹ cho luồng khách hàng; không ảnh hưởng hàng nếu payload không có khách.
+    await sleep(180);
   }
 
   function dispatchEnter(el){
@@ -106,11 +128,30 @@
     }));
   }
 
+  function clearEntryInputs(){
+    try{
+      const maspEl = document.getElementById("masp");
+      const sizeEl = document.getElementById("size");
+      if(maspEl) maspEl.value = "";
+      if(sizeEl) sizeEl.value = "";
+    }catch(_){}
+  }
+
   async function addOne(item){
     const masp = normMasp(item?.masp);
     const size = normSize(item?.size);
     const qty = Math.max(1, parseInt(item?.soluong || 1, 10) || 1);
     if(!masp) return;
+
+    // Nếu tín hiệu storage + BroadcastChannel cùng tới, không thêm trùng.
+    if(findSaleRow(masp, size)) return;
+
+    // CHỐT ỔN ĐỊNH: đợi đúng mã SP và đúng size đã thực sự có trong cache trang bán.
+    const ready = await waitUntil(() => itemReady(item), 12000, 60);
+    if(!ready){
+      const sizeMsg = size ? ` / size ${size}` : "";
+      throw new Error(`Trang bán chưa tải xong danh mục cho ${masp}${sizeMsg}. Hãy thử lại sau khi trang bán hiện đầy đủ.`);
+    }
 
     const maspEl = document.getElementById("masp");
     const slEl = document.getElementById("soluong");
@@ -119,41 +160,41 @@
       throw new Error("Không tìm thấy ô mã/size/số lượng trên trang bán.");
     }
 
-    // Tránh thêm trùng nếu cùng payload bị phát tín hiệu hai đường (storage + BroadcastChannel).
-    if(findSaleRow(masp, size)) return;
-
-    // Dọn giá trị size cũ trên form. KHÔNG dispatch sự kiện size.
-    // hoadon.js sẽ tự điền size từ hậu tố _NN.
+    // Dọn size cũ nhưng KHÔNG phát event ở ô size.
     sizeEl.value = "";
 
     slEl.value = String(qty);
     slEl.dispatchEvent(new Event("input", {bubbles:true}));
     slEl.dispatchEvent(new Event("change", {bubbles:true}));
 
-    // CHỐT: hoadon.js hiện hỗ trợ cú pháp MASP_39 và sẽ tự thêm đúng size.
+    // hoadon.js hỗ trợ MASP_39: tự tách mã, tự xác nhận size, tự thêm bảng.
     const codeToSend = size ? `${masp}_${size}` : masp;
     maspEl.value = codeToSend;
     maspEl.dispatchEvent(new Event("input", {bubbles:true}));
     maspEl.focus();
-    maspEl.select?.();
 
-    // Chỉ Enter MỘT LẦN. Tuyệt đối không Enter #size lần nữa.
+    // Cho DOM/input handler nhận giá trị trước 1 nhịp ngắn, đặc biệt trên Safari/iOS.
+    await sleep(40);
+
+    // Enter DUY NHẤT tại ô mã.
     dispatchEnter(maspEl);
 
-    // Chờ bảng bán thực sự có đúng mã + size rồi mới coi là thành công.
+    // Chờ đúng dòng xuất hiện thật trong bảng. Mobile/Safari có thể chậm khi vừa chuyển tab.
     const added = await waitUntil(
       () => findSaleRow(masp, size),
-      3000,
-      50
+      6000,
+      60
     );
 
     if(!added){
-      throw new Error(`Đã gửi ${codeToSend} nhưng chưa thấy đúng mã + size trong bảng bán.`);
+      // Dọn mã hậu tố còn sót để người dùng không thấy trạng thái nửa chừng.
+      if(normMasp(maspEl.value) === normMasp(codeToSend)) maspEl.value = "";
+      throw new Error(`Đã gửi ${codeToSend} nhưng trang bán chưa xác nhận được dòng mã + size.`);
     }
   }
 
   async function consume(){
-    if(running || !ready()) return;
+    if(running) return;
 
     const payload = getPayload();
     if(!payload || payload.id === lastId) return;
@@ -161,8 +202,9 @@
 
     running = true;
     try{
-      const stable = await waitStableReady();
-      if(!stable) throw new Error("Trang bán chưa sẵn sàng nhận dữ liệu.");
+      // Chờ DOM cơ bản; item cụ thể sẽ tự chờ catalog mã + size của chính nó.
+      const domReady = await waitUntil(() => baseDomReady(), 12000, 60);
+      if(!domReady) throw new Error("Trang bán chưa sẵn sàng nhận dữ liệu.");
 
       await prefillCustomer(payload);
 
@@ -192,10 +234,10 @@
     }catch(e){
       console.error("[COPILOT BRIDGE] lỗi nhận dữ liệu:", e);
 
-      // QUAN TRỌNG: không giữ pending để timer/focus tự thử lặp và sinh nhiều alert.
-      // Lần bấm “Sang bán” tiếp theo sẽ tạo payload ID mới và thử lại sạch sẽ.
+      // Dừng sạch payload lỗi, tránh focus/timer thử lại và tạo trạng thái một lần lỗi - một lần đúng.
       lastId = payload.id;
       try { localStorage.removeItem(KEY); } catch (_) {}
+      clearEntryInputs();
 
       alert("❌ Không nhận được dữ liệu từ Trợ lý bán hàng: " + (e?.message || e));
     }finally{
@@ -223,7 +265,7 @@
     if(document.visibilityState === "visible") setTimeout(consume, 40);
   });
 
-  // Fallback nhẹ. Không gây thử lặp payload lỗi vì lỗi sẽ xóa KEY + ghi lastId.
+  // Fallback chỉ để bắt payload bị lỡ event. lastId + xóa KEY ngăn chạy lặp payload lỗi.
   setInterval(consume, 1000);
   setTimeout(consume, 150);
 
