@@ -255,7 +255,7 @@
         masp?.select?.();
       }catch(_){}
 
-      alert(`✅ Đã nhận ${payload.items.length} sản phẩm từ Trợ lý bán hàng.\nĐã xác nhận mã + size trong bảng bán.`);
+      //alert(`✅ Đã nhận ${payload.items.length} sản phẩm từ Trợ lý bán hàng.\nĐã xác nhận mã + size trong bảng bán.`);
     }catch(e){
       console.error("[COPILOT BRIDGE] lỗi nhận dữ liệu:", e);
       alert("❌ Không nhận được dữ liệu từ Trợ lý bán hàng: " + (e?.message || e));
