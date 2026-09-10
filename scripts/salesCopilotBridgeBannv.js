@@ -243,6 +243,6 @@
 
   window.SalesCopilotBridge = {
     consume,
-    version: "4.0-direct-api"
+    version: "4.1-direct-api-stale-cache-safe"
   };
 })();
