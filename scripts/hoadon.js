@@ -1145,21 +1145,52 @@ window.hoadonNhanTuSalesCopilot = async function (payload = {}) {
         window.sanPhamData = {};
     }
 
-    // Xác nhận mã trước để lỗi thật được trả về bridge, không bật alert trong luồng bàn phím.
+    // Xác nhận mã dành RIÊNG cho Sales Copilot.
+    // Tab bán có thể đã mở lâu nên cache sanPhamData có thể cũ.
+    // 1) Tìm exact key trước; 2) fallback tìm key sau khi chuẩn hoá;
+    // 3) nếu chưa có thì fetch 1 bản ghi, KHÔNG dùng .single() để tránh lỗi khi dữ liệu có bản ghi trùng.
     let sp = window.sanPhamData?.[masp];
+
+    if (!sp && window.sanPhamData && typeof window.sanPhamData === "object") {
+        const matchedKey = Object.keys(window.sanPhamData).find(
+            k => layMaspGoc(k) === masp
+        );
+        if (matchedKey) sp = window.sanPhamData[matchedKey];
+    }
+
     if (!sp) {
         try {
-            const { data, error } = await supabase
+            let { data, error } = await supabase
                 .from("dmhanghoa")
                 .select("*")
                 .eq("masp", masp)
-                .single();
+                .limit(1);
 
-            if (error || !data) {
-                return { ok: false, error: `Mã sản phẩm ${masp} không tồn tại.` };
+            // Nếu DB lưu khác hoa/thường, thử lại case-insensitive một lần.
+            if (!error && (!Array.isArray(data) || !data.length)) {
+                const retry = await supabase
+                    .from("dmhanghoa")
+                    .select("*")
+                    .ilike("masp", masp)
+                    .limit(1);
+                data = retry.data;
+                error = retry.error;
             }
-            sp = data;
-            window.sanPhamData[masp] = data;
+
+            if (error) {
+                return {
+                    ok: false,
+                    error: `Không tải được mã ${masp} từ danh mục: ${error.message || error}`
+                };
+            }
+
+            sp = Array.isArray(data) ? data[0] : null;
+            if (!sp) {
+                return { ok: false, error: `Mã sản phẩm ${masp} không có trong danh mục.` };
+            }
+
+            // Bổ sung đúng mã vào cache của tab cũ để các lần sau chạy tức thì.
+            window.sanPhamData[masp] = sp;
         } catch (e) {
             return { ok: false, error: `Không tải được mã ${masp}: ${e?.message || e}` };
         }
