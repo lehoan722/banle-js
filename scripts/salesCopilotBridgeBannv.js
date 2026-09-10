@@ -1,7 +1,7 @@
 // scripts/salesCopilotBridgeBannv.js
-// Cầu nối V3.2 STABLE: nhận masp + size + soluong từ Tìm kiếm nhanh/Sales Copilot.
-// Chờ đầy đủ catalog sản phẩm + danh mục size trước khi gửi MASP_SIZE và Enter MỘT LẦN.
-// Mục tiêu: loại bỏ lỗi ngẫu nhiên khi trang bán đã có handler Enter nhưng dm_size chưa tải xong.
+// Cầu nối V3.3 STABLE: nhận masp + size + soluong từ Tìm kiếm nhanh/Sales Copilot.
+// Chờ DOM + catalog sản phẩm; KHÔNG chờ dm_size tải xong.
+// Trước Enter, đảm bảo size hợp lệ đang gửi có trong window.danhMucSize để hoadon.js nhận chắc hậu tố MASP_SIZE.
 // KHÔNG lưu hóa đơn. Chỉ đưa hàng vào đúng luồng nhập mã hiện tại của bannv.
 
 (function(){
@@ -70,22 +70,26 @@
     );
   }
 
-  function sizeCatalogReady(sizeRaw){
+  function ensureSizeForBridge(sizeRaw){
     const size = normSize(sizeRaw);
     if(!size) return true;
 
-    // hoadon.js chỉ công nhận hậu tố _NN khi size đã tồn tại trong window.danhMucSize.
-    // Vì vậy KHÔNG được Enter trước khi danh mục này tải xong.
-    if(!Array.isArray(window.danhMucSize) || !window.danhMucSize.length) return false;
+    // Trang Tìm kiếm nhanh hiện dùng dải size 38–46.
+    // Chỉ bridge những size số hợp lệ này; không làm bẩn catalog bằng dữ liệu lạ.
+    if(!/^(38|39|40|41|42|43|44|45|46)$/.test(size)) return false;
 
-    const sizes = window.danhMucSize.map(s => normSize(s));
-    return sizes.includes(size);
+    // hoadon.js ưu tiên window.danhMucSize nếu biến này là Array.
+    // Khi dm_size của main.js chưa tải xong, mảng có thể đang rỗng => hậu tố _40 bị coi là một phần MASP.
+    // Chủ động thêm đúng size cần gửi để loại bỏ race-condition đó.
+    if(!Array.isArray(window.danhMucSize)) window.danhMucSize = [];
+    const current = window.danhMucSize.map(s => normSize(s));
+    if(!current.includes(size)) window.danhMucSize.push(size);
+    return true;
   }
 
   function itemReady(item){
     const masp = normMasp(item?.masp);
-    const size = normSize(item?.size);
-    return baseDomReady() && productReady(masp) && sizeCatalogReady(size);
+    return baseDomReady() && productReady(masp);
   }
 
   function findSaleRow(maspRaw, sizeRaw){
@@ -146,11 +150,15 @@
     // Nếu tín hiệu storage + BroadcastChannel cùng tới, không thêm trùng.
     if(findSaleRow(masp, size)) return;
 
-    // CHỐT ỔN ĐỊNH: đợi đúng mã SP và đúng size đã thực sự có trong cache trang bán.
-    const ready = await waitUntil(() => itemReady(item), 12000, 60);
+    // Chỉ chờ DOM + đúng mã SP trong catalog. Không phụ thuộc tiến độ tải dm_size.
+    const ready = await waitUntil(() => itemReady(item), 15000, 60);
     if(!ready){
-      const sizeMsg = size ? ` / size ${size}` : "";
-      throw new Error(`Trang bán chưa tải xong danh mục cho ${masp}${sizeMsg}. Hãy thử lại sau khi trang bán hiện đầy đủ.`);
+      throw new Error(`Trang bán chưa tải xong dữ liệu sản phẩm ${masp}. Hãy thử lại khi trang bán hiện đầy đủ.`);
+    }
+
+    // Đảm bảo hoadon.js chắc chắn nhận được hậu tố _SIZE ngay tại thời điểm Enter.
+    if(size && !ensureSizeForBridge(size)){
+      throw new Error(`Size ${size} không hợp lệ cho cầu nối (chỉ hỗ trợ 38–46).`);
     }
 
     const maspEl = document.getElementById("masp");
