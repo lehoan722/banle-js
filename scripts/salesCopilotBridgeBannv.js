@@ -1,8 +1,7 @@
 // scripts/salesCopilotBridgeBannv.js
-// Cầu nối V3: nhận masp + size + soluong từ Tìm kiếm nhanh/Sales Copilot.
-// Tối ưu tốc độ + đảm bảo đúng SIZE bằng đúng luồng của trang bán:
-// MASP -> Enter -> SIZE -> Enter -> xác nhận dòng đã xuất hiện trong bảng.
-// KHÔNG lưu hóa đơn. Chỉ đưa hàng vào đúng luồng nhập mã hiện tại của bannv.
+// Cầu nối V4 DIRECT API: nhận masp + size + soluong từ Tìm kiếm nhanh/Sales Copilot.
+// KHÔNG giả lập Enter ở ô mã/size. Gọi trực tiếp API do hoadon.js cung cấp.
+// Mục tiêu: loại bỏ race-condition, cảnh báo giả và retry trùng sản phẩm.
 
 (function(){
   "use strict";
@@ -16,7 +15,6 @@
   let running = false;
   let lastId = "";
 
-  // Giúp Tìm kiếm nhanh nhận diện/tái sử dụng đúng tab bán đã mở sẵn.
   try { window.name = WINDOW_NAME; } catch (_) {}
 
   let bridgeChannel = null;
@@ -38,7 +36,7 @@
     return text(v).toUpperCase();
   }
 
-  async function waitUntil(check, timeout=1500, interval=40){
+  async function waitUntil(check, timeout=8000, interval=50){
     const started = Date.now();
     while(Date.now() - started < timeout){
       try{
@@ -58,7 +56,7 @@
       if(!p || !Array.isArray(p.items) || !p.items.length) return null;
       return p;
     }catch(e){
-      console.warn("[COPILOT BRIDGE] payload lỗi", e);
+      console.warn("[COPILOT BRIDGE V4] payload lỗi", e);
       return null;
     }
   }
@@ -71,18 +69,12 @@
     };
   }
 
-  function ready(){
+  function pageBasicReady(){
     const { maspEl, slEl, sizeEl } = getControls();
-    return !!(
-      maspEl &&
-      slEl &&
-      sizeEl &&
-      window.sanPhamData &&
-      Object.keys(window.sanPhamData).length
-    );
+    return !!(maspEl && slEl && sizeEl);
   }
 
-  // Xác nhận bằng chính bảng bán, không chỉ dựa vào timer.
+  // Chỉ dùng để quan sát UI sau khi API đã xác nhận state; không dùng để quyết định retry.
   function findSaleRow(maspRaw, sizeRaw){
     const masp = normMasp(maspRaw);
     const size = normSize(sizeRaw);
@@ -106,6 +98,8 @@
     const el = document.getElementById("makh");
     if(!el) return;
 
+    // Phần khách hàng vẫn dùng luồng Enter hiện hữu của dmkhachhang_diem.js.
+    // Nó tách biệt với luồng thêm sản phẩm và không được retry.
     el.value = makh;
     el.dispatchEvent(new Event("input", { bubbles:true }));
     el.focus();
@@ -113,112 +107,58 @@
       key:"Enter", code:"Enter", keyCode:13, which:13,
       bubbles:true, cancelable:true
     }));
-
-    // Chỉ chờ ngắn để handler khách hàng kịp hoàn tất.
-    await sleep(180);
+    await sleep(120);
   }
 
-  async function waitStableReady(){
-    // Nếu trang đã mở sẵn, thường trả về gần như ngay lập tức.
-    const ok = await waitUntil(() => ready(), 5000, 60);
-    if(!ok) return false;
-
-    // Một nhịp nhỏ để các listener cuối cùng gắn xong; bỏ chờ cố định 700ms cũ.
-    await sleep(80);
-    return ready();
-  }
-
-  function dispatchEnter(el){
-    el.dispatchEvent(new KeyboardEvent("keydown", {
-      key:"Enter",
-      code:"Enter",
-      keyCode:13,
-      which:13,
-      bubbles:true,
-      cancelable:true
-    }));
+  async function getDirectApi(){
+    return await waitUntil(
+      () => typeof window.hoadonNhanTuSalesCopilot === "function"
+        ? window.hoadonNhanTuSalesCopilot
+        : null,
+      12000,
+      60
+    );
   }
 
   async function addOne(item){
     const masp = normMasp(item?.masp);
     const size = normSize(item?.size);
     const qty = Math.max(1, parseInt(item?.soluong || 1, 10) || 1);
-    if(!masp) return;
 
-    const { maspEl, slEl, sizeEl } = getControls();
-    if(!maspEl || !slEl || !sizeEl){
-      throw new Error("Không tìm thấy ô mã/size/số lượng trên trang bán.");
+    if(!masp) throw new Error("Thiếu mã sản phẩm từ Trợ lý bán hàng.");
+
+    const api = await getDirectApi();
+    if(!api){
+      throw new Error("Module hóa đơn chưa sẵn sàng nhận dữ liệu trực tiếp. Hãy tải lại trang bán một lần.");
     }
 
-    // Nếu vì một tín hiệu lặp mà đúng dòng đã có sẵn, không thêm lần hai.
-    if(findSaleRow(masp, size)) return;
+    // Chỉ gọi MỘT LẦN. Không Enter mã, không Enter size, không retry bằng bàn phím.
+    const result = await api({
+      masp,
+      size,
+      soluong: qty,
+      source: "sales-copilot"
+    });
 
-    // 1) Số lượng trước.
-    slEl.value = String(qty);
-    slEl.dispatchEvent(new Event("input", { bubbles:true }));
-    slEl.dispatchEvent(new Event("change", { bubbles:true }));
-
-    // 2) Nhập MÃ GỐC, không ghép MASP_SIZE nữa.
-    // Việc chọn size được thực hiện ở đúng ô #size sau khi trang bán xử lý mã.
-    maspEl.value = masp;
-    maspEl.dispatchEvent(new Event("input", { bubbles:true }));
-    maspEl.dispatchEvent(new Event("change", { bubbles:true }));
-    maspEl.focus();
-    maspEl.select?.();
-    dispatchEnter(maspEl);
-
-    // 3) Chờ luồng bán xử lý mã và chuyển sang ô size.
-    // Nếu tab/page rất nhanh thì chỉ mất vài chục ms; fallback tối đa 1.4s.
-    await waitUntil(() => {
-      if(findSaleRow(masp, size)) return "added";
-      if(document.activeElement === sizeEl) return "size-focus";
-      return null;
-    }, 1400, 35);
-
-    if(findSaleRow(masp, size)) return;
-
-    // 4) Điền SIZE sau khi mã đã được xử lý, rồi Enter tại chính ô size.
-    if(size){
-      sizeEl.value = size;
-      sizeEl.dispatchEvent(new Event("input", { bubbles:true }));
-      sizeEl.dispatchEvent(new Event("change", { bubbles:true }));
-      sizeEl.focus();
-      sizeEl.select?.();
-      dispatchEnter(sizeEl);
+    if(!result || result.ok !== true){
+      throw new Error(result?.error || `Không thêm được ${masp}/${size || "0"}.`);
     }
 
-    // 5) Chờ đúng MASP + SIZE xuất hiện trong bảng.
-    // Đây là điều kiện xác nhận thực tế, thay cho sleep(900) cũ.
-    const added = await waitUntil(
-      () => findSaleRow(masp, size),
-      2200,
-      45
-    );
-
-    if(!added){
-      // Một lần retry nhẹ cho trường hợp handler của trang bán vừa bận lúc Enter đầu.
-      if(size){
-        sizeEl.value = size;
-        sizeEl.dispatchEvent(new Event("input", { bubbles:true }));
-        sizeEl.dispatchEvent(new Event("change", { bubbles:true }));
-        sizeEl.focus();
-        dispatchEnter(sizeEl);
-      }
-
-      const retryAdded = await waitUntil(
-        () => findSaleRow(masp, size),
-        1200,
-        50
+    // API đã xác nhận trực tiếp trên state hóa đơn. Chờ DOM render rất ngắn chỉ để UI kịp hiện.
+    const row = await waitUntil(() => findSaleRow(masp, size), 1800, 45);
+    if(!row){
+      console.warn(
+        "[COPILOT BRIDGE V4] State đã xác nhận nhưng DOM chưa render kịp:",
+        { masp, size, result }
       );
-
-      if(!retryAdded){
-        throw new Error(`Đã nhận mã ${masp} nhưng chưa xác nhận được size ${size || "-"} trong bảng bán.`);
-      }
+      // KHÔNG coi đây là lỗi và tuyệt đối KHÔNG gọi lại API, tránh cộng sản phẩm hai lần.
     }
+
+    return result;
   }
 
   async function consume(){
-    if(running || !ready()) return;
+    if(running) return;
 
     const payload = getPayload();
     if(!payload || payload.id === lastId) return;
@@ -226,8 +166,16 @@
 
     running = true;
     try{
-      const stable = await waitStableReady();
-      if(!stable) throw new Error("Trang bán chưa sẵn sàng nhận dữ liệu.");
+      const basicReady = await waitUntil(() => pageBasicReady(), 10000, 60);
+      if(!basicReady){
+        throw new Error("Trang bán chưa tạo xong các ô mã/size/số lượng.");
+      }
+
+      // Chờ API hoadon.js trước khi đụng vào dữ liệu sản phẩm.
+      const apiReady = await getDirectApi();
+      if(!apiReady){
+        throw new Error("Không tìm thấy API nhận dữ liệu của module hóa đơn. Kiểm tra đã cập nhật hoadon.js V4 hay chưa.");
+      }
 
       await prefillCustomer(payload);
 
@@ -235,14 +183,15 @@
         await addOne(item);
       }
 
-      // Chỉ ACK sau khi tất cả dòng đã thực sự được xác nhận trong bảng bán.
+      // Chỉ ACK khi hoadon.js đã xác nhận tất cả sản phẩm trong state.
       lastId = payload.id;
       localStorage.removeItem(KEY);
 
       const ack = {
         id: payload.id,
         consumed_at: new Date().toISOString(),
-        count: payload.items.length
+        count: payload.items.length,
+        mode: "direct-api-v4"
       };
 
       localStorage.setItem(ACK_KEY, JSON.stringify(ack));
@@ -250,27 +199,26 @@
 
       try{
         window.focus();
-        const masp = document.getElementById("masp");
-        masp?.focus();
-        masp?.select?.();
+        document.getElementById("masp")?.focus();
       }catch(_){}
 
-      //alert(`✅ Đã nhận ${payload.items.length} sản phẩm từ Trợ lý bán hàng.\nĐã xác nhận mã + size trong bảng bán.`);
     }catch(e){
-      console.error("[COPILOT BRIDGE] lỗi nhận dữ liệu:", e);
+      console.error("[COPILOT BRIDGE V4] lỗi nhận dữ liệu:", e);
+
+      // Chặn vòng lặp focus/visibility/setInterval lặp lại cùng payload gây nhiều cảnh báo.
+      lastId = payload.id || lastId;
+      try { localStorage.removeItem(KEY); } catch (_) {}
+
       alert("❌ Không nhận được dữ liệu từ Trợ lý bán hàng: " + (e?.message || e));
-      // Không xóa payload để khi tab được focus/visible hoặc người dùng thử lại vẫn còn dữ liệu.
     }finally{
       running = false;
     }
   }
 
-  // Tab khác ghi localStorage.
   window.addEventListener("storage", (e) => {
-    if(e.key === KEY && e.newValue) setTimeout(consume, 40);
+    if(e.key === KEY && e.newValue) setTimeout(consume, 20);
   });
 
-  // BroadcastChannel: đường nhanh nhất khi tab bán vẫn đang hoạt động nền.
   if(bridgeChannel){
     bridgeChannel.onmessage = (event) => {
       const message = event?.data;
@@ -284,15 +232,17 @@
     };
   }
 
-  // iOS/Safari có thể tạm dừng tab nền; khi tab được mở lại thì nhận ngay.
+  // iOS/Safari có thể ngủ tab nền. Khi quay lại, consume cùng payload chỉ chạy một lần.
   window.addEventListener("focus", () => setTimeout(consume, 20));
   document.addEventListener("visibilitychange", () => {
     if(document.visibilityState === "visible") setTimeout(consume, 20);
   });
 
-  // Fallback nhẹ; giảm từ 1000ms xuống 350ms để tab desktop bắt nhanh hơn.
-  setInterval(consume, 350);
-  setTimeout(consume, 120);
+  setInterval(consume, 500);
+  setTimeout(consume, 100);
 
-  window.SalesCopilotBridge = { consume };
+  window.SalesCopilotBridge = {
+    consume,
+    version: "4.0-direct-api"
+  };
 })();
