@@ -789,7 +789,7 @@ function tachMaspVaSizeHauTo(raw) {
 }
 
 // === REPLACE THIS WHOLE FUNCTION IN hoadon.js ===
-async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
+async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, options = {}) {
 
     // --- [NEW SIZE SUFFIX] Tách hậu tố _NN (ví dụ abc12-dg38_38) ---
     // Lấy danh sách size hợp lệ: ưu tiên window.danhMucSize, fallback 38–46
@@ -992,8 +992,9 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
         const sizeEl = document.getElementById("size");
         const sizeChosen = String(typedSize).trim();
         const nhapSizeMode = document.getElementById("nhapsize")?.checked === true;
+        const forceExactSize = options?.forceExactSize === true;
 
-        if (requireManagedSizeNow) {
+        if (requireManagedSizeNow || forceExactSize) {
             // → Hàng QUẢN-SIZE: thêm đúng size người dùng chọn
             if (sizeEl) sizeEl.value = sizeChosen;
             if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
@@ -1101,6 +1102,138 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh) {
 
     return true;
 }
+
+
+// =======================================================
+// SALES COPILOT DIRECT API
+// Giao tiếp trực tiếp với salesCopilotBridgeBannv.js.
+// KHÔNG giả lập phím Enter, tránh race-condition giữa bridge và chuyenFocus().
+// =======================================================
+window.hoadonNhanTuSalesCopilot = async function (payload = {}) {
+    const masp = layMaspGoc(payload?.masp || "");
+    const size = String(payload?.size || "").trim().toUpperCase();
+    const soluong = Math.max(1, parseInt(payload?.soluong || 1, 10) || 1);
+
+    if (!masp) {
+        return { ok: false, error: "Thiếu mã sản phẩm." };
+    }
+
+    const maspEl = document.getElementById("masp");
+    const sizeEl = document.getElementById("size");
+    const slEl = document.getElementById("soluong");
+
+    if (!maspEl || !sizeEl || !slEl) {
+        return { ok: false, error: "Trang bán chưa sẵn sàng nhận mã/size/số lượng." };
+    }
+
+    // Sales Copilot hiện truyền size chuẩn 38–46. Nếu có size thì kiểm tra ngay tại API,
+    // không để chuyenFocus()/themVaoBang phát alert lặp.
+    if (size) {
+        const allowed = new Set(["38", "39", "40", "41", "42", "43", "44", "45", "46"]);
+        if (!allowed.has(size)) {
+            return { ok: false, error: `Size ${size} không hợp lệ (chỉ nhận 38–46).` };
+        }
+
+        // Bảo đảm parser hậu tố _NN luôn nhận size này kể cả dm_size đang tải nền.
+        if (!Array.isArray(window.danhMucSize)) window.danhMucSize = [];
+        const dsUC = window.danhMucSize.map(x => String(x || "").trim().toUpperCase());
+        if (!dsUC.includes(size)) window.danhMucSize.push(size);
+    }
+
+    // Bảo đảm cache danh mục tồn tại trước khi xuLyMaSanPham có thể cache một mã vừa fetch.
+    if (!window.sanPhamData || typeof window.sanPhamData !== "object") {
+        window.sanPhamData = {};
+    }
+
+    // Xác nhận mã trước để lỗi thật được trả về bridge, không bật alert trong luồng bàn phím.
+    let sp = window.sanPhamData?.[masp];
+    if (!sp) {
+        try {
+            const { data, error } = await supabase
+                .from("dmhanghoa")
+                .select("*")
+                .eq("masp", masp)
+                .single();
+
+            if (error || !data) {
+                return { ok: false, error: `Mã sản phẩm ${masp} không tồn tại.` };
+            }
+            sp = data;
+            window.sanPhamData[masp] = data;
+        } catch (e) {
+            return { ok: false, error: `Không tải được mã ${masp}: ${e?.message || e}` };
+        }
+    }
+
+    // Ghi form một lần để tái sử dụng toàn bộ logic giá/km/vị trí đang có trong xuLyMaSanPham.
+    slEl.value = String(soluong);
+    sizeEl.value = size || "";
+    maspEl.value = size ? `${masp}_${size}` : masp;
+
+    // Chụp số lượng trước khi thêm để xác nhận chính xác sau lời gọi trực tiếp.
+    const dataBefore = _data();
+    const itemBefore = dataBefore?.[masp];
+    let qtyBefore = 0;
+    if (itemBefore) {
+        if (size) {
+            const idx = (itemBefore.sizes || []).findIndex(x => String(x || "").trim().toUpperCase() === size);
+            if (idx >= 0) qtyBefore = parseInt(itemBefore.soluongs?.[idx] || 0, 10) || 0;
+        } else {
+            qtyBefore = parseInt(itemBefore.tong || 0, 10) || 0;
+        }
+    }
+
+    const quanLySizeTheoGia = document.getElementById("quanlysizetheogia")?.checked === true;
+    const size45 = document.getElementById("size45")?.checked === true;
+    const nhapNhanh = document.getElementById("nhapnhanh")?.checked === true;
+
+    try {
+        const processed = await xuLyMaSanPham(
+            quanLySizeTheoGia,
+            maspEl.value,
+            size45,
+            nhapNhanh,
+            { forceExactSize: !!size, source: "sales-copilot" }
+        );
+
+        if (!processed) {
+            return { ok: false, error: `Không xử lý được mã ${masp}.` };
+        }
+    } catch (e) {
+        return { ok: false, error: e?.message || String(e) };
+    }
+
+    // Xác nhận ngay trên state hóa đơn, không phụ thuộc tốc độ render DOM.
+    const dataAfter = _data();
+    const itemAfter = dataAfter?.[masp];
+    if (!itemAfter) {
+        return { ok: false, error: `Đã xử lý ${masp} nhưng chưa thấy sản phẩm trong dữ liệu bán.` };
+    }
+
+    let qtyAfter = 0;
+    if (size) {
+        const idx = (itemAfter.sizes || []).findIndex(x => String(x || "").trim().toUpperCase() === size);
+        if (idx < 0) {
+            return { ok: false, error: `Đã nhận mã ${masp} nhưng chưa có size ${size}.` };
+        }
+        qtyAfter = parseInt(itemAfter.soluongs?.[idx] || 0, 10) || 0;
+    } else {
+        qtyAfter = parseInt(itemAfter.tong || 0, 10) || 0;
+    }
+
+    if (qtyAfter < qtyBefore + soluong) {
+        return { ok: false, error: `Số lượng ${masp}/${size || "0"} chưa tăng đúng.` };
+    }
+
+    return {
+        ok: true,
+        masp,
+        size: size || "0",
+        soluong,
+        qtyBefore,
+        qtyAfter
+    };
+};
 
 export function themVaoBang(forcedSize = null, opts = {}) {
     // luôn đóng popup ngay khi bắt đầu thêm
