@@ -757,90 +757,161 @@
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
-        khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
-            tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs1", // API backend mới
+        const PAGE_BRANCH = "cs1";
+        const QUICK_PENDING_KEY = "sales_copilot_pending_v1";
+        const QUICK_WINDOW_NAME = `BAN_NV_HOAN_TUYET_${PAGE_BRANCH.toUpperCase()}`;
+        const QUICK_MAX_AGE_MS = 90 * 1000;
 
-            // Hàm được gọi khi đăng nhập thành công
-            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
-                // 1. Lưu thông tin vào localStorage giống logic cũ
-                if (diadiem) {
-                    localStorage.setItem("diadiem", diadiem);
-                }
-                if (session && session.access_token) {
-                    localStorage.setItem("supabase_access_token", session.access_token);
-                }
-                localStorage.setItem("manv", nhanvien.manv);
-                localStorage.setItem("tennv", nhanvien.tennv);
-                localStorage.setItem(
-                    "quyen_sua_hoadon",
-                    nhanvien.sua_hoadon ? "true" : "false"
-                );
+        function boolLS(key) {
+            return String(localStorage.getItem(key) || "").toLowerCase() === "true";
+        }
 
-                // 🔴 THÊM 3 DÒNG NÀY
-                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
-                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
-                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
+        function getQuickSearchHandoff() {
+            try {
+                // Chỉ chấp nhận tab được Tìm kiếm nhanh/Sales Copilot mở bằng đúng window name.
+                if (String(window.name || "") !== QUICK_WINDOW_NAME) return null;
 
-                // 2. Cho các script khác trên trang dùng
-                window.diadiem = diadiem;
-                window.dangLuu = false;
+                const raw = localStorage.getItem(QUICK_PENDING_KEY);
+                if (!raw) return null;
 
-                // 3. Cập nhật lên giao diện bán hàng
-                const manvInput = document.getElementById("manv");
-                const tennvInput = document.getElementById("tennv");
-                if (manvInput) {
-                    manvInput.value = nhanvien.manv;
-                    manvInput.readOnly = true;
-                }
-                if (tennvInput) {
-                    tennvInput.value = nhanvien.tennv;
-                    tennvInput.readOnly = true;
-                }
+                const payload = JSON.parse(raw);
+                if (!payload || !payload.id || !Array.isArray(payload.items) || !payload.items.length) return null;
 
-                // 4. Cập nhật quyền giao diện nếu có hàm này
-                if (typeof window.capNhatQuyenGiaoDien === "function") {
-                    window.capNhatQuyenGiaoDien();
-                }
+                const payloadBranch = String(payload.diadiem || "").trim().toLowerCase();
+                if (payloadBranch !== PAGE_BRANCH) return null;
 
-                // 5. Import và khởi tạo logic chính của trang (giống code cũ)
-                //    ✅ QUAN TRỌNG: phải `await` và `return false` nếu bị chặn vị trí,
-                //    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
-                let okInit = true;
-                try {
-                    const module = await import("./scripts/main.js?v=75");
-                    if (typeof module.khoiTaoUngDung === "function") {
-                        okInit = await module.khoiTaoUngDung();
-                    }
-                } catch (e) {
-                    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
-                    alert("Không tải được module main.js. Vui lòng tải lại trang.");
-                    return false;
-                }
-                if (okInit === false) return false;
-                // 6. Chọn tab & checkbox mặc định giống code cũ
-                if (typeof window.switchTab === "function") {
-                    window.switchTab("thongtin");
-                }
-                const size45 = document.getElementById("size45");
-                if (size45) size45.checked = true;
+                const created = Date.parse(payload.created_at || "");
+                if (!Number.isFinite(created)) return null;
+                if (Date.now() - created < 0 || Date.now() - created > QUICK_MAX_AGE_MS) return null;
 
-                const qlNhom = document.getElementById("quanlysizetheonhom");
-                if (qlNhom) qlNhom.checked = true;
+                // Tìm kiếm nhanh bản thân đã yêu cầu đăng nhập.
+                // Chỉ dùng lại danh tính đang có, không cho anonymous bypass.
+                const manv = String(localStorage.getItem("manv") || "").trim();
+                const tennv = String(localStorage.getItem("tennv") || "").trim();
+                if (!manv) return null;
 
-                const nhapsize = document.getElementById("nhapsize");
-                if (nhapsize) nhapsize.checked = false;
-
-                // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
-                const appContainer = document.getElementById("app-container");
-                if (appContainer) appContainer.style.display = "";
-
-                const loginContainer = document.getElementById("login-container");
-                if (loginContainer) loginContainer.style.display = "none";
+                return { payload, manv, tennv };
+            } catch (e) {
+                console.warn("[BAN NV] Không đọc được handoff từ Tìm kiếm nhanh:", e);
+                return null;
             }
-        });
+        }
+
+        async function khoiTaoTrangBan(nhanvien, { diadiem, session } = {}) {
+            const cs = String(diadiem || PAGE_BRANCH).trim().toLowerCase() || PAGE_BRANCH;
+
+            // 1. Lưu/giữ thông tin phiên giống luồng đăng nhập cũ.
+            if (cs) {
+                localStorage.setItem("diadiem", cs);
+            }
+            if (session && session.access_token) {
+                localStorage.setItem("supabase_access_token", session.access_token);
+            }
+
+            if (nhanvien?.manv) localStorage.setItem("manv", nhanvien.manv);
+            if (nhanvien?.tennv != null) localStorage.setItem("tennv", nhanvien.tennv);
+
+            localStorage.setItem(
+                "quyen_sua_hoadon",
+                nhanvien?.sua_hoadon ? "true" : "false"
+            );
+            localStorage.setItem("is_admin", nhanvien?.is_admin ? "true" : "false");
+            localStorage.setItem("sua_hoadon", nhanvien?.sua_hoadon ? "true" : "false");
+            localStorage.setItem("xoa_hoadon", nhanvien?.xoa_hoadon ? "true" : "false");
+
+            // 2. Cho các script khác trên trang dùng.
+            window.diadiem = cs;
+            window.dangLuu = false;
+
+            // 3. Cập nhật giao diện.
+            const manvInput = document.getElementById("manv");
+            const tennvInput = document.getElementById("tennv");
+
+            if (manvInput) {
+                manvInput.value = nhanvien?.manv || "";
+                manvInput.readOnly = true;
+            }
+            if (tennvInput) {
+                tennvInput.value = nhanvien?.tennv || "";
+                tennvInput.readOnly = true;
+            }
+
+            if (typeof window.capNhatQuyenGiaoDien === "function") {
+                window.capNhatQuyenGiaoDien();
+            }
+
+            // 4. Import và khởi tạo logic chính của trang như cũ.
+            let okInit = true;
+            try {
+                const module = await import("./scripts/main.js?v=75");
+                if (typeof module.khoiTaoUngDung === "function") {
+                    okInit = await module.khoiTaoUngDung();
+                }
+            } catch (e) {
+                console.error("Lỗi import ./scripts/main.js:", e);
+                alert("Không tải được module main.js. Vui lòng tải lại trang.");
+                return false;
+            }
+
+            if (okInit === false) return false;
+
+            // 5. Thiết lập giao diện mặc định giống code cũ.
+            if (typeof window.switchTab === "function") {
+                window.switchTab("thongtin");
+            }
+
+            const size45 = document.getElementById("size45");
+            if (size45) size45.checked = true;
+
+            const qlNhom = document.getElementById("quanlysizetheonhom");
+            if (qlNhom) qlNhom.checked = true;
+
+            const nhapsize = document.getElementById("nhapsize");
+            if (nhapsize) nhapsize.checked = false;
+
+            const appContainer = document.getElementById("app-container");
+            if (appContainer) appContainer.style.display = "";
+
+            const loginContainer = document.getElementById("login-container");
+            if (loginContainer) loginContainer.style.display = "none";
+
+            return true;
+        }
+
+        const quickHandoff = getQuickSearchHandoff();
+
+        if (quickHandoff) {
+            // ĐƯỢC MỞ TỪ TÌM KIẾM NHANH:
+            // bỏ qua UI kiểm tra đăng nhập, dùng lại nhân viên đang đăng nhập ở Tìm kiếm nhanh.
+            const nv = {
+                manv: quickHandoff.manv,
+                tennv: quickHandoff.tennv,
+                is_admin: boolLS("is_admin"),
+                sua_hoadon: boolLS("sua_hoadon") || boolLS("quyen_sua_hoadon"),
+                xoa_hoadon: boolLS("xoa_hoadon")
+            };
+
+            const ok = await khoiTaoTrangBan(nv, {
+                diadiem: PAGE_BRANCH,
+                session: null
+            });
+
+            if (ok === false) {
+                console.warn("[BAN NV] Khởi tạo từ Tìm kiếm nhanh không thành công.");
+            }
+        } else {
+            // MỞ TRANG BÌNH THƯỜNG:
+            // giữ nguyên cơ chế đăng nhập cũ.
+            khoiTaoDangNhapDungChung({
+                macDinhDiaDiem: PAGE_BRANCH,
+                tuDongKhoaCoSo: true,
+                loginApiPath: "/api/login-cs1",
+
+                onLoginSuccess: async (nhanvien, { diadiem, session }) => {
+                    return await khoiTaoTrangBan(nhanvien, { diadiem, session });
+                }
+            });
+        }
     </script>
     <!-- het  Khung đăng nhập dùng module dùng chung -->
 
