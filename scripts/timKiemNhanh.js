@@ -2,10 +2,10 @@ import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
-import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=3";
+import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=31";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.15";
-console.log("[TimKiemNhanh] BUILD 1.2.15");
+window.TIM_KIEM_NHANH_BUILD = "1.2.16";
+console.log("[TimKiemNhanh] BUILD 1.2.16");
 
 const supabase = getSupabaseClient();
 
@@ -45,7 +45,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.15 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.16 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -341,6 +341,61 @@ async function enrichProductsAfterCheck(rows){
   return result;
 }
 
+
+async function fetchUnifiedDiscountRows(){
+  // Trang GIẢM GIÁ không được dùng p_mode="discount" của RPC cũ,
+  // vì RPC đó lọc cứng dmhanghoa.giam_gia_pct trước khi rule tự động được ghép.
+  // Ta lấy toàn bộ tập ứng viên "similar" theo đúng nhóm/size/form/màu,
+  // ghép ADMIN + RULE, rồi mới lọc giam_gia_hieu_luc > 0.
+  const allDiscounted=[];
+  let offset=0;
+  let total=0;
+  let guard=0;
+
+  do{
+    const p={...params(offset),p_mode:"similar",p_offset:offset,p_limit:40};
+    const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",p);
+    if(error)throw error;
+
+    const raw=(data||[]).map(x=>({...x}));
+    if(!raw.length)break;
+
+    total=Number(raw[0]?.total_count||total||0);
+
+    const xaMap=state.mainGroup==="GIAY_DEP"
+      ? await getXaHangSuggestions({
+          supabase,
+          masps:raw.map(x=>x.masp),
+          denNgay:businessDate()
+        }).catch(err=>{
+          console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
+          return new Map();
+        })
+      : new Map();
+
+    const merged=attachXaHangSuggestions(raw,xaMap);
+    merged.forEach(sp=>{
+      if(Number(sp.giam_gia_hieu_luc||0)>0)allDiscounted.push(sp);
+    });
+
+    offset+=raw.length;
+    guard++;
+  }while(offset<total && guard<30);
+
+  // Chỉ sau khi đã lọc ra hàng có giảm mới đọc tồn sau kiểm,
+  // tránh N+1 cho toàn bộ nhóm hàng.
+  const checked=await enrichProductsAfterCheck(allDiscounted);
+  const rows=checked.filter(sp=>stockFor(sp,state.size)>0);
+
+  rows.sort((a,b)=>{
+    const d=Number(b.giam_gia_hieu_luc||0)-Number(a.giam_gia_hieu_luc||0);
+    if(d)return d;
+    return String(a.masp||"").localeCompare(String(b.masp||""),"vi",{numeric:true});
+  });
+
+  return rows;
+}
+
 async function search(reset=true){
   if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",5000);return}
   if(!state.group||!state.size||state.loading)return;
@@ -350,6 +405,20 @@ async function search(reset=true){
   // Chỉ khi đã nhận/xử lý được bộ kết quả mới mới thay bảng đang xem.
   setLoading(true,reset);
   try{
+    if(state.mode==="discount"){
+      // Luôn dựng lại danh sách thống nhất ADMIN + RULE.
+      // Không phân trang theo RPC discount cũ vì nó chỉ biết dmhanghoa.giam_gia_pct.
+      const rows=await fetchUnifiedDiscountRows();
+      state.products=rows;
+      state.offset=rows.length;
+      state.total=rows.length;
+
+      renderProducts({reset:true,rows});
+      $("resultCount").textContent=`${rows.length}/${rows.length}`;
+      $("btnMore").style.display="none";
+      return;
+    }
+
     const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",params(off));if(error)throw error;
     const raw=(data||[]).map(x=>({...x}));
     const nextTotal=Number(raw[0]?.total_count||(reset?0:state.total)||0);
