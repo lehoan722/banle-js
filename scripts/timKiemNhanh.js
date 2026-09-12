@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=31";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.16";
-console.log("[TimKiemNhanh] BUILD 1.2.16");
+window.TIM_KIEM_NHANH_BUILD = "1.2.17";
+console.log("[TimKiemNhanh] BUILD 1.2.17");
 
 const supabase = getSupabaseClient();
 
@@ -45,7 +45,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.16 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.17 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -294,107 +294,123 @@ function normalizeSizeKey(value){
   const m=raw.match(/\d{1,2}/);return m?m[0]:raw;
 }
 
-async function fetchAfterCheckStockForMasp(maspRaw,{force=false}={}){
-  const masp=norm(maspRaw);if(!masp)return{};
-  const denNgay=businessDate();const key=`${masp}|${denNgay}`;
-  if(!force&&AFTER_CHECK_CACHE.has(key))return await AFTER_CHECK_CACHE.get(key);
-
-  const promise=(async()=>{
-    const [stockRes,checkRes]=await Promise.all([
-      supabase.rpc("xntnhanh",{p_masps:[masp],p_den_ngay:denNgay,p_tonghop_size:false}),
-      supabase.rpc("rpc_stockquick_kiemton",{p_masp:masp})
-    ]);
-    if(stockRes?.error)throw stockRes.error;
-    if(checkRes?.error)console.warn("[TimKiemNhanh] Không đọc được chênh lệch kiểm",masp,checkRes.error);
-
-    const base={};
-    (Array.isArray(stockRes?.data)?stockRes.data:[]).forEach(row=>{
-      const s=normalizeSizeKey(row.size);if(!s)return;
-      base[s]={ton_cs1:Number(row.ton_cs1||0),ton_cs2:Number(row.ton_cs2||0)};
-    });
-    const check=checkRes?.data||{};const out={};
-    SIZE_LIST.forEach(s=>{
-      const b=base[s]||{ton_cs1:0,ton_cs2:0};
-      const lech1=Number(check?.cs1?.lech?.[s]||0);const lech2=Number(check?.cs2?.lech?.[s]||0);
-      out[s]={
-        ton_cs1:Math.max(0,Number(b.ton_cs1||0)+lech1),
-        ton_cs2:Math.max(0,Number(b.ton_cs2||0)+lech2)
-      };
-    });
-    return out;
-  })();
-
-  AFTER_CHECK_CACHE.set(key,promise);
-  try{const result=await promise;AFTER_CHECK_CACHE.set(key,result);return result}catch(e){AFTER_CHECK_CACHE.delete(key);throw e}
+function sumJsonBySize(arr){
+  const out={};
+  (Array.isArray(arr)?arr:[]).forEach(item=>{
+    const s=normalizeSizeKey(item?.size);
+    if(!s)return;
+    out[s]=(out[s]||0)+Number(item?.sl||0);
+  });
+  return out;
 }
 
 async function enrichProductsAfterCheck(rows){
   const result=(rows||[]).map(x=>({...x}));
-  let cursor=0;const concurrency=Math.min(6,result.length);
-  async function worker(){
-    while(cursor<result.length){
-      const i=cursor++;const sp=result[i];
-      try{sp.ton_sizes=await fetchAfterCheckStockForMasp(sp.masp)}catch(e){console.warn("[TimKiemNhanh] Lỗi tồn sau kiểm",sp.masp,e)}
-    }
-  }
-  await Promise.all(Array.from({length:concurrency},()=>worker()));
+  const masps=[...new Set(result.map(x=>norm(x.masp)).filter(Boolean))];
+  if(!masps.length)return result;
+
+  // V4 FAST: 2 RPC cho CA BATCH thay vi 2 RPC x so luong ma.
+  const [stockRes,checkRes]=await Promise.all([
+    supabase.rpc("xntnhanh",{
+      p_masps:masps,
+      p_den_ngay:businessDate(),
+      p_tonghop_size:false
+    }),
+    supabase.rpc("rpc_kiemton_latest_batch_v1",{p_masps:masps})
+  ]);
+
+  if(stockRes?.error)throw stockRes.error;
+  if(checkRes?.error)console.warn("[TimKiemNhanh] Batch kiểm tồn lỗi:",checkRes.error);
+
+  const stockMap=new Map();
+  (Array.isArray(stockRes?.data)?stockRes.data:[]).forEach(row=>{
+    const ma=norm(row.masp),s=normalizeSizeKey(row.size);
+    if(!ma||!s)return;
+    if(!stockMap.has(ma))stockMap.set(ma,{});
+    stockMap.get(ma)[s]={
+      ton_cs1:Number(row.ton_cs1||0),
+      ton_cs2:Number(row.ton_cs2||0)
+    };
+  });
+
+  const lechMap=new Map();
+  (Array.isArray(checkRes?.data)?checkRes.data:[]).forEach(row=>{
+    const ma=norm(row.masp),cs=String(row.diadiem||"").toLowerCase();
+    if(!ma||!["cs1","cs2"].includes(cs))return;
+    const kiem=sumJsonBySize(row.du_lieu_kiem_json);
+    const ton=sumJsonBySize(row.du_lieu_ton_json);
+    if(!lechMap.has(ma))lechMap.set(ma,{cs1:{},cs2:{}});
+    const dest=lechMap.get(ma)[cs];
+    const keys=new Set([...Object.keys(kiem),...Object.keys(ton)]);
+    keys.forEach(s=>dest[s]=Number(kiem[s]||0)-Number(ton[s]||0));
+  });
+
+  result.forEach(sp=>{
+    const ma=norm(sp.masp);
+    const base=stockMap.get(ma)||{};
+    const lech=lechMap.get(ma)||{cs1:{},cs2:{}};
+    const out={};
+    SIZE_LIST.forEach(s=>{
+      const b=base[s]||{ton_cs1:0,ton_cs2:0};
+      out[s]={
+        ton_cs1:Math.max(0,Number(b.ton_cs1||0)+Number(lech.cs1?.[s]||0)),
+        ton_cs2:Math.max(0,Number(b.ton_cs2||0)+Number(lech.cs2?.[s]||0))
+      };
+    });
+    sp.ton_sizes=out;
+  });
+
   return result;
 }
 
 
 async function fetchUnifiedDiscountRows(){
-  // Trang GIẢM GIÁ không được dùng p_mode="discount" của RPC cũ,
-  // vì RPC đó lọc cứng dmhanghoa.giam_gia_pct trước khi rule tự động được ghép.
-  // Ta lấy toàn bộ tập ứng viên "similar" theo đúng nhóm/size/form/màu,
-  // ghép ADMIN + RULE, rồi mới lọc giam_gia_hieu_luc > 0.
-  const allDiscounted=[];
-  let offset=0;
-  let total=0;
-  let guard=0;
+  // V4 FAST: gom raw truoc, sau do chi 1 batch ton + 1 batch metadata (co chunk noi bo Supabase neu can).
+  const allRaw=[];
+  let offset=0,total=0,guard=0;
 
   do{
     const p={...params(offset),p_mode:"similar",p_offset:offset,p_limit:40};
     const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",p);
     if(error)throw error;
-
     const raw=(data||[]).map(x=>({...x}));
     if(!raw.length)break;
-
     total=Number(raw[0]?.total_count||total||0);
-
-    const xaMap=state.mainGroup==="GIAY_DEP"
-      ? await getXaHangSuggestions({
-          supabase,
-          masps:raw.map(x=>x.masp),
-          denNgay:businessDate()
-        }).catch(err=>{
-          console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
-          return new Map();
-        })
-      : new Map();
-
-    const merged=attachXaHangSuggestions(raw,xaMap);
-    merged.forEach(sp=>{
-      if(Number(sp.giam_gia_hieu_luc||0)>0)allDiscounted.push(sp);
-    });
-
+    allRaw.push(...raw);
     offset+=raw.length;
     guard++;
-  }while(offset<total && guard<30);
+  }while(offset<total&&guard<30);
 
-  // Chỉ sau khi đã lọc ra hàng có giảm mới đọc tồn sau kiểm,
-  // tránh N+1 cho toàn bộ nhóm hàng.
-  const checked=await enrichProductsAfterCheck(allDiscounted);
-  const rows=checked.filter(sp=>stockFor(sp,state.size)>0);
+  if(!allRaw.length)return[];
+
+  const [checked,xaMap]=await Promise.all([
+    enrichProductsAfterCheck(allRaw),
+    state.mainGroup==="GIAY_DEP"
+      ? getXaHangSuggestions({
+          supabase,
+          masps:allRaw.map(x=>x.masp),
+          denNgay:businessDate()
+        }).catch(err=>{
+          console.warn("[TimKiemNhanh] Không đọc được metadata xả:",err);
+          return new Map();
+        })
+      : Promise.resolve(new Map())
+  ]);
+
+  const merged=attachXaHangSuggestions(checked,xaMap);
+  const rows=merged.filter(sp=>
+    Number(sp.giam_gia_hieu_luc||0)>0 &&
+    stockFor(sp,state.size)>0
+  );
 
   rows.sort((a,b)=>{
     const d=Number(b.giam_gia_hieu_luc||0)-Number(a.giam_gia_hieu_luc||0);
     if(d)return d;
     return String(a.masp||"").localeCompare(String(b.masp||""),"vi",{numeric:true});
   });
-
   return rows;
 }
+
 
 async function search(reset=true){
   if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",5000);return}
