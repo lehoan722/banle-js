@@ -2,10 +2,10 @@ import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
-import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=1";
+import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=2";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.13";
-console.log("[TimKiemNhanh] BUILD 1.2.13");
+window.TIM_KIEM_NHANH_BUILD = "1.2.14";
+console.log("[TimKiemNhanh] BUILD 1.2.14");
 
 const supabase = getSupabaseClient();
 
@@ -45,7 +45,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.13 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.14 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -411,9 +411,10 @@ function productCardHtml(sp,orderNo=0,totalNo=0){
   const xaPct=Number(sp.goi_y_xa_pct||0);
   const orderXaText=xaPct?`${orderText} ${xaPct}`:orderText;
   const xaTitle=xaPct&&sp.goi_y_xa_detail
-    ? `Gợi ý xả ${xaPct}% · tồn ${Number(sp.goi_y_xa_detail.ton_hientai||0)}/${Number(sp.goi_y_xa_detail.tong_nhap_mua||0)} · nhập cuối ${esc(sp.goi_y_xa_detail.ngay_nhap_cuoi||"")}`
+    ? `Gợi ý xả ${xaPct}% · tồn ${Number(sp.goi_y_xa_detail.ton_hientai||0)}/${Number(sp.goi_y_xa_detail.tong_nhap_mua||0)} · size ${esc(sp.goi_y_xa_detail.sizes_con_lai||"-")} · luật ${esc(sp.goi_y_xa_detail.rule_code||"")}`
     : "";
-  return `<article class="product" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"></div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div><div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
+  const xaClass=xaPct?" xa-suggest":"";
+  return `<article class="product${xaClass}" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"></div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div><div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
 }
 function bindProductCards(cards){
   cards.forEach(card=>{
