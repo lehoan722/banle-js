@@ -1,4 +1,4 @@
-// scripts/xaHangRules.js - V2
+// scripts/xaHangRules.js - V3
 // Module dung chung doc goi y xa hang.
 // Toan bo luat V2 nam trong rpc_goiy_xahang_v1.
 // KHONG ghi dmhanghoa.giam_gia_pct.
@@ -55,11 +55,23 @@ export function attachXaHangSuggestions(rows, suggestionMap) {
 
   return (rows || []).map((sp) => {
     const suggestion = map.get(norm(sp?.masp)) || null;
+    const rulePct = Number(suggestion?.goi_y_pct || 0);
+    const adminPct = Number(sp?.giam_gia_pct || 0);
+    const effectivePct = Math.max(adminPct, rulePct);
+
+    let source = "";
+    if (adminPct > 0 && rulePct > 0) source = "BOTH";
+    else if (adminPct > 0) source = "ADMIN";
+    else if (rulePct > 0) source = "RULE";
+
     return {
       ...sp,
-      goi_y_xa_pct: Number(suggestion?.goi_y_pct || 0),
+      goi_y_xa_pct: rulePct,
       goi_y_xa_rule: suggestion?.rule_code || "",
-      goi_y_xa_detail: suggestion
+      goi_y_xa_detail: suggestion,
+      giam_gia_admin_pct: adminPct,
+      giam_gia_hieu_luc: effectivePct,
+      giam_gia_nguon: source
     };
   });
 }
