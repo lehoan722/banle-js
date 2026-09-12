@@ -2,9 +2,10 @@ import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
+import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=1";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.12";
-console.log("[TimKiemNhanh] BUILD 1.2.12");
+window.TIM_KIEM_NHANH_BUILD = "1.2.13";
+console.log("[TimKiemNhanh] BUILD 1.2.13");
 
 const supabase = getSupabaseClient();
 
@@ -44,7 +45,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.12 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.13 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -352,8 +353,28 @@ async function search(reset=true){
     const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",params(off));if(error)throw error;
     const raw=(data||[]).map(x=>({...x}));
     const nextTotal=Number(raw[0]?.total_count||(reset?0:state.total)||0);
-    const checked=await enrichProductsAfterCheck(raw);
-    const rows=checked.filter(sp=>stockFor(sp,state.size)>0);
+
+    // V1 xa hang: chi can goi rule engine khi dang tim nhom GIAY_DEP.
+    // Chay song song voi buoc bo sung ton sau kiem de khong lam cham luong tim kiem.
+    const xaPromise=state.mainGroup==="GIAY_DEP"
+      ? getXaHangSuggestions({
+          supabase,
+          masps:raw.map(x=>x.masp),
+          denNgay:businessDate()
+        }).catch(err=>{
+          // Module xa hang la lop goi y phu: neu loi, Tim kiem nhanh van phai hoat dong binh thuong.
+          console.warn("[TimKiemNhanh] Module goi y xa hang loi, bo qua:",err);
+          return new Map();
+        })
+      : Promise.resolve(new Map());
+
+    const [checked,xaMap]=await Promise.all([
+      enrichProductsAfterCheck(raw),
+      xaPromise
+    ]);
+
+    const checkedWithXa=attachXaHangSuggestions(checked,xaMap);
+    const rows=checkedWithXa.filter(sp=>stockFor(sp,state.size)>0);
 
     if(reset){
       state.products=rows;
@@ -387,7 +408,12 @@ function productCardHtml(sp,orderNo=0,totalNo=0){
   const {kho,mau}=locationParts(sp);
   const formSizes=compactFormSizes(sp);
   const orderText=orderNo>0?`${orderNo}/${totalNo||orderNo}`:"";
-  return `<article class="product" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"></div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div><div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order">${esc(orderText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
+  const xaPct=Number(sp.goi_y_xa_pct||0);
+  const orderXaText=xaPct?`${orderText} ${xaPct}`:orderText;
+  const xaTitle=xaPct&&sp.goi_y_xa_detail
+    ? `Gợi ý xả ${xaPct}% · tồn ${Number(sp.goi_y_xa_detail.ton_hientai||0)}/${Number(sp.goi_y_xa_detail.tong_nhap_mua||0)} · nhập cuối ${esc(sp.goi_y_xa_detail.ngay_nhap_cuoi||"")}`
+    : "";
+  return `<article class="product" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"></div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div><div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
 }
 function bindProductCards(cards){
   cards.forEach(card=>{
