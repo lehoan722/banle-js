@@ -1,8 +1,8 @@
 // stockQuickSimilar.js - Tìm sản phẩm cùng nhóm cùng size
-// discount-effective-rule-v3-20260912
+// discount-effective-rule-v31-20260912
 
 (function () {
-  const ALLOWED_DISCOUNT_PCTS = new Set([10, 20, 30, 50, 60]);
+  const ALLOWED_DISCOUNT_PCTS = new Set([10, 20, 30, 40, 50, 60]);
   const DISCOUNT_SIZE_SUMMARY_CACHE = new Map();
   const DISCOUNT_SIZE_SUMMARY_TTL_MS = 2 * 60 * 1000;
 
