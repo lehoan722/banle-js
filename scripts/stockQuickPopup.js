@@ -2559,7 +2559,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
     if (!script) {
       script = document.createElement("script");
-      script.src = "/scripts/stockQuickSimilar.js?v=20260912-rule-v3";
+      script.src = "/scripts/stockQuickSimilar.js?v=20260912-rule-v31";
       script.dataset.stockquickSimilar = "1";
       document.head.appendChild(script);
     }
