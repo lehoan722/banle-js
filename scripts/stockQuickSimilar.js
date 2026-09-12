@@ -1,10 +1,60 @@
 // stockQuickSimilar.js - Tìm sản phẩm cùng nhóm cùng size
-// discount-60pct-fix-20260820-v3
+// discount-effective-rule-v3-20260912
 
 (function () {
   const ALLOWED_DISCOUNT_PCTS = new Set([10, 20, 30, 50, 60]);
   const DISCOUNT_SIZE_SUMMARY_CACHE = new Map();
   const DISCOUNT_SIZE_SUMMARY_TTL_MS = 2 * 60 * 1000;
+
+
+  function currentBusinessDate() {
+    return new Date().toISOString().slice(0,10);
+  }
+
+  async function mergeRuleDiscounts(products, denNgay = null) {
+    const client = getSupabaseClient();
+    if (!client || !Array.isArray(products) || !products.length) return products || [];
+
+    const out = products.map(x => ({...x}));
+    const byCode = new Map(out.map(x => [normText(x.masp), x]));
+    const masps = [...byCode.keys()].filter(Boolean);
+    const chunkSize = 180;
+
+    for (let i=0; i<masps.length; i+=chunkSize) {
+      const chunk = masps.slice(i, i+chunkSize);
+      const { data, error } = await client.rpc("rpc_goiy_xahang_v1", {
+        p_masps: chunk,
+        p_den_ngay: denNgay || currentBusinessDate()
+      });
+
+      if (error) {
+        console.warn("[StockQuickSimilar] Không đọc được rule xả hàng:", error);
+        continue;
+      }
+
+      (data || []).forEach(r => {
+        const item = byCode.get(normText(r.masp));
+        if (!item) return;
+        item.goi_y_xa_pct = Number(r.goi_y_pct || 0);
+        item.goi_y_xa_rule = r.rule_code || "";
+      });
+    }
+
+    out.forEach(item => {
+      const adminPct = Number(item.giam_gia_pct || 0);
+      const rulePct = Number(item.goi_y_xa_pct || 0);
+      item.giam_gia_admin_pct = adminPct;
+      item.giam_gia_hieu_luc = Math.max(adminPct, rulePct);
+      item.giam_gia_nguon =
+        adminPct > 0 && rulePct > 0 ? "BOTH" :
+        adminPct > 0 ? "ADMIN" :
+        rulePct > 0 ? "RULE" : "";
+      // Giữ tên field cũ để toàn bộ viewer/list cũ tự dùng mức hiệu lực.
+      item.giam_gia_pct = item.giam_gia_hieu_luc || null;
+    });
+
+    return out;
+  }
 
   function getSupabaseClient() {
     const client = window.supabase;
@@ -128,7 +178,8 @@
       return [];
     }
 
-    return (data || []).filter(x => normText(x.nhomhang) === groupNorm);
+    const rows = (data || []).filter(x => normText(x.nhomhang) === groupNorm);
+    return await mergeRuleDiscounts(rows);
   }
 
 
@@ -524,7 +575,9 @@
       console.warn("[StockQuickSimilar] Không đọc được mã gốc:", error);
       return null;
     }
-    return data || null;
+    if (!data) return null;
+    const enriched = await mergeRuleDiscounts([data]);
+    return enriched[0] || data;
   }
 
   async function getRecommendationList({
