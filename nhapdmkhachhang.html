@@ -1,388 +1,600 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
-  <title>Quản lý khách hàng</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@18.1.0/dist/handsontable.full.min.css">
+  <title>Nhập Danh Mục Khách Hàng</title>
+  <meta name="viewport" content="width=450">
   <style>
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;color:#1f2937}
-    button,input,select{font:inherit}
-    #app-container{min-height:100vh;padding:18px}
-    .page{max-width:1500px;margin:0 auto}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-    .title-wrap h1{font-size:23px;margin:0;color:#17345f}.title-wrap .sub{font-size:13px;color:#6b7280;margin-top:4px}
-    .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.actor{font-size:12px;padding:6px 10px;border-radius:999px;background:#eaf2ff;color:#1557a6}
-    .card{background:#fff;border:1px solid #e3e8ef;border-radius:14px;box-shadow:0 3px 14px rgba(31,41,55,.05)}
-    .list-card{padding:14px;margin-bottom:14px}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-    .toolbar input,.toolbar select{height:38px;border:1px solid #cdd6e2;border-radius:8px;padding:0 10px;background:#fff}
-    #searchKh{min-width:300px;flex:1}.stats{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}.stat{font-size:12px;background:#f2f5f9;border-radius:999px;padding:6px 9px;color:#4b5563}
-    .btn{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;padding:9px 14px;cursor:pointer;font-weight:600}.btn:hover{filter:brightness(.98)}
-    .btn.primary{background:#1769aa;border-color:#1769aa;color:#fff}.btn.success{background:#16794b;border-color:#16794b;color:#fff}.btn.danger{background:#c83a3a;border-color:#c83a3a;color:#fff}.btn.soft{background:#eef2f7}.btn:disabled{opacity:.5;cursor:not-allowed}
-    #hot{height:430px;overflow:hidden;border:1px solid #e5e7eb;border-radius:10px}
-    .selected-info{font-size:13px;color:#52606d;margin-top:8px;min-height:18px}
-    .lower{display:grid;grid-template-columns:minmax(560px,1.2fr) minmax(360px,.8fr);gap:14px;align-items:start}
-    .panel{padding:16px}.panel-title{font-size:17px;font-weight:700;color:#17345f;margin:0 0 14px;display:flex;justify-content:space-between;gap:10px;align-items:center}
-    .form-grid{display:grid;grid-template-columns:145px 1fr 145px 1fr;gap:10px 12px;align-items:center}.form-grid label{font-size:14px;color:#374151}.req{color:#d22;font-weight:700}
-    .form-grid input,.form-grid select{width:100%;height:38px;padding:0 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}.form-grid input:focus,.form-grid select:focus{outline:none;border-color:#2777bd;box-shadow:0 0 0 2px #dbeafe}
-    .form-grid input[readonly]{background:#f3f4f6;color:#667085}.hint{font-size:12px;color:#6b7280;line-height:1.4}
-    .form-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px;padding-top:13px;border-top:1px solid #edf0f4}
-    .msg{min-height:20px;margin-top:10px;font-size:13px}.msg.success{color:#0d713e}.msg.error{color:#b42318}.msg.info{color:#475467}
-    .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{border:1px solid #e5e7eb;background:#fafcff;border-radius:10px;padding:12px}.metric .label{font-size:12px;color:#667085}.metric .value{font-size:17px;font-weight:700;color:#17345f;margin-top:5px;word-break:break-word}
-    .details{margin-top:14px;border-top:1px solid #edf0f4;padding-top:10px}.detail-row{display:grid;grid-template-columns:135px 1fr;gap:8px;padding:7px 0;border-bottom:1px dashed #edf0f4;font-size:13px}.detail-row:last-child{border-bottom:none}.detail-row .k{color:#667085}.detail-row .v{color:#344054;word-break:break-word}
-    .handsontable td{font-size:13px}.handsontable th{font-size:12px}.handsontable .htDimmed{color:#1f2937}.handsontable td.row-inactive{color:#8b95a1;background:#fafafa}.handsontable td.row-ncc{font-weight:700}
-    @media(max-width:1100px){.lower{grid-template-columns:1fr}.form-grid{grid-template-columns:135px 1fr 135px 1fr}}
-    @media(max-width:760px){#app-container{padding:10px}.form-grid{grid-template-columns:120px 1fr}.topbar{align-items:flex-start}#hot{height:350px}}
-    @media(max-width:560px){.form-grid{grid-template-columns:1fr}.toolbar>*{width:100%}.stats{margin-left:0}.topbar{flex-direction:column}.top-actions{width:100%}.metrics{grid-template-columns:1fr}}
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9fb;
+      padding: 32px;
+    }
+
+    .center-box {
+      width: 420px;
+      margin: 40px auto 0 auto;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 3px 18px #d6e3ef44;
+      border: 1.5px solid #e3e9f1;
+      padding: 28px 24px 18px 24px;
+    }
+
+    .form-title {
+      font-size: 1.18em;
+      font-weight: bold;
+      letter-spacing: .4px;
+      margin-bottom: 22px;
+      color: #163163;
+      text-align: center;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .row label {
+      width: 120px;
+      font-size: 1em;
+    }
+
+    .row input,
+    .row select {
+      flex: 1;
+      padding: 7px 10px;
+      font-size: 1em;
+      border-radius: 7px;
+      border: 1.2px solid #b5bed5;
+      background: #fcfcfe;
+      outline: none;
+      transition: border-color .18s;
+    }
+
+    .row input:focus {
+      border-color: #1164be;
+    }
+
+    .required {
+      color: #e23a1b;
+      font-weight: bold;
+    }
+
+    .actions {
+      display: flex;
+      gap: 13px;
+      justify-content: center;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
+    .actions button {
+      font-size: 1em;
+      padding: 8px 22px;
+      border-radius: 7px;
+      border: none;
+      box-shadow: 0 2px 6px #dee6ff33;
+      cursor: pointer;
+      transition: .13s;
+      font-weight: 500;
+    }
+
+    .actions button.save {
+      background: #18804f;
+      color: #fff;
+    }
+
+    .actions button.new {
+      background: #eaeaec;
+    }
+
+    .actions button.logout {
+      background: #efebfa;
+      color: #45427b;
+    }
+
+    .actions button:hover {
+      opacity: .87;
+    }
+
+    .msg {
+      text-align: center;
+      padding: 10px 0 5px 0;
+      min-height: 26px;
+    }
+
+    .msg.error {
+      color: #fff;
+      background: #c44736;
+      border-radius: 6px;
+    }
+
+    .msg.success {
+      color: #18804f;
+      background: #e6f4e7;
+      border-radius: 6px;
+    }
+
+    .loginbox {
+      width: 320px;
+      margin: 90px auto 0 auto;
+      padding: 26px 30px 18px 30px;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 3px 14px #d7e2f633;
+      border: 1.5px solid #e6eaf1;
+    }
+
+    .loginbox h2 {
+      text-align: center;
+      margin-bottom: 16px;
+      font-weight: 700;
+      color: #17305c;
+    }
+
+    .loginrow {
+      margin-bottom: 15px;
+    }
+
+    .loginrow label {
+      display: block;
+      margin-bottom: 6px;
+      color: #234;
+    }
+
+    .loginrow input {
+      width: 100%;
+      font-size: 1em;
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 1.2px solid #b5bed5;
+      background: #fcfcfe;
+      outline: none;
+    }
+
+    .loginrow input:focus {
+      border-color: #1164be;
+    }
+
+    .loginbox .msg {
+      min-height: 22px;
+    }
+
+    #makhSuggestList {
+      background: #fff;
+      box-shadow: 0 3px 18px #c3d3f655;
+      border: 1.2px solid #b5bed5;
+      border-radius: 8px;
+      max-height: 220px;
+      overflow: auto;
+      font-size: .99em;
+    }
+
+    .suggest-item {
+      padding: 7px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .suggest-item:last-child {
+      border-bottom: none;
+    }
+
+    .suggest-item.active,
+    .suggest-item:hover {
+      background: #f3f8ff;
+      color: #1164be;
+    }
+
+    .suggest-makh {
+      font-weight: 600;
+      width: 80px;
+      color: #18408d;
+    }
+
+    .suggest-tenkh {
+      color: #333;
+      flex: 1;
+    }
+
+    .suggest-note {
+      font-size: 12px;
+      color: #b0b;
+    }
   </style>
 </head>
+
 <body>
-  <div id="app-container" style="display:none">
-    <div class="page">
-      <div class="topbar">
-        <div class="title-wrap">
-          <h1>QUẢN LÝ KHÁCH HÀNG</h1>
-          <div class="sub">Xem tổng thể danh mục khách hàng, thêm mới, chỉnh sửa và tra cứu nhanh</div>
-        </div>
-        <div class="top-actions">
-          <span id="actorBadge" class="actor">Đang đăng nhập</span>
-          <button class="btn" onclick="doLogout()">Đăng xuất</button>
-        </div>
+  <!-- Main Form -->
+  <div id="app-container" style="display:none;">
+    <div id="mainform" class="center-box">
+      <div class="form-title">NHẬP DANH MỤC KHÁCH HÀNG</div>
+
+      <div class="row" style="position:relative;">
+        <label class="required">Mã KH *</label>
+        <input id="makh" maxlength="20" autocomplete="off" placeholder="Nhập mã khách hàng...">
+        <div id="makhSuggestList"
+          style="position:absolute;left:124px;top:37px;width:calc(100% - 124px);z-index:11;display:none;"></div>
       </div>
 
-      <section class="card list-card">
-        <div class="toolbar">
-          <input id="searchKh" type="text" placeholder="Tìm mã KH / tên / điện thoại / địa chỉ...">
-          <select id="filterStatus">
-            <option value="all">Tất cả trạng thái</option>
-            <option value="active">Đang hoạt động</option>
-            <option value="inactive">Ngừng hoạt động</option>
-          </select>
-          <select id="filterType">
-            <option value="all">Tất cả loại</option>
-            <option value="customer">Khách hàng</option>
-            <option value="supplier">Nhà cung cấp</option>
-          </select>
-          <button class="btn primary" id="btnNewTop" type="button">+ Thêm mới</button>
-          <button class="btn soft" id="btnReload" type="button">↻ Tải lại</button>
-          <div class="stats">
-            <span class="stat" id="statTotal">Tổng: 0</span>
-            <span class="stat" id="statActive">Đang HĐ: 0</span>
-            <span class="stat" id="statNcc">NCC: 0</span>
-          </div>
-        </div>
-        <div id="hot"></div>
-        <div id="selectedInfo" class="selected-info">Chọn một dòng để xem hoặc sửa thông tin khách hàng.</div>
-      </section>
 
-      <div class="lower">
-        <section class="card panel">
-          <div class="panel-title"><span>THÔNG TIN KHÁCH HÀNG</span><span id="formMode" class="hint">Thêm mới</span></div>
-          <div class="form-grid">
-            <label>Mã KH <span class="req">*</span></label><input id="makh" maxlength="50" autocomplete="off">
-            <label>Tên KH <span class="req">*</span></label><input id="tenkh" maxlength="255" autocomplete="off">
-            <label>Điện thoại <span class="req">*</span></label><input id="dienthoai" maxlength="50" inputmode="tel" autocomplete="off">
-            <label>Là nhà cung cấp</label><select id="la_ncc"><option value="false">Không</option><option value="true">Có</option></select>
-            <label>Ngày sinh</label><input id="ngaysinh" type="date">
-            <label>Tháng sinh</label><input id="thangsinh" type="number" min="1" max="12" placeholder="1 - 12">
-            <label>Địa chỉ</label><input id="diachi" maxlength="500">
-            <label>Email</label><input id="email" type="email" maxlength="100">
-            <label>Tài khoản NH</label><input id="taikhoan" maxlength="100">
-            <label>Mã số thuế</label><input id="mst" maxlength="50">
-            <label>CCCD/CMND</label><input id="cccd" maxlength="50">
-            <label>Trạng thái</label><select id="active"><option value="true">Đang hoạt động</option><option value="false">Ngừng hoạt động</option></select>
-          </div>
-          <div class="hint" style="margin-top:10px">Nếu Mã KH chỉ gồm chữ số, khi thêm mới hệ thống vẫn tự điền số điện thoại bằng Mã KH như trang cũ.</div>
-          <div class="form-actions">
-            <button class="btn soft" id="btnNew" type="button">Thêm mới</button>
-            <button class="btn danger" id="btnDelete" type="button">Xóa</button>
-            <button class="btn success" id="btnSave" type="button">Lưu dữ liệu</button>
-          </div>
-          <div id="msgBox" class="msg"></div>
-        </section>
-
-        <section class="card panel">
-          <div class="panel-title"><span>TỔNG QUAN KHÁCH HÀNG</span><span id="summaryTarget" class="hint">Chưa chọn khách hàng</span></div>
-          <div class="metrics">
-            <div class="metric"><div class="label">Điểm hiện tại</div><div class="value" id="mDiem">0</div></div>
-            <div class="metric"><div class="label">Tổng chi tiêu</div><div class="value" id="mTongChi">0 đ</div></div>
-            <div class="metric"><div class="label">Số lần mua</div><div class="value" id="mSoLan">0</div></div>
-            <div class="metric"><div class="label">Hạng khách</div><div class="value" id="mHang">THUONG</div></div>
-          </div>
-          <div class="details">
-            <div class="detail-row"><div class="k">Lần mua cuối</div><div class="v" id="mLanCuoi">—</div></div>
-            <div class="detail-row"><div class="k">Ngày tạo</div><div class="v" id="mCreated">—</div></div>
-            <div class="detail-row"><div class="k">Nguồn đăng ký</div><div class="v" id="mNguon">—</div></div>
-            <div class="detail-row"><div class="k">Người tạo</div><div class="v" id="mNguoiTao">—</div></div>
-            <div class="detail-row"><div class="k">Cơ sở tạo</div><div class="v" id="mCoSo">—</div></div>
-            <div class="detail-row"><div class="k">Marketing</div><div class="v" id="mMarketing">—</div></div>
-            <div class="detail-row"><div class="k">Zalo/SMS</div><div class="v" id="mZalo">—</div></div>
-            <div class="detail-row"><div class="k">Ghi chú CSKH</div><div class="v" id="mGhiChu">—</div></div>
-          </div>
-          <div class="hint" style="margin-top:12px">Các số liệu tổng quan chỉ hiển thị để theo dõi; trang này không tự sửa điểm, tổng chi tiêu hoặc lịch sử mua hàng.</div>
-        </section>
+      <div class="row">
+        <label class="required">Tên KH *</label>
+        <input id="tenkh" maxlength="60" autocomplete="off" placeholder="Nhập tên khách hàng...">
       </div>
+      <div class="row">
+        <label class="required">Điện thoại *</label>
+        <input id="dienthoai" maxlength="20" autocomplete="off" placeholder="Nhập SĐT...">
+      </div>
+      <div class="row">
+        <label>Là nhà cung cấp</label>
+        <select id="la_ncc">
+          <option value=""></option>
+          <option value="">Không</option>
+          <option value="true">Có</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Ngày sinh</label>
+        <input id="ngaysinh" type="date" maxlength="12">
+      </div>
+      <div class="row">
+        <label>Tháng sinh</label>
+        <input id="thangsinh" type="number" min="1" max="12" placeholder="1 - 12">
+      </div>
+      <div class="row">
+        <label>Địa chỉ</label>
+        <input id="diachi" maxlength="100">
+      </div>
+      <div class="row">
+        <label>Email</label>
+        <input id="email" maxlength="60">
+      </div>
+      <div class="row">
+        <label>Tài khoản NH</label>
+        <input id="taikhoan" maxlength="40">
+      </div>
+      <div class="row">
+        <label>Mã số thuế</label>
+        <input id="mst" maxlength="20">
+      </div>
+      <div class="row">
+        <label>CCCD/CMND</label>
+        <input id="cccd" maxlength="20">
+      </div>
+      <div id="msgBox" class="msg"></div>
+
+      <div class="actions">
+        <button class="save" onclick="saveKH()">Lưu dữ liệu</button>
+        <button class="new" onclick="resetForm()">Thêm mới</button>
+        <button class="logout" onclick="doLogout()">Đăng xuất</button>
+        <button class="save" style="background:#a7362d" onclick="deleteKH()">Xóa</button>
+      </div>
+
+
     </div>
   </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/handsontable@18.1.0/dist/handsontable.full.min.js"></script>
   <script type="module">
-    import { khoiTaoDangNhapDungChung, dangXuatDungChung, getSupabaseClient } from './scripts/authModule.js';
+    import {
+      khoiTaoDangNhapDungChung,
+      dangXuatDungChung,
+      getSupabaseClient,
+    } from "./scripts/authModule.js";
 
-    const TABLE = 'dmkhachhang';
-    const $ = id => document.getElementById(id);
+    const TABLE = "dmkhachhang";
     let supabase = null;
-    let hot = null;
-    let allCustomers = [];
-    let filteredCustomers = [];
-    let selectedMakh = null;
     let editingOld = false;
-    let selecting = false;
+    let khSuggestList = [];
+    let suggestIndex = -1;
 
-    const TABLE_FIELDS = 'makh,tenkh,dienthoai,diachi,email,la_ncc,active,diem_hientai,tong_chi_tieu,so_lan_mua,lan_mua_cuoi,hang_khach,ngaysinh,thangsinh,namsinh,created_at';
-
-    function esc(v){return String(v ?? '').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
-    function getVal(id){return $(id)?.value || '';}
-    function setVal(id,val){if($(id)) $(id).value = val ?? '';}
-    function setMsg(msg,type=''){const el=$('msgBox');el.textContent=msg||'';el.className='msg'+(type?' '+type:'');}
-    function n(v){const x=Number(v);return Number.isFinite(x)?x:0;}
-    function formatMoney(v){return n(v).toLocaleString('vi-VN')+' đ';}
-    function formatDateTime(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('vi-VN');}
-    function normalizePhone(v){return String(v||'').replace(/[^0-9]/g,'');}
-    function isAllDigits(v){return /^\d+$/.test(String(v||'').trim());}
-
-    function initHot(){
-      if(hot) return;
-      hot = new Handsontable($('hot'), {
-        data: [],
-        rowHeaders: true,
-        colHeaders: ['Mã KH','Tên khách hàng','Điện thoại','Điểm','Tổng chi tiêu','Số lần mua','Lần mua cuối','Hạng','NCC','Trạng thái'],
-        columns: [
-          {data:'makh',width:125},
-          {data:'tenkh',width:210},
-          {data:'dienthoai',width:125},
-          {data:'diem_hientai',type:'numeric',numericFormat:{pattern:'0,0'},width:85},
-          {data:'tong_chi_tieu',type:'numeric',numericFormat:{pattern:'0,0'},width:130},
-          {data:'so_lan_mua',type:'numeric',width:90},
-          {data:'lan_mua_cuoi',width:150,renderer:function(instance,td,row,col,prop,value,cellProps){Handsontable.renderers.TextRenderer.apply(this,arguments);td.textContent=value?formatDateTime(value):'';}},
-          {data:'hang_khach',width:95},
-          {data:'la_ncc',width:65,renderer:function(instance,td,row,col,prop,value,cellProps){Handsontable.renderers.TextRenderer.apply(this,arguments);td.textContent=value?'Có':'Không';}},
-          {data:'active',width:105,renderer:function(instance,td,row,col,prop,value,cellProps){Handsontable.renderers.TextRenderer.apply(this,arguments);td.textContent=value===false?'Ngừng HĐ':'Đang HĐ';}}
-        ],
-        readOnly:true,
-        stretchH:'last',
-        height:430,
-        licenseKey:'non-commercial-and-evaluation',
-        selectionMode:'single',
-        outsideClickDeselects:false,
-        manualColumnResize:true,
-        columnSorting:true,
-        filters:false,
-        dropdownMenu:false,
-        contextMenu:false,
-        cells(row){
-          const cp={}; const r=filteredCustomers[row];
-          const cls=[]; if(r?.active===false) cls.push('row-inactive'); if(r?.la_ncc) cls.push('row-ncc');
-          if(cls.length) cp.className=cls.join(' '); return cp;
-        },
-        afterSelectionEnd(row){
-          if(selecting) return;
-          const r=filteredCustomers[row];
-          if(r?.makh) selectCustomer(r.makh,false);
-        }
-      });
+    function showMsg(msg, type) {
+      const box = document.getElementById("msgBox");
+      if (!box) return;
+      box.textContent = msg || "";
+      box.className = "msg" + (type ? " " + type : "");
+      if (msg && type !== "error") setTimeout(() => { box.textContent = ""; }, 2500);
     }
+    function getVal(id) { return document.getElementById(id)?.value || ""; }
+    function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val ?? ""; }
 
-    async function fetchAllCustomers(){
-      const PAGE=1000; let from=0; const rows=[];
-      while(true){
-        const {data,error}=await supabase.from(TABLE).select(TABLE_FIELDS).order('makh',{ascending:true}).range(from,from+PAGE-1);
-        if(error) throw error;
-        const batch=Array.isArray(data)?data:[];
-        rows.push(...batch);
-        if(batch.length<PAGE) break;
-        from += PAGE;
-        if(from>100000) throw new Error('Danh mục quá lớn, đã dừng tải để bảo vệ trình duyệt.');
+    function layThangSinhTuNgaySinh() {
+
+      // Ưu tiên lấy tháng sinh người dùng nhập tay
+      const thangNhap = Number(getVal("thangsinh"));
+
+      if (thangNhap >= 1 && thangNhap <= 12) {
+        return thangNhap;
       }
-      return rows;
+
+      // Nếu chưa nhập thì tự lấy từ ngày sinh
+      const raw = getVal("ngaysinh");
+      if (!raw) return null;
+
+      const m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return null;
+
+      const thang = Number(m[2]);
+
+      if (thang < 1 || thang > 12) return null;
+
+      return thang;
     }
 
-    async function loadCustomerTable({keepSelection=true}={}){
-      const old=keepSelection?selectedMakh:null;
-      $('btnReload').disabled=true; $('btnReload').textContent='Đang tải...';
-      try{
-        allCustomers=await fetchAllCustomers();
-        applyFilters();
-        if(old) selectHotRow(old);
-        return true;
-      }catch(e){
-        setMsg('Lỗi tải danh mục khách hàng: '+(e?.message||e),'error');
-        return false;
-      }finally{$('btnReload').disabled=false;$('btnReload').textContent='↻ Tải lại';}
+    function validateForm() {
+      const makh = getVal("makh").trim().toUpperCase();
+      const tenkh = getVal("tenkh").trim();
+      const dienthoai = getVal("dienthoai").trim();
+      if (!makh) return "Mã khách hàng không được bỏ trống!";
+      if (!tenkh) return "Tên khách hàng không được bỏ trống!";
+      if (!dienthoai) return "Số điện thoại không được bỏ trống!";
+      const digits = dienthoai.replace(/[^\d]/g, "");
+      if (!/^\d{10}$/.test(digits)) return "SĐT phải là số, 10 ký tự!";
+      return null;
     }
 
-    function applyFilters(){
-      const q=getVal('searchKh').trim().toUpperCase();
-      const status=getVal('filterStatus');
-      const type=getVal('filterType');
-      filteredCustomers=allCustomers.filter(r=>{
-        if(status==='active' && r.active===false) return false;
-        if(status==='inactive' && r.active!==false) return false;
-        if(type==='supplier' && !r.la_ncc) return false;
-        if(type==='customer' && r.la_ncc) return false;
-        if(q){
-          const hay=[r.makh,r.tenkh,r.dienthoai,r.diachi,r.email,r.hang_khach].map(x=>String(x||'').toUpperCase()).join(' | ');
-          if(!hay.includes(q)) return false;
-        }
-        return true;
-      });
-      hot?.loadData(filteredCustomers);
-      updateStats();
+    function resetForm() {
+      ["makh", "tenkh", "dienthoai", "ngaysinh", "thangsinh", "diachi", "email", "taikhoan", "mst", "cccd"].forEach(id => setVal(id, ""));
+      setVal("la_ncc", "");
+      editingOld = false;
+      const mk = document.getElementById("makh");
+      if (mk) mk.readOnly = false;
+      showMsg("");
+      mk?.focus();
     }
 
-    function updateStats(){
-      $('statTotal').textContent='Tổng: '+allCustomers.length.toLocaleString('vi-VN');
-      $('statActive').textContent='Đang HĐ: '+allCustomers.filter(x=>x.active!==false).length.toLocaleString('vi-VN');
-      $('statNcc').textContent='NCC: '+allCustomers.filter(x=>!!x.la_ncc).length.toLocaleString('vi-VN');
+    async function fetchKH() {
+      const makh = getVal("makh").trim().toUpperCase();
+      if (!makh) return;
+
+      showMsg("Đang kiểm tra...", "");
+      const { data, error } = await supabase.from(TABLE).select("*").eq("makh", makh).maybeSingle();
+      if (error) return showMsg("Lỗi đọc dữ liệu: " + error.message, "error");
+
+      if (data && data.makh) {
+        setVal("tenkh", data.tenkh);
+        setVal("dienthoai", data.dienthoai);
+        setVal("ngaysinh", data.ngaysinh ? String(data.ngaysinh).slice(0, 10) : "");
+        setVal("thangsinh", data.thangsinh || "");
+        setVal("diachi", data.diachi);
+        setVal("email", data.email);
+        setVal("taikhoan", data.taikhoan);
+        setVal("mst", data.mst);
+        setVal("cccd", data.cccd);
+        setVal("la_ncc", data.la_ncc ? "true" : "");
+        const mk = document.getElementById("makh");
+        if (mk) mk.readOnly = true;
+        editingOld = true;
+        showMsg("Đã nạp dữ liệu, sửa & Lưu để cập nhật.", "success");
+      } else {
+        editingOld = false;
+        const mk = document.getElementById("makh");
+        if (mk) mk.readOnly = false;
+        ["tenkh", "dienthoai", "ngaysinh", "thangsinh", "diachi", "email", "taikhoan", "mst", "cccd", "la_ncc"].forEach(id => setVal(id, ""));
+        showMsg("Mã mới, nhập đủ thông tin để lưu!", "");
+      }
     }
 
-    function selectHotRow(makh){
-      const idx=filteredCustomers.findIndex(r=>String(r.makh)===String(makh));
-      if(idx<0 || !hot) return;
-      selecting=true; hot.selectCell(idx,0,idx,0,false,false); selecting=false;
-    }
+    async function saveKH() {
+      const err = validateForm();
+      if (err) return showMsg(err, "error");
 
-    function clearSummary(){
-      $('summaryTarget').textContent='Chưa chọn khách hàng';
-      $('mDiem').textContent='0'; $('mTongChi').textContent='0 đ'; $('mSoLan').textContent='0'; $('mHang').textContent='THUONG';
-      ['mLanCuoi','mCreated','mNguon','mNguoiTao','mCoSo','mMarketing','mZalo','mGhiChu'].forEach(id=>$(id).textContent='—');
-    }
-
-    function setSummary(d){
-      $('summaryTarget').textContent=`${d.makh || ''}${d.tenkh?' — '+d.tenkh:''}`;
-      $('mDiem').textContent=n(d.diem_hientai).toLocaleString('vi-VN');
-      $('mTongChi').textContent=formatMoney(d.tong_chi_tieu);
-      $('mSoLan').textContent=n(d.so_lan_mua).toLocaleString('vi-VN');
-      $('mHang').textContent=d.hang_khach || 'THUONG';
-      $('mLanCuoi').textContent=formatDateTime(d.lan_mua_cuoi);
-      $('mCreated').textContent=formatDateTime(d.created_at);
-      $('mNguon').textContent=d.nguon_dangky || '—';
-      $('mNguoiTao').textContent=[d.created_by_manv,d.created_by_tennv].filter(Boolean).join(' — ') || '—';
-      $('mCoSo').textContent=d.created_by_diadiem || '—';
-      $('mMarketing').textContent=d.marketing_opt_in ? 'Đồng ý' : 'Chưa đồng ý';
-      $('mZalo').textContent=d.zalo_sms_opt_in ? 'Đồng ý' : 'Chưa đồng ý';
-      $('mGhiChu').textContent=d.ghi_chu_chamsoc || '—';
-    }
-
-    function setForm(d){
-      setVal('makh',d.makh); setVal('tenkh',d.tenkh); setVal('dienthoai',d.dienthoai);
-      setVal('la_ncc',d.la_ncc?'true':'false'); setVal('ngaysinh',d.ngaysinh?String(d.ngaysinh).slice(0,10):'');
-      setVal('thangsinh',d.thangsinh ?? ''); setVal('diachi',d.diachi); setVal('email',d.email); setVal('taikhoan',d.taikhoan);
-      setVal('mst',d.mst); setVal('cccd',d.cccd); setVal('active',d.active===false?'false':'true');
-      $('makh').readOnly=true; editingOld=true; selectedMakh=d.makh; $('formMode').textContent='Đang sửa'; setSummary(d);
-    }
-
-    function resetForm({focus=true}={}){
-      ['makh','tenkh','dienthoai','ngaysinh','thangsinh','diachi','email','taikhoan','mst','cccd'].forEach(id=>setVal(id,''));
-      setVal('la_ncc','false'); setVal('active','true');
-      editingOld=false; selectedMakh=null; $('makh').readOnly=false; $('formMode').textContent='Thêm mới';
-      $('selectedInfo').textContent='Đang nhập khách hàng mới.'; setMsg(''); clearSummary(); hot?.deselectCell(); if(focus) $('makh').focus();
-    }
-
-    async function selectCustomer(makh,selectRow=true){
-      if(!makh) return;
-      selectedMakh=makh; setMsg('Đang tải dữ liệu...','info');
-      const {data,error}=await supabase.from(TABLE).select('*').eq('makh',makh).maybeSingle();
-      if(selectedMakh!==makh) return;
-      if(error) return setMsg('Lỗi đọc dữ liệu: '+error.message,'error');
-      if(!data) return setMsg('Không tìm thấy khách hàng.','error');
-      setForm(data); $('selectedInfo').textContent=`Đang chọn: ${data.makh} — ${data.tenkh || ''}`; setMsg(''); if(selectRow) selectHotRow(makh);
-    }
-
-    function layThangSinhTuNgaySinh(){
-      const t=Number(getVal('thangsinh')); if(t>=1&&t<=12) return t;
-      const raw=getVal('ngaysinh'); if(!raw) return null; const m=String(raw).match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m)return null;
-      const month=Number(m[2]); return month>=1&&month<=12?month:null;
-    }
-
-    function validateForm(){
-      const makh=getVal('makh').trim().toUpperCase(), tenkh=getVal('tenkh').trim(), phone=normalizePhone(getVal('dienthoai'));
-      if(!makh) return 'Mã khách hàng không được bỏ trống!'; if(!tenkh) return 'Tên khách hàng không được bỏ trống!'; if(!phone) return 'Số điện thoại không được bỏ trống!';
-      if(!/^\d{10}$/.test(phone)) return 'SĐT phải là số, 10 ký tự!'; return null;
-    }
-
-    async function saveCustomer(){
-      autoFillPhoneFromMaKH();
-      const err=validateForm(); if(err) return setMsg(err,'error');
-      const makh=getVal('makh').trim().toUpperCase();
-      const obj={
-        makh, tenkh:getVal('tenkh').trim(), dienthoai:normalizePhone(getVal('dienthoai')),
-        ngaysinh:getVal('ngaysinh')||null, thangsinh:layThangSinhTuNgaySinh(), diachi:getVal('diachi').trim()||null,
-        email:getVal('email').trim()||null, taikhoan:getVal('taikhoan').trim()||null, mst:getVal('mst').trim()||null,
-        cccd:getVal('cccd').trim()||null, la_ncc:getVal('la_ncc')==='true', active:getVal('active')!=='false'
+      const obj = {
+        makh: getVal("makh").trim().toUpperCase(),
+        tenkh: getVal("tenkh").trim(),
+        dienthoai: getVal("dienthoai").trim(),
+        ngaysinh: getVal("ngaysinh") || null,
+        thangsinh: layThangSinhTuNgaySinh(),
+        diachi: getVal("diachi") || null,
+        email: getVal("email") || null,
+        taikhoan: getVal("taikhoan") || null,
+        mst: getVal("mst") || null,
+        cccd: getVal("cccd") || null,
+        la_ncc: getVal("la_ncc") === "true",
       };
-      $('btnSave').disabled=true; setMsg(editingOld?'Đang cập nhật...':'Đang thêm khách hàng...','info');
-      const result=editingOld
-        ? await supabase.from(TABLE).update(obj).eq('makh',makh).select('makh')
-        : await supabase.from(TABLE).insert(obj).select('makh');
-      $('btnSave').disabled=false;
-      if(result.error) return setMsg('Lỗi: '+result.error.message,'error');
-      if(!result.data?.length) return setMsg('Không cập nhật được dữ liệu (có thể bị RLS chặn).','error');
-      const wasEditing=editingOld;
-      await loadCustomerTable({keepSelection:false});
-      await selectCustomer(makh,true);
-      setMsg(wasEditing?'Đã cập nhật khách hàng!':'Đã thêm khách hàng mới!','success');
+
+      let error;
+      if (editingOld) {
+        ({ error } = await supabase.from(TABLE).update(obj).eq("makh", obj.makh));
+      } else {
+        ({ error } = await supabase.from(TABLE).insert(obj));
+      }
+
+      if (!error) {
+        showMsg(editingOld ? "Đã cập nhật khách hàng!" : "Đã thêm khách hàng mới!", "success");
+        setTimeout(resetForm, 900);
+      } else {
+        showMsg("Lỗi: " + error.message, "error");
+      }
     }
 
-    async function deleteCustomer(){
-      const makh=getVal('makh').trim().toUpperCase(), tenkh=getVal('tenkh').trim();
-      if(!editingOld||!makh) return setMsg('Chưa chọn khách hàng để xóa!','error');
-      if(!confirm(`Bạn có chắc chắn muốn xóa khách hàng "${makh} - ${tenkh}" không?`)) return;
-      const {data,error}=await supabase.from(TABLE).delete().eq('makh',makh).select('makh');
-      if(error) return setMsg('Lỗi khi xóa: '+error.message,'error');
-      if(!data?.length) return setMsg('Không xóa được dữ liệu (có thể bị RLS chặn).','error');
-      await loadCustomerTable({keepSelection:false}); resetForm({focus:false}); setMsg(`Đã xóa khách hàng ${makh}.`,'success');
+    async function deleteKH() {
+      const makh = getVal("makh").trim().toUpperCase();
+      if (!makh) return showMsg("Không có mã khách hàng để xóa!", "error");
+      if (!editingOld) return showMsg("Chưa có khách hàng để xóa!", "error");
+      if (!confirm(`Bạn có chắc chắn muốn xóa khách hàng ${makh}?`)) return;
+
+      const { error } = await supabase.from(TABLE).delete().eq("makh", makh);
+      if (!error) {
+        showMsg(`✅ Đã xóa khách hàng ${makh}!`, "success");
+        resetForm();
+      } else {
+        showMsg("❌ Lỗi khi xóa: " + error.message, "error");
+      }
     }
 
-    function autoFillPhoneFromMaKH(){
-      if($('makh').readOnly) return; const mk=getVal('makh').trim(); if(!mk||!isAllDigits(mk)) return; setVal('dienthoai',mk);
+    async function suggestKH() {
+      const inp = document.getElementById("makh");
+      const txt = (inp?.value || "").trim().toUpperCase();
+      const popup = document.getElementById("makhSuggestList");
+      if (!popup) return;
+
+      let q = supabase.from(TABLE).select("makh, tenkh").order("makh", { ascending: true }).limit(200);
+      if (txt) q = supabase.from(TABLE).select("makh, tenkh").or(`makh.ilike.%${txt}%,tenkh.ilike.%${txt}%`).order("makh", { ascending: true }).limit(50);
+
+      const { data, error } = await q;
+      if (error || !data || !data.length) { popup.style.display = "none"; return; }
+
+      khSuggestList = data;
+      suggestIndex = 0;
+      popup.innerHTML = data.map((r, i) => `
+      <div class="suggest-item${i === 0 ? " active" : ""}" data-idx="${i}">
+        <span class="suggest-makh">${r.makh}</span>
+        <span class="suggest-tenkh">${r.tenkh || ""}</span>
+      </div>`).join("");
+      popup.style.display = "block";
     }
 
-    const ENTER_FLOW=['makh','tenkh','dienthoai','la_ncc','ngaysinh','thangsinh','diachi','email','taikhoan','mst','cccd','active'];
-    function focusNextFrom(id){const i=ENTER_FLOW.indexOf(id);const next=ENTER_FLOW[i+1];if(next) $(next)?.focus();}
+    function chooseKHFromSuggest(idx) {
+      const r = khSuggestList[idx];
+      if (!r) return;
+      document.getElementById("makh").value = r.makh;
+      document.getElementById("makhSuggestList").style.display = "none";
+      fetchKH();
+      setTimeout(() => document.getElementById("tenkh")?.focus(), 60);
+    }
 
-    function bindEvents(){
-      $('searchKh').addEventListener('input',applyFilters); $('filterStatus').addEventListener('change',applyFilters); $('filterType').addEventListener('change',applyFilters);
-      $('btnNewTop').addEventListener('click',()=>resetForm()); $('btnNew').addEventListener('click',()=>resetForm());
-      $('btnReload').addEventListener('click',()=>loadCustomerTable({keepSelection:true})); $('btnSave').addEventListener('click',saveCustomer); $('btnDelete').addEventListener('click',deleteCustomer);
-      $('makh').addEventListener('blur',autoFillPhoneFromMaKH);
-      $('ngaysinh').addEventListener('change',()=>{const raw=getVal('ngaysinh');if(!raw){setVal('thangsinh','');return;}const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m)setVal('thangsinh',Number(m[2]));});
-      document.addEventListener('keydown',ev=>{
-        const active=document.activeElement;
-        if(ev.key==='Enter'&&active&&ENTER_FLOW.includes(active.id)){
-          ev.preventDefault(); if(active.id==='makh') autoFillPhoneFromMaKH(); focusNextFrom(active.id);
-        }
+    function updateSuggestActive() {
+      const popup = document.getElementById("makhSuggestList");
+      if (!popup) return;
+      popup.querySelectorAll(".suggest-item").forEach((it, i) => {
+        it.classList.toggle("active", i === suggestIndex);
+        if (i === suggestIndex) it.scrollIntoView({ block: "nearest" });
       });
     }
 
-    async function doLogout(){await dangXuatDungChung({appContainerId:'app-container',reloadPage:true});}
-    window.doLogout=doLogout;
+    // --- Auto-fill SĐT từ Mã KH nếu Mã KH là số hoàn toàn ---
+    function isAllDigits(str) {
+      return /^\d+$/.test(String(str || "").trim());
+    }
 
-    document.addEventListener('DOMContentLoaded',()=>{
-      khoiTaoDangNhapDungChung({
-        appContainerId:'app-container',
-        tuDongKhoaCoSo:false,
-        macDinhDiaDiem:localStorage.getItem('diadiem')||'cs1',
-        onLoginSuccess:async(nhanvien)=>{
-          supabase=getSupabaseClient();
-          $('actorBadge').textContent=`Đăng nhập: ${nhanvien?.tennv || nhanvien?.manv || 'Người dùng'}`;
-          initHot(); bindEvents(); clearSummary();
-          await loadCustomerTable({keepSelection:false});
-          resetForm({focus:false});
+    function autoFillPhoneFromMaKH(force = false) {
+      const mkEl = document.getElementById("makh");
+      const dtEl = document.getElementById("dienthoai");
+      if (!mkEl || !dtEl) return;
+
+      // Nếu đang ở chế độ sửa khách cũ (makh bị khóa) thì không tự động chèn lại
+      if (mkEl.readOnly) return;
+
+      const mk = String(mkEl.value || "").trim();
+      if (!mk) return;
+
+      // Chỉ auto-fill nếu Mã KH là số hoàn toàn (không có chữ)
+      if (!isAllDigits(mk)) return;
+
+      // An toàn khi người dùng sửa lại Mã KH: luôn cập nhật lại SĐT theo Mã KH (theo quy ước Mã KH = SĐT)
+      // - áp dụng cho cả blur lẫn Enter
+      // - không phụ thuộc SĐT đang có gì (tránh trường hợp nhập nhầm rồi sửa Mã KH mà SĐT không cập nhật)
+      dtEl.value = mk;
+    }
+
+
+    // Thứ tự chuyển focus khi nhấn Enter
+    const ENTER_FLOW = ["makh", "tenkh", "dienthoai", "la_ncc", "ngaysinh", "thangsinh", "diachi", "email", "taikhoan", "mst", "cccd"];
+    function focusNextFrom(id) {
+      const idx = ENTER_FLOW.indexOf(id);
+      if (idx < 0) return;
+      const nextId = ENTER_FLOW[idx + 1];
+      if (!nextId) return;
+      const el = document.getElementById(nextId);
+      el?.focus();
+    }
+
+    function bindEvents() {
+      const makhInp = document.getElementById("makh");
+      makhInp?.addEventListener("input", suggestKH);
+      makhInp?.addEventListener("focus", suggestKH);
+      makhInp?.addEventListener("blur", autoFillPhoneFromMaKH);
+
+      const ngaysinhEl = document.getElementById("ngaysinh");
+
+      ngaysinhEl?.addEventListener("change", () => {
+
+        const raw = getVal("ngaysinh");
+
+        if (!raw) {
+          setVal("thangsinh", "");
+          return;
         }
+
+        const m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+        if (!m) return;
+
+        const thang = Number(m[2]);
+
+        if (thang >= 1 && thang <= 12) {
+          setVal("thangsinh", thang);
+        }
+      });
+
+      document.getElementById("makhSuggestList")?.addEventListener("mousedown", (ev) => {
+        const item = ev.target.closest(".suggest-item");
+        if (!item) return;
+        ev.preventDefault();
+        chooseKHFromSuggest(Number(item.getAttribute("data-idx")));
+      });
+      document.addEventListener("mousedown", (ev) => {
+        const popup = document.getElementById("makhSuggestList");
+        if (!popup) return;
+        if (!popup.contains(ev.target) && ev.target.id !== "makh") popup.style.display = "none";
+      });
+      document.addEventListener("keydown", (ev) => {
+        const active = document.activeElement;
+
+        // 1) Trường Mã KH: giữ nguyên logic popup gợi ý (Arrow/Enter chọn)
+        if (active && active.id === "makh") {
+          const popup = document.getElementById("makhSuggestList");
+          const popupOpen = popup && popup.style.display !== "none" && khSuggestList.length > 0;
+
+          if (popupOpen) {
+            if (ev.key === "ArrowDown" || ev.key === "Tab") { ev.preventDefault(); suggestIndex = (suggestIndex + 1) % khSuggestList.length; updateSuggestActive(); }
+            else if (ev.key === "ArrowUp") { ev.preventDefault(); suggestIndex = (suggestIndex - 1 + khSuggestList.length) % khSuggestList.length; updateSuggestActive(); }
+            else if (ev.key === "Enter") { if (khSuggestList[suggestIndex]) { ev.preventDefault(); chooseKHFromSuggest(suggestIndex); } }
+            else if (ev.key === "Escape") { popup.style.display = "none"; }
+            return;
+          }
+        }
+
+        // 2) Flow Enter: chuyển lần lượt từ trên xuống dưới
+        if (ev.key === "Enter" && active && ENTER_FLOW.includes(active.id)) {
+          ev.preventDefault();
+
+          if (active.id === "makh") {
+            // Khi thoát khỏi Mã KH (Enter), nếu Mã KH là số hoàn toàn thì tự điền SĐT
+            autoFillPhoneFromMaKH();
+          }
+
+          focusNextFrom(active.id);
+        }
+      });
+
+
+      window.fetchKH = fetchKH;
+      window.saveKH = saveKH;
+      window.resetForm = resetForm;
+      window.deleteKH = deleteKH;
+      window.doLogout = () => dangXuatDungChung({ reloadPage: true });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      khoiTaoDangNhapDungChung({
+        appContainerId: "app-container",
+        tuDongKhoaCoSo: false,
+        macDinhDiaDiem: localStorage.getItem("diadiem") || "cs1",
+        onLoginSuccess: async () => {
+          supabase = getSupabaseClient();
+          bindEvents();
+          resetForm();
+        },
       });
     });
   </script>
 </body>
+
 </html>
