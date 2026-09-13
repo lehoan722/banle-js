@@ -1,528 +1,484 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Nhập Danh Mục Nhân Viên</title>
-    <meta name="viewport" content="width=450">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f9f9fb;
-            padding: 32px;
-        }
-
-        .center-box {
-            width: 420px;
-            margin: 40px auto;
-            background: #fff;
-            border-radius: 18px;
-            box-shadow: 0 3px 18px #d6e3ef44;
-            border: 1.5px solid #e3e9f1;
-            padding: 28px 24px 18px 24px;
-        }
-
-        .form-title {
-            font-size: 1.18em;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 22px;
-            color: #163163;
-        }
-
-        .row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        /* THÊM ĐOẠN NÀY an ca cdong hidden-row */
-        .row.hidden-row {
-            display: none;
-        }
-
-        .row label {
-            width: 120px;
-            font-size: 1em;
-        }
-
-        .row input,
-        .row select,
-        .row textarea {
-            flex: 1;
-            padding: 7px 10px;
-            font-size: 1em;
-            border-radius: 7px;
-            border: 1.2px solid #b5bed5;
-            background: #fcfcfe;
-        }
-
-        .row input:focus,
-        .row select:focus,
-        .row textarea:focus {
-            border-color: #1164be;
-            outline: none;
-        }
-
-        .required {
-            color: #e23a1b;
-            font-weight: bold;
-        }
-
-        .actions {
-            display: flex;
-            gap: 13px;
-            justify-content: center;
-            margin-top: 20px;
-            margin-bottom: 8px;
-            flex-wrap: wrap;
-        }
-
-        .actions button {
-            font-size: 1em;
-            padding: 8px 22px;
-            border-radius: 7px;
-            border: none;
-            cursor: pointer;
-            font-weight: 500;
-            box-shadow: 0 2px 6px #dee6ff33;
-        }
-
-        .actions button.save {
-            background: #18804f;
-            color: #fff;
-        }
-
-        .actions button.new {
-            background: #eaeaec;
-        }
-
-        .actions button.delete {
-            background: #d13f3f;
-            color: #fff;
-        }
-
-        .actions button.logout {
-            background: #efebfa;
-            color: #45427b;
-        }
-
-        .actions button:hover {
-            opacity: .87;
-        }
-
-        .msg {
-            text-align: center;
-            padding: 10px 0 5px 0;
-            min-height: 26px;
-        }
-
-        .msg.error {
-            color: #fff;
-            background: #c44736;
-            border-radius: 6px;
-        }
-
-        .msg.success {
-            color: #18804f;
-            background: #e6f4e7;
-            border-radius: 6px;
-        }
-
-        /* --- Gợi ý Mã NV --- */
-        .manv-wrap {
-            position: relative;
-            width: 100%;
-        }
-
-        #nvSuggest {
-            position: absolute;
-            top: 38px;
-            left: 0;
-            right: 0;
-            background: #fff;
-            border: 1px solid #cdd5e1;
-            border-radius: 8px;
-            box-shadow: 0 6px 18px #1f2a4422;
-            max-height: 220px;
-            overflow: auto;
-            z-index: 1000;
-            display: none;
-        }
-
-        #nvSuggest .item {
-            padding: 6px 10px;
-            cursor: pointer;
-            font-size: .95em;
-        }
-
-        #nvSuggest .item:hover,
-        #nvSuggest .item.active {
-            background: #eef5ff;
-        }
-
-        #nvSuggest .empty {
-            padding: 8px 10px;
-            color: #6b7280;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Quản lý nhân viên</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@18.1.0/dist/handsontable.full.min.css">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;color:#1f2937}
+    button,input,select{font:inherit}
+    #app-container{display:none;min-height:100vh;padding:18px}
+    .page{max-width:1450px;margin:0 auto}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .title-wrap h1{font-size:23px;margin:0;color:#17345f}.title-wrap .sub{font-size:13px;color:#6b7280;margin-top:4px}
+    .top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.actor{font-size:12px;padding:6px 10px;border-radius:999px;background:#eaf2ff;color:#1557a6}
+    .card{background:#fff;border:1px solid #e3e8ef;border-radius:14px;box-shadow:0 3px 14px rgba(31,41,55,.05)}
+    .list-card{padding:14px;margin-bottom:14px}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+    .toolbar input,.toolbar select{height:38px;border:1px solid #cdd6e2;border-radius:8px;padding:0 10px;background:#fff}
+    #searchNv{min-width:290px;flex:1}.stats{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}.stat{font-size:12px;background:#f2f5f9;border-radius:999px;padding:6px 9px;color:#4b5563}
+    .btn{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;padding:9px 14px;cursor:pointer;font-weight:600}.btn:hover{filter:brightness(.98)}
+    .btn.primary{background:#1769aa;border-color:#1769aa;color:#fff}.btn.success{background:#16794b;border-color:#16794b;color:#fff}.btn.danger{background:#c83a3a;border-color:#c83a3a;color:#fff}.btn.soft{background:#eef2f7}.btn:disabled{opacity:.5;cursor:not-allowed}
+    #hot{height:380px;overflow:hidden;border:1px solid #e5e7eb;border-radius:10px}
+    .selected-info{font-size:13px;color:#52606d;margin-top:8px;min-height:18px}
+    .lower{display:grid;grid-template-columns:minmax(420px,1fr) minmax(460px,1.18fr);gap:14px;align-items:start}
+    .panel{padding:16px}.panel-title{font-size:17px;font-weight:700;color:#17345f;margin:0 0 14px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .form-grid{display:grid;grid-template-columns:150px 1fr;gap:10px 12px;align-items:center}.form-grid label{font-size:14px;color:#374151}.req{color:#d22;font-weight:700}
+    .form-grid input,.form-grid select{width:100%;height:38px;padding:0 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}.form-grid input:focus,.form-grid select:focus{outline:none;border-color:#2777bd;box-shadow:0 0 0 2px #dbeafe}
+    .form-grid input[readonly]{background:#f3f4f6;color:#667085}.hint{font-size:12px;color:#6b7280;line-height:1.4}.warn{color:#a33b12;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 10px}
+    .form-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px;padding-top:13px;border-top:1px solid #edf0f4}
+    .perm-head{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}.perm-actions{display:flex;gap:7px;flex-wrap:wrap}
+    .perm-table-wrap{border:1px solid #e5e7eb;border-radius:10px;overflow:auto;max-height:430px}.perm-table{width:100%;border-collapse:collapse}.perm-table th,.perm-table td{padding:9px 10px;border-bottom:1px solid #eef1f4;text-align:left;font-size:13px}.perm-table th{position:sticky;top:0;background:#f8fafc;z-index:1}.perm-table tr:last-child td{border-bottom:none}.perm-table .path{color:#77808c;font-size:12px;word-break:break-all}.perm-empty{padding:28px;text-align:center;color:#7b8491;font-size:13px}
+    .msg{min-height:20px;margin-top:10px;font-size:13px}.msg.success{color:#0d713e}.msg.error{color:#b42318}.msg.info{color:#475467}
+    .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}.status-on{background:#16a34a}.status-off{background:#9ca3af}
+    .ht-theme-main{--ht-cell-horizontal-padding:8px}.handsontable td{font-size:13px}.handsontable th{font-size:12px}.handsontable .htDimmed{color:#1f2937}.handsontable td.row-inactive{color:#8b95a1;background:#fafafa}.handsontable td.row-admin{font-weight:700}
+    @media(max-width:980px){#app-container{padding:10px}.lower{grid-template-columns:1fr}.topbar{align-items:flex-start}.form-grid{grid-template-columns:125px 1fr}#hot{height:330px}}
+    @media(max-width:560px){.form-grid{grid-template-columns:1fr}.form-grid label{margin-top:5px}.toolbar>*{width:100%}.stats{margin-left:0}.topbar{flex-direction:column}.top-actions{width:100%}}
+  </style>
 </head>
-
 <body>
-    <!-- Toàn bộ app sẽ nằm trong app-container, mặc định bị ẩn tới khi đăng nhập -->
-    <div id="app-container" style="display:none">
-        <div id="mainform" class="center-box">
-            <div class="form-title">NHẬP DANH MỤC NHÂN VIÊN</div>
-
-            <div class="row">
-                <label class="required">Mã NV *</label>
-                <div class="manv-wrap">
-                    <input id="manv" autocomplete="off" oninput="onManvInput()" onkeydown="onManvKey(event)"
-                        onfocus="onManvInput()">
-                    <div id="nvSuggest"></div>
-                </div>
-            </div>
-
-            <div class="row">
-                <label class="required">Tên NV *</label>
-                <input id="tennv">
-            </div>
-
-            <div class="row">
-                <label class="required">Số điện thoại *</label>
-                <input id="dienthoai" inputmode="tel" autocomplete="tel">
-            </div>
-
-            <div class="row">
-                <label>Trạng thái</label>
-                <select id="trangthai">
-                    <option value="true">Đang hoạt động</option>
-                    <option value="false">Ngừng hoạt động</option>
-                </select>
-            </div>
-
-            <div class="row">
-                <label>Mật khẩu</label>
-                <input id="matkhau">
-            </div>
-
-            <div class="row">
-                <label>Sửa hóa đơn</label>
-                <select id="sua_hoadon">
-                    <option value="false">Không</option>
-                    <!--<option value="true">Có</option>-->
-                </select>
-            </div>
-
-            <div class="row">
-                <label>Xóa hóa đơn</label>
-                <select id="xoa_hoadon">
-                    <option value="false">Không</option>
-                    <!--<option value="true">Có</option>-->
-                </select>
-            </div>
-
-            <div class="row hidden-row">
-                <label>Email</label>
-                <input id="email">
-            </div>
-
-            <div class="row hidden-row">
-                <label>Loại được sửa</label>
-                <textarea id="loai_duoc_sua" rows="2"></textarea>
-            </div>
-
-            <div class="actions">
-                <button class="save" onclick="saveNV()">Lưu dữ liệu</button>
-                <button class="new" onclick="resetForm()">Thêm mới</button>
-                <button class="delete" onclick="deleteNV()">Xoá nhân viên</button>
-                <button class="logout" onclick="handleLogout()">Đăng xuất</button>
-            </div>
-            <div id="msgBox" class="msg"></div>
+  <div id="app-container">
+    <div class="page">
+      <div class="topbar">
+        <div class="title-wrap">
+          <h1>QUẢN LÝ NHÂN VIÊN</h1>
+          <div class="sub">Danh mục nhân viên và phân quyền sử dụng hệ thống</div>
         </div>
+        <div class="top-actions">
+          <span id="actorBadge" class="actor">ADMIN</span>
+          <button class="btn" onclick="handleLogout()">Đăng xuất</button>
+        </div>
+      </div>
+
+      <section class="card list-card">
+        <div class="toolbar">
+          <input id="searchNv" type="text" placeholder="Tìm mã NV / tên / điện thoại...">
+          <select id="filterStatus">
+            <option value="all">Tất cả trạng thái</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="inactive">Ngừng hoạt động</option>
+          </select>
+          <button class="btn primary" id="btnNewTop" type="button">+ Thêm mới</button>
+          <button class="btn soft" id="btnReload" type="button">↻ Tải lại</button>
+          <div class="stats">
+            <span class="stat" id="statTotal">Tổng: 0</span>
+            <span class="stat" id="statActive">Đang HĐ: 0</span>
+            <span class="stat" id="statInactive">Ngừng: 0</span>
+          </div>
+        </div>
+        <div id="hot"></div>
+        <div id="selectedInfo" class="selected-info">Chọn một dòng để xem/sửa thông tin và phân quyền.</div>
+      </section>
+
+      <div class="lower">
+        <section class="card panel">
+          <div class="panel-title"><span>THÔNG TIN NHÂN VIÊN</span><span id="formMode" class="hint">Thêm mới</span></div>
+          <div class="form-grid">
+            <label>Mã NV <span class="req">*</span></label><input id="manv" autocomplete="off">
+            <label>Tên NV <span class="req">*</span></label><input id="tennv">
+            <label>Số điện thoại <span class="req">*</span></label><input id="dienthoai" inputmode="tel" autocomplete="tel">
+            <label>Trạng thái</label><select id="trangthai"><option value="true">Đang hoạt động</option><option value="false">Ngừng hoạt động</option></select>
+            <label>Quản trị viên</label><select id="is_admin"><option value="false">Nhân viên</option><option value="true">ADMIN</option></select>
+            <label>Mật khẩu mới</label><input id="matkhau" type="password" autocomplete="new-password" placeholder="Để trống nếu không đổi">
+            <label>Email</label><input id="email" type="email" autocomplete="off">
+            <label>Sửa hóa đơn</label><select id="sua_hoadon"><option value="false">Không</option><option value="true">Có</option></select>
+            <label>Xóa hóa đơn</label><select id="xoa_hoadon"><option value="false">Không</option><option value="true">Có</option></select>
+          </div>
+          <div class="warn" style="margin-top:12px">ADMIN có quyền quản trị hệ thống. Chỉ bật cho người thực sự cần quyền quản trị.</div>
+          <div class="hint" style="margin-top:8px">Khi sửa nhân viên, ô mật khẩu luôn để trống. Chỉ nhập khi cần đặt mật khẩu mới.</div>
+          <div class="form-actions">
+            <button class="btn soft" id="btnNew" type="button">Thêm mới</button>
+            <button class="btn danger" id="btnDelete" type="button">Xóa hẳn</button>
+            <button class="btn success" id="btnSaveNv" type="button">Lưu thông tin</button>
+          </div>
+          <div id="msgNv" class="msg"></div>
+        </section>
+
+        <section class="card panel">
+          <div class="panel-title"><span>PHÂN QUYỀN</span><span id="permTarget" class="hint">Chưa chọn nhân viên</span></div>
+          <div class="perm-head">
+            <div class="hint">Quyền truy cập các trang của nhân viên đang chọn.</div>
+            <div class="perm-actions">
+              <button class="btn soft" id="btnUncheckAll" type="button">Bỏ chọn hết</button>
+              <button class="btn soft" id="btnCheckAll" type="button">Chọn hết</button>
+              <button class="btn primary" id="btnSavePerm" type="button">Lưu phân quyền</button>
+            </div>
+          </div>
+          <div class="perm-table-wrap">
+            <table class="perm-table">
+              <thead><tr><th style="width:70px">Chọn</th><th>Trang được sử dụng</th><th>Đường dẫn</th></tr></thead>
+              <tbody id="permBody"><tr><td colspan="3"><div class="perm-empty">Hãy chọn một nhân viên trên bảng.</div></td></tr></tbody>
+            </table>
+          </div>
+          <div id="msgPerm" class="msg"></div>
+        </section>
+      </div>
     </div>
+  </div>
 
-    <!-- Script xử lý: dùng authModule chuẩn + chỉ cho ADMIN -->
-    <script type="module">
-        import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js'; // :contentReference[oaicite:0]{index=0}
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@18.1.0/dist/handsontable.full.min.js"></script>
+  <script type="module">
+    import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
 
-        const TABLE = 'dmnhanvien';
-        const supabase = window.supabase; // client đã được authModule khởi tạo
-        let editingOld = false;
+    const TABLE = 'dmnhanvien';
+    const supabase = window.supabase;
+    const $ = id => document.getElementById(id);
 
-        // ======= GỢI Ý MÃ NHÂN VIÊN =======
-        let nvCache = [];
-        let nvIndex = -1;
-        let nvLoading = null;
+    let ACTOR = { manv: null, tennv: null, is_admin: false, _pass: '' };
+    let hot = null;
+    let allEmployees = [];
+    let filteredEmployees = [];
+    let selectedManv = null;
+    let editingOld = false;
+    let currentPermissions = [];
+    let loadingSelectionToken = 0;
 
-        async function loadNvList() {
-            const { data, error } = await supabase
-                .from(TABLE)
-                .select('manv, tennv, trangthai')
-                .order('manv', { ascending: true })
-                .limit(5000);
-            if (!error && Array.isArray(data)) {
-                nvCache = data;
-            } else {
-                nvCache = [];
-            }
+    function setMsg(id, msg = '', type = '') {
+      const box = $(id);
+      box.textContent = msg;
+      box.className = 'msg' + (type ? ' ' + type : '');
+    }
+
+    function normalizePhone(v) { return String(v || '').replace(/\s+/g, ''); }
+    function esc(v) { return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
+    function initHot() {
+      if (hot) return;
+      if (!window.Handsontable) {
+        setMsg('msgNv', 'Không tải được thư viện Handsontable. Kiểm tra kết nối CDN.', 'error');
+        return;
+      }
+      hot = new Handsontable($('hot'), {
+        data: [],
+        colHeaders: ['Mã NV', 'Tên nhân viên', 'Điện thoại', 'Trạng thái', 'Admin', 'Email'],
+        columns: [
+          { data: 'manv' },
+          { data: 'tennv' },
+          { data: 'dienthoai' },
+          { data: 'status_text' },
+          { data: 'admin_text' },
+          { data: 'email' }
+        ],
+        colWidths: [105, 220, 145, 120, 85, 220],
+        stretchH: 'last',
+        height: '100%',
+        readOnly: true,
+        rowHeaders: true,
+        manualColumnResize: true,
+        columnSorting: true,
+        dropdownMenu: false,
+        filters: false,
+        selectionMode: 'single',
+        outsideClickDeselects: false,
+        licenseKey: window.HOT_LICENSE_KEY || 'non-commercial-and-evaluation',
+        cells(row) {
+          const props = {};
+          const r = filteredEmployees[row];
+          const cls = [];
+          if (r && !r.trangthai) cls.push('row-inactive');
+          if (r && r.is_admin) cls.push('row-admin');
+          if (cls.length) props.className = cls.join(' ');
+          return props;
+        },
+        afterSelectionEnd(row) {
+          const nv = filteredEmployees[row];
+          if (nv && nv.manv && nv.manv !== selectedManv) selectEmployee(nv.manv, false);
         }
+      });
+    }
 
-        async function ensureNvList() {
-            if (nvCache.length) return;
-            if (!nvLoading) nvLoading = loadNvList();
-            await nvLoading;
-        }
+    function employeeViewRows(rows) {
+      return rows.map(r => ({
+        ...r,
+        status_text: r.trangthai ? 'Đang hoạt động' : 'Ngừng hoạt động',
+        admin_text: r.is_admin ? 'ADMIN' : ''
+      }));
+    }
 
-        function pickNv(code) {
-            setVal('manv', code);
-            hideNvSuggest();
-            fetchNV();
-            setTimeout(() => document.getElementById('tennv').focus(), 0);
-        }
+    async function loadEmployeeTable({ keepSelection = true } = {}) {
+      const keepManv = keepSelection ? selectedManv : null;
+      setMsg('msgNv', 'Đang tải danh sách nhân viên...', 'info');
+      const { data, error } = await supabase
+        .from(TABLE)
+        .select('manv,tennv,dienthoai,trangthai,is_admin,email,sua_hoadon,xoa_hoadon')
+        .order('manv', { ascending: true });
+      if (error) {
+        setMsg('msgNv', 'Lỗi tải danh sách: ' + error.message, 'error');
+        return false;
+      }
+      allEmployees = Array.isArray(data) ? data : [];
+      applyFilters();
+      setMsg('msgNv', '', '');
+      if (keepManv) selectHotRow(keepManv);
+      return true;
+    }
 
-        function renderNvSuggest(list) {
-            const box = document.getElementById('nvSuggest');
-            if (!list.length) {
-                box.innerHTML = '<div class="empty">Không có kết quả</div>';
-                box.style.display = 'block';
-                return;
-            }
-            const html = list.slice(0, 100)
-                .map((r, i) => `
-          <div class="item${i === nvIndex ? ' active' : ''}" data-manv="${r.manv}">
-            ${r.manv} — ${r.tennv || ''}
-          </div>`).join('');
-            box.innerHTML = html;
-            box.style.display = 'block';
-            box.querySelectorAll('.item').forEach(el => {
-                el.addEventListener('mousedown', e => {
-                    e.preventDefault();
-                    pickNv(el.dataset.manv);
-                });
-            });
-        }
+    function updateStats() {
+      const total = allEmployees.length;
+      const active = allEmployees.filter(r => !!r.trangthai).length;
+      $('statTotal').textContent = `Tổng: ${total}`;
+      $('statActive').textContent = `Đang HĐ: ${active}`;
+      $('statInactive').textContent = `Ngừng: ${total - active}`;
+    }
 
-        function hideNvSuggest() {
-            const box = document.getElementById('nvSuggest');
-            if (box) box.style.display = 'none';
-            nvIndex = -1;
-        }
+    function applyFilters() {
+      const q = $('searchNv').value.trim().toUpperCase();
+      const st = $('filterStatus').value;
+      filteredEmployees = allEmployees.filter(r => {
+        const okText = !q || [r.manv, r.tennv, r.dienthoai, r.email].some(v => String(v || '').toUpperCase().includes(q));
+        const okStatus = st === 'all' || (st === 'active' && !!r.trangthai) || (st === 'inactive' && !r.trangthai);
+        return okText && okStatus;
+      });
+      initHot();
+      if (hot) hot.loadData(employeeViewRows(filteredEmployees));
+      updateStats();
+      if (selectedManv) selectHotRow(selectedManv);
+    }
 
-        async function onManvInput() {
-            await ensureNvList();
-            const q = getVal('manv').trim().toUpperCase();
+    function selectHotRow(manv) {
+      if (!hot || !manv) return;
+      const idx = filteredEmployees.findIndex(r => r.manv === manv);
+      if (idx >= 0) {
+        hot.selectCell(idx, 0, idx, 0, false, false);
+        hot.scrollViewportTo(idx, 0);
+      }
+    }
 
-            const list = !q
-                ? nvCache.slice(0, 200)
-                : nvCache.filter(r =>
-                    r.manv?.toUpperCase().includes(q) ||
-                    (r.tennv || '').toUpperCase().includes(q)
-                );
+    function setForm(data) {
+      $('manv').value = data?.manv || '';
+      $('tennv').value = data?.tennv || '';
+      $('dienthoai').value = data?.dienthoai || '';
+      $('trangthai').value = data?.trangthai === false ? 'false' : 'true';
+      $('is_admin').value = data?.is_admin ? 'true' : 'false';
+      $('matkhau').value = '';
+      $('email').value = data?.email || '';
+      $('sua_hoadon').value = data?.sua_hoadon ? 'true' : 'false';
+      $('xoa_hoadon').value = data?.xoa_hoadon ? 'true' : 'false';
+    }
 
-            nvIndex = -1;
-            renderNvSuggest(list);
-        }
+    function resetForm({ focus = true } = {}) {
+      editingOld = false;
+      selectedManv = null;
+      setForm(null);
+      $('manv').readOnly = false;
+      $('formMode').textContent = 'Thêm mới';
+      $('selectedInfo').textContent = 'Đang thêm nhân viên mới.';
+      setMsg('msgNv', '');
+      clearPermissions();
+      if (hot) hot.deselectCell();
+      if (focus) $('manv').focus();
+    }
 
-        function onManvKey(e) {
-            const box = document.getElementById('nvSuggest');
-            const items = Array.from(box.querySelectorAll('.item'));
-            if (e.key === 'ArrowDown') {
-                if (!items.length) return;
-                e.preventDefault();
-                nvIndex = (nvIndex + 1) % items.length;
-                items.forEach((el, i) => el.classList.toggle('active', i === nvIndex));
-                items[nvIndex].scrollIntoView({ block: 'nearest' });
-            } else if (e.key === 'ArrowUp') {
-                if (!items.length) return;
-                e.preventDefault();
-                nvIndex = (nvIndex <= 0 ? items.length - 1 : nvIndex - 1);
-                items.forEach((el, i) => el.classList.toggle('active', i === nvIndex));
-                items[nvIndex].scrollIntoView({ block: 'nearest' });
-            } else if (e.key === 'Enter') {
-                if (nvIndex >= 0 && items[nvIndex]) {
-                    e.preventDefault();
-                    pickNv(items[nvIndex].dataset.manv);
-                } else {
-                    fetchNV();
-                    hideNvSuggest();
-                }
-            } else if (e.key === 'Escape') {
-                hideNvSuggest();
-            }
-        }
+    function clearPermissions() {
+      currentPermissions = [];
+      $('permTarget').textContent = 'Chưa chọn nhân viên';
+      $('permBody').innerHTML = '<tr><td colspan="3"><div class="perm-empty">Hãy chọn một nhân viên trên bảng.</div></td></tr>';
+      setMsg('msgPerm', '');
+      $('btnSavePerm').disabled = true;
+      $('btnCheckAll').disabled = true;
+      $('btnUncheckAll').disabled = true;
+    }
 
-        document.addEventListener('click', (e) => {
-            if (!document.querySelector('.manv-wrap')?.contains(e.target)) hideNvSuggest();
+    async function selectEmployee(manv, selectRow = true) {
+      if (!manv) return;
+      const token = ++loadingSelectionToken;
+      selectedManv = manv;
+      editingOld = true;
+      $('selectedInfo').textContent = `Đang tải nhân viên ${manv}...`;
+      setMsg('msgNv', 'Đang tải dữ liệu...', 'info');
+
+      const { data, error } = await supabase.from(TABLE).select('*').eq('manv', manv).maybeSingle();
+      if (token !== loadingSelectionToken) return;
+      if (error) {
+        setMsg('msgNv', 'Lỗi tải nhân viên: ' + error.message, 'error');
+        return;
+      }
+      if (!data) {
+        setMsg('msgNv', 'Nhân viên không còn tồn tại. Đang tải lại danh sách.', 'error');
+        await loadEmployeeTable({ keepSelection: false });
+        resetForm({ focus: false });
+        return;
+      }
+
+      setForm(data);
+      $('manv').readOnly = true;
+      $('formMode').textContent = 'Đang sửa';
+      $('selectedInfo').textContent = `Đã chọn: ${data.manv} — ${data.tennv || ''}`;
+      setMsg('msgNv', '');
+      if (selectRow) selectHotRow(manv);
+      await loadPermissions(manv, data.tennv || '');
+    }
+
+    async function saveEmployee() {
+      const manv = $('manv').value.trim().toUpperCase();
+      const tennv = $('tennv').value.trim();
+      const dienthoai = normalizePhone($('dienthoai').value);
+      const newPassword = $('matkhau').value;
+      if (!manv) return setMsg('msgNv', 'Mã nhân viên không được bỏ trống.', 'error');
+      if (!tennv) return setMsg('msgNv', 'Tên nhân viên không được bỏ trống.', 'error');
+      if (!dienthoai) return setMsg('msgNv', 'Số điện thoại không được bỏ trống.', 'error');
+      if (!/^[0-9]{10,15}$/.test(dienthoai)) return setMsg('msgNv', 'Số điện thoại không hợp lệ (10–15 chữ số).', 'error');
+
+      const obj = {
+        manv, tennv, dienthoai,
+        trangthai: $('trangthai').value === 'true',
+        is_admin: $('is_admin').value === 'true',
+        sua_hoadon: $('sua_hoadon').value === 'true',
+        xoa_hoadon: $('xoa_hoadon').value === 'true',
+        email: $('email').value.trim() || null
+      };
+      if (editingOld) {
+        if (newPassword) obj.matkhau = newPassword;
+      } else {
+        obj.matkhau = newPassword || null;
+      }
+
+      $('btnSaveNv').disabled = true;
+      setMsg('msgNv', editingOld ? 'Đang cập nhật...' : 'Đang thêm nhân viên...', 'info');
+      let result;
+      if (editingOld) result = await supabase.from(TABLE).update(obj).eq('manv', manv).select('manv');
+      else result = await supabase.from(TABLE).insert(obj).select('manv');
+      $('btnSaveNv').disabled = false;
+
+      if (result.error) return setMsg('msgNv', 'Lỗi lưu dữ liệu: ' + result.error.message, 'error');
+      if (!result.data || result.data.length === 0) return setMsg('msgNv', 'Không cập nhật được dữ liệu (có thể bị RLS chặn).', 'error');
+
+      const wasEditing = editingOld;
+      editingOld = true;
+      selectedManv = manv;
+      $('manv').readOnly = true;
+      $('matkhau').value = '';
+      $('formMode').textContent = 'Đang sửa';
+      await loadEmployeeTable({ keepSelection: true });
+      await selectEmployee(manv, true);
+      setMsg('msgNv', wasEditing ? 'Đã cập nhật nhân viên.' : 'Đã thêm nhân viên mới.', 'success');
+    }
+
+    async function deleteEmployee() {
+      const manv = $('manv').value.trim().toUpperCase();
+      const tennv = $('tennv').value.trim();
+      if (!editingOld || !manv) return setMsg('msgNv', 'Chưa chọn nhân viên để xóa.', 'error');
+      if (ACTOR.manv && manv === ACTOR.manv) return setMsg('msgNv', 'Không nên xóa chính tài khoản ADMIN đang đăng nhập.', 'error');
+      if (!confirm(`XÓA HẲN nhân viên "${manv} - ${tennv}"?\n\nNếu nhân viên chỉ nghỉ làm, nên đổi Trạng thái thành "Ngừng hoạt động" thay vì xóa.`)) return;
+      const { data, error } = await supabase.from(TABLE).delete().eq('manv', manv).select('manv');
+      if (error) return setMsg('msgNv', 'Lỗi xóa: ' + error.message, 'error');
+      if (!data || data.length === 0) return setMsg('msgNv', 'Không xóa được dữ liệu (có thể bị RLS chặn).', 'error');
+      await loadEmployeeTable({ keepSelection: false });
+      resetForm({ focus: false });
+      setMsg('msgNv', `Đã xóa nhân viên ${manv}.`, 'success');
+    }
+
+    function renderPermissions() {
+      if (!currentPermissions.length) {
+        $('permBody').innerHTML = '<tr><td colspan="3"><div class="perm-empty">Không có danh sách trang để phân quyền.</div></td></tr>';
+        return;
+      }
+      $('permBody').innerHTML = currentPermissions.map((r, idx) => `
+        <tr>
+          <td><input type="checkbox" class="perm-check" data-idx="${idx}" ${r.checked ? 'checked' : ''}></td>
+          <td>${esc(r.title || r.path || r.code || '')}</td>
+          <td class="path">${esc(r.path || '')}</td>
+        </tr>`).join('');
+      document.querySelectorAll('.perm-check').forEach(cb => {
+        cb.addEventListener('change', e => {
+          const idx = Number(e.target.dataset.idx);
+          if (currentPermissions[idx]) currentPermissions[idx].checked = e.target.checked;
         });
+      });
+    }
 
-        // ======= HÀM TIỆN ÍCH FORM =======
-        function getVal(id) { return document.getElementById(id).value; }
-        function setVal(id, val) { document.getElementById(id).value = val || ''; }
+    async function loadPermissions(manv, tennv = '') {
+      currentPermissions = [];
+      $('permTarget').textContent = `${manv}${tennv ? ' — ' + tennv : ''}`;
+      $('permBody').innerHTML = '<tr><td colspan="3"><div class="perm-empty">Đang tải phân quyền...</div></td></tr>';
+      setMsg('msgPerm', '');
+      $('btnSavePerm').disabled = true;
+      $('btnCheckAll').disabled = true;
+      $('btnUncheckAll').disabled = true;
 
-        function showMsg(msg, type) {
-            let box = document.getElementById('msgBox');
-            box.textContent = msg || '';
-            box.className = 'msg' + (type ? ' ' + type : '');
-            if (msg && type !== 'error') {
-                setTimeout(() => { box.textContent = ''; }, 2500);
-            }
+      const { data, error } = await supabase.rpc('get_pages_for_manv', { p_manv: manv });
+      if (selectedManv !== manv) return;
+      if (error) {
+        $('permBody').innerHTML = '<tr><td colspan="3"><div class="perm-empty">Không tải được phân quyền.</div></td></tr>';
+        return setMsg('msgPerm', 'Lỗi tải danh sách trang: ' + error.message, 'error');
+      }
+      currentPermissions = Array.isArray(data) ? data : [];
+      renderPermissions();
+      $('btnSavePerm').disabled = false;
+      $('btnCheckAll').disabled = false;
+      $('btnUncheckAll').disabled = false;
+    }
+
+    async function savePermissions() {
+      if (!editingOld || !selectedManv) return setMsg('msgPerm', 'Hãy chọn nhân viên trước.', 'error');
+      if (!ACTOR.manv || !ACTOR.is_admin) return setMsg('msgPerm', 'Chỉ ADMIN hợp lệ mới được lưu phân quyền.', 'error');
+      const codes = currentPermissions.filter(r => r.checked).map(r => r.code);
+      const payload = {
+        p_actor_manv: ACTOR.manv,
+        p_actor_pass: ACTOR._pass || null,
+        p_target_manv: selectedManv,
+        p_codes: codes.length ? codes : null,
+        p_can_edit: false
+      };
+      $('btnSavePerm').disabled = true;
+      setMsg('msgPerm', 'Đang lưu phân quyền...', 'info');
+      const { data, error } = await supabase.rpc('set_pages_for_manv_nvauth', payload);
+      $('btnSavePerm').disabled = false;
+      if (error) return setMsg('msgPerm', 'Lỗi RPC: ' + (error.message || 'Bad Request'), 'error');
+      const row = (data && data[0]) || {};
+      if (!row.ok) return setMsg('msgPerm', 'Không lưu được: ' + (row.reason || 'Không rõ nguyên nhân'), 'error');
+      setMsg('msgPerm', `Đã lưu ${codes.length} quyền cho ${$('tennv').value || selectedManv}.`, 'success');
+    }
+
+    function checkAllPermissions(value) {
+      currentPermissions.forEach(r => r.checked = value);
+      renderPermissions();
+    }
+
+    async function handleLogout() {
+      await dangXuatDungChung({ appContainerId: 'app-container' });
+    }
+
+    $('searchNv').addEventListener('input', applyFilters);
+    $('filterStatus').addEventListener('change', applyFilters);
+    $('btnNewTop').addEventListener('click', () => resetForm());
+    $('btnNew').addEventListener('click', () => resetForm());
+    $('btnReload').addEventListener('click', () => loadEmployeeTable({ keepSelection: true }));
+    $('btnSaveNv').addEventListener('click', saveEmployee);
+    $('btnDelete').addEventListener('click', deleteEmployee);
+    $('btnCheckAll').addEventListener('click', () => checkAllPermissions(true));
+    $('btnUncheckAll').addEventListener('click', () => checkAllPermissions(false));
+    $('btnSavePerm').addEventListener('click', savePermissions);
+
+    clearPermissions();
+
+    khoiTaoDangNhapDungChung({
+      appContainerId: 'app-container',
+      macDinhDiaDiem: 'cs1',
+      tuDongKhoaCoSo: true,
+      loginApiPath: '/api/login-cs1',
+      onLoginSuccess: async (nhanvien, { diadiem, session }) => {
+        if (!nhanvien.is_admin) {
+          alert('Tài khoản này KHÔNG phải ADMIN nên không được phép truy cập trang quản lý nhân viên.');
+          await dangXuatDungChung({ appContainerId: 'app-container' });
+          return;
         }
+        ACTOR = {
+          manv: nhanvien.manv,
+          tennv: nhanvien.tennv,
+          is_admin: true,
+          _pass: (localStorage.getItem('last_login_password') || '').trim()
+        };
+        $('actorBadge').textContent = `Đăng nhập: ${ACTOR.tennv || ACTOR.manv} (ADMIN)`;
+        $('app-container').style.display = '';
+        initHot();
+        await loadEmployeeTable({ keepSelection: false });
+        resetForm({ focus: false });
+      }
+    });
 
-        function resetForm() {
-            ['manv', 'tennv', 'dienthoai', 'matkhau', 'email', 'loai_duoc_sua'].forEach(id => setVal(id, ''));
-
-            // ĐẶT MẶC ĐỊNH
-            document.getElementById('trangthai').value = 'true';   // đang hoạt động
-            document.getElementById('sua_hoadon').value = 'false'; // KHÔNG được sửa hóa đơn
-            document.getElementById('xoa_hoadon').value = 'false'; // KHÔNG được xóa hóa đơn
-
-            editingOld = false;
-            document.getElementById('manv').readOnly = false;
-            showMsg('');
-            document.getElementById('manv').focus();
-        }
-
-
-        async function fetchNV() {
-            let manv = getVal('manv').trim().toUpperCase();
-            if (!manv) return;
-            const { data, error } = await supabase
-                .from(TABLE)
-                .select('*')
-                .eq('manv', manv)
-                .maybeSingle();
-
-            if (error) {
-                showMsg('Lỗi tải dữ liệu: ' + error.message, 'error');
-                return;
-            }
-
-            if (data && data.manv) {
-                setVal('tennv', data.tennv);
-                setVal('dienthoai', data.dienthoai);
-                setVal('matkhau', data.matkhau);
-                setVal('email', data.email);
-                setVal('loai_duoc_sua', (data.loai_duoc_sua || []).join(', '));
-                document.getElementById('trangthai').value = data.trangthai ? 'true' : 'false';
-                document.getElementById('sua_hoadon').value = data.sua_hoadon ? 'true' : 'false';
-                document.getElementById('xoa_hoadon').value = data.xoa_hoadon ? 'true' : 'false';
-                editingOld = true;
-                document.getElementById('manv').readOnly = true;
-                showMsg('Đã tải dữ liệu nhân viên.', 'success');
-            } else {
-                editingOld = false;
-                document.getElementById('manv').readOnly = false;
-                showMsg('Mã mới, hãy nhập thông tin để lưu!');
-            }
-        }
-
-        async function saveNV() {
-            let manv = getVal('manv').trim().toUpperCase();
-            let tennv = getVal('tennv').trim();
-            let dienthoai = getVal('dienthoai').trim();
-            if (!manv) return showMsg('Mã nhân viên không được bỏ trống!', 'error');
-            if (!tennv) return showMsg('Tên nhân viên không được bỏ trống!', 'error');
-            if (!dienthoai) return showMsg('Số điện thoại không được bỏ trống!', 'error');
-            if (!/^[0-9]{10,15}$/.test(dienthoai))
-                return showMsg('Số điện thoại không hợp lệ!', 'error');
-
-            let obj = {
-                manv,
-                tennv,
-                dienthoai: dienthoai,
-                trangthai: getVal('trangthai') === 'true',
-                matkhau: getVal('matkhau') || null,
-                sua_hoadon: getVal('sua_hoadon') === 'true',
-                xoa_hoadon: getVal('xoa_hoadon') === 'true',
-                email: getVal('email') || null,
-                loai_duoc_sua: getVal('loai_duoc_sua')
-                    .split(',')
-                    .map(s => s.trim())
-                    .filter(Boolean)
-            };
-
-            let data, error;
-
-            if (editingOld) {
-                ({ data, error } = await supabase
-                    .from(TABLE)
-                    .update(obj)
-                    .eq('manv', manv)
-                    .select('manv')); // <= bắt buộc để biết có update thật không
-            } else {
-                ({ data, error } = await supabase
-                    .from(TABLE)
-                    .insert(obj)
-                    .select('manv'));
-            }
-
-            if (error) {
-                showMsg('Lỗi: ' + error.message, 'error');
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                showMsg('Không cập nhật được (bị RLS chặn hoặc không có dòng nào khớp).', 'error');
-                return;
-            }
-
-            showMsg(editingOld ? 'Đã cập nhật nhân viên!' : 'Đã thêm nhân viên mới!', 'success');
-            setTimeout(resetForm, 1000);
-
-        }
-
-        async function deleteNV() {
-            let manv = getVal('manv').trim().toUpperCase();
-            if (!manv || !editingOld) return showMsg('Không có nhân viên để xóa!', 'error');
-            if (!confirm(`Bạn có chắc chắn muốn xoá nhân viên "${manv}" không?`)) return;
-            const { data, error } = await supabase
-                .from(TABLE)
-                .delete()
-                .eq('manv', manv)
-                .select('manv');
-
-            if (error) return showMsg('Lỗi xoá: ' + error.message, 'error');
-            if (!data || data.length === 0) return showMsg('Không xoá được (bị RLS chặn).', 'error');
-
-            showMsg('Đã xoá nhân viên thành công!', 'success');
-            setTimeout(resetForm, 1000);
-        }
-
-        async function handleLogout() {
-            await dangXuatDungChung({ appContainerId: 'app-container' });
-        }
-
-        // ======= GHÉP AUTH CHUẨN – CHỈ CHO PHÉP ADMIN =======
-        khoiTaoDangNhapDungChung({
-            appContainerId: 'app-container',
-            macDinhDiaDiem: 'cs1',      // mặc định cơ sở 1, tuỳ anh đổi nếu cần
-            tuDongKhoaCoSo: true,
-            loginApiPath: '/api/login-cs1',
-            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
-                // Chỉ cho phép admin
-                if (!nhanvien.is_admin) {
-                    alert('Tài khoản này KHÔNG phải ADMIN nên không được phép truy cập trang nhập danh mục nhân viên.');
-                    await dangXuatDungChung({ appContainerId: 'app-container' });
-                    return;
-                }
-
-                // Admin hợp lệ -> hiển thị app & load danh sách gợi ý mã NV
-                document.getElementById('app-container').style.display = '';
-                await loadNvList();
-                resetForm();
-            }
-        });
-
-        // ======= EXPOSE HÀM RA WINDOW ĐỂ HTML GỌI =======
-        window.onManvInput = onManvInput;
-        window.onManvKey = onManvKey;
-        window.resetForm = resetForm;
-        window.fetchNV = fetchNV;
-        window.saveNV = saveNV;
-        window.deleteNV = deleteNV;
-        window.handleLogout = handleLogout;
-    </script>
+    window.handleLogout = handleLogout;
+  </script>
 </body>
-
 </html>
