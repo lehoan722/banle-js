@@ -9,7 +9,7 @@
     *{box-sizing:border-box}
     body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;color:#1f2937}
     button,input,select{font:inherit}
-    #app-container{display:none;min-height:100vh;padding:18px}
+    #app-container{min-height:100vh;padding:18px}
     .page{max-width:1450px;margin:0 auto}
     .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
     .title-wrap h1{font-size:23px;margin:0;color:#17345f}.title-wrap .sub{font-size:13px;color:#6b7280;margin-top:4px}
@@ -38,7 +38,7 @@
   </style>
 </head>
 <body>
-  <div id="app-container">
+  <div id="app-container" style="display:none">
     <div class="page">
       <div class="topbar">
         <div class="title-wrap">
@@ -468,7 +468,7 @@
           manv: nhanvien.manv,
           tennv: nhanvien.tennv,
           is_admin: true,
-          _pass: (localStorage.getItem('last_login_password') || '').trim()
+          _pass: (document.getElementById('login-password-nv')?.value || '').trim()
         };
         $('actorBadge').textContent = `Đăng nhập: ${ACTOR.tennv || ACTOR.manv} (ADMIN)`;
         $('app-container').style.display = '';
