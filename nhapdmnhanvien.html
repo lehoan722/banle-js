@@ -78,15 +78,15 @@
             <label>Mã NV <span class="req">*</span></label><input id="manv" autocomplete="off">
             <label>Tên NV <span class="req">*</span></label><input id="tennv">
             <label>Số điện thoại <span class="req">*</span></label><input id="dienthoai" inputmode="tel" autocomplete="tel">
-            <label>Trạng thái</label><select id="trangthai"><option value="true">Đang hoạt động</option><option value="false">Ngừng hoạt động</option></select>
+            <label>Trạng thái</label><select id="trangthai"><option value="">-- Chọn trạng thái --</option><option value="true">Đang hoạt động</option><option value="false">Ngừng hoạt động</option></select>
             <label>Quản trị viên</label><select id="is_admin"><option value="false">Nhân viên</option><option value="true">ADMIN</option></select>
-            <label>Mật khẩu mới</label><input id="matkhau" type="password" autocomplete="new-password" placeholder="Để trống nếu không đổi">
+            <label>Mật khẩu</label><input id="matkhau" type="text" autocomplete="off" placeholder="Nhập mật khẩu">
             <label>Email</label><input id="email" type="email" autocomplete="off">
             <label>Sửa hóa đơn</label><select id="sua_hoadon"><option value="false">Không</option><option value="true">Có</option></select>
             <label>Xóa hóa đơn</label><select id="xoa_hoadon"><option value="false">Không</option><option value="true">Có</option></select>
           </div>
           <div class="warn" style="margin-top:12px">ADMIN có quyền quản trị hệ thống. Chỉ bật cho người thực sự cần quyền quản trị.</div>
-          <div class="hint" style="margin-top:8px">Khi sửa nhân viên, ô mật khẩu luôn để trống. Chỉ nhập khi cần đặt mật khẩu mới.</div>
+          <div class="hint" style="margin-top:8px">Mật khẩu được hiển thị trực tiếp vì đây là trang quản trị nội bộ.</div>
           <div class="form-actions">
             <button class="btn soft" id="btnNew" type="button">Thêm mới</button>
             <button class="btn danger" id="btnDelete" type="button">Xóa hẳn</button>
@@ -132,6 +132,7 @@
     let selectedManv = null;
     let editingOld = false;
     let currentPermissions = [];
+    let permissionTemplate = null; // mẫu quyền giữ lại khi bấm Thêm mới
     let loadingSelectionToken = 0;
 
     function setMsg(id, msg = '', type = '') {
@@ -251,21 +252,55 @@
       $('dienthoai').value = data?.dienthoai || '';
       $('trangthai').value = data?.trangthai === false ? 'false' : 'true';
       $('is_admin').value = data?.is_admin ? 'true' : 'false';
-      $('matkhau').value = '';
+      $('matkhau').value = data?.matkhau || '';
       $('email').value = data?.email || '';
       $('sua_hoadon').value = data?.sua_hoadon ? 'true' : 'false';
       $('xoa_hoadon').value = data?.xoa_hoadon ? 'true' : 'false';
     }
 
-    function resetForm({ focus = true } = {}) {
+    function resetForm({ focus = true, keepPermissionTemplate = true } = {}) {
+      // Khi thêm mới: giữ lại quyền trang + quyền sửa/xóa hóa đơn của NV đang chọn
+      // để dùng làm mẫu cho nhân viên mới.
+      const keepSuaHoaDon = $('sua_hoadon').value;
+      const keepXoaHoaDon = $('xoa_hoadon').value;
+
+      if (keepPermissionTemplate && currentPermissions.length) {
+        permissionTemplate = currentPermissions.map(r => ({ ...r }));
+      } else if (!keepPermissionTemplate) {
+        permissionTemplate = null;
+      }
+
       editingOld = false;
       selectedManv = null;
-      setForm(null);
+
+      // Chỉ giữ lại Sửa hóa đơn / Xóa hóa đơn.
+      $('manv').value = '';
+      $('tennv').value = '';
+      $('dienthoai').value = '';
+      $('trangthai').value = '';
+      $('is_admin').value = 'false';
+      $('matkhau').value = '';
+      $('email').value = '';
+      $('sua_hoadon').value = keepSuaHoaDon || 'false';
+      $('xoa_hoadon').value = keepXoaHoaDon || 'false';
+
       $('manv').readOnly = false;
       $('formMode').textContent = 'Thêm mới';
       $('selectedInfo').textContent = 'Đang thêm nhân viên mới.';
       setMsg('msgNv', '');
-      clearPermissions();
+
+      if (permissionTemplate && permissionTemplate.length) {
+        currentPermissions = permissionTemplate.map(r => ({ ...r }));
+        $('permTarget').textContent = 'Mẫu quyền từ nhân viên trước — sẽ áp dụng cho nhân viên mới';
+        renderPermissions();
+        $('btnSavePerm').disabled = true; // chưa có mã NV trong DB nên chưa thể lưu
+        $('btnCheckAll').disabled = false;
+        $('btnUncheckAll').disabled = false;
+        setMsg('msgPerm', 'Đang giữ nguyên phân quyền của nhân viên trước. Lưu nhân viên mới xong rồi bấm “Lưu phân quyền”.', 'info');
+      } else {
+        clearPermissions();
+      }
+
       if (hot) hot.deselectCell();
       if (focus) $('manv').focus();
     }
@@ -282,6 +317,7 @@
 
     async function selectEmployee(manv, selectRow = true) {
       if (!manv) return;
+      permissionTemplate = null;
       const token = ++loadingSelectionToken;
       selectedManv = manv;
       editingOld = true;
@@ -297,7 +333,7 @@
       if (!data) {
         setMsg('msgNv', 'Nhân viên không còn tồn tại. Đang tải lại danh sách.', 'error');
         await loadEmployeeTable({ keepSelection: false });
-        resetForm({ focus: false });
+        resetForm({ focus: false, keepPermissionTemplate: false });
         return;
       }
 
@@ -319,6 +355,7 @@
       if (!tennv) return setMsg('msgNv', 'Tên nhân viên không được bỏ trống.', 'error');
       if (!dienthoai) return setMsg('msgNv', 'Số điện thoại không được bỏ trống.', 'error');
       if (!/^[0-9]{10,15}$/.test(dienthoai)) return setMsg('msgNv', 'Số điện thoại không hợp lệ (10–15 chữ số).', 'error');
+      if (!$('trangthai').value) return setMsg('msgNv', 'Hãy chọn trạng thái nhân viên.', 'error');
 
       const obj = {
         manv, tennv, dienthoai,
@@ -328,11 +365,8 @@
         xoa_hoadon: $('xoa_hoadon').value === 'true',
         email: $('email').value.trim() || null
       };
-      if (editingOld) {
-        if (newPassword) obj.matkhau = newPassword;
-      } else {
-        obj.matkhau = newPassword || null;
-      }
+      // Trang quản trị hiển thị mật khẩu trực tiếp nên lưu đúng giá trị đang có trong ô.
+      obj.matkhau = newPassword || null;
 
       $('btnSaveNv').disabled = true;
       setMsg('msgNv', editingOld ? 'Đang cập nhật...' : 'Đang thêm nhân viên...', 'info');
@@ -345,13 +379,45 @@
       if (!result.data || result.data.length === 0) return setMsg('msgNv', 'Không cập nhật được dữ liệu (có thể bị RLS chặn).', 'error');
 
       const wasEditing = editingOld;
+      // Nếu đang thêm mới, lấy chính trạng thái quyền hiện đang hiển thị.
+      // Như vậy quản lý có thể chỉnh vài checkbox trước khi lưu nhân viên mới.
+      const keptTemplate = !wasEditing && currentPermissions.length
+        ? currentPermissions.map(r => ({ ...r }))
+        : null;
+
       editingOld = true;
       selectedManv = manv;
       $('manv').readOnly = true;
-      $('matkhau').value = '';
       $('formMode').textContent = 'Đang sửa';
       await loadEmployeeTable({ keepSelection: true });
-      await selectEmployee(manv, true);
+
+      if (wasEditing) {
+        // Sửa nhân viên cũ: tải lại đúng dữ liệu và quyền hiện tại từ server.
+        await selectEmployee(manv, true);
+      } else {
+        // Nhân viên mới: tải lại thông tin nhân viên nhưng KHÔNG tải quyền rỗng,
+        // giữ nguyên mẫu phân quyền của nhân viên trước.
+        const { data: savedNv, error: loadErr } = await supabase
+          .from(TABLE).select('*').eq('manv', manv).maybeSingle();
+        if (!loadErr && savedNv) setForm(savedNv);
+
+        $('selectedInfo').textContent = `Đã thêm: ${manv} — ${tennv}`;
+        selectHotRow(manv);
+
+        if (keptTemplate && keptTemplate.length) {
+          permissionTemplate = keptTemplate.map(r => ({ ...r }));
+          currentPermissions = keptTemplate.map(r => ({ ...r }));
+          $('permTarget').textContent = `${manv} — ${tennv}`;
+          renderPermissions();
+          $('btnSavePerm').disabled = false;
+          $('btnCheckAll').disabled = false;
+          $('btnUncheckAll').disabled = false;
+          setMsg('msgPerm', 'Đã giữ nguyên mẫu phân quyền của nhân viên trước. Kiểm tra rồi bấm “Lưu phân quyền”.', 'info');
+        } else {
+          await loadPermissions(manv, tennv);
+        }
+      }
+
       setMsg('msgNv', wasEditing ? 'Đã cập nhật nhân viên.' : 'Đã thêm nhân viên mới.', 'success');
     }
 
@@ -365,7 +431,7 @@
       if (error) return setMsg('msgNv', 'Lỗi xóa: ' + error.message, 'error');
       if (!data || data.length === 0) return setMsg('msgNv', 'Không xóa được dữ liệu (có thể bị RLS chặn).', 'error');
       await loadEmployeeTable({ keepSelection: false });
-      resetForm({ focus: false });
+      resetForm({ focus: false, keepPermissionTemplate: false });
       setMsg('msgNv', `Đã xóa nhân viên ${manv}.`, 'success');
     }
 
@@ -384,6 +450,7 @@
         cb.addEventListener('change', e => {
           const idx = Number(e.target.dataset.idx);
           if (currentPermissions[idx]) currentPermissions[idx].checked = e.target.checked;
+          if (!editingOld) permissionTemplate = currentPermissions.map(r => ({ ...r }));
         });
       });
     }
@@ -433,6 +500,7 @@
 
     function checkAllPermissions(value) {
       currentPermissions.forEach(r => r.checked = value);
+      if (!editingOld) permissionTemplate = currentPermissions.map(r => ({ ...r }));
       renderPermissions();
     }
 
@@ -474,7 +542,7 @@
         $('app-container').style.display = '';
         initHot();
         await loadEmployeeTable({ keepSelection: false });
-        resetForm({ focus: false });
+        resetForm({ focus: false, keepPermissionTemplate: false });
       }
     });
 
