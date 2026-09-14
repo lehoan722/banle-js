@@ -3,8 +3,8 @@ import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.13";
-console.log("[TimKiemNhanh] BUILD 1.2.13");
+window.TIM_KIEM_NHANH_BUILD = "1.2.14";
+console.log("[TimKiemNhanh] BUILD 1.2.14");
 
 const supabase = getSupabaseClient();
 
@@ -555,24 +555,87 @@ function waitAck(id,timeout=20000){
     check(localStorage.getItem(ACK_KEY));
   });
 }
+function saleTransferStorageKeys(id){
+  const safe=String(id||"").replace(/[^A-Za-z0-9_-]/g,"_");
+  return {
+    pending:`sales_copilot_pending_v2_${safe}`,
+    ack:`sales_copilot_ack_v2_${safe}`
+  };
+}
+
+function waitAckIsolated(id,ackKey,timeout=30000){
+  return new Promise(resolve=>{
+    let finished=false;
+    const finish=value=>{
+      if(finished)return;
+      finished=true;
+      clearInterval(timer);
+      clearTimeout(timeoutTimer);
+      window.removeEventListener("storage",onStorage);
+      resolve(value);
+    };
+    const check=value=>{
+      try{
+        const ack=typeof value==="string"?JSON.parse(value):value;
+        if(ack?.id===id)finish(ack);
+      }catch{}
+    };
+    const onStorage=event=>{if(event.key===ackKey&&event.newValue)check(event.newValue)};
+    window.addEventListener("storage",onStorage);
+    const timer=setInterval(()=>check(localStorage.getItem(ackKey)),200);
+    const timeoutTimer=setTimeout(()=>finish(null),timeout);
+    check(localStorage.getItem(ackKey));
+  });
+}
+
 async function pushOneToSale(id){
   const row=state.selected.find(x=>String(x.id)===String(id));if(!row)return;
   if(!validBranch()){toast("Không xác định được cơ sở bán.",5000);return}
-  const payloadId=`TKN_${Date.now()}_${row.masp}_${row.size}`;
-  const payload={id:payloadId,created_at:new Date().toISOString(),phien_id:null,diadiem:state.diadiem,makh:null,tenkh:null,items:[{masp:row.masp,size:row.size,soluong:Number(row.soluong||1)}]};
-  const ackPromise=waitAck(payloadId);
-  localStorage.removeItem(PENDING_KEY);localStorage.removeItem(ACK_KEY);localStorage.setItem(PENDING_KEY,JSON.stringify(payload));
+
+  // V1.2.14: mỗi lần Sang bán là một phiên chuyển riêng, chỉ tab bán MỚI được nhận.
+  const payloadId=`TKN_${Date.now()}_${Math.random().toString(36).slice(2,8)}_${row.masp}_${row.size}`;
+  const keys=saleTransferStorageKeys(payloadId);
+  const payload={
+    id:payloadId,
+    transfer_id:payloadId,
+    created_at:new Date().toISOString(),
+    phien_id:null,
+    diadiem:state.diadiem,
+    makh:null,
+    tenkh:null,
+    items:[{masp:row.masp,size:row.size,soluong:Number(row.soluong||1)}]
+  };
+
   try{
-    const signalChannel=new BroadcastChannel(saleBridgeChannelName());
-    signalChannel.postMessage({type:"PENDING",payload});
-    setTimeout(()=>signalChannel.close(),1000);
-  }catch{}
-  const saleWindow=window.open(state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html",saleBridgeName());
-  try{saleWindow?.focus()}catch{}
-  toast("Đã gửi sang trang bán. Đang chờ trang bán xác nhận...");
+    localStorage.removeItem(keys.ack);
+    localStorage.setItem(keys.pending,JSON.stringify(payload));
+  }catch(e){
+    console.error("[TimKiemNhanh] Không tạo được phiên Sang bán:",e);
+    toast("Không chuẩn bị được dữ liệu Sang bán.",5000);
+    return;
+  }
+
+  // Gắn transfer_id vào URL + _blank: không tái sử dụng bất kỳ tab bán đang mở nào.
+  const page=state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html";
+  const saleUrl=`${page}?copilot_tx=${encodeURIComponent(payloadId)}`;
+  const saleWindow=window.open(saleUrl,"_blank");
+  if(!saleWindow){
+    localStorage.removeItem(keys.pending);
+    toast("Trình duyệt đang chặn mở trang bán mới. Hãy cho phép pop-up cho app.hoantuyet.vn.",7000);
+    return;
+  }
+  try{saleWindow.focus()}catch{}
+
+  const ackPromise=waitAckIsolated(payloadId,keys.ack,30000);
+  toast(`Đã mở trang bán mới cho ${row.masp} / ${row.size}. Đang chờ nhận dữ liệu...`,4500);
   const ack=await ackPromise;
-  if(!ack){toast("Trang bán chưa xác nhận. Hãy chuyển sang tab bán để nhận sản phẩm.",7000);return}
-  toast(`Đã đưa ${row.masp} / ${row.size} sang trang bán.`)
+  try{localStorage.removeItem(keys.ack)}catch{}
+
+  if(!ack){
+    toast("Trang bán mới chưa xác nhận dữ liệu. Hãy kiểm tra tab vừa mở.",7000);
+    return;
+  }
+  toast(`Đã đưa ${row.masp} / ${row.size} sang trang bán mới.`);
 }
 
 let suggestTimer=null;
@@ -728,7 +791,7 @@ function bind(){
 }
 
 async function initScanner(){
-  state.scanner=setupScanner({videoEl:$("scanVideo"),selectEl:$("cameraSelect"),statusEl:$("scanStatus"),onResult:async text=>{state.scanner.stopScan();$("scanOverlay").classList.remove("show");await processCode(text)}})
+  state.scanner=setupScanner({videoEl:$("scanVideo"),selectEl:$("cameraSelect"),statusEl:$("scanStatus"),onResult:async text=>{state.scanner.stopScan();$("scanOverlay").classList.remove("show");await processCode(text,{openStockQuick:true})}})
 }
 
 let appStarted=false;
