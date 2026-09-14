@@ -2,10 +2,9 @@ import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
-import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=31";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.16";
-console.log("[TimKiemNhanh] BUILD 1.2.16");
+window.TIM_KIEM_NHANH_BUILD = "1.2.13";
+console.log("[TimKiemNhanh] BUILD 1.2.13");
 
 const supabase = getSupabaseClient();
 
@@ -45,7 +44,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.16 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.12 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -341,61 +340,6 @@ async function enrichProductsAfterCheck(rows){
   return result;
 }
 
-
-async function fetchUnifiedDiscountRows(){
-  // Trang GIẢM GIÁ không được dùng p_mode="discount" của RPC cũ,
-  // vì RPC đó lọc cứng dmhanghoa.giam_gia_pct trước khi rule tự động được ghép.
-  // Ta lấy toàn bộ tập ứng viên "similar" theo đúng nhóm/size/form/màu,
-  // ghép ADMIN + RULE, rồi mới lọc giam_gia_hieu_luc > 0.
-  const allDiscounted=[];
-  let offset=0;
-  let total=0;
-  let guard=0;
-
-  do{
-    const p={...params(offset),p_mode:"similar",p_offset:offset,p_limit:40};
-    const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",p);
-    if(error)throw error;
-
-    const raw=(data||[]).map(x=>({...x}));
-    if(!raw.length)break;
-
-    total=Number(raw[0]?.total_count||total||0);
-
-    const xaMap=state.mainGroup==="GIAY_DEP"
-      ? await getXaHangSuggestions({
-          supabase,
-          masps:raw.map(x=>x.masp),
-          denNgay:businessDate()
-        }).catch(err=>{
-          console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
-          return new Map();
-        })
-      : new Map();
-
-    const merged=attachXaHangSuggestions(raw,xaMap);
-    merged.forEach(sp=>{
-      if(Number(sp.giam_gia_hieu_luc||0)>0)allDiscounted.push(sp);
-    });
-
-    offset+=raw.length;
-    guard++;
-  }while(offset<total && guard<30);
-
-  // Chỉ sau khi đã lọc ra hàng có giảm mới đọc tồn sau kiểm,
-  // tránh N+1 cho toàn bộ nhóm hàng.
-  const checked=await enrichProductsAfterCheck(allDiscounted);
-  const rows=checked.filter(sp=>stockFor(sp,state.size)>0);
-
-  rows.sort((a,b)=>{
-    const d=Number(b.giam_gia_hieu_luc||0)-Number(a.giam_gia_hieu_luc||0);
-    if(d)return d;
-    return String(a.masp||"").localeCompare(String(b.masp||""),"vi",{numeric:true});
-  });
-
-  return rows;
-}
-
 async function search(reset=true){
   if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",5000);return}
   if(!state.group||!state.size||state.loading)return;
@@ -405,45 +349,11 @@ async function search(reset=true){
   // Chỉ khi đã nhận/xử lý được bộ kết quả mới mới thay bảng đang xem.
   setLoading(true,reset);
   try{
-    if(state.mode==="discount"){
-      // Luôn dựng lại danh sách thống nhất ADMIN + RULE.
-      // Không phân trang theo RPC discount cũ vì nó chỉ biết dmhanghoa.giam_gia_pct.
-      const rows=await fetchUnifiedDiscountRows();
-      state.products=rows;
-      state.offset=rows.length;
-      state.total=rows.length;
-
-      renderProducts({reset:true,rows});
-      $("resultCount").textContent=`${rows.length}/${rows.length}`;
-      $("btnMore").style.display="none";
-      return;
-    }
-
     const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",params(off));if(error)throw error;
     const raw=(data||[]).map(x=>({...x}));
     const nextTotal=Number(raw[0]?.total_count||(reset?0:state.total)||0);
-
-    // V1 xa hang: chi can goi rule engine khi dang tim nhom GIAY_DEP.
-    // Chay song song voi buoc bo sung ton sau kiem de khong lam cham luong tim kiem.
-    const xaPromise=state.mainGroup==="GIAY_DEP"
-      ? getXaHangSuggestions({
-          supabase,
-          masps:raw.map(x=>x.masp),
-          denNgay:businessDate()
-        }).catch(err=>{
-          // Module xa hang la lop goi y phu: neu loi, Tim kiem nhanh van phai hoat dong binh thuong.
-          console.warn("[TimKiemNhanh] Module goi y xa hang loi, bo qua:",err);
-          return new Map();
-        })
-      : Promise.resolve(new Map());
-
-    const [checked,xaMap]=await Promise.all([
-      enrichProductsAfterCheck(raw),
-      xaPromise
-    ]);
-
-    const checkedWithXa=attachXaHangSuggestions(checked,xaMap);
-    const rows=checkedWithXa.filter(sp=>stockFor(sp,state.size)>0);
+    const checked=await enrichProductsAfterCheck(raw);
+    const rows=checked.filter(sp=>stockFor(sp,state.size)>0);
 
     if(reset){
       state.products=rows;
@@ -477,16 +387,7 @@ function productCardHtml(sp,orderNo=0,totalNo=0){
   const {kho,mau}=locationParts(sp);
   const formSizes=compactFormSizes(sp);
   const orderText=orderNo>0?`${orderNo}/${totalNo||orderNo}`:"";
-  const rulePct=Number(sp.goi_y_xa_pct||0);
-  const effectivePct=Number(sp.giam_gia_hieu_luc||sp.giam_gia_pct||rulePct||0);
-  const orderXaText=effectivePct?`${orderText} ${effectivePct}`:orderText;
-  const xaTitle=effectivePct
-    ? `Giảm hiệu lực ${effectivePct}% · nguồn ${esc(sp.giam_gia_nguon||"ADMIN")} · luật ${esc(sp.goi_y_xa_detail?.rule_code||"")}`
-    : "";
-  const xaClass=effectivePct?" discount-active":"";
-  const strongClass=effectivePct>=50?" discount-strong":"";
-  const badge=effectivePct>=50?`<div class="search-discount-badge">${effectivePct}%</div>`:"";
-  return `<article class="product${xaClass}${strongClass}" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">${badge}</div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div><div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
+  return `<article class="product" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'"></div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div><div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order">${esc(orderText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
 }
 function bindProductCards(cards){
   cards.forEach(card=>{
@@ -765,6 +666,11 @@ async function processCode(raw,options={}){
         showSizeWarning(`Mã này hiện không còn size tồn tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm. Bạn vẫn có thể chọn size cần tìm.`);
       }
     }
+    // Chỉ tự mở StockQuickPopup khi luồng gọi yêu cầu (ví dụ: nhấn Enter ở ô mã SP).
+    if(options.openStockQuick===true){
+      try{window.StockQuick?.showFor($("codeInput"),sp.masp)}
+      catch(stockErr){console.warn("[TimKiemNhanh] Không mở được StockQuickPopup:",stockErr)}
+    }
     playSuccessBeep();$("codeInput").blur();
   }catch(e){console.error(e);toast("Không lấy được mã sản phẩm: "+(e.message||e),5000)}finally{setLoading(false)}
 }
@@ -776,8 +682,20 @@ function clearSourceForManualFilter(){
 function bind(){
   setupBeepUnlockOnce(document);
   $("btnNew").onclick=resetToInitialState;
-  $("codeInput").addEventListener("input",e=>{clearTimeout(suggestTimer);suggestTimer=setTimeout(()=>loadSuggestions(e.target.value),150)});
-  $("codeInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();processCode(e.currentTarget.value)}});
+  const codeInput=$("codeInput");
+  codeInput.addEventListener("input",e=>{clearTimeout(suggestTimer);suggestTimer=setTimeout(()=>loadSuggestions(e.target.value),150)});
+
+  // Chạm/focus vào ô mã sản phẩm: bôi đen toàn bộ để nhập/quét mã mới nhanh hơn.
+  const selectAllCode=()=>setTimeout(()=>{try{codeInput.select()}catch{}},0);
+  codeInput.addEventListener("focus",selectAllCode);
+  codeInput.addEventListener("click",selectAllCode);
+
+  // Enter = nạp thông tin mã + tự mở StockQuickPopup của đúng mã đó.
+  codeInput.addEventListener("keydown",e=>{
+    if(e.key!=="Enter")return;
+    e.preventDefault();
+    processCode(e.currentTarget.value,{openStockQuick:true});
+  });
   $("sourceLocation").onclick=e=>{
     const masp=state.sourceMasp||norm($("codeInput")?.value);
     if(masp)window.StockQuick?.showFor(e.currentTarget,masp);
