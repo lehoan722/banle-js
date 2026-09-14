@@ -1,3 +1,4 @@
+// Kiểm bày mẫu v1.5.2 - autosave từng thao tác
 import { supabase, startSessionKeeper } from './supabaseClient.js';
 import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 import {
@@ -33,6 +34,12 @@ let currentMultiResultRows = [];
 let currentMultiResultContext = null;
 let taskRealtimeChannel = null;
 let suppressTaskChange = false;
+
+// Autosave: mọi thay đổi của phiên quét được ghi xuống server ngay,
+// để reload/thoát trang không làm mất phần dữ liệu đã kiểm.
+let autoSaveTimer = null;
+let autoSaveInFlight = false;
+let autoSavePending = false;
 
 const $ = (id) => document.getElementById(id);
 const normalizeMasp = (v) => String(v || '').trim().toUpperCase();
@@ -76,6 +83,46 @@ function setDirty(value) {
     state.className = 'saved';
   }
   updateActionAvailability();
+}
+
+function setSavingState() {
+  const state = $('save-state');
+  if (!state) return;
+  state.textContent = 'Đang lưu...';
+  state.className = 'dirty';
+}
+
+function scheduleAutoSave(delay = 350) {
+  if (tableMode !== 'scan' || !scanRowsForSave().length) return;
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    autoSaveTimer = null;
+    void autoSaveSession();
+  }, delay);
+}
+
+async function autoSaveSession() {
+  if (tableMode !== 'scan' || !scanRowsForSave().length) return false;
+
+  // Nếu đang có một lượt lưu chạy, chỉ đánh dấu để lưu lại ngay sau đó.
+  // Tránh hai request ghi đè nhau khi nhân viên quét/sửa liên tục.
+  if (autoSaveInFlight) {
+    autoSavePending = true;
+    return false;
+  }
+
+  autoSaveInFlight = true;
+  let ok = false;
+  try {
+    ok = await saveSession({ automatic: true, focusAfter: false });
+  } finally {
+    autoSaveInFlight = false;
+    if (autoSavePending) {
+      autoSavePending = false;
+      scheduleAutoSave(0);
+    }
+  }
+  return ok;
 }
 
 function updateHeader() {
@@ -195,6 +242,7 @@ function initTable() {
       if (!changes || source === 'loadData') return;
       if (tableMode === 'scan') {
         setDirty(true);
+        scheduleAutoSave();
         return;
       }
       if (tableMode === 'task' && !suppressTaskChange && source !== 'realtime' && source !== 'rpc' && source !== 'ui-checkbox') {
@@ -500,11 +548,17 @@ async function handleScan() {
     rows.unshift({ id: null, masp, vitri_baymau: vitri });
     showScanTable(rows);
     setDirty(true);
+
+    // Ghi xuống server ngay sau từng lần quét. Lần quét đầu tiên đồng thời
+    // tạo phiên thông qua kbm_save_session hiện có; các lần sau cập nhật đúng phiên đó.
+    const saved = await autoSaveSession();
+    if (!saved) throw new Error('Chưa tự động lưu được dữ liệu vừa quét.');
+
     try { playSuccessBeep(); } catch (_) {}
     setMessage(
       resolved.stripped
-        ? `Đã nhận ${scannedMasp} là mã ${masp}, size ${resolved.size}; thêm tại ${vitri}.`
-        : `Đã thêm ${masp} tại ${vitri}.`,
+        ? `Đã nhận ${scannedMasp} là mã ${masp}, size ${resolved.size}; thêm tại ${vitri} và đã tự động lưu.`
+        : `Đã thêm ${masp} tại ${vitri} và đã tự động lưu.`,
       'ok'
     );
     $('scan-masp').value = '';
@@ -519,15 +573,18 @@ async function handleScan() {
   }
 }
 
-async function saveSession() {
+async function saveSession(options = {}) {
+  const automatic = !!options.automatic;
+  const focusAfter = options.focusAfter !== false;
   const rows = scanRowsForSave();
   if (!rows.length) {
-    setMessage('Chưa có dữ liệu mã sản phẩm và vị trí bày mẫu để lưu.', 'warn');
-    return;
+    if (!automatic) setMessage('Chưa có dữ liệu mã sản phẩm và vị trí bày mẫu để lưu.', 'warn');
+    return false;
   }
 
-  $('btn-save').disabled = true;
-  setMessage(`Đang lưu ${rows.length} dòng dữ liệu...`);
+  if (!automatic) $('btn-save').disabled = true;
+  setSavingState();
+  if (!automatic) setMessage(`Đang lưu ${rows.length} dòng dữ liệu...`);
   try {
     const { data, error } = await supabase.rpc('kbm_save_session', {
       p_phien_id: currentSessionId,
@@ -546,13 +603,16 @@ async function saveSession() {
     lastSavedRowsJson = JSON.stringify(rows);
     setDirty(false);
     updateHeader();
-    setMessage(`Đã lưu thành công ${rows.length} dòng vào ${currentSessionCode}.`, 'ok');
+    if (!automatic) setMessage(`Đã lưu thành công ${rows.length} dòng vào ${currentSessionCode}.`, 'ok');
+    return true;
   } catch (err) {
     console.error(err);
-    setMessage(`Lưu dữ liệu thất bại: ${err.message || err}`, 'err');
+    setDirty(true);
+    setMessage(`${automatic ? 'Tự động lưu' : 'Lưu dữ liệu'} thất bại: ${err.message || err}`, 'err');
+    return false;
   } finally {
-    $('btn-save').disabled = false;
-    focusScan();
+    if (!automatic) $('btn-save').disabled = false;
+    if (focusAfter) focusScan();
   }
 }
 
@@ -889,7 +949,7 @@ async function runUnshown() {
   }
 }
 
-function deleteSelectedRows() {
+async function deleteSelectedRows() {
   if (tableMode !== 'scan') {
     setMessage('Hãy trở lại bảng quét trước khi xóa dòng.', 'warn');
     return;
@@ -902,11 +962,21 @@ function deleteSelectedRows() {
   showScanTable(rows);
   selectedRows = new Set();
   setDirty(true);
-  setMessage('Đã xóa các dòng được chọn. Hãy lưu lại dữ liệu.', 'ok');
+
+  if (rows.length) {
+    const saved = await autoSaveSession();
+    if (saved) setMessage('Đã xóa các dòng được chọn và tự động lưu.', 'ok');
+  } else {
+    // RPC hiện tại yêu cầu có dữ liệu nên không gửi mảng rỗng.
+    // Nếu muốn bỏ toàn bộ phiên, dùng chức năng Xóa phiên.
+    setMessage('Đã xóa hết dòng trên màn hình. Phiên cũ trên server chưa bị xóa; hãy xóa phiên nếu không còn dùng.', 'warn');
+  }
 }
 
 function newSession() {
   if (isDirty && scanRowsForSave().length && !confirm('Dữ liệu hiện tại chưa lưu. Bạn có chắc muốn tạo phiên mới?')) return;
+  if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+  autoSavePending = false;
   currentSessionId = null;
   currentSessionCode = '';
   currentAreaName = '';
@@ -916,7 +986,7 @@ function newSession() {
   showScanTable([]);
   setDirty(true);
   updateHeader();
-  setMessage('Đã tạo phiên mới trên màn hình. Hãy quét dữ liệu rồi bấm Lưu dữ liệu.', 'ok');
+  setMessage('Đã tạo phiên mới trên màn hình. Quét mã hợp lệ đầu tiên sẽ tự tạo và lưu phiên.', 'ok');
   focusScan();
 }
 
@@ -1391,7 +1461,12 @@ function attachEvents() {
   $('task-modal-close').addEventListener('click', closeTaskModal);
   $('task-modal').addEventListener('click', (e) => { if (e.target === $('task-modal')) closeTaskModal(); });
   $('compare-modal').addEventListener('click', (e) => { if (e.target === $('compare-modal')) closeCompareModal(); });
-  $('area-name').addEventListener('input', () => { currentAreaName = normalizeText($('area-name').value); setDirty(true); updateHeader(); });
+  $('area-name').addEventListener('input', () => {
+    currentAreaName = normalizeText($('area-name').value);
+    setDirty(true);
+    updateHeader();
+    scheduleAutoSave(500);
+  });
 
   $('btn-toggle-commands').addEventListener('click', () => {
     const p = $('command-panel');
