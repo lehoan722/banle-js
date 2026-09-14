@@ -37,7 +37,10 @@ function normalizeDisplayPosition(value) {
 }
 
 function isDisplayPositionMatched(standardPosition, currentPosition) {
-  const current = normalizeDisplayPosition(currentPosition);
+  // Khi một mã được quét lại, vitri_hientai có thể là "K4, K1".
+  // Vị trí mới nhất luôn đứng đầu và là vị trí dùng để đối chiếu với vị trí chuẩn.
+  const latestCurrent = String(currentPosition || '').split(/[,;\n]+/)[0] || '';
+  const current = normalizeDisplayPosition(latestCurrent);
   const standardRaw = normalizeText(standardPosition);
 
   // Chưa có vị trí chuẩn thì chưa kết luận là sai vị trí.
@@ -310,6 +313,25 @@ function latestDuplicate(masp) {
     .sort((a, b) => Number(b.stt || 0) - Number(a.stt || 0))[0] || null;
 }
 
+function splitPositionList(value) {
+  return String(value || '')
+    .split(/[,;\n]+/)
+    .map(normalizeLocation)
+    .filter(Boolean);
+}
+
+function mergePositionHistory(newPosition, previousValue) {
+  const merged = [];
+  const seen = new Set();
+  [...splitPositionList(newPosition), ...splitPositionList(previousValue)].forEach((position) => {
+    const key = normalizeDisplayPosition(position);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    merged.push(position);
+  });
+  return merged.join(', ');
+}
+
 function resetToBlankDraft() {
   currentSessionId = null;
   currentSessionCode = '';
@@ -403,7 +425,7 @@ function createBlankFromCompleted() {
   resetToBlankDraft();
 }
 
-async function insertScanRow(payload) {
+async function insertScanRow(payload, options = {}) {
   if (isCompletedSession()) throw new Error('Phiên đã hoàn thành và đang ở chế độ chỉ xem.');
 
   let inserted;
@@ -465,16 +487,20 @@ async function insertScanRow(payload) {
     vitri_hientai: inserted.vitri_hientai
   });
 
-  if (wrongPosition) {
-    try { playAlertBeep(); } catch (_) {}
-    setMessage(
-      `Cảnh báo: ${payload.masp} đang ở ${payload.vitri_hientai} nhưng vị trí treo mẫu chuẩn là ${normalizeText(inserted.vitri_chuan) || 'chưa thiết lập'} · STT ${inserted.stt}.`,
-      'warn'
-    );
-  } else {
-    playInsertedBeep();
-    setMessage(`Đã thêm ${payload.masp} tại ${payload.vitri_hientai} · STT ${inserted.stt}.`, 'ok');
+  if (!options.silentFeedback) {
+    if (wrongPosition) {
+      try { playAlertBeep(); } catch (_) {}
+      setMessage(
+        `Cảnh báo: ${payload.masp} đang ở ${payload.vitri_hientai} nhưng vị trí treo mẫu chuẩn là ${normalizeText(inserted.vitri_chuan) || 'chưa thiết lập'} · STT ${inserted.stt}.`,
+        'warn'
+      );
+    } else {
+      playInsertedBeep();
+      setMessage(`Đã thêm ${payload.masp} tại ${payload.vitri_hientai} · STT ${inserted.stt}.`, 'ok');
+    }
   }
+
+  return inserted;
 }
 
 async function handleScan() {
@@ -516,12 +542,66 @@ async function handleScan() {
 
     const duplicatedRow = latestDuplicate(payload.masp);
     if (duplicatedRow) {
-      $('scan-masp').value = '';
+      // Mã trùng vẫn cảnh báo 3 tiếng như trước, nhưng không chặn.
+      // Do RPC hiện tại không cho lưu 2 dòng BAY_MAU cùng mã trong một phiên,
+      // thay dòng cũ bằng một dòng mới chứa lịch sử vị trí: mới nhất đứng trước.
       await playTripleAlertBeep();
-      setMessage(
-        `Sản phẩm ${payload.masp} đã có trong phiên tại STT ${duplicatedRow.stt}${duplicatedRow.vitri_hientai ? ` · vị trí ${duplicatedRow.vitri_hientai}` : ''}. Không thêm lại mã trùng.`,
-        'warn'
-      );
+
+      const previousPosition = normalizeText(duplicatedRow.vitri_hientai);
+      const mergedPosition = mergePositionHistory(payload.vitri_hientai, previousPosition);
+      const originalRow = { ...duplicatedRow };
+
+      const { error: deleteError } = await supabase.rpc('ktbm_delete_scan_row', {
+        p_phien_id: currentSessionId,
+        p_row_id: duplicatedRow.id,
+        p_manv: currentManv
+      });
+      if (deleteError) throw deleteError;
+
+      rows = rows.filter((x) => x.id !== duplicatedRow.id);
+      payload.vitri_hientai = mergedPosition;
+
+      try {
+        const inserted = await insertScanRow(payload, { silentFeedback: true });
+        setMessage(
+          `Cảnh báo mã trùng: ${payload.masp} đã có tại ${previousPosition || 'vị trí trước'}. ` +
+          `Đã ghi lần quét mới với vị trí ${mergedPosition} · STT ${inserted.stt}.`,
+          'warn'
+        );
+      } catch (insertError) {
+        // Nếu bước ghi mới lỗi sau khi đã xóa dòng cũ, cố gắng khôi phục dòng cũ để không mất dữ liệu.
+        try {
+          const { data: restoredData, error: restoreError } = await supabase.rpc('ktbm_add_scan_row', {
+            p_phien_id: currentSessionId,
+            p_masp: originalRow.masp,
+            p_vitri_chuan: originalRow.vitri_chuan,
+            p_vitri_hientai: originalRow.vitri_hientai,
+            p_manv: originalRow.manv || currentManv,
+            p_tennv: originalRow.tennv || currentTenNv,
+            p_nguon_dong: originalRow.nguon_dong || 'BAY_MAU'
+          });
+          if (!restoreError) {
+            const restored = Array.isArray(restoredData) ? restoredData[0] : restoredData;
+            if (restored?.id) {
+              rows.unshift({
+                id: restored.id,
+                stt: Number(restored.stt),
+                masp: normalizeMasp(restored.masp),
+                vitri_chuan: normalizeText(restored.vitri_chuan),
+                vitri_hientai: normalizeText(restored.vitri_hientai),
+                manv: normalizeMasp(restored.manv),
+                tennv: normalizeText(restored.tennv),
+                nguon_dong: restored.nguon_dong || 'BAY_MAU',
+                created_at: restored.created_at || ''
+              });
+              renderRows();
+            }
+          }
+        } catch (_) {}
+        throw insertError;
+      }
+
+      $('scan-masp').value = '';
       return;
     }
 
