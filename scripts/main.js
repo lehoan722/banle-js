@@ -31,6 +31,9 @@ let __serverClockEpochMs = null;
 let __serverClockPerfAtSync = null;
 let __serverClockSyncTimer = null;
 let __serverClockTickTimer = null;
+let __serverTimeReady = false;
+let __serverTimeRetrying = false;
+let __serverTimeRetryBtn = null;
 
 function formatDateInputVNFromEpoch(epochMs) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -89,37 +92,187 @@ function renderServerClockToBanLe({ forceDate = false } = {}) {
   return true;
 }
 
-async function dongBoNgayGioTuDatabase({ forceDate = false, silent = false } = {}) {
-  try {
-    const { data, error } = await supabase.rpc("rpc_server_time_vn_v1");
-    if (error) throw error;
 
-    const row = Array.isArray(data) ? data[0] : data;
-    const epochMs = Number(row?.epoch_ms);
+function setServerTimeReady(ready, message = "") {
+  __serverTimeReady = !!ready;
+  window.__BANLE_SERVER_TIME_READY = __serverTimeReady;
 
-    if (!Number.isFinite(epochMs) || epochMs <= 0) {
-      throw new Error("RPC không trả về epoch_ms hợp lệ");
+  const btnLuu = document.getElementById("btn-luu");
+  if (btnLuu) {
+    btnLuu.disabled = !__serverTimeReady;
+    if (!__serverTimeReady) {
+      btnLuu.title = message || "Chưa có ngày giờ chuẩn từ máy chủ";
+    } else {
+      btnLuu.title = "";
     }
+  }
 
-    __serverClockEpochMs = epochMs;
-    __serverClockPerfAtSync = performance.now();
+  const gioEl = document.getElementById("gio");
+  if (gioEl && !__serverTimeReady && isHoaDonMoiForServerClock()) {
+    gioEl.value = "Lỗi giờ";
+    gioEl.title = message || "Chưa lấy được giờ từ máy chủ";
+  }
 
-    renderServerClockToBanLe({ forceDate });
-    return {
-      ok: true,
-      ngay: row?.ngay || "",
-      gio: row?.gio || "",
-      epoch_ms: epochMs
-    };
-  } catch (err) {
-    console.error("[BANLE] Không lấy được ngày giờ hệ thống từ database:", err);
-    if (!silent) {
+  if (__serverTimeRetryBtn) {
+    __serverTimeRetryBtn.style.display = __serverTimeReady ? "none" : "inline-block";
+  }
+}
+
+function ensureServerTimeRetryButton() {
+  if (__serverTimeRetryBtn?.isConnected) return __serverTimeRetryBtn;
+
+  const gioEl = document.getElementById("gio");
+  if (!gioEl?.parentElement) return null;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.id = "btnRetryServerTime";
+  btn.textContent = "↻ Giờ";
+  btn.title = "Thử lấy lại ngày giờ từ máy chủ";
+  btn.style.cssText = `
+    display:none;
+    margin-left:4px;
+    height:30px;
+    padding:0 8px;
+    border:1px solid #dc2626;
+    border-radius:6px;
+    background:#fff;
+    color:#b91c1c;
+    font-weight:700;
+    cursor:pointer;
+  `;
+
+  btn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (__serverTimeRetrying) return;
+
+    btn.disabled = true;
+    const oldText = btn.textContent;
+    btn.textContent = "Đang...";
+    try {
+      const rs = await dongBoNgayGioTuDatabase({
+        forceDate: true,
+        silent: false,
+        retries: 3
+      });
+
+      if (rs.ok) {
+        khoiDongDongHoDatabaseBanLe();
+
+        // Nếu đang ở hóa đơn mới và chưa có số HĐ thì tạo lại sau khi đã có ngày chuẩn.
+        const sohdEl = document.getElementById("sohd");
+        if (isHoaDonMoiForServerClock() && !String(sohdEl?.value || "").trim()) {
+          try { await capNhatSoHoaDonTuDong(); } catch (e) {
+            console.error("[BANLE] Không tạo được số hóa đơn sau khi lấy lại giờ:", e);
+          }
+        }
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  });
+
+  gioEl.insertAdjacentElement("afterend", btn);
+  __serverTimeRetryBtn = btn;
+  return btn;
+}
+
+function bindServerTimeSaveGuard() {
+  if (window.__BANLE_SERVER_TIME_SAVE_GUARD_BOUND) return;
+  window.__BANLE_SERVER_TIME_SAVE_GUARD_BOUND = true;
+
+  // Capture để chặn trước mọi handler lưu cũ nếu giờ server chưa sẵn sàng.
+  document.addEventListener("click", (e) => {
+    const btn = e.target?.closest?.("#btn-luu");
+    if (!btn) return;
+
+    if (isHoaDonMoiForServerClock() && !__serverTimeReady) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
       alert(
-        "❌ Không lấy được ngày giờ hệ thống từ máy chủ.\n" +
-        "Vui lòng kiểm tra mạng rồi thử lại. Hệ thống sẽ KHÔNG dùng ngày giờ của máy tính."
+        "❌ Chưa lấy được ngày giờ chuẩn từ máy chủ nên chưa thể lưu hóa đơn mới.\n" +
+        "Bạn vẫn có thể tra hàng/xem tồn. Hãy bấm nút ↻ Giờ để thử lại."
       );
     }
-    return { ok: false, error: err };
+  }, true);
+}
+
+async function dongBoNgayGioTuDatabase({
+  forceDate = false,
+  silent = false,
+  retries = 3
+} = {}) {
+  if (__serverTimeRetrying) {
+    return { ok: __serverTimeReady, busy: true };
+  }
+
+  __serverTimeRetrying = true;
+  ensureServerTimeRetryButton();
+
+  const delays = [0, 300, 700];
+  const maxAttempts = Math.max(1, Math.min(Number(retries) || 1, delays.length));
+
+  let lastErr = null;
+
+  try {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (delays[attempt] > 0) {
+        await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+      }
+
+      try {
+        const { data, error } = await supabase.rpc("rpc_server_time_vn_v1");
+        if (error) throw error;
+
+        const row = Array.isArray(data) ? data[0] : data;
+        const epochMs = Number(row?.epoch_ms);
+
+        if (!Number.isFinite(epochMs) || epochMs <= 0) {
+          throw new Error("RPC không trả về epoch_ms hợp lệ");
+        }
+
+        __serverClockEpochMs = epochMs;
+        __serverClockPerfAtSync = performance.now();
+
+        setServerTimeReady(true);
+        renderServerClockToBanLe({ forceDate });
+
+        return {
+          ok: true,
+          ngay: row?.ngay || "",
+          gio: row?.gio || "",
+          epoch_ms: epochMs,
+          attempt: attempt + 1
+        };
+      } catch (err) {
+        lastErr = err;
+        console.warn(
+          `[BANLE] Lấy giờ database lần ${attempt + 1}/${maxAttempts} thất bại:`,
+          err
+        );
+      }
+    }
+
+    setServerTimeReady(
+      false,
+      "Không lấy được ngày giờ từ máy chủ sau nhiều lần thử"
+    );
+
+    if (!silent) {
+      alert(
+        "❌ Không lấy được ngày giờ hệ thống từ máy chủ sau 3 lần thử.\n\n" +
+        "Hệ thống KHÔNG dùng giờ của máy tính để tránh sai hóa đơn.\n" +
+        "Bạn vẫn có thể tra hàng/xem tồn; nút Lưu hóa đơn mới tạm khóa.\n" +
+        "Bấm ↻ Giờ để thử lại."
+      );
+    }
+
+    return { ok: false, error: lastErr };
+  } finally {
+    __serverTimeRetrying = false;
   }
 }
 
@@ -133,7 +286,7 @@ function khoiDongDongHoDatabaseBanLe() {
   if (!__serverClockSyncTimer) {
     __serverClockSyncTimer = setInterval(() => {
       // Đồng bộ lại mỗi 60 giây; lỗi mạng tạm thời không làm gián đoạn đồng hồ đang chạy.
-      dongBoNgayGioTuDatabase({ silent: true });
+      dongBoNgayGioTuDatabase({ silent: true, retries: 1 });
     }, 60000);
   }
 }
@@ -388,6 +541,8 @@ export async function khoiTaoUngDung() {
   showPageLoading("Đang tải dữ liệu...");
 
   try {
+    bindServerTimeSaveGuard();
+    ensureServerTimeRetryButton();
 
     window.danhMucNhom = window.danhMucNhom instanceof Map ? window.danhMucNhom : new Map();
 
@@ -642,20 +797,35 @@ export async function khoiTaoUngDung() {
       const okMoHd = await moHoaDonTrucTiepTrenTrang(sohdUrl);
 
       if (!okMoHd) {
-        const timeRs = await dongBoNgayGioTuDatabase({ forceDate: true });
-        if (!timeRs.ok) return;
-        khoiDongDongHoDatabaseBanLe();
-        await capNhatSoHoaDonTuDong();
+        setServerTimeReady(false, "Đang lấy ngày giờ chuẩn từ máy chủ");
+        const timeRs = await dongBoNgayGioTuDatabase({
+          forceDate: true,
+          retries: 3
+        });
+
+        if (timeRs.ok) {
+          khoiDongDongHoDatabaseBanLe();
+          await capNhatSoHoaDonTuDong();
+        }
+        // Nếu vẫn lỗi: KHÔNG return toàn bộ ứng dụng.
+        // Người dùng vẫn tra hàng/xem tồn; chỉ khóa lưu hóa đơn mới.
       }
     } else {
       // ===== TRƯỜNG HỢP HÓA ĐƠN MỚI (luồng cũ) =====
       window.dangXemHoaDon = false;
 
-      const timeRs = await dongBoNgayGioTuDatabase({ forceDate: true });
-      if (!timeRs.ok) return;
-      khoiDongDongHoDatabaseBanLe();
+      setServerTimeReady(false, "Đang lấy ngày giờ chuẩn từ máy chủ");
+      const timeRs = await dongBoNgayGioTuDatabase({
+        forceDate: true,
+        retries: 3
+      });
 
-      await capNhatSoHoaDonTuDong();
+      if (timeRs.ok) {
+        khoiDongDongHoDatabaseBanLe();
+        await capNhatSoHoaDonTuDong();
+      }
+      // Nếu vẫn lỗi: KHÔNG return toàn bộ ứng dụng.
+      // Người dùng vẫn tra hàng/xem tồn; chỉ khóa lưu hóa đơn mới.
 
       const st = document.getElementById("hd_state");
       if (st) st.value = "moi";
