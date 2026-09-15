@@ -2593,6 +2593,48 @@
     <div id="toastMsg"></div>
 
     <script>
+        // ===== ZALO: nội dung cảm ơn + hóa đơn đang hiển thị =====
+        // Không tạo module mới: đọc trực tiếp dữ liệu đang có trên trang bán lẻ.
+        function _zaloMoney(v) {
+            const n = Number(String(v ?? "0").replace(/[^\d-]/g, "")) || 0;
+            return n.toLocaleString("vi-VN");
+        }
+
+        function _zaloDateVN(v) {
+            const s = String(v || "").trim();
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            return m ? `${m[3]}/${m[2]}/${m[1]}` : s;
+        }
+
+        function _layChiTietHoaDonDangHienThiZalo() {
+            const rows = [];
+
+            document.querySelectorAll("#bangketqua tbody tr").forEach((tr, index) => {
+                const c = tr.cells;
+                if (!c || c.length < 8) return;
+
+                const masp = String(c[0]?.textContent || "").trim();
+                const tensp = String(c[1]?.textContent || "").trim();
+                const size = String(c[2]?.textContent || "").trim();
+                const sl = Number(String(c[3]?.textContent || "0").replace(/[^\d-]/g, "")) || 0;
+                const gia = Number(String(c[5]?.textContent || "0").replace(/[^\d-]/g, "")) || 0;
+                const km = Number(String(c[6]?.textContent || "0").replace(/[^\d-]/g, "")) || 0;
+                const thanhtien = Number(String(c[7]?.textContent || "0").replace(/[^\d-]/g, "")) || 0;
+
+                if (!masp && !tensp) return;
+
+                const tenHang = [tensp, masp].filter(Boolean).join(" ").trim();
+                const sizeText = size && size !== "0" ? ` - Size ${size}` : "";
+                const kmText = km > 0 ? `, KM ${_zaloMoney(km)}đ` : "";
+
+                rows.push(
+                    `${index + 1}. ${tenHang}${sizeText}: SL ${sl} x ${_zaloMoney(gia)}đ${kmText} = ${_zaloMoney(thanhtien)}đ`
+                );
+            });
+
+            return rows;
+        }
+
         function taoNoiDungMoiThamGiaZalo() {
             const ten =
                 document.getElementById("khachhang")?.value?.trim()
@@ -2602,19 +2644,41 @@
                 Number(document.getElementById("diem_hientai")?.value || 0);
 
             const tienDiem = diem * 1000;
+            const sohd = String(document.getElementById("sohd")?.value || "").trim();
+            const ngay = _zaloDateVN(document.getElementById("ngay")?.value || "");
+            const gio = String(document.getElementById("gio")?.value || "").trim();
+            const chiTiet = _layChiTietHoaDonDangHienThiZalo();
+            const phaiTra = Number(String(document.getElementById("phaithanhtoan")?.value || "0").replace(/[^\d-]/g, "")) || 0;
+            const chietKhau = Number(String(document.getElementById("chietkhau")?.value || "0").replace(/[^\d-]/g, "")) || 0;
+            const tienDoiDiem = Number(String(document.getElementById("tien_doi_diem")?.value || "0").replace(/[^\d-]/g, "")) || 0;
 
-            return `Shop Hoàn Tuyết xin chào anh/chị ${ten}.
+            const parts = [
+                `Shop Hoàn Tuyết xin chào anh/chị ${ten}.`,
+                `Cảm ơn anh/chị đã mua hàng tại shop.`
+            ];
 
-Cảm ơn anh/chị đã mua hàng tại shop.
+            // Chỉ chèn phần hóa đơn khi màn hình thực sự đang có hàng.
+            if (chiTiet.length) {
+                const thoiGian = [ngay, gio].filter(Boolean).join(" ");
+                parts.push(`🧾 HÓA ĐƠN${sohd ? `: ${sohd}` : ""}${thoiGian ? ` - ${thoiGian}` : ""}`);
+                parts.push(chiTiet.join("\n"));
 
-Hiện anh/chị đang có ${diem} điểm,
-tương đương ${tienDiem.toLocaleString("vi-VN")}đ ưu đãi cho lần mua tiếp theo.
+                const giamGia = [];
+                if (chietKhau > 0) giamGia.push(`CK hóa đơn: -${_zaloMoney(chietKhau)}đ`);
+                if (tienDoiDiem > 0) giamGia.push(`Dùng điểm: -${_zaloMoney(tienDoiDiem)}đ`);
+                if (giamGia.length) parts.push(giamGia.join("\n"));
 
-Mời anh/chị tham gia cộng đồng khuyến mại của shop để nhận ưu đãi và tích điểm khi mua hàng:
+                parts.push(`TỔNG THANH TOÁN: ${_zaloMoney(phaiTra)}đ`);
+            }
 
-https://zalo.me/g/rz31sxl6fvcidvehzvty
+            parts.push(
+                `Hiện anh/chị đang có ${diem} điểm, tương đương ${tienDiem.toLocaleString("vi-VN")}đ ưu đãi cho lần mua tiếp theo.`,
+                `Mời anh/chị tham gia cộng đồng khuyến mại của shop để nhận ưu đãi và tích điểm khi mua hàng:
+https://zalo.me/g/rz31sxl6fvcidvehzvty`,
+                `Shop chân thành cảm ơn!`
+            );
 
-Shop chân thành cảm ơn!`;
+            return parts.join("\n\n");
         }
 
         async function luuLogMoiZalo() {
@@ -2631,7 +2695,7 @@ Shop chân thành cảm ơn!`;
                 nguoi_gui_manv: localStorage.getItem("manv") || "",
                 nguoi_gui_tennv: localStorage.getItem("tennv") || "",
                 nguoi_gui_diadiem: localStorage.getItem("diadiem") || "",
-                loai_gui: "BANLE_ZALO"
+                loai_gui: document.querySelectorAll("#bangketqua tbody tr").length ? "BANLE_ZALO_HOADON" : "BANLE_ZALO"
             };
 
             await window.supabase
@@ -2721,7 +2785,10 @@ Shop chân thành cảm ơn!`;
 
                     window.open(`https://zalo.me/${makh}`, "_blank");
 
-                    alert("Đã copy nội dung và mở Zalo.");
+                    // Không dùng alert để giảm thêm một thao tác đóng hộp thoại.
+                    const oldText = btnMoiZalo.textContent;
+                    btnMoiZalo.textContent = "✅ Đã copy";
+                    setTimeout(() => { btnMoiZalo.textContent = oldText; }, 1800);
                 } catch (err) {
                     console.error(err);
                     alert("Không copy được nội dung Zalo.");
