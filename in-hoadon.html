@@ -1023,6 +1023,40 @@
 
         // ===== GỬI HÓA ĐƠN QUA ZALO (bán tự động) =====
         // Dùng đúng dữ liệu hóa đơn đã truyền sang trang in; không gọi DB, không tạo link public.
+
+        // ===== ZALO: TÁI SỬ DỤNG 1 TAB + CHỐNG BẤM LIÊN TỤC =====
+        // Hạn chế mở nhiều tab zalo.me liên tiếp. Không phải cách bỏ qua CAPTCHA của Zalo.
+        function moZaloMotTab(sdt) {
+            const phone = String(sdt || "").replace(/\D/g, "");
+            if (!phone) return false;
+
+            const now = Date.now();
+            const cooldownMs = 2500;
+            const lastOpen = Number(window.__zaloLastOpenAt || 0);
+
+            if (now - lastOpen < cooldownMs) {
+                try { window.__zaloShopWindow?.focus(); } catch (_) { }
+                return false;
+            }
+
+            window.__zaloLastOpenAt = now;
+
+            try {
+                const w = window.open(`https://zalo.me/${phone}`, "ZALO_SHOP");
+                if (w) {
+                    window.__zaloShopWindow = w;
+                    setTimeout(() => {
+                        try { w.focus(); } catch (_) { }
+                    }, 50);
+                    return true;
+                }
+            } catch (err) {
+                console.warn("Không mở được tab Zalo:", err);
+            }
+
+            return false;
+        }
+
         function taoNoiDungZaloTuHoaDonIn() {
           const ten = String(hoadon.khachhang || "anh/chị").trim() || "anh/chị";
           const diemHienTai = Number(hoadon.diem_hientai || 0);
@@ -1087,7 +1121,7 @@ https://zalo.me/g/rz31sxl6fvcidvehzvty`,
 
           try {
             await navigator.clipboard.writeText(taoNoiDungZaloTuHoaDonIn());
-            window.open(`https://zalo.me/${phone}`, "_blank");
+            moZaloMotTab(phone);
             if (btn) {
               btn.textContent = "✅ Đã copy";
               setTimeout(() => { btn.textContent = oldText; }, 1800);
@@ -1098,7 +1132,12 @@ https://zalo.me/g/rz31sxl6fvcidvehzvty`,
           }
         }
 
-        document.getElementById("btnSendZalo")?.addEventListener("click", guiHoaDonZaloTuTrangIn);
+        document.getElementById("btnSendZalo")?.addEventListener("click", async function () {
+            if (this.disabled) return;
+            this.disabled = true;
+            setTimeout(() => { this.disabled = false; }, 2500);
+            await guiHoaDonZaloTuTrangIn();
+        });
 
         localStorage.removeItem("data_hoadon_in");
 
