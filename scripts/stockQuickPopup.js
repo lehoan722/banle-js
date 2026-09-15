@@ -284,6 +284,11 @@
   font-weight: 700;
 }
 
+.sq-title-nhacc {
+  color: #2563eb;
+  font-weight: 700;
+}
+
 .sq-color-link {
   color: #2563eb;
   font-weight: 700;
@@ -1313,6 +1318,7 @@ data-color-masp="${targetMasp}"
     let giale = "";
     let gianhap = "";
     let nhomhang = "";
+    let nhacc = "";
     let form = "";
     let giam_gia_pct = null;
     let mau_khac = "";
@@ -1369,7 +1375,7 @@ data-color-masp="${targetMasp}"
 
         client
           .from("dmhanghoa")
-          .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, gianhap, giale, nhomhang, form, giam_gia_pct")
+          .select("vitrikho1, vitrikho2, treomaucs1, treomaucs2, nhapdau, gianhap, giale, nhomhang, nhacc, form, giam_gia_pct")
           .eq("masp", masp)
           .maybeSingle(),
 
@@ -1506,6 +1512,7 @@ data-color-masp="${targetMasp}"
         giale = hh.giale || "";
         gianhap = hh.gianhap ?? "";
         nhomhang = hh.nhomhang || "";
+        nhacc = hh.nhacc || "";
         form = String(hh.form || "").trim().toUpperCase();
         giam_gia_pct = hh.giam_gia_pct == null ? null : Number(hh.giam_gia_pct);
 
@@ -1550,6 +1557,7 @@ data-color-masp="${targetMasp}"
     window.__SQ_DATA[masp] = {
       rows,
       nhomhang,
+      nhacc,
       form,
       giale,
       gianhap,
@@ -1570,6 +1578,7 @@ data-color-masp="${targetMasp}"
       giale,
       gianhap,
       nhomhang,
+      nhacc,
       form,
       mau_khac,
       giam_gia_pct,
@@ -1599,6 +1608,7 @@ data-color-masp="${targetMasp}"
     const giale = payload && payload.giale ? payload.giale : "";
     const gianhap = payload && payload.gianhap !== undefined && payload.gianhap !== null ? payload.gianhap : "";
     const nhomhang = payload && payload.nhomhang ? payload.nhomhang : "";
+    const nhacc = payload && payload.nhacc ? String(payload.nhacc).trim() : "";
     const form = payload && payload.form ? String(payload.form).trim().toUpperCase() : "";
     const mau_khac = payload && payload.mau_khac ? payload.mau_khac : "";
     const giam_gia_pct = payload && payload.giam_gia_pct != null ? Number(payload.giam_gia_pct) : null;
@@ -2209,7 +2219,7 @@ data-color-masp="${targetMasp}"
   <span class="sq-title-masp" data-masp="${upper}" title="Bấm để copy mã và mở chuyển chi nhánh">${upper}</span>
 ${mau_khac ? ` / ${buildOtherColorLinksHtml(upper, mau_khac)}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
-${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}${formatGiaNhapAn(gianhap) ? `-${formatGiaNhapAn(gianhap)}` : ""}
+${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""}${nhacc ? ` / <span class="sq-title-nhacc">${nhacc}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}${formatGiaNhapAn(gianhap) ? `-${formatGiaNhapAn(gianhap)}` : ""}
 ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 </span>
   <button class="sq-photo-btn" type="button" title="Copy mã & mở trang up ảnh nhanh">📷 Chụp ảnh/copy</button>
