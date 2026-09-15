@@ -159,6 +159,115 @@ function hienCamTruyCap(msg) {
 window.kiemTraQuyenXemTrang = kiemTraQuyenXemTrang;
 
 
+
+// ===================== BỘ LỌC NGHIỆP VỤ ĐA LỰA CHỌN =====================
+const XNT_CONDITIONS = [
+    { key: "duong", group: "TỒN CUỐI", label: "Chỉ hàng dương" },
+    { key: "am", group: "TỒN CUỐI", label: "Chỉ hàng âm" },
+    { key: "het", group: "TỒN CUỐI", label: "Hàng đã hết" },
+    { key: "co_nhap", group: "MUA HÀNG", label: "Phát sinh mua trong kỳ" },
+    { key: "khong_nhap", group: "MUA HÀNG", label: "Không phát sinh mua trong kỳ" },
+    { key: "co_ban", group: "BÁN HÀNG", label: "Phát sinh bán trong kỳ" },
+    { key: "khong_ban", group: "BÁN HÀNG", label: "Không phát sinh bán trong kỳ" },
+];
+const XNT_CONFLICTS = {
+    duong: ["am"],
+    am: ["duong"],
+    co_nhap: ["khong_nhap"],
+    khong_nhap: ["co_nhap"],
+    co_ban: ["khong_ban"],
+    khong_ban: ["co_ban"],
+};
+let xntConditionSelected = new Set();
+
+function setXntConditions(keys) {
+    xntConditionSelected = new Set(keys || []);
+    renderXntConditionPopup();
+    updateXntConditionDisplay();
+}
+
+function isXntConditionDisabled(key) {
+    return Array.from(xntConditionSelected).some(selected =>
+        selected !== key && (XNT_CONFLICTS[selected] || []).includes(key)
+    );
+}
+
+function updateXntConditionDisplay() {
+    const display = document.getElementById("xntConditionDisplay");
+    if (!display) return;
+    const selected = XNT_CONDITIONS.filter(x => xntConditionSelected.has(x.key));
+    if (!selected.length) display.value = "Không có điều kiện";
+    else if (selected.length <= 2) display.value = selected.map(x => x.label).join(", ");
+    else display.value = `${selected.length} điều kiện đã chọn`;
+    display.title = selected.map(x => x.label).join("\n");
+}
+
+function renderXntConditionPopup() {
+    const list = document.getElementById("xntConditionPopupList");
+    if (!list) return;
+    let html = "";
+    let lastGroup = null;
+    XNT_CONDITIONS.forEach(item => {
+        if (item.group !== lastGroup) {
+            lastGroup = item.group;
+            html += `<div class="xnt-filter-section-title">${item.group}</div>`;
+        }
+        const disabled = isXntConditionDisabled(item.key);
+        const checked = xntConditionSelected.has(item.key);
+        let reason = "";
+        if (disabled) {
+            const blocker = XNT_CONDITIONS.find(x => xntConditionSelected.has(x.key) && (XNT_CONFLICTS[x.key] || []).includes(item.key));
+            reason = blocker ? `Không thể chọn cùng “${blocker.label}”` : "Điều kiện xung đột";
+        }
+        html += `<div class="xnt-filter-row ${disabled ? 'is-disabled' : ''}" data-key="${item.key}" title="${reason}">
+            <div class="xnt-filter-label">${item.label}</div>
+            <input type="checkbox" class="xnt-filter-check" value="${item.key}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+        </div>`;
+    });
+    list.innerHTML = html;
+}
+
+function bindXntConditionEvents() {
+    const wrap = document.getElementById("xntConditionWrap");
+    const popup = document.getElementById("xntConditionPopup");
+    const list = document.getElementById("xntConditionPopupList");
+    const toggle = document.getElementById("toggleXntConditionPopup");
+    const display = document.getElementById("xntConditionDisplay");
+    const togglePopup = e => {
+        e?.preventDefault(); e?.stopPropagation();
+        if (popup) popup.style.display = popup.style.display === "block" ? "none" : "block";
+    };
+    toggle?.addEventListener("click", togglePopup);
+    display?.addEventListener("click", togglePopup);
+    list?.addEventListener("change", e => {
+        const chk = e.target.closest(".xnt-filter-check");
+        if (!chk || chk.disabled) return;
+        if (chk.checked) xntConditionSelected.add(chk.value); else xntConditionSelected.delete(chk.value);
+        renderXntConditionPopup(); updateXntConditionDisplay();
+    });
+    list?.addEventListener("click", e => {
+        if (e.target.closest(".xnt-filter-check")) return;
+        const row = e.target.closest(".xnt-filter-row");
+        if (!row) return;
+        const chk = row.querySelector(".xnt-filter-check");
+        if (!chk || chk.disabled) return;
+        chk.checked = !chk.checked;
+        chk.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    document.getElementById("btnXntClearAll")?.addEventListener("click", e => { e.stopPropagation(); setXntConditions([]); });
+    document.getElementById("btnXntDefault")?.addEventListener("click", e => { e.stopPropagation(); setXntConditions(["co_ban"]); });
+    document.getElementById("btnXntApply")?.addEventListener("click", async e => {
+        e.stopPropagation(); if (popup) popup.style.display = "none"; currentPage = 1; await window.taiBaoCaoXNT?.();
+    });
+    document.addEventListener("mousedown", e => { if (popup?.style.display === "block" && !wrap?.contains(e.target)) popup.style.display = "none"; });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    bindXntConditionEvents();
+    renderXntConditionPopup();
+    updateXntConditionDisplay();
+});
+
 // ===================== HELPERS =====================
 function val(id) { return document.getElementById(id)?.value ?? ""; }
 function bool(id) { return document.getElementById(id)?.checked ?? false; }
@@ -218,11 +327,13 @@ function buildParams(page = 1) {
         p_nhanvien_filter: val("nhanvienInput") || null,
         p_tu_gia: val("tuGia") ? Number(val("tuGia")) : null,
         p_den_gia: val("denGia") ? Number(val("denGia")) : null,
-        loc_duong: bool("locDuong"),
-        loc_am: bool("locAm"),
-        loc_het: bool("locHet"),
-        loc_phatsinh_nhap: bool("locPhatSinhNhap"),
-        loc_phatsinh_xuat: bool("locPhatSinhXuat"),
+        loc_duong: xntConditionSelected.has("duong"),
+        loc_am: xntConditionSelected.has("am"),
+        loc_het: xntConditionSelected.has("het"),
+        loc_phatsinh_nhap: xntConditionSelected.has("co_nhap"),
+        loc_khong_phatsinh_nhap: xntConditionSelected.has("khong_nhap"),
+        loc_phatsinh_xuat: xntConditionSelected.has("co_ban"),
+        loc_khong_phatsinh_xuat: xntConditionSelected.has("khong_ban"),
         p_tonghop_size: bool("tonghopSizeCheckbox"),
         p_limit: pageSize,
         p_offset: (page - 1) * pageSize
@@ -238,7 +349,8 @@ function buildCountParams(params) {
         p_khachhang_filter, p_nhanvien_filter,
         p_tu_gia, p_den_gia,
         loc_duong, loc_am, loc_het,
-        loc_phatsinh_nhap, loc_phatsinh_xuat,
+        loc_phatsinh_nhap, loc_khong_phatsinh_nhap,
+        loc_phatsinh_xuat, loc_khong_phatsinh_xuat,
         p_tonghop_size
     } = params;
 
@@ -249,7 +361,8 @@ function buildCountParams(params) {
         p_khachhang_filter, p_nhanvien_filter,
         p_tu_gia, p_den_gia,
         loc_duong, loc_am, loc_het,
-        loc_phatsinh_nhap, loc_phatsinh_xuat,
+        loc_phatsinh_nhap, loc_khong_phatsinh_nhap,
+        loc_phatsinh_xuat, loc_khong_phatsinh_xuat,
         p_tonghop_size
     };
 }
@@ -409,13 +522,13 @@ window.gotoPage = async function () {
 
 // ===================== LOAD DATA =====================
 async function fetchCount(params) {
-    const { data, error } = await supabase.rpc("baocaoxnt19_count", buildCountParams(params));
+    const { data, error } = await supabase.rpc("baocaoxnt19_count_v5", buildCountParams(params));
     if (error) throw error;
     return data;
 }
 
 async function fetchPaged(params) {
-    const fn = "baocaoxnt19_paged";
+    const fn = "baocaoxnt19_paged_v5";
     const { data, error } = await supabase.rpc(fn, params);
     if (error) throw error;
 
@@ -424,16 +537,16 @@ async function fetchPaged(params) {
 }
 
 async function fetchSummary(params) {
-    const { data, error } = await supabase.rpc("baocaoxnt19_summary", buildCountParams(params));
+    const { data, error } = await supabase.rpc("baocaoxnt19_summary_v5", buildCountParams(params));
     if (error) throw error;
     return Array.isArray(data) ? (data[0] || null) : data;
 }
 
-// XNT19 V3: 1 RPC tra ve cung luc DU LIEU TRANG + TOTAL ROWS + SUMMARY TOAN BO.
+// XNT19 V5: 1 RPC trả về cùng lúc DỮ LIỆU TRANG + TOTAL ROWS + SUMMARY TOÀN BỘ.
 // Metadata duoc lap lai tren moi dong; client chi doc dong dau roi loai khoi rows render.
-async function fetchPageBundleV4(params) {
-    // V4 tra DUNG 1 JSONB nen khong bi Supabase/PostgREST cat response tai 1000 rows.
-    const { data, error } = await supabase.rpc("baocaoxnt19_bundle_v4", params);
+async function fetchPageBundleV5(params) {
+    // V5 trả đúng 1 JSONB nên không bị Supabase/PostgREST cắt response tại 1000 rows.
+    const { data, error } = await supabase.rpc("baocaoxnt19_bundle_v5", params);
     if (error) throw error;
 
     // Scalar jsonb thuong ve truc tiep object; giu fallback neu client tra array 1 phan tu.
@@ -484,15 +597,15 @@ window.taiBaoCaoXNT = async function () {
         pageSize = Number(document.getElementById("pageSize")?.value || 1000);
         let params = buildParams(currentPage);
 
-        // V3: chỉ 1 RPC cho count + page + summary.
+        // V5: chỉ 1 RPC cho count + page + summary.
         loading.textContent = "Đang tổng hợp báo cáo...";
-        let bundle = await fetchPageBundleV4(params);
+        let bundle = await fetchPageBundleV5(params);
 
         // Nếu đang ở trang >1 nhưng bộ lọc mới làm trang đó không còn dữ liệu, tự quay về trang 1.
         if (!bundle.rows.length && currentPage > 1) {
             currentPage = 1;
             params = buildParams(1);
-            bundle = await fetchPageBundleV4(params);
+            bundle = await fetchPageBundleV5(params);
         }
 
         totalRows = Number(bundle.totalRows || 0);
@@ -510,7 +623,7 @@ window.taiBaoCaoXNT = async function () {
 
         updatePagingBar();
         loading.textContent = "";
-        console.info(`[XNT19 V4] ${rows.length}/${totalRows} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
+        console.info(`[XNT19 V5] ${rows.length}/${totalRows} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
     } catch (err) {
         console.error(err);
         loading.textContent = "Lỗi tải dữ liệu: " + (err?.message || err);
@@ -538,7 +651,7 @@ window.xuatExcelToanBoXNT19 = async function () {
         const base = buildParams(1);
         const firstParams = { ...base, p_limit: batchSize, p_offset: 0 };
         if (loading) loading.textContent = "Đang tải dữ liệu Excel: lượt 1...";
-        const first = await fetchPageBundleV4(firstParams);
+        const first = await fetchPageBundleV5(firstParams);
         const total = Number(first.totalRows || 0);
         const totalBatches = Math.max(1, Math.ceil(total / batchSize));
         const all = new Array(totalBatches);
@@ -552,7 +665,7 @@ window.xuatExcelToanBoXNT19 = async function () {
                 if (b > totalBatches) return;
                 const offset = (b - 1) * batchSize;
                 if (loading) loading.textContent = `Đang tải dữ liệu Excel: ${Math.min(b,totalBatches)}/${totalBatches}...`;
-                const bundle = await fetchPageBundleV4({ ...base, p_limit: batchSize, p_offset: offset });
+                const bundle = await fetchPageBundleV5({ ...base, p_limit: batchSize, p_offset: offset });
                 all[b - 1] = bundle.rows || [];
             }
         }
@@ -602,9 +715,9 @@ window.xuatExcelToanBoXNT19 = async function () {
         XLSX.writeFile(wb, `baocaoxnt19_${stamp}.xlsx`, { compression: true });
 
         if (loading) loading.textContent = "";
-        console.info(`[XNT19 V4 Excel] ${rows.length}/${total} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
+        console.info(`[XNT19 V5 Excel] ${rows.length}/${total} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
     } catch (err) {
-        console.error("[XNT19 V4 Excel]", err);
+        console.error("[XNT19 V5 Excel]", err);
         if (loading) loading.textContent = "Lỗi xuất Excel: " + (err?.message || err);
         alert("Không xuất được Excel: " + (err?.message || err));
     } finally {
@@ -960,6 +1073,10 @@ window.moTrangAnh = function () {
 
 
 window.addEventListener("DOMContentLoaded", () => {
+    // Mặc định địa điểm luôn là Tất cả khi mở trang bình thường.
+    const ddDefault = document.getElementById("diadiemSelect");
+    if (ddDefault) ddDefault.value = "";
+
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 10);   // -1 hôm qua -10 = 10 ngày
@@ -969,9 +1086,8 @@ window.addEventListener("DOMContentLoaded", () => {
     if (den) den.value = toLocalISO(now);        // hôm nay
     if (tu) tu.value = toLocalISO(yesterday);    // hôm qua
 
-    // Mặc định: KHÔNG tick "Phát sinh bán trong kỳ"
-    const cb = document.getElementById("locPhatSinhXuat");
-    if (cb) cb.checked = true;
+    // Mặc định nghiệp vụ cũ: Phát sinh bán trong kỳ. Địa điểm vẫn để Tất cả (value="").
+    setXntConditions(["co_ban"]);
 
     // ================== CHẾ ĐỘ TÌM SẢN PHẨM TƯƠNG ĐỒNG ==================
     try {
@@ -1154,7 +1270,7 @@ window.moTrangChuyenKho = async () => {
 
     // 3) Đếm + lấy toàn bộ dữ liệu theo size
     const countParams = buildCountParams(p);
-    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt19_count', countParams);
+    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt19_count_v5', countParams);
     if (cntErr) { alert('Lỗi COUNT: ' + cntErr.message); return; }
     const total = Number(cntData || 0);
 
@@ -1162,7 +1278,7 @@ window.moTrangChuyenKho = async () => {
     const all = [];
     for (let offset = 0; offset < total; offset += pageSize) {
         const pageParams = { ...p, p_limit: pageSize, p_offset: offset };
-        const { data, error } = await supabase.rpc('baocaoxnt19_paged', pageParams);
+        const { data, error } = await supabase.rpc('baocaoxnt19_paged_v5', pageParams);
         if (error) { alert('Lỗi Paged: ' + error.message); return; }
         all.push(...(data || []));
     }
