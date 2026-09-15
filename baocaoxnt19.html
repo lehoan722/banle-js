@@ -429,7 +429,89 @@
         #hot .handsontable tbody tr:hover td {
             filter: brightness(0.98);
         }
-    </style>
+    
+
+        /* ===== Bộ lọc nghiệp vụ đa lựa chọn XNT19 ===== */
+        .xnt-filter-wrap {
+            display: inline-block;
+            position: relative;
+            vertical-align: middle;
+        }
+        .xnt-filter-box {
+            display: inline-flex;
+            align-items: stretch;
+            min-width: 280px;
+        }
+        #xntConditionDisplay {
+            width: 250px;
+            background: #fff;
+            cursor: pointer;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px 0 0 3px;
+        }
+        .xnt-filter-btn {
+            width: 34px;
+            border: 1px solid #999;
+            border-left: none;
+            background: #f3f3f3;
+            cursor: pointer;
+            border-radius: 0 3px 3px 0;
+        }
+        .xnt-filter-popup {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 9999;
+            background: #f8f3df;
+            border: 1px solid #c8b98b;
+            border-radius: 4px;
+            box-shadow: 0 3px 10px rgba(0,0,0,.12);
+            width: 390px;
+            max-height: 420px;
+            overflow-y: auto;
+            margin-top: 2px;
+            padding: 4px 0;
+        }
+        .xnt-filter-section-title {
+            padding: 7px 10px 4px;
+            font-weight: 700;
+            color: #445;
+            background: #efe6c9;
+            border-top: 1px solid #ded2ab;
+        }
+        .xnt-filter-row {
+            display: grid;
+            grid-template-columns: 1fr 30px;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            border-bottom: 1px solid #eadfb9;
+        }
+        .xnt-filter-row:hover { background: #efe5bf; }
+        .xnt-filter-row.is-disabled { opacity: .45; }
+        .xnt-filter-label {
+            border: 1px solid #aaa;
+            background: #fff;
+            padding: 6px 8px;
+            line-height: 1.2;
+            font-size: 13px;
+        }
+        .xnt-filter-check { width: 16px; height: 16px; justify-self: center; }
+        .xnt-filter-actions {
+            display: flex;
+            gap: 6px;
+            padding: 6px 8px;
+            border-bottom: 1px solid #d8cfa5;
+            background: #f5ecd0;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .xnt-filter-actions button {
+            flex: 1; padding: 6px; font-size: 12px; border: 1px solid #aaa; background: #fff; cursor: pointer;
+        }
+</style>
 </head>
 
 <body>
@@ -491,11 +573,23 @@
                     <label>Đến giá:
                         <input type="number" id="denGia" min="0" step="1000" style="width:90px;" placeholder="Đến">
                     </label>
-                    <label><input type="checkbox" id="locDuong"> Chỉ hàng dương</label>
-                    <label><input type="checkbox" id="locAm"> Chỉ hàng âm</label>
-                    <label><input type="checkbox" id="locHet"> Hàng đã hết</label>
-                    <label><input type="checkbox" id="locPhatSinhNhap"> Phát sinh mua trong kỳ</label>
-                    <label><input type="checkbox" id="locPhatSinhXuat"> Phát sinh bán trong kỳ</label>
+                    <!-- Bộ lọc nghiệp vụ đa lựa chọn -->
+                    <div class="xnt-filter-wrap" id="xntConditionWrap">
+                        <label for="xntConditionDisplay">Điều kiện lọc:</label>
+                        <div class="xnt-filter-box">
+                            <input type="text" id="xntConditionDisplay" readonly placeholder="Chọn điều kiện lọc" />
+                            <button type="button" id="toggleXntConditionPopup" class="xnt-filter-btn">▼</button>
+                        </div>
+                        <div id="xntConditionPopup" class="xnt-filter-popup" style="display:none;">
+                            <div class="xnt-filter-actions">
+                                <button type="button" id="btnXntClearAll">Bỏ tất cả</button>
+                                <button type="button" id="btnXntDefault">Mặc định</button>
+                                <button type="button" id="btnXntApply">Áp dụng</button>
+                            </div>
+                            <div id="xntConditionPopupList"></div>
+                        </div>
+                    </div>
+
                     <!-- CHECKBOX TỔNG HỢP SIZE -->
                     <label><input type="checkbox" id="tonghopSizeCheckbox"> Tổng hợp size</label>
                     <label style="font-weight:normal;">
