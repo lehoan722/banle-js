@@ -22,6 +22,124 @@ import { initPopupChuyenKhoContext, triggerChuyenKhoCheckNgay } from './popupchu
 import { showPageLoading, hidePageLoading, setPageLoadingText } from './pageLoading.js';
 import { initDatHangChuyenKho } from './datHangChuyenKho.js';
 import { initYeuCauBayMau } from './yeuCauBayMau.js';
+
+// ===== GIỜ HỆ THỐNG TỪ DATABASE - VIỆT NAM =====
+// Không dùng đồng hồ của máy tính quầy.
+// Lấy mốc thời gian từ PostgreSQL, sau đó chạy đồng hồ bằng performance.now()
+// và tự đồng bộ lại với DB định kỳ để tránh trôi giờ.
+let __serverClockEpochMs = null;
+let __serverClockPerfAtSync = null;
+let __serverClockSyncTimer = null;
+let __serverClockTickTimer = null;
+
+function formatDateInputVNFromEpoch(epochMs) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date(epochMs));
+
+  const get = (type) => parts.find(p => p.type === type)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function formatTimeVNFromEpoch(epochMs) {
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(new Date(epochMs));
+}
+
+function getServerClockEpochNow() {
+  if (__serverClockEpochMs == null || __serverClockPerfAtSync == null) return null;
+  return __serverClockEpochMs + (performance.now() - __serverClockPerfAtSync);
+}
+
+function isHoaDonMoiForServerClock() {
+  const state = String(document.getElementById("hd_state")?.value || "moi")
+    .trim()
+    .toLowerCase();
+  return state === "moi";
+}
+
+function renderServerClockToBanLe({ forceDate = false } = {}) {
+  const epochNow = getServerClockEpochNow();
+  if (epochNow == null) return false;
+
+  const ngayEl = document.getElementById("ngay");
+  const gioEl = document.getElementById("gio");
+
+  // Chỉ tự chạy đồng hồ trên hóa đơn mới, không ghi đè ngày/giờ của hóa đơn cũ.
+  if (!isHoaDonMoiForServerClock() && !forceDate) return false;
+
+  if (ngayEl && (forceDate || isHoaDonMoiForServerClock())) {
+    ngayEl.value = formatDateInputVNFromEpoch(epochNow);
+    ngayEl.title = "Ngày hệ thống từ máy chủ (giờ Việt Nam)";
+  }
+
+  if (gioEl && isHoaDonMoiForServerClock()) {
+    gioEl.value = formatTimeVNFromEpoch(epochNow);
+    gioEl.title = "Giờ hệ thống từ máy chủ (Asia/Ho_Chi_Minh)";
+  }
+
+  return true;
+}
+
+async function dongBoNgayGioTuDatabase({ forceDate = false, silent = false } = {}) {
+  try {
+    const { data, error } = await supabase.rpc("rpc_server_time_vn_v1");
+    if (error) throw error;
+
+    const row = Array.isArray(data) ? data[0] : data;
+    const epochMs = Number(row?.epoch_ms);
+
+    if (!Number.isFinite(epochMs) || epochMs <= 0) {
+      throw new Error("RPC không trả về epoch_ms hợp lệ");
+    }
+
+    __serverClockEpochMs = epochMs;
+    __serverClockPerfAtSync = performance.now();
+
+    renderServerClockToBanLe({ forceDate });
+    return {
+      ok: true,
+      ngay: row?.ngay || "",
+      gio: row?.gio || "",
+      epoch_ms: epochMs
+    };
+  } catch (err) {
+    console.error("[BANLE] Không lấy được ngày giờ hệ thống từ database:", err);
+    if (!silent) {
+      alert(
+        "❌ Không lấy được ngày giờ hệ thống từ máy chủ.\n" +
+        "Vui lòng kiểm tra mạng rồi thử lại. Hệ thống sẽ KHÔNG dùng ngày giờ của máy tính."
+      );
+    }
+    return { ok: false, error: err };
+  }
+}
+
+function khoiDongDongHoDatabaseBanLe() {
+  if (!__serverClockTickTimer) {
+    __serverClockTickTimer = setInterval(() => {
+      renderServerClockToBanLe();
+    }, 1000);
+  }
+
+  if (!__serverClockSyncTimer) {
+    __serverClockSyncTimer = setInterval(() => {
+      // Đồng bộ lại mỗi 60 giây; lỗi mạng tạm thời không làm gián đoạn đồng hồ đang chạy.
+      dongBoNgayGioTuDatabase({ silent: true });
+    }, 60000);
+  }
+}
+
+window.dongBoNgayGioTuDatabase = dongBoNgayGioTuDatabase;
+
 // ===== tam ngung kiem tra vi tri =====
 const ENABLE_LOCATION_GUARD = false;
 //const ENABLE_LOCATION_GUARD = true;
@@ -524,13 +642,19 @@ export async function khoiTaoUngDung() {
       const okMoHd = await moHoaDonTrucTiepTrenTrang(sohdUrl);
 
       if (!okMoHd) {
-        document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
+        const timeRs = await dongBoNgayGioTuDatabase({ forceDate: true });
+        if (!timeRs.ok) return;
+        khoiDongDongHoDatabaseBanLe();
         await capNhatSoHoaDonTuDong();
       }
     } else {
       // ===== TRƯỜNG HỢP HÓA ĐƠN MỚI (luồng cũ) =====
       window.dangXemHoaDon = false;
-      document.getElementById("ngay").value = new Date().toISOString().slice(0, 10);
+
+      const timeRs = await dongBoNgayGioTuDatabase({ forceDate: true });
+      if (!timeRs.ok) return;
+      khoiDongDongHoDatabaseBanLe();
+
       await capNhatSoHoaDonTuDong();
 
       const st = document.getElementById("hd_state");
