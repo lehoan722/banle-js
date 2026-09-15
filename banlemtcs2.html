@@ -2625,6 +2625,40 @@
             return rows;
         }
 
+
+        // ===== ZALO: TÁI SỬ DỤNG 1 TAB + CHỐNG BẤM LIÊN TỤC =====
+        // Hạn chế mở nhiều tab zalo.me liên tiếp. Không phải cách bỏ qua CAPTCHA của Zalo.
+        function moZaloMotTab(sdt) {
+            const phone = String(sdt || "").replace(/\D/g, "");
+            if (!phone) return false;
+
+            const now = Date.now();
+            const cooldownMs = 2500;
+            const lastOpen = Number(window.__zaloLastOpenAt || 0);
+
+            if (now - lastOpen < cooldownMs) {
+                try { window.__zaloShopWindow?.focus(); } catch (_) { }
+                return false;
+            }
+
+            window.__zaloLastOpenAt = now;
+
+            try {
+                const w = window.open(`https://zalo.me/${phone}`, "ZALO_SHOP");
+                if (w) {
+                    window.__zaloShopWindow = w;
+                    setTimeout(() => {
+                        try { w.focus(); } catch (_) { }
+                    }, 50);
+                    return true;
+                }
+            } catch (err) {
+                console.warn("Không mở được tab Zalo:", err);
+            }
+
+            return false;
+        }
+
         function taoNoiDungMoiThamGiaZalo() {
             const ten =
                 document.getElementById("khachhang")?.value?.trim()
@@ -2756,9 +2790,14 @@ https://zalo.me/g/rz31sxl6fvcidvehzvty`,
             const makhEl = document.getElementById("makh");
 
             btnMoiZalo?.addEventListener("click", async () => {
+                if (btnMoiZalo.disabled) return;
+                btnMoiZalo.disabled = true;
+                setTimeout(() => { btnMoiZalo.disabled = false; }, 2500);
+
                 const makh = document.getElementById("makh")?.value?.trim() || "";
 
                 if (!makh) {
+                    btnMoiZalo.disabled = false;
                     alert("Vui lòng nhập mã khách.");
                     return;
                 }
@@ -2773,7 +2812,7 @@ https://zalo.me/g/rz31sxl6fvcidvehzvty`,
                     const cbMoi = document.getElementById("zalo_da_moi");
                     if (cbMoi) cbMoi.checked = true;
 
-                    window.open(`https://zalo.me/${makh}`, "_blank");
+                    moZaloMotTab(makh);
 
                     // Không dùng alert để giảm thêm một thao tác đóng hộp thoại.
                     const oldText = btnMoiZalo.textContent;
