@@ -133,7 +133,8 @@
     @media print {
 
       #qrAmountInput,
-      #btnPrintQR {
+      #btnPrintQR,
+      #btnSendZalo {
         display: none !important;
       }
     }
@@ -575,6 +576,20 @@
     ">
               In hoa don
             </button>
+
+            <button id="btnSendZalo" type="button" style="
+      margin-top:6px;
+      margin-left:6px;
+      padding:6px 16px;
+      font-size:16px;
+      cursor:pointer;
+      background:#0068ff;
+      color:#fff;
+      border:1px solid #0054cc;
+      border-radius:4px;
+    ">
+              Gửi Zalo
+            </button>
           </div>
 
         </div>
@@ -1005,6 +1020,85 @@
   `;
           tbody.appendChild(row);
         });
+
+        // ===== GỬI HÓA ĐƠN QUA ZALO (bán tự động) =====
+        // Dùng đúng dữ liệu hóa đơn đã truyền sang trang in; không gọi DB, không tạo link public.
+        function taoNoiDungZaloTuHoaDonIn() {
+          const ten = String(hoadon.khachhang || "anh/chị").trim() || "anh/chị";
+          const diemHienTai = Number(hoadon.diem_hientai || 0);
+          const tienDiem = diemHienTai * 1000;
+          const sohd = String(hoadon.sohd || "").trim();
+          const ngayRaw = String(hoadon.ngay || "").trim();
+          const m = ngayRaw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+          const ngayVN = m ? `${m[3]}/${m[2]}/${m[1]}` : ngayRaw;
+          const gio = String(hoadon.gio || "").trim();
+
+          const lines = data.map((sp, index) => {
+            const sl = Number(sp.soluong || 0);
+            const gia = Number(sp.gia || 0);
+            const km = Number(sp.km || 0);
+            const tt = Number(sp.thanhtien != null ? sp.thanhtien : ((gia - km) * sl)) || 0;
+            const tenHang = [String(sp.tensp || "").trim(), String(sp.masp || "").trim()].filter(Boolean).join(" ");
+            const size = String(sp.size ?? "").trim();
+            const sizeText = size && size !== "0" ? ` - Size ${size}` : "";
+            const kmText = km > 0 ? `, KM ${formatSo(km)}đ` : "";
+            return `${index + 1}. ${tenHang}${sizeText}: SL ${sl} x ${formatSo(gia)}đ${kmText} = ${formatSo(tt)}đ`;
+          });
+
+          const parts = [
+            `Shop Hoàn Tuyết xin chào anh/chị ${ten}.`,
+            `Cảm ơn anh/chị đã mua hàng tại shop.`
+          ];
+
+          if (lines.length) {
+            const thoiGian = [ngayVN, gio].filter(Boolean).join(" ");
+            parts.push(`🧾 HÓA ĐƠN${sohd ? `: ${sohd}` : ""}${thoiGian ? ` - ${thoiGian}` : ""}`);
+            parts.push(lines.join("\n"));
+            if (chietkhau > 0) parts.push(`CK hóa đơn: -${formatSo(chietkhau)}đ`);
+            if (tienDoiDiem > 0) parts.push(`Dùng điểm: -${formatSo(tienDoiDiem)}đ`);
+            parts.push(`TỔNG THANH TOÁN: ${formatSo(thanhtoan)}đ`);
+          }
+
+          if (diemHienTai > 0) {
+            parts.push(`Hiện anh/chị đang có ${diemHienTai} điểm, tương đương ${formatSo(tienDiem)}đ ưu đãi cho lần mua tiếp theo.`);
+          }
+
+          parts.push(
+            `Mời anh/chị tham gia cộng đồng khuyến mại của shop để nhận ưu đãi và tích điểm khi mua hàng:
+https://zalo.me/g/rz31sxl6fvcidvehzvty`,
+            `Shop chân thành cảm ơn!`
+          );
+
+          return parts.join("\n\n");
+        }
+
+        async function guiHoaDonZaloTuTrangIn() {
+          const phone = String(
+            hoadon.makh || hoadon.sodienthoai || hoadon.dienthoai || ""
+          ).replace(/\D/g, "");
+
+          if (!phone) {
+            alert("Hóa đơn chưa có số điện thoại khách hàng.");
+            return;
+          }
+
+          const btn = document.getElementById("btnSendZalo");
+          const oldText = btn?.textContent || "Gửi Zalo";
+
+          try {
+            await navigator.clipboard.writeText(taoNoiDungZaloTuHoaDonIn());
+            window.open(`https://zalo.me/${phone}`, "_blank");
+            if (btn) {
+              btn.textContent = "✅ Đã copy";
+              setTimeout(() => { btn.textContent = oldText; }, 1800);
+            }
+          } catch (err) {
+            console.error("Không copy được nội dung Zalo:", err);
+            alert("Không copy được nội dung Zalo. Vui lòng thử lại.");
+          }
+        }
+
+        document.getElementById("btnSendZalo")?.addEventListener("click", guiHoaDonZaloTuTrangIn);
 
         localStorage.removeItem("data_hoadon_in");
 
