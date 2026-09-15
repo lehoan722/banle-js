@@ -20,6 +20,13 @@ console.log(
     ...(payload.invoice || {}),
     sohd,
 
+    // Bổ sung snapshot để nút Zalo trên trang in dùng ngay cả khi
+    // trang bán lẻ đã chuyển sang hóa đơn mới sau 500ms.
+    diem_hientai:
+      Number(document.getElementById("diem_hientai")?.value || 0) || 0,
+    gio:
+      String(document.getElementById("gio")?.value || "").trim(),
+
     tai_khoan_nhan_tien:
       result?.tai_khoan_nhan_tien || null
   },
