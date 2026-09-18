@@ -16,6 +16,11 @@ const summaryTimelineEl = document.getElementById("summary-timeline");
 const summaryMsg = document.getElementById("summary-msg");
 const summaryBtn = document.getElementById("btn-load-summary");
 
+// --- DOM elements: bảng công tháng ---
+const hotBangCongContainer = document.getElementById("hotBangCong");
+const bangCongMsg = document.getElementById("bangcong-msg");
+let hotBangCong = null;
+
 let autoTimer = null;
 const AUTO_REFRESH_MS = 60000; // 60 giây
 
@@ -547,6 +552,184 @@ function ensureNhansuSummary() {
 }
 
 
+
+// ========== PHẦN 3: BẢNG CÔNG THÁNG ==========
+
+function normalizeManv(v) {
+    return String(v || "").trim().toUpperCase();
+}
+
+function setBangCongMessage(text, isError = false) {
+    if (!bangCongMsg) return;
+    bangCongMsg.textContent = text || "";
+    bangCongMsg.style.color = isError ? "#b00020" : "#555";
+}
+
+function renderBangCongHot(colHeaders, data) {
+    if (!hotBangCongContainer) return;
+
+    const HOT = window.Handsontable;
+    if (!HOT) {
+        console.error("Handsontable chưa được nạp.");
+        setBangCongMessage("Không tải được thư viện hiển thị bảng công.", true);
+        return;
+    }
+
+    const settings = {
+        data,
+        colHeaders,
+        rowHeaders: true,
+        width: "100%",
+        height: 430,
+        stretchH: "all",
+        manualColumnResize: true,
+        manualRowResize: true,
+        filters: true,
+        dropdownMenu: true,
+        columnSorting: true,
+        readOnly: true,
+        licenseKey: "non-commercial-and-evaluation"
+    };
+
+    if (!hotBangCong) {
+        hotBangCong = new HOT(hotBangCongContainer, settings);
+    } else {
+        hotBangCong.updateSettings(settings);
+        hotBangCong.render();
+    }
+}
+
+async function taiBangCong() {
+    const thang = parseInt(document.getElementById("bc-thang")?.value || "0", 10);
+    const nam = parseInt(document.getElementById("bc-nam")?.value || "0", 10);
+    const tbody = document.getElementById("tbody-bangcong");
+    const thead = document.getElementById("thead-bangcong");
+
+    if (!thang || thang < 1 || thang > 12 || !nam) {
+        setBangCongMessage("Vui lòng chọn tháng và năm hợp lệ.", true);
+        return;
+    }
+
+    if (tbody) tbody.innerHTML = `<tr><td colspan="50">Đang tải...</td></tr>`;
+    setBangCongMessage(`Đang tải bảng công tháng ${thang}/${nam}...`);
+
+    const { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
+        p_month: thang,
+        p_year: nam
+    });
+
+    if (error) {
+        console.error("Lỗi chamcong_bangcong_monthly:", error);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="50">Lỗi tải dữ liệu</td></tr>`;
+        renderBangCongHot([], []);
+        setBangCongMessage("Lỗi tải bảng công: " + (error.message || "Không xác định"), true);
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="50">Không có dữ liệu.</td></tr>`;
+        if (thead) thead.innerHTML = "";
+        renderBangCongHot([], []);
+        setBangCongMessage(`Không có dữ liệu bảng công tháng ${thang}/${nam}.`);
+        return;
+    }
+
+    const nhanvien = [
+        ...new Set(
+            data
+                .filter(d => Number(d.gio_cong || 0) > 0)
+                .map(d => `${normalizeManv(d.manv)}|${d.tennv || d.manv || ""}`)
+        )
+    ];
+
+    if (nhanvien.length === 0) {
+        if (thead) thead.innerHTML = `<tr><th>Ngày</th><th>Thứ</th><th>Tổng</th></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="3">Không có nhân viên nào phát sinh công trong tháng này.</td></tr>`;
+        renderBangCongHot([], []);
+        setBangCongMessage(`Không có nhân viên phát sinh công trong tháng ${thang}/${nam}.`);
+        return;
+    }
+
+    // Header HTML dự phòng
+    if (thead) {
+        let header = `<th>Ngày</th><th>Thứ</th>`;
+        nhanvien.forEach(n => {
+            const [, tennv] = n.split("|");
+            header += `<th>${tennv}</th>`;
+        });
+        header += `<th>Tổng</th>`;
+        thead.innerHTML = `<tr>${header}</tr>`;
+    }
+
+    // Gom dữ liệu theo ngày
+    const groupByNgay = {};
+    data.forEach(d => {
+        groupByNgay[d.ngay] = groupByNgay[d.ngay] || [];
+        groupByNgay[d.ngay].push(d);
+    });
+
+    const colHeaders = ["Ngày", "Thứ"];
+    nhanvien.forEach(n => {
+        const [, tennv] = n.split("|");
+        colHeaders.push(tennv);
+    });
+    colHeaders.push("Tổng");
+
+    const hotData = [];
+    const tongTheoNhanVien = {};
+    nhanvien.forEach(n => {
+        const manv = normalizeManv(n.split("|")[0]);
+        tongTheoNhanVien[manv] = 0;
+    });
+
+    let tongTatCa = 0;
+    const ngayList = Object.keys(groupByNgay).sort((a, b) => Number(a) - Number(b));
+    let html = "";
+
+    ngayList.forEach(ng => {
+        const row = groupByNgay[ng];
+        const thu = row[0]?.thu || "";
+        let sum = 0;
+        const rowData = [Number(ng), thu];
+        let cellsHtml = "";
+
+        nhanvien.forEach(n => {
+            const manv = normalizeManv(n.split("|")[0]);
+            const found = row.find(r => normalizeManv(r.manv) === manv);
+            const gioCong = found ? Number(found.gio_cong || 0) : 0;
+
+            sum += gioCong;
+            tongTheoNhanVien[manv] += gioCong;
+            rowData.push(Number(gioCong.toFixed(2)));
+            cellsHtml += `<td>${gioCong ? gioCong.toFixed(2) : ""}</td>`;
+        });
+
+        tongTatCa += sum;
+        rowData.push(Number(sum.toFixed(2)));
+        hotData.push(rowData);
+        html += `<tr><td>${ng}</td><td>${thu}</td>${cellsHtml}<td>${sum ? sum.toFixed(2) : ""}</td></tr>`;
+    });
+
+    // Dòng tổng cuối bảng
+    let totalHtml = `<tr style="font-weight:bold;background:#f3f3f3"><td colspan="2">Tổng</td>`;
+    const totalRow = ["Tổng", ""];
+
+    nhanvien.forEach(n => {
+        const manv = normalizeManv(n.split("|")[0]);
+        const total = tongTheoNhanVien[manv] || 0;
+        totalRow.push(Number(total.toFixed(2)));
+        totalHtml += `<td>${total ? total.toFixed(2) : ""}</td>`;
+    });
+
+    totalRow.push(Number(tongTatCa.toFixed(2)));
+    totalHtml += `<td>${tongTatCa ? tongTatCa.toFixed(2) : ""}</td></tr>`;
+    hotData.push(totalRow);
+
+    if (tbody) tbody.innerHTML = html + totalHtml;
+    renderBangCongHot(colHeaders, hotData);
+    setBangCongMessage(`Đã tải bảng công tháng ${thang}/${nam}: ${nhanvien.length} nhân viên có phát sinh công.`);
+}
+
 // ========== KHỞI TẠO ==========
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -569,6 +752,22 @@ if (summaryDateInput && !summaryDateInput.value) {
 
     // workforce summary (shared module)
     ensureNhansuSummary();
+
+    // bảng công tháng: mặc định tháng/năm hiện tại
+    const today = new Date();
+    const thangEl = document.getElementById("bc-thang");
+    const namEl = document.getElementById("bc-nam");
+    const btnBangCong = document.getElementById("btn-bangcong");
+
+    if (thangEl && !thangEl.value) thangEl.value = today.getMonth() + 1;
+    if (namEl && !namEl.value) namEl.value = today.getFullYear();
+    if (btnBangCong) btnBangCong.addEventListener("click", taiBangCong);
+
+    // Tự tải bảng công tháng hiện tại khi mở trang
+    taiBangCong();
 });
+
+// Cho phép gọi thủ công khi cần debug/refresh từ console
+window.taiBangCong = taiBangCong;
 
 
