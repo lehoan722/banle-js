@@ -4,7 +4,7 @@
 import { supabase } from "./supabaseClient.js";
 import { initNhansuSummary } from "./nhansu_summary.js";
 
-// --- DOM elements: trạng thái hiện tại ---  
+// --- DOM elements: trạng thái hiện tại --- 
 const tbodyStatus = document.getElementById("tbody-status");
 const diadiemSelect = document.getElementById("filter-diadiem");
 const statusMsg = document.getElementById("status-msg");
