@@ -553,7 +553,7 @@ function ensureNhansuSummary() {
 
 
 
-// ========== PHẦN 3: BẢNG CÔNG THÁNG ==========
+// ========== PHẦN 3: BẢNG CÔNG THÁNG + ĐỐI CHIẾU LỊCH/THỰC TẾ ==========
 
 function normalizeManv(v) {
     return String(v || "").trim().toUpperCase();
@@ -563,6 +563,192 @@ function setBangCongMessage(text, isError = false) {
     if (!bangCongMsg) return;
     bangCongMsg.textContent = text || "";
     bangCongMsg.style.color = isError ? "#b00020" : "#555";
+}
+
+function bcToMinutes(timeStr) {
+    if (!timeStr) return null;
+    const s = String(timeStr).slice(0, 5);
+    const m = s.match(/^(\d{2}):(\d{2})$/);
+    if (!m) return null;
+    const hh = Number(m[1]);
+    const mm = Number(m[2]);
+    if (!Number.isFinite(hh) || !Number.isFinite(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+    return hh * 60 + mm;
+}
+
+function bcSafeUpper(v) {
+    return String(v ?? "").trim().toUpperCase();
+}
+
+function bcNormalizeSite(v) {
+    const s = String(v ?? "").trim().toLowerCase();
+    if (!s) return null;
+    if (s === "cs1" || s === "cơ sở 1" || s === "co so 1") return "cs1";
+    if (s === "cs2" || s === "cơ sở 2" || s === "co so 2") return "cs2";
+    return s;
+}
+
+function bcIsWork(loai) {
+    return bcSafeUpper(loai) === "CA_LAM";
+}
+
+function bcIsDayOff(loai) {
+    const x = bcSafeUpper(loai);
+    return x === "NGHI_CA_NGAY" || x === "NGHI_PHEP_NGAY" || x === "NGHI_CA";
+}
+
+function bcIsHourlyLeave(loai) {
+    const x = bcSafeUpper(loai);
+    return x === "NGHI_THEO_GIO" || x === "NGHI_GIO" || x === "NGHI_PHEP_GIO";
+}
+
+function bcSubtractOne(work, leave) {
+    const out = [];
+    const { s, e } = work;
+    const ls = leave.s;
+    const le = leave.e;
+    if (le <= s || ls >= e) return [work];
+    if (ls <= s && le >= e) return out;
+    if (ls <= s && le < e) return [{ s: le, e }];
+    if (ls > s && le >= e) return [{ s, e: ls }];
+    out.push({ s, e: ls }, { s: le, e });
+    return out;
+}
+
+function bcSubtractLeaves(workIntervals, leaveIntervals) {
+    let current = [...workIntervals];
+    for (const lv of leaveIntervals) {
+        const next = [];
+        for (const w of current) next.push(...bcSubtractOne(w, lv));
+        current = next;
+        if (!current.length) break;
+    }
+    return current;
+}
+
+// Tính tổng giờ đăng ký hiệu lực theo ngày + nhân viên.
+// Giống nghiệp vụ nhansu_summary.js: chỉ CA_LAM đã duyệt, bỏ nghỉ cả ngày,
+// trừ nghỉ theo giờ và gộp các khoảng ca bị chồng nhau trong cùng cơ sở.
+function buildRegisteredHoursMap(scheduleRows) {
+    const byKey = new Map(); // yyyy-mm-dd|manv|site
+
+    for (const r of scheduleRows || []) {
+        const ngay = String(r.ngay || "").slice(0, 10);
+        const manv = normalizeManv(r.manv);
+        const site = bcNormalizeSite(r.diadiem);
+        if (!ngay || !manv || !site) continue;
+
+        const key = `${ngay}|${manv}|${site}`;
+        if (!byKey.has(key)) byKey.set(key, { work: [], leaves: [], hasDayOff: false });
+        const st = byKey.get(key);
+        const loai = bcSafeUpper(r.loai_dang_ky);
+
+        if (bcIsDayOff(loai)) {
+            st.hasDayOff = true;
+            continue;
+        }
+
+        if (bcIsWork(loai)) {
+            const s = bcToMinutes(r.gio_bat_dau);
+            const e = bcToMinutes(r.gio_ket_thuc);
+            if (s != null && e != null && e > s) st.work.push({ s, e });
+            continue;
+        }
+
+        if (bcIsHourlyLeave(loai)) {
+            const s = bcToMinutes(r.tu_gio ?? r.gio_bat_dau);
+            const e = bcToMinutes(r.den_gio ?? r.gio_ket_thuc);
+            if (s != null && e != null && e > s) st.leaves.push({ s, e });
+        }
+    }
+
+    const result = {}; // yyyy-mm-dd|manv => hours
+
+    for (const [key, st] of byKey.entries()) {
+        const [ngay, manv] = key.split("|");
+        if (st.hasDayOff) continue;
+
+        const work = st.work.sort((a, b) => a.s - b.s);
+        const merged = [];
+        for (const w of work) {
+            const last = merged[merged.length - 1];
+            if (!last || w.s > last.e) merged.push({ ...w });
+            else last.e = Math.max(last.e, w.e);
+        }
+
+        const effective = bcSubtractLeaves(merged, st.leaves.sort((a, b) => a.s - b.s));
+        const mins = effective.reduce((sum, x) => sum + Math.max(0, x.e - x.s), 0);
+        const dayKey = `${ngay}|${manv}`;
+        result[dayKey] = (result[dayKey] || 0) + mins / 60;
+    }
+
+    return result;
+}
+
+function makeDateYMD(year, month, day) {
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function localTodayYMD() {
+    const d = new Date();
+    return makeDateYMD(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+
+function getCompareState(actual, registered, dateYmd) {
+    const a = Number(actual || 0);
+    const r = Number(registered || 0);
+    const today = localTodayYMD();
+
+    // Không cảnh báo ngày tương lai hoặc hôm nay vì ca có thể chưa kết thúc.
+    // Vẫn cho tooltip xem số liệu.
+    if (dateYmd >= today) return { type: "", diff: a - r };
+
+    if (r > 0 && a <= 0) return { type: "missing_actual", diff: -r };
+    if (r <= 0 && a > 0) return { type: "no_schedule", diff: a };
+
+    const diff = a - r;
+    if (r > 0 && a > 0 && diff <= -0.5) return { type: "under", diff };
+    if (r > 0 && a > 0 && diff >= 0.5) return { type: "over", diff };
+    return { type: "", diff };
+}
+
+function formatHour2(v) {
+    return Number(v || 0).toFixed(2);
+}
+
+function formatSignedHour(v) {
+    const n = Number(v || 0);
+    return `${n >= 0 ? "+" : ""}${n.toFixed(2)}h`;
+}
+
+let bangCongCellMeta = [];
+
+function bangCongRenderer(instance, td, row, col, prop, value, cellProperties) {
+    window.Handsontable.renderers.NumericRenderer.apply(this, arguments);
+    td.style.background = "";
+    td.style.color = "";
+    td.style.fontWeight = "";
+    td.style.cursor = "";
+    td.title = "";
+
+    const meta = bangCongCellMeta?.[row]?.[col];
+    if (!meta) return td;
+
+    const colors = {
+        under: { bg: "#fff3b0", fg: "#7a5a00" },
+        over: { bg: "#ffcdd2", fg: "#8e0000" },
+        missing_actual: { bg: "#bbdefb", fg: "#0d47a1" },
+        no_schedule: { bg: "#e1bee7", fg: "#6a1b9a" },
+    };
+    const c = colors[meta.type];
+    if (c) {
+        td.style.background = c.bg;
+        td.style.color = c.fg;
+        td.style.fontWeight = "700";
+    }
+    td.style.cursor = "help";
+    td.title = meta.tooltip || "";
+    return td;
 }
 
 function renderBangCongHot(colHeaders, data) {
@@ -588,6 +774,15 @@ function renderBangCongHot(colHeaders, data) {
         dropdownMenu: true,
         columnSorting: true,
         readOnly: true,
+        cells(row, col) {
+            const cp = {};
+            if (row < data.length - 1 && col >= 2 && col < colHeaders.length - 1) {
+                cp.type = "numeric";
+                cp.numericFormat = { pattern: "0.00" };
+                cp.renderer = bangCongRenderer;
+            }
+            return cp;
+        },
         licenseKey: "non-commercial-and-evaluation"
     };
 
@@ -595,6 +790,7 @@ function renderBangCongHot(colHeaders, data) {
         hotBangCong = new HOT(hotBangCongContainer, settings);
     } else {
         hotBangCong.updateSettings(settings);
+        hotBangCong.loadData(data);
         hotBangCong.render();
     }
 }
@@ -611,46 +807,71 @@ async function taiBangCong() {
     }
 
     if (tbody) tbody.innerHTML = `<tr><td colspan="50">Đang tải...</td></tr>`;
-    setBangCongMessage(`Đang tải bảng công tháng ${thang}/${nam}...`);
+    setBangCongMessage(`Đang tải bảng công và đối chiếu lịch tháng ${thang}/${nam}...`);
 
-    const { data, error } = await supabase.rpc("chamcong_bangcong_monthly", {
-        p_month: thang,
-        p_year: nam
-    });
+    const lastDay = new Date(nam, thang, 0).getDate();
+    const firstDate = makeDateYMD(nam, thang, 1);
+    const lastDate = makeDateYMD(nam, thang, lastDay);
 
-    if (error) {
-        console.error("Lỗi chamcong_bangcong_monthly:", error);
+    const [congRes, lichRes] = await Promise.all([
+        supabase.rpc("chamcong_bangcong_monthly", {
+            p_month: thang,
+            p_year: nam
+        }),
+        supabase
+            .from("lichlam_dangky")
+            .select("ngay, diadiem, manv, loai_dang_ky, gio_bat_dau, gio_ket_thuc, tu_gio, den_gio, trang_thai")
+            .gte("ngay", firstDate)
+            .lte("ngay", lastDate)
+            .eq("trang_thai", "DA_DUYET")
+    ]);
+
+    const data = congRes.data || [];
+    if (congRes.error) {
+        console.error("Lỗi chamcong_bangcong_monthly:", congRes.error);
         if (tbody) tbody.innerHTML = `<tr><td colspan="50">Lỗi tải dữ liệu</td></tr>`;
         renderBangCongHot([], []);
-        setBangCongMessage("Lỗi tải bảng công: " + (error.message || "Không xác định"), true);
+        setBangCongMessage("Lỗi tải bảng công: " + (congRes.error.message || "Không xác định"), true);
         return;
     }
 
-    if (!data || data.length === 0) {
+    if (lichRes.error) {
+        console.error("Lỗi tải lichlam_dangky:", lichRes.error);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="50">Lỗi tải lịch đăng ký</td></tr>`;
+        renderBangCongHot([], []);
+        setBangCongMessage("Lỗi tải lịch đăng ký để đối chiếu: " + (lichRes.error.message || "Không xác định"), true);
+        return;
+    }
+
+    const lichRows = lichRes.data || [];
+    const registeredMap = buildRegisteredHoursMap(lichRows);
+
+    // Bao gồm cả NV có công thực tế và NV chỉ có lịch đã duyệt để không bỏ sót trường hợp vắng mặt.
+    const employeeMap = new Map();
+    data.forEach(d => {
+        const manv = normalizeManv(d.manv);
+        if (!manv) return;
+        if (!employeeMap.has(manv)) employeeMap.set(manv, d.tennv || d.manv || manv);
+    });
+    lichRows.forEach(r => {
+        const manv = normalizeManv(r.manv);
+        if (!manv) return;
+        if (!employeeMap.has(manv)) employeeMap.set(manv, manv);
+    });
+
+    const nhanvien = Array.from(employeeMap.entries())
+        .sort((a, b) => a[0].localeCompare(b[0], "vi"))
+        .map(([manv, tennv]) => `${manv}|${tennv}`);
+
+    if (!nhanvien.length) {
         if (tbody) tbody.innerHTML = `<tr><td colspan="50">Không có dữ liệu.</td></tr>`;
         if (thead) thead.innerHTML = "";
+        bangCongCellMeta = [];
         renderBangCongHot([], []);
-        setBangCongMessage(`Không có dữ liệu bảng công tháng ${thang}/${nam}.`);
+        setBangCongMessage(`Không có dữ liệu công hoặc lịch đã duyệt tháng ${thang}/${nam}.`);
         return;
     }
 
-    const nhanvien = [
-        ...new Set(
-            data
-                .filter(d => Number(d.gio_cong || 0) > 0)
-                .map(d => `${normalizeManv(d.manv)}|${d.tennv || d.manv || ""}`)
-        )
-    ];
-
-    if (nhanvien.length === 0) {
-        if (thead) thead.innerHTML = `<tr><th>Ngày</th><th>Thứ</th><th>Tổng</th></tr>`;
-        if (tbody) tbody.innerHTML = `<tr><td colspan="3">Không có nhân viên nào phát sinh công trong tháng này.</td></tr>`;
-        renderBangCongHot([], []);
-        setBangCongMessage(`Không có nhân viên phát sinh công trong tháng ${thang}/${nam}.`);
-        return;
-    }
-
-    // Header HTML dự phòng
     if (thead) {
         let header = `<th>Ngày</th><th>Thứ</th>`;
         nhanvien.forEach(n => {
@@ -661,73 +882,102 @@ async function taiBangCong() {
         thead.innerHTML = `<tr>${header}</tr>`;
     }
 
-    // Gom dữ liệu theo ngày
     const groupByNgay = {};
     data.forEach(d => {
-        groupByNgay[d.ngay] = groupByNgay[d.ngay] || [];
-        groupByNgay[d.ngay].push(d);
+        const day = Number(d.ngay);
+        groupByNgay[day] = groupByNgay[day] || [];
+        groupByNgay[day].push(d);
     });
 
     const colHeaders = ["Ngày", "Thứ"];
-    nhanvien.forEach(n => {
-        const [, tennv] = n.split("|");
-        colHeaders.push(tennv);
-    });
+    nhanvien.forEach(n => colHeaders.push(n.split("|")[1]));
     colHeaders.push("Tổng");
 
     const hotData = [];
+    bangCongCellMeta = [];
     const tongTheoNhanVien = {};
-    nhanvien.forEach(n => {
-        const manv = normalizeManv(n.split("|")[0]);
-        tongTheoNhanVien[manv] = 0;
-    });
-
+    nhanvien.forEach(n => { tongTheoNhanVien[normalizeManv(n.split("|")[0])] = 0; });
     let tongTatCa = 0;
-    const ngayList = Object.keys(groupByNgay).sort((a, b) => Number(a) - Number(b));
+    let countUnder = 0, countOver = 0, countMissing = 0, countNoSchedule = 0;
     let html = "";
 
-    ngayList.forEach(ng => {
-        const row = groupByNgay[ng];
-        const thu = row[0]?.thu || "";
+    // Dùng đủ số ngày trong tháng để nhìn thấy cả ngày có lịch nhưng không chấm công.
+    for (let day = 1; day <= lastDay; day++) {
+        const dateYmd = makeDateYMD(nam, thang, day);
+        const row = groupByNgay[day] || [];
+        const jsDate = new Date(nam, thang - 1, day);
+        const thuNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+        const thu = row[0]?.thu || thuNames[jsDate.getDay()];
         let sum = 0;
-        const rowData = [Number(ng), thu];
+        const rowData = [day, thu];
+        const metaRow = [{}, {}];
         let cellsHtml = "";
 
         nhanvien.forEach(n => {
             const manv = normalizeManv(n.split("|")[0]);
             const found = row.find(r => normalizeManv(r.manv) === manv);
-            const gioCong = found ? Number(found.gio_cong || 0) : 0;
+            const actual = found ? Number(found.gio_cong || 0) : 0;
+            const registered = Number(registeredMap[`${dateYmd}|${manv}`] || 0);
+            const cmp = getCompareState(actual, registered, dateYmd);
 
-            sum += gioCong;
-            tongTheoNhanVien[manv] += gioCong;
-            rowData.push(Number(gioCong.toFixed(2)));
-            cellsHtml += `<td>${gioCong ? gioCong.toFixed(2) : ""}</td>`;
+            if (cmp.type === "under") countUnder++;
+            if (cmp.type === "over") countOver++;
+            if (cmp.type === "missing_actual") countMissing++;
+            if (cmp.type === "no_schedule") countNoSchedule++;
+
+            sum += actual;
+            tongTheoNhanVien[manv] += actual;
+            rowData.push(Number(actual.toFixed(2)));
+
+            const tooltip = [
+                `${manv} - ${dateYmd}`,
+                `Giờ thực tế: ${formatHour2(actual)}h`,
+                `Giờ đăng ký đã duyệt: ${formatHour2(registered)}h`,
+                `Chênh lệch: ${formatSignedHour(actual - registered)}`,
+                cmp.type === "under" ? "Cảnh báo: thực tế thiếu từ 30 phút." : "",
+                cmp.type === "over" ? "Cảnh báo: thực tế vượt từ 30 phút." : "",
+                cmp.type === "missing_actual" ? "Cảnh báo: có lịch đã duyệt nhưng chưa có giờ công thực tế." : "",
+                cmp.type === "no_schedule" ? "Cảnh báo: có giờ công thực tế nhưng không có lịch đã duyệt." : "",
+                dateYmd >= localTodayYMD() ? "Ngày hôm nay/tương lai: chưa áp dụng màu cảnh báo thiếu/vượt." : "",
+            ].filter(Boolean).join("\n");
+
+            metaRow.push({ type: cmp.type, tooltip });
+
+            const cls = cmp.type === "under" ? "bc-yellow" :
+                        cmp.type === "over" ? "bc-red" :
+                        cmp.type === "missing_actual" ? "bc-blue" :
+                        cmp.type === "no_schedule" ? "bc-purple" : "";
+            cellsHtml += `<td class="${cls}" title="${tooltip.replace(/&/g,"&amp;").replace(/\"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}">${actual ? actual.toFixed(2) : ""}</td>`;
         });
 
         tongTatCa += sum;
         rowData.push(Number(sum.toFixed(2)));
+        metaRow.push({});
         hotData.push(rowData);
-        html += `<tr><td>${ng}</td><td>${thu}</td>${cellsHtml}<td>${sum ? sum.toFixed(2) : ""}</td></tr>`;
-    });
+        bangCongCellMeta.push(metaRow);
+        html += `<tr><td>${day}</td><td>${thu}</td>${cellsHtml}<td>${sum ? sum.toFixed(2) : ""}</td></tr>`;
+    }
 
-    // Dòng tổng cuối bảng
     let totalHtml = `<tr style="font-weight:bold;background:#f3f3f3"><td colspan="2">Tổng</td>`;
     const totalRow = ["Tổng", ""];
-
     nhanvien.forEach(n => {
         const manv = normalizeManv(n.split("|")[0]);
         const total = tongTheoNhanVien[manv] || 0;
         totalRow.push(Number(total.toFixed(2)));
         totalHtml += `<td>${total ? total.toFixed(2) : ""}</td>`;
     });
-
     totalRow.push(Number(tongTatCa.toFixed(2)));
     totalHtml += `<td>${tongTatCa ? tongTatCa.toFixed(2) : ""}</td></tr>`;
     hotData.push(totalRow);
+    bangCongCellMeta.push([]);
 
     if (tbody) tbody.innerHTML = html + totalHtml;
     renderBangCongHot(colHeaders, hotData);
-    setBangCongMessage(`Đã tải bảng công tháng ${thang}/${nam}: ${nhanvien.length} nhân viên có phát sinh công.`);
+    setBangCongMessage(
+        `Đã tải tháng ${thang}/${nam}: ${nhanvien.length} NV | ` +
+        `Thiếu ≥30p: ${countUnder} | Vượt ≥30p: ${countOver} | ` +
+        `Có lịch không có công: ${countMissing} | Có công không có lịch: ${countNoSchedule}`
+    );
 }
 
 // ========== KHỞI TẠO ==========
