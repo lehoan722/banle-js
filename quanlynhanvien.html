@@ -5,6 +5,9 @@
   <title>Quản lý nhân viên - Trạng thái & Nhân lực theo giờ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+  <!-- Handsontable CSS: dùng cho Bảng công tháng -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css" />
+
   <style>
     body {
       font-family: sans-serif;
@@ -40,7 +43,8 @@
     }
 
     .filters select,
-    .filters input[type="date"] {
+    .filters input[type="date"],
+    .filters input[type="number"] {
       font-size: 13px;
       padding: 3px 6px;
     }
@@ -52,7 +56,8 @@
     }
 
     #status-msg,
-    #summary-msg {
+    #summary-msg,
+    #bangcong-msg {
       font-size: 12px;
       color: #555;
       margin-top: 4px;
@@ -130,6 +135,38 @@
       margin-top: 2px;
     }
 
+
+    /* ===== BẢNG CÔNG THÁNG ===== */
+    .hot-container {
+      height: 430px;
+      overflow: auto;
+      margin-top: 6px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .handsontable .ht_clone_top th .relative {
+      white-space: normal !important;
+      line-height: 1.2;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .table-auto {
+      width: max-content !important;
+      min-width: 100%;
+      table-layout: auto !important;
+    }
+
+    .table-auto th,
+    .table-auto td {
+      white-space: nowrap;
+    }
+
     @media (max-width: 600px) {
       table {
         font-size: 12px;
@@ -204,6 +241,44 @@
 
 
   </div>
+
+  <!-- Card 4: Bảng công tháng -->
+  <div class="card">
+    <h2>BẢNG CÔNG THÁNG</h2>
+    <div class="filters">
+      <div>
+        <label for="bc-thang">Tháng:</label>
+        <input id="bc-thang" type="number" min="1" max="12" style="width:70px;">
+      </div>
+      <div>
+        <label for="bc-nam">Năm:</label>
+        <input id="bc-nam" type="number" min="2000" max="2100" style="width:90px;">
+      </div>
+      <button id="btn-bangcong">Tải bảng công</button>
+      <div id="bangcong-msg"></div>
+    </div>
+
+    <div id="hotBangCong" class="hot-container"></div>
+
+    <!-- Bảng HTML dự phòng, ẩn khi Handsontable hoạt động -->
+    <div style="max-height:500px;overflow:auto;display:none;margin-top:6px;">
+      <div class="table-wrap">
+        <table id="bangcongTable" class="table-auto">
+          <thead id="thead-bangcong"></thead>
+          <tbody id="tbody-bangcong"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Handsontable JS: dùng riêng cho Bảng công tháng -->
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+  <script>
+    if (window.Handsontable) {
+      Handsontable.DefaultSettings.autoColumnSize = { useHeaders: true, syncLimit: 2000 };
+      Handsontable.DefaultSettings.stretchH = 'none';
+    }
+  </script>
 
   <script type="module" src="./scripts/quanlynhanvien.js"></script>
 </body>
