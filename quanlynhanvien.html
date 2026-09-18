@@ -167,6 +167,36 @@
       white-space: nowrap;
     }
 
+
+    .bangcong-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      align-items: center;
+      margin: 6px 0 4px;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .bc-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .bc-color-box {
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgba(0,0,0,.18);
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    .bc-yellow { background:#fff3b0; }
+    .bc-red { background:#ffcdd2; }
+    .bc-blue { background:#bbdefb; }
+    .bc-purple { background:#e1bee7; }
+
     @media (max-width: 600px) {
       table {
         font-size: 12px;
@@ -256,6 +286,15 @@
       </div>
       <button id="btn-bangcong">Tải bảng công</button>
       <div id="bangcong-msg"></div>
+    </div>
+
+    <div class="bangcong-legend">
+      <b>Đối chiếu giờ đăng ký / thực tế:</b>
+      <span class="bc-legend-item"><span class="bc-color-box bc-yellow"></span>Thực tế thiếu từ 30 phút</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-red"></span>Thực tế vượt từ 30 phút</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-blue"></span>Có lịch đã duyệt nhưng không có công</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-purple"></span>Có công nhưng không có lịch đã duyệt</span>
+      <span style="opacity:.75">(Rê chuột vào ô để xem chi tiết)</span>
     </div>
 
     <div id="hotBangCong" class="hot-container"></div>
