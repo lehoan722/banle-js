@@ -197,6 +197,35 @@
     .bc-blue { background:#bbdefb; }
     .bc-purple { background:#e1bee7; }
 
+    .bc-detail-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      user-select: none;
+    }
+
+    #bc-employee {
+      font-size: 13px;
+      padding: 3px 6px;
+    }
+
+    .bc-detail-title {
+      margin: 8px 0 4px;
+      padding: 7px 9px;
+      border-left: 4px solid #1976d2;
+      background: #f4f8fc;
+      font-size: 13px;
+      font-weight: 700;
+      color: #263238;
+    }
+
+    .handsontable td.bc-detail-text {
+      white-space: normal !important;
+      line-height: 1.35;
+      vertical-align: top;
+    }
+
     @media (max-width: 600px) {
       table {
         font-size: 12px;
@@ -285,6 +314,24 @@
         <input id="bc-nam" type="number" min="2000" max="2100" style="width:90px;">
       </div>
       <button id="btn-bangcong">Tải bảng công</button>
+
+      <label class="bc-detail-toggle">
+        <input type="checkbox" id="bc-detail-mode">
+        Xem chi tiết 1 nhân viên
+      </label>
+
+      <div id="bc-employee-wrap" style="display:none;">
+        <label for="bc-employee">Nhân viên:</label>
+        <select id="bc-employee" style="min-width:180px;">
+          <option value="">-- Chọn nhân viên --</option>
+        </select>
+      </div>
+
+      <label id="bc-abnormal-wrap" class="bc-detail-toggle" style="display:none;">
+        <input type="checkbox" id="bc-only-abnormal">
+        Chỉ hiện ngày bất thường
+      </label>
+
       <div id="bangcong-msg"></div>
     </div>
 
@@ -297,6 +344,7 @@
       <span style="opacity:.75">(Rê chuột vào ô để xem chi tiết)</span>
     </div>
 
+    <div id="bc-detail-title" class="bc-detail-title" style="display:none;"></div>
     <div id="hotBangCong" class="hot-container"></div>
 
     <!-- Bảng HTML dự phòng, ẩn khi Handsontable hoạt động -->
