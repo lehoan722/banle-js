@@ -463,6 +463,7 @@ function bcDetailTextRenderer(instance, td, row, col, prop, value, cellPropertie
 
 function bcDetailAlertRenderer(instance, td, row, col, prop, value, cellProperties) {
   window.Handsontable.renderers.TextRenderer.apply(this, arguments);
+  if (col === 2 && String(value ?? "").trim() !== "" && Number(value) === 0) td.textContent = "";
   td.style.whiteSpace = "normal";
   td.style.lineHeight = "1.35";
   td.style.verticalAlign = "top";
@@ -568,7 +569,7 @@ function bcRenderNhanVienCache() {
     const thu = bcGetThuLabel(p.y, p.m, p.d, found?.thu || "");
     const regText = registeredData.detailMap[`${dateYmd}|${manv}`] || (registered > 0 ? `${bcFormatHour2(registered)}h` : "—");
     const events = actualEventMap[`${dateYmd}|${manv}`] || "";
-    const actualText = actual > 0 ? `${events || "Không đọc được log chi tiết"} / ${bcFormatHour2(actual)}h` : (events ? `${events} / 0.00h` : "—");
+    const actualText = actual > 0 ? `${events || "Không đọc được log chi tiết"} / ${bcFormatHour2(actual)}h` : (events ? events : "—");
     const diffText = (actual === 0 && registered === 0) ? "" : bcFormatSignedMinutes(actual - registered);
     const tooltip = [
       `${tennv} (${manv}) - ${dateYmd}`,
