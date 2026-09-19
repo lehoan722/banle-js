@@ -297,14 +297,14 @@ async function loadStatus() {
     });
     if (error) {
         console.error("Lỗi gọi nhanvien_status_now:", error);
-        tbodyStatus.innerHTML = `<tr><td colspan="7" style="color:red;">Lỗi tải dữ liệu, xem console để biết chi tiết.</td></tr>`;
+        tbodyStatus.innerHTML = `<tr><td colspan="6" style="color:red;">Lỗi tải dữ liệu, xem console để biết chi tiết.</td></tr>`;
         setStatusMessage("Lỗi tải dữ liệu.");
         return;
     }
 
     const rows = (data || []);
     if (rows.length === 0) {
-        tbodyStatus.innerHTML = `<tr><td colspan="7">Không có dữ liệu chấm công hôm nay.</td></tr>`;
+        tbodyStatus.innerHTML = `<tr><td colspan="6">Không có dữ liệu chấm công hôm nay.</td></tr>`;
         setStatusMessage("Đã tải xong (không có dữ liệu hôm nay).");
         return;
     }
@@ -368,7 +368,7 @@ async function loadStatus() {
     tbodyStatus.innerHTML = "";
 
     if (visible.length === 0) {
-        tbodyStatus.innerHTML = `<tr><td colspan="7" style="padding:10px;opacity:.75;">Không có nhân viên bất thường theo bộ lọc hiện tại.</td></tr>`;
+        tbodyStatus.innerHTML = `<tr><td colspan="6" style="padding:10px;opacity:.75;">Không có nhân viên bất thường theo bộ lọc hiện tại.</td></tr>`;
         setStatusMessage(`Đã tải xong (${rows.length} nhân viên, bất thường ${abnormalCount}).`);
         return;
     }
@@ -394,10 +394,6 @@ async function loadStatus() {
         const tdManv = document.createElement("td");
         tdManv.textContent = r.manv || "";
         tr.appendChild(tdManv);
-
-        const tdTennv = document.createElement("td");
-        tdTennv.textContent = r.tennv || "";
-        tr.appendChild(tdTennv);
 
         const tdDia = document.createElement("td");
         tdDia.textContent = r.diadiem || "";
