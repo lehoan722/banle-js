@@ -146,9 +146,15 @@
       border-radius: 4px;
     }
 
-    .handsontable .ht_clone_top th .relative {
+    .handsontable .ht_clone_top th .relative,
+    .handsontable .ht_master th .relative {
       white-space: normal !important;
-      line-height: 1.2;
+      line-height: 1.15;
+      overflow: visible !important;
+    }
+
+    .handsontable thead th {
+      vertical-align: middle !important;
     }
 
     .table-wrap {
@@ -196,6 +202,7 @@
     .bc-red { background:#ffcdd2; }
     .bc-blue { background:#bbdefb; }
     .bc-purple { background:#e1bee7; }
+    .bc-hot-red { background:#ff1744; }
 
     .bc-detail-toggle {
       display: inline-flex;
@@ -232,6 +239,15 @@
       }
       h1, h2 {
         font-size: 16px;
+      }
+      .filters {
+        gap: 7px;
+      }
+      .filters input[type="date"] {
+        max-width: 150px;
+      }
+      .hot-container {
+        height: 520px;
       }
     }
   </style>
@@ -301,17 +317,17 @@
 
   </div>
 
-  <!-- Card 4: Bảng công tháng -->
+  <!-- Card 4: Bảng công theo khoảng ngày -->
   <div class="card">
-    <h2>BẢNG CÔNG THÁNG</h2>
+    <h2>BẢNG CÔNG</h2>
     <div class="filters">
       <div>
-        <label for="bc-thang">Tháng:</label>
-        <input id="bc-thang" type="number" min="1" max="12" style="width:70px;">
+        <label for="bc-tu-ngay">Từ ngày:</label>
+        <input id="bc-tu-ngay" type="date">
       </div>
       <div>
-        <label for="bc-nam">Năm:</label>
-        <input id="bc-nam" type="number" min="2000" max="2100" style="width:90px;">
+        <label for="bc-den-ngay">Đến ngày:</label>
+        <input id="bc-den-ngay" type="date">
       </div>
       <button id="btn-bangcong">Tải bảng công</button>
 
@@ -341,6 +357,7 @@
       <span class="bc-legend-item"><span class="bc-color-box bc-red"></span>Thực tế vượt từ 30 phút</span>
       <span class="bc-legend-item"><span class="bc-color-box bc-blue"></span>Có lịch đã duyệt nhưng không có công</span>
       <span class="bc-legend-item"><span class="bc-color-box bc-purple"></span>Có công nhưng không có lịch đã duyệt</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-hot-red"></span>Giờ công &gt; 13.00h</span>
       <span style="opacity:.75">(Rê chuột vào ô để xem chi tiết)</span>
     </div>
 
