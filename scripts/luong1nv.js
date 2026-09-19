@@ -157,6 +157,547 @@ function setResultFields(values) {
     : "Không có cảnh báo vi phạm đáng chú ý trong kỳ (CB1/CB2/CB3/AUTO_TANCA/VẮNG/TANCA_LỊCH) và doanh thu đang đạt đúng mức khoán.";
 }
 
+
+// ===================== BẢNG CÔNG CHI TIẾT 1 NHÂN VIÊN =====================
+const hotBangCongNhanVienContainer = document.getElementById("hotBangCongNhanVien");
+const bangCongMsgEl = document.getElementById("bangcong-msg");
+const bangCongTitleEl = document.getElementById("bc-detail-title");
+const bangCongOnlyAbnormalEl = document.getElementById("bc-only-abnormal");
+const btnReloadBangCong = document.getElementById("btn-reload-bangcong");
+
+let hotBangCongNhanVien = null;
+let bangCongNhanVienCache = null;
+let bangCongNhanVienCellMeta = [];
+
+function setBangCongNhanVienMessage(text, isError = false) {
+  if (!bangCongMsgEl) return;
+  bangCongMsgEl.textContent = text || "";
+  bangCongMsgEl.style.color = isError ? "#b00020" : "#555";
+}
+
+function bcParseYMD(ymd) {
+  const m = String(ymd || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
+}
+
+function bcMakeYMD(y, m, d) {
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function bcAddDays(ymd, days) {
+  const p = bcParseYMD(ymd);
+  if (!p) return "";
+  const dt = new Date(Date.UTC(p.y, p.m - 1, p.d + Number(days || 0)));
+  return bcMakeYMD(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
+}
+
+function bcListDates(startYmd, endYmd) {
+  const out = [];
+  if (!startYmd || !endYmd || startYmd > endYmd) return out;
+  let cur = startYmd;
+  let guard = 0;
+  while (cur <= endYmd && guard < 800) {
+    out.push(cur);
+    cur = bcAddDays(cur, 1);
+    guard++;
+  }
+  return out;
+}
+
+function bcListMonths(startYmd, endYmd) {
+  const a = bcParseYMD(startYmd);
+  const b = bcParseYMD(endYmd);
+  if (!a || !b) return [];
+  const out = [];
+  let y = a.y, m = a.m;
+  while (y < b.y || (y === b.y && m <= b.m)) {
+    out.push({ y, m });
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+function bcFormatDateDM(ymd) {
+  const p = bcParseYMD(ymd);
+  if (!p) return ymd || "";
+  return `${String(p.d).padStart(2, "0")}/${String(p.m).padStart(2, "0")}`;
+}
+
+function bcFormatRange(startYmd, endYmd) {
+  return `${bcFormatDateDM(startYmd)}/${String(startYmd).slice(0,4)} – ${bcFormatDateDM(endYmd)}/${String(endYmd).slice(0,4)}`;
+}
+
+function bcVietnamTodayYMD() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(new Date());
+  const get = (t) => parts.find(x => x.type === t)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function bcVnDateKeyFromTimestamp(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric", month: "2-digit", day: "2-digit"
+  }).formatToParts(d);
+  const get = (t) => parts.find(x => x.type === t)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function bcVnTimeHM(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  }).formatToParts(d);
+  const get = (t) => parts.find(x => x.type === t)?.value || "";
+  return `${get("hour")}:${get("minute")}`;
+}
+
+function bcToMinutes(timeStr) {
+  if (!timeStr) return null;
+  const s = String(timeStr).slice(0, 5);
+  const m = s.match(/^(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  return hh * 60 + mm;
+}
+
+function bcMinutesToHHMM(mins) {
+  if (mins == null || !Number.isFinite(mins)) return "";
+  return `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+}
+
+function bcSafeUpper(v) {
+  return String(v ?? "").trim().toUpperCase();
+}
+
+function bcNormalizeSite(v) {
+  const s = String(v ?? "").trim().toLowerCase();
+  if (!s) return null;
+  if (s === "cs1" || s === "cơ sở 1" || s === "co so 1") return "cs1";
+  if (s === "cs2" || s === "cơ sở 2" || s === "co so 2") return "cs2";
+  return s;
+}
+
+function bcIsWork(loai) {
+  return bcSafeUpper(loai) === "CA_LAM";
+}
+
+function bcIsDayOff(loai) {
+  const x = bcSafeUpper(loai);
+  return x === "NGHI_CA_NGAY" || x === "NGHI_PHEP_NGAY" || x === "NGHI_CA";
+}
+
+function bcIsHourlyLeave(loai) {
+  const x = bcSafeUpper(loai);
+  return x === "NGHI_THEO_GIO" || x === "NGHI_GIO" || x === "NGHI_PHEP_GIO";
+}
+
+function bcSubtractOne(work, leave) {
+  const { s, e } = work;
+  const ls = leave.s;
+  const le = leave.e;
+  if (le <= s || ls >= e) return [work];
+  if (ls <= s && le >= e) return [];
+  if (ls <= s && le < e) return [{ s: le, e }];
+  if (ls > s && le >= e) return [{ s, e: ls }];
+  return [{ s, e: ls }, { s: le, e }];
+}
+
+function bcSubtractLeaves(workIntervals, leaveIntervals) {
+  let current = [...workIntervals];
+  for (const lv of leaveIntervals) {
+    const next = [];
+    for (const w of current) next.push(...bcSubtractOne(w, lv));
+    current = next;
+    if (!current.length) break;
+  }
+  return current;
+}
+
+function bcFormatHour2(v) {
+  return Number(v || 0).toFixed(2);
+}
+
+function bcFormatSignedMinutes(vHours) {
+  const mins = Math.round(Number(vHours || 0) * 60);
+  return `${mins >= 0 ? "+" : ""}${mins}p`;
+}
+
+function bcGetCompareState(actual, registered, dateYmd) {
+  const a = Number(actual || 0);
+  const r = Number(registered || 0);
+  const today = bcVietnamTodayYMD();
+  if (dateYmd >= today) return { type: "", diff: a - r };
+  if (r > 0 && a <= 0) return { type: "missing_actual", diff: -r };
+  if (r <= 0 && a > 0) return { type: "no_schedule", diff: a };
+  const diff = a - r;
+  if (r > 0 && a > 0 && diff <= -0.5) return { type: "under", diff };
+  if (r > 0 && a > 0 && diff >= 0.5) return { type: "over", diff };
+  return { type: "", diff };
+}
+
+function bcGetThuLabel(year, month, day, fallback = "") {
+  if (fallback) return fallback;
+  const names = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+  return names[new Date(year, month - 1, day).getDay()];
+}
+
+function bcBuildRegisteredData(scheduleRows) {
+  const byKey = new Map();
+  for (const r of scheduleRows || []) {
+    const ngay = String(r.ngay || "").slice(0, 10);
+    const manv = normalizeManv(r.manv);
+    const site = bcNormalizeSite(r.diadiem) || "";
+    if (!ngay || !manv) continue;
+    const key = `${ngay}|${manv}|${site}`;
+    if (!byKey.has(key)) byKey.set(key, { work: [], leaves: [], hasDayOff: false, site });
+    const st = byKey.get(key);
+    const loai = bcSafeUpper(r.loai_dang_ky);
+    if (bcIsDayOff(loai)) { st.hasDayOff = true; continue; }
+    if (bcIsWork(loai)) {
+      const s = bcToMinutes(r.gio_bat_dau);
+      const e = bcToMinutes(r.gio_ket_thuc);
+      if (s != null && e != null && e > s) st.work.push({ s, e });
+      continue;
+    }
+    if (bcIsHourlyLeave(loai)) {
+      const s = bcToMinutes(r.tu_gio ?? r.gio_bat_dau);
+      const e = bcToMinutes(r.den_gio ?? r.gio_ket_thuc);
+      if (s != null && e != null && e > s) st.leaves.push({ s, e });
+    }
+  }
+
+  const hoursMap = {};
+  const detailParts = {};
+  for (const [key, st] of byKey.entries()) {
+    const [ngay, manv] = key.split("|");
+    const dayKey = `${ngay}|${manv}`;
+    if (st.hasDayOff) {
+      if (!detailParts[dayKey]) detailParts[dayKey] = [];
+      detailParts[dayKey].push(`${st.site ? st.site.toUpperCase() + ": " : ""}Nghỉ cả ngày`);
+      continue;
+    }
+    const work = st.work.sort((a,b) => a.s - b.s);
+    const merged = [];
+    for (const w of work) {
+      const last = merged[merged.length - 1];
+      if (!last || w.s > last.e) merged.push({ ...w });
+      else last.e = Math.max(last.e, w.e);
+    }
+    const leaves = st.leaves.sort((a,b) => a.s - b.s);
+    const effective = bcSubtractLeaves(merged, leaves);
+    const mins = effective.reduce((sum, x) => sum + Math.max(0, x.e - x.s), 0);
+    hoursMap[dayKey] = (hoursMap[dayKey] || 0) + mins / 60;
+
+    const workText = merged.map(x => `${bcMinutesToHHMM(x.s)}–${bcMinutesToHHMM(x.e)}`).join(" + ");
+    const leaveText = leaves.map(x => `${bcMinutesToHHMM(x.s)}–${bcMinutesToHHMM(x.e)}`).join(" + ");
+    let part = workText || "Không có ca làm";
+    if (leaveText) part += `; nghỉ ${leaveText}`;
+    if (st.site) part = `${st.site.toUpperCase()}: ${part}`;
+    if (!detailParts[dayKey]) detailParts[dayKey] = [];
+    detailParts[dayKey].push(part);
+  }
+
+  const detailMap = {};
+  const keys = new Set([...Object.keys(hoursMap), ...Object.keys(detailParts)]);
+  for (const k of keys) {
+    const total = Number(hoursMap[k] || 0);
+    const parts = detailParts[k] || [];
+    detailMap[k] = parts.length ? `${parts.join(" | ")} / ${bcFormatHour2(total)}h` : (total > 0 ? `${bcFormatHour2(total)}h` : "");
+  }
+  return { hoursMap, detailMap };
+}
+
+const bcEventLabels = {
+  VAOCA: "Vào",
+  NTR: "Nghỉ trưa",
+  NTRD: "Vào lại",
+  NCH: "Nghỉ chiều",
+  NCHD: "Vào lại",
+  TANCA: "Tan",
+  AUTO_TANCA: "Tự tan",
+  TANCA_LICH: "Tan theo lịch"
+};
+
+function bcBuildActualEventMap(logRows) {
+  const map = {};
+  for (const r of logRows || []) {
+    const manv = normalizeManv(r.manv);
+    const ngay = bcVnDateKeyFromTimestamp(r.created_at);
+    if (!manv || !ngay) continue;
+    const key = `${ngay}|${manv}`;
+    if (!map[key]) map[key] = [];
+    map[key].push(r);
+  }
+  const out = {};
+  for (const [key, rows] of Object.entries(map)) {
+    rows.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    out[key] = rows.map(r => {
+      const ev = bcSafeUpper(r.su_kien);
+      const label = bcEventLabels[ev] || ev || "Sự kiện";
+      return `${label} ${bcVnTimeHM(r.created_at)}`.trim();
+    }).join(" · ");
+  }
+  return out;
+}
+
+function bcDetailTextRenderer(instance, td, row, col, prop, value, cellProperties) {
+  window.Handsontable.renderers.TextRenderer.apply(this, arguments);
+  td.style.whiteSpace = "normal";
+  td.style.lineHeight = "1.35";
+  td.style.verticalAlign = "top";
+  return td;
+}
+
+function bcDetailAlertRenderer(instance, td, row, col, prop, value, cellProperties) {
+  window.Handsontable.renderers.TextRenderer.apply(this, arguments);
+  td.style.whiteSpace = "normal";
+  td.style.lineHeight = "1.35";
+  td.style.verticalAlign = "top";
+  td.style.background = "";
+  td.style.color = "";
+  td.style.fontWeight = "";
+  td.title = "";
+  const meta = bangCongNhanVienCellMeta?.[row]?.[col];
+  const colors = {
+    under: { bg: "#fff3b0", fg: "#7a5a00" },
+    over: { bg: "#ffcdd2", fg: "#8e0000" },
+    missing_actual: { bg: "#bbdefb", fg: "#0d47a1" },
+    no_schedule: { bg: "#e1bee7", fg: "#6a1b9a" }
+  };
+  if (meta?.extreme) {
+    td.style.background = "#ff1744";
+    td.style.color = "#fff";
+    td.style.fontWeight = "800";
+  } else if (colors[meta?.type]) {
+    td.style.background = colors[meta.type].bg;
+    td.style.color = colors[meta.type].fg;
+    td.style.fontWeight = "700";
+  }
+  td.title = meta?.tooltip || "";
+  return td;
+}
+
+function bcRenderHot(data) {
+  if (!hotBangCongNhanVienContainer || !window.Handsontable) return;
+  const mobile = window.innerWidth <= 600;
+  const headers = ["Ngày", "Thứ", "Giờ công", "Giờ đăng ký", "Giờ thực hiện", "Chênh lệch"];
+  const settings = {
+    data,
+    colHeaders: headers,
+    rowHeaders: true,
+    rowHeaderWidth: mobile ? 38 : 46,
+    width: "100%",
+    height: mobile ? 520 : 430,
+    stretchH: "all",
+    manualColumnResize: true,
+    manualRowResize: true,
+    filters: true,
+    dropdownMenu: true,
+    columnSorting: true,
+    readOnly: true,
+    wordWrap: true,
+    columnHeaderHeight: mobile ? 88 : 72,
+    rowHeights: mobile ? 66 : 50,
+    colWidths: mobile ? [58, 48, 72, 150, 165, 78] : [70, 55, 85, 260, 310, 95],
+    viewportRowRenderingOffset: 30,
+    cells(row, col) {
+      const cp = {};
+      if (col === 2 || col === 5) cp.renderer = bcDetailAlertRenderer;
+      else if (col === 3 || col === 4) cp.renderer = bcDetailTextRenderer;
+      return cp;
+    },
+    licenseKey: "non-commercial-and-evaluation"
+  };
+  if (!hotBangCongNhanVien) hotBangCongNhanVien = new window.Handsontable(hotBangCongNhanVienContainer, settings);
+  else {
+    hotBangCongNhanVien.updateSettings(settings);
+    hotBangCongNhanVien.loadData(data);
+    hotBangCongNhanVien.render();
+  }
+}
+
+function bcRenderNhanVienCache() {
+  const cache = bangCongNhanVienCache;
+  if (!cache) return;
+  const { tuNgay, denNgay, manv, tennv, dateList, congData, registeredData, actualEventMap } = cache;
+  const onlyAbnormal = !!bangCongOnlyAbnormalEl?.checked;
+  const groupByDate = {};
+  for (const r of congData) {
+    const d = String(r.ngay_ymd || "").slice(0,10);
+    if (d) groupByDate[d] = r;
+  }
+
+  const hotData = [];
+  bangCongNhanVienCellMeta = [];
+  let countShown = 0;
+  let abnormalCount = 0;
+  let extremeCount = 0;
+  let totalActual = 0;
+  let totalRegistered = 0;
+
+  for (const dateYmd of dateList) {
+    const p = bcParseYMD(dateYmd);
+    const found = groupByDate[dateYmd];
+    const actual = Number(found?.gio_cong || 0);
+    const registered = Number(registeredData.hoursMap[`${dateYmd}|${manv}`] || 0);
+    const cmp = bcGetCompareState(actual, registered, dateYmd);
+    const extreme = actual > 13;
+    const abnormal = !!cmp.type || extreme;
+    if (abnormal) abnormalCount++;
+    if (extreme) extremeCount++;
+    totalActual += actual;
+    totalRegistered += registered;
+
+    const hasAny = actual > 0 || registered > 0;
+    if (!hasAny) continue;
+    if (onlyAbnormal && !abnormal) continue;
+
+    const thu = bcGetThuLabel(p.y, p.m, p.d, found?.thu || "");
+    const regText = registeredData.detailMap[`${dateYmd}|${manv}`] || (registered > 0 ? `${bcFormatHour2(registered)}h` : "—");
+    const events = actualEventMap[`${dateYmd}|${manv}`] || "";
+    const actualText = actual > 0 ? `${events || "Không đọc được log chi tiết"} / ${bcFormatHour2(actual)}h` : (events ? `${events} / 0.00h` : "—");
+    const diffText = (actual === 0 && registered === 0) ? "" : bcFormatSignedMinutes(actual - registered);
+    const tooltip = [
+      `${tennv} (${manv}) - ${dateYmd}`,
+      `Giờ thực tế: ${bcFormatHour2(actual)}h`,
+      `Giờ đăng ký: ${bcFormatHour2(registered)}h`,
+      `Chênh lệch: ${bcFormatSignedMinutes(actual - registered)}`,
+      extreme ? "Cảnh báo mạnh: giờ công thực tế lớn hơn 13.00h." : "",
+      cmp.type === "under" ? "Thiếu từ 30 phút." : "",
+      cmp.type === "over" ? "Vượt từ 30 phút." : "",
+      cmp.type === "missing_actual" ? "Có lịch nhưng không có công." : "",
+      cmp.type === "no_schedule" ? "Có công nhưng không có lịch đã duyệt." : ""
+    ].filter(Boolean).join("\n");
+
+    const rowIndex = hotData.length;
+    hotData.push([
+      bcFormatDateDM(dateYmd),
+      thu,
+      actual > 0 ? bcFormatHour2(actual) : "",
+      regText,
+      actualText,
+      diffText
+    ]);
+    bangCongNhanVienCellMeta[rowIndex] = [
+      {}, {},
+      { type: cmp.type, extreme, tooltip },
+      {}, {},
+      { type: cmp.type, extreme: false, tooltip }
+    ];
+    countShown++;
+  }
+
+  hotData.push([
+    "Tổng", "",
+    bcFormatHour2(totalActual),
+    `Tổng lịch: ${bcFormatHour2(totalRegistered)}h`,
+    `Tổng thực tế: ${bcFormatHour2(totalActual)}h`,
+    bcFormatSignedMinutes(totalActual - totalRegistered)
+  ]);
+  bangCongNhanVienCellMeta.push([{}, {}, {}, {}, {}, {}]);
+
+  if (bangCongTitleEl) bangCongTitleEl.textContent = `CHI TIẾT BẢNG CÔNG – ${tennv} (${manv}) – ${bcFormatRange(tuNgay, denNgay)}`;
+  bcRenderHot(hotData);
+  setBangCongNhanVienMessage(
+    `Hiển thị ${countShown} ngày${onlyAbnormal ? " bất thường" : ""} | Bất thường: ${abnormalCount} | >13h: ${extremeCount} | ` +
+    `Tổng thực tế ${bcFormatHour2(totalActual)}h / đăng ký ${bcFormatHour2(totalRegistered)}h | Ngưỡng cảnh báo ±30 phút.`
+  );
+}
+
+async function taiBangCongNhanVien(tuNgay, denNgay, manvRaw) {
+  const manv = normalizeManv(manvRaw);
+  if (!tuNgay || !denNgay || !manv) {
+    setBangCongNhanVienMessage("Chưa đủ Từ ngày, Đến ngày và Mã nhân viên để tải bảng công.", true);
+    return;
+  }
+  if (denNgay < tuNgay) {
+    setBangCongNhanVienMessage("Đến ngày không được nhỏ hơn Từ ngày.", true);
+    return;
+  }
+  const dateList = bcListDates(tuNgay, denNgay);
+  if (!dateList.length || dateList.length > 366) {
+    setBangCongNhanVienMessage("Khoảng ngày bảng công không hợp lệ hoặc lớn hơn 366 ngày.", true);
+    return;
+  }
+
+  setBangCongNhanVienMessage(`Đang tải bảng công ${manv} từ ${bcFormatDateDM(tuNgay)} đến ${bcFormatDateDM(denNgay)}...`);
+  const months = bcListMonths(tuNgay, denNgay);
+  const nextDate = bcAddDays(denNgay, 1);
+  const logStart = `${tuNgay}T00:00:00+07:00`;
+  const logEnd = `${nextDate}T00:00:00+07:00`;
+
+  try {
+    const congPromise = Promise.all(months.map(({ y, m }) =>
+      supabase.rpc("chamcong_bangcong_monthly", { p_month: m, p_year: y })
+        .then(res => ({ ...res, y, m }))
+    ));
+
+    const [congRes, lichRes, logRes] = await Promise.all([
+      congPromise,
+      supabase.from("lichlam_dangky")
+        .select("ngay, diadiem, manv, loai_dang_ky, gio_bat_dau, gio_ket_thuc, tu_gio, den_gio, trang_thai")
+        .gte("ngay", tuNgay).lte("ngay", denNgay)
+        .eq("manv", manv)
+        .eq("trang_thai", "DA_DUYET"),
+      supabase.from("chamcong_log")
+        .select("manv, diadiem, su_kien, created_at")
+        .eq("manv", manv)
+        .gte("created_at", logStart).lt("created_at", logEnd)
+        .order("created_at", { ascending: true })
+    ]);
+
+    const badMonth = congRes.find(x => x.error);
+    if (badMonth) throw badMonth.error;
+    if (lichRes.error) throw lichRes.error;
+
+    const congData = [];
+    for (const monthRes of congRes) {
+      for (const r of (monthRes.data || [])) {
+        if (normalizeManv(r.manv) !== manv) continue;
+        const day = Number(r.ngay);
+        if (!day) continue;
+        const dateYmd = bcMakeYMD(monthRes.y, monthRes.m, day);
+        if (dateYmd < tuNgay || dateYmd > denNgay) continue;
+        congData.push({ ...r, ngay_ymd: dateYmd });
+      }
+    }
+
+    const scheduleRows = (lichRes.data || []).filter(r => normalizeManv(r.manv) === manv);
+    const logRows = logRes.error ? [] : (logRes.data || []).filter(r => normalizeManv(r.manv) === manv);
+    const tennv = String(congData.find(r => String(r.tennv || "").trim())?.tennv || manv).trim();
+
+    bangCongNhanVienCache = {
+      tuNgay, denNgay, manv, tennv, dateList, congData,
+      registeredData: bcBuildRegisteredData(scheduleRows),
+      actualEventMap: bcBuildActualEventMap(logRows)
+    };
+
+    bcRenderNhanVienCache();
+    if (logRes.error) {
+      setBangCongNhanVienMessage((bangCongMsgEl?.textContent || "") + " | Chưa đọc được log vào/ra chi tiết; kiểm tra quyền SELECT chamcong_log.", true);
+    }
+  } catch (e) {
+    console.error("Lỗi tải bảng công nhân viên:", e);
+    setBangCongNhanVienMessage("Lỗi tải bảng công nhân viên: " + (e?.message || "Không xác định"), true);
+    bangCongNhanVienCache = null;
+    bangCongNhanVienCellMeta = [];
+    bcRenderHot([]);
+  }
+}
+
 async function tinhLuongThang() {
   const tuNgay = document.getElementById("tu_ngay").value;
   const denNgay = document.getElementById("den_ngay").value;
@@ -315,6 +856,9 @@ async function tinhLuongThang() {
       luong_1_gio
     });
 
+    // Đồng bộ luôn Bảng công chi tiết theo đúng nhân viên và khoảng ngày đang tính lương.
+    await taiBangCongNhanVien(tuNgay, denNgay, manv);
+
     setStatus("Đã tính xong.");
   } catch (err) {
     console.error("Lỗi không mong muốn:", err);
@@ -352,6 +896,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.error("Lỗi load danh mục nhân viên cho báo cáo lương:", err);
     }
   }
+
+  if (bangCongOnlyAbnormalEl) {
+    bangCongOnlyAbnormalEl.addEventListener("change", () => {
+      if (bangCongNhanVienCache) bcRenderNhanVienCache();
+    });
+  }
+
+  if (btnReloadBangCong) {
+    btnReloadBangCong.addEventListener("click", () => {
+      const tuNgay = document.getElementById("tu_ngay")?.value || "";
+      const denNgay = document.getElementById("den_ngay")?.value || "";
+      const manv = document.getElementById("manv")?.value?.trim() || "";
+      taiBangCongNhanVien(tuNgay, denNgay, manv);
+    });
+  }
+
+  // Nếu thay đổi nhân viên/khoảng ngày, báo rằng bảng công cần tính/tải lại để tránh hiểu nhầm dữ liệu cũ.
+  [document.getElementById("tu_ngay"), document.getElementById("den_ngay"), document.getElementById("manv")]
+    .filter(Boolean)
+    .forEach(el => el.addEventListener("change", () => {
+      if (bangCongNhanVienCache) setBangCongNhanVienMessage("Thông tin đã thay đổi. Bấm Tính lương hoặc Tải lại bảng công để cập nhật.");
+    }));
 
   document.getElementById("btn-tinh-luong").addEventListener("click", tinhLuongThang);
 });
