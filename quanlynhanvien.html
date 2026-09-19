@@ -136,6 +136,82 @@
     }
 
 
+    /* ===== CẢNH BÁO TRẠNG THÁI HIỆN TẠI ===== */
+    .status-alert-summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #f5f5f5;
+      font-size: 12px;
+      font-weight: 700;
+      color: #424242;
+    }
+
+    .status-alert-summary.has-alert {
+      background: #ffebee;
+      color: #b71c1c;
+    }
+
+    .status-alert-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      user-select: none;
+    }
+
+    .status-row-alert-orange td { background: #fff8e1 !important; }
+    .status-row-alert-yellow td { background: #fffde7 !important; }
+    .status-row-alert-red td { background: #ffebee !important; }
+    .status-row-alert-purple td { background: #f3e5f5 !important; }
+
+    .status-row-alert-orange td:first-child { border-left: 5px solid #fb8c00; }
+    .status-row-alert-yellow td:first-child { border-left: 5px solid #f9a825; }
+    .status-row-alert-red td:first-child { border-left: 5px solid #d32f2f; }
+    .status-row-alert-purple td:first-child { border-left: 5px solid #8e24aa; }
+
+    .status-badge.alert-orange { background:#ffe0b2; color:#e65100; font-weight:800; }
+    .status-badge.alert-yellow { background:#fff59d; color:#795548; font-weight:800; }
+    .status-badge.alert-red { background:#ffcdd2; color:#b71c1c; font-weight:800; }
+    .status-badge.alert-purple { background:#e1bee7; color:#6a1b9a; font-weight:800; }
+
+    .status-alert-detail {
+      display: none;
+      margin-top: 5px;
+      padding: 6px 8px;
+      border-radius: 5px;
+      background: rgba(255,255,255,.78);
+      border: 1px dashed rgba(0,0,0,.18);
+      font-size: 12px;
+      line-height: 1.4;
+      color: #333;
+      white-space: normal;
+    }
+
+    tr.status-detail-open .status-alert-detail { display:block; }
+    tr.status-clickable { cursor:pointer; }
+
+    .status-legend-alert {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #666;
+      line-height: 1.65;
+    }
+    .status-legend-alert .key {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-right: 6px;
+      font-weight: 700;
+    }
+    .key-orange { background:#ffe0b2; color:#e65100; }
+    .key-red { background:#ffcdd2; color:#b71c1c; }
+    .key-yellow { background:#fff59d; color:#795548; }
+    .key-purple { background:#e1bee7; color:#6a1b9a; }
+
+
     /* ===== BẢNG CÔNG THÁNG ===== */
     .hot-container {
       height: 430px;
@@ -267,6 +343,11 @@
         </select>
       </div>
       <button id="btn-refresh">Làm mới</button>
+      <label class="status-alert-toggle">
+        <input type="checkbox" id="filter-status-alert-only">
+        Chỉ hiện bất thường
+      </label>
+      <span id="status-alert-summary" class="status-alert-summary">Bất thường: 0</span>
       <div id="status-msg"></div>
     </div>
 
@@ -277,6 +358,14 @@
       <span class="status-badge status-DA_TAN_CA">Đã tan ca</span>
       <span class="status-badge status-SAP_VAO_CA">Sắp vào ca</span>
       <span class="status-badge status-CHUA_VAO_CA">Chưa vào ca</span>
+    </div>
+    <div class="status-legend-alert">
+      <b>Cảnh báo nhanh:</b>
+      <span class="key key-orange">Trễ ≥15p</span>
+      <span class="key key-red">Trễ ≥30p / Không đi làm / Không chấm tan ca</span>
+      <span class="key key-yellow">Tan sớm ≥30p</span>
+      <span class="key key-purple">Đang làm quá giờ ≥30p</span>
+      <span style="opacity:.8">(Chạm vào dòng bất thường để xem lý do)</span>
     </div>
   </div>
 
