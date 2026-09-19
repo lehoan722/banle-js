@@ -9,6 +9,8 @@ const tbodyStatus = document.getElementById("tbody-status");
 const diadiemSelect = document.getElementById("filter-diadiem");
 const statusMsg = document.getElementById("status-msg");
 const refreshBtn = document.getElementById("btn-refresh");
+const statusAlertOnly = document.getElementById("filter-status-alert-only");
+const statusAlertSummary = document.getElementById("status-alert-summary");
 
 // --- DOM elements: tổng quan theo giờ ---
 const summaryDateInput = document.getElementById("summary-date");
@@ -131,6 +133,160 @@ function setStatusMessage(text) {
     statusMsg.textContent = text ? `${text} (Lần cuối: ${hh}:${mm})` : "";
 }
 
+
+function getNowVietnamMinutes() {
+    try {
+        const parts = new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Asia/Ho_Chi_Minh",
+            hour12: false,
+            hour: "2-digit",
+            minute: "2-digit"
+        }).formatToParts(new Date());
+        const obj = Object.fromEntries(parts.map(p => [p.type, p.value]));
+        const h = Number(obj.hour);
+        const m = Number(obj.minute);
+        if (Number.isFinite(h) && Number.isFinite(m)) return h * 60 + m;
+    } catch (e) {
+        console.warn("Không lấy được giờ Việt Nam bằng Intl:", e);
+    }
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+}
+
+function minutesLabel(mins) {
+    if (!Number.isFinite(mins)) return "";
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function normalizeEventsToday(eventsToday) {
+    if (!eventsToday) return [];
+    let arr = eventsToday;
+    if (typeof arr === "string") {
+        try { arr = JSON.parse(arr); } catch { return []; }
+    }
+    return Array.isArray(arr) ? arr : [];
+}
+
+function eventMinute(it) {
+    const t = it?.gio_vn || it?.gio || "";
+    const parts = String(t).split(":");
+    if (parts.length < 2) return null;
+    const h = Number(parts[0]);
+    const m = Number(parts[1]);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 60 + m;
+}
+
+function latestEventMinute(eventsToday, codes) {
+    const set = new Set(codes);
+    let latest = null;
+    for (const ev of normalizeEventsToday(eventsToday)) {
+        if (!set.has(String(ev?.su_kien || "").toUpperCase())) continue;
+        const min = eventMinute(ev);
+        if (min != null && (latest == null || min > latest)) latest = min;
+    }
+    return latest;
+}
+
+function classifyCurrentStatusAlert(r, nowMin) {
+    const status = String(r?.trang_thai || "").toUpperCase();
+    const start = parseTimeToMinutes(r?.gio_dangky_bat_dau);
+    const end = parseTimeToMinutes(r?.gio_dangky_ket_thuc);
+    const actualIn = latestEventMinute(r?.events_today, ["VAOCA", "NTRD", "NCHD"]);
+    const actualOut = latestEventMinute(r?.events_today, ["TANCA", "AUTO_TANCA"]);
+
+    const base = {
+        abnormal: false,
+        level: "",
+        reason: "",
+        detail: "",
+        minutes: 0
+    };
+
+    const scheduleText = start != null && end != null
+        ? `${minutesLabel(start)}–${minutesLabel(end)}`
+        : (start != null ? `từ ${minutesLabel(start)}` : "không có giờ đăng ký");
+
+    if (status === "KHONG_CHAM_TAN_CA") {
+        return {
+            abnormal: true,
+            level: "red",
+            reason: "Không chấm tan ca",
+            detail: `Đăng ký ${scheduleText}. Hệ thống chưa ghi nhận chấm tan ca hợp lệ.`,
+            minutes: end != null ? Math.max(nowMin - end, 0) : 0
+        };
+    }
+
+    if (status === "KHONG_DI_LAM") {
+        const late = start != null ? Math.max(nowMin - start, 0) : 0;
+        return {
+            abnormal: true,
+            level: "red",
+            reason: "Không đi làm",
+            detail: `Đăng ký ${scheduleText}. Chưa ghi nhận vào ca${late ? `, đã qua giờ bắt đầu ${late} phút` : ""}.`,
+            minutes: late
+        };
+    }
+
+    if (status === "CHUA_VAO_CA" && start != null && actualIn == null) {
+        const late = nowMin - start;
+        if (late >= 30) {
+            return {
+                abnormal: true,
+                level: "red",
+                reason: `Vào ca trễ ${late} phút`,
+                detail: `Đăng ký ${scheduleText}. Hiện ${minutesLabel(nowMin)} (giờ VN), chưa ghi nhận vào ca.`,
+                minutes: late
+            };
+        }
+        if (late >= 15) {
+            return {
+                abnormal: true,
+                level: "orange",
+                reason: `Vào ca trễ ${late} phút`,
+                detail: `Đăng ký ${scheduleText}. Hiện ${minutesLabel(nowMin)} (giờ VN), chưa ghi nhận vào ca.`,
+                minutes: late
+            };
+        }
+    }
+
+    if (status === "DA_TAN_CA" && end != null && actualOut != null) {
+        const early = end - actualOut;
+        if (early >= 30) {
+            return {
+                abnormal: true,
+                level: "yellow",
+                reason: `Tan ca sớm ${early} phút`,
+                detail: `Đăng ký ${scheduleText}. Thực tế tan lúc ${minutesLabel(actualOut)}, sớm ${early} phút.`,
+                minutes: early
+            };
+        }
+    }
+
+    if ((status === "DANG_LAM" || status === "NGHI_TRUA" || status === "NGHI_CHIEU") && end != null) {
+        const over = nowMin - end;
+        if (over >= 30) {
+            return {
+                abnormal: true,
+                level: "purple",
+                reason: `Đang làm quá giờ ${over} phút`,
+                detail: `Đăng ký ${scheduleText}. Hiện ${minutesLabel(nowMin)} (giờ VN) vẫn chưa ghi nhận tan ca.`,
+                minutes: over
+            };
+        }
+    }
+
+    return base;
+}
+
+function updateStatusAlertSummary(total, abnormal) {
+    if (!statusAlertSummary) return;
+    statusAlertSummary.textContent = `Bất thường: ${abnormal}/${total}`;
+    statusAlertSummary.classList.toggle("has-alert", abnormal > 0);
+}
+
 async function loadStatus() {
     const diadiem = diadiemSelect.value || null;
 
@@ -196,9 +352,40 @@ async function loadStatus() {
     });
 
 
+    const nowVnMin = getNowVietnamMinutes();
+    const decorated = rows.map(r => ({
+        row: r,
+        alert: classifyCurrentStatusAlert(r, nowVnMin)
+    }));
+
+    const abnormalCount = decorated.filter(x => x.alert.abnormal).length;
+    updateStatusAlertSummary(rows.length, abnormalCount);
+
+    const visible = statusAlertOnly?.checked
+        ? decorated.filter(x => x.alert.abnormal)
+        : decorated;
+
     tbodyStatus.innerHTML = "";
-    rows.forEach((r, idx) => {
+
+    if (visible.length === 0) {
+        tbodyStatus.innerHTML = `<tr><td colspan="7" style="padding:10px;opacity:.75;">Không có nhân viên bất thường theo bộ lọc hiện tại.</td></tr>`;
+        setStatusMessage(`Đã tải xong (${rows.length} nhân viên, bất thường ${abnormalCount}).`);
+        return;
+    }
+
+    visible.forEach((item, idx) => {
+        const r = item.row;
+        const alertInfo = item.alert;
         const tr = document.createElement("tr");
+
+        if (alertInfo.abnormal) {
+            tr.classList.add(`status-row-alert-${alertInfo.level}`, "status-clickable");
+            tr.title = "Chạm để xem/ẩn lý do bất thường";
+            tr.addEventListener("click", (ev) => {
+                if (ev.target.closest("a,button,input,select")) return;
+                tr.classList.toggle("status-detail-open");
+            });
+        }
 
         const tdIndex = document.createElement("td");
         tdIndex.textContent = String(idx + 1);
@@ -216,38 +403,38 @@ async function loadStatus() {
         tdDia.textContent = r.diadiem || "";
         tr.appendChild(tdDia);
 
-        // Cột gộp: Trạng thái, Sự kiện cuối, Giờ(VN)
         const tdGop = document.createElement("td");
         const span = document.createElement("span");
         span.className = `status-badge status-${r.trang_thai || "KHAC"}`;
+        if (alertInfo.abnormal) span.classList.add(`alert-${alertInfo.level}`);
 
         const tt = trangThaiLabel(r.trang_thai);
-
-        // ✅ NEW: timeline sự kiện trong ca
         const timeline = buildTimelineText(r.events_today);
-
-        // fallback cũ (nếu vì lý do nào đó chưa có events_today)
         const sk = suKienLabel(r.su_kien_cuoi);
         const gio = formatTimeVN(r.gio_cuoi_vn || r.gio_cuoi);
 
         let text = "";
         if (timeline) {
-            // ✅ yêu cầu mới: Trạng thái + tất cả sự kiện trong ngày/ca kèm giờ
             text = `${tt}, ${timeline}`;
         } else if (sk && gio) {
-            // fallback cũ
             text = `${tt}, ${sk}, ${gio}`;
         } else {
-            // fallback cũ: không có log -> kèm giờ đăng ký bắt đầu
             const gioDk = formatTimeHM(r.gio_dangky_bat_dau);
             text = gioDk ? `${tt} ${gioDk}` : tt;
         }
 
+        if (alertInfo.abnormal) text += ` • ${alertInfo.reason}`;
         span.textContent = text;
         tdGop.appendChild(span);
+
+        if (alertInfo.abnormal) {
+            const detail = document.createElement("div");
+            detail.className = "status-alert-detail";
+            detail.textContent = alertInfo.detail;
+            tdGop.appendChild(detail);
+        }
         tr.appendChild(tdGop);
 
-        // Giờ đăng ký / Giờ kết thúc
         const tdGioDk = document.createElement("td");
         tdGioDk.textContent = formatTimeHM(r.gio_dangky_bat_dau);
         tr.appendChild(tdGioDk);
@@ -259,7 +446,7 @@ async function loadStatus() {
         tbodyStatus.appendChild(tr);
     });
 
-    setStatusMessage(`Đã tải xong (${rows.length} nhân viên).`);
+    setStatusMessage(`Đã tải xong (${rows.length} nhân viên, bất thường ${abnormalCount}).`);
 }
 
 function startAutoRefresh() {
@@ -1423,6 +1610,12 @@ document.addEventListener("DOMContentLoaded", () => {
     diadiemSelect.addEventListener("change", () => {
         loadStatus();
     });
+
+    if (statusAlertOnly) {
+        statusAlertOnly.addEventListener("change", () => {
+            loadStatus();
+        });
+    }
 
     // ✅ set ngày mặc định = hôm nay (yyyy-mm-dd) để khỏi phải chọn
 if (summaryDateInput && !summaryDateInput.value) {
