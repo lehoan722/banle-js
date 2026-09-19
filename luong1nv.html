@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <title>Tính lương tháng nhân viên</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
   <style>
     body {
       font-family: sans-serif;
@@ -94,6 +95,95 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* ===== BẢNG CÔNG CHI TIẾT 1 NHÂN VIÊN ===== */
+    .bangcong-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .bangcong-toolbar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    #bangcong-msg {
+      font-size: 12px;
+      color: #555;
+      margin: 6px 0;
+      line-height: 1.4;
+    }
+
+    .bangcong-title {
+      border-left: 4px solid #2196f3;
+      background: #f5f9ff;
+      padding: 8px 10px;
+      margin: 8px 0;
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .bangcong-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      align-items: center;
+      font-size: 12px;
+      color: #555;
+      margin: 6px 0 10px;
+    }
+
+    .bc-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .bc-color-box {
+      width: 18px;
+      height: 18px;
+      border: 1px solid rgba(0,0,0,.18);
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .bc-yellow { background:#fff3b0; }
+    .bc-red { background:#ffcdd2; }
+    .bc-blue { background:#bbdefb; }
+    .bc-purple { background:#e1bee7; }
+    .bc-hot-red { background:#ff1744; }
+
+    #hotBangCongNhanVien {
+      width: 100%;
+      height: 430px;
+      overflow: hidden;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: #fff;
+    }
+
+    .handsontable .ht_clone_top th .relative {
+      white-space: normal !important;
+      line-height: 1.15 !important;
+    }
+
+    .handsontable td {
+      vertical-align: top;
+    }
+
+    @media (max-width: 600px) {
+      #hotBangCongNhanVien { height: 520px; }
+      .bangcong-title { font-size: 13px; }
+      .bangcong-legend { font-size: 11px; }
+    }
+
   </style>
 </head>
 
@@ -204,6 +294,42 @@
       <div id="warning-section" class="warning"></div>
     </div>
   </div>
+
+
+  <!-- BẢNG CÔNG CHI TIẾT CỦA NHÂN VIÊN ĐANG TÍNH LƯƠNG -->
+  <div class="card" id="bangcong-nhanvien-card">
+    <h2>Bảng công chi tiết nhân viên</h2>
+
+    <div class="bangcong-toolbar">
+      <label>
+        <input type="checkbox" id="bc-only-abnormal">
+        Chỉ hiện ngày bất thường
+      </label>
+      <button type="button" id="btn-reload-bangcong">Tải lại bảng công</button>
+    </div>
+
+    <div id="bangcong-msg">
+      Bảng công sẽ tự động tải theo đúng nhân viên và khoảng ngày khi bấm “Tính lương”.
+    </div>
+
+    <div class="bangcong-legend">
+      <b>Đối chiếu đăng ký / thực tế:</b>
+      <span class="bc-legend-item"><span class="bc-color-box bc-yellow"></span>Thiếu từ 30 phút</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-red"></span>Vượt từ 30 phút</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-blue"></span>Có lịch nhưng không có công</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-purple"></span>Có công nhưng không có lịch</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-hot-red"></span>Giờ công &gt; 13.00h</span>
+    </div>
+
+    <div id="bc-detail-title" class="bangcong-title">
+      Chưa chọn dữ liệu. Hãy tính lương một nhân viên để xem bảng công.
+    </div>
+
+    <div id="hotBangCongNhanVien"></div>
+  </div>
+
+  <!-- Handsontable -->
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 
   <script type="module" src="./scripts/luong1nv.js"></script>
 </body>
