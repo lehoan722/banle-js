@@ -129,6 +129,108 @@
     .table-auto td {
       white-space: nowrap;
     }
+    /* ===== BẢNG CÔNG THÁNG ===== */
+    .hot-container {
+      height: 430px;
+      overflow: auto;
+      margin-top: 6px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .handsontable .ht_clone_top th .relative,
+    .handsontable .ht_master th .relative {
+      white-space: normal !important;
+      line-height: 1.15;
+      overflow: visible !important;
+    }
+
+    .handsontable thead th {
+      vertical-align: middle !important;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .table-auto {
+      width: max-content !important;
+      min-width: 100%;
+      table-layout: auto !important;
+    }
+
+    .table-auto th,
+    .table-auto td {
+      white-space: nowrap;
+    }
+
+
+    .bangcong-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      align-items: center;
+      margin: 6px 0 4px;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .bc-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .bc-color-box {
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgba(0,0,0,.18);
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    .bc-yellow { background:#fff3b0; }
+    .bc-red { background:#ffcdd2; }
+    .bc-blue { background:#bbdefb; }
+    .bc-purple { background:#e1bee7; }
+    .bc-hot-red { background:#ff1744; }
+
+    .bc-detail-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      user-select: none;
+    }
+
+    #bc-employee {
+      font-size: 13px;
+      padding: 3px 6px;
+    }
+
+    .bc-detail-title {
+      margin: 8px 0 4px;
+      padding: 7px 9px;
+      border-left: 4px solid #1976d2;
+      background: #f4f8fc;
+      font-size: 13px;
+      font-weight: 700;
+      color: #263238;
+    }
+
+    .handsontable td.bc-detail-text {
+      white-space: normal !important;
+      line-height: 1.35;
+      vertical-align: top;
+    }
+
+
+    @media (max-width: 600px) {
+      .hot-container { height: 520px; }
+    }
+
   </style>
 </head>
 
@@ -232,37 +334,64 @@
     </div>
   </div>
 
-  <!-- BẢNG CÔNG THÁNG -->
+  <!-- Card 4: Bảng công theo khoảng ngày -->
   <div class="card">
-    <h2 style="font-size: 14px; margin-bottom: 4px">BẢNG CÔNG THÁNG</h2>
+    <h2 style="font-size:14px;margin-bottom:6px;">BẢNG CÔNG – ĐỐI CHIẾU ĐĂNG KÝ / THỰC TẾ</h2>
+    <div class="filters">
+      <div>
+        <label for="bc-tu-ngay">Từ ngày:</label>
+        <input id="bc-tu-ngay" type="date">
+      </div>
+      <div>
+        <label for="bc-den-ngay">Đến ngày:</label>
+        <input id="bc-den-ngay" type="date">
+      </div>
+      <button id="btn-bangcong">Tải bảng công</button>
 
-    <div class="row" style="margin-bottom:6px;">
-      <div>
-        <label for="bc-thang">Tháng:</label>
-        <input id="bc-thang" type="number" min="1" max="12" style="width:70px;" />
+      <label class="bc-detail-toggle">
+        <input type="checkbox" id="bc-detail-mode">
+        Xem chi tiết 1 nhân viên
+      </label>
+
+      <div id="bc-employee-wrap" style="display:none;">
+        <label for="bc-employee">Nhân viên:</label>
+        <select id="bc-employee" style="min-width:180px;">
+          <option value="">-- Chọn nhân viên --</option>
+        </select>
       </div>
-      <div>
-        <label for="bc-nam">Năm:</label>
-        <input id="bc-nam" type="number" style="width:90px;" />
-      </div>
-      <div>
-        <button id="btn-bangcong">Tải bảng công</button>
-      </div>
+
+      <label id="bc-abnormal-wrap" class="bc-detail-toggle" style="display:none;">
+        <input type="checkbox" id="bc-only-abnormal">
+        Chỉ hiện ngày bất thường
+      </label>
+
+      <div id="bangcong-msg"></div>
     </div>
 
-    <!-- Handsontable -->
+    <div class="bangcong-legend">
+      <b>Đối chiếu giờ đăng ký / thực tế:</b>
+      <span class="bc-legend-item"><span class="bc-color-box bc-yellow"></span>Thực tế thiếu từ 30 phút</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-red"></span>Thực tế vượt từ 30 phút</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-blue"></span>Có lịch đã duyệt nhưng không có công</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-purple"></span>Có công nhưng không có lịch đã duyệt</span>
+      <span class="bc-legend-item"><span class="bc-color-box bc-hot-red"></span>Giờ công &gt; 13.00h</span>
+      <span style="opacity:.75">(Rê chuột vào ô để xem chi tiết)</span>
+    </div>
+
+    <div id="bc-detail-title" class="bc-detail-title" style="display:none;"></div>
     <div id="hotBangCong" class="hot-container"></div>
 
-    <!-- Bảng HTML cũ: ẩn, chỉ dùng làm fallback -->
-    <div class="table-responsive mt-2" style="max-height: 500px; overflow: auto; display:none;">
+    <!-- Bảng HTML dự phòng, ẩn khi Handsontable hoạt động -->
+    <div style="max-height:500px;overflow:auto;display:none;margin-top:6px;">
       <div class="table-wrap">
-        <table id="bangcongTable" class="table table-bordered table-sm table-auto">
-          <thead id="thead-bangcong" class="table-dark"></thead>
+        <table id="bangcongTable" class="table-auto">
+          <thead id="thead-bangcong"></thead>
           <tbody id="tbody-bangcong"></tbody>
         </table>
       </div>
     </div>
   </div>
+
 
   <!-- Handsontable JS -->
   <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
