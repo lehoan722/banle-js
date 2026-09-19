@@ -1470,6 +1470,8 @@ function buildActualHoursMap(congData) {
 
 function bangCongRenderer(instance, td, row, col, prop, value, cellProperties) {
     window.Handsontable.renderers.NumericRenderer.apply(this, arguments);
+    // Giờ công bằng 0: để ô trống cho bảng dễ đọc, nhưng vẫn giữ giá trị 0 trong dữ liệu để tính toán/cảnh báo.
+    if (Number(value) === 0) td.textContent = "";
     td.style.background = "";
     td.style.color = "";
     td.style.fontWeight = "";
@@ -1514,6 +1516,7 @@ function bangCongDetailTextRenderer(instance, td, row, col, prop, value, cellPro
 
 function bangCongDetailAlertRenderer(instance, td, row, col, prop, value, cellProperties) {
     window.Handsontable.renderers.TextRenderer.apply(this, arguments);
+    if (col === 2 && String(value ?? "").trim() !== "" && Number(value) === 0) td.textContent = "";
     td.style.whiteSpace = "normal";
     td.style.lineHeight = "1.35";
     td.style.verticalAlign = "top";
@@ -1797,7 +1800,7 @@ function renderBangCongDetail(cache) {
         const events = actualEventMap[`${dateYmd}|${manv}`] || "";
         const actualText = actual > 0
             ? `${events || "Không đọc được log chi tiết"} / ${formatHour2(actual)}h`
-            : (events ? `${events} / 0.00h` : "—");
+            : (events ? events : "—");
         const diffText = (actual === 0 && registered === 0) ? "" : formatSignedMinutes(actual - registered);
 
         const tooltip = [
