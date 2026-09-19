@@ -84,10 +84,12 @@ window.taiSoChiTietTonKho = async function () {
   setStatus('Đang tải lịch sử tồn kho...');
   $('btnView').disabled = true;
   try {
-    const { data, error } = await supabase.rpc('sochitiet_tonkho_v1', {
+    const { data, error } = await supabase.rpc('sochitiet_tonkho_v2', {
       p_masp: masp,
       p_tu_ngay: tuNgay,
-      p_den_ngay: denNgay
+      p_den_ngay: denNgay,
+      p_coso: $('cosoSelect')?.value || null,
+      p_loai: $('loaiSelect')?.value || null
     });
     if (error) throw error;
 
@@ -95,7 +97,9 @@ window.taiSoChiTietTonKho = async function () {
     currentPayload = payload;
     renderSummary(payload);
     renderRows(payload.rows || []);
-    setStatus(`${(payload.rows || []).length.toLocaleString('vi-VN')} chứng từ ảnh hưởng tồn kho.`);
+    const f1 = $('cosoSelect')?.selectedOptions?.[0]?.textContent || 'Cả hai';
+    const f2 = $('loaiSelect')?.selectedOptions?.[0]?.textContent || 'Tất cả chứng từ';
+    setStatus(`${(payload.rows || []).length.toLocaleString('vi-VN')} chứng từ | ${f1} | ${f2}.`);
   } catch (err) {
     console.error(err);
     currentPayload = null;
@@ -179,12 +183,39 @@ window.copyTable = async function () {
   await navigator.clipboard.writeText(lines.join('\n'));
 };
 
-window.initSoChiTietTonKho = function () {
+async function loadLoaiChungTuOptions() {
+  const sel = $('loaiSelect');
+  if (!sel) return;
+  try {
+    const { data, error } = await supabase
+      .from('sochungtu')
+      .select('loai,coso,is_tang_giam')
+      .neq('is_tang_giam', 0)
+      .order('loai', { ascending:true });
+    if (error) throw error;
+
+    const seen = new Set();
+    const rows = (data || []).filter(r => {
+      const k = String(r.loai || '').trim().toLowerCase();
+      if (!k || seen.has(k)) return false;
+      seen.add(k); return true;
+    });
+    sel.innerHTML = '<option value="">Tất cả chứng từ</option>' + rows.map(r => {
+      const loai = String(r.loai || '').trim().toLowerCase();
+      const cs = String(r.coso || '').trim().toUpperCase();
+      return `<option value="${loai}">${loai}${cs ? ' - ' + cs : ''}</option>`;
+    }).join('');
+  } catch (e) {
+    console.warn('Không tải được danh sách loại chứng từ:', e);
+  }
+}
+
+window.initSoChiTietTonKho = async function () {
   const now = new Date();
-  const from = new Date(now);
-  from.setDate(now.getDate() - 30);
-  $('tuNgay').value = localISO(from);
+  $('tuNgay').value = '2025-06-01';
   $('denNgay').value = localISO(now);
+  if ($('cosoSelect')) $('cosoSelect').value = '';
+  await loadLoaiChungTuOptions();
 
   // Nhận mã từ URL: ?masp=ABC
   const qs = new URLSearchParams(location.search);
@@ -209,4 +240,6 @@ window.initSoChiTietTonKho = function () {
   $('maspInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') window.taiSoChiTietTonKho();
   });
+  $('cosoSelect')?.addEventListener('change', () => { if (currentPayload) window.taiSoChiTietTonKho(); });
+  $('loaiSelect')?.addEventListener('change', () => { if (currentPayload) window.taiSoChiTietTonKho(); });
 };
