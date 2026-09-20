@@ -236,8 +236,7 @@ function syncLoaiDisplay() {
   if (!labels.length) display.value = 'Tất cả chứng từ';
   else if (labels.length <= 2) display.value = labels.join(', ');
   else display.value = `${labels.length} loại chứng từ đã chọn`;
-  display.title = labels.length ? labels.join('
-') : 'Tất cả chứng từ';
+  display.title = labels.length ? labels.join('\n') : 'Tất cả chứng từ';
 }
 
 function bindLoaiPopupEvents() {
