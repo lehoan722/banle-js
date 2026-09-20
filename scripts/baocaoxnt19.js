@@ -572,62 +572,144 @@ async function fetchPageBundleV5(params) {
     return { rows, totalRows: Number(payload.total_rows || 0), summary };
 }
 
-// Đồng bộ các khóa dirty trước khi đọc báo cáo. Thường chỉ 1 batch; giới hạn vòng để tránh treo UI.
-async function ensureXnt19Fresh(maxLoops = 5) {
-    for (let i = 0; i < maxLoops; i++) {
-        const { data, error } = await supabase.rpc("refresh_xnt19_dirty_v2", { p_limit: 5000 });
-        if (error) throw error;
-        const row = Array.isArray(data) ? data[0] : data;
-        const remaining = Number(row?.remaining || 0);
-        if (remaining <= 0) return;
+// ===================== CHỐNG DEADLOCK / GỌI TRÙNG XNT19 =====================
+const XNT19_REFRESH_BATCH = 1000;      // Giảm phạm vi lock mỗi lượt (cũ: 5000)
+const XNT19_REFRESH_MAX_LOOPS = 25;    // Giữ tổng năng lực xử lý ~25.000 dirty keys
+const XNT19_DB_RETRY_COUNT = 3;        // Retry riêng lỗi deadlock/serialization
+const XNT19_DB_RETRY_BASE_MS = 250;
+
+let xnt19RefreshPromise = null;        // Không cho cùng tab refresh dirty chồng nhau
+let xnt19LoadPromise = null;           // Không cho cùng tab tải báo cáo chồng nhau
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isTransientDbConflict(err) {
+    const code = String(err?.code || '').toUpperCase();
+    const msg = String(err?.message || err || '').toLowerCase();
+    return code === '40P01' ||          // PostgreSQL deadlock_detected
+           code === '40001' ||          // serialization_failure
+           msg.includes('deadlock detected') ||
+           msg.includes('serialization failure') ||
+           msg.includes('could not serialize access');
+}
+
+async function refreshDirtyBatchWithRetry() {
+    let lastErr = null;
+
+    for (let attempt = 1; attempt <= XNT19_DB_RETRY_COUNT; attempt++) {
+        const { data, error } = await supabase.rpc('refresh_xnt19_dirty_v2', {
+            p_limit: XNT19_REFRESH_BATCH
+        });
+
+        if (!error) return data;
+        lastErr = error;
+
+        if (!isTransientDbConflict(error) || attempt >= XNT19_DB_RETRY_COUNT) {
+            console.error('[XNT19 REFRESH] RPC failed:', error);
+            throw error;
+        }
+
+        const waitMs = XNT19_DB_RETRY_BASE_MS * attempt;
+        console.warn(`[XNT19 REFRESH] Xung đột DB (${error.code || error.message}), thử lại ${attempt + 1}/${XNT19_DB_RETRY_COUNT} sau ${waitMs}ms`);
+        await sleep(waitMs);
+    }
+
+    throw lastErr || new Error('Không đồng bộ được dữ liệu XNT19.');
+}
+
+// Đồng bộ các khóa dirty trước khi đọc báo cáo.
+// Nếu trong CÙNG TAB có nhiều nơi gọi cùng lúc (xem báo cáo / xuất Excel), tất cả dùng chung 1 Promise.
+async function ensureXnt19Fresh(maxLoops = XNT19_REFRESH_MAX_LOOPS) {
+    if (xnt19RefreshPromise) return xnt19RefreshPromise;
+
+    xnt19RefreshPromise = (async () => {
+        for (let i = 0; i < maxLoops; i++) {
+            const data = await refreshDirtyBatchWithRetry();
+            const row = Array.isArray(data) ? data[0] : data;
+            const remaining = Number(row?.remaining || 0);
+
+            console.info(`[XNT19 REFRESH] lượt ${i + 1}/${maxLoops}, remaining=${remaining}`);
+            if (remaining <= 0) return;
+        }
+
+        // Không coi đây là lỗi: báo cáo vẫn đọc được, lần sau sẽ tiếp tục đồng bộ phần còn lại.
+        console.warn(`[XNT19 REFRESH] Còn dirty keys sau ${maxLoops} lượt; sẽ tiếp tục ở lần tải sau.`);
+    })();
+
+    try {
+        return await xnt19RefreshPromise;
+    } finally {
+        xnt19RefreshPromise = null;
     }
 }
 
 
-window.taiBaoCaoXNT = async function () {
-    const loading = document.getElementById("loadingMsg");
-    const t0 = performance.now();
-    loading.textContent = "Đang tải dữ liệu...";
-
-    try {
-        // Đồng bộ phát sinh mới trước khi đọc bảng tổng hợp.
-        loading.textContent = "Đang đồng bộ phát sinh mới...";
-        await ensureXnt19Fresh();
-
-        pageSize = Number(document.getElementById("pageSize")?.value || 1000);
-        let params = buildParams(currentPage);
-
-        // V5: chỉ 1 RPC cho count + page + summary.
-        loading.textContent = "Đang tổng hợp báo cáo...";
-        let bundle = await fetchPageBundleV5(params);
-
-        // Nếu đang ở trang >1 nhưng bộ lọc mới làm trang đó không còn dữ liệu, tự quay về trang 1.
-        if (!bundle.rows.length && currentPage > 1) {
-            currentPage = 1;
-            params = buildParams(1);
-            bundle = await fetchPageBundleV5(params);
-        }
-
-        totalRows = Number(bundle.totalRows || 0);
-        const rows = bundle.rows || [];
-
-        const masps = Array.from(new Map(rows.map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
-        renderPreviewForMasps(masps);
-
-        renderTable(rows);
-        renderSummary(bundle.summary ? [bundle.summary] : []);
-
-        if (rows.length) {
-            focusPreview(String(rows[0].masp || '').toUpperCase());
-        }
-
-        updatePagingBar();
-        loading.textContent = "";
-        console.info(`[XNT19 V5] ${rows.length}/${totalRows} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
-    } catch (err) {
-        console.error(err);
-        loading.textContent = "Lỗi tải dữ liệu: " + (err?.message || err);
+window.taiBaoCaoXNT = function () {
+    // Nếu auto-load đang chạy mà người dùng bấm Xem báo cáo, dùng luôn request đang có,
+    // KHÔNG tạo thêm một chuỗi refresh + bundle mới.
+    if (xnt19LoadPromise) {
+        console.info('[XNT19] Đang tải báo cáo, bỏ qua yêu cầu gọi trùng.');
+        return xnt19LoadPromise;
     }
+
+    xnt19LoadPromise = (async () => {
+        const loading = document.getElementById('loadingMsg');
+        const t0 = performance.now();
+        let stage = 'KHỞI TẠO';
+        if (loading) loading.textContent = 'Đang tải dữ liệu...';
+
+        try {
+            // Đồng bộ phát sinh mới trước khi đọc bảng tổng hợp.
+            stage = 'REFRESH_DIRTY';
+            if (loading) loading.textContent = 'Đang đồng bộ phát sinh mới...';
+            await ensureXnt19Fresh();
+
+            pageSize = Number(document.getElementById('pageSize')?.value || 1000);
+            let params = buildParams(currentPage);
+
+            // V5: chỉ 1 RPC cho count + page + summary.
+            stage = 'BUNDLE_V5';
+            if (loading) loading.textContent = 'Đang tổng hợp báo cáo...';
+            let bundle = await fetchPageBundleV5(params);
+
+            // Nếu đang ở trang >1 nhưng bộ lọc mới làm trang đó không còn dữ liệu, tự quay về trang 1.
+            if (!bundle.rows.length && currentPage > 1) {
+                currentPage = 1;
+                params = buildParams(1);
+                stage = 'BUNDLE_V5_PAGE1';
+                bundle = await fetchPageBundleV5(params);
+            }
+
+            totalRows = Number(bundle.totalRows || 0);
+            const rows = bundle.rows || [];
+
+            const masps = Array.from(new Map(rows.map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
+            renderPreviewForMasps(masps);
+
+            renderTable(rows);
+            renderSummary(bundle.summary ? [bundle.summary] : []);
+
+            if (rows.length) {
+                focusPreview(String(rows[0].masp || '').toUpperCase());
+            }
+
+            updatePagingBar();
+            if (loading) loading.textContent = '';
+            console.info(`[XNT19 V5] ${rows.length}/${totalRows} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
+        } catch (err) {
+            console.error(`[XNT19 ${stage}]`, err);
+            if (loading) {
+                const detail = err?.message || err;
+                loading.textContent = `Lỗi tải dữ liệu [${stage}]: ${detail}`;
+            }
+        }
+    })();
+
+    return xnt19LoadPromise.finally(() => {
+        xnt19LoadPromise = null;
+    });
 };
 
 // ===================== EXCEL EXPORT (song song) =====================
