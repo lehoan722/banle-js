@@ -1106,24 +1106,24 @@ data-color-masp="${targetMasp}"
     }
   }
 
-  async function openCcnPageFromTitleMasp(maspRaw) {
+  function openStockHistoryFromTitleMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
     if (!masp) return;
 
-    await copyTextToClipboard(masp);
+    // Mở thẳng Sổ chi tiết tồn kho với mã SP trên tiêu đề.
+    // Trang sochitiettonkho.html nhận ?masp=... sẽ tự điền ô mã
+    // và tự chạy báo cáo ngay, tương đương thao tác nhập mã + nhấn Enter.
+    const url =
+      "https://app.hoantuyet.vn/sochitiettonkho.html?masp=" +
+      encodeURIComponent(masp);
 
-    const coso = String(
-      sessionStorage.getItem("diadiem") ||
-      localStorage.getItem("diadiem") ||
-      window.diadiem ||
-      ""
-    ).trim().toLowerCase();
+    const child = window.open(url, "_blank");
+    if (!child) {
+      alert("Trình duyệt đang chặn mở tab mới. Hãy cho phép mở tab mới rồi thử lại.");
+      return;
+    }
 
-    const url = coso === "cs2"
-      ? "https://app.hoantuyet.vn/ccn2v1cs2.html"
-      : "https://app.hoantuyet.vn/ccn1v2cs1.html";
-
-    window.open(url, "_blank");
+    try { child.focus(); } catch (_) { }
   }
 
 
@@ -2216,7 +2216,7 @@ data-color-masp="${targetMasp}"
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
-  <span class="sq-title-masp" data-masp="${upper}" title="Bấm để copy mã và mở chuyển chi nhánh">${upper}</span>
+  <span class="sq-title-masp" data-masp="${upper}" title="Bấm để xem sổ chi tiết tồn kho">${upper}</span>
 ${mau_khac ? ` / ${buildOtherColorLinksHtml(upper, mau_khac)}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
 ${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""}${nhacc ? ` / <span class="sq-title-nhacc">${nhacc}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}${formatGiaNhapAn(gianhap) ? `-${formatGiaNhapAn(gianhap)}` : ""}
@@ -3442,7 +3442,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
         e.stopImmediatePropagation();
 
         const masp = titleMaspEl.dataset.masp || popup.dataset.masp || "";
-        await openCcnPageFromTitleMasp(masp);
+        openStockHistoryFromTitleMasp(masp);
       });
     }
 
