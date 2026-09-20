@@ -5,6 +5,7 @@ window.supabase = supabase;
 
 let currentPayload = null;
 let popupReqId = 0;
+let loaiSelected = new Set();
 
 function $(id) { return document.getElementById(id); }
 function n(v) { const x = Number(v || 0); return Number.isFinite(x) ? x : 0; }
@@ -89,7 +90,7 @@ window.taiSoChiTietTonKho = async function () {
       p_tu_ngay: tuNgay,
       p_den_ngay: denNgay,
       p_coso: $('cosoSelect')?.value || null,
-      p_loai: $('loaiSelect')?.value || null
+      p_loai_arr: loaiSelected.size ? Array.from(loaiSelected) : null
     });
     if (error) throw error;
 
@@ -98,7 +99,7 @@ window.taiSoChiTietTonKho = async function () {
     renderSummary(payload);
     renderRows(payload.rows || []);
     const f1 = $('cosoSelect')?.selectedOptions?.[0]?.textContent || 'Cả hai';
-    const f2 = $('loaiSelect')?.selectedOptions?.[0]?.textContent || 'Tất cả chứng từ';
+    const f2 = loaiSelected.size ? `${loaiSelected.size} loại chứng từ` : 'Tất cả chứng từ';
     setStatus(`${(payload.rows || []).length.toLocaleString('vi-VN')} chứng từ | ${f1} | ${f2}.`);
   } catch (err) {
     console.error(err);
@@ -184,8 +185,8 @@ window.copyTable = async function () {
 };
 
 async function loadLoaiChungTuOptions() {
-  const sel = $('loaiSelect');
-  if (!sel) return;
+  const list = $('loaiPopupList');
+  if (!list) return;
   try {
     const { data, error } = await supabase
       .from('sochungtu')
@@ -200,14 +201,91 @@ async function loadLoaiChungTuOptions() {
       if (!k || seen.has(k)) return false;
       seen.add(k); return true;
     });
-    sel.innerHTML = '<option value="">Tất cả chứng từ</option>' + rows.map(r => {
+
+    list.innerHTML = rows.map(r => {
       const loai = String(r.loai || '').trim().toLowerCase();
       const cs = String(r.coso || '').trim().toUpperCase();
-      return `<option value="${loai}">${loai}${cs ? ' - ' + cs : ''}</option>`;
+      return `<span class="loai-row" data-loai="${loai}">
+        <span class="loai-label">${loai}${cs ? ' - ' + cs : ''}</span>
+        <input type="checkbox" class="loai-check" value="${loai}">
+      </span>`;
     }).join('');
+    syncLoaiDisplay();
   } catch (e) {
     console.warn('Không tải được danh sách loại chứng từ:', e);
+    list.innerHTML = '<span class="popup-info">Không tải được danh sách loại chứng từ.</span>';
   }
+}
+
+function syncLoaiSelectedFromUi() {
+  loaiSelected = new Set(
+    Array.from(document.querySelectorAll('.loai-check:checked'))
+      .map(x => String(x.value || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
+  syncLoaiDisplay();
+}
+
+function syncLoaiDisplay() {
+  const display = $('loaiDisplay');
+  if (!display) return;
+  const labels = Array.from(document.querySelectorAll('.loai-check:checked')).map(chk => {
+    const row = chk.closest('.loai-row');
+    return row?.querySelector('.loai-label')?.textContent?.trim() || chk.value;
+  });
+  if (!labels.length) display.value = 'Tất cả chứng từ';
+  else if (labels.length <= 2) display.value = labels.join(', ');
+  else display.value = `${labels.length} loại chứng từ đã chọn`;
+  display.title = labels.length ? labels.join('
+') : 'Tất cả chứng từ';
+}
+
+function bindLoaiPopupEvents() {
+  const wrap = $('loaiWrap');
+  const popup = $('loaiPopup');
+  const display = $('loaiDisplay');
+  const toggle = $('btnLoaiToggle');
+  const list = $('loaiPopupList');
+
+  const togglePopup = (e) => {
+    e?.preventDefault(); e?.stopPropagation();
+    popup.style.display = popup.style.display === 'block' ? 'none' : 'block';
+  };
+  display?.addEventListener('click', togglePopup);
+  toggle?.addEventListener('click', togglePopup);
+
+  list?.addEventListener('change', e => {
+    if (!e.target.classList.contains('loai-check')) return;
+    syncLoaiSelectedFromUi();
+  });
+  list?.addEventListener('click', e => {
+    if (e.target.classList.contains('loai-check')) return;
+    const row = e.target.closest('.loai-row');
+    if (!row) return;
+    const chk = row.querySelector('.loai-check');
+    chk.checked = !chk.checked;
+    syncLoaiSelectedFromUi();
+  });
+
+  $('btnLoaiAll')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    document.querySelectorAll('.loai-check').forEach(x => x.checked = true);
+    syncLoaiSelectedFromUi();
+  });
+  $('btnLoaiNone')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    document.querySelectorAll('.loai-check').forEach(x => x.checked = false);
+    syncLoaiSelectedFromUi();
+  });
+  $('btnLoaiApply')?.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    syncLoaiSelectedFromUi();
+    popup.style.display = 'none';
+    if (($('maspInput')?.value || '').trim()) window.taiSoChiTietTonKho();
+  });
+  document.addEventListener('mousedown', e => {
+    if (popup?.style.display === 'block' && !wrap?.contains(e.target)) popup.style.display = 'none';
+  });
 }
 
 window.initSoChiTietTonKho = async function () {
@@ -216,6 +294,7 @@ window.initSoChiTietTonKho = async function () {
   $('denNgay').value = localISO(now);
   if ($('cosoSelect')) $('cosoSelect').value = '';
   await loadLoaiChungTuOptions();
+  bindLoaiPopupEvents();
 
   // Nhận mã từ URL: ?masp=ABC
   const qs = new URLSearchParams(location.search);
@@ -241,5 +320,5 @@ window.initSoChiTietTonKho = async function () {
     if (e.key === 'Enter') window.taiSoChiTietTonKho();
   });
   $('cosoSelect')?.addEventListener('change', () => { if (currentPayload) window.taiSoChiTietTonKho(); });
-  $('loaiSelect')?.addEventListener('change', () => { if (currentPayload) window.taiSoChiTietTonKho(); });
+
 };
