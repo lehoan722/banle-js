@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lịch sử tồn kho theo ngày</title>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    :root{--blue:#1976d2;--line:#d9dee7;--bg:#f5f7fb;--danger:#c62828;--muted:#64748b}
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#1f2937}
+    #app-container{padding:12px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 1px 5px rgba(0,0,0,.05)}
+    .titlebar{padding:10px 12px 2px;display:flex;align-items:center;gap:10px}.titlebar h2{margin:0;color:#1d4ed8;font-size:20px}
+    .toolbar{padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:end}.toolbar label{font-size:12px;font-weight:700;color:#475569}
+    input,select,button,textarea{font:inherit}input[type=date],input[type=text],select{height:34px;border:1px solid #bfc7d4;border-radius:5px;padding:6px 8px;background:#fff}
+    .w120{width:120px}.w150{width:150px}.w180{width:180px}.btn{height:34px;border:0;border-radius:5px;padding:0 12px;cursor:pointer;font-weight:700}.btn-main{background:#2196f3;color:#fff}.btn-lite{background:#eef2f7;color:#334155;border:1px solid #cbd5e1}.btn-green{background:#0f9d58;color:#fff}.btn:disabled{opacity:.55;cursor:default}
+    .masp-wrap{display:flex;gap:3px}.masp-wrap input{width:190px;text-transform:uppercase}.status{margin-left:auto;color:var(--muted);font-size:12px}.status.error{color:var(--danger);font-weight:700}
+    .tabs{display:flex;gap:5px;padding:0 12px 10px}.tab{border:1px solid #cbd5e1;background:#f8fafc;padding:7px 12px;border-radius:6px;cursor:pointer;font-weight:700}.tab.active{background:#dbeafe;border-color:#60a5fa;color:#1d4ed8}
+    .summary{padding:8px 12px;border-top:1px solid #eef2f7;background:#f8fbff;font-size:13px;min-height:36px}.summary b{color:#0f3f7a}
+    .table-card{margin-top:10px;overflow:auto;max-height:calc(100vh - 235px)}table{width:100%;border-collapse:separate;border-spacing:0;min-width:1050px;background:#fff}thead th{position:sticky;top:0;z-index:3;background:#eef3f9;color:#334155;border-bottom:1px solid #aeb8c6;border-right:1px solid #d6dde8;padding:7px 6px;font-size:12px;white-space:nowrap}tbody td{border-bottom:1px solid #e4e8ef;border-right:1px solid #edf0f4;padding:6px 7px;font-size:12px;white-space:nowrap}tbody tr:nth-child(even) td{background:#fbfcfe}tbody tr:hover td{background:#fff6ce}.num{text-align:right;font-variant-numeric:tabular-nums}.center{text-align:center}.code{color:#155bc2;font-weight:700;cursor:pointer;text-decoration:underline}.neg{background:#ffe3e3!important;color:#b00020;font-weight:700}.empty{text-align:center;padding:24px;color:#64748b}.sale{background:#eefaf1!important}.stock-low{background:#fff4dd!important}.stock-zero{color:#b91c1c;font-weight:700}
+    .pager{display:flex;gap:8px;align-items:center;justify-content:center;padding:8px;background:#fff;border-top:1px solid #e5e7eb;position:sticky;bottom:0}.pager select,.pager input{height:30px}
+    #maspList{width:190px;height:72px;border:1px solid #bfc7d4;border-radius:5px;padding:6px;text-transform:uppercase;resize:vertical}
+    #matrixPanel{display:none;padding:10px}.matrix-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:8px}.matrix-wrap{overflow:auto;max-height:calc(100vh - 280px)}.matrix-table{min-width:700px}.matrix-table td,.matrix-table th{text-align:center}.matrix-table td.zero{background:#f4f4f5;color:#a1a1aa}.matrix-table td.pos{background:#ecfdf5}.matrix-table td.neg{background:#fee2e2}
+    @media(max-width:900px){.status{width:100%;margin-left:0}.table-card{max-height:calc(100vh - 300px)}}
+  </style>
+</head>
+<body>
+<div id="app-container" style="display:none">
+  <div class="card">
+    <div class="titlebar"><h2>LỊCH SỬ TỒN KHO THEO NGÀY</h2></div>
+    <div class="toolbar">
+      <label>Từ ngày<br><input type="date" id="tuNgay"></label>
+      <label>Đến ngày<br><input type="date" id="denNgay"></label>
+      <label>Cơ sở<br><select id="cosoSelect" class="w120"><option value="">Cả hai</option><option value="cs1">CS1</option><option value="cs2">CS2</option></select></label>
+      <label>Nhóm hàng<br><input id="nhomhangInput" class="w120" placeholder="VD: AP"></label>
+      <label>Chủng loại<br><input id="chungloaiInput" class="w120"></label>
+      <label>Màu sắc<br><input id="mausacInput" class="w120"></label>
+      <label>Nhà cung cấp<br><input id="nhaccInput" class="w120"></label>
+      <label>Size<br><select id="sizeSelect" class="w120"><option value="">Tất cả</option><option value="0">0</option><option>38</option><option>39</option><option>40</option><option>41</option><option>42</option><option>43</option><option>44</option><option>45</option><option>46</option></select></label>
+      <label>Mã sản phẩm<br><span class="masp-wrap"><input id="maspInput" placeholder="Một mã"><button class="btn btn-lite" id="btnClearMasp">✕</button></span></label>
+      <label>Danh sách mã<br><textarea id="maspList" placeholder="Mỗi mã 1 dòng"></textarea></label>
+      <button id="btnView" class="btn btn-main">Xem báo cáo</button>
+      <button id="btnCsv" class="btn btn-green">Xuất CSV</button>
+      <button id="btnZip" class="btn btn-green">Xuất ZIP</button>
+      <span id="statusMsg" class="status"></span>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="overview">Tổng quan nhiều mã</button>
+      <button class="tab" data-tab="detail">Lịch sử theo ngày</button>
+      <button class="tab" data-tab="matrix">Ma trận size theo ngày</button>
+    </div>
+    <div id="summaryBox" class="summary"></div>
+  </div>
+
+  <div id="tablePanel" class="card table-card">
+    <table>
+      <thead id="reportHead"></thead>
+      <tbody id="reportBody"><tr><td class="empty">Chọn bộ lọc rồi bấm “Xem báo cáo”.</td></tr></tbody>
+    </table>
+    <div class="pager">
+      <label>Dòng/trang <select id="pageSize"><option>200</option><option selected>500</option><option>1000</option><option>5000</option></select></label>
+      <button class="btn btn-lite" id="btnPrev">← Trước</button>
+      <span id="pageInfo">Trang 0/0</span>
+      <button class="btn btn-lite" id="btnNext">Sau →</button>
+      <input id="gotoPage" type="number" min="1" style="width:70px" placeholder="Trang">
+      <button class="btn btn-lite" id="btnGoto">Đi</button>
+    </div>
+  </div>
+
+  <div id="matrixPanel" class="card">
+    <div class="matrix-toolbar">
+      <b id="matrixTitle">Ma trận size</b>
+      <label>Cơ sở <select id="matrixCoso"><option value="cs1">CS1</option><option value="cs2">CS2</option></select></label>
+      <button id="btnLoadMatrix" class="btn btn-main">Tải ma trận</button>
+      <span style="color:#64748b;font-size:12px">Chỉ dùng cho 1 mã sản phẩm; tối đa 731 ngày.</span>
+    </div>
+    <div id="matrixWrap" class="matrix-wrap"></div>
+  </div>
+</div>
+
+<script type="module" src="./scripts/lichsutonkhongay.js"></script>
+<script type="module">
+  import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+  khoiTaoDangNhapDungChung({
+    appContainerId:'app-container',
+    macDinhDiaDiem:'',
+    tuDongKhoaCoSo:false,
+    loginApiPath:'/api/login-cs1',
+    async onLoginSuccess(nv){
+      let ok=!!nv?.is_admin;
+      if(!ok && nv?.manv){
+        try{
+          const {data,error}=await window.supabase.rpc('get_pages_for_manv',{p_manv:nv.manv});
+          if(!error) ok=(data||[]).some(r=>r.path==='lichsutonkhongay.html');
+        }catch(e){}
+      }
+      const app=document.getElementById('app-container'); app.style.display='';
+      if(!ok){app.innerHTML='<h2 style="color:#b00020;padding:20px">⛔ Bạn không có quyền xem báo cáo này.</h2>';return false;}
+      await window.initLichSuTonKhoNgay?.();
+      return true;
+    }
+  });
+</script>
+</body>
+</html>
