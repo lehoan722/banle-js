@@ -34,6 +34,12 @@
     tbody td { border-bottom:1px solid #e4e8ef; border-right:1px solid #edf0f4; padding:7px 8px; font-size:13px; white-space:nowrap; }
     tbody tr:nth-child(even) td { background:#fbfcfe; }
     tbody tr:hover td { background:#fff6ce; }
+
+    /* Phân biệt nhanh hóa đơn bán theo cơ sở */
+    tbody tr.row-bancs1 td { background:#eaf4ff !important; } /* Bán CS1: xanh nhạt */
+    tbody tr.row-bancs2 td { background:#f1e9ff !important; } /* Bán CS2: tím nhạt */
+    tbody tr.row-bancs1:hover td { background:#dceeff !important; }
+    tbody tr.row-bancs2:hover td { background:#e8dcff !important; }
     .center { text-align:center; }
     .num { text-align:right; font-variant-numeric:tabular-nums; }
     .strong { font-weight:800; }
