@@ -53,7 +53,19 @@
     .product-row b { min-width:180px; color:#1d4ed8; }
     .product-row span { color:#475569; }
     .popup-info { padding:18px; color:#64748b; }
-    @media(max-width:800px){ .summary-wrap{grid-template-columns:1fr;} #statusMsg{width:100%;margin-left:0;} }
+
+    .loai-wrap { position:relative; display:inline-block; }
+    .loai-box { display:flex; align-items:stretch; }
+    #loaiDisplay { width:245px; cursor:pointer; background:#fff; border-radius:5px 0 0 5px; }
+    .loai-toggle { width:36px; padding:0; border-radius:0 5px 5px 0; margin-left:-1px; }
+    .loai-popup { position:absolute; top:38px; left:0; z-index:4000; width:380px; max-height:440px; overflow:auto; background:#fffdf2; border:1px solid #cfc6a3; border-radius:7px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:6px; }
+    .loai-actions { display:flex; gap:6px; position:sticky; top:-6px; background:#fff8dc; padding:6px; margin:-6px -6px 5px; border-bottom:1px solid #ddd2aa; z-index:2; }
+    .loai-actions .btn { flex:1; height:30px; padding:0 7px; font-size:12px; }
+    .loai-row { display:grid; grid-template-columns:1fr 28px; gap:6px; align-items:center; padding:5px 6px; border-bottom:1px solid #eee5bf; cursor:pointer; }
+    .loai-row:hover { background:#f6efcf; }
+    .loai-label { font-size:13px; color:#334155; }
+    .loai-check { width:16px; height:16px; justify-self:center; }
+    @media(max-width:800px){ .summary-wrap{grid-template-columns:1fr;} #statusMsg{width:100%;margin-left:0;} .loai-popup{width:min(380px,92vw);} }
   </style>
 </head>
 <body>
@@ -75,9 +87,20 @@
         </select>
       </label>
       <label>Loại chứng từ<br>
-        <select id="loaiSelect" style="height:34px;min-width:165px;">
-          <option value="">Tất cả chứng từ</option>
-        </select>
+        <span class="loai-wrap" id="loaiWrap">
+          <span class="loai-box">
+            <input type="text" id="loaiDisplay" readonly value="Tất cả chứng từ" title="Bấm để chọn nhiều loại chứng từ">
+            <button type="button" id="btnLoaiToggle" class="btn btn-lite loai-toggle" title="Chọn loại chứng từ">▼</button>
+          </span>
+          <span id="loaiPopup" class="loai-popup" style="display:none;">
+            <span class="loai-actions">
+              <button type="button" id="btnLoaiAll" class="btn btn-lite">Chọn tất cả</button>
+              <button type="button" id="btnLoaiNone" class="btn btn-lite">Bỏ tất cả</button>
+              <button type="button" id="btnLoaiApply" class="btn btn-main">Áp dụng</button>
+            </span>
+            <span id="loaiPopupList"></span>
+          </span>
+        </span>
       </label>
       <label>Mã sản phẩm<br>
         <span class="group">
