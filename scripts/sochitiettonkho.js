@@ -59,7 +59,13 @@ function renderRows(rows) {
     const negT = n(r.tong_ton) < 0 ? ' neg' : '';
     const psClass = transfer ? 'transfer' : (ps > 0 ? 'inc' : 'dec');
     const safeSohd = String(r.sohd || '').replace(/"/g,'&quot;');
-    return `<tr data-sohd="${safeSohd}">
+    const loaiList = Array.isArray(r.loai_list)
+      ? r.loai_list.map(x => String(x || '').trim().toLowerCase())
+      : [];
+    const rowClass = loaiList.includes('bancs1')
+      ? ' row-bancs1'
+      : (loaiList.includes('bancs2') ? ' row-bancs2' : '');
+    return `<tr class="${rowClass.trim()}" data-sohd="${safeSohd}">
       <td class="center">${r.stt ?? ''}</td>
       <td>${fmtDateTime(r.ngay_gio)}</td>
       <td class="invoice" title="Double click để mở chứng từ">${r.sohd || ''}</td>
