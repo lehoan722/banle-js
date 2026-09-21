@@ -26,11 +26,11 @@
 <script type="module">
 import { getProductBothBranches, refreshSalesCapability } from './scripts/nlbhModule.js';
 const $=id=>document.getElementById(id);const n=v=>Number(v||0)||0;const f=v=>n(v).toLocaleString('vi-VN',{maximumFractionDigits:2});
-function card(r){if(!r)return '<div class="card">Chưa có snapshot.</div>';return `<div class="card"><div class="branch">${String(r.diadiem||'').toUpperCase()} · ${r.masp||''}</div><div class="grid">
+function card(r){if(!r)return '<div class="card">Chưa có snapshot.</div>';const du=Number(r.confidence_score||0)>=20;const nlb=du?f(r.nang_luc_ban_coso):'—';const note=du?('/100 · tin cậy '+f(r.confidence_score)):'CHƯA ĐỦ DỮ LIỆU';return `<div class="card"><div class="branch">${String(r.diadiem||'').toUpperCase()} · ${r.masp||''}</div><div class="grid">
 <div class="metric"><b>1. Độ đầy đủ size</b><strong>${f(r.do_day_du_size)}</strong><span class="small">/100</span></div>
 <div class="metric"><b>2. Ngày bán hiệu dụng 90</b><strong>${f(r.ngay_ban_hieu_dung_90)}</strong><span class="small">ngày</span></div>
 <div class="metric"><b>3. Tốc độ bán thực tế</b><strong>${f(r.toc_do_ban_thuc_te_90)}</strong><span class="small">sp/ngày hiệu dụng</span></div>
-<div class="metric"><b>4. Năng lực bán cơ sở</b><strong>${f(r.nang_luc_ban_coso)}</strong><span class="small">/100 · tin cậy ${f(r.confidence_score)}</span></div>
+<div class="metric"><b>4. Năng lực bán cơ sở</b><strong>${nlb}</strong><span class="small">${note}</span></div>
 <div class="metric"><b>5. Chuyển thành doanh số</b><strong>${f(r.ty_le_chuyen_doi_doanh_so)}</strong><span class="small">%</span></div>
 <div class="metric"><b>6. Sức khỏe tồn kho</b><strong>${f(r.suc_khoe_ton_kho)}</strong><span class="small">/100</span></div>
 </div><div class="small" style="margin-top:10px">Tồn: <b>${f(r.ton_hientai)}</b> · Bán 30/90/365: <b>${f(r.ban_30)} / ${f(r.ban_90)} / ${f(r.ban_365)}</b> · Phủ tồn: <b>${r.so_ngay_phu_ton==null?'—':f(r.so_ngay_phu_ton)+' ngày'}</b> · Xu hướng: <b>${f(r.xu_huong_ban)}</b> · Trạng thái: <b>${r.trang_thai_ton||''}</b></div></div>`}
