@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kiểm tra Module Năng lực bán</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}.wrap{max-width:1180px;margin:auto;padding:14px}.card{background:#fff;border:1px solid #dce4ec;border-radius:12px;padding:12px;margin-bottom:12px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input,button,select{font:inherit;font-size:16px}input,select{height:42px;border:1px solid #bac8d6;border-radius:8px;padding:0 10px}button{height:42px;border:0;border-radius:8px;padding:0 14px;font-weight:800;cursor:pointer}.primary{background:#0878d1;color:#fff}.secondary{background:#eaf2f8;color:#075f9f}.status{font-size:14px;color:#526171}.grid{display:grid;grid-template-columns:repeat(6,minmax(140px,1fr));gap:8px}.metric{border:1px solid #dce4ec;border-radius:10px;padding:10px;background:#fff}.metric b{display:block;font-size:13px;color:#5b6877}.metric strong{display:block;font-size:24px;margin-top:4px}.branch{font-size:20px;font-weight:900;margin:8px 0}.small{font-size:13px;color:#64748b}.bad{color:#c62828}.good{color:#0b7a45}@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div id="login-container"></div>
+<div id="app-container">
+  <main class="wrap">
+    <div class="card">
+      <div class="row">
+        <input id="masp" placeholder="Mã sản phẩm" autocomplete="off">
+        <button id="btnLoad" class="primary">Tải 6 chỉ số</button>
+        <button id="btnFresh" class="secondary">Refresh mã rồi tải</button>
+      </div>
+      <div id="status" class="status" style="margin-top:8px">Nhập một mã sản phẩm để kiểm tra module.</div>
+    </div>
+    <div id="results"></div>
+  </main>
+</div>
+<script type="module">
+import { getProductBothBranches, refreshSalesCapability } from './scripts/nlbhModule.js';
+const $=id=>document.getElementById(id);const n=v=>Number(v||0)||0;const f=v=>n(v).toLocaleString('vi-VN',{maximumFractionDigits:2});
+function card(r){if(!r)return '<div class="card">Chưa có snapshot.</div>';return `<div class="card"><div class="branch">${String(r.diadiem||'').toUpperCase()} · ${r.masp||''}</div><div class="grid">
+<div class="metric"><b>1. Độ đầy đủ size</b><strong>${f(r.do_day_du_size)}</strong><span class="small">/100</span></div>
+<div class="metric"><b>2. Ngày bán hiệu dụng 90</b><strong>${f(r.ngay_ban_hieu_dung_90)}</strong><span class="small">ngày</span></div>
+<div class="metric"><b>3. Tốc độ bán thực tế</b><strong>${f(r.toc_do_ban_thuc_te_90)}</strong><span class="small">sp/ngày hiệu dụng</span></div>
+<div class="metric"><b>4. Năng lực bán cơ sở</b><strong>${f(r.nang_luc_ban_coso)}</strong><span class="small">/100 · tin cậy ${f(r.confidence_score)}</span></div>
+<div class="metric"><b>5. Chuyển thành doanh số</b><strong>${f(r.ty_le_chuyen_doi_doanh_so)}</strong><span class="small">%</span></div>
+<div class="metric"><b>6. Sức khỏe tồn kho</b><strong>${f(r.suc_khoe_ton_kho)}</strong><span class="small">/100</span></div>
+</div><div class="small" style="margin-top:10px">Tồn: <b>${f(r.ton_hientai)}</b> · Bán 30/90/365: <b>${f(r.ban_30)} / ${f(r.ban_90)} / ${f(r.ban_365)}</b> · Phủ tồn: <b>${r.so_ngay_phu_ton==null?'—':f(r.so_ngay_phu_ton)+' ngày'}</b> · Xu hướng: <b>${f(r.xu_huong_ban)}</b> · Trạng thái: <b>${r.trang_thai_ton||''}</b></div></div>`}
+async function load(fresh=false){const m=$('masp').value.trim().toUpperCase();if(!m)return alert('Nhập mã sản phẩm.');$('status').textContent=fresh?'Đang refresh và tính lại...':'Đang đọc snapshot...';try{if(fresh)await refreshSalesCapability([m],365);const x=await getProductBothBranches(m);$('results').innerHTML=card(x.cs1)+card(x.cs2);$('status').textContent='Đã tải.';}catch(e){console.error(e);$('status').textContent='Lỗi: '+(e?.message||e);}}
+$('btnLoad').onclick=()=>load(false);$('btnFresh').onclick=()=>load(true);$('masp').addEventListener('keydown',e=>{if(e.key==='Enter')load(false)});
+</script>
+</body>
+</html>
