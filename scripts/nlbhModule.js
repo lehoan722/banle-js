@@ -112,6 +112,7 @@ export function normalizeCapability(row) {
     tyLeChuyenDoi: n(row.ty_le_chuyen_doi_doanh_so),
     sucKhoeTon: n(row.suc_khoe_ton_kho),
     confidence: n(row.confidence_score),
+    duDuLieu: n(row.confidence_score) >= 20,
     xuHuongBan: n(row.xu_huong_ban),
     soNgayPhuTon: row.so_ngay_phu_ton == null ? null : n(row.so_ngay_phu_ton),
     trangThaiTon: row.trang_thai_ton,
