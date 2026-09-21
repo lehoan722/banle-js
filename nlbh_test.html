@@ -3,52 +3,193 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kiểm tra Module Năng lực bán</title>
+<title>Năng lực bán sản phẩm - Hoàn Tuyết</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}.wrap{max-width:1180px;margin:auto;padding:14px}.card{background:#fff;border:1px solid #dce4ec;border-radius:12px;padding:12px;margin-bottom:12px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input,button,select{font:inherit;font-size:16px}input,select{height:42px;border:1px solid #bac8d6;border-radius:8px;padding:0 10px}button{height:42px;border:0;border-radius:8px;padding:0 14px;font-weight:800;cursor:pointer}.primary{background:#0878d1;color:#fff}.secondary{background:#eaf2f8;color:#075f9f}.status{font-size:14px;color:#526171}.grid{display:grid;grid-template-columns:repeat(6,minmax(140px,1fr));gap:8px}.metric{position:relative;border:1px solid #dce4ec;border-radius:10px;padding:10px;background:#fff;cursor:help;transition:.15s box-shadow,.15s transform}.metric:hover{box-shadow:0 6px 18px #0002;transform:translateY(-1px)}.metric b{display:block;font-size:13px;color:#5b6877}.metric strong{display:block;font-size:24px;margin-top:4px}.metric-help{display:none;position:absolute;z-index:50;left:8px;right:8px;top:calc(100% + 7px);background:#172033;color:#fff;border-radius:10px;padding:11px 12px;box-shadow:0 10px 28px #0005;font-size:13px;line-height:1.42;font-weight:400}.metric:hover .metric-help,.metric.open .metric-help{display:block}.metric-help:before{content:"";position:absolute;top:-6px;left:22px;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:6px solid #172033}.metric-help strong{display:inline;font-size:13px;margin:0;color:#fff}.metric-help .ex{display:block;margin-top:6px;color:#d9e8f8}.branch{font-size:20px;font-weight:900;margin:8px 0}.small{font-size:13px;color:#64748b}.bad{color:#c62828}.good{color:#0b7a45}@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.metric-help{position:fixed;left:14px;right:14px;top:auto;bottom:14px;max-height:52vh;overflow:auto}.metric-help:before{display:none}}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f5f7fb;color:#172033}
+.wrap{max-width:1480px;margin:auto;padding:14px}.card{background:#fff;border:1px solid #dce4ec;border-radius:12px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}.field{display:flex;flex-direction:column;gap:6px}.field label{font-size:13px;font-weight:700;color:#526171}
+input,textarea,select,button{font:inherit}input,textarea,select{border:1px solid #bcc8d6;border-radius:8px;padding:10px 12px;font-size:15px;background:#fff}
+textarea{width:420px;min-height:132px;resize:vertical;line-height:1.4}select,input{height:42px}button{height:42px;border:0;border-radius:8px;padding:0 16px;font-size:16px;font-weight:800;cursor:pointer}
+.primary{background:#0b7bd3;color:#fff}.secondary{background:#e9f1f8;color:#085892}.ghost{background:#eef2f7;color:#2b3a4f}.ok{background:#1f9d55;color:#fff}
+.status{font-size:14px;color:#607086;margin-top:8px}.hint{font-size:13px;color:#64748b}.count{font-size:13px;color:#085892;font-weight:700}
+.tableWrap{overflow:auto;border:1px solid #dce4ec;border-radius:12px;background:#fff}.tbl{border-collapse:separate;border-spacing:0;width:100%;min-width:1350px}.tbl th,.tbl td{padding:10px 9px;border-bottom:1px solid #e6edf4;border-right:1px solid #edf2f6;vertical-align:top}.tbl th:last-child,.tbl td:last-child{border-right:0}.tbl th{position:sticky;top:0;background:#f7faff;font-size:14px;font-weight:800;color:#20314a;white-space:nowrap;z-index:1}
+.tbl tbody tr:hover td{background:#f8fbff}.cs1 td{background:#eef7ff}.cs2 td{background:#fff7e9}.code{font-weight:800}.diag{font-size:13px;color:#5d6f84;line-height:1.35}.num{font-weight:800;font-size:18px;display:block}.unit{font-size:12px;color:#67788e}.small{font-size:12px;color:#6a7b90}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800}.b-cs1{background:#d9ecff;color:#0f5b98}.b-cs2{background:#ffe7bb;color:#945900}.help{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#d9e8f6;color:#104f8b;font-size:12px;font-weight:900;cursor:pointer;margin-left:4px}
+.headerHelp,.cellHelp{position:relative}.tooltip{display:none;position:absolute;left:0;top:calc(100% + 8px);width:360px;max-width:min(360px,calc(100vw - 40px));background:#142437;color:#fff;padding:12px 13px;border-radius:12px;box-shadow:0 14px 32px #0005;z-index:50;font-size:13px;line-height:1.45;text-align:left;font-weight:400}.tooltip strong{display:block;margin-bottom:4px;font-size:13px}.tooltip .ex{display:block;margin-top:6px;color:#d4e5fb}.headerHelp.open .tooltip,.cellHelp.open .tooltip{display:block}.center{text-align:center}.right{text-align:right}.empty{padding:26px;text-align:center;color:#70829a}.branchBtn{min-width:72px}.branchBtn.active{background:#0b7bd3!important;color:#fff!important}
+@media(max-width:900px){.row{align-items:stretch}.field,.field textarea{width:100%}textarea{width:100%}.tooltip{position:fixed;left:14px;right:14px;top:auto;bottom:14px;width:auto;max-width:none;max-height:55vh;overflow:auto}.tbl{min-width:1200px}}
 </style>
 </head>
 <body>
-<div id="login-container"></div>
-<div id="app-container">
-  <main class="wrap">
-    <div class="card">
-      <div class="row">
-        <input id="masp" placeholder="Mã sản phẩm" autocomplete="off">
-        <button id="btnLoad" class="primary">Tải 6 chỉ số</button>
-        <button id="btnFresh" class="secondary">Refresh mã rồi tải</button>
+<div class="wrap">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div><div style="font-size:24px;font-weight:900;color:#0b63a7">NĂNG LỰC BÁN SẢN PHẨM</div><div class="hint">Module phân tích 6 chỉ số theo Mã SP × Cơ sở</div></div><div class="hint">Nguồn dữ liệu: NLBH snapshot</div></div>
+    <div class="row">
+      <div class="field" style="flex:1 1 420px">
+        <label>Mã sản phẩm (mỗi mã 1 dòng)</label>
+        <textarea id="codes" placeholder="Ví dụ:
+262108-APMH.DEN
+LPL-99-AP.KEM
+B89-QV"></textarea>
+        <div class="hint">Dán nhiều mã, mỗi mã một dòng. Hệ thống tự loại mã trùng và đổi sang chữ in hoa.</div>
       </div>
-      <div id="status" class="status" style="margin-top:8px">Nhập một mã sản phẩm để kiểm tra module.</div>
+      <div class="field" style="min-width:260px">
+        <label>Cơ sở</label>
+        <input type="hidden" id="branch" value="">
+        <div class="row" id="branchBtns" style="gap:6px">
+          <button type="button" class="branchBtn primary" data-branch="">Tất cả</button>
+          <button type="button" class="branchBtn ghost" data-branch="cs1">CS1</button>
+          <button type="button" class="branchBtn ghost" data-branch="cs2">CS2</button>
+        </div>
+        <div class="hint">Tất cả: CS1 nền xanh nhạt, CS2 nền vàng nhạt.</div>
+      </div>
+      <div class="field" style="min-width:180px">
+        <label>Số ngày phân tích khi refresh</label>
+        <select id="days">
+          <option value="180">180 ngày</option>
+          <option value="365" selected>365 ngày</option>
+          <option value="730">730 ngày</option>
+        </select>
+      </div>
+      <div class="field" style="min-width:220px">
+        <label>Thao tác</label>
+        <div class="row">
+          <button id="btnLoad" class="primary">Tải bảng chỉ số</button>
+          <button id="btnRefresh" class="secondary">Refresh rồi tải</button>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button id="btnCopy" class="ghost">Copy bảng</button>
+          <button id="btnCsv" class="ok">Xuất CSV</button>
+        </div>
+      </div>
     </div>
-    <div id="results"></div>
-  </main>
+    <div class="status" id="status">Nhập danh sách mã sản phẩm rồi bấm “Tải bảng chỉ số”.</div>
+    <div class="count" id="count"></div>
+  </div>
+
+  <div class="card">
+    <div class="tableWrap">
+      <table class="tbl" id="tbl">
+        <thead>
+          <tr>
+            <th>DIA DIEM</th>
+            <th>MÃ SP</th>
+            <th>TÊN NHÓM</th>
+            <th class="headerHelp">Độ đầy đủ size <span class="help" data-help="size">?</span><div class="tooltip" data-tip="size"></div></th>
+            <th class="headerHelp">Ngày bán hiệu dụng <span class="help" data-help="eff">?</span><div class="tooltip" data-tip="eff"></div></th>
+            <th class="headerHelp">Tốc độ bán thực tế <span class="help" data-help="vel">?</span><div class="tooltip" data-tip="vel"></div></th>
+            <th class="headerHelp">Năng lực bán cơ sở <span class="help" data-help="cap">?</span><div class="tooltip" data-tip="cap"></div></th>
+            <th class="headerHelp">Chuyển thành doanh số <span class="help" data-help="conv">?</span><div class="tooltip" data-tip="conv"></div></th>
+            <th class="headerHelp">Sức khỏe tồn kho <span class="help" data-help="health">?</span><div class="tooltip" data-tip="health"></div></th>
+            <th>THÔNG TIN PHỤ</th>
+          </tr>
+        </thead>
+        <tbody id="bodyRows"><tr><td colspan="10" class="empty">Chưa có dữ liệu.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 </div>
+
 <script type="module">
-import { getProductBothBranches, refreshSalesCapability } from './scripts/nlbhModule.js';
-const $=id=>document.getElementById(id);const n=v=>Number(v||0)||0;const f=v=>n(v).toLocaleString('vi-VN',{maximumFractionDigits:2});
-const HELP={
-  size:`<strong>Độ đầy đủ size</strong> đo mức độ cơ cấu size hiện tại còn phủ được dải size THỰC mà chính mã hàng này đã từng kinh doanh. Module không mặc định mã nào cũng phải có toàn bộ size 38–46. Ví dụ mã từ đầu chỉ nhập 39–42 thì 39,40,41,42 chính là dải chuẩn của mã; nếu hiện còn đủ cả 4 size thì điểm = 100. Trọng số từng size vẫn dựa trên nhu cầu bán thực tế của nhóm hàng/cơ sở. <span class="ex">Dùng để phân biệt “còn nhiều chiếc” với “còn đúng các size khách cần”.</span>`,
-  eff:`<strong>Ngày bán hiệu dụng</strong> là số ngày mà sản phẩm thực sự có cơ hội bán, sau khi đã điều chỉnh theo mức đầy đủ size. Một ngày đủ dải size có giá trị gần 1 ngày; ngày gãy size chỉ tính một phần; hết hàng thì tính 0. <span class="ex">Mục đích: không đánh giá oan một cơ sở bán chậm trong thời gian nó không có đủ hàng để bán.</span>`,
-  vel:`<strong>Tốc độ bán thực tế</strong> = số lượng bán / ngày bán hiệu dụng. Trang hiển thị theo dạng dễ hiểu “1 sản phẩm / X ngày hiệu dụng”. Ví dụ tốc độ 0,10 tương đương 1 sản phẩm / 10 ngày hiệu dụng. <span class="ex">Đây là chỉ số cốt lõi để so năng lực bán giữa CS1 và CS2 sau khi đã loại bớt ảnh hưởng thiếu hàng/gãy size.</span>`,
-  cap:`<strong>Năng lực bán cơ sở</strong> là điểm tổng hợp 0–100 của riêng mã này tại từng cơ sở. Nền chính gồm tốc độ bán thực tế chuẩn hóa trong cùng nhóm hàng, tỷ lệ chuyển hàng thành doanh số và xu hướng bán gần đây. Điểm được điều chỉnh theo độ tin cậy: mẫu ít vẫn được đánh giá nhưng bị kéo gần mức trung bình hơn. <span class="ex">Ngay cả khi hiện đã hết hàng, nếu lịch sử cho thấy cơ sở từng được cấp hàng và bán hết, dữ liệu đó vẫn được dùng để đánh giá năng lực.</span>`,
-  conv:`<strong>Tỷ lệ hàng được chuyển thành doanh số</strong> đo phần hàng thực sự được giao/được phép bán tại cơ sở đã biến thành doanh số. Module xét tồn đầu, hàng tăng/nhập, hàng chuyển ra và lượng bán trong kỳ phân tích. <span class="ex">Tỷ lệ cao cho thấy cơ sở sử dụng lượng hàng được giao hiệu quả; tỷ lệ thấp cần xem thêm tuổi tồn và tình trạng size trước khi kết luận.</span>`,
-  health:`<strong>Sức khỏe tồn kho</strong> đánh giá trạng thái hàng đang còn ở hiện tại, dựa trên độ đầy đủ size, số ngày phủ tồn, xu hướng bán và tuổi tồn. Hết hàng thì sức khỏe tồn = 0 dù năng lực bán lịch sử có thể vẫn cao. <span class="ex">Chỉ số này phục vụ quyết định nhập bù, cân đối/chuyển kho hoặc xử lý tồn; không đồng nghĩa với năng lực bán.</span>`
+import { getSalesCapability, refreshSalesCapability, SALES_CAPABILITY_HELP, formatVelocityRatio } from './scripts/nlbhModule.js';
+const $ = id => document.getElementById(id);
+const n = v => Number(v || 0) || 0;
+const f = (v,d=2)=>n(v).toLocaleString('vi-VN',{maximumFractionDigits:d});
+const codesFromText = txt => [...new Set(String(txt||'').split(/\r?\n/).map(x=>x.trim().toUpperCase()).filter(Boolean))];
+const helpMap = {
+  size: {title: SALES_CAPABILITY_HELP.doDayDuSize.title, text: SALES_CAPABILITY_HELP.doDayDuSize.detail, ex: SALES_CAPABILITY_HELP.doDayDuSize.short},
+  eff:  {title: SALES_CAPABILITY_HELP.ngayBanHieuDung.title, text: SALES_CAPABILITY_HELP.ngayBanHieuDung.detail, ex: SALES_CAPABILITY_HELP.ngayBanHieuDung.short},
+  vel:  {title: SALES_CAPABILITY_HELP.tocDoBan.title, text: SALES_CAPABILITY_HELP.tocDoBan.detail, ex: SALES_CAPABILITY_HELP.tocDoBan.short},
+  cap:  {title: SALES_CAPABILITY_HELP.nangLucBan.title, text: SALES_CAPABILITY_HELP.nangLucBan.detail, ex: SALES_CAPABILITY_HELP.nangLucBan.short},
+  conv: {title: SALES_CAPABILITY_HELP.chuyenDoi.title, text: SALES_CAPABILITY_HELP.chuyenDoi.detail, ex: SALES_CAPABILITY_HELP.chuyenDoi.short},
+  health:{title: SALES_CAPABILITY_HELP.sucKhoeTon.title, text: SALES_CAPABILITY_HELP.sucKhoeTon.detail, ex: SALES_CAPABILITY_HELP.sucKhoeTon.short}
 };
-function velText(v){const x=Number(v||0);if(!(x>0))return 'Chưa bán';const days=1/x;const d=days.toLocaleString('vi-VN',{maximumFractionDigits:1});return `1 SP / ${d} ngày`;}
-function helpBox(key){return `<div class="metric-help">${HELP[key]}</div>`;}
-function metric(title,value,unit,key){return `<div class="metric" tabindex="0" data-help="${key}"><b>${title}</b><strong>${value}</strong><span class="small">${unit||''}</span>${helpBox(key)}</div>`;}
-function card(r){if(!r)return '<div class="card">Chưa có snapshot.</div>';const anomaly=String(r.trang_thai_ton||'')==='DU_LIEU_TON_AM';const hasEvidence=Number(r.ngay_ban_hieu_dung_365||0)>0||Number(r.ban_365||0)>0;const nlb=(!anomaly&&hasEvidence)?f(r.nang_luc_ban_coso):'—';const conv=(!anomaly&&hasEvidence)?f(r.ty_le_chuyen_doi_doanh_so):'—';const vel=(!anomaly&&hasEvidence)?velText(r.toc_do_ban_thuc_te_90>0?r.toc_do_ban_thuc_te_90:r.toc_do_ban_thuc_te_365):'—';const note=anomaly?'DỮ LIỆU TỒN ÂM - KHÔNG DÙNG RA QUYẾT ĐỊNH':(hasEvidence?('/100 · tin cậy '+f(r.confidence_score)):'CHƯA CÓ LỊCH SỬ BÁN/CƠ HỘI BÁN');const warn=anomaly?'<div class="bad" style="font-weight:900;margin:8px 0">⚠ Dữ liệu tồn đang âm/không nhất quán. Module khóa điểm năng lực cho đến khi dữ liệu tồn được xử lý.</div>':'';return `<div class="card"><div class="branch">${String(r.diadiem||'').toUpperCase()} · ${r.masp||''}</div>${warn}<div class="grid">
-${metric('1. Độ đầy đủ size',f(r.do_day_du_size),'/100','size')}
-${metric('2. Ngày bán hiệu dụng 90',f(r.ngay_ban_hieu_dung_90),'ngày','eff')}
-${metric('3. Tốc độ bán thực tế',vel,'','vel')}
-${metric('4. Năng lực bán cơ sở',nlb,note,'cap')}
-${metric('5. Chuyển thành doanh số',conv,hasEvidence?'%':'CHƯA CÓ DỮ LIỆU','conv')}
-${metric('6. Sức khỏe tồn kho',f(r.suc_khoe_ton_kho),'/100','health')}
-</div><div class="small" style="margin-top:10px">Tồn: <b>${f(r.ton_hientai)}</b> · Bán 30/90/365: <b>${f(r.ban_30)} / ${f(r.ban_90)} / ${f(r.ban_365)}</b> · Phủ tồn: <b>${r.so_ngay_phu_ton==null?'—':f(r.so_ngay_phu_ton)+' ngày'}</b> · Xu hướng: <b>${f(r.xu_huong_ban)}</b> · Trạng thái: <b>${r.trang_thai_ton||''}</b></div></div>`}
-function bindMetricHelp(){document.querySelectorAll('.metric').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();document.querySelectorAll('.metric.open').forEach(x=>{if(x!==el)x.classList.remove('open')});el.classList.toggle('open')});el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click()}})});}
-document.addEventListener('click',()=>document.querySelectorAll('.metric.open').forEach(x=>x.classList.remove('open')));
-async function load(fresh=false){const m=$('masp').value.trim().toUpperCase();if(!m)return alert('Nhập mã sản phẩm.');$('status').textContent=fresh?'Đang refresh và tính lại...':'Đang đọc snapshot...';try{if(fresh)await refreshSalesCapability([m],365);const x=await getProductBothBranches(m);$('results').innerHTML=card(x.cs1)+card(x.cs2);bindMetricHelp();$('status').textContent='Đã tải.';}catch(e){console.error(e);$('status').textContent='Lỗi: '+(e?.message||e);}}
-$('btnLoad').onclick=()=>load(false);$('btnFresh').onclick=()=>load(true);$('masp').addEventListener('keydown',e=>{if(e.key==='Enter')load(false)});
+let lastRows = [];
+function fillHelpText(){
+  document.querySelectorAll('[data-tip]').forEach(el=>{const k=el.dataset.tip, h=helpMap[k]; if(h) el.innerHTML = `<strong>${h.title}</strong>${h.text}<span class="ex">${h.ex}</span>`;});
+}
+function showCount(codes, rows){ $('count').textContent = `Đã nhập ${codes.length} mã · Hệ thống trả về ${rows.length} dòng.`; }
+function badge(branch){ return `<span class="badge ${branch==='cs1'?'b-cs1':'b-cs2'}">${String(branch||'').toUpperCase()}</span>`; }
+function scoreCell(v, unit='/100'){ return `<span class="num">${f(v)}</span><span class="unit">${unit}</span>`; }
+function velocityCell(r){ const v = n(r.toc_do_ban_thuc_te_90) > 0 ? r.toc_do_ban_thuc_te_90 : r.toc_do_ban_thuc_te_365; return `<span class="num">${formatVelocityRatio(v)}</span>`; }
+function capabilityCell(r){ const anomaly = String(r.trang_thai_ton||'')==='DU_LIEU_TON_AM'; const hasEvidence = n(r.ngay_ban_hieu_dung_365)>0 || n(r.ban_365)>0; if(anomaly) return `<span class="num">—</span><span class="small">DỮ LIỆU TỒN ÂM</span>`; if(!hasEvidence) return `<span class="num">—</span><span class="small">CHƯA CÓ DỮ LIỆU</span>`; return `<span class="num">${f(r.nang_luc_ban_coso)}</span><span class="unit">/100 · tin cậy ${f(r.confidence_score)}</span>`; }
+function convCell(r){ const anomaly = String(r.trang_thai_ton||'')==='DU_LIEU_TON_AM'; const hasEvidence = n(r.ngay_ban_hieu_dung_365)>0 || n(r.ban_365)>0; if(anomaly || !hasEvidence) return `<span class="num">—</span>`; return `<span class="num">${f(r.ty_le_chuyen_doi_doanh_so)}</span><span class="unit">%</span>`; }
+function infoCell(r){ return `<div class="diag">Tồn: <b>${f(r.ton_hientai)}</b><br>Bán 30/90/365: <b>${f(r.ban_30,0)} / ${f(r.ban_90,0)} / ${f(r.ban_365,0)}</b><br>Phủ tồn: <b>${r.so_ngay_phu_ton==null?'—':f(r.so_ngay_phu_ton,1)+' ngày'}</b><br>Xu hướng: <b>${f(r.xu_huong_ban)}</b><br>Trạng thái: <b>${r.trang_thai_ton||''}</b></div>`; }
+function rowHtml(r){ return `<tr class="${r.diadiem==='cs1'?'cs1':'cs2'}">
+  <td>${badge(r.diadiem)}</td>
+  <td class="code"><a href="lichsutonkhongay.html?masp=${encodeURIComponent(r.masp||'')}" target="_blank" title="Mở lịch sử tồn kho theo ngày" style="color:#0057d9;text-decoration:underline">${r.masp||''}</a></td>
+  <td>${r.nhomhang||''}</td>
+  <td>${scoreCell(r.do_day_du_size)}</td>
+  <td>${scoreCell(r.ngay_ban_hieu_dung_90,'ngày')}</td>
+  <td>${velocityCell(r)}</td>
+  <td>${capabilityCell(r)}</td>
+  <td>${convCell(r)}</td>
+  <td>${scoreCell(r.suc_khoe_ton_kho)}</td>
+  <td>${infoCell(r)}</td>
+</tr>`; }
+function render(rows, codes){
+  lastRows = rows.slice();
+  const body = $('bodyRows');
+  if(!rows.length){ body.innerHTML = '<tr><td colspan="10" class="empty">Không có dữ liệu phù hợp.</td></tr>'; showCount(codes, rows); return; }
+  const order = {cs1:1, cs2:2};
+  rows.sort((a,b)=> String(a.masp).localeCompare(String(b.masp),'vi') || (order[a.diadiem]||9)-(order[b.diadiem]||9));
+  body.innerHTML = rows.map(rowHtml).join('');
+  showCount(codes, rows);
+}
+function parseCodes(){ const codes = codesFromText($('codes').value); $('codes').value = codes.join('\n'); return codes; }
+async function load(fresh=false){
+  const codes = parseCodes();
+  if(!codes.length){ alert('Hãy dán ít nhất 1 mã sản phẩm.'); return; }
+  $('status').textContent = fresh ? 'Đang refresh các mã rồi tải bảng...' : 'Đang tải bảng chỉ số...';
+  try{
+    if(fresh) await refreshSalesCapability(codes, Number($('days').value||365));
+    const rows = await getSalesCapability({ masps: codes, diadiem: $('branch').value || null, limit: Math.max(100, codes.length * 3) });
+    render(rows, codes);
+    $('status').textContent = 'Đã tải xong.';
+  }catch(e){ console.error(e); $('status').textContent = 'Lỗi: ' + (e?.message || e); }
+}
+function toClipboardText(rows){
+  const headers = ['DIA DIEM','MA SP','NHOM HANG','Do day du size','Ngay ban hieu dung','Toc do ban thuc te','Nang luc ban co so','Chuyen thanh doanh so','Suc khoe ton kho','Ton','Ban30','Ban90','Ban365','Phu ton','Xu huong','Trang thai'];
+  const lines = [headers.join('\t')];
+  rows.forEach(r=>{ lines.push([
+    String(r.diadiem||'').toUpperCase(), r.masp||'', r.nhomhang||'', f(r.do_day_du_size), f(r.ngay_ban_hieu_dung_90), formatVelocityRatio(n(r.toc_do_ban_thuc_te_90)||n(r.toc_do_ban_thuc_te_365)),
+    (n(r.ngay_ban_hieu_dung_365)>0||n(r.ban_365)>0)? `${f(r.nang_luc_ban_coso)} /100 · tin cậy ${f(r.confidence_score)}` : '—',
+    (n(r.ngay_ban_hieu_dung_365)>0||n(r.ban_365)>0)? `${f(r.ty_le_chuyen_doi_doanh_so)}%` : '—',
+    f(r.suc_khoe_ton_kho), f(r.ton_hientai), f(r.ban_30,0), f(r.ban_90,0), f(r.ban_365,0),
+    r.so_ngay_phu_ton==null?'—':f(r.so_ngay_phu_ton,1), f(r.xu_huong_ban), r.trang_thai_ton||''
+  ].join('\t')); });
+  return lines.join('\n');
+}
+function downloadCsv(rows){
+  const escape = v => '"' + String(v ?? '').replace(/"/g,'""') + '"';
+  const headers = ['DIA_DIEM','MA_SP','NHOM_HANG','DO_DAY_DU_SIZE','NGAY_BAN_HIEU_DUNG_90','TOC_DO_BAN_THUC_TE_TEXT','NANG_LUC_BAN_CO_SO','TIN_CAY','CHUYEN_THANH_DOANH_SO','SUC_KHOE_TON_KHO','TON_HIEN_TAI','BAN_30','BAN_90','BAN_365','SO_NGAY_PHU_TON','XU_HUONG_BAN','TRANG_THAI_TON'];
+  const lines = [headers.join(',')];
+  rows.forEach(r=>{ lines.push([
+    String(r.diadiem||'').toUpperCase(), r.masp||'', r.nhomhang||'', f(r.do_day_du_size), f(r.ngay_ban_hieu_dung_90), formatVelocityRatio(n(r.toc_do_ban_thuc_te_90)||n(r.toc_do_ban_thuc_te_365)),
+    f(r.nang_luc_ban_coso), f(r.confidence_score), f(r.ty_le_chuyen_doi_doanh_so), f(r.suc_khoe_ton_kho), f(r.ton_hientai), f(r.ban_30,0), f(r.ban_90,0), f(r.ban_365,0),
+    r.so_ngay_phu_ton==null?'':f(r.so_ngay_phu_ton,1), f(r.xu_huong_ban), r.trang_thai_ton||''
+  ].map(escape).join(',')); });
+  const blob = new Blob(["\uFEFF" + lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'nlbh_bang_chi_so.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function bindHelp(){
+  fillHelpText();
+  document.querySelectorAll('.help').forEach(btn=>btn.onclick=e=>{e.stopPropagation(); const box = btn.parentElement; document.querySelectorAll('.open').forEach(x=>{ if(x!==box) x.classList.remove('open');}); box.classList.toggle('open');});
+  document.addEventListener('click',()=>document.querySelectorAll('.open').forEach(x=>x.classList.remove('open')));
+}
+document.querySelectorAll('.branchBtn').forEach(btn=>btn.addEventListener('click',()=>{
+  const val = btn.dataset.branch || '';
+  $('branch').value = val;
+  document.querySelectorAll('.branchBtn').forEach(x=>{x.classList.remove('active','primary');x.classList.add('ghost')});
+  btn.classList.add('active','primary');btn.classList.remove('ghost');
+}));
+$('btnLoad').onclick = ()=>load(false);
+$('btnRefresh').onclick = ()=>load(true);
+$('btnCopy').onclick = async ()=>{ if(!lastRows.length) return alert('Chưa có dữ liệu để copy.'); await navigator.clipboard.writeText(toClipboardText(lastRows)); $('status').textContent='Đã copy bảng vào clipboard.'; };
+$('btnCsv').onclick = ()=>{ if(!lastRows.length) return alert('Chưa có dữ liệu để xuất CSV.'); downloadCsv(lastRows); };
+bindHelp();
 </script>
 </body>
 </html>
