@@ -13,6 +13,7 @@ let nhomSelected = new Set();
 let allNhomhang = [];
 let maspSelected = new Set();
 let maspSuggestReq = 0;
+let reportLoaded = false;
 
 const $ = id => document.getElementById(id);
 const num = v => Number(v || 0) || 0;
@@ -226,18 +227,38 @@ async function loadReport({skipFresh=false}={}){
     const payload=currentTab==='overview'?await fetchOverview():await fetchDetail();
     currentRows=payload.rows||[]; currentSummary=payload.summary||{}; totalRows=num(payload.total_rows);
     if(currentTab==='overview') renderOverview(currentRows); else renderDetail(currentRows);
+    reportLoaded=true;
     renderSummary(); updatePager(); setStatus(`${fmt(currentRows.length)}/${fmt(totalRows)} dòng.`);
   }catch(err){console.error(err);setStatus('Lỗi tải báo cáo: '+(err?.message||err),true);}
   finally{loading=false;$('btnView').disabled=false;}
 }
 
+function showManualLoadPrompt(){
+  totalRows=0; currentRows=[]; currentSummary={}; currentPage=1; reportLoaded=false;
+  if(currentTab==='matrix'){
+    $('matrixTitle').textContent='';
+    $('matrixWrap').innerHTML='<div class="empty">Chọn mã sản phẩm và điều kiện, sau đó bấm “Tải ma trận”.</div>';
+  }else{
+    if(currentTab==='overview'){
+      $('reportHead').innerHTML=`<tr><th>Mã</th><th>Tên hàng</th><th>Nhóm</th><th>Chủng loại</th><th>Bán CS1</th><th>Bán CS2</th><th>Tồn CS1</th><th>Tồn CS2</th><th>Size còn CS1</th><th>Size còn CS2</th><th>Số size phát sinh</th><th>Bán gần nhất</th><th>Nhập gần nhất</th><th>Giá lẻ</th></tr>`;
+      $('reportBody').innerHTML='<tr><td colspan="14" class="empty"><b>Chưa tải dữ liệu.</b><br>Hãy chọn nhóm hàng / mã sản phẩm / điều kiện cần xem rồi bấm “Xem báo cáo”.</td></tr>';
+    }else{
+      $('reportHead').innerHTML=`<tr><th>Ngày</th><th>Mã</th><th>Tên hàng</th><th>Size</th><th>Cơ sở</th><th>Tồn đầu</th><th>Nhập mua</th><th>Chuyển vào</th><th>Bán</th><th>Chuyển ra</th><th>Nhập khác</th><th>Xuất khác</th><th>Tổng tăng</th><th>Tổng giảm</th><th>Tồn cuối</th></tr>`;
+      $('reportBody').innerHTML='<tr><td colspan="15" class="empty"><b>Chưa tải dữ liệu.</b><br>Hãy chọn điều kiện cần xem rồi bấm “Xem báo cáo”.</td></tr>';
+    }
+  }
+  if($('summaryBox')) $('summaryBox').innerHTML='<b>Chưa tải báo cáo.</b> Hệ thống chỉ truy vấn dữ liệu sau khi người dùng chủ động bấm nút tải.';
+  updatePager();
+  setStatus('Chọn điều kiện lọc rồi bấm “Xem báo cáo”.');
+}
+
 function switchTab(tab){
-  currentTab=tab; currentPage=1;
+  currentTab=tab;
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   $('tablePanel').style.display=tab==='matrix'?'none':'block';
   $('matrixPanel').style.display=tab==='matrix'?'block':'none';
-  renderSummary();
-  if(tab!=='matrix') loadReport({skipFresh:true}); else loadMatrix();
+  // Không tự truy vấn khi đổi tab. Người dùng chủ động bấm Xem báo cáo / Tải ma trận.
+  showManualLoadPrompt();
 }
 
 async function loadMatrix(){
@@ -333,10 +354,10 @@ window.initLichSuTonKhoNgay=async function(){
   $('helpOverlay')?.addEventListener('mousedown',e=>{if(e.target?.id==='helpOverlay') closeHelp();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape' && $('helpOverlay')?.classList.contains('show')) closeHelp();});
   $('btnClearMasp').addEventListener('click',()=>{$('maspInput').value='';maspSelected.clear();syncMaspTextarea();renderMaspChips();$('maspSuggest')?.classList.remove('show');});
-  $('btnPrev').addEventListener('click',()=>{if(currentPage>1){currentPage--;loadReport({skipFresh:true});}});
-  $('btnNext').addEventListener('click',()=>{const max=Math.max(1,Math.ceil(totalRows/Number($('pageSize').value||500)));if(currentPage<max){currentPage++;loadReport({skipFresh:true});}});
-  $('btnGoto').addEventListener('click',()=>{const max=Math.max(1,Math.ceil(totalRows/Number($('pageSize').value||500)));const n=Number($('gotoPage').value||1);if(n>=1&&n<=max){currentPage=n;loadReport({skipFresh:true});}});
-  $('pageSize').addEventListener('change',()=>{currentPage=1;loadReport({skipFresh:true});});
+  $('btnPrev').addEventListener('click',()=>{if(reportLoaded && currentPage>1){currentPage--;loadReport({skipFresh:true});}});
+  $('btnNext').addEventListener('click',()=>{if(!reportLoaded)return;const max=Math.max(1,Math.ceil(totalRows/Number($('pageSize').value||500)));if(currentPage<max){currentPage++;loadReport({skipFresh:true});}});
+  $('btnGoto').addEventListener('click',()=>{if(!reportLoaded)return;const max=Math.max(1,Math.ceil(totalRows/Number($('pageSize').value||500)));const n=Number($('gotoPage').value||1);if(n>=1&&n<=max){currentPage=n;loadReport({skipFresh:true});}});
+  $('pageSize').addEventListener('change',()=>{currentPage=1;if(reportLoaded)loadReport({skipFresh:true});});
   $('btnLoadMatrix').addEventListener('click',loadMatrix); $('matrixCoso').addEventListener('change',loadMatrix);
   $('reportBody').addEventListener('dblclick',e=>{
     const tr=e.target.closest('tr[data-masp]'); if(!tr)return; const masp=tr.dataset.masp; if(!masp)return;
@@ -346,5 +367,5 @@ window.initLichSuTonKhoNgay=async function(){
     const td=e.target.closest('.code'); const tr=e.target.closest('tr[data-masp]'); if(!td||!tr)return;
     $('maspInput').value=tr.dataset.masp||'';
   });
-  await loadReport();
+  showManualLoadPrompt();
 };
