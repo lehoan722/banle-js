@@ -9,6 +9,10 @@ let totalRows = 0;
 let currentRows = [];
 let currentSummary = {};
 let loading = false;
+let nhomSelected = new Set();
+let allNhomhang = [];
+let maspSelected = new Set();
+let maspSuggestReq = 0;
 
 const $ = id => document.getElementById(id);
 const num = v => Number(v || 0) || 0;
@@ -22,10 +26,35 @@ function setStatus(text,isError=false){
   el.textContent=text||''; el.classList.toggle('error',!!isError);
 }
 
-function getMaspList(){
+function syncMaspTextarea(){
+  const ta=$('maspList'); if(!ta) return;
+  ta.value=Array.from(maspSelected).join('\n');
+}
+function renderMaspChips(){
+  const box=$('maspChips'); if(!box) return;
+  box.innerHTML=Array.from(maspSelected).map(m=>`<span class="chip" data-masp="${esc(m)}">${esc(m)}<button type="button" title="Bỏ mã">×</button></span>`).join('');
+}
+function syncMaspFromTextarea(){
   const raw=($('maspList')?.value||'').split(/\r?\n/).map(x=>x.trim().toUpperCase()).filter(Boolean);
+  maspSelected=new Set(raw);
+  renderMaspChips();
+}
+function addMasp(code){
+  const m=String(code||'').trim().toUpperCase(); if(!m) return;
+  maspSelected.add(m); syncMaspTextarea(); renderMaspChips();
+  if($('maspInput')) $('maspInput').value='';
+  if($('maspSuggest')) $('maspSuggest').classList.remove('show');
+}
+function getMaspList(){
+  // Đồng bộ textarea trước để hỗ trợ dán hàng loạt.
+  const raw=($('maspList')?.value||'').split(/\r?\n/).map(x=>x.trim().toUpperCase()).filter(Boolean);
+  raw.forEach(x=>maspSelected.add(x));
   const one=($('maspInput')?.value||'').trim().toUpperCase();
-  const arr=[...new Set([...(one?[one]:[]),...raw])];
+  const arr=[...new Set([...(one?[one]:[]),...Array.from(maspSelected)])];
+  return arr.length?arr:null;
+}
+function getNhomList(){
+  const arr=Array.from(nhomSelected).filter(Boolean);
   return arr.length?arr:null;
 }
 
@@ -34,12 +63,52 @@ function filters(){
     p_tu_ngay:$('tuNgay').value,
     p_den_ngay:$('denNgay').value,
     p_dsmsp:getMaspList(),
-    p_nhomhang:($('nhomhangInput').value||'').trim()||null,
+    p_nhomhang_arr:getNhomList(),
     p_chungloai:($('chungloaiInput').value||'').trim()||null,
     p_mausac:($('mausacInput').value||'').trim()||null,
     p_nhacc:($('nhaccInput').value||'').trim()||null,
     p_size:($('sizeSelect').value||'').trim()||null
   };
+}
+
+function syncNhomDisplay(){
+  const display=$('nhomhangDisplay'); if(!display) return;
+  const arr=Array.from(nhomSelected);
+  if(!arr.length) display.value='Tất cả nhóm hàng';
+  else if(arr.length<=3) display.value=arr.join(', ');
+  else display.value=`${arr.length} nhóm đã chọn`;
+  display.title=arr.join('\n');
+  const chips=$('nhomhangChips');
+  if(chips) chips.innerHTML=arr.map(g=>`<span class="chip" data-nhom="${esc(g)}">${esc(g)}<button type="button" title="Bỏ nhóm">×</button></span>`).join('');
+}
+function renderNhomGrid(keyword=''){
+  const box=$('nhomhangGrid'); if(!box) return;
+  const kw=String(keyword||'').trim().toLowerCase();
+  const list=allNhomhang.filter(r=>!kw || String(r.ma||'').toLowerCase().includes(kw) || String(r.ten||'').toLowerCase().includes(kw));
+  box.innerHTML=list.map(r=>`<button type="button" class="group-btn ${nhomSelected.has(r.ma)?'on':''}" data-nhom="${esc(r.ma)}"><b>${esc(r.ma)}</b>${r.ten&&r.ten!==r.ma?`<small>${esc(r.ten)}</small>`:''}</button>`).join('') || '<span style="grid-column:1/-1;padding:10px;color:#64748b">Không tìm thấy nhóm hàng.</span>';
+}
+async function loadNhomhang(){
+  try{
+    const {data,error}=await supabase.from('dmnhomhang').select('manhom,tennhom').order('manhom',{ascending:true}).limit(500);
+    if(error) throw error;
+    const preferred=['AP','QB'];
+    allNhomhang=(data||[]).map(r=>({ma:String(r.manhom||'').trim(),ten:String(r.tennhom||'').trim()})).filter(r=>r.ma);
+    allNhomhang.sort((a,b)=>{const ai=preferred.indexOf(a.ma.toUpperCase()),bi=preferred.indexOf(b.ma.toUpperCase());if(ai>=0||bi>=0){if(ai<0)return 1;if(bi<0)return -1;return ai-bi;}return a.ma.localeCompare(b.ma,'vi');});
+    renderNhomGrid(''); syncNhomDisplay();
+  }catch(e){console.warn('Không tải được nhóm hàng',e);}
+}
+async function searchMaspSuggestions(keyword=''){
+  const box=$('maspSuggest'); if(!box) return;
+  const kw=String(keyword||'').trim();
+  if(!kw){box.classList.remove('show');box.innerHTML='';return;}
+  const req=++maspSuggestReq;
+  let q=supabase.from('dmhanghoa').select('masp,tensp,nhomhang').limit(30);
+  q=q.or(`masp.ilike.%${kw}%,tensp.ilike.%${kw}%`);
+  const {data,error}=await q;
+  if(req!==maspSuggestReq) return;
+  if(error){box.innerHTML=`<button type="button">Lỗi: ${esc(error.message)}</button>`;box.classList.add('show');return;}
+  box.innerHTML=(data||[]).map(r=>`<button type="button" data-masp="${esc(r.masp)}"><b>${esc(r.masp)}</b><small>${esc(r.tensp||'')} ${r.nhomhang?`• ${esc(r.nhomhang)}`:''}</small></button>`).join('') || '<button type="button">Không tìm thấy</button>';
+  box.classList.add('show');
 }
 
 function detailParams(page=currentPage){
@@ -88,12 +157,12 @@ async function ensureFresh(){
 }
 
 async function fetchOverview(page=currentPage){
-  const {data,error}=await supabase.rpc('lichsuton_overview_bundle_v1',overviewParams(page));
+  const {data,error}=await supabase.rpc('lichsuton_overview_bundle_v2',overviewParams(page));
   if(error) throw error;
   return Array.isArray(data)?(data[0]||{}):(data||{});
 }
 async function fetchDetail(page=currentPage){
-  const {data,error}=await supabase.rpc('lichsuton_ngay_bundle_v1',detailParams(page));
+  const {data,error}=await supabase.rpc('lichsuton_ngay_bundle_v2',detailParams(page));
   if(error) throw error;
   return Array.isArray(data)?(data[0]||{}):(data||{});
 }
@@ -204,9 +273,9 @@ async function fetchAllRows(mode){
     idx++; setStatus(`Đang tải dữ liệu xuất: lượt ${idx}...`);
     let payload;
     if(mode==='overview'){
-      const p={...overviewParams(1),p_limit:batch,p_offset:offset}; const {data,error}=await supabase.rpc('lichsuton_overview_bundle_v1',p); if(error) throw error; payload=Array.isArray(data)?(data[0]||{}):(data||{});
+      const p={...overviewParams(1),p_limit:batch,p_offset:offset}; const {data,error}=await supabase.rpc('lichsuton_overview_bundle_v2',p); if(error) throw error; payload=Array.isArray(data)?(data[0]||{}):(data||{});
     }else{
-      const p={...detailParams(1),p_limit:batch,p_offset:offset}; const {data,error}=await supabase.rpc('lichsuton_ngay_bundle_v1',p); if(error) throw error; payload=Array.isArray(data)?(data[0]||{}):(data||{});
+      const p={...detailParams(1),p_limit:batch,p_offset:offset}; const {data,error}=await supabase.rpc('lichsuton_ngay_bundle_v2',p); if(error) throw error; payload=Array.isArray(data)?(data[0]||{}):(data||{});
     }
     total=num(payload.total_rows); const rows=payload.rows||[]; all.push(...rows); if(!rows.length) break; offset+=rows.length;
   }
@@ -229,13 +298,41 @@ async function exportCsv(zip=false){
 }
 function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);}
 
+function openHelp(){
+  const el=$('helpOverlay'); if(!el) return;
+  el.classList.add('show'); document.body.classList.add('help-open');
+  const body=$('helpBody'); if(body) body.scrollTop=0;
+}
+function closeHelp(){
+  const el=$('helpOverlay'); if(!el) return;
+  el.classList.remove('show'); document.body.classList.remove('help-open');
+}
+
 window.initLichSuTonKhoNgay=async function(){
   const now=new Date(); const from=new Date(now); from.setFullYear(now.getFullYear()-1);
   $('tuNgay').value=localISO(from); $('denNgay').value=localISO(now);
+  await loadNhomhang();
+  $('nhomhangDisplay')?.addEventListener('click',()=>{$('nhomhangPopup')?.classList.toggle('show');});
+  $('btnNhomToggle')?.addEventListener('click',()=>{$('nhomhangPopup')?.classList.toggle('show');});
+  $('nhomhangSearch')?.addEventListener('input',e=>renderNhomGrid(e.target.value));
+  $('nhomhangGrid')?.addEventListener('click',e=>{const b=e.target.closest('.group-btn[data-nhom]');if(!b)return;const g=b.dataset.nhom;if(nhomSelected.has(g))nhomSelected.delete(g);else nhomSelected.add(g);renderNhomGrid($('nhomhangSearch')?.value||'');syncNhomDisplay();});
+  $('btnNhomNone')?.addEventListener('click',()=>{nhomSelected.clear();renderNhomGrid($('nhomhangSearch')?.value||'');syncNhomDisplay();});
+  $('btnNhomApply')?.addEventListener('click',()=>{$('nhomhangPopup')?.classList.remove('show');currentPage=1;});
+  $('nhomhangChips')?.addEventListener('click',e=>{const c=e.target.closest('.chip[data-nhom]');if(!c||!e.target.closest('button'))return;nhomSelected.delete(c.dataset.nhom);renderNhomGrid($('nhomhangSearch')?.value||'');syncNhomDisplay();});
+  $('maspInput')?.addEventListener('input',e=>searchMaspSuggestions(e.target.value));
+  $('maspInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addMasp(e.target.value);}});
+  $('btnAddMasp')?.addEventListener('click',()=>addMasp($('maspInput')?.value));
+  $('maspSuggest')?.addEventListener('click',e=>{const b=e.target.closest('button[data-masp]');if(b)addMasp(b.dataset.masp);});
+  $('maspList')?.addEventListener('input',syncMaspFromTextarea);
+  $('maspChips')?.addEventListener('click',e=>{const c=e.target.closest('.chip[data-masp]');if(!c||!e.target.closest('button'))return;maspSelected.delete(c.dataset.masp);syncMaspTextarea();renderMaspChips();});
+  document.addEventListener('mousedown',e=>{if($('nhomhangPopup')?.classList.contains('show')&&!$('nhomhangWrap')?.contains(e.target))$('nhomhangPopup').classList.remove('show');if(!$('maspInput')?.contains(e.target)&&!$('maspSuggest')?.contains(e.target))$('maspSuggest')?.classList.remove('show');});
   document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
   $('btnView').addEventListener('click',()=>{currentPage=1;loadReport();});
   $('btnCsv').addEventListener('click',()=>exportCsv(false)); $('btnZip').addEventListener('click',()=>exportCsv(true));
-  $('btnClearMasp').addEventListener('click',()=>{$('maspInput').value='';$('maspList').value='';});
+  $('btnHelp')?.addEventListener('click',openHelp); $('btnHelpClose')?.addEventListener('click',closeHelp);
+  $('helpOverlay')?.addEventListener('mousedown',e=>{if(e.target?.id==='helpOverlay') closeHelp();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape' && $('helpOverlay')?.classList.contains('show')) closeHelp();});
+  $('btnClearMasp').addEventListener('click',()=>{$('maspInput').value='';maspSelected.clear();syncMaspTextarea();renderMaspChips();$('maspSuggest')?.classList.remove('show');});
   $('btnPrev').addEventListener('click',()=>{if(currentPage>1){currentPage--;loadReport({skipFresh:true});}});
   $('btnNext').addEventListener('click',()=>{const max=Math.max(1,Math.ceil(totalRows/Number($('pageSize').value||500)));if(currentPage<max){currentPage++;loadReport({skipFresh:true});}});
   $('btnGoto').addEventListener('click',()=>{const max=Math.max(1,Math.ceil(totalRows/Number($('pageSize').value||500)));const n=Number($('gotoPage').value||1);if(n>=1&&n<=max){currentPage=n;loadReport({skipFresh:true});}});
