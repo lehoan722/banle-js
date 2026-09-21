@@ -20,6 +20,20 @@
     .pager{display:flex;gap:8px;align-items:center;justify-content:center;padding:8px;background:#fff;border-top:1px solid #e5e7eb;position:sticky;bottom:0}.pager select,.pager input{height:30px}
     #maspList{width:190px;height:72px;border:1px solid #bfc7d4;border-radius:5px;padding:6px;text-transform:uppercase;resize:vertical}
     #matrixPanel{display:none;padding:10px}.matrix-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:8px}.matrix-wrap{overflow:auto;max-height:calc(100vh - 280px)}.matrix-table{min-width:700px}.matrix-table td,.matrix-table th{text-align:center}.matrix-table td.zero{background:#f4f4f5;color:#a1a1aa}.matrix-table td.pos{background:#ecfdf5}.matrix-table td.neg{background:#fee2e2}
+    /* ===== BỘ LỌC NHÓM HÀNG / MÃ HÀNG ĐA LỰA CHỌN ===== */
+    .multi-filter{position:relative;min-width:230px}.multi-display{display:flex;align-items:stretch}.multi-display input{width:210px;cursor:pointer;background:#fff;border-radius:5px 0 0 5px}.multi-toggle{width:34px;padding:0;border-radius:0 5px 5px 0;margin-left:-1px}.multi-popup{display:none;position:absolute;top:38px;left:0;z-index:4500;width:min(520px,92vw);background:#fffdf2;border:1px solid #cfc6a3;border-radius:9px;box-shadow:0 10px 28px #0003;padding:8px}.multi-popup.show{display:block}.multi-search{width:100%!important;margin-bottom:7px}.group-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-height:320px;overflow:auto}.group-btn{min-width:0;border:1px solid #b9cadd;background:#fff;border-radius:8px;padding:7px 4px;font-weight:800;cursor:pointer;line-height:1.1}.group-btn.on{background:#0878d1;color:#fff;border-color:#0878d1}.group-btn small{display:block;font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}.multi-actions{display:flex;gap:6px;margin-top:8px}.multi-actions button{flex:1}.selected-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;max-width:520px}.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:3px 7px;font-size:11px;font-weight:700}.chip button{border:0;background:transparent;color:#64748b;padding:0;cursor:pointer;font-weight:900}.product-filter{position:relative;min-width:260px}.product-input-row{display:flex;gap:3px}.product-input-row input{width:190px;text-transform:uppercase}.product-suggest{display:none;position:absolute;left:0;right:0;top:36px;z-index:4400;max-height:280px;overflow:auto;background:#fff;border:1px solid #aebdca;border-radius:7px;box-shadow:0 8px 22px #0002}.product-suggest.show{display:block}.product-suggest button{display:block;width:100%;border:0;border-bottom:1px solid #edf0f3;background:#fff;text-align:left;padding:7px 9px;cursor:pointer}.product-suggest button:hover{background:#eaf4ff}.product-suggest b{color:#0000ff}.product-suggest small{display:block;color:#64748b}.masp-list-wrap summary{cursor:pointer;color:#1d4ed8;font-size:11px;font-weight:700;margin-top:4px}.masp-list-wrap textarea{margin-top:4px}.toolbar .filter-wide{align-self:flex-start}@media(max-width:700px){.group-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.multi-filter,.product-filter{min-width:100%}.multi-display input{width:calc(100% - 34px)}.product-input-row input{flex:1}}
+    /* ===== HƯỚNG DẪN SỬ DỤNG FULL SCREEN ===== */
+    .help-overlay{display:none;position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.55);padding:14px}
+    .help-overlay.show{display:flex}
+    .help-dialog{width:100%;height:100%;background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;overflow:hidden}
+    .help-head{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:12px 16px;background:#eff6ff;border-bottom:1px solid #bfdbfe}
+    .help-head h2{margin:0;color:#1d4ed8;font-size:20px}.help-head .help-sub{color:#64748b;font-size:12px}
+    .help-close{margin-left:auto;background:#ef4444;color:#fff;border:0;border-radius:6px;height:34px;padding:0 14px;font-weight:700;cursor:pointer}
+    .help-body{flex:1 1 auto;overflow:auto;padding:20px 24px 36px;line-height:1.55;background:#fff}
+    .help-content{max-width:1100px;margin:0 auto}.help-content h1{font-size:24px;color:#1d4ed8;margin:0 0 4px}.help-content h2{font-size:19px;color:#0f3f7a;margin:26px 0 8px;border-bottom:1px solid #dbeafe;padding-bottom:5px}.help-content h3{font-size:16px;color:#334155;margin:18px 0 6px}.help-content p{margin:7px 0}.help-content ul,.help-content ol{margin:7px 0 12px;padding-left:24px}.help-content li{margin:4px 0}
+    .help-note{background:#fff7ed;border:1px solid #fed7aa;border-left:5px solid #f97316;padding:10px 12px;border-radius:6px;margin:12px 0}.help-six{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin:12px 0}.help-six ol{columns:2;column-gap:32px;margin-bottom:0}
+    .help-table-wrap{overflow:auto;margin:10px 0 16px}.help-table{width:100%;border-collapse:collapse;min-width:700px}.help-table th{position:static;background:#eef3f9;color:#334155;font-size:13px;text-align:left;padding:8px;border:1px solid #cbd5e1}.help-table td{white-space:normal;font-size:13px;padding:8px;border:1px solid #e2e8f0;vertical-align:top;background:#fff}.help-check{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin:10px 0}.help-code{background:#0f172a;color:#e2e8f0;border-radius:6px;padding:9px 12px;font-family:Consolas,monospace;display:inline-block;margin:3px 0}
+    body.help-open{overflow:hidden}
     @media(max-width:900px){.status{width:100%;margin-left:0}.table-card{max-height:calc(100vh - 300px)}}
   </style>
 </head>
@@ -31,16 +45,43 @@
       <label>Từ ngày<br><input type="date" id="tuNgay"></label>
       <label>Đến ngày<br><input type="date" id="denNgay"></label>
       <label>Cơ sở<br><select id="cosoSelect" class="w120"><option value="">Cả hai</option><option value="cs1">CS1</option><option value="cs2">CS2</option></select></label>
-      <label>Nhóm hàng<br><input id="nhomhangInput" class="w120" placeholder="VD: AP"></label>
+      <label class="filter-wide">Nhóm hàng<br>
+        <span class="multi-filter" id="nhomhangWrap">
+          <span class="multi-display">
+            <input id="nhomhangDisplay" type="text" readonly placeholder="Chọn một/nhiều nhóm">
+            <button type="button" id="btnNhomToggle" class="btn btn-lite multi-toggle">▼</button>
+          </span>
+          <span id="nhomhangPopup" class="multi-popup">
+            <input id="nhomhangSearch" class="multi-search" type="text" placeholder="Tìm nhanh nhóm hàng...">
+            <span id="nhomhangGrid" class="group-grid"></span>
+            <span class="multi-actions">
+              <button type="button" id="btnNhomNone" class="btn btn-lite">Bỏ tất cả</button>
+              <button type="button" id="btnNhomApply" class="btn btn-main">Áp dụng</button>
+            </span>
+          </span>
+          <span id="nhomhangChips" class="selected-chips"></span>
+        </span>
+      </label>
       <label>Chủng loại<br><input id="chungloaiInput" class="w120"></label>
       <label>Màu sắc<br><input id="mausacInput" class="w120"></label>
       <label>Nhà cung cấp<br><input id="nhaccInput" class="w120"></label>
       <label>Size<br><select id="sizeSelect" class="w120"><option value="">Tất cả</option><option value="0">0</option><option>38</option><option>39</option><option>40</option><option>41</option><option>42</option><option>43</option><option>44</option><option>45</option><option>46</option></select></label>
-      <label>Mã sản phẩm<br><span class="masp-wrap"><input id="maspInput" placeholder="Một mã"><button class="btn btn-lite" id="btnClearMasp">✕</button></span></label>
-      <label>Danh sách mã<br><textarea id="maspList" placeholder="Mỗi mã 1 dòng"></textarea></label>
+      <label class="filter-wide">Mã sản phẩm<br>
+        <span class="product-filter">
+          <span class="product-input-row">
+            <input id="maspInput" autocomplete="off" placeholder="Gõ mã hoặc tên sản phẩm">
+            <button class="btn btn-lite" id="btnAddMasp" type="button" title="Thêm mã">＋</button>
+            <button class="btn btn-lite" id="btnClearMasp" type="button" title="Xóa tất cả mã">✕</button>
+          </span>
+          <span id="maspSuggest" class="product-suggest"></span>
+          <span id="maspChips" class="selected-chips"></span>
+          <details class="masp-list-wrap"><summary>Dán danh sách mã</summary><textarea id="maspList" placeholder="Mỗi mã 1 dòng"></textarea></details>
+        </span>
+      </label>
       <button id="btnView" class="btn btn-main">Xem báo cáo</button>
       <button id="btnCsv" class="btn btn-green">Xuất CSV</button>
       <button id="btnZip" class="btn btn-green">Xuất ZIP</button>
+      <button id="btnHelp" class="btn btn-lite" title="Hướng dẫn sử dụng">❓ Help</button>
       <span id="statusMsg" class="status"></span>
     </div>
     <div class="tabs">
@@ -74,6 +115,151 @@
       <span style="color:#64748b;font-size:12px">Chỉ dùng cho 1 mã sản phẩm; tối đa 731 ngày.</span>
     </div>
     <div id="matrixWrap" class="matrix-wrap"></div>
+  </div>
+</div>
+
+<div id="helpOverlay" class="help-overlay" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+  <div class="help-dialog">
+    <div class="help-head">
+      <div>
+        <h2 id="helpTitle">HƯỚNG DẪN SỬ DỤNG - LỊCH SỬ TỒN KHO THEO NGÀY</h2>
+        <div class="help-sub">Hướng dẫn xem báo cáo và xuất dữ liệu chuẩn để xây dựng 6 chỉ số đánh giá năng lực bán theo cơ cấu size</div>
+      </div>
+      <button type="button" id="btnHelpClose" class="help-close">Đóng ✕</button>
+    </div>
+    <div id="helpBody" class="help-body">
+      <div class="help-content">
+        <h1>HƯỚNG DẪN SỬ DỤNG</h1>
+        <p><b>TRANG LỊCH SỬ TỒN KHO THEO NGÀY</b></p>
+        <p>Mục tiêu: sử dụng báo cáo hằng ngày và xuất dữ liệu chuẩn để xây dựng 6 chỉ số đánh giá năng lực bán theo cơ cấu size.</p>
+
+        <div class="help-six">
+          <b>6 chỉ số nền sẽ xây dựng từ dữ liệu này:</b>
+          <ol>
+            <li>Độ đầy đủ size</li>
+            <li>Ngày bán hiệu dụng</li>
+            <li>Tốc độ bán thực tế</li>
+            <li>Năng lực bán của cơ sở</li>
+            <li>Tỷ lệ hàng được chuyển thành doanh số</li>
+            <li>Sức khỏe tồn kho</li>
+          </ol>
+        </div>
+
+        <h2>1. Trang này dùng để làm gì?</h2>
+        <ul>
+          <li>Theo dõi lịch sử tồn kho của nhiều mã sản phẩm theo ngày, theo size và theo từng cơ sở.</li>
+          <li>Xem một mã hàng từ góc tổng quan xuống chi tiết: bán bao nhiêu, tồn bao nhiêu, size nào còn, size nào đã mất và thay đổi từ ngày nào.</li>
+          <li>So sánh CS1 và CS2 trên cùng một sản phẩm để phát hiện hàng nằm sai cơ sở, thiếu size, gãy size hoặc chậm bán.</li>
+          <li>Xuất dữ liệu nghiên cứu dạng CSV/ZIP để phân tích quy luật size đẹp, thời điểm gãy size và tốc độ bán thực tế.</li>
+        </ul>
+        <div class="help-note"><b>Lưu ý:</b> Trang này không thay thế “Sổ chi tiết tồn kho”. Khi cần truy ngược tới từng hóa đơn/chứng từ, mở chi tiết từ mã hàng để sang Sổ chi tiết tồn kho.</div>
+
+        <h2>2. Ý nghĩa các bộ lọc</h2>
+        <div class="help-table-wrap"><table class="help-table">
+          <thead><tr><th>Bộ lọc</th><th>Cách dùng</th><th>Khuyến nghị khi xuất dữ liệu nghiên cứu</th></tr></thead>
+          <tbody>
+            <tr><td>Từ ngày - Đến ngày</td><td>Chọn khoảng thời gian muốn phân tích.</td><td>Nên dùng 12 tháng liên tục cho bộ dữ liệu nghiên cứu đầu tiên.</td></tr>
+            <tr><td>Cơ sở</td><td>Cả hai / CS1 / CS2.</td><td>Chọn <b>Cả hai</b> để so sánh hai cơ sở và không làm mất dữ liệu.</td></tr>
+            <tr><td>Nhóm hàng</td><td>Lọc AP, QB hoặc nhóm khác.</td><td>Nên xuất từng nhóm chính riêng để file nhẹ và dễ phân tích.</td></tr>
+            <tr><td>Chủng loại</td><td>Thu hẹp trong nhóm hàng.</td><td>Để trống ở lần xuất đầu; chỉ dùng khi cần nghiên cứu sâu.</td></tr>
+            <tr><td>Màu sắc / NCC</td><td>Lọc theo thuộc tính sản phẩm.</td><td>Để trống ở bộ dữ liệu nền.</td></tr>
+            <tr><td>Mã sản phẩm</td><td>Xem một mã cụ thể.</td><td>Để trống khi xuất cả nhóm; dùng khi kiểm tra một case cụ thể.</td></tr>
+            <tr><td>Danh sách mã</td><td>Dán nhiều mã, mỗi mã một dòng.</td><td>Dùng cho một tập mã mẫu hoặc kiểm tra lại các mã bất thường.</td></tr>
+            <tr><td>Size</td><td>Lọc một size cụ thể.</td><td>Chọn <b>Tất cả</b> khi xuất dữ liệu nghiên cứu.</td></tr>
+            <tr><td>Chế độ hiển thị</td><td>Ngày có biến động / đầy đủ từng ngày (nếu có).</td><td>Ưu tiên ngày có biến động khi xuất dữ liệu lớn; dữ liệu vẫn đủ để dựng lại khoảng tồn.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h2>3. Cách xem báo cáo hằng ngày</h2>
+        <p><b>Quy trình khuyến nghị:</b></p>
+        <ol>
+          <li>Chọn khoảng ngày cần xem.</li>
+          <li>Chọn <b>Cơ sở = Cả hai</b> nếu muốn so sánh CS1 và CS2.</li>
+          <li>Chọn Nhóm hàng hoặc nhập Mã sản phẩm.</li>
+          <li>Để <b>Size = Tất cả</b> nếu mục tiêu là đánh giá cơ cấu size.</li>
+          <li>Bấm <b>Xem báo cáo</b>.</li>
+          <li>Xem lần lượt: <b>Tổng quan nhiều mã → Lịch sử theo ngày → Ma trận size theo ngày</b>.</li>
+          <li>Khi thấy một mã bất thường, double-click dòng mã để mở Sổ chi tiết tồn kho và kiểm tra chứng từ gốc.</li>
+        </ol>
+
+        <h2>4. Cách đọc 3 khu vực chính</h2>
+        <h3>4.1. Tổng quan nhiều mã</h3>
+        <p>Dùng để sàng lọc nhanh mã nào cần xem sâu. Tập trung vào: bán CS1/CS2, tồn CS1/CS2, số size còn, ngày bán gần nhất và ngày nhập gần nhất. Nếu một cơ sở bán nhanh nhưng tồn thấp trong khi cơ sở kia tồn cao và bán chậm, đó là mã cần ưu tiên kiểm tra điều chuyển.</p>
+        <h3>4.2. Lịch sử theo ngày</h3>
+        <p>Đây là bảng quan trọng nhất cho việc xây chỉ số. Mỗi dòng thể hiện biến động theo ngày - mã - size - cơ sở, gồm tồn đầu, nhập, chuyển vào, bán, chuyển ra và tồn cuối. Bảng này giúp xác định đúng thời điểm sản phẩm bắt đầu thiếu size hoặc hết size.</p>
+        <h3>4.3. Ma trận size theo ngày</h3>
+        <p>Dùng để nhìn trực quan cơ cấu size. Khi các size ở giữa biến mất nhưng các size biên vẫn còn, sản phẩm có thể vẫn còn tồn số lượng nhưng khả năng bán thực tế đã giảm mạnh. Đây là dữ liệu dùng để xác định “size đẹp”, “gãy size”, “tồn lẻ” và hệ số ngày bán hiệu dụng.</p>
+
+        <h2>5. Cách xuất dữ liệu để gửi phân tích 6 chỉ số</h2>
+        <p><b>Thiết lập chuẩn cho lần xuất đầu tiên:</b></p>
+        <div class="help-table-wrap"><table class="help-table">
+          <thead><tr><th>Thiết lập</th><th>Giá trị</th></tr></thead>
+          <tbody>
+            <tr><td>Khoảng thời gian</td><td>12 tháng liên tục</td></tr>
+            <tr><td>Cơ sở</td><td><b>Cả hai</b></td></tr>
+            <tr><td>Nhóm hàng</td><td>Xuất từng nhóm riêng: trước tiên AP và QB, sau đó các nhóm chính khác</td></tr>
+            <tr><td>Chủng loại</td><td>Tất cả / để trống</td></tr>
+            <tr><td>Màu sắc</td><td>Tất cả / để trống</td></tr>
+            <tr><td>Nhà cung cấp</td><td>Tất cả / để trống</td></tr>
+            <tr><td>Mã sản phẩm</td><td>Để trống</td></tr>
+            <tr><td>Danh sách mã</td><td>Để trống</td></tr>
+            <tr><td>Size</td><td><b>Tất cả</b></td></tr>
+            <tr><td>Dữ liệu cần giữ</td><td>Cả mã bán tốt, bán chậm, không bán, hết hàng và tồn lẻ</td></tr>
+            <tr><td>Định dạng</td><td>Ưu tiên CSV; nếu nhiều file hoặc file lớn thì nén ZIP</td></tr>
+          </tbody>
+        </table></div>
+        <div class="help-note"><b>QUAN TRỌNG:</b> Khi xuất dữ liệu nghiên cứu, không chỉ lấy những mã có bán. Cần giữ cả mã bán chậm, không bán, hết hàng và còn tồn lẻ. Nếu chỉ lấy mã có phát sinh bán, mô hình sẽ bị thiên lệch.</div>
+
+        <h2>6. Thứ tự dữ liệu nên gửi</h2>
+        <ol>
+          <li><b>Nhóm AP (áo phông)</b> - 12 tháng, chi tiết size, cả hai cơ sở.</li>
+          <li><b>Nhóm QB (quần bò)</b> - 12 tháng, chi tiết size, cả hai cơ sở.</li>
+          <li>Sau khi phân tích hai nhóm đầu, mới bổ sung các nhóm lớn khác như quần âu, sơ mi, áo khoác, giày/dép tùy nhu cầu.</li>
+        </ol>
+        <p>Nếu file quá lớn, chia theo nhóm hoặc theo 6 tháng; không cần chia theo từng mã.</p>
+
+        <h2>7. Dữ liệu này sẽ được dùng thế nào để xây 6 chỉ số?</h2>
+        <div class="help-table-wrap"><table class="help-table">
+          <thead><tr><th>Chỉ số</th><th>Dữ liệu sẽ dùng để tính</th></tr></thead>
+          <tbody>
+            <tr><td><b>Độ đầy đủ size</b></td><td>Tính tỷ trọng bán của từng size theo nhóm hàng và theo cơ sở; xác định size lõi/size đẹp; đo mức giảm sức bán khi mất 1-2 size đẹp hoặc chỉ còn 1/2-1/3 dải size.</td></tr>
+            <tr><td><b>Ngày bán hiệu dụng</b></td><td>Mỗi ngày được quy đổi theo chất lượng cơ cấu size. Ngày đủ size có trọng số cao; ngày chỉ còn size lẻ có trọng số rất thấp hoặc không tính.</td></tr>
+            <tr><td><b>Tốc độ bán thực tế</b></td><td>Số lượng bán chia cho ngày bán hiệu dụng, thay vì chia cho ngày lịch thông thường.</td></tr>
+            <tr><td><b>Năng lực bán của cơ sở</b></td><td>So sánh tốc độ bán thực tế, tỷ lệ chuyển hàng thành doanh số, cơ cấu size và xu hướng gần đây giữa CS1 và CS2.</td></tr>
+            <tr><td><b>Tỷ lệ hàng được chuyển thành doanh số</b></td><td>Đo lượng hàng thực sự được cấp cho cơ sở và tỷ lệ biến thành bán, có điều chỉnh chuyển vào/chuyển ra.</td></tr>
+            <tr><td><b>Sức khỏe tồn kho</b></td><td>Đánh giá tồn hiện tại còn “khỏe” hay đã gãy size, tồn lẻ, tồn già và cần điều chuyển/xả hàng.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h2>8. Kiểm tra nhanh trước khi gửi dữ liệu</h2>
+        <div class="help-check">
+          <div>☐ File có đủ cột ngày, mã, size, cơ sở, tồn đầu, nhập, chuyển vào, bán, chuyển ra, tồn cuối.</div>
+          <div>☐ Cơ sở đang để Cả hai khi xuất bộ dữ liệu nghiên cứu.</div>
+          <div>☐ Size đang để Tất cả; không tổng hợp size.</div>
+          <div>☐ Khoảng thời gian đủ dài (khuyến nghị 12 tháng).</div>
+          <div>☐ Không lọc bỏ các mã bán bằng 0 hoặc mã tồn lẻ.</div>
+          <div>☐ Nếu xuất nhiều nhóm, tên file ghi rõ nhóm và khoảng thời gian.</div>
+          <div>☐ Nếu dữ liệu lớn, nén ZIP trước khi tải lên.</div>
+        </div>
+
+        <h2>9. Tên file khuyến nghị</h2>
+        <div class="help-code">AP_2025-09-01_2026-08-31.csv</div><br>
+        <div class="help-code">QB_2025-09-01_2026-08-31.csv</div><br>
+        <div class="help-code">du_lieu_lich_su_ton_kho_AP_QB.zip</div>
+
+        <h2>10. Mục tiêu của lần phân tích đầu tiên</h2>
+        <p>Sau khi nhận dữ liệu AP và QB, bước đầu sẽ chưa vội chấm điểm 0-100. Trước tiên cần đo bằng dữ liệu thực:</p>
+        <ul>
+          <li>Tỷ trọng bán của từng size theo từng nhóm hàng và từng cơ sở.</li>
+          <li>Những size nào là size lõi/size đẹp thực tế.</li>
+          <li>Tốc độ bán thay đổi bao nhiêu khi mất 1 size lõi, 2 size lõi hoặc chỉ còn 1/2-1/3 dải size.</li>
+          <li>Bao nhiêu ngày dữ liệu là đủ để một điểm năng lực bán có độ tin cậy.</li>
+          <li>CS1 và CS2 có khác nhau về cơ cấu size và tốc độ bán hay không.</li>
+          <li>Ngưỡng nào nên coi là tồn khỏe, bắt đầu gãy size, tồn lẻ và cần thanh lý.</li>
+        </ul>
+        <div class="help-note">Sau khi các ngưỡng trên được đo từ dữ liệu thật của shop, chúng ta mới khóa công thức cuối cùng cho 6 chỉ số nền. Cách này giúp bộ điểm phản ánh đúng đặc thù hàng thời trang của cửa hàng thay vì dùng ngưỡng chung mang tính suy đoán.</div>
+      </div>
+    </div>
   </div>
 </div>
 
