@@ -132,3 +132,50 @@ export default {
   compareBranches,
   normalizeCapability
 };
+
+// ------------------------------------------------------------
+// V1.4 - helper hien thi va giai thich 6 chi so dung chung
+// ------------------------------------------------------------
+export const SALES_CAPABILITY_HELP = {
+  doDayDuSize: {
+    title: '1. Độ đầy đủ size',
+    short: 'Đo mức độ dải size hiện tại còn phủ đúng nhu cầu bán của chính mã sản phẩm.',
+    detail: 'Không lấy toàn bộ size của nhóm hàng làm chuẩn. Hệ thống xác định dải size thực mà riêng SKU này từng kinh doanh trên cả hai cơ sở, sau đó chuẩn hóa trọng số nhu cầu size trong chính dải đó. Ví dụ SKU từ đầu chỉ có 39–42 thì khi còn đủ 39–42 sẽ là 100 điểm. Nếu một cơ sở chỉ được cấp một phần dải size, độ đầy đủ tại cơ sở đó sẽ thấp tương ứng để phản ánh cơ hội bán bị hạn chế.'
+  },
+  ngayBanHieuDung: {
+    title: '2. Ngày bán hiệu dụng',
+    short: 'Số ngày sản phẩm thực sự có cơ hội bán, sau khi điều chỉnh theo tình trạng size.',
+    detail: 'Một ngày lịch không mặc định bằng 1 ngày bán. Ngày đủ dải size của SKU được tính gần 1 ngày; ngày thiếu các size quan trọng bị giảm trọng số; ngày hết hàng có trọng số 0. Nhờ đó cơ sở không bị đánh giá bán chậm chỉ vì không được cấp hàng hoặc bị gãy size.'
+  },
+  tocDoBan: {
+    title: '3. Tốc độ bán thực tế',
+    short: 'Số sản phẩm bán được chia cho tổng ngày bán hiệu dụng.',
+    detail: 'Đây là tốc độ bán đã loại ảnh hưởng của những ngày không có hàng hoặc cơ cấu size quá yếu. Trên giao diện hiển thị theo dạng dễ đọc, ví dụ 0,1 sp/ngày sẽ được viết thành “1 sản phẩm / 10 ngày hiệu dụng”. Đây là chỉ số cốt lõi để so sánh năng lực bán giữa CS1 và CS2.'
+  },
+  nangLucBan: {
+    title: '4. Năng lực bán của cơ sở',
+    short: 'Điểm tổng hợp cho biết mã này thực sự phù hợp với cơ sở nào hơn.',
+    detail: 'Điểm nền gồm khoảng 55% tốc độ bán đã chuẩn hóa trong cùng nhóm hàng và cơ sở, 30% khả năng chuyển hàng được giao thành doanh số, 15% xu hướng bán gần đây. Khi dữ liệu còn ít, hệ thống vẫn cho điểm để so sánh nhưng kéo điểm về gần mức trung tính 50 theo độ tin cậy. Vì vậy cần đọc cùng chỉ số “tin cậy”: điểm cao nhưng tin cậy thấp mới chỉ là tín hiệu sơ bộ.'
+  },
+  chuyenDoi: {
+    title: '5. Tỷ lệ hàng được chuyển thành doanh số',
+    short: 'Đo phần hàng thực sự được giao cho cơ sở đã biến thành bán.',
+    detail: 'V1.4 dùng toàn bộ khoảng dữ liệu tính toán (thường 365 ngày), lấy lượng bán chia cho lượng hàng thực tế có cơ hội bán tại cơ sở. Hàng đã chuyển ra khỏi cơ sở được trừ khỏi lượng cung để tránh đánh giá oan. Ví dụ cơ sở được cấp 2 chiếc và bán hết cả 2 thì tỷ lệ có thể đạt 100% dù mẫu còn nhỏ.'
+  },
+  sucKhoeTon: {
+    title: '6. Sức khỏe tồn kho',
+    short: 'Đo tồn hiện tại còn khỏe để tiếp tục bán hay đã thành tồn xấu.',
+    detail: 'Không phải tồn càng nhiều càng khỏe. Điểm kết hợp độ đầy đủ size hiện tại, số ngày phủ tồn so với tốc độ bán, xu hướng bán gần đây và tuổi tồn. Hết hàng thì sức khỏe tồn bằng 0 vì không còn hàng để bán; một mã còn đủ size nhưng bán quá chậm có thể bị xếp “tồn chậm”, không bị gọi nhầm là “gãy size”.'
+  }
+};
+
+export function formatVelocityRatio(value, maximumFractionDigits = 1) {
+  const v = Number(value || 0);
+  if (!Number.isFinite(v) || v <= 0) return '—';
+  const fmt = n => Number(n).toLocaleString('vi-VN', { maximumFractionDigits });
+  if (v <= 1) {
+    const days = 1 / v;
+    return `1 sp / ${fmt(days)} ngày hiệu dụng`;
+  }
+  return `${fmt(v)} sp / 1 ngày hiệu dụng`;
+}
