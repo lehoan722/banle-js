@@ -818,8 +818,7 @@
                         <input id="masp" placeholder="Mã SP" autocomplete="off"
                             style="width:100%;padding-right:38px;box-sizing:border-box;" />
 
-                        <button id="btnStockQuickMasp" type="button"
-                            title="Xem nhanh thông tin và tồn kho sản phẩm"
+                        <button id="btnStockQuickMasp" type="button" title="Xem nhanh thông tin và tồn kho sản phẩm"
                             aria-label="Xem nhanh thông tin sản phẩm"
                             style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:30px;width:34px;padding:0;border:none;background:transparent;cursor:pointer;outline:none;font-size:18px;z-index:2;">
                             🔍
@@ -1809,14 +1808,17 @@
 
 
         // Giả lập phím F3 để dùng đúng nghiệp vụ cũ
+        // Nút SỬA = sửa dòng hàng đang chọn, giống phím F3
         const dispatchTarget = document.body || document.documentElement;
 
         document.getElementById('sua')?.addEventListener('click', () => {
-            if (typeof window.moPopupXacThucSua === 'function') {
-                window.moPopupXacThucSua();
-            } else {
-                alert("❌ Chưa nạp được popup sửa mới.");
-            }
+            const ev = new KeyboardEvent('keydown', {
+                key: 'F3',
+                code: 'F3',
+                bubbles: true
+            });
+
+            dispatchTarget.dispatchEvent(ev);
         });
         // Giả lập phím F2 để dùng đúng nghiệp vụ cũ 
         // document.getElementById('btn-luu')?.addEventListener('click', () => {
