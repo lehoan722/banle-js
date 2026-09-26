@@ -110,79 +110,30 @@ export async function capNhatUsedTuVanSauKhiLuuCT(chitiet, loai, diadiemTrang) {
     try {
         if (!Array.isArray(chitiet) || chitiet.length === 0) return;
 
-        // Chỉ áp dụng cho bán lẻ MT chính
         const loaiNorm = String(loai || "").toLowerCase();
         if (loaiNorm !== "bancs1" && loaiNorm !== "bancs2") return;
 
-        // Xác định prefix hóa đơn nhân viên theo địa điểm
-        const dia = String(diadiemTrang || "").toLowerCase();
-        const prefixNV = dia === "cs2" ? "bannvcs2_" : "bannvcs1_";
+        // V2: CHỈ claim theo ID nguồn đã match FIFO.
+        // Tuyệt đối không "dọn rác" tất cả dòng cùng mã như phiên bản cũ.
+        const ids = Array.from(new Set(
+            chitiet
+                .map(ct => Number(ct?.tu_van_ct_id || 0))
+                .filter(id => Number.isInteger(id) && id > 0)
+        ));
 
-        const serverNowIso = await getServerNowISO();
-        const oneHourAgoIso = new Date(new Date(serverNowIso).getTime() - 60 * 60 * 1000).toISOString();
+        if (!ids.length) return;
 
-        // Tập mã sản phẩm duy nhất có trong hóa đơn vừa lưu
-        const maspSet = new Set();
-        chitiet.forEach((ct) => {
-            const m = String(ct.masp || "").trim().toUpperCase();
-            if (m) maspSet.add(m);
-        });
+        const { error } = await supabase
+            .from("ct_hoadon_banle")
+            .update({
+                used_for_mt: true,
+                nvban_match: true
+            })
+            .in("id", ids)
+            .eq("used_for_mt", false);
 
-        if (!maspSet.size) return;
-
-        for (const masp of maspSet) {
-            const { data, error } = await supabase
-                .from("ct_hoadon_banle")
-                .select("id, size, sohd, created_at, used_for_mt, masp")
-                .eq("masp", masp)
-                .like("sohd", `${prefixNV}%`)
-                .gte("created_at", oneHourAgoIso)
-                .eq("used_for_mt", false)
-                .order("id", { ascending: false })
-                .limit(50);
-
-            if (error) {
-                console.error("Lỗi truy vấn tư vấn NV cho masp", masp, error);
-                continue;
-            }
-            if (!data || !data.length) continue;
-
-            const validRows = data.filter((r) => {
-                const s = r && r.size != null ? String(r.size).trim() : "";
-                return s !== "";
-            });
-            if (!validRows.length) continue;
-
-            // Nếu hóa đơn MT KHÔNG bán mã này thì không dọn rác nhóm này
-            const usedAny = chitiet.some(
-                (ct) => String(ct.masp || "").trim().toUpperCase() === masp
-            );
-            if (!usedAny) continue;
-
-            if (validRows.length === 1) {
-                // Chỉ dùng khi size trùng với size trên hóa đơn MT
-                const nvSize = String(validRows[0].size || "").trim();
-                const usedInMT = chitiet.some(
-                    (ct) =>
-                        String(ct.masp || "").trim().toUpperCase() === masp &&
-                        String(ct.size ?? "").trim() === nvSize
-                );
-                if (!usedInMT) continue;
-
-                await supabase
-                    .from("ct_hoadon_banle")
-                    .update({ used_for_mt: true })
-                    .eq("id", validRows[0].id);
-            } else {
-                // Có từ 2 dòng trở lên (kể cả cùng size hay khác size) → dọn rác toàn bộ nếu có phát sinh bán MT
-                const ids = validRows.map((r) => r.id);
-                if (ids.length) {
-                    await supabase
-                        .from("ct_hoadon_banle")
-                        .update({ used_for_mt: true })
-                        .in("id", ids);
-                }
-            }
+        if (error) {
+            console.error("Lỗi claim tư vấn theo tu_van_ct_id:", error);
         }
     } catch (err) {
         console.error("Lỗi capNhatUsedTuVanSauKhiLuuCT:", err);
