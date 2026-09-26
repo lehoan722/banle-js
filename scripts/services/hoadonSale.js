@@ -262,6 +262,15 @@ async function buildDetails(sohd, diadiemTrang, bangKetQua) {
       const sl = Number(item.soluongs?.[i] || 0);
       if (!sl) return;
 
+      const km = Number(
+        Array.isArray(item.kms) && i < item.kms.length
+          ? item.kms[i]
+          : (item.km || 0)
+      ) || 0;
+
+      const manvBan = Array.isArray(item.manv_bans) ? (item.manv_bans[i] || null) : null;
+      const tennvBan = Array.isArray(item.tennv_bans) ? (item.tennv_bans[i] || null) : null;
+
       rows.push({
         sohd,
         masp: item.masp,
@@ -269,8 +278,15 @@ async function buildDetails(sohd, diadiemTrang, bangKetQua) {
         size: sz,
         soluong: sl,
         gia: item.gia,
-        km: item.km,
-        thanhtien: (item.gia - item.km) * sl,
+        km,
+        km_pct: Array.isArray(item.km_pcts) ? (item.km_pcts[i] ?? null) : null,
+        km_max_pct: Array.isArray(item.km_max_pcts) ? (item.km_max_pcts[i] ?? null) : null,
+        km_source: Array.isArray(item.km_sources) ? (item.km_sources[i] || null) : null,
+        manv_ban: manvBan,
+        tennv_ban: tennvBan,
+        tu_van_ct_id: Array.isArray(item.tu_van_ct_ids) ? (item.tu_van_ct_ids[i] ?? null) : null,
+        tu_van_sohd: Array.isArray(item.tu_van_sohds) ? (item.tu_van_sohds[i] || null) : null,
+        thanhtien: (item.gia - km) * sl,
         dvt: item.dvt || '',
         diadiem: diadiemTrang,
         created_at: createdAt,
