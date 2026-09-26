@@ -1,3 +1,4 @@
+// HOAN TUYET - LINE MODEL V2.1 PRICE FORMAT FIX
 // HOAN TUYET - bangketqua.js - LINE MODEL V2
 // Mỗi lần thêm sản phẩm = một dòng độc lập.
 // Không cộng dồn cùng MASP + SIZE.
@@ -223,6 +224,20 @@ export function resetFormSauKhiNhapSize() {
     sizeInput?.select();
 }
 
+
+function parseMoneyFromTable(value) {
+    // Bảng đang hiển thị theo locale vi-VN: 480.000, 10.000...
+    // Dấu "." / "," là dấu phân cách hàng nghìn, KHÔNG phải phần thập phân.
+    const raw = String(value ?? "").trim();
+    if (!raw) return 0;
+
+    const negative = raw.startsWith("-");
+    const digits = raw.replace(/[^\d]/g, "");
+    const n = Number(digits || 0);
+
+    return negative ? -n : n;
+}
+
 export function capNhatBangKetQuaTuDOM() {
     const tbody = document.querySelector("#bangketqua tbody");
     if (!tbody) return;
@@ -235,8 +250,8 @@ export function capNhatBangKetQuaTuDOM() {
         const tensp = (row.cells[1]?.innerText || "").trim();
         const sizeText = (row.cells[2]?.innerText || "").trim() || "0";
         const sl = Number(String(row.cells[3]?.innerText || "0").replace(/[^\d.-]/g, "")) || 0;
-        const gia = Number(String(row.cells[5]?.innerText || "0").replace(/[^\d.-]/g, "")) || 0;
-        const kmHienThi = Number(String(row.cells[6]?.innerText || "0").replace(/[^\d.-]/g, "")) || 0;
+        const gia = parseMoneyFromTable(row.cells[5]?.innerText || "0");
+        const kmHienThi = parseMoneyFromTable(row.cells[6]?.innerText || "0");
         const km = sl > 0 ? Math.round(kmHienThi / sl) : 0;
 
         if (!masp || !sl) return;
