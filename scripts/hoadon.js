@@ -410,6 +410,8 @@ function getSaleBusinessDate() {
 
 window.__KM_XA_CTX = null;
 window.__TU_VAN_SELECTED = null;
+// Chặn 2 handler Enter trên #khuyenmai cùng xử lý một phím (inline + addEventListener).
+window.__KM_XA_SUPPRESS_ENTER_UNTIL = 0;
 
 function resetKmXaContext({ keepMasp = false } = {}) {
     const old = window.__KM_XA_CTX;
@@ -668,6 +670,12 @@ function finalizeEmployeeClearanceAndAdd() {
     ctx.selectedKm = kmMoney;
     ctx.confirmed = true;
     ctx.finalizing = true;
+
+    // Có thể #khuyenmai đang có cả inline onkeydown và listener addEventListener.
+    // Listener thứ nhất chốt dòng và xóa context; listener thứ hai nếu chạy tiếp
+    // sẽ tưởng đây là KM thường rồi giả lập Enter ở #size => tạo vòng SIZE <-> KM.
+    // Giữ một cửa sổ ngắn để mọi handler còn lại của CÙNG phím Enter chỉ no-op.
+    window.__KM_XA_SUPPRESS_ENTER_UNTIL = Date.now() + 500;
 
     kmEl.value = formatMoneyVN(kmMoney);
 
@@ -1052,16 +1060,30 @@ export async function chuyenFocus(e) {
             return;
         }
     } else if (e.target.id === "khuyenmai") {
-        // Trang bán nhân viên + mã có quyền xả: xử lý theo luật KM từng sản phẩm.
-        if (isBanNvPage() && getActiveKmXaContext()) {
+        // BÁN NHÂN VIÊN: #khuyenmai có luồng riêng. Tuyệt đối KHÔNG dùng lại
+        // luồng cũ "Enter KM -> giả lập Enter SIZE", vì đó chính là nguồn vòng lặp.
+        if (isBanNvPage()) {
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation?.();
-            finalizeEmployeeClearanceAndAdd();
+
+            // Nếu cùng một phím Enter đã được listener khác chốt trước đó thì bỏ qua.
+            if (Date.now() < Number(window.__KM_XA_SUPPRESS_ENTER_UNTIL || 0)) {
+                return;
+            }
+
+            const ctx = getActiveKmXaContext();
+            if (ctx) {
+                finalizeEmployeeClearanceAndAdd();
+                return;
+            }
+
+            // Ở trang NV, nếu không có context xả thì không được tự đẩy ngược về SIZE.
+            // Bình thường ô này không được focus cho hàng thường.
             return;
         }
 
-        // Chuẩn hoá khuyến mại cũ: <=100 coi là %, >100 là tiền; cập nhật lại #thanhtien 
+        // Các trang KHÁC giữ nguyên nghiệp vụ cũ.
         const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
         let km = parseKhuyenMaiInput(
             document.getElementById("khuyenmai").value
@@ -1072,7 +1094,6 @@ export async function chuyenFocus(e) {
 
         recalcThanhtienFromForm();
 
-        // 🔑 Thay vì gọi themVaoBang → giả lập Enter trên #size
         const sizeInput = document.getElementById("size");
         if (sizeInput) {
             const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
@@ -2210,12 +2231,19 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
 
             if (!isAdminUser()) {
-                if (id === "khuyenmai" && isBanNvPage() && getActiveKmXaContext()) {
-                    // Khóa sự kiện Enter tại đây, không cho handler cũ/khác tiếp tục
-                    // giả lập Enter ở #size rồi arm lại KM lần nữa.
+                if (id === "khuyenmai" && isBanNvPage()) {
                     e.stopPropagation();
                     e.stopImmediatePropagation?.();
-                    finalizeEmployeeClearanceAndAdd();
+
+                    // Handler khác của cùng phím Enter có thể đã chốt dòng rồi.
+                    if (Date.now() < Number(window.__KM_XA_SUPPRESS_ENTER_UNTIL || 0)) {
+                        return;
+                    }
+
+                    if (getActiveKmXaContext()) {
+                        finalizeEmployeeClearanceAndAdd();
+                    }
+                    // Dù có context hay không, ở trang NV không cho rơi vào luồng KM cũ.
                     return;
                 }
 
