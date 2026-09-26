@@ -17,10 +17,14 @@ export function calcTongThanhTienFromBangKetQua(bangKetQua) {
   try {
     Object.values(bangKetQua || {}).forEach((item) => {
       const gia = Number(item?.gia || 0);
-      const km = Number(item?.km || 0);
       const soluongs = item?.soluongs || [];
       for (let i = 0; i < soluongs.length; i++) {
         const sl = Number(soluongs[i] || 0);
+        const km = Number(
+          Array.isArray(item?.kms) && i < item.kms.length
+            ? item.kms[i]
+            : (item?.km || 0)
+        ) || 0;
         sum += (gia - km) * sl;
       }
     });
