@@ -1113,13 +1113,7 @@ export async function chuyenFocus(e) {
         document.getElementById("khuyenmai").value = km.toLocaleString();
 
         recalcThanhtienFromForm();
-
-        // 🔑 Giả lập Enter trên #size
-        const sizeInput = document.getElementById("size");
-        if (sizeInput) {
-            const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
-            sizeInput.dispatchEvent(ev);
-        }
+        
         return;
     }
 
@@ -2212,7 +2206,7 @@ document.addEventListener("DOMContentLoaded", () => {
         applyRoleLockToPriceFields();
     };
 
-    ["gia", "khuyenmai"].forEach(id => {
+    ["gia"].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
 
