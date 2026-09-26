@@ -1,3 +1,4 @@
+// HOAN TUYET - BAO CAO CHI TIET V1 - THEM MANV_BAN
 // baocaochitiet.js
 import { getSupabaseClient } from "./authModule.js";
 const supabase = getSupabaseClient();
@@ -397,6 +398,7 @@ function renderTable(hotData) {
         { data: "km", title: "KM", readOnly: true, width: 70, type: 'numeric', renderer: formatNumberCell },
         { data: "thanhtien", title: "Thành tiền", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell },
         { data: "ket_qua", title: "Kết quả", readOnly: true, width: 90 },
+        { data: "manv_ban", title: "NV bán", readOnly: true, width: 90 },
         { data: "baymau_by", title: "Bày mẫu bởi", readOnly: true, width: 120 },
         { data: "baymau_note", title: "Ghi chú bày mẫu", readOnly: true, width: 130 }
     ];
@@ -587,7 +589,7 @@ window.xuatExcelToanBo = async function () {
         }));
     }
 
-    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền", "Kết quả", "Bày mẫu bởi", "Ghi chú bày mẫu"];
+    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền", "Kết quả", "NV bán", "Bày mẫu bởi", "Ghi chú bày mẫu"];
     const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
     if (onlyOneProduct && !tongHopSize) headers.push("Tổng tồn kho");
     const aoa = [headers];
@@ -595,7 +597,7 @@ window.xuatExcelToanBo = async function () {
         const row = [
             r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
             r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien,
-            r.ket_qua, r.baymau_by, r.baymau_note
+            r.ket_qua, r.manv_ban, r.baymau_by, r.baymau_note
         ];
         if (onlyOneProduct && !tongHopSize) row.push(r.ton_tichluy);
         aoa.push(row);
