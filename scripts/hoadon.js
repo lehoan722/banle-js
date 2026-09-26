@@ -105,20 +105,30 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
             .from("ct_hoadon_banle")
             .select(`
     id,
+    masp,
     size,
     sohd,
+    km,
+    km_pct,
+    km_max_pct,
+    km_source,
+    manv_ban,
+    tennv_ban,
     created_at,
     used_for_mt,
     hoadon_banle!fk_cthd_sohd (
         makh,
-        khachhang
+        khachhang,
+        manv,
+        tennv
     )
 `)
             .eq("masp", masp)
             .like("sohd", `${prefix}%`)
             .gte("created_at", oneHourAgoIso)
             .eq("used_for_mt", false)
-            .order("id", { ascending: false })
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
             .limit(50);
 
         if (error) {
@@ -136,45 +146,45 @@ async function goiYSizeTuHoaDonNhanVien(maspBase) {
 
         if (!validRows.length) return null;
 
-        // Nếu có từ 2 dòng trở lên (kể cả trùng size) → không gợi ý gì
-        // Nếu có nhiều dòng:
-        // - không tự động gợi ý ngay
-        // - nhưng cache lại để chờ người dùng nhập size
-        if (validRows.length > 1) {
-
-            window.pendingMTSuggest = validRows.map(r => {
-                const hd = r.hoadon_banle || {};
-
-                return {
-                    size: String(r.size || "").trim(),
-                    makh: String(hd.makh || "").trim(),
-                    tenkh: String(hd.khachhang || "").trim()
-                };
-            });
-
+        const toTuVan = (r) => {
+            const hd = r.hoadon_banle || {};
             return {
-                multiple: true
+                id: r.id,
+                masp,
+                size: String(r.size || "").trim(),
+                sohd: String(r.sohd || "").trim(),
+                km: Number(r.km || 0),
+                km_pct: r.km_pct == null ? null : Number(r.km_pct),
+                km_max_pct: r.km_max_pct == null ? null : Number(r.km_max_pct),
+                km_source: r.km_source || null,
+                manv_ban: r.manv_ban || hd.manv || null,
+                tennv_ban: r.tennv_ban || hd.tennv || null,
+                manv: hd.manv || null,
+                tennv: hd.tennv || null,
+                makh: String(hd.makh || "").trim(),
+                tenkh: String(hd.khachhang || "").trim(),
+                created_at: r.created_at || null
             };
+        };
+
+        // FIFO:
+        // - Nếu nhiều dòng nhưng TẤT CẢ cùng size => lấy dòng phát sinh sớm nhất.
+        // - Nếu nhiều size khác nhau => cache để chờ thu ngân nhập size,
+        //   sau đó cũng chọn dòng sớm nhất trong đúng size.
+        if (validRows.length > 1) {
+            const uniqueSizes = new Set(
+                validRows.map(r => String(r.size || "").trim().toUpperCase())
+            );
+
+            if (uniqueSizes.size === 1) {
+                return toTuVan(validRows[0]); // query đã ASC created_at, id
+            }
+
+            window.pendingMTSuggest = validRows.map(toTuVan);
+            return { multiple: true };
         }
 
-        // Ưu tiên dòng có khách hàng. Nếu không có thì vẫn lấy dòng size như cũ.
-        const rowsCoKhach = validRows.filter(r => {
-            const hd = r.hoadon_banle || {};
-            return String(hd.makh || "").trim() || String(hd.khachhang || "").trim();
-        });
-
-        const row = rowsCoKhach.length === 1 ? rowsCoKhach[0] : validRows[0];
-
-        const sizeStr = String(row.size || "").trim();
-        if (!sizeStr) return null;
-
-        const hd = row.hoadon_banle || {};
-
-        return {
-            size: sizeStr,
-            makh: String(hd.makh || "").trim(),
-            tenkh: String(hd.khachhang || "").trim()
-        };
+        return toTuVan(validRows[0]);
 
     } catch (err) {
         console.error("Lỗi goiYSizeTuHoaDonNhanVien:", err);
@@ -324,7 +334,21 @@ function applyRoleLockToPriceFields() {
     ['gia', 'khuyenmai', 'thanhtien', 'chietkhau', 'chiet_khau'].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
-        // chỉ khóa khi không phải admin
+
+        // Riêng trang bán nhân viên:
+        // #khuyenmai chỉ mở khi mã hiện tại có quyền xả đã được prepareKmXaContext xác nhận.
+        if (
+            id === 'khuyenmai' &&
+            lock &&
+            isBanNvPage() &&
+            el.dataset.clearanceEnabled === '1'
+        ) {
+            el.readOnly = false;
+            delete el.dataset.lockedByRole;
+            el.title = '';
+            return;
+        }
+
         el.readOnly = lock;
         if (lock) {
             el.dataset.lockedByRole = '1';
@@ -352,6 +376,304 @@ function recalcThanhtienFromForm() {
     const ttEl = document.getElementById("thanhtien");
     if (ttEl) ttEl.value = tt.toLocaleString();
 }
+
+// ======================================================
+// KHUYẾN MẠI XẢ HÀNG THEO TỪNG SẢN PHẨM - V1
+// - Chỉ kích hoạt trên bannvcs1 / bannvcs2.
+// - #khuyenmai vẫn là ô tiền cũ.
+// - Khi mã có quyền xả, hiển thị dạng kín: "10.000-30"
+//   trong đó 10.000 = KM mặc định, 30 = % tối đa.
+// - Enter không sửa => giữ KM mặc định.
+// - Gõ 20 => hiểu 20%, thay KM mặc định bằng 20% giá bán.
+// ======================================================
+function isBanNvPage() {
+    const p = String(location.pathname || "").toLowerCase();
+    return p.includes("bannvcs1") || p.includes("bannvcs2");
+}
+
+function isBanLeMainPage() {
+    const p = String(location.pathname || "").toLowerCase();
+    return p.includes("banlemtcs1") || p.includes("banlemtcs2");
+}
+
+function formatMoneyVN(v) {
+    return Math.round(Number(v) || 0).toLocaleString("vi-VN");
+}
+
+function getSaleBusinessDate() {
+    const raw = String(document.getElementById("ngay")?.value || "").trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
+    return null;
+}
+
+window.__KM_XA_CTX = null;
+window.__TU_VAN_SELECTED = null;
+
+function resetKmXaContext({ keepMasp = false } = {}) {
+    const old = window.__KM_XA_CTX;
+    window.__KM_XA_CTX = null;
+
+    const kmEl = document.getElementById("khuyenmai");
+    if (kmEl) {
+        delete kmEl.dataset.clearanceEnabled;
+        delete kmEl.dataset.clearanceMaxPct;
+        delete kmEl.dataset.clearanceDefaultKm;
+        delete kmEl.dataset.clearanceHintValue;
+        kmEl.style.background = "";
+        kmEl.style.fontWeight = "";
+        kmEl.style.color = "";
+        kmEl.title = "";
+        if (!isAdminUser()) kmEl.readOnly = true;
+    }
+
+    if (keepMasp && old?.masp) {
+        // next size của cùng mã sẽ được arm lại từ context mới do helper phía dưới.
+    }
+}
+
+async function prepareKmXaContext(spData, masp, gia, defaultKm) {
+    if (!isBanNvPage() || !spData || !masp) {
+        resetKmXaContext();
+        return null;
+    }
+
+    let adminPct = Number(spData.giam_gia_pct || 0) || 0;
+    let rulePct = 0;
+    let maxPct = adminPct;
+    let source = adminPct > 0 ? "ADMIN" : "NONE";
+
+    try {
+        const { data, error } = await supabase.rpc("rpc_km_max_pct_v1", {
+            p_masp: String(masp).trim().toUpperCase(),
+            p_den_ngay: getSaleBusinessDate()
+        });
+        if (error) throw error;
+
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row) {
+            adminPct = Number(row.admin_pct || adminPct || 0) || 0;
+            rulePct = Number(row.rule_pct || 0) || 0;
+            maxPct = Number(row.max_pct || Math.max(adminPct, rulePct)) || 0;
+            source = String(row.source || source || "NONE");
+        }
+    } catch (err) {
+        console.warn("[KM XA] Không lấy được rpc_km_max_pct_v1, fallback admin:", err);
+        maxPct = adminPct;
+        rulePct = 0;
+        source = adminPct > 0 ? "ADMIN" : "NONE";
+    }
+
+    const ctx = {
+        masp: String(masp).trim().toUpperCase(),
+        gia: Number(gia || 0),
+        defaultKm: Number(defaultKm || 0),
+        adminPct,
+        rulePct,
+        maxPct,
+        source,
+        pendingSize: null,
+        selectedPct: null,
+        selectedKm: null,
+        confirmed: false
+    };
+
+    window.__KM_XA_CTX = ctx;
+
+    const kmEl = document.getElementById("khuyenmai");
+    if (!kmEl) return ctx;
+
+    if (maxPct > 0) {
+        const hintValue = `${formatMoneyVN(defaultKm)}-${Math.round(maxPct)}`;
+        ctx.hintValue = hintValue;
+
+        kmEl.dataset.clearanceEnabled = "1";
+        kmEl.dataset.clearanceMaxPct = String(maxPct);
+        kmEl.dataset.clearanceDefaultKm = String(defaultKm);
+        kmEl.dataset.clearanceHintValue = hintValue;
+        kmEl.readOnly = false;
+        kmEl.value = hintValue;
+        kmEl.title = "";
+    } else {
+        resetKmXaContext();
+        kmEl.value = formatMoneyVN(defaultKm);
+    }
+
+    return ctx;
+}
+
+function getActiveKmXaContext(masp = null) {
+    const ctx = window.__KM_XA_CTX;
+    if (!ctx || Number(ctx.maxPct || 0) <= 0) return null;
+    if (masp && String(ctx.masp).toUpperCase() !== String(masp).toUpperCase()) return null;
+    return ctx;
+}
+
+function armKmXaBeforeAdd(masp, size, opts = {}) {
+    if (opts?.bypassClearancePrompt === true) return false;
+    if (!isBanNvPage()) return false;
+
+    const ctx = getActiveKmXaContext(masp);
+    if (!ctx || ctx.confirmed) return false;
+
+    ctx.pendingSize = String(size ?? "").trim() || "0";
+
+    const kmEl = document.getElementById("khuyenmai");
+    if (!kmEl) return false;
+
+    // Luôn phục hồi đúng gợi ý kín trước khi cho NV quyết định.
+    const hintValue = ctx.hintValue || `${formatMoneyVN(ctx.defaultKm)}-${Math.round(ctx.maxPct)}`;
+    kmEl.value = hintValue;
+    kmEl.readOnly = false;
+
+    setTimeout(() => {
+        kmEl.focus();
+        kmEl.select();
+    }, 0);
+
+    try { window.soundWaitSize?.(); } catch (_) {}
+    return true;
+}
+
+function buildDefaultLineMeta() {
+    return {
+        km_pct: null,
+        km_max_pct: null,
+        km_source: null,
+        manv_ban: null,
+        tennv_ban: null,
+        tu_van_ct_id: null,
+        tu_van_sohd: null
+    };
+}
+
+function currentEmployeeLineMeta(ctx, usedClearance) {
+    const manv = String(document.getElementById("manv")?.value || localStorage.getItem("manv") || "").trim();
+    const tennv = String(document.getElementById("tennv")?.value || "").trim();
+    return {
+        km_pct: usedClearance ? Number(ctx?.selectedPct || 0) : null,
+        km_max_pct: Number(ctx?.maxPct || 0) || null,
+        // Lưu nguồn + trần ngay cả khi NV bán theo KM mặc định.
+        // Sau này có thể tính "đã tiết kiệm được bao nhiêu mức xả".
+        km_source: String(ctx?.source || "NONE"),
+        manv_ban: manv || null,
+        tennv_ban: tennv || null,
+        tu_van_ct_id: null,
+        tu_van_sohd: null
+    };
+}
+
+function applyTuVanToCurrentForm(tuVan) {
+    if (!tuVan) return;
+
+    window.__TU_VAN_SELECTED = { ...tuVan };
+
+    const makhEl = document.getElementById("makh");
+    const tenEl = document.getElementById("khachhang");
+    const kmEl = document.getElementById("khuyenmai");
+    const ttEl = document.getElementById("thanhtien");
+    const giaEl = document.getElementById("gia");
+    const slEl = document.getElementById("soluong");
+
+    if (makhEl && tuVan.makh) makhEl.value = tuVan.makh;
+    if (tenEl && (tuVan.tenkh || tuVan.khachhang)) tenEl.value = tuVan.tenkh || tuVan.khachhang || "";
+
+    if (kmEl && Number.isFinite(Number(tuVan.km))) {
+        kmEl.value = formatMoneyVN(tuVan.km);
+    }
+
+    if (ttEl && giaEl && slEl) {
+        const gia = toInt(giaEl.value || 0);
+        const km = Number(tuVan.km || 0);
+        const sl = toInt(slEl.value || 1) || 1;
+        ttEl.value = ((gia - km) * sl).toLocaleString("vi-VN");
+    }
+}
+
+function consumeTuVanLineMeta(masp, size) {
+    const tv = window.__TU_VAN_SELECTED;
+    if (!tv) return buildDefaultLineMeta();
+
+    const sameMasp = String(tv.masp || "").toUpperCase() === String(masp || "").toUpperCase();
+    const sameSize = String(tv.size ?? "").trim().toUpperCase() === String(size ?? "").trim().toUpperCase();
+
+    if (!sameMasp || !sameSize) return buildDefaultLineMeta();
+
+    window.__TU_VAN_SELECTED = null;
+
+    return {
+        km_pct: tv.km_pct == null ? null : Number(tv.km_pct),
+        km_max_pct: tv.km_max_pct == null ? null : Number(tv.km_max_pct),
+        km_source: tv.km_source || null,
+        manv_ban: tv.manv_ban || tv.manv || null,
+        tennv_ban: tv.tennv_ban || tv.tennv || null,
+        tu_van_ct_id: tv.id == null ? null : Number(tv.id),
+        tu_van_sohd: tv.sohd || null
+    };
+}
+
+function finalizeEmployeeClearanceAndAdd() {
+    const ctx = getActiveKmXaContext();
+    if (!ctx) return false;
+
+    const kmEl = document.getElementById("khuyenmai");
+    const giaEl = document.getElementById("gia");
+    if (!kmEl || !giaEl) return false;
+
+    const raw = String(kmEl.value || "").trim();
+    const untouched =
+        raw === String(ctx.hintValue || "") ||
+        raw === formatMoneyVN(ctx.defaultKm) ||
+        raw === String(ctx.defaultKm) ||
+        raw === "" ||
+        raw === "0";
+
+    let usedClearance = false;
+    let pct = null;
+    let kmMoney = Number(ctx.defaultKm || 0);
+
+    if (!untouched) {
+        const rawNum = Number(raw.replace(",", "."));
+        if (!Number.isFinite(rawNum) || rawNum <= 0 || rawNum > 100) {
+            alert(`❌ Hãy nhập % khuyến mại từ 1 đến ${Math.round(ctx.maxPct)}. Không nhập số tiền trực tiếp.`);
+            kmEl.focus();
+            kmEl.select();
+            return true;
+        }
+
+        pct = rawNum;
+
+        if (pct > Number(ctx.maxPct || 0)) {
+            alert(`❌ Khuyến mại tối đa của sản phẩm này là ${Math.round(ctx.maxPct)}%. Bạn đang nhập ${pct}%.`);
+            kmEl.focus();
+            kmEl.select();
+            return true;
+        }
+
+        const gia = toInt(giaEl.value || "0");
+        kmMoney = Math.round(gia * pct / 100);
+        usedClearance = true;
+    }
+
+    ctx.selectedPct = pct;
+    ctx.selectedKm = kmMoney;
+    ctx.confirmed = true;
+
+    kmEl.value = formatMoneyVN(kmMoney);
+
+    const pendingSize = String(ctx.pendingSize ?? document.getElementById("size")?.value ?? "0").trim() || "0";
+    const lineMeta = currentEmployeeLineMeta(ctx, usedClearance);
+
+    themVaoBang(pendingSize, {
+        bypassClearancePrompt: true,
+        clearanceMeta: lineMeta,
+        kmOverride: kmMoney
+    });
+
+    return true;
+}
+
 
 function chuanHoaKhuyenMaiNhapTay() {
     const giaEl = document.getElementById("gia");
@@ -556,19 +878,8 @@ function autoGoiYSizeNeuOTrong(maspBaseNow) {
             const sizeValue = String(sizeGoiY.size).trim();
             sizeInput.value = sizeValue;
 
-            // 🔥 GÁN MÃ VÀ TÊN KHÁCH HÀNG
-            if (sizeGoiY.makh || sizeGoiY.tenkh) {
-                const makhEl = document.getElementById("makh");
-                const tenEl = document.getElementById("khachhang");
-
-                if (makhEl) {
-                    makhEl.value = sizeGoiY.makh || "";
-                }
-
-                if (tenEl) {
-                    tenEl.value = sizeGoiY.tenkh || "";
-                }
-            }
+            // 🔥 GÁN đầy đủ tư vấn: khách + NV bán + KM theo từng sản phẩm
+            applyTuVanToCurrentForm(sizeGoiY);
 
             // 2) Tự động thêm vào bảng kết quả
             const nhapSizeMode =
@@ -653,31 +964,23 @@ export async function chuyenFocus(e) {
                 );
 
 
-                // Chỉ khi match đúng 1 khách mới tự gán
-                if (matched.length === 1) {
-
+                // FIFO trong đúng size: nếu còn nhiều dòng cùng mã + cùng size
+                // thì lấy dòng phát sinh SỚM NHẤT.
+                if (matched.length >= 1) {
                     const kh = matched[0];
+                    applyTuVanToCurrentForm(kh);
 
-                    const makhEl = document.getElementById("makh");
-                    const tenEl = document.getElementById("khachhang");
-
-                    if (makhEl && kh.makh) {
-                        makhEl.value = kh.makh || "";
-
-                        if (tenEl) {
-                            tenEl.value = kh.tenkh || "";
-                        }
-
-                        /*
-                         * Hàm xử lý phía dưới sẽ tiếp tục thêm sản phẩm xuống bảng.
-                         * Sau 100 ms, tự phát Enter tại ô mã khách để nạp điểm,
-                         * hạng khách và trạng thái Zalo.
-                         */
+                    /*
+                     * Hàm xử lý phía dưới sẽ tiếp tục thêm sản phẩm xuống bảng.
+                     * Sau 100 ms, tự phát Enter tại ô mã khách để nạp điểm,
+                     * hạng khách và trạng thái Zalo.
+                     */
+                    if (kh.makh) {
                         tuDongNapDayDuKhachHangSauKhiGanMa(100);
                     }
                 }
 
-                // dùng xong xóa cache
+                // Chỉ xóa cache phía client; các dòng chưa dùng vẫn used_for_mt=false trong DB.
                 window.pendingMTSuggest = null;
             }
 
@@ -732,7 +1035,14 @@ export async function chuyenFocus(e) {
             return;
         }
     } else if (e.target.id === "khuyenmai") {
-        // Chuẩn hoá khuyến mại: <=100 coi là %, >100 là tiền; cập nhật lại #thanhtien 
+        // Trang bán nhân viên + mã có quyền xả: xử lý theo luật KM từng sản phẩm.
+        if (isBanNvPage() && getActiveKmXaContext()) {
+            e.preventDefault();
+            finalizeEmployeeClearanceAndAdd();
+            return;
+        }
+
+        // Chuẩn hoá khuyến mại cũ: <=100 coi là %, >100 là tiền; cập nhật lại #thanhtien 
         const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
         let km = parseKhuyenMaiInput(
             document.getElementById("khuyenmai").value
@@ -946,6 +1256,10 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
     if (!slEl.value || parseInt(slEl.value, 10) <= 0) slEl.value = "1";
     recalcThanhtienFromForm();
 
+    // Trang bán nhân viên: lấy trần KM của đúng sản phẩm từ nguồn luật chung.
+    // Nếu có quyền xả, #khuyenmai sẽ hiển thị kín dạng "10.000-30".
+    await prepareKmXaContext(spData, maspVal, giaInt, kmDef);
+
     // vị trí kho theo cơ sở
     const cs = document.getElementById("diadiem").value;
     const vitri = cs === "cs1" ? spData.vitrikho1 : spData.vitrikho2;
@@ -984,6 +1298,20 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
         const sizeEl = document.getElementById("size");
         if (sizeEl && !sizeEl.value.trim()) {
             autoGoiYSizeNeuOTrong(baseCode || maspVal);
+        }
+    }
+
+    // Hàng KHÔNG quản size vẫn phải nhận đúng tư vấn NV/KM/khách.
+    // Trước đây luồng matching chủ yếu chạy khi cần nhập size, nên các mã size=0
+    // có thể mất thông tin người bán. V1 bổ sung lookup ngay sau khi nhận mã.
+    if (!isCCNMode() && isBanLeMTMode() && !requireManagedSizeNow) {
+        try {
+            const tv = await goiYSizeTuHoaDonNhanVien(baseCode || maspVal);
+            if (tv && !tv.multiple) {
+                applyTuVanToCurrentForm(tv);
+            }
+        } catch (err) {
+            console.warn("Match tư vấn cho hàng không quản size lỗi:", err);
         }
     }
 
@@ -1363,10 +1691,19 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     }
 
     // ==== END KIỂM TRA ====
+
+    // Trang bán nhân viên: mã đang có quyền xả thì KHÔNG thêm ngay.
+    // Chuyển sang ô #khuyenmai, bôi đen "KM mặc định-MAX%".
+    if (armKmXaBeforeAdd(masp, size, opts)) {
+        return;
+    }
+
     // Lấy giá & khuyến mại từ form
     const toInt = (v) => parseInt(String(v || "0").replace(/[.,\s]/g, ""), 10) || 0;
     let giaForm = toInt(document.getElementById("gia")?.value || "0");
-    let kmForm = toInt(document.getElementById("khuyenmai")?.value || "0");
+    let kmForm = opts?.kmOverride != null
+        ? Number(opts.kmOverride || 0)
+        : toInt(document.getElementById("khuyenmai")?.value || "0");
 
     // [SAFE GUARD] Nếu giá form vẫn = 0, fallback theo dm hàng hoá
     if (giaForm === 0 && sp) {
@@ -1390,7 +1727,7 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
     // Nếu ADMIN nhập khuyến mại tay:
     // <=100 là %, >100 là tiền
-    if (isAdminUser()) {
+    if (isAdminUser() && opts?.kmOverride == null) {
         kmForm = chuanHoaKhuyenMaiNhapTay();
     }
 
@@ -1414,11 +1751,23 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         tensp: sp.tensp,
         sizes: [],
         soluongs: [],
+        kms: [],
+        km_pcts: [],
+        km_max_pcts: [],
+        km_sources: [],
+        manv_bans: [],
+        tennv_bans: [],
+        tu_van_ct_ids: [],
+        tu_van_sohds: [],
         tong: 0,
         gia: giaForm,
-        km: kmForm,
+        km: kmForm, // fallback tương thích dữ liệu cũ
         dvt: sp.dvt || ""
     };
+
+    // Bảo đảm các mảng metadata tồn tại cả với state cũ.
+    ["kms","km_pcts","km_max_pcts","km_sources","manv_bans","tennv_bans","tu_van_ct_ids","tu_van_sohds"]
+        .forEach(k => { if (!Array.isArray(bang[k])) bang[k] = []; });
 
     // Nếu không phải ADMIN:
     // - Giá vẫn lấy theo hệ thống
@@ -1476,19 +1825,53 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         }
     }
 
-    // Cập nhật giá/km cho nhóm
+    // Cập nhật giá/km fallback cho nhóm
     bang.gia = giaForm;
     bang.km = kmForm;
 
-
-    // === CHỐT LẠI PHẦN NÀY: so sánh chuẩn hóa size ===
     const normSize = String(size).trim();
-    const index = bang.sizes.findIndex(sz => String(sz).trim() === normSize);
+
+    // Metadata dòng:
+    // - bannv: lấy quyết định KM của nhân viên.
+    // - banlemt: lấy đúng dòng tư vấn đã FIFO match.
+    let lineMeta = opts?.clearanceMeta || null;
+    if (!lineMeta && isBanLeMainPage()) {
+        lineMeta = consumeTuVanLineMeta(masp, normSize);
+    }
+    if (!lineMeta) {
+        lineMeta = buildDefaultLineMeta();
+        if (isBanNvPage()) {
+            const manv = String(document.getElementById("manv")?.value || localStorage.getItem("manv") || "").trim();
+            const tennv = String(document.getElementById("tennv")?.value || "").trim();
+            lineMeta.manv_ban = manv || null;
+            lineMeta.tennv_ban = tennv || null;
+        }
+    }
+
+    // Chỉ gộp khi thực sự là CÙNG DÒNG NGHIỆP VỤ.
+    // Cùng mã + cùng size nhưng khác NV/KM/tu_van_ct_id phải tách dòng.
+    const sameNullable = (a,b) => String(a ?? "") === String(b ?? "");
+    const index = bang.sizes.findIndex((sz, i) =>
+        String(sz).trim() === normSize &&
+        Number(bang.kms?.[i] ?? bang.km ?? 0) === Number(kmForm || 0) &&
+        sameNullable(bang.km_pcts?.[i], lineMeta.km_pct) &&
+        sameNullable(bang.manv_bans?.[i], lineMeta.manv_ban) &&
+        sameNullable(bang.tu_van_ct_ids?.[i], lineMeta.tu_van_ct_id)
+    );
+
     if (index !== -1) {
         bang.soluongs[index] += soluong;
     } else {
         bang.sizes.push(normSize);
         bang.soluongs.push(soluong);
+        bang.kms.push(Number(kmForm || 0));
+        bang.km_pcts.push(lineMeta.km_pct ?? null);
+        bang.km_max_pcts.push(lineMeta.km_max_pct ?? null);
+        bang.km_sources.push(lineMeta.km_source ?? null);
+        bang.manv_bans.push(lineMeta.manv_ban ?? null);
+        bang.tennv_bans.push(lineMeta.tennv_ban ?? null);
+        bang.tu_van_ct_ids.push(lineMeta.tu_van_ct_id ?? null);
+        bang.tu_van_sohds.push(lineMeta.tu_van_sohd ?? null);
     }
 
     bang.tong += soluong;
@@ -1520,6 +1903,20 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
 
     if (opts.afterAdd === "keepMaspFocusSize") {
+        // Với nhập size liên tiếp cùng mã: arm lại gợi ý KM cho size kế tiếp.
+        const oldCtx = window.__KM_XA_CTX;
+        if (oldCtx && isBanNvPage()) {
+            oldCtx.pendingSize = null;
+            oldCtx.selectedPct = null;
+            oldCtx.selectedKm = null;
+            oldCtx.confirmed = false;
+            const kmEl = document.getElementById("khuyenmai");
+            if (kmEl) {
+                kmEl.value = oldCtx.hintValue || `${formatMoneyVN(oldCtx.defaultKm)}-${Math.round(oldCtx.maxPct)}`;
+                kmEl.readOnly = false;
+            }
+        }
+
         // Đóng gợi ý MASP ngay khi Enter ở #masp
         window.closePopupMasp && window.closePopupMasp();
         // ✅ Tăng bộ đếm (xx) ngay trên ô #masp
@@ -1536,6 +1933,8 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         }
     } else {
         // Luồng cũ: thêm xong thì xóa masp và focus về #masp
+        resetKmXaContext();
+        window.__TU_VAN_SELECTED = null;
         resetFormBang();
     }
 
@@ -1593,6 +1992,13 @@ export function xoaDongDangChon() {
             item.tong = Math.max(0, (item.tong || 0) - sl);
             item.sizes.splice(idx, 1);
             item.soluongs.splice(idx, 1);
+
+            [
+                "kms","km_pcts","km_max_pcts","km_sources",
+                "manv_bans","tennv_bans","tu_van_ct_ids","tu_van_sohds"
+            ].forEach(k => {
+                if (Array.isArray(item[k])) item[k].splice(idx, 1);
+            });
         }
         if (item.sizes.length === 0) delete data[masp];
     } else {
@@ -1714,7 +2120,7 @@ export async function napLaiChiTietHoaDon(sohd) {
     // Reset lại bảng tạm
     resetBangKetQua();
 
-    // Ghép lại đúng cấu trúc của bangKetQua
+    // Ghép lại đúng cấu trúc mới: metadata theo từng dòng/size.
     chitiet.forEach(ct => {
         const masp = ct.masp;
         if (!bangKetQua[masp]) {
@@ -1723,21 +2129,33 @@ export async function napLaiChiTietHoaDon(sohd) {
                 tensp: ct.tensp,
                 sizes: [],
                 soluongs: [],
+                kms: [],
+                km_pcts: [],
+                km_max_pcts: [],
+                km_sources: [],
+                manv_bans: [],
+                tennv_bans: [],
+                tu_van_ct_ids: [],
+                tu_van_sohds: [],
                 tong: 0,
                 gia: ct.gia,
                 km: ct.km,
                 dvt: ct.dvt || ""
             };
         }
-        const index = bangKetQua[masp].sizes.indexOf(ct.size);
-        if (index === -1) {
-            bangKetQua[masp].sizes.push(String(ct.size)); // luôn lưu về kiểu string
 
-            bangKetQua[masp].soluongs.push(ct.soluong);
-        } else {
-            bangKetQua[masp].soluongs[index] += ct.soluong;
-        }
-        bangKetQua[masp].tong += ct.soluong;
+        const b = bangKetQua[masp];
+        b.sizes.push(String(ct.size ?? "0"));
+        b.soluongs.push(Number(ct.soluong || 0));
+        b.kms.push(Number(ct.km || 0));
+        b.km_pcts.push(ct.km_pct == null ? null : Number(ct.km_pct));
+        b.km_max_pcts.push(ct.km_max_pct == null ? null : Number(ct.km_max_pct));
+        b.km_sources.push(ct.km_source || null);
+        b.manv_bans.push(ct.manv_ban || null);
+        b.tennv_bans.push(ct.tennv_ban || null);
+        b.tu_van_ct_ids.push(ct.tu_van_ct_id == null ? null : Number(ct.tu_van_ct_id));
+        b.tu_van_sohds.push(ct.tu_van_sohd || null);
+        b.tong += Number(ct.soluong || 0);
     });
 
     capNhatBangHTML(bangKetQua, window.lastAdded);
@@ -1772,6 +2190,11 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
 
             if (!isAdminUser()) {
+                if (id === "khuyenmai" && isBanNvPage() && getActiveKmXaContext()) {
+                    finalizeEmployeeClearanceAndAdd();
+                    return;
+                }
+
                 alert("Chỉ ADMIN được sửa giá/khuyến mại.");
                 return;
             }
