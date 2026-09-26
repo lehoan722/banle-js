@@ -116,6 +116,17 @@
     display: none !important;
   }
 
+  /* CHỈ trang bán nhân viên: hiện ô KM để nhập % xả.
+     Quầy mobile vẫn giữ bố cục cũ. */
+  html.page-bannv #khuyenmai {
+    display: block !important;
+    flex: 0 1 38%;
+    max-width: 38%;
+    min-width: 0;
+    text-align: right;
+    box-sizing: border-box;
+  }
+
   /* Reset width cũ (bỏ !important trước đó) + tránh iOS ép min-content */
   #masp,
   #soluong,
