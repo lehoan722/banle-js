@@ -1,4 +1,7 @@
-// bangketqua.js
+// HOAN TUYET - bangketqua.js - LINE MODEL V2
+// Mỗi lần thêm sản phẩm = một dòng độc lập.
+// Không cộng dồn cùng MASP + SIZE.
+// Vẫn giữ shape object + arrays 1 phần tử để tương thích toàn bộ module lưu hiện tại.
 
 import { getMaspspDangChon, setMaspspDangChon } from './hoadon.js';
 import { capNhatThongTinTong } from './utils.js';
@@ -8,7 +11,6 @@ function getVitriTheoKho(masp) {
     const sp =
         (window.sanPhamData && (window.sanPhamData[masp] || window.sanPhamData[masp.toUpperCase()])) || null;
 
-    // Xác định cơ sở từ input #diadiem (ưu tiên) hoặc localStorage
     const diadiem = (document.getElementById('diadiem')?.value ||
         localStorage.getItem('diadiem') || '').toLowerCase();
 
@@ -29,81 +31,75 @@ function lineVal(item, key, i, fallback = null) {
     return Array.isArray(arr) && i < arr.length ? arr[i] : fallback;
 }
 
+function ensureLineCss() {
+    if (document.getElementById("ht-line-model-v2-css")) return;
+    const style = document.createElement("style");
+    style.id = "ht-line-model-v2-css";
+    style.textContent = `
+      /* KM xả theo %: tím nhạt, áp dụng cả bannv + banlemt */
+      #bangketqua tbody tr.clearance-row > td {
+        background:#f3e8ff !important;
+      }
+      /* Dòng đang chọn: xanh nhạt để thao tác sửa/xóa */
+      #bangketqua tbody tr.row-selected > td {
+        background:#e6f3ff !important;
+      }
+    `;
+    document.head.appendChild(style);
+}
+
+function makeFallbackKey(masp, idx = 0) {
+    window.__HT_LINE_SEQ = Number(window.__HT_LINE_SEQ || 0) + 1;
+    return `LN_DOM_${Date.now()}_${window.__HT_LINE_SEQ}_${String(masp || "").replace(/[^\w-]/g,"_")}_${idx}`;
+}
 
 export function capNhatBangHTML(bangKetQua, lastAdded = null) {
+    ensureLineCss();
+
     const tbody = document.querySelector("#bangketqua tbody");
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    // Trang "nhập mới" thì cách tính giá/khuyến mại khác
     const isNhap = window.location.pathname.includes("nhapmoi");
+    const entryKeys = Object.keys(bangKetQua || {});
 
-    // 1) Thứ tự nhóm mã:
-    // - Nếu vừa thêm NHÓM MỚI (lastAdded.isNewGroup === true) -> đẩy nhóm đó lên đầu
-    // - Nếu thêm vào mã đã có -> giữ nguyên thứ tự hiện tại
-    // 1) Thứ tự nhóm mã: dùng groupOrder (mới-trên-cùng)
-    const maspList = Object.keys(bangKetQua);
-
-    // xây orderedMasps từ groupOrder nhưng CHỈ lấy những mã còn tồn tại
-    let orderedMasps = [];
+    let orderedKeys = [];
     if (Array.isArray(window.groupOrder) && window.groupOrder.length) {
-        orderedMasps = window.groupOrder.filter(m => maspList.includes(m));
-        // nêu còn mã mới mà chưa có trong groupOrder thì nối thêm ở cuối
-        orderedMasps.push(...maspList.filter(m => !orderedMasps.includes(m)));
+        orderedKeys = window.groupOrder.filter(k => entryKeys.includes(k));
+        orderedKeys.push(...entryKeys.filter(k => !orderedKeys.includes(k)));
     } else {
-        orderedMasps = maspList.slice().reverse();
-        window.groupOrder = orderedMasps.slice();
+        orderedKeys = entryKeys.slice().reverse();
+        window.groupOrder = orderedKeys.slice();
     }
 
-    // đảm bảo nhóm mới đứng đầu nếu vừa thêm nhóm mới
-    if (lastAdded && lastAdded.isNewGroup === true && lastAdded.masp) {
-        orderedMasps = [lastAdded.masp, ...orderedMasps.filter(m => m !== lastAdded.masp)];
-        window.groupOrder = orderedMasps.slice();
+    // Dòng vừa thêm luôn đứng trên cùng.
+    if (lastAdded?.entryKey && entryKeys.includes(lastAdded.entryKey)) {
+        orderedKeys = [
+            lastAdded.entryKey,
+            ...orderedKeys.filter(k => k !== lastAdded.entryKey)
+        ];
+        window.groupOrder = orderedKeys.slice();
     }
 
-    // --- khi render từng nhóm ---
-    orderedMasps.forEach(masp => {
-        const item = bangKetQua[masp];
-        if (!item) return; // ⚠️ an toàn: bỏ qua mã không còn
+    orderedKeys.forEach(entryKey => {
+        const item = bangKetQua[entryKey];
+        if (!item) return;
 
-        // Sắp xếp size tăng dần theo danh mục; fallback numeric nếu không có trong danh mục
-        const sizes = item.sizes.map(s => String(s).trim());
-        const counts = item.soluongs.slice(); // song song với sizes
+        const sizes = Array.isArray(item.sizes) ? item.sizes.map(s => String(s).trim()) : [];
+        const counts = Array.isArray(item.soluongs) ? item.soluongs.slice() : [];
 
-        const toIndex = (sz) => {
-            const s = String(sz).trim().toUpperCase();
+        // Tương thích dữ liệu cũ có nhiều size trong một object.
+        // Dữ liệu mới mỗi object chỉ có đúng 1 size.
+        sizes.forEach((sz, i) => {
+            const sl = Number(counts[i] || 0);
+            if (!sl) return;
 
-            // 1) Size là số -> sắp xếp tăng dần tuyệt đối (38 < 39 < ... < 45)
-            if (/^\d+(\.\d+)?$/.test(s)) {
-                return parseFloat(s);                  // ví dụ "38" -> 38
-            }
-
-            // 2) Size KHÔNG phải số -> theo thứ tự trong danh mục (nếu có)
-            if (Array.isArray(window.danhMucSize) && window.danhMucSize.length) {
-                const idx = window.danhMucSize
-                    .map(x => String(x).trim().toUpperCase())
-                    .indexOf(s);
-                if (idx !== -1) return 1000 + idx;     // đẩy nhóm “chữ” xuống sau nhóm số
-            }
-
-            // 3) Không biết -> xuống cuối
-            return Number.POSITIVE_INFINITY;
-        };
-
-        const orderIdx = sizes.map((_, i) => i).sort((i, j) => toIndex(sizes[i]) - toIndex(sizes[j]));
-
-        orderIdx.forEach(i => {
-            const sz = sizes[i];
-            const sl = counts[i];
-
-            // Tính giá/km theo TỪNG DÒNG/SIZE.
-            // Fallback item.km để tương thích dữ liệu cũ.
-            let gia = item.gia || 0;
+            let gia = Number(item.gia || 0);
             let kmDonVi = Number(lineVal(item, "kms", i, item.km || 0)) || 0;
 
             if (isNhap) {
                 if (window.sanPhamData && window.sanPhamData[item.masp]) {
-                    gia = window.sanPhamData[item.masp].gianhap || 0;
+                    gia = Number(window.sanPhamData[item.masp].gianhap || 0);
                 } else {
                     gia = 0;
                 }
@@ -113,9 +109,6 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
             const kmTongDong = kmDonVi * sl;
             const thanhtien = (gia * sl) - kmTongDong;
 
-            const tr = tbody.insertRow();
-            const vitri = getVitriTheoKho(item.masp);
-
             const kmPct = lineVal(item, "km_pcts", i, null);
             const kmMaxPct = lineVal(item, "km_max_pcts", i, null);
             const kmSource = lineVal(item, "km_sources", i, null);
@@ -124,22 +117,29 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
             const tuVanCtId = lineVal(item, "tu_van_ct_ids", i, null);
             const tuVanSohd = lineVal(item, "tu_van_sohds", i, null);
 
-            // Ở quầy: cột "Vị trí" được tái sử dụng thành "NV bán".
+            const lineKey =
+                (Array.isArray(item.line_keys) && item.line_keys[i]) ||
+                item.line_key ||
+                `${entryKey}::${i}`;
+
+            const tr = tbody.insertRow();
+            const vitri = getVitriTheoKho(item.masp);
             const col9 = isBanLeMainPage() ? (tennvBan || manvBan || "") : vitri;
 
             tr.innerHTML = `
-        <td>${item.masp}</td>
-        <td>${item.tensp}</td>
-        <td>${sz}</td>
-        <td>${sl}</td>
-        <td>${item.dvt || ""}</td>
-        <td>${gia.toLocaleString()}</td>
-        <td>${kmTongDong.toLocaleString()}</td>
-        <td>${thanhtien.toLocaleString()}</td>
-        <td>${col9}</td>
-      `;
+              <td>${item.masp || ""}</td>
+              <td>${item.tensp || ""}</td>
+              <td>${sz}</td>
+              <td>${sl}</td>
+              <td>${item.dvt || ""}</td>
+              <td>${gia.toLocaleString("vi-VN")}</td>
+              <td>${kmTongDong.toLocaleString("vi-VN")}</td>
+              <td>${thanhtien.toLocaleString("vi-VN")}</td>
+              <td>${col9}</td>
+            `;
 
-            // Metadata được gắn vào TR để ensureStateFromDOM không làm mất dữ liệu nghiệp vụ.
+            tr.dataset.entryKey = entryKey;
+            tr.dataset.lineKey = lineKey;
             tr.dataset.lineIndex = String(i);
             tr.dataset.km = String(kmDonVi || 0);
             tr.dataset.kmPct = kmPct == null ? "" : String(kmPct);
@@ -150,27 +150,31 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
             tr.dataset.tuVanCtId = tuVanCtId == null ? "" : String(tuVanCtId);
             tr.dataset.tuVanSohd = tuVanSohd || "";
 
-            // Chọn/sửa theo cặp (masp, size)
+            // Chỉ dòng THỰC SỰ dùng % xả mới tô tím.
+            const isClearance = Number(kmPct || 0) > 0;
+            tr.dataset.clearance = isClearance ? "1" : "0";
+            if (isClearance) tr.classList.add("clearance-row");
+
             tr.addEventListener("click", () => {
-                setMaspspDangChon({ masp: item.masp, size: sz });
+                setMaspspDangChon({
+                    entryKey,
+                    lineKey,
+                    masp: item.masp,
+                    size: sz,
+                    index: i
+                });
                 highlightRow(tr);
             });
 
-            // 3) Highlight dòng vừa thêm (giữ tới lần thêm kế tiếp)
-            if (
-                lastAdded &&
-                String(lastAdded.masp).toUpperCase() === String(item.masp).toUpperCase() &&
-                String(lastAdded.size).trim().toUpperCase() === String(sz).trim().toUpperCase()
-            ) {
-                tr.classList.add("highlight");
+            if (lastAdded?.lineKey && String(lastAdded.lineKey) === String(lineKey)) {
+                // Với KM xả ưu tiên màu tím; dòng thường vẫn dùng highlight vàng cũ.
+                if (!isClearance) tr.classList.add("highlight");
             }
         });
     });
 
-    // 4) Cập nhật tổng
     capNhatThongTinTong(bangKetQua);
 
-    // 5) Nếu có adapter sau render (dùng cho các trang đặc biệt như CCN1V2)
     if (typeof window.ccnAfterRenderAdapter === "function") {
         try {
             window.ccnAfterRenderAdapter({ bangKetQua, lastAdded });
@@ -180,10 +184,9 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
     }
 }
 
-
 function highlightRow(selectedRow) {
     document.querySelectorAll("#bangketqua tbody tr").forEach(row => {
-        row.style.backgroundColor = row === selectedRow ? "#e6f3ff" : "";
+        row.classList.toggle("row-selected", row === selectedRow);
     });
 }
 
@@ -192,20 +195,16 @@ export function resetFormBang() {
     const soluongInput = document.getElementById("soluong");
     const sizeInput = document.getElementById("size");
 
-    // LƯU lại mã sản phẩm vừa nhập trước khi xóa trắng
-    window.masp_last = maspInput.value || window.masp_last || "";
+    window.masp_last = maspInput?.value || window.masp_last || "";
 
-    // Xóa nội dung, đặt lại giá trị
-    maspInput.value = "";
-    soluongInput.value = "1";
-    sizeInput.value = "";
+    if (maspInput) maspInput.value = "";
+    if (soluongInput) soluongInput.value = "1";
+    if (sizeInput) sizeInput.value = "";
 
-    // Gọi hàm hiển thị ảnh vừa nhập cuối cùng (sẽ ưu tiên từ masp_last)
     if (window.hienThiAnhSanPhamTuMasp) window.hienThiAnhSanPhamTuMasp();
 
-    // Làm mất focus, rồi mới focus lại để đảm bảo nhận diện lại sự kiện
-    maspInput.blur();
-    setTimeout(() => maspInput.focus(), 50);
+    maspInput?.blur();
+    setTimeout(() => maspInput?.focus(), 50);
 }
 
 export function resetFormSauKhiNhapSize() {
@@ -213,19 +212,15 @@ export function resetFormSauKhiNhapSize() {
     const soluongInput = document.getElementById("soluong");
     const sizeInput = document.getElementById("size");
 
-    // LƯU lại masp vừa dùng để hiển thị ảnh nếu cần
-    window.masp_last = maspInput.value || window.masp_last || "";
+    window.masp_last = maspInput?.value || window.masp_last || "";
 
-    // KHÔNG xóa masp; chỉ reset size & số lượng
-    soluongInput.value = "1";
-    sizeInput.value = "";
+    if (soluongInput) soluongInput.value = "1";
+    if (sizeInput) sizeInput.value = "";
 
-    // Cập nhật ảnh (ưu tiên masp hiện tại)
     if (window.hienThiAnhSanPhamTuMasp) window.hienThiAnhSanPhamTuMasp();
 
-    // Tiếp tục nhập size cho cùng mã
-    sizeInput.focus();
-    sizeInput.select();
+    sizeInput?.focus();
+    sizeInput?.select();
 }
 
 export function capNhatBangKetQuaTuDOM() {
@@ -233,108 +228,62 @@ export function capNhatBangKetQuaTuDOM() {
     if (!tbody) return;
 
     const bang = {};
+    const order = [];
 
-    Array.from(tbody.rows).forEach(row => {
+    Array.from(tbody.rows).forEach((row, rowIdx) => {
         const masp = (row.cells[0]?.innerText || "").trim().toUpperCase();
         const tensp = (row.cells[1]?.innerText || "").trim();
-        const sizeText = (row.cells[2]?.innerText || "").trim();
+        const sizeText = (row.cells[2]?.innerText || "").trim() || "0";
+        const sl = Number(String(row.cells[3]?.innerText || "0").replace(/[^\d.-]/g, "")) || 0;
+        const gia = Number(String(row.cells[5]?.innerText || "0").replace(/[^\d.-]/g, "")) || 0;
+        const kmHienThi = Number(String(row.cells[6]?.innerText || "0").replace(/[^\d.-]/g, "")) || 0;
+        const km = sl > 0 ? Math.round(kmHienThi / sl) : 0;
 
-        const slCell = parseFloat(row.cells[3]?.innerText || "0");
-        const gia = parseFloat((row.cells[5]?.innerText || "").replace(/[.,\s]/g, "")) || 0;
+        if (!masp || !sl) return;
 
-        // Cột khuyến mại trên bảng là KHUYẾN MẠI TỔNG DÒNG
-        // nên phải quy ngược lại thành km đơn vị để lưu vào state
-        const kmHienThi = parseFloat((row.cells[6]?.innerText || "").replace(/[.,\s]/g, "")) || 0;
-        const km = slCell > 0 ? Math.round(kmHienThi / slCell) : 0;
-
-        if (!masp) return;
-
-        // Lấy ĐVT từ danh mục hàng hóa (sanPhamData)
-        let dvt = "";
-        if (window.sanPhamData && window.sanPhamData[masp]) {
+        let dvt = (row.cells[4]?.innerText || "").trim();
+        if (!dvt && window.sanPhamData?.[masp]) {
             dvt = window.sanPhamData[masp].dvt || "";
         }
 
-        if (!bang[masp]) {
-            bang[masp] = {
-                masp,
-                tensp,
-                sizes: [],
-                soluongs: [],
-                kms: [],
-                km_pcts: [],
-                km_max_pcts: [],
-                km_sources: [],
-                manv_bans: [],
-                tennv_bans: [],
-                tu_van_ct_ids: [],
-                tu_van_sohds: [],
-                gia,
-                km,
-                dvt,
-            };
-        }
-
-        // 🔍 PHẦN QUAN TRỌNG: phân tích cột size
-        // Hỗ trợ 2 kiểu:
-        // 1) Gộp:  "38/5 39/1 40/1 ..."
-        // 2) Cũ:   "39"  + SL = 1
-        const entries = [];
-
-        if (sizeText) {
-            const parts = sizeText.split(/\s+/).filter(Boolean);
-
-            parts.forEach(tok => {
-                // dạng "38/5" -> size=38, sl=5
-                const m = tok.match(/^(\d+)\s*\/\s*(\d+)$/);
-                if (m) {
-                    entries.push({
-                        size: m[1],
-                        sl: Number(m[2]) || 0,
-                    });
-                }
-            });
-
-            // Nếu KHÔNG tìm được token dạng "38/5" → coi như dạng cũ: 1 size, SL = slCell
-            if (entries.length === 0) {
-                entries.push({
-                    size: sizeText,
-                    sl: slCell,
-                });
-            }
-        }
-
-        // Ghi các cặp size/sl vào bang[masp]
-        const rowKm = Number(row.dataset.km || km || 0) || 0;
-        const rowKmPct = row.dataset.kmPct === "" || row.dataset.kmPct == null
+        const kmPct = row.dataset.kmPct === "" || row.dataset.kmPct == null
             ? null : Number(row.dataset.kmPct);
-        const rowKmMaxPct = row.dataset.kmMaxPct === "" || row.dataset.kmMaxPct == null
+        const kmMaxPct = row.dataset.kmMaxPct === "" || row.dataset.kmMaxPct == null
             ? null : Number(row.dataset.kmMaxPct);
-        const rowKmSource = row.dataset.kmSource || null;
-        const rowManvBan = row.dataset.manvBan || null;
-        const rowTennvBan = row.dataset.tennvBan || null;
-        const rowTuVanCtId = row.dataset.tuVanCtId ? Number(row.dataset.tuVanCtId) : null;
-        const rowTuVanSohd = row.dataset.tuVanSohd || null;
 
-        entries.forEach(({ size, sl }) => {
-            bang[masp].sizes.push(String(size).trim());
-            bang[masp].soluongs.push(Number(sl) || 0);
-            bang[masp].kms.push(rowKm);
-            bang[masp].km_pcts.push(rowKmPct);
-            bang[masp].km_max_pcts.push(rowKmMaxPct);
-            bang[masp].km_sources.push(rowKmSource);
-            bang[masp].manv_bans.push(rowManvBan);
-            bang[masp].tennv_bans.push(rowTennvBan);
-            bang[masp].tu_van_ct_ids.push(rowTuVanCtId);
-            bang[masp].tu_van_sohds.push(rowTuVanSohd);
-        });
+        let entryKey = String(row.dataset.entryKey || "").trim();
+        if (!entryKey || bang[entryKey]) {
+            entryKey = makeFallbackKey(masp, rowIdx);
+        }
+
+        const lineKey = String(row.dataset.lineKey || entryKey).trim() || entryKey;
+
+        bang[entryKey] = {
+            line_key: lineKey,
+            line_keys: [lineKey],
+            masp,
+            tensp,
+            sizes: [sizeText],
+            soluongs: [sl],
+            kms: [Number(row.dataset.km || km || 0) || 0],
+            km_pcts: [kmPct],
+            km_max_pcts: [kmMaxPct],
+            km_sources: [row.dataset.kmSource || null],
+            manv_bans: [row.dataset.manvBan || null],
+            tennv_bans: [row.dataset.tennvBan || null],
+            tu_van_ct_ids: [row.dataset.tuVanCtId ? Number(row.dataset.tuVanCtId) : null],
+            tu_van_sohds: [row.dataset.tuVanSohd || null],
+            tong: sl,
+            gia,
+            km: Number(row.dataset.km || km || 0) || 0,
+            dvt
+        };
+
+        order.push(entryKey);
     });
 
-    // Đẩy lên global
     window.bangKetQua = bang;
+    window.groupOrder = order;
 }
 
-
 window.capNhatBangKetQuaTuDOM = capNhatBangKetQuaTuDOM;
-
-
