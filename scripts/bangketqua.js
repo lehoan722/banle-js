@@ -1,4 +1,4 @@
-// HOAN TUYET - LINE MODEL V2.1 PRICE FORMAT FIX
+// HOAN TUYET - VIEW OLD INVOICE V2 - MANV ONLY
 // HOAN TUYET - bangketqua.js - LINE MODEL V2
 // Mỗi lần thêm sản phẩm = một dòng độc lập.
 // Không cộng dồn cùng MASP + SIZE.
@@ -125,7 +125,7 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
 
             const tr = tbody.insertRow();
             const vitri = getVitriTheoKho(item.masp);
-            const col9 = isBanLeMainPage() ? (tennvBan || manvBan || "") : vitri;
+            const col9 = isBanLeMainPage() ? (manvBan || "") : vitri;
 
             tr.innerHTML = `
               <td>${item.masp || ""}</td>
@@ -226,15 +226,11 @@ export function resetFormSauKhiNhapSize() {
 
 
 function parseMoneyFromTable(value) {
-    // Bảng đang hiển thị theo locale vi-VN: 480.000, 10.000...
-    // Dấu "." / "," là dấu phân cách hàng nghìn, KHÔNG phải phần thập phân.
     const raw = String(value ?? "").trim();
     if (!raw) return 0;
-
     const negative = raw.startsWith("-");
     const digits = raw.replace(/[^\d]/g, "");
     const n = Number(digits || 0);
-
     return negative ? -n : n;
 }
 
