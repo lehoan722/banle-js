@@ -1,3 +1,4 @@
+// HOAN TUYET - LINE MODEL V2 - NO AGGREGATE
 // HOAN TUYET HOADON - KM FIFO V1.3 FULL FIX ENTER KM
 
 // hoadon.js - phiên bản cải tiến: tự fetch mã nếu thiếu và tránh mở popup nếu đã có
@@ -204,6 +205,51 @@ export function setMaspspDangChon(obj) {
 }
 export function getMaspspDangChon() {
     return maspDangChon;
+}
+
+function taoEntryKeyMoi(masp, prefix = "LN") {
+    window.__HT_LINE_SEQ = Number(window.__HT_LINE_SEQ || 0) + 1;
+    const safe = String(masp || "").trim().toUpperCase().replace(/[^\w-]/g, "_");
+    return `${prefix}_${Date.now()}_${window.__HT_LINE_SEQ}_${safe}`;
+}
+
+function entriesByMasp(data, masp) {
+    const code = String(masp || "").trim().toUpperCase();
+    return Object.entries(data || {}).filter(([, item]) =>
+        String(item?.masp || "").trim().toUpperCase() === code
+    );
+}
+
+function totalQtyForMaspSize(data, masp, size = null) {
+    const code = String(masp || "").trim().toUpperCase();
+    const sizeNorm = size == null ? null : String(size).trim().toUpperCase();
+    let total = 0;
+
+    Object.values(data || {}).forEach(item => {
+        if (String(item?.masp || "").trim().toUpperCase() !== code) return;
+        const sizes = Array.isArray(item?.sizes) ? item.sizes : [];
+        const sls = Array.isArray(item?.soluongs) ? item.soluongs : [];
+        sizes.forEach((sz, i) => {
+            if (sizeNorm != null && String(sz || "").trim().toUpperCase() !== sizeNorm) return;
+            total += Number(sls[i] || 0);
+        });
+    });
+    return total;
+}
+
+function findEntryKeyForSelection(data, sel) {
+    if (!sel) return null;
+    if (sel.entryKey && data?.[sel.entryKey]) return sel.entryKey;
+
+    const masp = String(sel.masp || "").trim().toUpperCase();
+    const size = String(sel.size ?? "").trim().toUpperCase();
+
+    for (const [key, item] of Object.entries(data || {})) {
+        if (String(item?.masp || "").trim().toUpperCase() !== masp) continue;
+        const sz = String(item?.sizes?.[0] ?? "").trim().toUpperCase();
+        if (!size || sz === size) return key;
+    }
+    return null;
 }
 
 function toInt(v) {
@@ -1530,18 +1576,10 @@ window.hoadonNhanTuSalesCopilot = async function (payload = {}) {
     sizeEl.value = size || "";
     maspEl.value = size ? `${masp}_${size}` : masp;
 
-    // Chụp số lượng trước khi thêm để xác nhận chính xác sau lời gọi trực tiếp.
+    // Chụp tổng số lượng trước khi thêm.
+    // LINE MODEL V2: cùng mã/size có thể tồn tại trên nhiều dòng độc lập.
     const dataBefore = _data();
-    const itemBefore = dataBefore?.[masp];
-    let qtyBefore = 0;
-    if (itemBefore) {
-        if (size) {
-            const idx = (itemBefore.sizes || []).findIndex(x => String(x || "").trim().toUpperCase() === size);
-            if (idx >= 0) qtyBefore = parseInt(itemBefore.soluongs?.[idx] || 0, 10) || 0;
-        } else {
-            qtyBefore = parseInt(itemBefore.tong || 0, 10) || 0;
-        }
-    }
+    const qtyBefore = totalQtyForMaspSize(dataBefore, masp, size || null);
 
     const quanLySizeTheoGia = document.getElementById("quanlysizetheogia")?.checked === true;
     const size45 = document.getElementById("size45")?.checked === true;
@@ -1563,22 +1601,12 @@ window.hoadonNhanTuSalesCopilot = async function (payload = {}) {
         return { ok: false, error: e?.message || String(e) };
     }
 
-    // Xác nhận ngay trên state hóa đơn, không phụ thuộc tốc độ render DOM.
+    // Xác nhận ngay trên state hóa đơn.
     const dataAfter = _data();
-    const itemAfter = dataAfter?.[masp];
-    if (!itemAfter) {
-        return { ok: false, error: `Đã xử lý ${masp} nhưng chưa thấy sản phẩm trong dữ liệu bán.` };
-    }
+    const qtyAfter = totalQtyForMaspSize(dataAfter, masp, size || null);
 
-    let qtyAfter = 0;
-    if (size) {
-        const idx = (itemAfter.sizes || []).findIndex(x => String(x || "").trim().toUpperCase() === size);
-        if (idx < 0) {
-            return { ok: false, error: `Đã nhận mã ${masp} nhưng chưa có size ${size}.` };
-        }
-        qtyAfter = parseInt(itemAfter.soluongs?.[idx] || 0, 10) || 0;
-    } else {
-        qtyAfter = parseInt(itemAfter.tong || 0, 10) || 0;
+    if (!entriesByMasp(dataAfter, masp).length) {
+        return { ok: false, error: `Đã xử lý ${masp} nhưng chưa thấy sản phẩm trong dữ liệu bán.` };
     }
 
     if (qtyAfter < qtyBefore + soluong) {
@@ -1601,7 +1629,6 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     // 🔒 CHỐT: luôn đồng bộ state từ DOM (trường hợp vừa dán Excel / nhập ngang / edit trực tiếp)
     ensureStateFromDOM();
     const masp = layMaspGoc(document.getElementById("masp").value);
-    const isNewGroup = !bangKetQua[masp]; // 🔔 nhóm mới hay không
 
     let size = forcedSize !== null ? String(forcedSize).trim()
         : String(document.getElementById("size").value).trim();
@@ -1746,99 +1773,30 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         }
     );
 
-    const key = masp;
-    const bang = bangKetQua[key] || {
-        masp,
-        tensp: sp.tensp,
-        sizes: [],
-        soluongs: [],
-        kms: [],
-        km_pcts: [],
-        km_max_pcts: [],
-        km_sources: [],
-        manv_bans: [],
-        tennv_bans: [],
-        tu_van_ct_ids: [],
-        tu_van_sohds: [],
-        tong: 0,
-        gia: giaForm,
-        km: kmForm, // fallback tương thích dữ liệu cũ
-        dvt: sp.dvt || ""
-    };
-
-    // Bảo đảm các mảng metadata tồn tại cả với state cũ.
-    ["kms","km_pcts","km_max_pcts","km_sources","manv_bans","tennv_bans","tu_van_ct_ids","tu_van_sohds"]
-        .forEach(k => { if (!Array.isArray(bang[k])) bang[k] = []; });
-
-    // Nếu không phải ADMIN:
-    // - Giá vẫn lấy theo hệ thống
-    // - Khuyến mại: nếu người dùng đã có giá trị > 0 trong ô khuyến mại thì GIỮ NGUYÊN
-    // - Chỉ tự tính km hệ thống khi ô khuyến mại đang trống hoặc = 0
-    if (!isAdminUser()) {
-        const giaNguonSys = isNhapMode()
-            ? (sp.gianhap || 0)
-            : (sp.giale || 0);
-
-        const giaSys = Math.round(
-            parseMoneyInt(giaNguonSys)
-        );
-
-        // Giá của nhân viên luôn lấy từ danh mục hệ thống.
-        giaForm = giaSys;
-
-        /*
-         * QUAN TRỌNG:
-         * Giữ nguyên khuyến mại đã được tính đúng
-         * và đang hiển thị trong ô #khuyenmai.
-         *
-         * Chỉ tính lại khi ô khuyến mại thực sự
-         * trống hoặc không hợp lệ.
-         */
-        if (
-            !Number.isFinite(kmForm) ||
-            kmForm < 0
-        ) {
-            kmForm = 0;
-        }
-
-        if (
-            kmForm === 0 &&
-            !isNhapMode()
-        ) {
-            kmForm =
-                tinhKhuyenMai(sp, giaSys) || 0;
-        }
-
-        const _giaEl =
-            document.getElementById("gia");
-
-        const _kmEl =
-            document.getElementById("khuyenmai");
-
-        if (_giaEl) {
-            _giaEl.value =
-                giaForm.toLocaleString("vi-VN");
-        }
-
-        if (_kmEl) {
-            _kmEl.value =
-                kmForm.toLocaleString("vi-VN");
-        }
-    }
-
-    // Cập nhật giá/km fallback cho nhóm
-    bang.gia = giaForm;
-    bang.km = kmForm;
-
+    // ===== LINE MODEL V2: MỖI LẦN THÊM = MỘT DÒNG ĐỘC LẬP =====
     const normSize = String(size).trim();
 
     // Metadata dòng:
-    // - bannv: lấy quyết định KM của nhân viên.
-    // - banlemt: lấy đúng dòng tư vấn đã FIFO match.
+    // - bannv: quyết định KM của nhân viên.
+    // - banlemt: dòng tư vấn đã FIFO match.
     let lineMeta = opts?.clearanceMeta || null;
+
+    // Khi sửa một dòng cũ ở quầy, ưu tiên giữ đúng metadata cũ.
+    if (!lineMeta && window.__EDIT_LINE_META) {
+        const em = window.__EDIT_LINE_META;
+        const sameMasp = String(em.masp || "").toUpperCase() === String(masp || "").toUpperCase();
+        const sameSize = String(em.size ?? "").trim().toUpperCase() === normSize.toUpperCase();
+        if (sameMasp && sameSize) {
+            lineMeta = { ...(em.meta || {}) };
+            window.__EDIT_LINE_META = null;
+            window.__TU_VAN_SELECTED = null;
+        }
+    }
+
     if (!lineMeta && isBanLeMainPage()) {
         lineMeta = consumeTuVanLineMeta(masp, normSize);
     }
+
     if (!lineMeta) {
         lineMeta = buildDefaultLineMeta();
         if (isBanNvPage()) {
@@ -1849,54 +1807,45 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         }
     }
 
-    // Chỉ gộp khi thực sự là CÙNG DÒNG NGHIỆP VỤ.
-    // Cùng mã + cùng size nhưng khác NV/KM/tu_van_ct_id phải tách dòng.
-    const sameNullable = (a,b) => String(a ?? "") === String(b ?? "");
-    const index = bang.sizes.findIndex((sz, i) =>
-        String(sz).trim() === normSize &&
-        Number(bang.kms?.[i] ?? bang.km ?? 0) === Number(kmForm || 0) &&
-        sameNullable(bang.km_pcts?.[i], lineMeta.km_pct) &&
-        sameNullable(bang.manv_bans?.[i], lineMeta.manv_ban) &&
-        sameNullable(bang.tu_van_ct_ids?.[i], lineMeta.tu_van_ct_id)
-    );
+    const entryKey = taoEntryKeyMoi(masp);
+    const lineKey = entryKey;
 
-    if (index !== -1) {
-        bang.soluongs[index] += soluong;
-    } else {
-        bang.sizes.push(normSize);
-        bang.soluongs.push(soluong);
-        bang.kms.push(Number(kmForm || 0));
-        bang.km_pcts.push(lineMeta.km_pct ?? null);
-        bang.km_max_pcts.push(lineMeta.km_max_pct ?? null);
-        bang.km_sources.push(lineMeta.km_source ?? null);
-        bang.manv_bans.push(lineMeta.manv_ban ?? null);
-        bang.tennv_bans.push(lineMeta.tennv_ban ?? null);
-        bang.tu_van_ct_ids.push(lineMeta.tu_van_ct_id ?? null);
-        bang.tu_van_sohds.push(lineMeta.tu_van_sohd ?? null);
-    }
+    bangKetQua[entryKey] = {
+        line_key: lineKey,
+        line_keys: [lineKey],
+        masp,
+        tensp: sp.tensp,
+        sizes: [normSize],
+        soluongs: [soluong],
+        kms: [Number(kmForm || 0)],
+        km_pcts: [lineMeta.km_pct ?? null],
+        km_max_pcts: [lineMeta.km_max_pct ?? null],
+        km_sources: [lineMeta.km_source ?? null],
+        manv_bans: [lineMeta.manv_ban ?? null],
+        tennv_bans: [lineMeta.tennv_ban ?? null],
+        tu_van_ct_ids: [lineMeta.tu_van_ct_id ?? null],
+        tu_van_sohds: [lineMeta.tu_van_sohd ?? null],
+        tong: soluong,
+        gia: giaForm,
+        km: Number(kmForm || 0),
+        dvt: sp.dvt || ""
+    };
 
-    bang.tong += soluong;
-    bangKetQua[key] = bang;
-    // Cập nhật thứ tự nhóm (mới nhất ở TRÊN CÙNG)
-    if (!Array.isArray(window.groupOrder)) {
-        // khởi tạo: newest-first từ trạng thái hiện có
-        window.groupOrder = Object.keys(bangKetQua).slice().reverse();
-    }
+    // Mỗi dòng mới đứng đầu bảng.
+    if (!Array.isArray(window.groupOrder)) window.groupOrder = [];
+    window.groupOrder = [
+        entryKey,
+        ...window.groupOrder.filter(k => k !== entryKey && bangKetQua[k])
+    ];
 
-    if (isNewGroup) {
-        // nhóm mới: đưa lên đầu
-        window.groupOrder = [masp, ...window.groupOrder.filter(m => m !== masp)];
-    } else {
-        // nhóm cũ: giữ nguyên vị trí; nhưng nếu vì lý do gì chưa có thì thêm vào cuối
-        if (!window.groupOrder.includes(masp)) {
-            window.groupOrder.push(masp);
-        }
-    }
+    window.lastAdded = {
+        entryKey,
+        lineKey,
+        masp,
+        size: normSize,
+        isNewGroup: true
+    };
 
-    // ⚡️ Lưu lại thông tin dòng vừa thêm + cờ nhóm mới/cũ
-    window.lastAdded = { masp, size: normSize, isNewGroup };
-
-    // Render bảng theo luật mới
     capNhatBangHTML(bangKetQua, window.lastAdded);
 
     // "Tinh" báo thêm thành công
@@ -1967,92 +1916,90 @@ export function ganTenNV() {
 }
 
 export function xoaDongDangChon() {
-    // ✅ Đồng bộ lại dữ liệu từ bảng DOM (trường hợp vừa “nhập ngang”)
     try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
 
     const dang = getMaspspDangChon();
-    if (!dang) { alert("Vui lòng chọn dòng cần xóa."); return; }
-
-    const masp = String(dang.masp || "").trim();
-    const size = (dang.size != null) ? String(dang.size).trim() : null;
-    if (!masp) { alert("Không xác định được mã sản phẩm đang chọn để xóa."); return; }
+    if (!dang) {
+        alert("Vui lòng chọn dòng cần xóa.");
+        return;
+    }
 
     const data = _data();
-    const item = data[masp];
-    if (!item) { alert("Không tìm thấy dòng để xóa."); return; }
+    const entryKey = findEntryKeyForSelection(data, dang);
 
-    const msg = size
-        ? `Bạn có chắc muốn xóa size "${size}" của mã "${masp}"?`
-        : `Bạn có chắc muốn xóa toàn bộ mã "${masp}"?`;
-    if (!confirm(msg)) return;
+    if (!entryKey || !data[entryKey]) {
+        alert("Không tìm thấy đúng dòng cần xóa.");
+        return;
+    }
 
-    if (size) {
-        const idx = item.sizes.findIndex(s => String(s).trim() === size);
-        if (idx !== -1) {
-            const sl = parseInt(item.soluongs[idx] || 0, 10) || 0;
-            item.tong = Math.max(0, (item.tong || 0) - sl);
-            item.sizes.splice(idx, 1);
-            item.soluongs.splice(idx, 1);
+    const item = data[entryKey];
+    const masp = String(item.masp || "").trim();
+    const size = String(item.sizes?.[0] ?? "").trim();
+    const sl = Number(item.soluongs?.[0] || 0);
 
-            [
-                "kms","km_pcts","km_max_pcts","km_sources",
-                "manv_bans","tennv_bans","tu_van_ct_ids","tu_van_sohds"
-            ].forEach(k => {
-                if (Array.isArray(item[k])) item[k].splice(idx, 1);
-            });
-        }
-        if (item.sizes.length === 0) delete data[masp];
-    } else {
-        delete data[masp];
+    if (!confirm(`Xóa dòng "${masp}" size "${size}" SL ${sl}?`)) return;
+
+    delete data[entryKey];
+    if (Array.isArray(window.groupOrder)) {
+        window.groupOrder = window.groupOrder.filter(k => k !== entryKey);
     }
 
     setMaspspDangChon(null);
-    capNhatBangHTML(data, window.lastAdded);
+    _sync(data);
+    capNhatBangHTML(data, null);
 }
 
 
 // hoadon.js
 export function suaDongDangChon() {
-    // 1) Đồng bộ lại data từ DOM
     try { window.capNhatBangKetQuaTuDOM?.(); } catch (_) { }
 
-    // 2) Lấy dòng đang chọn; nếu chưa có thì lấy dòng đầu tiên
-    let dangChon = getMaspspDangChon();
-    if (!dangChon) {
+    let dang = getMaspspDangChon();
+
+    if (!dang) {
         const firstRow = document.querySelector("#bangketqua tbody tr");
         if (!firstRow) {
             alert("Không có dòng nào để sửa.");
             return;
         }
-
-        const tds = firstRow.querySelectorAll("td");
-        const masp = (tds[0]?.textContent || "").trim();
-
-        if (!masp) {
-            alert("Không đọc được mã sản phẩm của dòng đầu tiên để sửa.");
-            return;
-        }
-
-        // Chỉ lưu masp, không cần size nữa
-        setMaspspDangChon({ masp });
-        dangChon = { masp };
-    }
-
-    const masp = String(dangChon.masp || "").trim().toUpperCase();
-    if (!masp) {
-        alert("Không xác định được mã sản phẩm để sửa.");
-        return;
+        dang = {
+            entryKey: firstRow.dataset.entryKey || null,
+            lineKey: firstRow.dataset.lineKey || null,
+            masp: String(firstRow.cells[0]?.textContent || "").trim(),
+            size: String(firstRow.cells[2]?.textContent || "").trim()
+        };
     }
 
     const data = _data();
-    const item = data[masp];
+    const entryKey = findEntryKeyForSelection(data, dang);
+    const item = entryKey ? data[entryKey] : null;
 
-    if (!item) {
-        alert("Không tìm thấy dòng để sửa.");
+    if (!entryKey || !item) {
+        alert("Không tìm thấy đúng dòng để sửa.");
         return;
     }
 
-    // 3) Đẩy dữ liệu nhóm mã về form nhập
+    const masp = String(item.masp || "").trim().toUpperCase();
+    const size = String(item.sizes?.[0] ?? "0").trim();
+    const soluong = Number(item.soluongs?.[0] || 1);
+    const gia = Number(item.gia || 0);
+    const km = Number(item.kms?.[0] ?? item.km ?? 0);
+
+    // Giữ metadata cũ để khi thêm lại không bị lấy nhầm FIFO/NV.
+    window.__EDIT_LINE_META = {
+        masp,
+        size,
+        meta: {
+            km_pct: item.km_pcts?.[0] ?? null,
+            km_max_pct: item.km_max_pcts?.[0] ?? null,
+            km_source: item.km_sources?.[0] ?? null,
+            manv_ban: item.manv_bans?.[0] ?? null,
+            tennv_ban: item.tennv_bans?.[0] ?? null,
+            tu_van_ct_id: item.tu_van_ct_ids?.[0] ?? null,
+            tu_van_sohd: item.tu_van_sohds?.[0] ?? null
+        }
+    };
+
     const maspEl = document.getElementById("masp");
     const soluongEl = document.getElementById("soluong");
     const giaEl = document.getElementById("gia");
@@ -2060,42 +2007,26 @@ export function suaDongDangChon() {
     const thanhtienEl = document.getElementById("thanhtien");
     const sizeEl = document.getElementById("size");
 
-    const tong = parseInt(item.tong || 0, 10) || 0;
-    const gia = parseInt(item.gia || 0, 10) || 0;
-    const km = parseInt(item.km || 0, 10) || 0;
-    const thanhtien = (gia - km) * tong;
+    if (maspEl) maspEl.value = masp;
+    if (soluongEl) soluongEl.value = String(soluong);
+    if (giaEl) giaEl.value = gia.toLocaleString("vi-VN");
+    if (kmEl) kmEl.value = km.toLocaleString("vi-VN");
+    if (thanhtienEl) thanhtienEl.value = ((gia - km) * soluong).toLocaleString("vi-VN");
+    if (sizeEl) sizeEl.value = size;
 
-    if (maspEl) {
-        maspEl.value = masp;
-
-        try {
-            maspEl.dispatchEvent(new Event("change", { bubbles: true }));
-        } catch (_) { }
+    delete data[entryKey];
+    if (Array.isArray(window.groupOrder)) {
+        window.groupOrder = window.groupOrder.filter(k => k !== entryKey);
     }
 
-    if (soluongEl) soluongEl.value = tong > 0 ? String(tong) : "1";
-    if (giaEl) giaEl.value = gia.toLocaleString();
-    if (kmEl) kmEl.value = km.toLocaleString();
-    if (thanhtienEl) thanhtienEl.value = thanhtien.toLocaleString();
-
-    // Không dùng cột kích cỡ nữa → xóa trắng size
-    if (sizeEl) sizeEl.value = "";
-
-    // 4) Xóa cả nhóm mã khỏi state để người dùng nhập lại
-    delete data[masp];
-
-    // 5) Ghi lại state và render bảng
     setMaspspDangChon(null);
     _sync(data);
     capNhatBangHTML(data, null);
 
-    // 6) Focus lại ô mã sản phẩm và bôi đen như cũ
-    if (maspEl) {
-        setTimeout(() => {
-            maspEl.focus();
-            maspEl.select();
-        }, 50);
-    }
+    setTimeout(() => {
+        maspEl?.focus();
+        maspEl?.select?.();
+    }, 50);
 }
 
 // Chạy Sửa với lớp bọc _wrapEnsureState (nếu trang đã khai báo), fallback gọi trực tiếp
@@ -2107,59 +2038,55 @@ export function runSuaDongDangChon() {
 
 
 export async function napLaiChiTietHoaDon(sohd) {
-    // Lấy chi tiết từ bảng ct_hoadon_banle
     const { data: chitiet, error } = await supabase
         .from("ct_hoadon_banle")
         .select("*")
-        .eq("sohd", sohd);
+        .eq("sohd", sohd)
+        .order("id", { ascending: true });
 
     if (error || !chitiet || chitiet.length === 0) {
         alert("❌ Không tìm thấy chi tiết hóa đơn để sửa.");
         return;
     }
 
-    // Reset lại bảng tạm
     resetBangKetQua();
 
-    // Ghép lại đúng cấu trúc mới: metadata theo từng dòng/size.
-    chitiet.forEach(ct => {
-        const masp = ct.masp;
-        if (!bangKetQua[masp]) {
-            bangKetQua[masp] = {
-                masp: ct.masp,
-                tensp: ct.tensp,
-                sizes: [],
-                soluongs: [],
-                kms: [],
-                km_pcts: [],
-                km_max_pcts: [],
-                km_sources: [],
-                manv_bans: [],
-                tennv_bans: [],
-                tu_van_ct_ids: [],
-                tu_van_sohds: [],
-                tong: 0,
-                gia: ct.gia,
-                km: ct.km,
-                dvt: ct.dvt || ""
-            };
-        }
+    const order = [];
 
-        const b = bangKetQua[masp];
-        b.sizes.push(String(ct.size ?? "0"));
-        b.soluongs.push(Number(ct.soluong || 0));
-        b.kms.push(Number(ct.km || 0));
-        b.km_pcts.push(ct.km_pct == null ? null : Number(ct.km_pct));
-        b.km_max_pcts.push(ct.km_max_pct == null ? null : Number(ct.km_max_pct));
-        b.km_sources.push(ct.km_source || null);
-        b.manv_bans.push(ct.manv_ban || null);
-        b.tennv_bans.push(ct.tennv_ban || null);
-        b.tu_van_ct_ids.push(ct.tu_van_ct_id == null ? null : Number(ct.tu_van_ct_id));
-        b.tu_van_sohds.push(ct.tu_van_sohd || null);
-        b.tong += Number(ct.soluong || 0);
+    // LINE MODEL V2: mỗi record ct_hoadon_banle = một dòng frontend.
+    chitiet.forEach((ct, idx) => {
+        const masp = String(ct.masp || "").trim().toUpperCase();
+        const entryKey = ct.id ? `DB_${ct.id}` : taoEntryKeyMoi(masp, "DB");
+        const lineKey = entryKey;
+
+        bangKetQua[entryKey] = {
+            line_key: lineKey,
+            line_keys: [lineKey],
+            masp: ct.masp,
+            tensp: ct.tensp,
+            sizes: [String(ct.size ?? "0")],
+            soluongs: [Number(ct.soluong || 0)],
+            kms: [Number(ct.km || 0)],
+            km_pcts: [ct.km_pct == null ? null : Number(ct.km_pct)],
+            km_max_pcts: [ct.km_max_pct == null ? null : Number(ct.km_max_pct)],
+            km_sources: [ct.km_source || null],
+            manv_bans: [ct.manv_ban || null],
+            tennv_bans: [ct.tennv_ban || null],
+            tu_van_ct_ids: [ct.tu_van_ct_id == null ? null : Number(ct.tu_van_ct_id)],
+            tu_van_sohds: [ct.tu_van_sohd || null],
+            tong: Number(ct.soluong || 0),
+            gia: Number(ct.gia || 0),
+            km: Number(ct.km || 0),
+            dvt: ct.dvt || ""
+        };
+        order.push(entryKey);
     });
 
-    capNhatBangHTML(bangKetQua, window.lastAdded);
+    // Hóa đơn cũ hiển thị theo thứ tự DB; không ép gộp.
+    window.groupOrder = order;
+    _sync(bangKetQua);
+
+    capNhatBangHTML(bangKetQua, null);
     await window.napDiemDaDungTheoHoaDon?.(sohd);
 }
 
