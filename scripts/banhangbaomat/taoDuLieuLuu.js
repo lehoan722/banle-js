@@ -59,7 +59,6 @@ function tinhTongThanhTien(bangKetQua) {
 
   Object.values(bangKetQua || {}).forEach((item) => {
     const gia = Number(item.gia || 0);
-    const km = Number(item.km || 0);
 
     (item.sizes || []).forEach((size, index) => {
       const soluong = Number(
@@ -67,6 +66,12 @@ function tinhTongThanhTien(bangKetQua) {
       );
 
       if (!soluong) return;
+
+      const km = Number(
+        Array.isArray(item.kms) && index < item.kms.length
+          ? item.kms[index]
+          : (item.km || 0)
+      ) || 0;
 
       tong += (gia - km) * soluong;
     });
@@ -87,7 +92,11 @@ function taoChiTiet(bangKetQua) {
       if (!soluong) return;
 
       const gia = Number(item.gia || 0);
-      const km = Number(item.km || 0);
+      const km = Number(
+        Array.isArray(item.kms) && index < item.kms.length
+          ? item.kms[index]
+          : (item.km || 0)
+      ) || 0;
 
       rows.push({
         masp: String(item.masp || "").trim(),
@@ -99,6 +108,27 @@ function taoChiTiet(bangKetQua) {
 
         gia,
         km,
+
+        km_pct:
+          Array.isArray(item.km_pcts) ? (item.km_pcts[index] ?? null) : null,
+
+        km_max_pct:
+          Array.isArray(item.km_max_pcts) ? (item.km_max_pcts[index] ?? null) : null,
+
+        km_source:
+          Array.isArray(item.km_sources) ? (item.km_sources[index] || null) : null,
+
+        manv_ban:
+          Array.isArray(item.manv_bans) ? (item.manv_bans[index] || null) : null,
+
+        tennv_ban:
+          Array.isArray(item.tennv_bans) ? (item.tennv_bans[index] || null) : null,
+
+        tu_van_ct_id:
+          Array.isArray(item.tu_van_ct_ids) ? (item.tu_van_ct_ids[index] ?? null) : null,
+
+        tu_van_sohd:
+          Array.isArray(item.tu_van_sohds) ? (item.tu_van_sohds[index] || null) : null,
 
         thanhtien: (gia - km) * soluong,
 
