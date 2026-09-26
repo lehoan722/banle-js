@@ -617,6 +617,9 @@ function finalizeEmployeeClearanceAndAdd() {
     const ctx = getActiveKmXaContext();
     if (!ctx) return false;
 
+    // Chặn Enter bị xử lý lặp trong cùng một nhịp sự kiện.
+    if (ctx.finalizing === true) return true;
+
     const kmEl = document.getElementById("khuyenmai");
     const giaEl = document.getElementById("gia");
     if (!kmEl || !giaEl) return false;
@@ -656,19 +659,33 @@ function finalizeEmployeeClearanceAndAdd() {
         usedClearance = true;
     }
 
+    const pendingSize = String(ctx.pendingSize ?? document.getElementById("size")?.value ?? "0").trim() || "0";
+    const lineMeta = currentEmployeeLineMeta(ctx, usedClearance);
+
+    // Đánh dấu đang chốt và TẮT context trước khi thêm xuống bảng.
+    // Đây là điểm sửa lỗi vòng lặp SIZE -> KM -> SIZE -> KM.
     ctx.selectedPct = pct;
     ctx.selectedKm = kmMoney;
     ctx.confirmed = true;
+    ctx.finalizing = true;
 
     kmEl.value = formatMoneyVN(kmMoney);
 
-    const pendingSize = String(ctx.pendingSize ?? document.getElementById("size")?.value ?? "0").trim() || "0";
-    const lineMeta = currentEmployeeLineMeta(ctx, usedClearance);
+    // Xóa context trước khi themVaoBang chạy để bất kỳ listener/flow nào khác
+    // cũng không thể arm lại #khuyenmai cho chính dòng vừa chốt.
+    window.__KM_XA_CTX = null;
+    delete kmEl.dataset.clearanceEnabled;
+    delete kmEl.dataset.clearanceMaxPct;
+    delete kmEl.dataset.clearanceDefaultKm;
+    delete kmEl.dataset.clearanceHintValue;
 
     themVaoBang(pendingSize, {
         bypassClearancePrompt: true,
         clearanceMeta: lineMeta,
-        kmOverride: kmMoney
+        kmOverride: kmMoney,
+        // Sau khi đã quyết định KM của một dòng thì kết thúc giao dịch dòng đó,
+        // quay về Mã SP thay vì quay lại SIZE.
+        afterAdd: "finishClearanceLine"
     });
 
     return true;
@@ -1038,6 +1055,8 @@ export async function chuyenFocus(e) {
         // Trang bán nhân viên + mã có quyền xả: xử lý theo luật KM từng sản phẩm.
         if (isBanNvPage() && getActiveKmXaContext()) {
             e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation?.();
             finalizeEmployeeClearanceAndAdd();
             return;
         }
@@ -1932,7 +1951,8 @@ export function themVaoBang(forcedSize = null, opts = {}) {
             resetFormSauKhiNhapSize();
         }
     } else {
-        // Luồng cũ: thêm xong thì xóa masp và focus về #masp
+        // Luồng bình thường + finishClearanceLine:
+        // thêm xong phải kết thúc dòng và quay về #masp, KHÔNG quay lại #size.
         resetKmXaContext();
         window.__TU_VAN_SELECTED = null;
         resetFormBang();
@@ -2191,6 +2211,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (!isAdminUser()) {
                 if (id === "khuyenmai" && isBanNvPage() && getActiveKmXaContext()) {
+                    // Khóa sự kiện Enter tại đây, không cho handler cũ/khác tiếp tục
+                    // giả lập Enter ở #size rồi arm lại KM lần nữa.
+                    e.stopPropagation();
+                    e.stopImmediatePropagation?.();
                     finalizeEmployeeClearanceAndAdd();
                     return;
                 }
