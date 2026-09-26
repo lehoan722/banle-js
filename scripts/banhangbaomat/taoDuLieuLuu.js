@@ -1,3 +1,4 @@
+// HOAN TUYET - SECURE PAYLOAD V1 - GUI MANV_BAN + KM_PCT + TU_VAN
 // scripts/banhangbaomat/taoDuLieuLuu.js
 
 import { getBangKetQua } from "../hoadon.js";
@@ -68,10 +69,8 @@ function tinhTongThanhTien(bangKetQua) {
       if (!soluong) return;
 
       const km = Number(
-        Array.isArray(item.kms) && index < item.kms.length
-          ? item.kms[index]
-          : (item.km || 0)
-      ) || 0;
+        item.kms?.[index] ?? item.km ?? 0
+      );
 
       tong += (gia - km) * soluong;
     });
@@ -93,10 +92,29 @@ function taoChiTiet(bangKetQua) {
 
       const gia = Number(item.gia || 0);
       const km = Number(
-        Array.isArray(item.kms) && index < item.kms.length
-          ? item.kms[index]
-          : (item.km || 0)
-      ) || 0;
+        item.kms?.[index] ?? item.km ?? 0
+      );
+
+      const kmPct =
+        item.km_pcts?.[index] ?? null;
+
+      const kmMaxPct =
+        item.km_max_pcts?.[index] ?? null;
+
+      const kmSource =
+        item.km_sources?.[index] ?? null;
+
+      const manvBan =
+        item.manv_bans?.[index] ?? null;
+
+      const tennvBan =
+        item.tennv_bans?.[index] ?? null;
+
+      const tuVanCtId =
+        item.tu_van_ct_ids?.[index] ?? null;
+
+      const tuVanSohd =
+        item.tu_van_sohds?.[index] ?? null;
 
       rows.push({
         masp: String(item.masp || "").trim(),
@@ -109,30 +127,36 @@ function taoChiTiet(bangKetQua) {
         gia,
         km,
 
-        km_pct:
-          Array.isArray(item.km_pcts) ? (item.km_pcts[index] ?? null) : null,
-
-        km_max_pct:
-          Array.isArray(item.km_max_pcts) ? (item.km_max_pcts[index] ?? null) : null,
-
-        km_source:
-          Array.isArray(item.km_sources) ? (item.km_sources[index] || null) : null,
-
-        manv_ban:
-          Array.isArray(item.manv_bans) ? (item.manv_bans[index] || null) : null,
-
-        tennv_ban:
-          Array.isArray(item.tennv_bans) ? (item.tennv_bans[index] || null) : null,
-
-        tu_van_ct_id:
-          Array.isArray(item.tu_van_ct_ids) ? (item.tu_van_ct_ids[index] ?? null) : null,
-
-        tu_van_sohd:
-          Array.isArray(item.tu_van_sohds) ? (item.tu_van_sohds[index] || null) : null,
-
         thanhtien: (gia - km) * soluong,
 
-        dvt: String(item.dvt || "").trim()
+        dvt: String(item.dvt || "").trim(),
+
+        km_pct:
+          kmPct == null || kmPct === ""
+            ? null
+            : Number(kmPct),
+
+        km_max_pct:
+          kmMaxPct == null || kmMaxPct === ""
+            ? null
+            : Number(kmMaxPct),
+
+        km_source:
+          kmSource ? String(kmSource).trim() : null,
+
+        manv_ban:
+          manvBan ? String(manvBan).trim() : null,
+
+        tennv_ban:
+          tennvBan ? String(tennvBan).trim() : null,
+
+        tu_van_ct_id:
+          tuVanCtId == null || tuVanCtId === ""
+            ? null
+            : Number(tuVanCtId),
+
+        tu_van_sohd:
+          tuVanSohd ? String(tuVanSohd).trim() : null
       });
     });
   });
