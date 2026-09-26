@@ -1,3 +1,4 @@
+// HOAN TUYET - KM MOBILE SELECT V2.2
 // HOAN TUYET - LINE MODEL V2 - NO AGGREGATE
 // HOAN TUYET HOADON - KM FIFO V1.3 FULL FIX ENTER KM
 
@@ -557,6 +558,39 @@ function getActiveKmXaContext(masp = null) {
     return ctx;
 }
 
+
+function focusAndSelectKhuyenMaiReliable(kmEl) {
+    if (!kmEl) return;
+
+    const doSelect = () => {
+        try {
+            kmEl.focus({ preventScroll: true });
+        } catch (_) {
+            try { kmEl.focus(); } catch (_) {}
+        }
+
+        try { kmEl.select(); } catch (_) {}
+
+        try {
+            const len = String(kmEl.value || "").length;
+            kmEl.setSelectionRange(0, len);
+        } catch (_) {}
+    };
+
+    // Lần đầu chạy NGAY trong event Enter của SIZE để giữ user gesture trên iOS.
+    doSelect();
+
+    // Safari/iOS đôi khi render lại input sau khi focus; chạy thêm 1 nhịp rất ngắn.
+    if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(() => {
+            doSelect();
+            requestAnimationFrame(() => doSelect());
+        });
+    } else {
+        setTimeout(doSelect, 0);
+    }
+}
+
 function armKmXaBeforeAdd(masp, size, opts = {}) {
     if (opts?.bypassClearancePrompt === true) return false;
     if (!isBanNvPage()) return false;
@@ -574,10 +608,7 @@ function armKmXaBeforeAdd(masp, size, opts = {}) {
     kmEl.value = hintValue;
     kmEl.readOnly = false;
 
-    setTimeout(() => {
-        kmEl.focus();
-        kmEl.select();
-    }, 0);
+    focusAndSelectKhuyenMaiReliable(kmEl);
 
     try { window.soundWaitSize?.(); } catch (_) {}
     return true;
@@ -683,18 +714,16 @@ function finalizeEmployeeClearanceAndAdd() {
     if (!untouched) {
         const rawNum = Number(raw.replace(",", "."));
         if (!Number.isFinite(rawNum) || rawNum <= 0 || rawNum > 100) {
-            alert(`❌ Hãy nhập % khuyến mại từ 1 đến ${Math.round(ctx.maxPct)}. Không nhập số tiền trực tiếp.`);
-            kmEl.focus();
-            kmEl.select();
+            alert("Bạn nhập khuyến mãi chưa hợp lệ, kiểm tra lại.");
+            focusAndSelectKhuyenMaiReliable(kmEl);
             return true;
         }
 
         pct = rawNum;
 
         if (pct > Number(ctx.maxPct || 0)) {
-            alert(`❌ Khuyến mại tối đa của sản phẩm này là ${Math.round(ctx.maxPct)}%. Bạn đang nhập ${pct}%.`);
-            kmEl.focus();
-            kmEl.select();
+            alert("Bạn nhập khuyến mãi quá cao, kiểm tra lại. Nếu bạn vẫn quyết định bán khuyến mãi cao như vậy thì phần vượt sẽ bị trừ vào lương của bạn.");
+            focusAndSelectKhuyenMaiReliable(kmEl);
             return true;
         }
 
