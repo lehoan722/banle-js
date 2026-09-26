@@ -11,7 +11,6 @@ import { getLoaiFromSoHDInput } from "../luuhoadon/builders.js";
 import { calcTongThanhTienFromBangKetQua } from "../luuhoadon/pricing.js";
 import { validateKhachHangBatBuoc } from "../services/validateKhachHangTichDiem.js";
 import { emitInventoryChangedByBangKetQua } from "../services/inventoryEvents.js";
-import { capNhatUsedTuVanSauKhiLuuCT } from "../luuhoadon/api.js";
 
 let dangLuuBaoMat = false;
 
@@ -272,20 +271,9 @@ async function xuLyNghiepVuSauLuuBaoMat(
     soDongChiTiet: chitiet.length
   });
 
-  try {
-    if (chitiet.length) {
-      await capNhatUsedTuVanSauKhiLuuCT(
-        chitiet,
-        loai,
-        diadiem
-      );
-    }
-  } catch (e) {
-    console.error(
-      "[BAO MAT] capNhatUsedTuVanSauKhiLuuCT lỗi:",
-      e
-    );
-  }
+  // V2: rpc_save_invoice_secure tự claim đúng tu_van_ct_id trong CÙNG transaction.
+  // Không gọi cơ chế cũ capNhatUsedTuVanSauKhiLuuCT vì cơ chế cũ có thể đánh dấu
+  // nhiều dòng tư vấn cùng mã là used_for_mt=true.
 
   await markKiemTonLoiThoiSauNhapXuat(
     sohd,
