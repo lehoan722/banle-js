@@ -28,7 +28,11 @@ export function capNhatThongTinTong(bangKetQua) {
         // Khuyến mãi: có thể là số chung, nếu có mảng riêng cho từng size thì sửa lại cho phù hợp
 
         const gia1 = Number(item.gia || 0);
-        const km1 = Number(item.km || 0);
+        const km1 = Number(
+          Array.isArray(item.kms) && idx < item.kms.length
+            ? item.kms[idx]
+            : (item.km || 0)
+        ) || 0;
         const kmTongDong = km1 * soluong;
         tongKhuyenMai += kmTongDong;
         tongThanhTien += (gia1 * soluong) - kmTongDong;
