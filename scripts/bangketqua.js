@@ -19,6 +19,16 @@ function getVitriTheoKho(masp) {
     return sp.vitrikho1 || sp.vitrikho2 || sp.vitrikho3 || "";
 }
 
+function isBanLeMainPage() {
+    const p = String(window.location.pathname || "").toLowerCase();
+    return p.includes("banlemtcs1") || p.includes("banlemtcs2");
+}
+
+function lineVal(item, key, i, fallback = null) {
+    const arr = item?.[key];
+    return Array.isArray(arr) && i < arr.length ? arr[i] : fallback;
+}
+
 
 export function capNhatBangHTML(bangKetQua, lastAdded = null) {
     const tbody = document.querySelector("#bangketqua tbody");
@@ -86,9 +96,10 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
             const sz = sizes[i];
             const sl = counts[i];
 
-            // Tính giá/km theo nghiệp vụ
+            // Tính giá/km theo TỪNG DÒNG/SIZE.
+            // Fallback item.km để tương thích dữ liệu cũ.
             let gia = item.gia || 0;
-            let kmDonVi = item.km || 0;
+            let kmDonVi = Number(lineVal(item, "kms", i, item.km || 0)) || 0;
 
             if (isNhap) {
                 if (window.sanPhamData && window.sanPhamData[item.masp]) {
@@ -105,6 +116,17 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
             const tr = tbody.insertRow();
             const vitri = getVitriTheoKho(item.masp);
 
+            const kmPct = lineVal(item, "km_pcts", i, null);
+            const kmMaxPct = lineVal(item, "km_max_pcts", i, null);
+            const kmSource = lineVal(item, "km_sources", i, null);
+            const manvBan = lineVal(item, "manv_bans", i, null);
+            const tennvBan = lineVal(item, "tennv_bans", i, null);
+            const tuVanCtId = lineVal(item, "tu_van_ct_ids", i, null);
+            const tuVanSohd = lineVal(item, "tu_van_sohds", i, null);
+
+            // Ở quầy: cột "Vị trí" được tái sử dụng thành "NV bán".
+            const col9 = isBanLeMainPage() ? (tennvBan || manvBan || "") : vitri;
+
             tr.innerHTML = `
         <td>${item.masp}</td>
         <td>${item.tensp}</td>
@@ -114,8 +136,19 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
         <td>${gia.toLocaleString()}</td>
         <td>${kmTongDong.toLocaleString()}</td>
         <td>${thanhtien.toLocaleString()}</td>
-        <td>${vitri}</td>
+        <td>${col9}</td>
       `;
+
+            // Metadata được gắn vào TR để ensureStateFromDOM không làm mất dữ liệu nghiệp vụ.
+            tr.dataset.lineIndex = String(i);
+            tr.dataset.km = String(kmDonVi || 0);
+            tr.dataset.kmPct = kmPct == null ? "" : String(kmPct);
+            tr.dataset.kmMaxPct = kmMaxPct == null ? "" : String(kmMaxPct);
+            tr.dataset.kmSource = kmSource || "";
+            tr.dataset.manvBan = manvBan || "";
+            tr.dataset.tennvBan = tennvBan || "";
+            tr.dataset.tuVanCtId = tuVanCtId == null ? "" : String(tuVanCtId);
+            tr.dataset.tuVanSohd = tuVanSohd || "";
 
             // Chọn/sửa theo cặp (masp, size)
             tr.addEventListener("click", () => {
@@ -228,6 +261,14 @@ export function capNhatBangKetQuaTuDOM() {
                 tensp,
                 sizes: [],
                 soluongs: [],
+                kms: [],
+                km_pcts: [],
+                km_max_pcts: [],
+                km_sources: [],
+                manv_bans: [],
+                tennv_bans: [],
+                tu_van_ct_ids: [],
+                tu_van_sohds: [],
                 gia,
                 km,
                 dvt,
@@ -264,9 +305,28 @@ export function capNhatBangKetQuaTuDOM() {
         }
 
         // Ghi các cặp size/sl vào bang[masp]
+        const rowKm = Number(row.dataset.km || km || 0) || 0;
+        const rowKmPct = row.dataset.kmPct === "" || row.dataset.kmPct == null
+            ? null : Number(row.dataset.kmPct);
+        const rowKmMaxPct = row.dataset.kmMaxPct === "" || row.dataset.kmMaxPct == null
+            ? null : Number(row.dataset.kmMaxPct);
+        const rowKmSource = row.dataset.kmSource || null;
+        const rowManvBan = row.dataset.manvBan || null;
+        const rowTennvBan = row.dataset.tennvBan || null;
+        const rowTuVanCtId = row.dataset.tuVanCtId ? Number(row.dataset.tuVanCtId) : null;
+        const rowTuVanSohd = row.dataset.tuVanSohd || null;
+
         entries.forEach(({ size, sl }) => {
             bang[masp].sizes.push(String(size).trim());
             bang[masp].soluongs.push(Number(sl) || 0);
+            bang[masp].kms.push(rowKm);
+            bang[masp].km_pcts.push(rowKmPct);
+            bang[masp].km_max_pcts.push(rowKmMaxPct);
+            bang[masp].km_sources.push(rowKmSource);
+            bang[masp].manv_bans.push(rowManvBan);
+            bang[masp].tennv_bans.push(rowTennvBan);
+            bang[masp].tu_van_ct_ids.push(rowTuVanCtId);
+            bang[masp].tu_van_sohds.push(rowTuVanSohd);
         });
     });
 
