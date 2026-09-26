@@ -658,6 +658,20 @@ export async function khoiTaoUngDung() {
     const isBanLePage = isBanLeMTcs1Page || isBanLeMTcs2Page;
     const isBanNvPage = isBanNvcs1Page || isBanNvcs2Page;
 
+    // Class trang để CSS mobile chỉ mở ô KM trên BÁN NHÂN VIÊN,
+    // không vô tình thay giao diện mobile của quầy.
+    document.documentElement.classList.toggle("page-bannv", !!isBanNvPage);
+    document.documentElement.classList.toggle("page-banlemt", !!isBanLePage);
+
+    // Quầy bán lẻ: tái sử dụng 3 cột cuối cho nghiệp vụ mới.
+    // Vị trí -> NV bán; T1 -> KM %; T2 để dự phòng.
+    if (isBanLePage) {
+      const ths = document.querySelectorAll("#bangketqua thead th");
+      if (ths[8]) ths[8].textContent = "NV bán";
+      if (ths[9]) ths[9].textContent = "KM %";
+      if (ths[10]) ths[10].textContent = "T2";
+    }
+
     if (isBanLePage || isBanNvPage) {
       // diadiem: cs1 hay cs2 theo trang
       const diadiem =
@@ -1080,9 +1094,10 @@ height:34px;
       if (f) decodeFromFile(f);
     };
 
-    // === TỒN KHO TỨC THÌ: Observer + batch RPC (KHÔNG đụng code render cũ) ===
+    // === TỒN KHO TỨC THÌ / CỘT NGHIỆP VỤ: Observer sau render ===
     {
       const tbody = document.querySelector('#bangketqua tbody');
+      const __isBanLeMain = /banlemtcs[12]/i.test(String(window.location.pathname || ""));
       if (!tbody) {
         console.warn('Không thấy #bangketqua tbody');
         return; // tránh lỗi ở các trang không có bảng này
@@ -1163,7 +1178,25 @@ height:34px;
       }
 
       function ensureTds(row) {
-        // Nếu chưa có 2 ô tồn → append vào cuối hàng
+        if (__isBanLeMain) {
+          // Quầy: cột 9 đã là NV bán do bangketqua.js render.
+          // Append T1 = KM %, T2 = dự phòng.
+          if (!row.querySelector('td[data-col="km_pct"]')) {
+            const td1 = document.createElement('td');
+            td1.dataset.col = 'km_pct';
+            td1.textContent = row.dataset.kmPct ? `${row.dataset.kmPct}%` : "";
+            row.appendChild(td1);
+          }
+          if (!row.querySelector('td[data-col="sale_t2"]')) {
+            const td2 = document.createElement('td');
+            td2.dataset.col = 'sale_t2';
+            td2.textContent = "";
+            row.appendChild(td2);
+          }
+          return;
+        }
+
+        // Trang khác / bán nhân viên: giữ tồn CS1/CS2 như cũ.
         if (!row.querySelector('td[data-col="ton_cs1"]')) {
           const td1 = document.createElement('td'); td1.dataset.col = 'ton_cs1'; td1.textContent = '…';
           row.appendChild(td1);
@@ -1198,8 +1231,17 @@ height:34px;
           row.dataset.stockQuickBound = "1";
         }
 
-        // 🔹 Phần tồn kho tức thì – GIỮ NGUYÊN như cũ
+        // 🔹 Quầy: chỉ hiển thị NV bán / KM %, không gọi tồn CS1/CS2.
         ensureTds(row);
+        if (__isBanLeMain) {
+          const kmCell = row.querySelector('td[data-col="km_pct"]');
+          const t2Cell = row.querySelector('td[data-col="sale_t2"]');
+          if (kmCell) kmCell.textContent = row.dataset.kmPct ? `${row.dataset.kmPct}%` : "";
+          if (t2Cell) t2Cell.textContent = "";
+          return;
+        }
+
+        // 🔹 Các trang khác: tồn kho tức thì – GIỮ NGUYÊN như cũ
         const k = keyOf(masp, size);
 
         if (memo.has(k)) {
