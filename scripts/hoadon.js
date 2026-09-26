@@ -1,3 +1,4 @@
+// HOAN TUYET HOADON - KM FIFO V1.3 FULL FIX ENTER KM
 
 // hoadon.js - phiên bản cải tiến: tự fetch mã nếu thiếu và tránh mở popup nếu đã có
 import { capNhatBangHTML, resetFormBang, resetFormSauKhiNhapSize } from './bangketqua.js';
@@ -410,8 +411,6 @@ function getSaleBusinessDate() {
 
 window.__KM_XA_CTX = null;
 window.__TU_VAN_SELECTED = null;
-// Chặn 2 handler Enter trên #khuyenmai cùng xử lý một phím (inline + addEventListener).
-window.__KM_XA_SUPPRESS_ENTER_UNTIL = 0;
 
 function resetKmXaContext({ keepMasp = false } = {}) {
     const old = window.__KM_XA_CTX;
@@ -619,9 +618,6 @@ function finalizeEmployeeClearanceAndAdd() {
     const ctx = getActiveKmXaContext();
     if (!ctx) return false;
 
-    // Chặn Enter bị xử lý lặp trong cùng một nhịp sự kiện.
-    if (ctx.finalizing === true) return true;
-
     const kmEl = document.getElementById("khuyenmai");
     const giaEl = document.getElementById("gia");
     if (!kmEl || !giaEl) return false;
@@ -661,39 +657,19 @@ function finalizeEmployeeClearanceAndAdd() {
         usedClearance = true;
     }
 
-    const pendingSize = String(ctx.pendingSize ?? document.getElementById("size")?.value ?? "0").trim() || "0";
-    const lineMeta = currentEmployeeLineMeta(ctx, usedClearance);
-
-    // Đánh dấu đang chốt và TẮT context trước khi thêm xuống bảng.
-    // Đây là điểm sửa lỗi vòng lặp SIZE -> KM -> SIZE -> KM.
     ctx.selectedPct = pct;
     ctx.selectedKm = kmMoney;
     ctx.confirmed = true;
-    ctx.finalizing = true;
-
-    // Có thể #khuyenmai đang có cả inline onkeydown và listener addEventListener.
-    // Listener thứ nhất chốt dòng và xóa context; listener thứ hai nếu chạy tiếp
-    // sẽ tưởng đây là KM thường rồi giả lập Enter ở #size => tạo vòng SIZE <-> KM.
-    // Giữ một cửa sổ ngắn để mọi handler còn lại của CÙNG phím Enter chỉ no-op.
-    window.__KM_XA_SUPPRESS_ENTER_UNTIL = Date.now() + 500;
 
     kmEl.value = formatMoneyVN(kmMoney);
 
-    // Xóa context trước khi themVaoBang chạy để bất kỳ listener/flow nào khác
-    // cũng không thể arm lại #khuyenmai cho chính dòng vừa chốt.
-    window.__KM_XA_CTX = null;
-    delete kmEl.dataset.clearanceEnabled;
-    delete kmEl.dataset.clearanceMaxPct;
-    delete kmEl.dataset.clearanceDefaultKm;
-    delete kmEl.dataset.clearanceHintValue;
+    const pendingSize = String(ctx.pendingSize ?? document.getElementById("size")?.value ?? "0").trim() || "0";
+    const lineMeta = currentEmployeeLineMeta(ctx, usedClearance);
 
     themVaoBang(pendingSize, {
         bypassClearancePrompt: true,
         clearanceMeta: lineMeta,
-        kmOverride: kmMoney,
-        // Sau khi đã quyết định KM của một dòng thì kết thúc giao dịch dòng đó,
-        // quay về Mã SP thay vì quay lại SIZE.
-        afterAdd: "finishClearanceLine"
+        kmOverride: kmMoney
     });
 
     return true;
@@ -1060,30 +1036,14 @@ export async function chuyenFocus(e) {
             return;
         }
     } else if (e.target.id === "khuyenmai") {
-        // BÁN NHÂN VIÊN: #khuyenmai có luồng riêng. Tuyệt đối KHÔNG dùng lại
-        // luồng cũ "Enter KM -> giả lập Enter SIZE", vì đó chính là nguồn vòng lặp.
-        if (isBanNvPage()) {
+        // Trang bán nhân viên + mã có quyền xả: xử lý theo luật KM từng sản phẩm.
+        if (isBanNvPage() && getActiveKmXaContext()) {
             e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation?.();
-
-            // Nếu cùng một phím Enter đã được listener khác chốt trước đó thì bỏ qua.
-            if (Date.now() < Number(window.__KM_XA_SUPPRESS_ENTER_UNTIL || 0)) {
-                return;
-            }
-
-            const ctx = getActiveKmXaContext();
-            if (ctx) {
-                finalizeEmployeeClearanceAndAdd();
-                return;
-            }
-
-            // Ở trang NV, nếu không có context xả thì không được tự đẩy ngược về SIZE.
-            // Bình thường ô này không được focus cho hàng thường.
+            finalizeEmployeeClearanceAndAdd();
             return;
         }
 
-        // Các trang KHÁC giữ nguyên nghiệp vụ cũ.
+        // Chuẩn hoá khuyến mại cũ: <=100 coi là %, >100 là tiền; cập nhật lại #thanhtien 
         const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
         let km = parseKhuyenMaiInput(
             document.getElementById("khuyenmai").value
@@ -1094,6 +1054,7 @@ export async function chuyenFocus(e) {
 
         recalcThanhtienFromForm();
 
+        // 🔑 Thay vì gọi themVaoBang → giả lập Enter trên #size
         const sizeInput = document.getElementById("size");
         if (sizeInput) {
             const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
@@ -1113,7 +1074,13 @@ export async function chuyenFocus(e) {
         document.getElementById("khuyenmai").value = km.toLocaleString();
 
         recalcThanhtienFromForm();
-        
+
+        // 🔑 Giả lập Enter trên #size
+        const sizeInput = document.getElementById("size");
+        if (sizeInput) {
+            const ev = new KeyboardEvent("keydown", { key: "Enter", bubbles: true });
+            sizeInput.dispatchEvent(ev);
+        }
         return;
     }
 
@@ -1966,8 +1933,7 @@ export function themVaoBang(forcedSize = null, opts = {}) {
             resetFormSauKhiNhapSize();
         }
     } else {
-        // Luồng bình thường + finishClearanceLine:
-        // thêm xong phải kết thúc dòng và quay về #masp, KHÔNG quay lại #size.
+        // Luồng cũ: thêm xong thì xóa masp và focus về #masp
         resetKmXaContext();
         window.__TU_VAN_SELECTED = null;
         resetFormBang();
@@ -2198,7 +2164,12 @@ export async function napLaiChiTietHoaDon(sohd) {
 }
 
 
-// ===== ADMIN sửa giá / khuyến mại trực tiếp trên form =====
+// ===== Điều khiển ENTER ở GIÁ / KHUYẾN MẠI =====
+// HOAN TUYET - KM FIFO V1.3 FULL FIX
+// - #gia: giữ nghiệp vụ cũ.
+// - #khuyenmai trên BÁN NHÂN VIÊN khi có KM xả:
+//      Enter = chốt dòng, thêm xuống bảng, KHÔNG quay lại #size.
+// - Chặn propagation ngay tại listener trực tiếp trên #khuyenmai.
 document.addEventListener("DOMContentLoaded", () => {
     applyRoleLockToPriceFields();
 
@@ -2206,49 +2177,27 @@ document.addEventListener("DOMContentLoaded", () => {
         applyRoleLockToPriceFields();
     };
 
-    ["gia"].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-
-        el.addEventListener("input", () => {
+    // ===== GIÁ =====
+    const giaEl = document.getElementById("gia");
+    if (giaEl) {
+        giaEl.addEventListener("input", () => {
             if (!isAdminUser()) return;
-            if (id === "khuyenmai") {
-                // đang gõ thì chưa format để không nhảy con trỏ
-                return;
-            }
             recalcThanhtienFromForm();
         });
 
-        el.addEventListener("keydown", (e) => {
+        giaEl.addEventListener("keydown", (e) => {
             if (e.key !== "Enter") return;
 
             e.preventDefault();
+            e.stopPropagation();
 
             if (!isAdminUser()) {
-                if (id === "khuyenmai" && isBanNvPage()) {
-                    e.stopPropagation();
-                    e.stopImmediatePropagation?.();
-
-                    // Handler khác của cùng phím Enter có thể đã chốt dòng rồi.
-                    if (Date.now() < Number(window.__KM_XA_SUPPRESS_ENTER_UNTIL || 0)) {
-                        return;
-                    }
-
-                    if (getActiveKmXaContext()) {
-                        finalizeEmployeeClearanceAndAdd();
-                    }
-                    // Dù có context hay không, ở trang NV không cho rơi vào luồng KM cũ.
-                    return;
-                }
-
-                alert("Chỉ ADMIN được sửa giá/khuyến mại.");
+                alert("Chỉ ADMIN được sửa giá.");
                 return;
             }
 
-            if (id === "gia") {
-                const gia = toInt(el.value || "0");
-                el.value = gia.toLocaleString();
-            }
+            const gia = toInt(giaEl.value || "0");
+            giaEl.value = gia.toLocaleString();
 
             chuanHoaKhuyenMaiNhapTay();
 
@@ -2258,19 +2207,42 @@ document.addEventListener("DOMContentLoaded", () => {
                 sizeEl.select();
             }
         });
+    }
 
-        el.addEventListener("blur", () => {
-            if (!isAdminUser()) return;
+    // ===== KHUYẾN MẠI =====
+    const kmEl = document.getElementById("khuyenmai");
+    if (kmEl) {
+        kmEl.addEventListener("keydown", (e) => {
+            if (e.key !== "Enter") return;
 
-            if (id === "gia") {
-                const gia = toInt(el.value || "0");
-                el.value = gia.toLocaleString();
+            // Listener này gắn trực tiếp trên #khuyenmai.
+            // Chặn hoàn toàn việc Enter tiếp tục rơi xuống handler khác.
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof e.stopImmediatePropagation === "function") {
+                e.stopImmediatePropagation();
             }
 
-            chuanHoaKhuyenMaiNhapTay();
-        });
-    });
-});
+            // BÁN NHÂN VIÊN + mã đang có quyền xả:
+            // Đây là điểm KẾT THÚC DÒNG.
+            if (isBanNvPage() && getActiveKmXaContext()) {
+                finalizeEmployeeClearanceAndAdd();
+                return;
+            }
 
-window.goiYSizeTuHoaDonNhanVien = goiYSizeTuHoaDonNhanVien;
-window.napLaiChiTietHoaDon = napLaiChiTietHoaDon;
+            // Non-admin ngoài chế độ xả: không được tự sửa KM.
+            if (!isAdminUser()) {
+                return;
+            }
+
+            // ADMIN vẫn giữ nghiệp vụ cũ.
+            chuanHoaKhuyenMaiNhapTay();
+
+            const sizeEl = document.getElementById("size");
+            if (sizeEl) {
+                sizeEl.focus();
+                sizeEl.select();
+            }
+        });
+    }
+});
