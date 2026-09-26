@@ -1,3 +1,4 @@
+// HOAN TUYET - DUYET HOA DON V2 - LOAD MANV + KM PCT
 // duyetHoaDon.js
 import { supabase } from './supabaseClient.js';
 import { capNhatBangHTML } from './bangketqua.js';
@@ -142,46 +143,70 @@ export async function napHoaDonVaoTrang(hoadon) {
 
   resetBangKetQua();
 
+  // LINE MODEL V2:
+  // Mỗi record ct_hoadon_banle được nạp thành 1 dòng độc lập.
+  // Không gộp lại theo MASP + SIZE khi xem hóa đơn cũ.
   const { data: ct, error } = await supabase
     .from("ct_hoadon_banle")
     .select("*")
-    .eq("sohd", hoadon.sohd);
+    .eq("sohd", hoadon.sohd)
+    .order("id", { ascending: true });
 
-  if (!error && ct.length > 0) {
-    ct.forEach(row => {
+  window.groupOrder = [];
+
+  if (!error && Array.isArray(ct) && ct.length > 0) {
+    ct.forEach((row, idx) => {
       const masp = String(row.masp || "").trim().toUpperCase();
       const size = (row.size != null) ? String(row.size).trim() : "";
       const sl = parseInt(row.soluong || 0, 10) || 0;
 
-      if (!masp || !size || sl === 0) return;
+      if (!masp || sl === 0) return;
 
-      if (!bangKetQua[masp]) {
-        bangKetQua[masp] = {
-          masp,
-          tensp: row.tensp || "",
-          sizes: [],
-          soluongs: [],
-          tong: 0,
-          gia: row.gia || 0,
-          km: row.km || 0,
-          dvt: ""
-        };
-      }
+      const entryKey = row.id ? `DB_${row.id}` : `VIEW_${idx}_${masp}`;
+      const lineKey = entryKey;
 
-      const item = bangKetQua[masp];
-      const idx = item.sizes.findIndex(s => String(s).trim() === size);
+      bangKetQua[entryKey] = {
+        line_key: lineKey,
+        line_keys: [lineKey],
 
-      if (idx === -1) {
-        item.sizes.push(size);
-        item.soluongs.push(sl);
-      } else {
-        const old = parseInt(item.soluongs[idx] || 0, 10) || 0;
-        item.soluongs[idx] = old + sl;   // ✅ gộp nếu trùng size
-      }
+        masp,
+        tensp: row.tensp || "",
+        sizes: [size || "0"],
+        soluongs: [sl],
+        tong: sl,
 
-      item.tong += sl;
+        gia: Number(row.gia || 0),
+        km: Number(row.km || 0),
+        kms: [Number(row.km || 0)],
+        dvt: row.dvt || "",
+
+        // KM xả
+        km_pcts: [
+          row.km_pct == null || row.km_pct === ""
+            ? null
+            : Number(row.km_pct)
+        ],
+        km_max_pcts: [
+          row.km_max_pct == null || row.km_max_pct === ""
+            ? null
+            : Number(row.km_max_pct)
+        ],
+        km_sources: [row.km_source || null],
+
+        // Nhân viên bán:
+        // thống nhất hiển thị MÃ NHÂN VIÊN, không dùng tên.
+        manv_bans: [row.manv_ban || null],
+        tennv_bans: [row.tennv_ban || null],
+
+        // Liên kết phiếu tư vấn nguồn
+        tu_van_ct_ids: [
+          row.tu_van_ct_id == null ? null : Number(row.tu_van_ct_id)
+        ],
+        tu_van_sohds: [row.tu_van_sohd || null]
+      };
+
+      window.groupOrder.push(entryKey);
     });
-
   }
 
   // ✅ Chuyển sang chế độ XEM khi nạp hóa đơn cũ
