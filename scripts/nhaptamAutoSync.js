@@ -1,3 +1,4 @@
+// HOAN TUYET - NHAPTAM AUTOSYNC V2 - GROUPED MODEL COMPAT
 function formatDateTimeVN(value) {
     if (!value) return "";
     try {
@@ -111,10 +112,51 @@ async function kiemTraAnhSanPhamTrenPhieu() {
 }
 
 function rebuildBangKetQua() {
-    if (typeof window.capNhatBangKetQuaTuDOM === "function") {
-        window.capNhatBangKetQuaTuDOM();
+    // Trang nhập tạm phải luôn dùng GROUPED MODEL theo MASP.
+    // Không parse lại bảng visual dạng "39/3 / 40/3..." bằng parser của LINE MODEL.
+    if (typeof window.getNhapTamBangKetQuaGrouped === "function") {
+        return window.getNhapTamBangKetQuaGrouped();
     }
-    return window.bangKetQua || {};
+
+    const raw = window.bangKetQua || {};
+    const grouped = {};
+
+    Object.values(raw).forEach(item => {
+        const masp = String(item?.masp || "").trim().toUpperCase();
+        if (!masp) return;
+
+        if (!grouped[masp]) {
+            grouped[masp] = {
+                masp,
+                tensp: item?.tensp || "",
+                dvt: item?.dvt || "sp",
+                gia: Number(item?.gia || 0),
+                km: Number(item?.km || 0),
+                sizes: [],
+                soluongs: []
+            };
+        }
+
+        const sizes = Array.isArray(item?.sizes) ? item.sizes : [];
+        const counts = Array.isArray(item?.soluongs) ? item.soluongs : [];
+
+        sizes.forEach((rawSize, idx) => {
+            const size = String(rawSize ?? "").trim() || "0";
+            const sl = Number(counts[idx] || 0);
+            if (!sl) return;
+
+            const g = grouped[masp];
+            const pos = g.sizes.findIndex(x => String(x) === size);
+            if (pos >= 0) g.soluongs[pos] = Number(g.soluongs[pos] || 0) + sl;
+            else {
+                g.sizes.push(size);
+                g.soluongs.push(sl);
+            }
+        });
+    });
+
+    window.bangKetQua = grouped;
+    return grouped;
 }
 
 function extractSingleProductFromBangKetQua() {
