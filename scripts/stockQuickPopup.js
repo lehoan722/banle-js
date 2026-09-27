@@ -1,3 +1,4 @@
+// HOAN TUYET - STOCK QUICK CANONICAL SIZE FIX V1
 // stockQuickPopup.js
 // Module dùng chung: popup bán/tồn theo mã SP – lấy dữ liệu từ xntnhanh
 // LƯU Ý: supabase phải được tạo global ở nơi khác (authModule.js / supabaseClient.js)
@@ -1799,19 +1800,52 @@ data-color-masp="${targetMasp}"
       sumTongBan = 0,     // ✅ THÊM
       sumTongTon = 0;
 
-    // ===== Luôn hiển thị đủ các dòng size: 0, 38..45 (kể cả không có dữ liệu) =====
-    const SIZE_ORDER = ["0", "38", "39", "40", "41", "42", "43", "44", "45", , "46"];
+    // ===== Luôn hiển thị đủ các dòng size: 0, 38..46 (kể cả không có dữ liệu) =====
+    const SIZE_ORDER = ["0", "38", "39", "40", "41", "42", "43", "44", "45", "46"];
 
-    // Map dữ liệu trả về theo số size (0/38/39...)
+    // Chỉ nhận SIZE CHUẨN tuyệt đối.
+    //
+    // Trước đây code dùng regex lấy "số đầu tiên", nên dữ liệu lịch sử lỗi như:
+    //   "39/1", "39/1/1", "40/1/1/1"...
+    // đều bị quy về size 39/40 rồi ghi đè lên dòng size chuẩn.
+    //
+    // Hậu quả:
+    //   size 39 chuẩn có ton_cs2 = 3
+    //   nhưng dòng rác "39/1/1..." có ton_cs2 = 0 chạy sau
+    //   -> bySizeNum.set("39", rowRac)
+    //   -> StockQuick hiển thị trắng/0 dù DB tồn đúng.
+    //
+    // Bản này chỉ chấp nhận:
+    //   0, 38, 39, 40, ... 46
+    // hoặc dạng normalize "size 39".
+    const CANONICAL_SIZE_RE = /^(?:0|3[8-9]|4[0-6])$/;
+
     const bySizeNum = new Map();
+
     (rows || []).forEach((r) => {
       const raw = String(r.size ?? "").trim();
-      // normalizeSize() tạo dạng "size 39" -> rút số
       const noPrefix = raw.replace(/^size\s+/i, "").trim();
-      const m = noPrefix.match(/(\d{1,2})/);
-      const num = (m ? m[1] : noPrefix).trim();
-      if (!num) return;
-      bySizeNum.set(num, r);
+
+      // Loại hoàn toàn size rác có '/', ',', text ghép...
+      if (!CANONICAL_SIZE_RE.test(noPrefix)) return;
+
+      // Nếu có trùng size chuẩn, ưu tiên dòng có dữ liệu tồn/nhập lớn hơn.
+      const current = bySizeNum.get(noPrefix);
+
+      if (!current) {
+        bySizeNum.set(noPrefix, r);
+        return;
+      }
+
+      const score = (x) =>
+        Math.abs(Number(x?.ton_cs1 || 0)) +
+        Math.abs(Number(x?.ton_cs2 || 0)) +
+        Math.abs(Number(x?.tong_nhap || 0)) +
+        Math.abs(Number(x?.tong_ban || 0));
+
+      if (score(r) > score(current)) {
+        bySizeNum.set(noPrefix, r);
+      }
     });
 
     const body = SIZE_ORDER
