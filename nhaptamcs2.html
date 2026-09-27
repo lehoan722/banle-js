@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- HOAN TUYET NHAPTAM CS2 V2 - GROUPED MODEL FIX -->
 
 <html lang="vi">
 
@@ -1636,11 +1635,11 @@
         });
     </script>
 
-    <!-- Adapter RIÊNG cho nhập tạm: giữ grouped model theo MASP dù bangketqua.js dùng line-model -->
-    <script src="./scripts/nhaptamBangKetQuaAdapter.js"></script>
+    <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
+    <script src="./scripts/ccnBangKetQuaAdapter.js"></script>
     <script>
-        if (window.initNhapTamBangKetQuaAdapter) {
-            window.initNhapTamBangKetQuaAdapter();
+        if (window.initCCNAdapter) {
+            window.initCCNAdapter();
         }
     </script>
 
