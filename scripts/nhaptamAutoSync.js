@@ -1,4 +1,4 @@
-// HOAN TUYET - NHAPTAM AUTOSYNC V3 - USE ISOLATED NHAPTAM STATE
+// HOAN TUYET - NHAPTAM AUTOSYNC V4 - SHARED GROUPED ENGINE
 function formatDateTimeVN(value) {
     if (!value) return "";
     try {
@@ -112,12 +112,14 @@ async function kiemTraAnhSanPhamTrenPhieu() {
 }
 
 function rebuildBangKetQua() {
-    // Ưu tiên state RIÊNG của trang nhập tạm.
+    if (typeof window.getNhapHangGroupedBangKetQua === "function") {
+        return window.getNhapHangGroupedBangKetQua() || {};
+    }
+
     if (typeof window.getNhapTamBangKetQua === "function") {
         return window.getNhapTamBangKetQua() || {};
     }
 
-    // Fallback cho trường hợp module nhaptam.js chưa sẵn sàng.
     if (typeof window.capNhatBangKetQuaTuDOM === "function") {
         window.capNhatBangKetQuaTuDOM();
     }
