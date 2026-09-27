@@ -775,11 +775,14 @@
                     }
 
                     // Trang nhập tạm dùng module dữ liệu RIÊNG, không dùng line-model bán hàng.
-                    const nhapTamModule = await import("./scripts/nhaptam.js");
-                    if (typeof nhapTamModule.khoiTaoNhapTam === "function") {
-                        nhapTamModule.khoiTaoNhapTam({ coSo: "cs1" });
+                    const nhapHangModule = await import("./scripts/nhapHangGroupedModel.js");
+                    if (typeof nhapHangModule.khoiTaoNhapHangGrouped === "function") {
+                        nhapHangModule.khoiTaoNhapHangGrouped({
+                            coSo: "cs1",
+                            pageType: "nhaptam"
+                        });
                     }
-                } catch (e) {
+} catch (e) {
                     console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
                 }
 
