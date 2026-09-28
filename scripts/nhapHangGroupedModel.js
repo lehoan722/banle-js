@@ -1,4 +1,4 @@
-// HOAN TUYET - nhapHangGroupedModel.js V4
+// HOAN TUYET - nhapHangGroupedModel.js V5 - ONE MASP ONE ROW
 // Engine chung cho nhaptamcs1/2 + nhapmoimtcs1/2.
 // State chuẩn: bangKetQua[MASP] = {sizes:[], soluongs:[]}
 // Visual "39/3" chỉ là hiển thị; raw size nằm ở data-size="39".
@@ -113,16 +113,17 @@ function normalizeGrouped(rawBang) {
 }
 
 function updateSummary(grouped) {
-    let mathang = 0, tongsl = 0, tongkm = 0, phaitra = 0;
+    const items = Object.values(grouped || {});
+    let mathang = items.length;
+    let tongsl = 0, tongkm = 0, phaitra = 0;
 
-    Object.values(grouped || {}).forEach((item) => {
+    items.forEach((item) => {
         const gia = Number(item.gia || 0);
         const km = Number(item.km || 0);
 
         (item.sizes || []).forEach((_, idx) => {
             const sl = Number(item.soluongs?.[idx] || 0);
             if (!sl) return;
-            mathang += 1;
             tongsl += sl;
             tongkm += km * sl;
             phaitra += (gia - km) * sl;
@@ -160,34 +161,49 @@ function renderGroupedTable(rawBang) {
             const km = Number(item.km || 0);
             const vitri = getVitriTheoKho(item.masp);
 
-            (item.sizes || []).forEach((rawSize, idx) => {
-                const size = String(rawSize ?? "").trim() || "0";
-                const sl = Number(item.soluongs?.[idx] || 0);
-                if (!sl) return;
+            const pairs = (item.sizes || [])
+                .map((size, idx) => ({
+                    size: String(size ?? "").trim() || "0",
+                    sl: Number(item.soluongs?.[idx] || 0)
+                }))
+                .filter(x => x.sl > 0);
 
-                const thanhTien = (gia - km) * sl;
-                const tr = document.createElement("tr");
+            if (!pairs.length) return;
 
-                tr.dataset.masp = item.masp;
-                tr.dataset.size = size;
-                tr.dataset.soluong = String(sl);
+            const tongSl = pairs.reduce((s, x) => s + x.sl, 0);
+            const thanhTien = (gia - km) * tongSl;
 
-                tr.innerHTML = `
-                    <td>${item.masp}</td>
-                    <td>${item.tensp || ""}</td>
-                    <td>${size}/${sl}</td>
-                    <td>${sl}</td>
-                    <td>${item.dvt || ""}</td>
-                    <td>${gia}</td>
-                    <td>${km}</td>
-                    <td>${thanhTien.toLocaleString("vi-VN")}</td>
-                    <td>${vitri}</td>
-                    <td>0</td>
-                    <td>0</td>
-                `;
+            // Visual giống trang Chuyển chi nhánh:
+            // 39/3
+            // 40/2
+            // 41/1
+            const sizeHtml = pairs
+                .map(x => `${x.size}/${x.sl}`)
+                .join("<br>");
 
-                tbody.appendChild(tr);
-            });
+            const tr = document.createElement("tr");
+
+            // RAW DATA là nguồn chuẩn; visual chỉ để xem.
+            tr.dataset.masp = item.masp;
+            tr.dataset.sizes = JSON.stringify(pairs.map(x => x.size));
+            tr.dataset.soluongs = JSON.stringify(pairs.map(x => x.sl));
+            tr.dataset.soluong = String(tongSl);
+
+            tr.innerHTML = `
+                <td>${item.masp}</td>
+                <td>${item.tensp || ""}</td>
+                <td>${sizeHtml}</td>
+                <td>${tongSl}</td>
+                <td>${item.dvt || ""}</td>
+                <td>${gia}</td>
+                <td>${km}</td>
+                <td>${thanhTien.toLocaleString("vi-VN")}</td>
+                <td>${vitri}</td>
+                <td>0</td>
+                <td>0</td>
+            `;
+
+            tbody.appendChild(tr);
         });
     } finally {
         _rendering = false;
@@ -208,33 +224,49 @@ function rebuildFromDomGrouped() {
         const cells = tr.querySelectorAll("td");
         if (cells.length < 6) return;
 
-        const masp = U(cells[0]?.innerText);
+        const masp = U(tr.dataset.masp || cells[0]?.innerText);
         if (!masp) return;
 
         const tensp = String(cells[1]?.innerText || "").trim();
-        const sl = Number(
-            String(cells[3]?.innerText || tr.dataset.soluong || "0")
-                .replace(/[^\d.-]/g, "")
-        ) || 0;
-        if (!sl) return;
-
-        let size = String(tr.dataset.size || "").trim();
-
-        if (!size) {
-            const visual = String(cells[2]?.innerText || "0").trim();
-            const m = visual.match(/^(.*)\/(\d+(?:\.\d+)?)$/);
-            if (m && Number(m[2]) === sl) {
-                size = String(m[1] || "").trim();
-            } else {
-                size = visual;
-            }
-        }
-
-        if (!size) size = "0";
-
         const dvt = String(cells[4]?.innerText || "sp").trim() || "sp";
         const gia = parseMoney(cells[5]?.innerText || "0");
         const km = cells.length > 6 ? parseMoney(cells[6]?.innerText || "0") : 0;
+
+        let sizes = [];
+        let counts = [];
+
+        // Nguồn chuẩn của V5: dataset arrays.
+        try {
+            const dsSizes = JSON.parse(tr.dataset.sizes || "[]");
+            const dsCounts = JSON.parse(tr.dataset.soluongs || "[]");
+
+            if (Array.isArray(dsSizes) && Array.isArray(dsCounts)) {
+                sizes = dsSizes.map(x => String(x ?? "").trim() || "0");
+                counts = dsCounts.map(x => Number(x || 0));
+            }
+        } catch (_) {}
+
+        // Fallback để tương thích dữ liệu DOM cũ:
+        // cột size có thể là nhiều dòng "39/3\n40/2\n41/1".
+        if (!sizes.length) {
+            const visual = String(cells[2]?.innerText || "").trim();
+
+            visual
+                .split(/\n+/)
+                .map(x => x.trim())
+                .filter(Boolean)
+                .forEach(token => {
+                    const m = token.match(/^(.*)\/(\d+(?:\.\d+)?)$/);
+                    if (!m) return;
+
+                    const rawSize = String(m[1] || "").trim() || "0";
+                    const sl = Number(m[2] || 0);
+                    if (!sl) return;
+
+                    sizes.push(rawSize);
+                    counts.push(sl);
+                });
+        }
 
         if (!grouped[masp]) {
             grouped[masp] = {
@@ -244,15 +276,26 @@ function rebuildFromDomGrouped() {
         }
 
         const g = grouped[masp];
-        const pos = g.sizes.findIndex((x) => String(x) === size);
 
-        if (pos >= 0) {
-            g.soluongs[pos] = Number(g.soluongs[pos] || 0) + sl;
-        } else {
-            g.sizes.push(size);
-            g.soluongs.push(sl);
-        }
+        sizes.forEach((size, idx) => {
+            const sl = Number(counts[idx] || 0);
+            if (!sl) return;
+
+            const pos = g.sizes.findIndex(x => String(x) === String(size));
+            if (pos >= 0) {
+                g.soluongs[pos] = Number(g.soluongs[pos] || 0) + sl;
+            } else {
+                g.sizes.push(String(size));
+                g.soluongs.push(sl);
+            }
+        });
     });
+
+    // Nếu DOM đang rỗng nhưng state hiện tại có dữ liệu,
+    // không được vô tình xóa state.
+    if (!Object.keys(grouped).length && window.bangKetQua && Object.keys(window.bangKetQua).length) {
+        return normalizeGrouped(window.bangKetQua);
+    }
 
     const normalized = normalizeGrouped(grouped);
     window.bangKetQua = normalized;
@@ -308,7 +351,7 @@ export function khoiTaoNhapHangGrouped({ coSo = "cs1", pageType = "nhaptam" } = 
 
     installHooks();
 
-    console.log("[NHAP HANG GROUPED V4]", {
+    console.log("[NHAP HANG GROUPED V5 - ONE MASP ONE ROW]", {
         coSo: _coSo,
         pageType: _pageType,
         path: location.pathname

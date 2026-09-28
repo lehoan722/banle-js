@@ -1,8 +1,8 @@
-// HOAN TUYET - nhapmoiNapNhapTam.js V4
+// HOAN TUYET - nhapmoiNapNhapTam.js V5
 import {
     getNhapHangGroupedBangKetQua,
     replaceSize0WithBreakdown
-} from "./nhapHangGroupedModel.js";
+} from "./nhapHangGroupedModel.js?v=500";
 
 const U = (v) => String(v ?? "").trim().toUpperCase();
 
