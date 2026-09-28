@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- HOAN TUYET NHAP HANG V5 - ONE MASP ONE ROW -->
 <!-- HOAN TUYET NHAPMOI CS2 V4 - SHARED GROUPED MODEL -->
 
 <html lang="vi">
@@ -742,7 +743,7 @@
                         module.khoiTaoUngDung();
                     }
 
-                    const nhapHangModule = await import("./scripts/nhapHangGroupedModel.js");
+                    const nhapHangModule = await import("./scripts/nhapHangGroupedModel.js?v=500");
                     if (typeof nhapHangModule.khoiTaoNhapHangGrouped === "function") {
                         nhapHangModule.khoiTaoNhapHangGrouped({
                             coSo: "cs2",
@@ -1644,7 +1645,7 @@
 
     <script type="module">
         import { popupNgang } from './scripts/popupNgang.js';
-        import { bindNapNhapTamButton } from './scripts/nhapmoiNapNhapTam.js';
+        import { bindNapNhapTamButton } from './scripts/nhapmoiNapNhapTam.js?v=500';
 
         document.addEventListener('DOMContentLoaded', () => {
             const btnNgang = document.getElementById('btnChuyenngang');
