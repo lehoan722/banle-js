@@ -1,3 +1,4 @@
+// HOAN TUYET - STOCK QUICK BUSINESS DATE FIX V2
 // HOAN TUYET - STOCK QUICK CANONICAL SIZE FIX V1
 // stockQuickPopup.js
 // Module dùng chung: popup bán/tồn theo mã SP – lấy dữ liệu từ xntnhanh
@@ -1129,14 +1130,40 @@ data-color-masp="${targetMasp}"
 
 
   function getDenNgay() {
+    // STOCKQUICK luôn phải xem TỒN HIỆN TẠI của cửa hàng.
+    // Không dùng XNT14_FILTERS vì bộ lọc báo cáo lịch sử không được phép
+    // làm thay đổi ngày tồn của popup bán hàng.
+    //
+    // QUAN TRỌNG:
+    // Không dùng new Date().toISOString().slice(0,10) vì toISOString() là UTC.
+    // Ví dụ 29/09/2026 01:00 tại Việt Nam vẫn là 28/09 theo UTC,
+    // làm xntnhanh bỏ toàn bộ chứng từ ngày 29/09.
+    //
+    // Luôn lấy ngày kinh doanh theo múi giờ Việt Nam.
     try {
-      const raw = sessionStorage.getItem("XNT14_FILTERS");
-      if (raw) {
-        const f = JSON.parse(raw);
-        if (f.den_ngay) return f.den_ngay;
-      }
-    } catch (e) { }
-    return new Date().toISOString().slice(0, 10);
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(new Date());
+
+      const get = (type) => parts.find(p => p.type === type)?.value || "";
+      const y = get("year");
+      const m = get("month");
+      const d = get("day");
+
+      if (y && m && d) return `${y}-${m}-${d}`;
+    } catch (e) {
+      console.warn("[StockQuickPopup] Không lấy được ngày Asia/Ho_Chi_Minh:", e);
+    }
+
+    // Fallback cuối cùng: ngày local của trình duyệt, tuyệt đối không dùng UTC ISO.
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
   }
 
   // ===== Gọi RPC xntnhanh + lấy vị trí kho =====
