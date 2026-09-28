@@ -15,7 +15,7 @@
   const IS_CCN = PATH.includes('ccn1v2') || PATH.includes('ccn2v1');
   if (!IS_CCN) return;
 
-  const VERSION = 'CCN-BKQ-V2.0.0';
+  const VERSION = 'CCN-BKQ-V2.1.0';
   let originalGenericSync = null;
   let syncing = false;
   let rendering = false;
@@ -105,6 +105,78 @@
       .sort((a, b) => sizeOrder(a.size) - sizeOrder(b.size));
   }
 
+  // Gom TOÀN BỘ state theo MASP thật.
+  //
+  // bangketqua.js mới có thể tạo LINE MODEL với nhiều key khác nhau
+  // (LN_xxx...) nhưng item.masp lại giống nhau. Nếu render trực tiếp theo key,
+  // cùng một mã sẽ bị tách thành nhiều dòng.
+  //
+  // CCN cần:
+  //   1 mã = 1 dòng visual
+  // nhưng dữ liệu vẫn giữ từng size/sl riêng trong arrays.
+  function groupStateByMasp(rawBang) {
+    const grouped = {};
+
+    Object.entries(rawBang || {}).forEach(([key, item]) => {
+      if (!item) return;
+
+      const masp = upper(item.masp || key);
+      if (!masp) return;
+
+      const sp = getProduct(masp) || {};
+
+      if (!grouped[masp]) {
+        grouped[masp] = {
+          ...item,
+          masp,
+          tensp: text(item.tensp || sp.tensp || sp.tenhang || ''),
+          dvt: text(item.dvt || sp.dvt || ''),
+          gia: Number(item.gia || 0) || 0,
+          km: Number(item.km || 0) || 0,
+          sizes: [],
+          soluongs: [],
+          tong: 0
+        };
+      }
+
+      const g = grouped[masp];
+
+      // Ưu tiên thông tin có dữ liệu nếu dòng đầu đang trống.
+      if (!g.tensp && item.tensp) g.tensp = text(item.tensp);
+      if (!g.dvt && item.dvt) g.dvt = text(item.dvt);
+      if (!g.gia && Number(item.gia || 0)) g.gia = Number(item.gia);
+      if (!g.km && Number(item.km || 0)) g.km = Number(item.km);
+
+      const entries = normalizeEntries(item);
+
+      entries.forEach(({ size, sl }) => {
+        const idx = g.sizes.findIndex(s => text(s) === size);
+        if (idx >= 0) {
+          g.soluongs[idx] = Number(g.soluongs[idx] || 0) + Number(sl || 0);
+        } else {
+          g.sizes.push(size);
+          g.soluongs.push(Number(sl || 0));
+        }
+      });
+    });
+
+    // Chuẩn hóa thứ tự size và tổng SL.
+    Object.values(grouped).forEach(g => {
+      const pairs = g.sizes.map((size, i) => ({
+        size: text(size),
+        sl: Number(g.soluongs[i] || 0)
+      }))
+      .filter(x => isCanonicalSize(x.size) && x.sl > 0)
+      .sort((a, b) => sizeOrder(a.size) - sizeOrder(b.size));
+
+      g.sizes = pairs.map(x => x.size);
+      g.soluongs = pairs.map(x => x.sl);
+      g.tong = pairs.reduce((sum, x) => sum + x.sl, 0);
+    });
+
+    return grouped;
+  }
+
   function orderedMasps(bang) {
     const keys = Object.keys(bang || {}).filter(Boolean);
     if (!keys.length) return [];
@@ -129,10 +201,19 @@
       const tbody = document.querySelector('#bangketqua tbody');
       if (!tbody) return;
 
+      // V2.1: luôn gom state theo MASP trước khi render.
+      // Dù đầu vào là LINE MODEL nhiều key, CCN vẫn chỉ hiện 1 mã / 1 dòng.
+      const groupedState = groupStateByMasp(bangKetQua || window.bangKetQua || {});
+
+      // Đồng thời biến groupedState thành nguồn dữ liệu chuẩn để Save/Xem/Sửa
+      // đều dùng cùng một cấu trúc.
+      window.bangKetQua = groupedState;
+      try { window.hoadonSyncFromWindow?.(); } catch (_) {}
+
       tbody.innerHTML = '';
 
-      for (const key of orderedMasps(bangKetQua || {})) {
-        const item = bangKetQua[key];
+      for (const key of orderedMasps(groupedState)) {
+        const item = groupedState[key];
         if (!item) continue;
 
         const masp = upper(item.masp || key);
@@ -185,7 +266,7 @@
         tbody.appendChild(tr);
       }
 
-      console.debug(`[${VERSION}] render`, Object.keys(bangKetQua || {}).length, 'mã');
+      console.debug(`[${VERSION}] render`, Object.keys(groupedState || {}).length, 'mã');
     } finally {
       rendering = false;
     }
@@ -371,7 +452,10 @@
   }
 
   function afterRender({ bangKetQua }) {
-    renderGroupedTable(bangKetQua || window.bangKetQua || {});
+    const grouped = groupStateByMasp(bangKetQua || window.bangKetQua || {});
+    window.bangKetQua = grouped;
+    try { window.hoadonSyncFromWindow?.(); } catch (_) {}
+    renderGroupedTable(grouped);
   }
 
   window.initCCNAdapter = function initCCNAdapterV2() {
@@ -381,12 +465,17 @@
       version: VERSION,
       syncFromDOM,
       render: renderGroupedTable,
+      groupStateByMasp,
       getOriginalGenericSync: () => originalGenericSync
     };
 
-    // Nếu main/hoadon đã có state trước khi init, vẽ ngay.
+    // Nếu main/hoadon đã có state trước khi init (kể cả hóa đơn cũ
+    // đang có nhiều dòng chi tiết cùng MASP), gom lại ngay trước khi vẽ.
     if (window.bangKetQua && Object.keys(window.bangKetQua).length) {
-      renderGroupedTable(window.bangKetQua);
+      const grouped = groupStateByMasp(window.bangKetQua);
+      window.bangKetQua = grouped;
+      try { window.hoadonSyncFromWindow?.(); } catch (_) {}
+      renderGroupedTable(grouped);
     }
 
     console.log(`✅ [${VERSION}] Đã bật adapter CCN độc lập.`);
