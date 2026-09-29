@@ -308,6 +308,18 @@ async function taiTrang(page) {
         return;
     }
 
+    // Hai cột thu nhập phải được RPC baocaochitiet_bh_page trả về.
+    // Nếu chưa cập nhật RPC, vẫn hiển thị cột nhưng dữ liệu sẽ trống.
+    if ((data || []).length > 0) {
+        const sample = data[0] || {};
+        if (!Object.prototype.hasOwnProperty.call(sample, "tien_hoahong") ||
+            !Object.prototype.hasOwnProperty.call(sample, "tien_thuong_xa")) {
+            console.warn(
+                "[BAOCAOCHITIET] RPC baocaochitiet_bh_page chưa trả về tien_hoahong / tien_thuong_xa."
+            );
+        }
+    }
+
     const startIndex = offset + 1;
     const hotData = (data || []).map((r, idx) => ({
         stt: startIndex + idx,
@@ -400,7 +412,9 @@ function renderTable(hotData) {
         { data: "ket_qua", title: "Kết quả", readOnly: true, width: 90 },
         { data: "manv_ban", title: "NV bán", readOnly: true, width: 90 },
         { data: "baymau_by", title: "Bày mẫu bởi", readOnly: true, width: 120 },
-        { data: "baymau_note", title: "Ghi chú bày mẫu", readOnly: true, width: 130 }
+        { data: "baymau_note", title: "Ghi chú bày mẫu", readOnly: true, width: 130 },
+        { data: "tien_hoahong", title: "Tiền hoa hồng", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell },
+        { data: "tien_thuong_xa", title: "Tiền thưởng xả", readOnly: true, width: 120, type: 'numeric', renderer: formatNumberCell }
     ];
 
     const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
@@ -589,7 +603,7 @@ window.xuatExcelToanBo = async function () {
         }));
     }
 
-    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền", "Kết quả", "NV bán", "Bày mẫu bởi", "Ghi chú bày mẫu"];
+    const headers = ["STT", "Ngày", "Số HĐ", "Loại HĐ", "Địa điểm", "Khách hàng", "Nhân viên", "Mã SP", "Tên SP", "Size", "SL", "ĐVT", "Giá", "KM", "Thành tiền", "Kết quả", "NV bán", "Bày mẫu bởi", "Ghi chú bày mẫu", "Tiền hoa hồng", "Tiền thưởng xả"];
     const tongHopSize = document.getElementById("tongHopSize")?.checked || false;
     if (onlyOneProduct && !tongHopSize) headers.push("Tổng tồn kho");
     const aoa = [headers];
@@ -597,7 +611,8 @@ window.xuatExcelToanBo = async function () {
         const row = [
             r.stt, r.ngay, r.sohd, r.loaihd, r.diadiem, r.khachhang, r.nhanvien,
             r.masp, r.tensp, r.size, r.soluong, r.dvt, r.gia, r.km, r.thanhtien,
-            r.ket_qua, r.manv_ban, r.baymau_by, r.baymau_note
+            r.ket_qua, r.manv_ban, r.baymau_by, r.baymau_note,
+            r.tien_hoahong, r.tien_thuong_xa
         ];
         if (onlyOneProduct && !tongHopSize) row.push(r.ton_tichluy);
         aoa.push(row);
