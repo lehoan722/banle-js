@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=31";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.18";
-console.log("[TimKiemNhanh] BUILD 1.2.18");
+window.TIM_KIEM_NHANH_BUILD = "1.2.19";
+console.log("[TimKiemNhanh] BUILD 1.2.19");
 
 const supabase = getSupabaseClient();
 
@@ -45,7 +45,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.18 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.19 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -850,14 +850,31 @@ function bind(){
     const btn=$("btnLogout");
     if(btn){btn.disabled=true;btn.textContent="Đang xuất...";}
     try{
-      // Dùng đúng luồng đăng xuất chung của authModule để session kho hiện tại được hủy sạch.
-      // Giữ lại mã đăng nhập + cơ sở cũ để form đăng nhập hiện lại nhanh; không lưu mật khẩu.
+      // Đăng xuất session hiện tại nhưng KHÔNG reload ngay.
+      // Sau đó chủ động xóa địa điểm để form đăng nhập bắt buộc người dùng chọn lại CS1/CS2.
+      // Làm như vậy cũng tránh ?cs=... trên URL tự ghi lại cơ sở cũ khi reload.
       await dangXuatDungChung({
         loginContainerId:"login-container",
         appContainerId:"app-container",
         clearDraft:false,
-        reloadPage:true
+        reloadPage:false
       });
+
+      try{localStorage.removeItem("diadiem");}catch{}
+      try{sessionStorage.removeItem("diadiem");}catch{}
+      try{window.diadiem="";}catch{}
+      state.diadiem="";
+
+      // Xóa trắng riêng ô Cơ sở; vẫn giữ mã nhân viên/identifier để đăng nhập lại nhanh.
+      const csSelect=document.getElementById("login-cs");
+      if(csSelect)csSelect.value="";
+
+      // Bảo đảm form đăng nhập đang hiện và con trỏ ở ô chọn cơ sở.
+      const login=document.getElementById("login-container");
+      const app=document.getElementById("app-container");
+      if(app)app.style.display="none";
+      if(login)login.style.display="flex";
+      try{csSelect?.focus();}catch{}
     }catch(e){
       console.error("[TimKiemNhanh] Đăng xuất lỗi:",e);
       if(btn){btn.disabled=false;btn.textContent="Đăng xuất";}
