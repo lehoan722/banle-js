@@ -848,7 +848,7 @@ function bind(){
     const branch=validBranch()?state.diadiem.toUpperCase():"cơ sở hiện tại";
     if(!window.confirm(`Bạn có chắc muốn đăng xuất khỏi ${branch}?\n\nSau khi đăng xuất, bạn có thể chọn lại CS1 hoặc CS2 để đăng nhập.`))return;
     const btn=$("btnLogout");
-    if(btn){btn.disabled=true;btn.textContent="Đổi địa điểm";}
+    if(btn){btn.disabled=true;btn.textContent="Đang đổi…";}
     try{
       // Đăng xuất session hiện tại nhưng KHÔNG reload ngay.
       // Sau đó chủ động xóa địa điểm để form đăng nhập bắt buộc người dùng chọn lại CS1/CS2.
