@@ -1,11 +1,11 @@
-import { getSupabaseClient, khoiTaoDangNhapDungChung } from "./authModule.js";
+import { getSupabaseClient, khoiTaoDangNhapDungChung, dangXuatDungChung } from "./authModule.js";
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=31";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.17";
-console.log("[TimKiemNhanh] BUILD 1.2.17");
+window.TIM_KIEM_NHANH_BUILD = "1.2.18";
+console.log("[TimKiemNhanh] BUILD 1.2.18");
 
 const supabase = getSupabaseClient();
 
@@ -45,7 +45,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.17 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.18 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -844,6 +844,26 @@ function clearSourceForManualFilter(){
 function bind(){
   setupBeepUnlockOnce(document);
   $("btnNew").onclick=resetToInitialState;
+  $("btnLogout").onclick=async()=>{
+    const branch=validBranch()?state.diadiem.toUpperCase():"cơ sở hiện tại";
+    if(!window.confirm(`Bạn có chắc muốn đăng xuất khỏi ${branch}?\n\nSau khi đăng xuất, bạn có thể chọn lại CS1 hoặc CS2 để đăng nhập.`))return;
+    const btn=$("btnLogout");
+    if(btn){btn.disabled=true;btn.textContent="Đang xuất...";}
+    try{
+      // Dùng đúng luồng đăng xuất chung của authModule để session kho hiện tại được hủy sạch.
+      // Giữ lại mã đăng nhập + cơ sở cũ để form đăng nhập hiện lại nhanh; không lưu mật khẩu.
+      await dangXuatDungChung({
+        loginContainerId:"login-container",
+        appContainerId:"app-container",
+        clearDraft:false,
+        reloadPage:true
+      });
+    }catch(e){
+      console.error("[TimKiemNhanh] Đăng xuất lỗi:",e);
+      if(btn){btn.disabled=false;btn.textContent="Đăng xuất";}
+      toast("Không đăng xuất được. Hãy thử lại.",5000);
+    }
+  };
   const codeInput=$("codeInput");
   codeInput.addEventListener("input",e=>{clearTimeout(suggestTimer);suggestTimer=setTimeout(()=>loadSuggestions(e.target.value),150)});
 
