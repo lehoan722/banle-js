@@ -326,16 +326,63 @@
       return thang;
     }
 
+    function normalizePhone(v) {
+      return String(v || "").replace(/[^0-9]/g, "");
+    }
+
+    function classifyVietnamPhone(v) {
+      const phone = normalizePhone(v);
+
+      if (/^\d{10}$/.test(phone)) {
+        return { ok: true, type: "mobile_or_10", phone };
+      }
+
+      if (/^02\d{9}$/.test(phone)) {
+        return { ok: true, type: "fixed_11", phone };
+      }
+
+      if (/^\d{11}$/.test(phone)) {
+        return {
+          ok: false,
+          phone,
+          error: "SĐT có 11 số nhưng không bắt đầu bằng 02 nên không giống số điện thoại cố định Việt Nam. Vui lòng kiểm tra lại!"
+        };
+      }
+
+      return {
+        ok: false,
+        phone,
+        error: "SĐT phải gồm 10 số, hoặc 11 số nếu là điện thoại cố định bắt đầu bằng 02!"
+      };
+    }
+
     function validateForm() {
       const makh = getVal("makh").trim().toUpperCase();
       const tenkh = getVal("tenkh").trim();
-      const dienthoai = getVal("dienthoai").trim();
+      const phoneInfo = classifyVietnamPhone(getVal("dienthoai"));
+
       if (!makh) return "Mã khách hàng không được bỏ trống!";
       if (!tenkh) return "Tên khách hàng không được bỏ trống!";
-      if (!dienthoai) return "Số điện thoại không được bỏ trống!";
-      const digits = dienthoai.replace(/[^\d]/g, "");
-      if (!/^\d{10}$/.test(digits)) return "SĐT phải là số, 10 ký tự!";
+      if (!phoneInfo.phone) return "Số điện thoại không được bỏ trống!";
+
+      // Khách mới: nếu Mã KH chỉ gồm chữ số thì theo quy ước Mã KH = SĐT,
+      // cho phép đúng 10 hoặc 11 chữ số.
+      if (!editingOld && isAllDigits(makh) && !/^\d{10,11}$/.test(makh)) {
+        return "Mã KH dạng số phải có 10 hoặc 11 chữ số!";
+      }
+
+      if (!phoneInfo.ok) return phoneInfo.error;
       return null;
+    }
+
+    function confirmFixedLineIfNeeded() {
+      const phoneInfo = classifyVietnamPhone(getVal("dienthoai"));
+      if (phoneInfo.type !== "fixed_11") return true;
+
+      return confirm(
+        `Số điện thoại ${phoneInfo.phone} có 11 số và bắt đầu bằng 02.\n\n` +
+        "Hệ thống nhận dạng đây là số điện thoại cố định. Bạn xác nhận đây đúng là số điện thoại cố định và muốn lưu?"
+      );
     }
 
     function resetForm() {
@@ -381,13 +428,23 @@
     }
 
     async function saveKH() {
+      autoFillPhoneFromMaKH();
+
       const err = validateForm();
       if (err) return showMsg(err, "error");
+
+      if (!confirmFixedLineIfNeeded()) {
+        showMsg("Đã quay lại để bạn kiểm tra/sửa số điện thoại.", "");
+        const dt = document.getElementById("dienthoai");
+        dt?.focus();
+        dt?.select();
+        return;
+      }
 
       const obj = {
         makh: getVal("makh").trim().toUpperCase(),
         tenkh: getVal("tenkh").trim(),
-        dienthoai: getVal("dienthoai").trim(),
+        dienthoai: normalizePhone(getVal("dienthoai")),
         ngaysinh: getVal("ngaysinh") || null,
         thangsinh: layThangSinhTuNgaySinh(),
         diachi: getVal("diachi") || null,
