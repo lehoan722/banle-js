@@ -189,12 +189,72 @@ function sharedSizeRenderer(instance, td, row, col, prop, value, cellProperties)
   return td;
 }
 
-function deleteRenderer(instance, td) {
+function deletePhysicalRow(instance, visualRow) {
+  const physicalRow = instance.toPhysicalRow(visualRow);
+  const rule = state.rules[physicalRow];
+  if (!rule) return;
+
+  if (!confirm(`Xóa dòng luật của nhóm ${rule.nhomhang || '(chưa chọn)'}?`)) return;
+
+  state.rules.splice(physicalRow, 1);
+  selectedPhysicalRow = Math.min(physicalRow, state.rules.length - 1);
+
+  buildUiRows();
+  instance.loadData(state.rules);
+  instance.render();
+
+  setStatus('Đã xóa khỏi bảng. Bấm "Lưu dữ liệu" để ghi thay đổi.');
+}
+
+function deleteRenderer(instance, td, row) {
   Handsontable.renderers.TextRenderer.apply(this, arguments);
-  td.innerHTML = '<button type="button" class="delete-rule-btn" title="Xóa dòng">×</button>';
+
+  td.innerHTML = '';
   td.style.textAlign = 'center';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'delete-rule-btn';
+  btn.title = 'Xóa dòng';
+  btn.textContent = '×';
+
+  btn.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    deletePhysicalRow(instance, row);
+  });
+
+  td.appendChild(btn);
   return td;
 }
+
+
+const HOT_HEADERS = [
+  'Nhóm<br>áp dụng',
+  'TỪ<br>NGÀY',
+  'ĐẾN<br>NGÀY',
+  'Tuổi hàng<br>(tháng)',
+  'Không nhập<br>(tháng)',
+  'Không bán<br>(ngày)',
+  'Tồn<br>tối đa',
+  'Tồn/Nhập<br>tối đa (%)',
+  'Size<br>khó',
+  'Size khó<br>TỪ',
+  'Size khó<br>ĐẾN',
+  'ĐK<br>SIZE',
+  '%<br>xả',
+  'Bật',
+  'XÓA'
+];
+
+const HOT_COL_WIDTHS = [
+  135, 90, 90, 82, 82, 82, 72, 95, 100, 82, 82, 105, 62, 48, 48
+];
 
 function renderHot() {
   if (!window.Handsontable) {
@@ -203,28 +263,17 @@ function renderHot() {
   }
 
   const container = $('#hotRules');
-  if (hot) hot.destroy();
 
-  hot = new Handsontable(container, {
+  if (hot && !hot.isDestroyed) {
+    hot.destroy();
+  }
+  hot = null;
+
+  const nextHot = new Handsontable(container, {
     data: state.rules,
     rowHeaders: true,
-    colHeaders: [
-      'Nhóm áp dụng',
-      'TỪ NGÀY',
-      'ĐẾN NGÀY',
-      'Tuổi hàng (tháng)',
-      'Không nhập (tháng)',
-      'Không bán (ngày)',
-      'Tồn tối đa',
-      'Tồn/Nhập tối đa (%)',
-      'Size khó',
-      'Size khó TỪ',
-      'Size khó ĐẾN',
-      'ĐK SIZE',
-      '% xả',
-      'Bật',
-      'XÓA'
-    ],
+    colHeaders: HOT_HEADERS,
+    colWidths: HOT_COL_WIDTHS,
     columns: [
       {
         data:'nhomhang',
@@ -256,7 +305,13 @@ function renderHot() {
         allowInvalid:false
       },
 
-      { data:'muc_giam_pct', type:'numeric', validator:discountValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
+      {
+        data:'muc_giam_pct',
+        type:'dropdown',
+        source:[10,20,30,40,50,60,70],
+        strict:true,
+        allowInvalid:false
+      },
       { data:'dang_ap_dung', type:'checkbox', className:'htCenter' },
       { data:'__delete', readOnly:true, renderer:deleteRenderer }
     ],
@@ -279,38 +334,22 @@ function renderHot() {
 
     licenseKey:'non-commercial-and-evaluation',
 
-    cells(row, col, prop) {
-      const cp = {};
-      const physicalRow = hot ? hot.toPhysicalRow(row) : row;
+    beforeBeginEditing(row, col) {
+      const prop = this.colToProp(col);
+      if (!['size_kho_text','size_kho_tu','size_kho_den'].includes(prop)) return;
 
-      if (['size_kho_text','size_kho_tu','size_kho_den'].includes(prop) && !isSizeOwner(physicalRow)) {
-        cp.readOnly = true;
-        cp.className = 'shared-size-cell';
-      }
+      const physicalRow = this.toPhysicalRow(row);
+      if (!isSizeOwner(physicalRow)) return false;
+    },
 
-      return cp;
+    afterGetColHeader(col, TH) {
+      if (col < 0 || !HOT_HEADERS[col]) return;
+      const label = TH.querySelector('.colHeader');
+      if (label) label.innerHTML = HOT_HEADERS[col];
     },
 
     afterSelectionEnd(row) {
       selectedPhysicalRow = this.toPhysicalRow(row);
-    },
-
-    afterOnCellMouse(event, coords) {
-      if (coords.row < 0) return;
-      const prop = this.colToProp(coords.col);
-      if (prop !== '__delete') return;
-
-      const physicalRow = this.toPhysicalRow(coords.row);
-      const rule = state.rules[physicalRow];
-      if (!rule) return;
-
-      if (!confirm(`Xóa dòng luật của nhóm ${rule.nhomhang || '(chưa chọn)'}?`)) return;
-
-      state.rules.splice(physicalRow, 1);
-      selectedPhysicalRow = Math.min(physicalRow, state.rules.length - 1);
-      buildUiRows();
-      renderHot();
-      setStatus(`Đã xóa khỏi bảng. Bấm "Lưu dữ liệu" để ghi thay đổi.`);
     },
 
     afterChange(changes, source) {
@@ -373,6 +412,7 @@ function renderHot() {
       }
     }
   });
+  hot = nextHot;
 }
 
 function addRule() {
@@ -679,7 +719,7 @@ export async function initQuanLyLuatXaSimple() {
   });
 
   window.addEventListener('resize', () => {
-    if (hot) {
+    if (hot && !hot.isDestroyed) {
       hot.updateSettings({
         height: Math.max(430, Math.min(window.innerHeight - 190, 820))
       });
