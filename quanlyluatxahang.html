@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quản Lý Luật Xả Hàng</title>
+  <style>
+    :root{--bg:#f5f7fb;--card:#fff;--line:#dbe2ea;--text:#17202a;--muted:#657383;--blue:#2563eb;--red:#b91c1c;--green:#0f766e}
+    *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    .page{max-width:1500px;margin:auto;padding:12px}.top{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    h1{font-size:21px;margin:0}.sub{font-size:13px;color:var(--muted);margin:4px 0 12px}.grid{display:grid;grid-template-columns:310px 1fr;gap:12px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}.list{display:flex;flex-direction:column;gap:6px;max-height:72vh;overflow:auto}
+    .law{border:1px solid var(--line);border-radius:9px;padding:9px;cursor:pointer}.law.active{border-color:var(--blue);background:#eff6ff}.law b{display:block}.law small{color:var(--muted)}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.field{display:flex;flex-direction:column;gap:4px;min-width:130px;flex:1}
+    label{font-size:11px;color:var(--muted);text-transform:uppercase}input,select,textarea{border:1px solid var(--line);border-radius:7px;padding:7px;font-size:13px;width:100%}
+    textarea{min-height:66px}.btn{border:0;border-radius:999px;padding:7px 13px;cursor:pointer;background:var(--blue);color:#fff}.btn.secondary{background:#e5e7eb;color:#111}.btn.danger{background:var(--red)}
+    table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}th,td{border-bottom:1px solid var(--line);padding:6px;vertical-align:top}th{text-align:left;background:#f8fafc;position:sticky;top:0}
+    .section{margin-top:14px}.section h3{font-size:15px;margin:0 0 7px}.tableWrap{max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:9px}
+    .status{font-size:12px;color:var(--muted);margin-top:8px}.note{font-size:12px;color:#7c2d12;background:#fff7ed;border:1px solid #fed7aa;padding:8px;border-radius:8px;margin-top:10px}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}.list{max-height:260px}}
+  </style>
+</head>
+<body>
+<div id="app-container" style="display:none">
+  <div class="page">
+    <div class="top">
+      <div>
+        <h1>Quản Lý Luật Xả Hàng</h1>
+        <div class="sub">Nguồn cấu hình gốc cho luật xả. Phase 1 chưa thay thế rpc_goiy_xahang_v1 đang chạy.</div>
+      </div>
+      <div class="row">
+        <button class="btn secondary" id="btnNew">+ Bộ luật mới</button>
+        <button class="btn secondary" id="btnClone">Nhân bản</button>
+        <button class="btn" id="btnSave">Lưu bộ luật</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3 style="margin-top:0">Danh sách bộ luật</h3>
+        <div id="lawList" class="list"></div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div class="field"><label>Mã bộ luật</label><input id="ma_bo_luat"></div>
+          <div class="field" style="flex:2"><label>Tên bộ luật</label><input id="ten_bo_luat"></div>
+          <div class="field"><label>Version</label><input id="version" type="number" min="1" value="1"></div>
+          <div class="field"><label>Ưu tiên</label><input id="do_uu_tien" type="number" min="0" value="100"></div>
+          <div class="field"><label>Trạng thái</label><select id="dang_ap_dung"><option value="false">Tạm tắt</option><option value="true">Đang áp dụng</option></select></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div class="field"><label>Hiệu lực từ</label><input id="hieu_luc_tu" type="date"></div>
+          <div class="field"><label>Hiệu lực đến</label><input id="hieu_luc_den" type="date"></div>
+          <div class="field" style="flex:3"><label>Mô tả</label><textarea id="mo_ta"></textarea></div>
+        </div>
+
+        <div class="section">
+          <div class="top"><h3>1. Phạm vi áp dụng</h3><button class="btn secondary" id="btnAddScope">+ Phạm vi</button></div>
+          <div class="tableWrap"><table><thead><tr><th>Loại</th><th>Giá trị</th><th>Ưu tiên</th><th>Bật</th><th></th></tr></thead><tbody id="scopeBody"></tbody></table></div>
+        </div>
+
+        <div class="section">
+          <div class="top"><h3>2. Size khó</h3><button class="btn secondary" id="btnAddSize">+ Điều kiện size</button></div>
+          <div class="tableWrap"><table><thead><tr><th>Kiểu</th><th>Size cụ thể</th><th>Từ số</th><th>Đến số</th><th>Ưu tiên</th><th>Bật</th><th></th></tr></thead><tbody id="sizeBody"></tbody></table></div>
+        </div>
+
+        <div class="section">
+          <div class="top"><h3>3. Các rule</h3><button class="btn secondary" id="btnAddRule">+ Rule</button></div>
+          <div class="tableWrap" style="max-height:420px"><table>
+            <thead><tr>
+              <th>Mã / tên rule</th><th>Ưu tiên</th><th>Tuổi hàng (tháng)</th><th>Không nhập</th><th>Không bán (ngày)</th>
+              <th>Tồn</th><th>Tồn/Nhập tối đa</th><th>Size khó</th><th>% xả</th><th>Bật</th><th></th>
+            </tr></thead><tbody id="ruleBody"></tbody>
+          </table></div>
+        </div>
+
+        <div class="note">Quy tắc chọn: bộ luật có ưu tiên cao hơn được xét trước; trong một bộ luật, rule có <b>do_uu_tien nhỏ hơn</b> được xét trước. Không tự lấy % cao nhất.</div>
+        <div class="row" style="margin-top:12px;justify-content:flex-end">
+          <button class="btn danger" id="btnDelete">Xóa bộ luật</button>
+          <button class="btn" id="btnSave2">Lưu bộ luật</button>
+        </div>
+        <div id="status" class="status">Chưa tải dữ liệu.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
+  import { initQuanLyLuatXa } from './scripts/quanlyluatxahang.js';
+  khoiTaoDangNhapDungChung({
+    appContainerId:'app-container', macDinhDiaDiem:'cs1', tuDongKhoaCoSo:true, loginApiPath:'/api/login-cs1',
+    onLoginSuccess: async (nhanvien) => {
+      if (!nhanvien.is_admin) {
+        alert('Chỉ ADMIN được quản lý luật xả hàng.');
+        await dangXuatDungChung({appContainerId:'app-container'}); return;
+      }
+      document.getElementById('app-container').style.display='';
+      initQuanLyLuatXa();
+    }
+  });
+</script>
+</body>
+</html>
