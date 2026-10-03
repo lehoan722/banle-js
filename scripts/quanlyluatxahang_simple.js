@@ -1,257 +1,382 @@
+// scripts/quanlyluatxahang_simple.js - V2.2 HANDSONTABLE
+// - Handsontable + Filters + ColumnSorting + DropdownMenu
+// - Cac cot so nhap truc tiep, KHONG co spinner.
+// - DK SIZE dropdown 3 gia tri.
+// - NHOMHANG autocomplete: go truc tiep + goi y.
+// - Size kho dung chung theo nhom.
 
-// scripts/quanlyluatxahang_simple.js - V2.1
-// Cho phep NHAP TRUC TIEP + datalist goi y cho:
-//   NHOM HANG, DK SIZE, % XA.
-// Khong ep nguoi dung phai chon dropdown.
+const $ = (s) => document.querySelector(s);
 
-const $=s=>document.querySelector(s);
-let sb=null;
-let state={groups:[],rules:[],sizes:{}};
-let selectedIndex=-1;
-let lastCheckItems=[];
+let sb = null;
+let hot = null;
+let state = { groups: [], rules: [], sizes: {} };
+let selectedPhysicalRow = -1;
+let lastCheckItems = [];
+let internalChange = false;
 
-const DISCOUNTS=[10,20,30,40,50,60,70];
-const SIZE_MODE_LABELS={
-  KHONG_CHON:'KHÔNG CHỌN',
-  CO_SIZE_KHO:'CÓ SIZE KHÓ',
-  TAT_CA_KHO:'TẤT CẢ KHÓ'
+const SIZE_MODE_LABELS = {
+  KHONG_CHON: 'KHÔNG CHỌN',
+  CO_SIZE_KHO: 'CÓ SIZE KHÓ',
+  TAT_CA_KHO: 'TẤT CẢ KHÓ'
 };
 
-const norm=v=>String(v??'').trim().toUpperCase();
-const num=v=>v===''||v==null?null:Number(v);
-const todayISO=()=>new Date().toISOString().slice(0,10);
-const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const LABEL_TO_SIZE_MODE = Object.fromEntries(
+  Object.entries(SIZE_MODE_LABELS).map(([k,v]) => [v,k])
+);
 
-function parseSizeList(v){
-  return [...new Set(String(v||'').split(',').map(norm).filter(Boolean))];
+const norm = (v) => String(v ?? '').trim().toUpperCase();
+const num = (v) => (v === '' || v == null ? null : Number(v));
+const todayISO = () => new Date().toISOString().slice(0,10);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+}[m]));
+
+function setStatus(t) {
+  $('#status').textContent = t;
 }
-function setStatus(t){ $('#status').textContent=t; }
 
-function stripVietnamese(v){
-  return String(v??'')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/Đ/g,'D').replace(/đ/g,'d');
+function parseSizeList(v) {
+  return [...new Set(
+    String(v ?? '')
+      .split(',')
+      .map(x => norm(x))
+      .filter(Boolean)
+  )];
 }
 
-function normalizeSizeMode(v){
-  const x=stripVietnamese(v).trim().toUpperCase().replace(/\s+/g,'_');
-  if(['KHONG_CHON','KHONG','NONE'].includes(x)) return 'KHONG_CHON';
-  if(['CO_SIZE_KHO','COSIZEKHO','CO_KHO'].includes(x)) return 'CO_SIZE_KHO';
-  if(['TAT_CA_KHO','TATCAKHO','ALL_KHO'].includes(x)) return 'TAT_CA_KHO';
-  if(['KHÔNG_CHỌN','CÓ_SIZE_KHÓ','TẤT_CẢ_KHÓ'].includes(String(v??'').trim().toUpperCase())) {
-    return normalizeSizeMode(stripVietnamese(v));
-  }
+function normalizeSizeMode(v) {
+  const s = String(v ?? '').trim().toUpperCase();
+  if (LABEL_TO_SIZE_MODE[s]) return LABEL_TO_SIZE_MODE[s];
+  if (SIZE_MODE_LABELS[s]) return s;
   return null;
 }
 
-function sizeModeLabel(code){
+function sizeModeLabel(code) {
   return SIZE_MODE_LABELS[code] || 'KHÔNG CHỌN';
 }
 
-function buildSuggestionLists(){
-  const dl=$('#nhomhangSuggestions');
-  if(dl){
-    dl.innerHTML='';
-    state.groups.forEach(g=>{
-      const op=document.createElement('option');
-      op.value=String(g.manhom||'').trim();
-      op.label=g.tennhom ? `${g.manhom} - ${g.tennhom}` : String(g.manhom||'');
-      dl.appendChild(op);
-    });
+function ensureSizeConfig(group) {
+  const g = norm(group);
+  if (!g) return null;
+  if (!state.sizes[g]) {
+    state.sizes[g] = {
+      nhomhang: g,
+      size_kho_ds: [],
+      size_kho_tu: null,
+      size_kho_den: null
+    };
   }
+  return state.sizes[g];
 }
 
-async function load(){
-  const {data,error}=await sb.rpc('rpc_xa_simple_get_v2');
-  if(error) throw error;
+function firstPhysicalRowOfGroup(group) {
+  const g = norm(group);
+  if (!g) return -1;
+  for (let i = 0; i < state.rules.length; i++) {
+    if (norm(state.rules[i]?.nhomhang) === g) return i;
+  }
+  return -1;
+}
 
-  state.groups=data?.nhomhang||[];
-  state.rules=(data?.rules||[]).map(x=>({...x}));
-  state.sizes={};
+function isSizeOwner(physicalRow) {
+  const row = state.rules[physicalRow];
+  if (!row) return false;
+  return firstPhysicalRowOfGroup(row.nhomhang) === physicalRow;
+}
 
-  (data?.sizes||[]).forEach(s=>{
-    state.sizes[norm(s.nhomhang)]={
-      nhomhang:norm(s.nhomhang),
-      size_kho_ds:Array.isArray(s.size_kho_ds)?s.size_kho_ds:[],
-      size_kho_tu:s.size_kho_tu,
-      size_kho_den:s.size_kho_den
+function sharedSizeText(physicalRow, prop) {
+  const row = state.rules[physicalRow];
+  const cfg = ensureSizeConfig(row?.nhomhang) || {};
+  if (prop === 'size_kho_text') {
+    const list = (cfg.size_kho_ds || []).join(',');
+    return list ? `Dùng chung: ${list}` : 'Dùng chung ↑';
+  }
+  if (prop === 'size_kho_tu') {
+    return cfg.size_kho_tu == null ? 'Dùng chung ↑' : `Dùng chung: ${cfg.size_kho_tu}`;
+  }
+  if (prop === 'size_kho_den') {
+    return cfg.size_kho_den == null ? 'Dùng chung ↑' : `Dùng chung: ${cfg.size_kho_den}`;
+  }
+  return 'Dùng chung ↑';
+}
+
+function buildUiRows() {
+  state.rules.forEach((r, physicalRow) => {
+    const cfg = ensureSizeConfig(r.nhomhang) || {};
+    if (isSizeOwner(physicalRow)) {
+      r.size_kho_text = (cfg.size_kho_ds || []).join(',');
+      r.size_kho_tu = cfg.size_kho_tu;
+      r.size_kho_den = cfg.size_kho_den;
+    } else {
+      r.size_kho_text = null;
+      r.size_kho_tu = null;
+      r.size_kho_den = null;
+    }
+    r.tyle_ton_pct = r.tyle_ton_toi_da == null ? null : Number(r.tyle_ton_toi_da) * 100;
+    r.dieu_kien_size_label = sizeModeLabel(r.dieu_kien_size || 'KHONG_CHON');
+    r.__delete = '×';
+  });
+}
+
+async function load() {
+  setStatus('Đang tải dữ liệu...');
+  const { data, error } = await sb.rpc('rpc_xa_simple_get_v2');
+  if (error) throw error;
+
+  state.groups = data?.nhomhang || [];
+  state.rules = (data?.rules || []).map(r => ({ ...r }));
+  state.sizes = {};
+
+  (data?.sizes || []).forEach(s => {
+    state.sizes[norm(s.nhomhang)] = {
+      nhomhang: norm(s.nhomhang),
+      size_kho_ds: Array.isArray(s.size_kho_ds) ? s.size_kho_ds : [],
+      size_kho_tu: s.size_kho_tu,
+      size_kho_den: s.size_kho_den
     };
   });
 
-  buildSuggestionLists();
-  selectedIndex=state.rules.length?0:-1;
-  render();
+  buildUiRows();
+  selectedPhysicalRow = state.rules.length ? 0 : -1;
+  renderHot();
   setStatus(`Đã tải ${state.rules.length} luật.`);
 }
 
-function firstByGroup(){
-  const m=new Map();
-  state.rules.forEach((r,i)=>{
-    const g=norm(r.nhomhang);
-    if(g&&!m.has(g)) m.set(g,i);
-  });
-  return m;
+function groupSuggestionSource(query, process) {
+  const q = norm(query);
+  const rows = state.groups
+    .map(g => ({
+      code: String(g.manhom || '').trim(),
+      label: g.tennhom ? `${g.manhom} - ${g.tennhom}` : String(g.manhom || '')
+    }))
+    .filter(x => !q || norm(x.code).includes(q) || norm(x.label).includes(q))
+    .map(x => x.code);
+  process(rows);
 }
 
-function render(){
-  const tb=$('#ruleBody');
-  tb.innerHTML='';
-  const first=firstByGroup();
+function integerValidator(value, callback) {
+  if (value === '' || value == null) return callback(true);
+  const n = Number(value);
+  callback(Number.isFinite(n) && n >= 0 && Number.isInteger(n));
+}
 
-  state.rules.forEach((r,i)=>{
-    const g=norm(r.nhomhang);
-    const isFirst=first.get(g)===i;
-    const cfg=state.sizes[g]||{
-      nhomhang:g,size_kho_ds:[],size_kho_tu:null,size_kho_den:null
-    };
+function decimalValidator(value, callback) {
+  if (value === '' || value == null) return callback(true);
+  const n = Number(value);
+  callback(Number.isFinite(n) && n >= 0);
+}
 
-    const tr=document.createElement('tr');
-    if(i===selectedIndex) tr.classList.add('selected');
+function percentValidator(value, callback) {
+  if (value === '' || value == null) return callback(true);
+  const n = Number(value);
+  callback(Number.isFinite(n) && n >= 0 && n <= 100);
+}
 
-    tr.innerHTML=`
-      <td>
-        <input data-k="nhomhang"
-               list="nhomhangSuggestions"
-               value="${esc(r.nhomhang||'')}"
-               placeholder="Nhập mã nhóm...">
-      </td>
-      <td><input data-k="hieu_luc_tu" type="date" value="${esc(r.hieu_luc_tu||todayISO())}"></td>
-      <td><input data-k="hieu_luc_den" type="date" value="${esc(r.hieu_luc_den||'')}"></td>
-      <td><input data-k="tuoi_hang_thang" type="number" min="0" value="${r.tuoi_hang_thang??''}"></td>
-      <td><input data-k="khong_nhap_thang" type="number" min="0" value="${r.khong_nhap_thang??''}"></td>
-      <td><input data-k="khong_ban_ngay" type="number" min="0" value="${r.khong_ban_ngay??''}"></td>
-      <td><input data-k="ton_toi_da" type="number" min="0" value="${r.ton_toi_da??''}"></td>
-      <td><input data-k="tyle_ton_pct" type="number" min="0" max="100" step="0.1" value="${r.tyle_ton_toi_da==null?'':Number(r.tyle_ton_toi_da)*100}"></td>
+function discountValidator(value, callback) {
+  const n = Number(value);
+  callback(Number.isFinite(n) && n >= 1 && n <= 100);
+}
 
-      <td>
-        ${isFirst
-          ? `<input data-size="list" value="${esc((cfg.size_kho_ds||[]).join(','))}" placeholder="38,42,43">`
-          : '<div class="shared">Dùng chung ↑</div>'}
-      </td>
-      <td>
-        ${isFirst
-          ? `<input data-size="tu" type="number" step="0.1" value="${cfg.size_kho_tu??''}">`
-          : '<div class="shared">Dùng chung ↑</div>'}
-      </td>
-      <td>
-        ${isFirst
-          ? `<input data-size="den" type="number" step="0.1" value="${cfg.size_kho_den??''}">`
-          : '<div class="shared">Dùng chung ↑</div>'}
-      </td>
+function sharedSizeRenderer(instance, td, row, col, prop, value, cellProperties) {
+  const physicalRow = instance.toPhysicalRow(row);
+  if (!isSizeOwner(physicalRow)) {
+    Handsontable.renderers.TextRenderer.apply(this, arguments);
+    td.textContent = sharedSizeText(physicalRow, prop);
+    td.classList.add('shared-size-cell');
+    return td;
+  }
+  Handsontable.renderers.TextRenderer.apply(this, arguments);
+  return td;
+}
 
-      <td>
-        <input data-k="dieu_kien_size"
-               list="sizeConditionSuggestions"
-               value="${esc(sizeModeLabel(r.dieu_kien_size||'KHONG_CHON'))}"
-               placeholder="Nhập / chọn gợi ý">
-      </td>
+function deleteRenderer(instance, td) {
+  Handsontable.renderers.TextRenderer.apply(this, arguments);
+  td.innerHTML = '<button type="button" class="delete-rule-btn" title="Xóa dòng">×</button>';
+  td.style.textAlign = 'center';
+  return td;
+}
 
-      <td>
-        <input data-k="muc_giam_pct"
-               type="number"
-               min="1" max="100"
-               list="discountSuggestions"
-               value="${r.muc_giam_pct??20}"
-               placeholder="%">
-      </td>
+function renderHot() {
+  if (!window.Handsontable) {
+    alert('Handsontable chưa được tải.');
+    return;
+  }
 
-      <td style="text-align:center">
-        <input data-k="dang_ap_dung" type="checkbox" ${r.dang_ap_dung!==false?'checked':''}>
-      </td>
-      <td style="text-align:center">
-        <button class="btn secondary" data-del="1">×</button>
-      </td>
-    `;
+  const container = $('#hotRules');
+  if (hot) hot.destroy();
 
-    tr.onclick=e=>{
-      if(e.target.closest('[data-del]')) return;
-      selectedIndex=i;
-      [...tb.querySelectorAll('tr')].forEach(x=>x.classList.remove('selected'));
-      tr.classList.add('selected');
-    };
+  hot = new Handsontable(container, {
+    data: state.rules,
+    rowHeaders: true,
+    colHeaders: [
+      'Nhóm áp dụng',
+      'TỪ NGÀY',
+      'ĐẾN NGÀY',
+      'Tuổi hàng (tháng)',
+      'Không nhập (tháng)',
+      'Không bán (ngày)',
+      'Tồn tối đa',
+      'Tồn/Nhập tối đa (%)',
+      'Size khó',
+      'Size khó TỪ',
+      'Size khó ĐẾN',
+      'ĐK SIZE',
+      '% xả',
+      'Bật',
+      'XÓA'
+    ],
+    columns: [
+      {
+        data:'nhomhang',
+        type:'autocomplete',
+        source:groupSuggestionSource,
+        strict:false,
+        filter:true,
+        trimDropdown:false
+      },
+      { data:'hieu_luc_tu', type:'text' },
+      { data:'hieu_luc_den', type:'text' },
 
-    tr.querySelectorAll('[data-k]').forEach(el=>{
-      const saveValue=()=>{
-        const k=el.dataset.k;
+      // Numeric editor cua Handsontable dung input text, khong co nut spinner.
+      { data:'tuoi_hang_thang', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
+      { data:'khong_nhap_thang', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
+      { data:'khong_ban_ngay', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
+      { data:'ton_toi_da', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
+      { data:'tyle_ton_pct', type:'numeric', validator:percentValidator, allowInvalid:true, numericFormat:{pattern:'0.[0]'} },
 
-        if(k==='dang_ap_dung'){
-          r[k]=el.checked;
-          return;
-        }
+      { data:'size_kho_text', type:'text', renderer:sharedSizeRenderer },
+      { data:'size_kho_tu', type:'numeric', validator:decimalValidator, allowInvalid:true, numericFormat:{pattern:'0.[00]'}, renderer:sharedSizeRenderer },
+      { data:'size_kho_den', type:'numeric', validator:decimalValidator, allowInvalid:true, numericFormat:{pattern:'0.[00]'}, renderer:sharedSizeRenderer },
 
-        if(k==='tyle_ton_pct'){
-          r.tyle_ton_toi_da=el.value===''?null:Number(el.value)/100;
-          return;
-        }
+      {
+        data:'dieu_kien_size_label',
+        type:'dropdown',
+        source:['KHÔNG CHỌN','CÓ SIZE KHÓ','TẤT CẢ KHÓ'],
+        strict:true,
+        allowInvalid:false
+      },
 
-        if(['tuoi_hang_thang','khong_nhap_thang','khong_ban_ngay','ton_toi_da','muc_giam_pct'].includes(k)){
-          r[k]=num(el.value);
-          return;
-        }
+      { data:'muc_giam_pct', type:'numeric', validator:discountValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
+      { data:'dang_ap_dung', type:'checkbox', className:'htCenter' },
+      { data:'__delete', readOnly:true, renderer:deleteRenderer }
+    ],
 
-        if(k==='nhomhang'){
-          const oldG=norm(r.nhomhang);
-          r[k]=norm(el.value);
-          el.value=r[k];
+    width:'100%',
+    height:'100%',
+    stretchH:'all',
+    autoWrapRow:false,
+    autoWrapCol:false,
+    manualColumnResize:true,
+    manualRowResize:false,
 
-          const ng=norm(r[k]);
-          if(ng&&!state.sizes[ng]){
-            state.sizes[ng]={nhomhang:ng,size_kho_ds:[],size_kho_tu:null,size_kho_den:null};
+    // Hai chuc nang user yeu cau:
+    filters:true,
+    dropdownMenu:true,
+    columnSorting:{
+      indicator:true,
+      sortEmptyCells:false
+    },
+
+    licenseKey:'non-commercial-and-evaluation',
+
+    cells(row, col, prop) {
+      const cp = {};
+      const physicalRow = hot ? hot.toPhysicalRow(row) : row;
+
+      if (['size_kho_text','size_kho_tu','size_kho_den'].includes(prop) && !isSizeOwner(physicalRow)) {
+        cp.readOnly = true;
+        cp.className = 'shared-size-cell';
+      }
+
+      return cp;
+    },
+
+    afterSelectionEnd(row) {
+      selectedPhysicalRow = this.toPhysicalRow(row);
+    },
+
+    afterOnCellMouse(event, coords) {
+      if (coords.row < 0) return;
+      const prop = this.colToProp(coords.col);
+      if (prop !== '__delete') return;
+
+      const physicalRow = this.toPhysicalRow(coords.row);
+      const rule = state.rules[physicalRow];
+      if (!rule) return;
+
+      if (!confirm(`Xóa dòng luật của nhóm ${rule.nhomhang || '(chưa chọn)'}?`)) return;
+
+      state.rules.splice(physicalRow, 1);
+      selectedPhysicalRow = Math.min(physicalRow, state.rules.length - 1);
+      buildUiRows();
+      renderHot();
+      setStatus(`Đã xóa khỏi bảng. Bấm "Lưu dữ liệu" để ghi thay đổi.`);
+    },
+
+    afterChange(changes, source) {
+      if (!changes || source === 'loadData' || internalChange) return;
+
+      internalChange = true;
+      try {
+        const groupsNeedRebuild = new Set();
+
+        for (const [visualRow, prop, oldValue, newValue] of changes) {
+          const physicalRow = this.toPhysicalRow(visualRow);
+          const r = state.rules[physicalRow];
+          if (!r) continue;
+
+          if (prop === 'nhomhang') {
+            const oldGroup = norm(oldValue);
+            const newGroup = norm(newValue);
+            r.nhomhang = newGroup;
+            ensureSizeConfig(newGroup);
+            groupsNeedRebuild.add(oldGroup);
+            groupsNeedRebuild.add(newGroup);
           }
 
-          // Neu doi nhom thi can render lai de xac dinh dong nao la dong dau nhom.
-          if(oldG!==ng) render();
-          return;
-        }
-
-        if(k==='dieu_kien_size'){
-          const code=normalizeSizeMode(el.value);
-          if(code){
-            r[k]=code;
-            el.value=sizeModeLabel(code);
-          }else{
-            r[k]=null;
+          else if (prop === 'tyle_ton_pct') {
+            r.tyle_ton_pct = num(newValue);
+            r.tyle_ton_toi_da = newValue === '' || newValue == null
+              ? null
+              : Number(newValue) / 100;
           }
-          return;
+
+          else if (prop === 'dieu_kien_size_label') {
+            const code = LABEL_TO_SIZE_MODE[String(newValue || '').trim().toUpperCase()];
+            r.dieu_kien_size = code || 'KHONG_CHON';
+            r.dieu_kien_size_label = sizeModeLabel(r.dieu_kien_size);
+          }
+
+          else if (prop === 'size_kho_text' && isSizeOwner(physicalRow)) {
+            const cfg = ensureSizeConfig(r.nhomhang);
+            cfg.size_kho_ds = parseSizeList(newValue);
+            r.size_kho_text = cfg.size_kho_ds.join(',');
+          }
+
+          else if (prop === 'size_kho_tu' && isSizeOwner(physicalRow)) {
+            const cfg = ensureSizeConfig(r.nhomhang);
+            cfg.size_kho_tu = num(newValue);
+          }
+
+          else if (prop === 'size_kho_den' && isSizeOwner(physicalRow)) {
+            const cfg = ensureSizeConfig(r.nhomhang);
+            cfg.size_kho_den = num(newValue);
+          }
         }
 
-        r[k]=el.value||null;
-      };
-
-      el.addEventListener('change',saveValue);
-      el.addEventListener('blur',saveValue);
-    });
-
-    if(isFirst){
-      tr.querySelector('[data-size="list"]')?.addEventListener('change',e=>{
-        cfg.size_kho_ds=parseSizeList(e.target.value);
-        e.target.value=(cfg.size_kho_ds||[]).join(',');
-        state.sizes[g]=cfg;
-      });
-
-      tr.querySelector('[data-size="tu"]')?.addEventListener('change',e=>{
-        cfg.size_kho_tu=num(e.target.value);
-        state.sizes[g]=cfg;
-      });
-
-      tr.querySelector('[data-size="den"]')?.addEventListener('change',e=>{
-        cfg.size_kho_den=num(e.target.value);
-        state.sizes[g]=cfg;
-      });
+        if (groupsNeedRebuild.size) {
+          buildUiRows();
+          this.loadData(state.rules);
+        }
+      } finally {
+        internalChange = false;
+      }
     }
-
-    tr.querySelector('[data-del]')?.addEventListener('click',()=>{
-      state.rules.splice(i,1);
-      if(selectedIndex>=state.rules.length) selectedIndex=state.rules.length-1;
-      render();
-    });
-
-    tb.appendChild(tr);
   });
 }
 
-function addRule(){
-  state.rules.push({
+function addRule() {
+  const row = {
     id:null,
     nhomhang:'',
     hieu_luc_tu:todayISO(),
@@ -261,217 +386,311 @@ function addRule(){
     khong_ban_ngay:null,
     ton_toi_da:null,
     tyle_ton_toi_da:null,
+    tyle_ton_pct:null,
+    size_kho_text:'',
+    size_kho_tu:null,
+    size_kho_den:null,
     dieu_kien_size:'KHONG_CHON',
+    dieu_kien_size_label:'KHÔNG CHỌN',
     muc_giam_pct:20,
-    dang_ap_dung:true
-  });
+    dang_ap_dung:true,
+    __delete:'×'
+  };
 
-  selectedIndex=state.rules.length-1;
-  render();
+  state.rules.push(row);
+  selectedPhysicalRow = state.rules.length - 1;
+  hot.loadData(state.rules);
 
-  requestAnimationFrame(()=>{
-    const rows=$('#ruleBody').querySelectorAll('tr');
-    rows[selectedIndex]?.querySelector('[data-k="nhomhang"]')?.focus();
+  requestAnimationFrame(() => {
+    const visualRow = hot.toVisualRow(selectedPhysicalRow);
+    if (visualRow >= 0) {
+      hot.selectCell(visualRow, 0);
+      hot.scrollViewportTo(visualRow, 0);
+    }
   });
 }
 
-function validate(){
-  const knownGroups=new Set(state.groups.map(g=>norm(g.manhom)));
+function validateAll() {
+  const knownGroups = new Set(state.groups.map(g => norm(g.manhom)));
 
-  state.rules.forEach((r,i)=>{
-    r.nhomhang=norm(r.nhomhang);
+  for (let i=0; i<state.rules.length; i++) {
+    const r = state.rules[i];
+    r.nhomhang = norm(r.nhomhang);
 
-    if(!r.nhomhang) throw new Error(`Dòng ${i+1}: chưa nhập nhóm hàng.`);
-    if(!knownGroups.has(r.nhomhang)) {
+    if (!r.nhomhang) throw new Error(`Dòng ${i+1}: chưa nhập nhóm hàng.`);
+    if (!knownGroups.has(r.nhomhang)) {
       throw new Error(`Dòng ${i+1}: nhóm "${r.nhomhang}" không có trong danh mục nhóm hàng.`);
     }
 
-    if(!r.hieu_luc_tu) throw new Error(`Dòng ${i+1}: thiếu TỪ NGÀY.`);
-    if(r.hieu_luc_den&&r.hieu_luc_den<r.hieu_luc_tu) {
+    if (!r.hieu_luc_tu) throw new Error(`Dòng ${i+1}: thiếu TỪ NGÀY.`);
+    if (r.hieu_luc_den && r.hieu_luc_den < r.hieu_luc_tu) {
       throw new Error(`Dòng ${i+1}: ĐẾN NGÀY nhỏ hơn TỪ NGÀY.`);
     }
 
-    if(r.tyle_ton_toi_da!=null && (Number(r.tyle_ton_toi_da)<0 || Number(r.tyle_ton_toi_da)>1)) {
-      throw new Error(`Dòng ${i+1}: Tồn/Nhập phải nằm trong 0–100%.`);
+    const integerFields = [
+      ['tuoi_hang_thang','Tuổi hàng'],
+      ['khong_nhap_thang','Không nhập'],
+      ['khong_ban_ngay','Không bán'],
+      ['ton_toi_da','Tồn tối đa']
+    ];
+
+    for (const [k,label] of integerFields) {
+      if (r[k] !== '' && r[k] != null) {
+        const n = Number(r[k]);
+        if (!Number.isInteger(n) || n < 0) {
+          throw new Error(`Dòng ${i+1}: ${label} phải là số nguyên >=0.`);
+        }
+      }
     }
 
-    if(r.muc_giam_pct==null || Number(r.muc_giam_pct)<1 || Number(r.muc_giam_pct)>100) {
+    if (r.tyle_ton_pct !== '' && r.tyle_ton_pct != null) {
+      const p = Number(r.tyle_ton_pct);
+      if (!Number.isFinite(p) || p < 0 || p > 100) {
+        throw new Error(`Dòng ${i+1}: Tồn/Nhập tối đa phải từ 0 đến 100.`);
+      }
+      r.tyle_ton_toi_da = p / 100;
+    } else {
+      r.tyle_ton_toi_da = null;
+    }
+
+    const discount = Number(r.muc_giam_pct);
+    if (!Number.isFinite(discount) || discount < 1 || discount > 100) {
       throw new Error(`Dòng ${i+1}: % xả phải từ 1 đến 100.`);
     }
 
-    const mode=normalizeSizeMode(r.dieu_kien_size||'KHONG_CHON');
-    if(!mode) throw new Error(`Dòng ${i+1}: ĐK SIZE không hợp lệ.`);
-    r.dieu_kien_size=mode;
+    const mode = LABEL_TO_SIZE_MODE[String(r.dieu_kien_size_label || '').trim().toUpperCase()];
+    if (!mode) throw new Error(`Dòng ${i+1}: ĐK SIZE không hợp lệ.`);
+    r.dieu_kien_size = mode;
 
-    if(mode!=='KHONG_CHON'){
-      const c=state.sizes[r.nhomhang]||{};
-      if(!((c.size_kho_ds||[]).length||c.size_kho_tu!=null||c.size_kho_den!=null)) {
+    if (mode !== 'KHONG_CHON') {
+      const cfg = ensureSizeConfig(r.nhomhang);
+      const hasSizeRule =
+        (cfg.size_kho_ds || []).length > 0 ||
+        cfg.size_kho_tu != null ||
+        cfg.size_kho_den != null;
+
+      if (!hasSizeRule) {
         throw new Error(`Dòng ${i+1}: nhóm ${r.nhomhang} chưa khai báo size khó.`);
       }
     }
-  });
+  }
 
-  Object.entries(state.sizes).forEach(([g,c])=>{
-    if(c.size_kho_tu!=null&&c.size_kho_den!=null&&Number(c.size_kho_tu)>Number(c.size_kho_den)) {
-      throw new Error(`Nhóm ${g}: Size TỪ lớn hơn ĐẾN.`);
+  for (const [group,cfg] of Object.entries(state.sizes)) {
+    if (
+      cfg.size_kho_tu != null &&
+      cfg.size_kho_den != null &&
+      Number(cfg.size_kho_tu) > Number(cfg.size_kho_den)
+    ) {
+      throw new Error(`Nhóm ${group}: Size khó TỪ lớn hơn Size khó ĐẾN.`);
     }
-  });
+  }
 }
 
-function payload(){
-  const used=new Set(state.rules.map(r=>norm(r.nhomhang)).filter(Boolean));
+function payload() {
+  const used = new Set(state.rules.map(r => norm(r.nhomhang)).filter(Boolean));
 
-  return{
-    rules:state.rules.map(r=>({
-      ...r,
-      nhomhang:norm(r.nhomhang),
-      dieu_kien_size:normalizeSizeMode(r.dieu_kien_size)||'KHONG_CHON',
-      hieu_luc_den:r.hieu_luc_den||null
+  return {
+    rules: state.rules.map(r => ({
+      id: r.id ?? null,
+      nhomhang: norm(r.nhomhang),
+      hieu_luc_tu: r.hieu_luc_tu,
+      hieu_luc_den: r.hieu_luc_den || null,
+      tuoi_hang_thang: r.tuoi_hang_thang === '' ? null : r.tuoi_hang_thang,
+      khong_nhap_thang: r.khong_nhap_thang === '' ? null : r.khong_nhap_thang,
+      khong_ban_ngay: r.khong_ban_ngay === '' ? null : r.khong_ban_ngay,
+      ton_toi_da: r.ton_toi_da === '' ? null : r.ton_toi_da,
+      tyle_ton_toi_da: r.tyle_ton_toi_da,
+      dieu_kien_size: r.dieu_kien_size,
+      muc_giam_pct: r.muc_giam_pct,
+      dang_ap_dung: r.dang_ap_dung !== false
     })),
 
-    sizes:[...used].map(g=>{
-      const x=state.sizes[g]||{
-        nhomhang:g,size_kho_ds:[],size_kho_tu:null,size_kho_den:null
-      };
-      return{
+    sizes: [...used].map(g => {
+      const cfg = ensureSizeConfig(g);
+      return {
         nhomhang:g,
-        size_kho_ds:x.size_kho_ds||[],
-        size_kho_tu:x.size_kho_tu??null,
-        size_kho_den:x.size_kho_den??null
+        size_kho_ds:cfg.size_kho_ds || [],
+        size_kho_tu:cfg.size_kho_tu ?? null,
+        size_kho_den:cfg.size_kho_den ?? null
       };
     })
   };
 }
 
-async function save(){
-  try{
-    validate();
-    if(!confirm(`Lưu ${state.rules.length} dòng luật?`)) return;
+async function save() {
+  try {
+    validateAll();
+
+    if (!confirm(`Lưu ${state.rules.length} dòng luật xả hàng?`)) return;
 
     setStatus('Đang lưu...');
-    const {data,error}=await sb.rpc('rpc_xa_simple_save_v2',{p_payload:payload()});
-    if(error) throw error;
+    const { data, error } = await sb.rpc('rpc_xa_simple_save_v2', {
+      p_payload: payload()
+    });
 
-    setStatus(`Đã lưu ${data?.rule_count??state.rules.length} luật.`);
+    if (error) throw error;
+
+    setStatus(`Đã lưu ${data?.rule_count ?? state.rules.length} luật.`);
     await load();
-  }catch(e){
+  } catch (e) {
     console.error(e);
-    alert('Không lưu được: '+(e.message||e));
+    alert('Không lưu được: ' + (e.message || e));
     setStatus('Lỗi lưu.');
   }
 }
 
-async function checkSelected(){
-  try{
-    if(selectedIndex<0 || !state.rules[selectedIndex]){
-      alert('Hãy chọn một dòng luật.');
+async function checkSelected() {
+  try {
+    if (selectedPhysicalRow < 0 || !state.rules[selectedPhysicalRow]) {
+      alert('Hãy chọn một dòng luật cần kiểm tra.');
       return;
     }
 
-    validate();
+    validateAll();
 
-    const r=state.rules[selectedIndex];
-    const g=norm(r.nhomhang);
-    const cfg=state.sizes[g]||{
-      nhomhang:g,size_kho_ds:[],size_kho_tu:null,size_kho_den:null
-    };
+    const r = state.rules[selectedPhysicalRow];
+    const g = norm(r.nhomhang);
+    const cfg = ensureSizeConfig(g);
 
-    setStatus('Đang kiểm tra...');
+    setStatus(`Đang kiểm tra dòng ${selectedPhysicalRow + 1}...`);
 
-    const {data,error}=await sb.rpc('rpc_xa_rule_check_v2',{
-      p_rule:{
-        ...r,
+    const { data, error } = await sb.rpc('rpc_xa_rule_check_v2', {
+      p_rule: {
+        id:r.id ?? null,
         nhomhang:g,
-        dieu_kien_size:normalizeSizeMode(r.dieu_kien_size)||'KHONG_CHON'
+        hieu_luc_tu:r.hieu_luc_tu,
+        hieu_luc_den:r.hieu_luc_den || null,
+        tuoi_hang_thang:r.tuoi_hang_thang,
+        khong_nhap_thang:r.khong_nhap_thang,
+        khong_ban_ngay:r.khong_ban_ngay,
+        ton_toi_da:r.ton_toi_da,
+        tyle_ton_toi_da:r.tyle_ton_toi_da,
+        dieu_kien_size:r.dieu_kien_size,
+        muc_giam_pct:r.muc_giam_pct,
+        dang_ap_dung:r.dang_ap_dung !== false
       },
-      p_size_cfg:cfg,
+      p_size_cfg: {
+        nhomhang:g,
+        size_kho_ds:cfg.size_kho_ds || [],
+        size_kho_tu:cfg.size_kho_tu ?? null,
+        size_kho_den:cfg.size_kho_den ?? null
+      },
       p_den_ngay:todayISO()
     });
 
-    if(error) throw error;
+    if (error) throw error;
 
-    lastCheckItems=data?.items||[];
-    $('#totalCount').textContent=Number(data?.total_products||0).toLocaleString('vi-VN');
-    $('#matchCount').textContent=Number(data?.matched_count||0).toLocaleString('vi-VN');
-    $('#checkSubtitle').textContent=`Nhóm ${g} · ${data?.ngay_kiem_tra||todayISO()} · dòng ${selectedIndex+1}`;
+    lastCheckItems = data?.items || [];
 
-    const tb=$('#productBody');
-    tb.innerHTML='';
+    $('#totalCount').textContent = Number(data?.total_products || 0).toLocaleString('vi-VN');
+    $('#matchCount').textContent = Number(data?.matched_count || 0).toLocaleString('vi-VN');
+    $('#checkSubtitle').textContent =
+      `Nhóm ${g} · kiểm tra ${data?.ngay_kiem_tra || todayISO()} · dòng nguồn ${selectedPhysicalRow + 1}`;
 
-    lastCheckItems.forEach(x=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`
-        <td><button class="maspLink">${esc(x.masp)}</button></td>
-        <td>${esc(x.tensp||'')}</td>
-        <td>${Number(x.ton_hientai||0)}</td>
-        <td>${x.tyle_ton==null?'':(Number(x.tyle_ton)*100).toFixed(1)+'%'}</td>
-        <td>${esc(x.ngay_nhap_cuoi||'')}</td>
-        <td>${esc(x.ngay_ban_cuoi||'')}</td>
-        <td>${esc(x.sizes_con_lai||'')}</td>
+    const tb = $('#productBody');
+    tb.innerHTML = '';
+
+    lastCheckItems.forEach(x => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><button class="maspLink" type="button">${esc(x.masp)}</button></td>
+        <td>${esc(x.tensp || '')}</td>
+        <td>${Number(x.ton_hientai || 0)}</td>
+        <td>${x.tyle_ton == null ? '' : (Number(x.tyle_ton)*100).toFixed(1) + '%'}</td>
+        <td>${esc(x.ngay_nhap_cuoi || '')}</td>
+        <td>${esc(x.ngay_ban_cuoi || '')}</td>
+        <td>${esc(x.sizes_con_lai || '')}</td>
       `;
-      tr.querySelector('.maspLink').onclick=()=>openStock(x.masp);
+      tr.querySelector('.maspLink').onclick = () => openStock(x.masp);
       tb.appendChild(tr);
     });
 
     $('#checkOverlay').classList.add('show');
-    setStatus(`Kiểm tra xong: ${data?.matched_count||0}/${data?.total_products||0} SP thỏa.`);
-  }catch(e){
+    setStatus(`Kiểm tra xong: ${data?.matched_count || 0}/${data?.total_products || 0} SP thỏa.`);
+  } catch (e) {
     console.error(e);
-    alert('Không kiểm tra được: '+(e.message||e));
+    alert('Không kiểm tra được: ' + (e.message || e));
     setStatus('Lỗi kiểm tra.');
   }
 }
 
-async function openStock(masp){
-  if(window.StockQuick?.showFor) await window.StockQuick.showFor(document.body,masp);
-  else if(typeof window.stockQuickPopup==='function') await window.stockQuickPopup(masp);
-  else alert('StockQuickPopup chưa sẵn sàng.');
-}
-
-async function copyMasps(){
-  const text=lastCheckItems.map(x=>x.masp).filter(Boolean).join('\n');
-  if(!text){ alert('Danh sách trống.'); return; }
-
-  try{
-    await navigator.clipboard.writeText(text);
-    alert(`Đã copy ${lastCheckItems.length} mã.`);
-  }catch{
-    prompt('Copy danh sách mã:',text);
+async function openStock(masp) {
+  try {
+    if (window.StockQuick?.showFor) {
+      await window.StockQuick.showFor(document.body, masp);
+    } else if (typeof window.stockQuickPopup === 'function') {
+      await window.stockQuickPopup(masp);
+    } else {
+      alert('StockQuickPopup chưa sẵn sàng.');
+    }
+  } catch (e) {
+    console.error(e);
+    alert('Không mở được StockQuickPopup: ' + (e.message || e));
   }
 }
 
-function modal(id,show){ $(id).classList.toggle('show',show); }
+async function copyMasps() {
+  const text = lastCheckItems.map(x => x.masp).filter(Boolean).join('\n');
+  if (!text) {
+    alert('Danh sách đang trống.');
+    return;
+  }
 
-export async function initQuanLyLuatXaSimple(){
-  sb=window.supabase;
-  if(!sb){ alert('Supabase chưa sẵn sàng.'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    alert(`Đã copy ${lastCheckItems.length} mã sản phẩm.`);
+  } catch {
+    prompt('Copy danh sách mã:', text);
+  }
+}
 
-  $('#btnAdd').onclick=addRule;
-  $('#btnSave').onclick=save;
-  $('#btnCheck').onclick=checkSelected;
-  $('#btnHelp').onclick=()=>modal('#helpOverlay',true);
-  $('#btnCloseHelp').onclick=()=>modal('#helpOverlay',false);
-  $('#btnCloseCheck').onclick=()=>modal('#checkOverlay',false);
-  $('#btnCopyMasps').onclick=copyMasps;
+function modal(id, show) {
+  $(id).classList.toggle('show', show);
+}
 
-  ['#helpOverlay','#checkOverlay'].forEach(id=>{
-    $(id).addEventListener('click',e=>{
-      if(e.target===$(id)) modal(id,false);
+export async function initQuanLyLuatXaSimple() {
+  sb = window.supabase;
+
+  if (!sb) {
+    alert('Supabase chưa sẵn sàng.');
+    return;
+  }
+
+  $('#btnAdd').onclick = addRule;
+  $('#btnSave').onclick = save;
+  $('#btnCheck').onclick = checkSelected;
+
+  $('#btnHelp').onclick = () => modal('#helpOverlay', true);
+  $('#btnCloseHelp').onclick = () => modal('#helpOverlay', false);
+  $('#btnCloseCheck').onclick = () => modal('#checkOverlay', false);
+  $('#btnCopyMasps').onclick = copyMasps;
+
+  ['#helpOverlay','#checkOverlay'].forEach(id => {
+    $(id).addEventListener('click', e => {
+      if (e.target === $(id)) modal(id, false);
     });
   });
 
-  document.addEventListener('keydown',e=>{
-    if(e.key==='Escape'){
-      modal('#helpOverlay',false);
-      modal('#checkOverlay',false);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      modal('#helpOverlay', false);
+      modal('#checkOverlay', false);
     }
   });
 
-  try{
+  window.addEventListener('resize', () => {
+    if (hot) {
+      hot.updateSettings({
+        height: Math.max(430, Math.min(window.innerHeight - 190, 820))
+      });
+    }
+  });
+
+  try {
     await load();
-  }catch(e){
+  } catch (e) {
     console.error(e);
-    alert('Không tải được dữ liệu: '+(e.message||e));
-    setStatus('Lỗi tải.');
+    alert('Không tải được dữ liệu: ' + (e.message || e));
+    setStatus('Lỗi tải dữ liệu.');
   }
 }
