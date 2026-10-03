@@ -19,10 +19,27 @@
 
 <div id="helpOverlay" class="overlay"><div class="modal"><div class="modalHead"><b>Hướng dẫn sử dụng</b><button class="btn secondary" id="btnCloseHelp">Đóng</button></div><div class="modalBody helpBody"><div class="warn"><b>Ô trống = không xét điều kiện đó.</b> Size khó dùng chung theo nhóm hàng.</div><h3>Cách hiểu</h3><ul><li>Tuổi hàng: tuổi ≥ số tháng.</li><li>Không nhập: không nhập mua ≥ số tháng.</li><li>Không bán: không bán lẻ ≥ số ngày.</li><li>Tồn tối đa: tồn thực ≤ giá trị nhập.</li><li>Tồn/Nhập tối đa: ví dụ 20% nghĩa là tỷ lệ ≤20%.</li><li>Size khó: danh sách cụ thể, ví dụ 38,42,43,44.</li><li>Size khó TỪ/ĐẾN: chỉ TỪ = ≥; chỉ ĐẾN = ≤; cả hai = trong khoảng.</li><li>ĐK SIZE: KHÔNG CHỌN / CÓ SIZE KHÓ / TẤT CẢ KHÓ.</li></ul><h3>Size dùng chung</h3><p>Nếu một nhóm có nhiều dòng, chỉ dòng đầu của nhóm cho sửa size. Các dòng sau tự kế thừa.</p><h3>Kiểm tra SP áp dụng</h3><p>Chọn dòng rồi bấm kiểm tra. Popup hiện tổng SP trong nhóm, số SP thỏa và danh sách chi tiết. Có thể copy toàn bộ mã và bấm mã để mở StockQuickPopup.</p></div></div></div>
 
+
+<datalist id="nhomhangSuggestions"></datalist>
+<datalist id="discountSuggestions">
+  <option value="10"></option>
+  <option value="20"></option>
+  <option value="30"></option>
+  <option value="40"></option>
+  <option value="50"></option>
+  <option value="60"></option>
+  <option value="70"></option>
+</datalist>
+<datalist id="sizeConditionSuggestions">
+  <option value="KHÔNG CHỌN"></option>
+  <option value="CÓ SIZE KHÓ"></option>
+  <option value="TẤT CẢ KHÓ"></option>
+</datalist>
+
 <script src="./scripts/stockQuickPopup.js?v=20260730a"></script>
 <script type="module">
 import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
-import { initQuanLyLuatXaSimple } from './scripts/quanlyluatxahang.js';
+import { initQuanLyLuatXaSimple } from './scripts/quanlyluatxahang_simple.js';
 khoiTaoDangNhapDungChung({appContainerId:'app-container',macDinhDiaDiem:'cs1',tuDongKhoaCoSo:true,loginApiPath:'/api/login-cs1',onLoginSuccess:async(nhanvien)=>{if(!nhanvien.is_admin){alert('Chỉ ADMIN được quản lý luật xả hàng.');await dangXuatDungChung({appContainerId:'app-container'});return;}document.getElementById('app-container').style.display='';initQuanLyLuatXaSimple();}});
 </script>
 </body></html>
