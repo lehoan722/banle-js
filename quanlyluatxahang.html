@@ -22,7 +22,7 @@
 <script src="./scripts/stockQuickPopup.js?v=20260730a"></script>
 <script type="module">
 import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
-import { initQuanLyLuatXaSimple } from './scripts/quanlyluatxahang_simple.js';
+import { initQuanLyLuatXaSimple } from './scripts/quanlyluatxahang.js';
 khoiTaoDangNhapDungChung({appContainerId:'app-container',macDinhDiaDiem:'cs1',tuDongKhoaCoSo:true,loginApiPath:'/api/login-cs1',onLoginSuccess:async(nhanvien)=>{if(!nhanvien.is_admin){alert('Chỉ ADMIN được quản lý luật xả hàng.');await dangXuatDungChung({appContainerId:'app-container'});return;}document.getElementById('app-container').style.display='';initQuanLyLuatXaSimple();}});
 </script>
 </body></html>
