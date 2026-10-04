@@ -60,9 +60,26 @@ h1{font-size:20px;margin:0}
   text-align:center!important;
 }
 .handsontable thead th{
-  height:38px!important;
   vertical-align:middle!important;
   padding:2px 3px!important;
+}
+.handsontable thead tr{
+  height:54px!important;
+}
+.handsontable thead th .relative{
+  min-height:50px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+
+
+.productList thead th{
+  position:sticky;
+  top:0;
+  z-index:5;
+  background:#f8fafc;
+  box-shadow:0 1px 0 var(--line);
 }
 
 </style>
@@ -114,7 +131,7 @@ h1{font-size:20px;margin:0}
       <div class="productList">
         <table>
           <thead><tr>
-            <th>Mã SP</th><th>Tên SP</th><th>Tồn</th><th>Tồn/Nhập</th>
+            <th>Mã SP</th><th>Tên SP</th><th>Tồn sau kiểm</th><th>CS1</th><th>CS2</th><th>Tồn/Nhập</th>
             <th>Nhập cuối</th><th>Bán cuối</th><th>Size còn</th>
           </tr></thead>
           <tbody id="productBody"></tbody>
@@ -150,7 +167,7 @@ h1{font-size:20px;margin:0}
       <h3>Size khó</h3>
       <p>
         Size khó / Size khó TỪ / Size khó ĐẾN đều nhập trực tiếp.
-        Một nhóm chỉ có một cấu hình size khó dùng chung; ở các dòng sau của cùng nhóm sẽ hiện “Dùng chung”.
+        Một nhóm chỉ có một cấu hình size khó dùng chung. Tất cả dòng cùng nhóm đều hiển thị giá trị thật; sửa size ở bất kỳ dòng nào sẽ tự đồng bộ sang toàn bộ dòng của nhóm đó.
       </p>
       <h3>ĐK SIZE</h3>
       <p>Chỉ chọn một trong 3 giá trị: <b>KHÔNG CHỌN</b>, <b>CÓ SIZE KHÓ</b>, <b>TẤT CẢ KHÓ</b>.</p>
