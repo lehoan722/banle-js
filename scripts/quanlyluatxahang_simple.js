@@ -1,4 +1,4 @@
-// scripts/quanlyluatxahang_simple.js - V2.6 NHAP DAU TRUOC NGAY
+// scripts/quanlyluatxahang_simple.js - V2.7 NHAP DAU KHOANG NGAY + AUTO SAVE
 // - Handsontable + Filters + ColumnSorting + DropdownMenu
 // - Cac cot so nhap truc tiep, KHONG co spinner.
 // - DK SIZE dropdown 3 gia tri.
@@ -13,6 +13,9 @@ let state = { groups: [], rules: [], sizes: {} };
 let selectedPhysicalRow = -1;
 let lastCheckItems = [];
 let internalChange = false;
+let autoSaveTimer = null;
+let autoSaveRunning = false;
+let autoSaveQueued = false;
 
 const SIZE_MODE_LABELS = {
   KHONG_CHON: 'KHÔNG CHỌN',
@@ -38,39 +41,28 @@ const isoToDMY = (v) => {
   const s = String(v ?? '').trim();
   if (!s) return '';
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return s;
-  return `${m[3]}-${m[2]}-${m[1]}`;
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : s;
 };
 
 const dmyToISO = (v) => {
   const s = String(v ?? '').trim();
   if (!s) return null;
 
-  // Cho phep ca DD-MM-YYYY va YYYY-MM-DD de tranh loi khi paste.
   let m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
   if (m) {
-    const d = Number(m[1]), mon = Number(m[2]), y = Number(m[3]);
-    const dt = new Date(y, mon-1, d);
-    if (
-      dt.getFullYear() !== y ||
-      dt.getMonth() !== mon-1 ||
-      dt.getDate() !== d
-    ) return null;
+    const day = Number(m[1]), mon = Number(m[2]), y = Number(m[3]);
+    const d = new Date(y, mon-1, day);
+    if (d.getFullYear() !== y || d.getMonth() !== mon-1 || d.getDate() !== day) return null;
     return `${m[3]}-${m[2]}-${m[1]}`;
   }
 
   m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m) {
-    const y = Number(m[1]), mon = Number(m[2]), d = Number(m[3]);
-    const dt = new Date(y, mon-1, d);
-    if (
-      dt.getFullYear() !== y ||
-      dt.getMonth() !== mon-1 ||
-      dt.getDate() !== d
-    ) return null;
+    const y = Number(m[1]), mon = Number(m[2]), day = Number(m[3]);
+    const d = new Date(y, mon-1, day);
+    if (d.getFullYear() !== y || d.getMonth() !== mon-1 || d.getDate() !== day) return null;
     return s;
   }
-
   return null;
 };
 
@@ -85,6 +77,15 @@ const dateDMYValidator = (value, callback) => {
   if (value === '' || value == null) return callback(true);
   callback(!!dmyToISO(value));
 };
+
+function subtractMonthsISO(isoDate, months) {
+  if (!isoDate || months == null || months === '') return null;
+  const m = String(isoDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+  d.setMonth(d.getMonth() - Number(months));
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
 }[m]));
@@ -201,7 +202,8 @@ async function load() {
     ...r,
     hieu_luc_tu: isoToDMY(r.hieu_luc_tu),
     hieu_luc_den: isoToDMY(r.hieu_luc_den),
-    nhap_dau_truoc_ngay: isoToDMY(r.nhap_dau_truoc_ngay)
+    nhap_dau_truoc_ngay: isoToDMY(r.nhap_dau_truoc_ngay),
+    nhap_dau_sau_ngay: isoToDMY(r.nhap_dau_sau_ngay)
   }));
   state.sizes = {};
 
@@ -215,7 +217,7 @@ async function load() {
   });
 
   buildUiRows();
-  selectedPhysicalRow = state.rules.length ? 0 : -1;
+  selectedPhysicalRow = -1;
   renderHot();
   setStatus(`Đã tải ${state.rules.length} luật.`);
 }
@@ -273,7 +275,8 @@ function deletePhysicalRow(instance, visualRow) {
   instance.loadData(state.rules);
   instance.render();
 
-  setStatus('Đã xóa khỏi bảng. Bấm "Lưu dữ liệu" để ghi thay đổi.');
+  setStatus('Đã xóa khỏi bảng. Đang tự lưu...');
+  scheduleAutoSave();
 }
 
 function deleteRenderer(instance, td, row) {
@@ -309,6 +312,7 @@ const HOT_HEADERS = [
   'TỪ<br>NGÀY',
   'ĐẾN<br>NGÀY',
   'Nhập đầu<br>trước ngày',
+  'Nhập đầu<br>sau ngày',
   'Không nhập<br>(tháng)',
   'Không bán<br>(ngày)',
   'Tồn<br>tối đa',
@@ -323,8 +327,44 @@ const HOT_HEADERS = [
 ];
 
 const HOT_COL_WIDTHS = [
-  135, 96, 96, 112, 82, 82, 72, 95, 100, 82, 82, 105, 62, 48, 48
+  135, 96, 96, 112, 112, 82, 82, 72, 95, 100, 82, 82, 105, 62, 48, 48
 ];
+
+
+function attachTodayButtonToDateEditor(instance, row, col) {
+  setTimeout(() => {
+    const editor = instance.getActiveEditor?.();
+    const pickerRoot =
+      document.querySelector('.pika-single:not(.is-hidden)') ||
+      document.querySelector('.pika-single');
+
+    if (!editor || !pickerRoot || pickerRoot.querySelector('.ht-date-today-btn')) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ht-date-today-wrap';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ht-date-today-btn';
+    btn.textContent = 'Hôm nay';
+
+    btn.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      instance.setDataAtCell(row, col, todayDMY(), 'today-button');
+      try { editor.finishEditing(); } catch {}
+      scheduleAutoSave();
+    });
+
+    wrap.appendChild(btn);
+    pickerRoot.appendChild(wrap);
+  }, 0);
+}
 
 function renderHot() {
   if (!window.Handsontable) {
@@ -354,31 +394,24 @@ function renderHot() {
         trimDropdown:false
       },
       {
-        data:'hieu_luc_tu',
-        type:'date',
-        dateFormat:'DD-MM-YYYY',
-        correctFormat:true,
-        allowEmpty:false,
-        validator:dateDMYValidator,
-        allowInvalid:true
+        data:'hieu_luc_tu', type:'date',
+        dateFormat:'DD-MM-YYYY', correctFormat:true,
+        allowEmpty:false, validator:dateDMYValidator, allowInvalid:true
       },
       {
-        data:'hieu_luc_den',
-        type:'date',
-        dateFormat:'DD-MM-YYYY',
-        correctFormat:true,
-        allowEmpty:true,
-        validator:dateDMYValidator,
-        allowInvalid:true
+        data:'hieu_luc_den', type:'date',
+        dateFormat:'DD-MM-YYYY', correctFormat:true,
+        allowEmpty:true, validator:dateDMYValidator, allowInvalid:true
       },
       {
-        data:'nhap_dau_truoc_ngay',
-        type:'date',
-        dateFormat:'DD-MM-YYYY',
-        correctFormat:true,
-        allowEmpty:true,
-        validator:dateDMYValidator,
-        allowInvalid:true
+        data:'nhap_dau_truoc_ngay', type:'date',
+        dateFormat:'DD-MM-YYYY', correctFormat:true,
+        allowEmpty:true, validator:dateDMYValidator, allowInvalid:true
+      },
+      {
+        data:'nhap_dau_sau_ngay', type:'date',
+        dateFormat:'DD-MM-YYYY', correctFormat:true,
+        allowEmpty:true, validator:dateDMYValidator, allowInvalid:true
       },
 
       // Numeric editor cua Handsontable dung input text, khong co nut spinner.
@@ -429,6 +462,16 @@ function renderHot() {
     },
 
     licenseKey:'non-commercial-and-evaluation',
+
+    afterBeginEditing(row, col) {
+      const prop = this.colToProp(col);
+      if ([
+        'hieu_luc_tu','hieu_luc_den',
+        'nhap_dau_truoc_ngay','nhap_dau_sau_ngay'
+      ].includes(prop)) {
+        attachTodayButtonToDateEditor(this, row, col);
+      }
+    },
 
     afterGetColHeader(col, TH) {
       if (col < 0 || !HOT_HEADERS[col]) return;
@@ -500,6 +543,8 @@ function renderHot() {
           // Cac thay doi size duoc dong bo truc tiep vao tat ca dong cung nhom.
           this.render();
         }
+
+        scheduleAutoSave();
       } finally {
         internalChange = false;
       }
@@ -515,6 +560,7 @@ function addRule() {
     hieu_luc_tu:todayDMY(),
     hieu_luc_den:null,
     nhap_dau_truoc_ngay:defaultNhapDauTruocNgayDMY(),
+    nhap_dau_sau_ngay:null,
     khong_nhap_thang:null,
     khong_ban_ngay:null,
     ton_toi_da:null,
@@ -555,29 +601,29 @@ function validateAll() {
       throw new Error(`Dòng ${i+1}: nhóm "${r.nhomhang}" không có trong danh mục nhóm hàng.`);
     }
 
-    if (!r.hieu_luc_tu) {
-      throw new Error(`Dòng ${i+1}: thiếu TỪ NGÀY.`);
-    }
+    if (!r.hieu_luc_tu) throw new Error(`Dòng ${i+1}: thiếu TỪ NGÀY.`);
 
     const tuISO = dmyToISO(r.hieu_luc_tu);
     const denISO = r.hieu_luc_den ? dmyToISO(r.hieu_luc_den) : null;
-    const nhapDauISO = r.nhap_dau_truoc_ngay
-      ? dmyToISO(r.nhap_dau_truoc_ngay)
-      : null;
+    const truocISO = r.nhap_dau_truoc_ngay ? dmyToISO(r.nhap_dau_truoc_ngay) : null;
+    const sauISO = r.nhap_dau_sau_ngay ? dmyToISO(r.nhap_dau_sau_ngay) : null;
 
-    if (!tuISO) {
-      throw new Error(`Dòng ${i+1}: TỪ NGÀY phải theo dạng DD-MM-YYYY.`);
+    if (!tuISO) throw new Error(`Dòng ${i+1}: TỪ NGÀY phải dạng DD-MM-YYYY.`);
+    if (r.hieu_luc_den && !denISO) throw new Error(`Dòng ${i+1}: ĐẾN NGÀY phải dạng DD-MM-YYYY.`);
+    if (denISO && denISO < tuISO) throw new Error(`Dòng ${i+1}: ĐẾN NGÀY nhỏ hơn TỪ NGÀY.`);
+    if (r.nhap_dau_truoc_ngay && !truocISO) throw new Error(`Dòng ${i+1}: NHẬP ĐẦU TRƯỚC NGÀY không hợp lệ.`);
+    if (r.nhap_dau_sau_ngay && !sauISO) throw new Error(`Dòng ${i+1}: NHẬP ĐẦU SAU NGÀY không hợp lệ.`);
+    if (truocISO && sauISO && sauISO > truocISO) {
+      throw new Error(`Dòng ${i+1}: NHẬP ĐẦU SAU NGÀY không được lớn hơn NHẬP ĐẦU TRƯỚC NGÀY.`);
     }
-    if (r.hieu_luc_den && !denISO) {
-      throw new Error(`Dòng ${i+1}: ĐẾN NGÀY phải theo dạng DD-MM-YYYY.`);
-    }
-    if (denISO && denISO < tuISO) {
-      throw new Error(`Dòng ${i+1}: ĐẾN NGÀY nhỏ hơn TỪ NGÀY.`);
-    }
-    if (r.nhap_dau_truoc_ngay && !nhapDauISO) {
-      throw new Error(
-        `Dòng ${i+1}: NHẬP ĐẦU TRƯỚC NGÀY phải theo dạng DD-MM-YYYY.`
-      );
+
+    if (sauISO && r.khong_nhap_thang !== '' && r.khong_nhap_thang != null) {
+      const cutoff = subtractMonthsISO(todayISO(), Number(r.khong_nhap_thang));
+      if (cutoff && sauISO > cutoff) {
+        throw new Error(
+          `Dòng ${i+1}: xung đột giữa NHẬP ĐẦU SAU NGÀY và KHÔNG NHẬP ${r.khong_nhap_thang} tháng.`
+        );
+      }
     }
 
     const integerFields = [
@@ -647,9 +693,8 @@ function payload() {
       nhomhang: norm(r.nhomhang),
       hieu_luc_tu: dmyToISO(r.hieu_luc_tu),
       hieu_luc_den: r.hieu_luc_den ? dmyToISO(r.hieu_luc_den) : null,
-      nhap_dau_truoc_ngay: r.nhap_dau_truoc_ngay
-        ? dmyToISO(r.nhap_dau_truoc_ngay)
-        : null,
+      nhap_dau_truoc_ngay: r.nhap_dau_truoc_ngay ? dmyToISO(r.nhap_dau_truoc_ngay) : null,
+      nhap_dau_sau_ngay: r.nhap_dau_sau_ngay ? dmyToISO(r.nhap_dau_sau_ngay) : null,
       khong_nhap_thang: r.khong_nhap_thang === '' ? null : r.khong_nhap_thang,
       khong_ban_ngay: r.khong_ban_ngay === '' ? null : r.khong_ban_ngay,
       ton_toi_da: r.ton_toi_da === '' ? null : r.ton_toi_da,
@@ -671,21 +716,69 @@ function payload() {
   };
 }
 
+
+function applyIdMap(idMap) {
+  if (!Array.isArray(idMap)) return;
+  idMap.forEach(x => {
+    const idx = Number(x.client_index);
+    const id = Number(x.id);
+    if (Number.isInteger(idx) && idx >= 0 && idx < state.rules.length && Number.isFinite(id)) {
+      state.rules[idx].id = id;
+    }
+  });
+}
+
+async function persistCurrentState({silent=false}={}) {
+  validateAll();
+
+  const { data, error } = await sb.rpc('rpc_xa_simple_save_v2', {
+    p_payload: payload()
+  });
+  if (error) throw error;
+
+  applyIdMap(data?.id_map);
+  if (hot && !hot.isDestroyed) hot.render();
+
+  if (silent) {
+    const d = new Date();
+    setStatus(
+      `Đã tự lưu lúc ${String(d.getHours()).padStart(2,'0')}:` +
+      `${String(d.getMinutes()).padStart(2,'0')}:` +
+      `${String(d.getSeconds()).padStart(2,'0')}`
+    );
+  }
+  return data;
+}
+
+function scheduleAutoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(async () => {
+    if (autoSaveRunning) {
+      autoSaveQueued = true;
+      return;
+    }
+
+    autoSaveRunning = true;
+    try {
+      await persistCurrentState({silent:true});
+    } catch (e) {
+      console.warn('AUTO_SAVE_SKIPPED', e);
+      setStatus(`Chưa tự lưu: ${e.message || e}`);
+    } finally {
+      autoSaveRunning = false;
+      if (autoSaveQueued) {
+        autoSaveQueued = false;
+        scheduleAutoSave();
+      }
+    }
+  }, 700);
+}
+
 async function save() {
   try {
-    validateAll();
-
-    if (!confirm(`Lưu ${state.rules.length} dòng luật xả hàng?`)) return;
-
     setStatus('Đang lưu...');
-    const { data, error } = await sb.rpc('rpc_xa_simple_save_v2', {
-      p_payload: payload()
-    });
-
-    if (error) throw error;
-
+    const data = await persistCurrentState({silent:false});
     setStatus(`Đã lưu ${data?.rule_count ?? state.rules.length} luật.`);
-    await load();
   } catch (e) {
     console.error(e);
     alert('Không lưu được: ' + (e.message || e));
@@ -714,9 +807,8 @@ async function checkSelected() {
         nhomhang:g,
         hieu_luc_tu:dmyToISO(r.hieu_luc_tu),
         hieu_luc_den:r.hieu_luc_den ? dmyToISO(r.hieu_luc_den) : null,
-        nhap_dau_truoc_ngay:r.nhap_dau_truoc_ngay
-          ? dmyToISO(r.nhap_dau_truoc_ngay)
-          : null,
+        nhap_dau_truoc_ngay:r.nhap_dau_truoc_ngay ? dmyToISO(r.nhap_dau_truoc_ngay) : null,
+        nhap_dau_sau_ngay:r.nhap_dau_sau_ngay ? dmyToISO(r.nhap_dau_sau_ngay) : null,
         khong_nhap_thang:r.khong_nhap_thang,
         khong_ban_ngay:r.khong_ban_ngay,
         ton_toi_da:r.ton_toi_da,
