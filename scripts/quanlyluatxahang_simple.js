@@ -69,6 +69,19 @@ function ensureSizeConfig(group) {
   return state.sizes[g];
 }
 
+function syncSizeFieldsToGroup(group) {
+  const g = norm(group);
+  if (!g) return;
+  const cfg = ensureSizeConfig(g);
+
+  state.rules.forEach(r => {
+    if (norm(r.nhomhang) !== g) return;
+    r.size_kho_text = (cfg.size_kho_ds || []).join(',');
+    r.size_kho_tu = cfg.size_kho_tu;
+    r.size_kho_den = cfg.size_kho_den;
+  });
+}
+
 function firstPhysicalRowOfGroup(group) {
   const g = norm(group);
   if (!g) return -1;
@@ -101,19 +114,21 @@ function sharedSizeText(physicalRow, prop) {
 }
 
 function buildUiRows() {
-  state.rules.forEach((r, physicalRow) => {
+  state.rules.forEach((r) => {
     const cfg = ensureSizeConfig(r.nhomhang) || {};
-    if (isSizeOwner(physicalRow)) {
-      r.size_kho_text = (cfg.size_kho_ds || []).join(',');
-      r.size_kho_tu = cfg.size_kho_tu;
-      r.size_kho_den = cfg.size_kho_den;
-    } else {
-      r.size_kho_text = null;
-      r.size_kho_tu = null;
-      r.size_kho_den = null;
-    }
-    r.tyle_ton_pct = r.tyle_ton_toi_da == null ? null : Number(r.tyle_ton_toi_da) * 100;
-    r.dieu_kien_size_label = sizeModeLabel(r.dieu_kien_size || 'KHONG_CHON');
+    // Moi dong deu hien gia tri size kho THUC cua nhom.
+    // Khong con "Dung chung 38" hay phu thuoc dong dau tien.
+    r.size_kho_text = (cfg.size_kho_ds || []).join(',');
+    r.size_kho_tu = cfg.size_kho_tu;
+    r.size_kho_den = cfg.size_kho_den;
+
+    r.tyle_ton_pct = r.tyle_ton_toi_da == null
+      ? null
+      : Number(r.tyle_ton_toi_da) * 100;
+
+    r.dieu_kien_size_label = sizeModeLabel(
+      r.dieu_kien_size || 'KHONG_CHON'
+    );
     r.__delete = '×';
   });
 }
@@ -177,16 +192,8 @@ function discountValidator(value, callback) {
   callback(Number.isFinite(n) && n >= 1 && n <= 100);
 }
 
-function sharedSizeRenderer(instance, td, row, col, prop, value, cellProperties) {
-  const physicalRow = instance.toPhysicalRow(row);
-  if (!isSizeOwner(physicalRow)) {
-    Handsontable.renderers.TextRenderer.apply(this, arguments);
-    td.textContent = sharedSizeText(physicalRow, prop);
-    td.classList.add('shared-size-cell');
-    return td;
-  }
+function sharedSizeRenderer() {
   Handsontable.renderers.TextRenderer.apply(this, arguments);
-  return td;
 }
 
 function deletePhysicalRow(instance, visualRow) {
@@ -318,6 +325,8 @@ function renderHot() {
 
     width:'100%',
     height:'100%',
+    columnHeaderHeight:54,
+    rowHeights:30,
     stretchH:'all',
     autoWrapRow:false,
     autoWrapCol:false,
@@ -333,14 +342,6 @@ function renderHot() {
     },
 
     licenseKey:'non-commercial-and-evaluation',
-
-    beforeBeginEditing(row, col) {
-      const prop = this.colToProp(col);
-      if (!['size_kho_text','size_kho_tu','size_kho_den'].includes(prop)) return;
-
-      const physicalRow = this.toPhysicalRow(row);
-      if (!isSizeOwner(physicalRow)) return false;
-    },
 
     afterGetColHeader(col, TH) {
       if (col < 0 || !HOT_HEADERS[col]) return;
@@ -386,26 +387,31 @@ function renderHot() {
             r.dieu_kien_size_label = sizeModeLabel(r.dieu_kien_size);
           }
 
-          else if (prop === 'size_kho_text' && isSizeOwner(physicalRow)) {
+          else if (prop === 'size_kho_text') {
             const cfg = ensureSizeConfig(r.nhomhang);
             cfg.size_kho_ds = parseSizeList(newValue);
-            r.size_kho_text = cfg.size_kho_ds.join(',');
+            syncSizeFieldsToGroup(r.nhomhang);
           }
 
-          else if (prop === 'size_kho_tu' && isSizeOwner(physicalRow)) {
+          else if (prop === 'size_kho_tu') {
             const cfg = ensureSizeConfig(r.nhomhang);
             cfg.size_kho_tu = num(newValue);
+            syncSizeFieldsToGroup(r.nhomhang);
           }
 
-          else if (prop === 'size_kho_den' && isSizeOwner(physicalRow)) {
+          else if (prop === 'size_kho_den') {
             const cfg = ensureSizeConfig(r.nhomhang);
             cfg.size_kho_den = num(newValue);
+            syncSizeFieldsToGroup(r.nhomhang);
           }
         }
 
         if (groupsNeedRebuild.size) {
           buildUiRows();
           this.loadData(state.rules);
+        } else {
+          // Cac thay doi size duoc dong bo truc tiep vao tat ca dong cung nhom.
+          this.render();
         }
       } finally {
         internalChange = false;
@@ -636,6 +642,8 @@ async function checkSelected() {
         <td><button class="maspLink" type="button">${esc(x.masp)}</button></td>
         <td>${esc(x.tensp || '')}</td>
         <td>${Number(x.ton_hientai || 0)}</td>
+        <td>${Number(x.ton_cs1_thuc || 0)}</td>
+        <td>${Number(x.ton_cs2_thuc || 0)}</td>
         <td>${x.tyle_ton == null ? '' : (Number(x.tyle_ton)*100).toFixed(1) + '%'}</td>
         <td>${esc(x.ngay_nhap_cuoi || '')}</td>
         <td>${esc(x.ngay_ban_cuoi || '')}</td>
