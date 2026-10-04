@@ -1,4 +1,4 @@
-// scripts/quanlyluatxahang_simple.js - V2.2 HANDSONTABLE
+// scripts/quanlyluatxahang_simple.js - V2.6 NHAP DAU TRUOC NGAY
 // - Handsontable + Filters + ColumnSorting + DropdownMenu
 // - Cac cot so nhap truc tiep, KHONG co spinner.
 // - DK SIZE dropdown 3 gia tri.
@@ -26,7 +26,65 @@ const LABEL_TO_SIZE_MODE = Object.fromEntries(
 
 const norm = (v) => String(v ?? '').trim().toUpperCase();
 const num = (v) => (v === '' || v == null ? null : Number(v));
-const todayISO = () => new Date().toISOString().slice(0,10);
+const todayISO = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+};
+
+const isoToDMY = (v) => {
+  const s = String(v ?? '').trim();
+  if (!s) return '';
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return s;
+  return `${m[3]}-${m[2]}-${m[1]}`;
+};
+
+const dmyToISO = (v) => {
+  const s = String(v ?? '').trim();
+  if (!s) return null;
+
+  // Cho phep ca DD-MM-YYYY va YYYY-MM-DD de tranh loi khi paste.
+  let m = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (m) {
+    const d = Number(m[1]), mon = Number(m[2]), y = Number(m[3]);
+    const dt = new Date(y, mon-1, d);
+    if (
+      dt.getFullYear() !== y ||
+      dt.getMonth() !== mon-1 ||
+      dt.getDate() !== d
+    ) return null;
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    const y = Number(m[1]), mon = Number(m[2]), d = Number(m[3]);
+    const dt = new Date(y, mon-1, d);
+    if (
+      dt.getFullYear() !== y ||
+      dt.getMonth() !== mon-1 ||
+      dt.getDate() !== d
+    ) return null;
+    return s;
+  }
+
+  return null;
+};
+
+const todayDMY = () => isoToDMY(todayISO());
+
+const defaultNhapDauTruocNgayDMY = () => {
+  const y = new Date().getFullYear() - 2;
+  return `01-01-${y}`;
+};
+
+const dateDMYValidator = (value, callback) => {
+  if (value === '' || value == null) return callback(true);
+  callback(!!dmyToISO(value));
+};
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
 }[m]));
@@ -139,7 +197,12 @@ async function load() {
   if (error) throw error;
 
   state.groups = data?.nhomhang || [];
-  state.rules = (data?.rules || []).map(r => ({ ...r }));
+  state.rules = (data?.rules || []).map(r => ({
+    ...r,
+    hieu_luc_tu: isoToDMY(r.hieu_luc_tu),
+    hieu_luc_den: isoToDMY(r.hieu_luc_den),
+    nhap_dau_truoc_ngay: isoToDMY(r.nhap_dau_truoc_ngay)
+  }));
   state.sizes = {};
 
   (data?.sizes || []).forEach(s => {
@@ -245,7 +308,7 @@ const HOT_HEADERS = [
   'Nhóm<br>áp dụng',
   'TỪ<br>NGÀY',
   'ĐẾN<br>NGÀY',
-  'Tuổi hàng<br>(tháng)',
+  'Nhập đầu<br>trước ngày',
   'Không nhập<br>(tháng)',
   'Không bán<br>(ngày)',
   'Tồn<br>tối đa',
@@ -260,7 +323,7 @@ const HOT_HEADERS = [
 ];
 
 const HOT_COL_WIDTHS = [
-  135, 90, 90, 82, 82, 82, 72, 95, 100, 82, 82, 105, 62, 48, 48
+  135, 96, 96, 112, 82, 82, 72, 95, 100, 82, 82, 105, 62, 48, 48
 ];
 
 function renderHot() {
@@ -290,11 +353,35 @@ function renderHot() {
         filter:true,
         trimDropdown:false
       },
-      { data:'hieu_luc_tu', type:'text' },
-      { data:'hieu_luc_den', type:'text' },
+      {
+        data:'hieu_luc_tu',
+        type:'date',
+        dateFormat:'DD-MM-YYYY',
+        correctFormat:true,
+        allowEmpty:false,
+        validator:dateDMYValidator,
+        allowInvalid:true
+      },
+      {
+        data:'hieu_luc_den',
+        type:'date',
+        dateFormat:'DD-MM-YYYY',
+        correctFormat:true,
+        allowEmpty:true,
+        validator:dateDMYValidator,
+        allowInvalid:true
+      },
+      {
+        data:'nhap_dau_truoc_ngay',
+        type:'date',
+        dateFormat:'DD-MM-YYYY',
+        correctFormat:true,
+        allowEmpty:true,
+        validator:dateDMYValidator,
+        allowInvalid:true
+      },
 
       // Numeric editor cua Handsontable dung input text, khong co nut spinner.
-      { data:'tuoi_hang_thang', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
       { data:'khong_nhap_thang', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
       { data:'khong_ban_ngay', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
       { data:'ton_toi_da', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
@@ -425,9 +512,9 @@ function addRule() {
   const row = {
     id:null,
     nhomhang:'',
-    hieu_luc_tu:todayISO(),
+    hieu_luc_tu:todayDMY(),
     hieu_luc_den:null,
-    tuoi_hang_thang:null,
+    nhap_dau_truoc_ngay:defaultNhapDauTruocNgayDMY(),
     khong_nhap_thang:null,
     khong_ban_ngay:null,
     ton_toi_da:null,
@@ -468,13 +555,32 @@ function validateAll() {
       throw new Error(`Dòng ${i+1}: nhóm "${r.nhomhang}" không có trong danh mục nhóm hàng.`);
     }
 
-    if (!r.hieu_luc_tu) throw new Error(`Dòng ${i+1}: thiếu TỪ NGÀY.`);
-    if (r.hieu_luc_den && r.hieu_luc_den < r.hieu_luc_tu) {
+    if (!r.hieu_luc_tu) {
+      throw new Error(`Dòng ${i+1}: thiếu TỪ NGÀY.`);
+    }
+
+    const tuISO = dmyToISO(r.hieu_luc_tu);
+    const denISO = r.hieu_luc_den ? dmyToISO(r.hieu_luc_den) : null;
+    const nhapDauISO = r.nhap_dau_truoc_ngay
+      ? dmyToISO(r.nhap_dau_truoc_ngay)
+      : null;
+
+    if (!tuISO) {
+      throw new Error(`Dòng ${i+1}: TỪ NGÀY phải theo dạng DD-MM-YYYY.`);
+    }
+    if (r.hieu_luc_den && !denISO) {
+      throw new Error(`Dòng ${i+1}: ĐẾN NGÀY phải theo dạng DD-MM-YYYY.`);
+    }
+    if (denISO && denISO < tuISO) {
       throw new Error(`Dòng ${i+1}: ĐẾN NGÀY nhỏ hơn TỪ NGÀY.`);
+    }
+    if (r.nhap_dau_truoc_ngay && !nhapDauISO) {
+      throw new Error(
+        `Dòng ${i+1}: NHẬP ĐẦU TRƯỚC NGÀY phải theo dạng DD-MM-YYYY.`
+      );
     }
 
     const integerFields = [
-      ['tuoi_hang_thang','Tuổi hàng'],
       ['khong_nhap_thang','Không nhập'],
       ['khong_ban_ngay','Không bán'],
       ['ton_toi_da','Tồn tối đa']
@@ -539,9 +645,11 @@ function payload() {
     rules: state.rules.map(r => ({
       id: r.id ?? null,
       nhomhang: norm(r.nhomhang),
-      hieu_luc_tu: r.hieu_luc_tu,
-      hieu_luc_den: r.hieu_luc_den || null,
-      tuoi_hang_thang: r.tuoi_hang_thang === '' ? null : r.tuoi_hang_thang,
+      hieu_luc_tu: dmyToISO(r.hieu_luc_tu),
+      hieu_luc_den: r.hieu_luc_den ? dmyToISO(r.hieu_luc_den) : null,
+      nhap_dau_truoc_ngay: r.nhap_dau_truoc_ngay
+        ? dmyToISO(r.nhap_dau_truoc_ngay)
+        : null,
       khong_nhap_thang: r.khong_nhap_thang === '' ? null : r.khong_nhap_thang,
       khong_ban_ngay: r.khong_ban_ngay === '' ? null : r.khong_ban_ngay,
       ton_toi_da: r.ton_toi_da === '' ? null : r.ton_toi_da,
@@ -604,9 +712,11 @@ async function checkSelected() {
       p_rule: {
         id:r.id ?? null,
         nhomhang:g,
-        hieu_luc_tu:r.hieu_luc_tu,
-        hieu_luc_den:r.hieu_luc_den || null,
-        tuoi_hang_thang:r.tuoi_hang_thang,
+        hieu_luc_tu:dmyToISO(r.hieu_luc_tu),
+        hieu_luc_den:r.hieu_luc_den ? dmyToISO(r.hieu_luc_den) : null,
+        nhap_dau_truoc_ngay:r.nhap_dau_truoc_ngay
+          ? dmyToISO(r.nhap_dau_truoc_ngay)
+          : null,
         khong_nhap_thang:r.khong_nhap_thang,
         khong_ban_ngay:r.khong_ban_ngay,
         ton_toi_da:r.ton_toi_da,
@@ -631,7 +741,7 @@ async function checkSelected() {
     $('#totalCount').textContent = Number(data?.total_products || 0).toLocaleString('vi-VN');
     $('#matchCount').textContent = Number(data?.matched_count || 0).toLocaleString('vi-VN');
     $('#checkSubtitle').textContent =
-      `Nhóm ${g} · kiểm tra ${data?.ngay_kiem_tra || todayISO()} · dòng nguồn ${selectedPhysicalRow + 1}`;
+      `Nhóm ${g} · kiểm tra ${isoToDMY(data?.ngay_kiem_tra || todayISO())} · dòng nguồn ${selectedPhysicalRow + 1}`;
 
     const tb = $('#productBody');
     tb.innerHTML = '';
@@ -645,8 +755,8 @@ async function checkSelected() {
         <td>${Number(x.ton_cs1_thuc || 0)}</td>
         <td>${Number(x.ton_cs2_thuc || 0)}</td>
         <td>${x.tyle_ton == null ? '' : (Number(x.tyle_ton)*100).toFixed(1) + '%'}</td>
-        <td>${esc(x.ngay_nhap_cuoi || '')}</td>
-        <td>${esc(x.ngay_ban_cuoi || '')}</td>
+        <td>${esc(isoToDMY(x.ngay_nhap_cuoi) || '')}</td>
+        <td>${esc(isoToDMY(x.ngay_ban_cuoi) || '')}</td>
         <td>${esc(x.sizes_con_lai || '')}</td>
       `;
       tr.querySelector('.maspLink').onclick = () => openStock(x.masp);
