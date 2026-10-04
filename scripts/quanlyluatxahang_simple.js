@@ -188,7 +188,6 @@ function buildUiRows() {
     r.dieu_kien_size_label = sizeModeLabel(
       r.dieu_kien_size || 'KHONG_CHON'
     );
-    r.__delete = '×';
   });
 }
 
@@ -261,50 +260,6 @@ function sharedSizeRenderer() {
   Handsontable.renderers.TextRenderer.apply(this, arguments);
 }
 
-function deletePhysicalRow(instance, visualRow) {
-  const physicalRow = instance.toPhysicalRow(visualRow);
-  const rule = state.rules[physicalRow];
-  if (!rule) return;
-
-  if (!confirm(`Xóa dòng luật của nhóm ${rule.nhomhang || '(chưa chọn)'}?`)) return;
-
-  state.rules.splice(physicalRow, 1);
-  selectedPhysicalRow = Math.min(physicalRow, state.rules.length - 1);
-
-  buildUiRows();
-  instance.loadData(state.rules);
-  instance.render();
-
-  setStatus('Đã xóa khỏi bảng. Đang tự lưu...');
-  scheduleAutoSave();
-}
-
-function deleteRenderer(instance, td, row) {
-  Handsontable.renderers.TextRenderer.apply(this, arguments);
-
-  td.innerHTML = '';
-  td.style.textAlign = 'center';
-
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'delete-rule-btn';
-  btn.title = 'Xóa dòng';
-  btn.textContent = '×';
-
-  btn.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  });
-
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    deletePhysicalRow(instance, row);
-  });
-
-  td.appendChild(btn);
-  return td;
-}
 
 
 const HOT_HEADERS = [
@@ -322,12 +277,11 @@ const HOT_HEADERS = [
   'Size khó<br>ĐẾN',
   'ĐK<br>SIZE',
   '%<br>xả',
-  'Bật',
-  'XÓA'
+  'Bật'
 ];
 
 const HOT_COL_WIDTHS = [
-  135, 96, 96, 112, 112, 82, 82, 72, 95, 100, 82, 82, 105, 62, 48, 48
+  112, 82, 82, 96, 96, 70, 70, 62, 82, 78, 68, 68, 90, 52, 42
 ];
 
 
@@ -439,15 +393,14 @@ function renderHot() {
         strict:true,
         allowInvalid:false
       },
-      { data:'dang_ap_dung', type:'checkbox', className:'htCenter' },
-      { data:'__delete', readOnly:true, renderer:deleteRenderer }
+      { data:'dang_ap_dung', type:'checkbox', className:'htCenter' }
     ],
 
     width:'100%',
     height:'100%',
     columnHeaderHeight:54,
     rowHeights:30,
-    stretchH:'all',
+    stretchH:'none',
     autoWrapRow:false,
     autoWrapCol:false,
     manualColumnResize:true,
@@ -553,6 +506,38 @@ function renderHot() {
   hot = nextHot;
 }
 
+
+function deleteSelectedRule() {
+  if (selectedPhysicalRow < 0 || !state.rules[selectedPhysicalRow]) {
+    alert('Hãy chọn một dòng luật cần xóa.');
+    return;
+  }
+
+  const r = state.rules[selectedPhysicalRow];
+  const group = r.nhomhang || '(chưa chọn)';
+  const discount = r.muc_giam_pct ? `${r.muc_giam_pct}%` : '';
+
+  const ok = confirm(
+    `Bạn có chắc chắn muốn xóa dòng luật đã chọn?\n\n` +
+    `Nhóm: ${group}\n` +
+    (discount ? `% xả: ${discount}\n` : '') +
+    `\nSau khi xác nhận, hệ thống sẽ tự động lưu thay đổi.`
+  );
+
+  if (!ok) return;
+
+  state.rules.splice(selectedPhysicalRow, 1);
+
+  if (hot && !hot.isDestroyed) {
+    hot.loadData(state.rules);
+    hot.deselectCell();
+  }
+
+  selectedPhysicalRow = -1;
+  setStatus('Đã xóa dòng. Đang tự lưu...');
+  scheduleAutoSave();
+}
+
 function addRule() {
   const row = {
     id:null,
@@ -572,8 +557,7 @@ function addRule() {
     dieu_kien_size:'KHONG_CHON',
     dieu_kien_size_label:'KHÔNG CHỌN',
     muc_giam_pct:20,
-    dang_ap_dung:true,
-    __delete:'×'
+    dang_ap_dung:true
   };
 
   state.rules.push(row);
@@ -786,6 +770,55 @@ async function save() {
   }
 }
 
+
+function buildRuleSummary(r, rowNo) {
+  const parts = [];
+
+  parts.push(`Dòng ${rowNo}`);
+  parts.push(`Nhóm ${r.nhomhang || ''}`);
+
+  if (r.hieu_luc_tu || r.hieu_luc_den) {
+    const from = r.hieu_luc_tu || '...';
+    const to = r.hieu_luc_den || 'không giới hạn';
+    parts.push(`Áp dụng ${from} → ${to}`);
+  }
+
+  if (r.nhap_dau_truoc_ngay) {
+    parts.push(`Nhập đầu trước ${r.nhap_dau_truoc_ngay}`);
+  }
+
+  if (r.nhap_dau_sau_ngay) {
+    parts.push(`Nhập đầu sau ${r.nhap_dau_sau_ngay}`);
+  }
+
+  if (r.khong_nhap_thang !== '' && r.khong_nhap_thang != null) {
+    parts.push(`Không nhập ≥ ${r.khong_nhap_thang} tháng`);
+  }
+
+  if (r.khong_ban_ngay !== '' && r.khong_ban_ngay != null) {
+    parts.push(`Không bán ≥ ${r.khong_ban_ngay} ngày`);
+  }
+
+  if (r.ton_toi_da !== '' && r.ton_toi_da != null) {
+    parts.push(`Tồn tối đa ${r.ton_toi_da}`);
+  }
+
+  if (r.tyle_ton_pct !== '' && r.tyle_ton_pct != null) {
+    parts.push(`Tồn/Nhập ≤ ${r.tyle_ton_pct}%`);
+  }
+
+  const sizeLabel = r.dieu_kien_size_label || sizeModeLabel(r.dieu_kien_size);
+  if (sizeLabel) {
+    parts.push(`Size: ${sizeLabel}`);
+  }
+
+  if (r.muc_giam_pct !== '' && r.muc_giam_pct != null) {
+    parts.push(`Xả ${r.muc_giam_pct}%`);
+  }
+
+  return parts.join(' · ');
+}
+
 async function checkSelected() {
   try {
     if (selectedPhysicalRow < 0 || !state.rules[selectedPhysicalRow]) {
@@ -833,7 +866,7 @@ async function checkSelected() {
     $('#totalCount').textContent = Number(data?.total_products || 0).toLocaleString('vi-VN');
     $('#matchCount').textContent = Number(data?.matched_count || 0).toLocaleString('vi-VN');
     $('#checkSubtitle').textContent =
-      `Nhóm ${g} · kiểm tra ${isoToDMY(data?.ngay_kiem_tra || todayISO())} · dòng nguồn ${selectedPhysicalRow + 1}`;
+      buildRuleSummary(r, selectedPhysicalRow + 1);
 
     const tb = $('#productBody');
     tb.innerHTML = '';
@@ -907,6 +940,7 @@ export async function initQuanLyLuatXaSimple() {
   }
 
   $('#btnAdd').onclick = addRule;
+  $('#btnDelete').onclick = deleteSelectedRule;
   $('#btnSave').onclick = save;
   $('#btnCheck').onclick = checkSelected;
 
