@@ -86,6 +86,28 @@ h1{font-size:20px;margin:0}
 .ht-date-today-wrap{padding:6px;border-top:1px solid #e5e7eb;background:#fff;text-align:center}
 .ht-date-today-btn{border:0;border-radius:999px;padding:6px 14px;cursor:pointer;background:#2563eb;color:#fff;font-weight:700}
 
+
+/* V2.8: compact desktop layout */
+#hotRules{height:72vh;min-height:430px}
+.handsontable thead th .colHeader{
+  white-space:normal!important;
+  line-height:1.05!important;
+  text-align:center!important;
+  font-size:11px!important;
+}
+.handsontable thead tr{height:52px!important}
+.handsontable thead th{
+  padding:1px 2px!important;
+  vertical-align:middle!important;
+}
+.handsontable td{
+  padding:2px 3px!important;
+  font-size:11px!important;
+}
+.handsontable .htAutocompleteArrow{
+  margin-left:1px!important;
+}
+
 </style>
 </head>
 <body>
@@ -103,6 +125,7 @@ h1{font-size:20px;margin:0}
       <div style="display:flex;gap:7px;flex-wrap:wrap">
         <button class="btn secondary" id="btnHelp">? Hướng dẫn</button>
         <button class="btn secondary" id="btnAdd">+ Thêm luật</button>
+        <button class="btn red" id="btnDelete">Xóa dòng</button>
         <button class="btn green" id="btnCheck">Kiểm tra SP áp dụng</button>
         <button class="btn" id="btnSave">Lưu dữ liệu</button>
       </div>
@@ -180,10 +203,12 @@ h1{font-size:20px;margin:0}
       </p>
       <h3>ĐK SIZE</h3>
       <p>Chỉ chọn một trong 3 giá trị: <b>KHÔNG CHỌN</b>, <b>CÓ SIZE KHÓ</b>, <b>TẤT CẢ KHÓ</b>.</p>
+      <h3>Xóa dòng</h3>
+      <p>Chọn một dòng rồi bấm <b>Xóa dòng</b>. Hệ thống sẽ hỏi xác nhận chắc chắn trước khi xóa.</p>
       <h3>Tự động lưu</h3>
       <p>Sau mỗi thay đổi hợp lệ, hệ thống tự lưu âm thầm sau khoảng 0,7 giây. Nút Lưu dữ liệu vẫn giữ để lưu thủ công khi cần.</p>
       <h3>Kiểm tra SP áp dụng</h3>
-      <p>Chọn một dòng rồi bấm kiểm tra. Popup hiện tổng SP, số SP thỏa, danh sách mã. Có thể copy mã và bấm mã để mở StockQuickPopup.</p>
+      <p>Chọn một dòng rồi bấm kiểm tra. Popup sẽ hiện ngay tóm tắt đầy đủ điều kiện của dòng luật đang chọn, tổng SP, số SP thỏa và danh sách mã. Có thể copy mã và bấm mã để mở StockQuickPopup.</p>
     </div>
   </div>
 </div>
