@@ -82,6 +82,10 @@ h1{font-size:20px;margin:0}
   box-shadow:0 1px 0 var(--line);
 }
 
+
+.ht-date-today-wrap{padding:6px;border-top:1px solid #e5e7eb;background:#fff;text-align:center}
+.ht-date-today-btn{border:0;border-radius:999px;padding:6px 14px;cursor:pointer;background:#2563eb;color:#fff;font-weight:700}
+
 </style>
 </head>
 <body>
@@ -157,15 +161,17 @@ h1{font-size:20px;margin:0}
       <h3>Nhóm áp dụng</h3>
       <p>Gõ trực tiếp mã nhóm. Danh mục nhóm hàng chỉ dùng làm danh sách gợi ý; khi lưu hệ thống vẫn kiểm tra mã nhóm có tồn tại.</p>
       <h3>Ngày tháng</h3>
-      <p><b>TỪ NGÀY, ĐẾN NGÀY, NHẬP ĐẦU TRƯỚC NGÀY</b> đều nhập theo định dạng <b>DD-MM-YYYY</b>, ví dụ 01-01-2024.</p>
-      <p>Khi tạo luật mới, <b>NHẬP ĐẦU TRƯỚC NGÀY</b> tự mặc định là ngày 01-01 của năm cách năm hiện tại 2 năm.</p>
+      <p>TỪ NGÀY, ĐẾN NGÀY, NHẬP ĐẦU TRƯỚC NGÀY và NHẬP ĐẦU SAU NGÀY đều dùng dạng <b>DD-MM-YYYY</b>.</p>
+      <p>Khi mở lịch chọn ngày có nút <b>Hôm nay</b> để chọn nhanh.</p>
+      <p>Luật mới mặc định <b>Nhập đầu trước ngày = 01-01 của năm cách hiện tại 2 năm</b>; Nhập đầu sau ngày để trống.</p>
       <h3>Điều kiện số</h3>
       <ul>
-        <li><b>Nhập đầu trước ngày:</b> sản phẩm có ngày nhập đầu bằng hoặc trước ngày đã nhập. Ví dụ 01-01-2024 nghĩa là chỉ lấy hàng có nhập đầu ≤ 01-01-2024.</li>
+        <li><b>Nhập đầu trước ngày:</b> lọc sản phẩm có ngày nhập đầu ≤ ngày đã chọn, dùng để gom hàng quá cũ.</li>
+        <li><b>Nhập đầu sau ngày:</b> lọc sản phẩm có ngày nhập đầu ≥ ngày đã chọn, dùng để tìm hàng mới nhưng bán chậm để xả sớm.</li>
         <li>Không nhập: không nhập mua ≥ số tháng.</li>
         <li>Không bán: không bán lẻ ≥ số ngày.</li>
         <li>Tồn tối đa: tồn thực ≤ giá trị nhập.</li>
-        <li>Tồn/Nhập tối đa: nhập số %, ví dụ 20 nghĩa là ≤20%.</li>
+        <li>Tồn/Nhập tối đa: nhập số %, ví dụ 20 nghĩa là ≤20%. Nếu tổng nhập = 0 thì sản phẩm bị loại khỏi điều kiện này.</li>
       </ul>
       <h3>Size khó</h3>
       <p>
@@ -174,6 +180,8 @@ h1{font-size:20px;margin:0}
       </p>
       <h3>ĐK SIZE</h3>
       <p>Chỉ chọn một trong 3 giá trị: <b>KHÔNG CHỌN</b>, <b>CÓ SIZE KHÓ</b>, <b>TẤT CẢ KHÓ</b>.</p>
+      <h3>Tự động lưu</h3>
+      <p>Sau mỗi thay đổi hợp lệ, hệ thống tự lưu âm thầm sau khoảng 0,7 giây. Nút Lưu dữ liệu vẫn giữ để lưu thủ công khi cần.</p>
       <h3>Kiểm tra SP áp dụng</h3>
       <p>Chọn một dòng rồi bấm kiểm tra. Popup hiện tổng SP, số SP thỏa, danh sách mã. Có thể copy mã và bấm mã để mở StockQuickPopup.</p>
     </div>
