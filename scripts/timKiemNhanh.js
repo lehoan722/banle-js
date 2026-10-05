@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=31";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.19";
-console.log("[TimKiemNhanh] BUILD 1.2.19");
+window.TIM_KIEM_NHANH_BUILD = "1.2.20-XA-ALL-GROUPS";
+console.log("[TimKiemNhanh] BUILD 1.2.20-XA-ALL-GROUPS");
 
 const supabase = getSupabaseClient();
 
@@ -362,16 +362,14 @@ async function fetchUnifiedDiscountRows(){
 
     total=Number(raw[0]?.total_count||total||0);
 
-    const xaMap=state.mainGroup==="GIAY_DEP"
-      ? await getXaHangSuggestions({
-          supabase,
-          masps:raw.map(x=>x.masp),
-          denNgay:businessDate()
-        }).catch(err=>{
-          console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
-          return new Map();
-        })
-      : new Map();
+    const xaMap=await getXaHangSuggestions({
+      supabase,
+      masps:raw.map(x=>x.masp),
+      denNgay:businessDate()
+    }).catch(err=>{
+      console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
+      return new Map();
+    });
 
     const merged=attachXaHangSuggestions(raw,xaMap);
     merged.forEach(sp=>{
@@ -423,19 +421,18 @@ async function search(reset=true){
     const raw=(data||[]).map(x=>({...x}));
     const nextTotal=Number(raw[0]?.total_count||(reset?0:state.total)||0);
 
-    // V1 xa hang: chi can goi rule engine khi dang tim nhom GIAY_DEP.
-    // Chay song song voi buoc bo sung ton sau kiem de khong lam cham luong tim kiem.
-    const xaPromise=state.mainGroup==="GIAY_DEP"
-      ? getXaHangSuggestions({
-          supabase,
-          masps:raw.map(x=>x.masp),
-          denNgay:businessDate()
-        }).catch(err=>{
-          // Module xa hang la lop goi y phu: neu loi, Tim kiem nhanh van phai hoat dong binh thuong.
-          console.warn("[TimKiemNhanh] Module goi y xa hang loi, bo qua:",err);
-          return new Map();
-        })
-      : Promise.resolve(new Map());
+    // Data-driven xả hàng:
+    // gọi rule engine cho MỌI nhóm hàng, vì rpc_goiy_xahang_v1 hiện đọc luật
+    // trực tiếp từ xa_luat_nhomhang và không còn giới hạn GIAY_DEP.
+    // Chạy song song với bước bổ sung tồn sau kiểm để không làm chậm luồng tìm kiếm.
+    const xaPromise=getXaHangSuggestions({
+      supabase,
+      masps:raw.map(x=>x.masp),
+      denNgay:businessDate()
+    }).catch(err=>{
+      console.warn("[TimKiemNhanh] Module goi y xa hang loi, bo qua:",err);
+      return new Map();
+    });
 
     const [checked,xaMap]=await Promise.all([
       enrichProductsAfterCheck(raw),
