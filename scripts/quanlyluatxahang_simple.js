@@ -1,4 +1,4 @@
-// scripts/quanlyluatxahang_simple.js - V2.7 NHAP DAU KHOANG NGAY + AUTO SAVE
+// scripts/quanlyluatxahang_simple.js - V2.9 TEN CHUONG TRINH + XEM ANH + SAVE BEFORE CHECK
 // - Handsontable + Filters + ColumnSorting + DropdownMenu
 // - Cac cot so nhap truc tiep, KHONG co spinner.
 // - DK SIZE dropdown 3 gia tri.
@@ -256,6 +256,12 @@ function discountValidator(value, callback) {
   callback(Number.isFinite(n) && n >= 1 && n <= 100);
 }
 
+function programNameRenderer(instance, td) {
+  Handsontable.renderers.TextRenderer.apply(this, arguments);
+  td.classList.add('program-name-cell');
+  return td;
+}
+
 function sharedSizeRenderer() {
   Handsontable.renderers.TextRenderer.apply(this, arguments);
 }
@@ -263,62 +269,12 @@ function sharedSizeRenderer() {
 
 
 const HOT_HEADERS = [
-  'Nhóm<br>áp dụng',
-  'TỪ<br>NGÀY',
-  'ĐẾN<br>NGÀY',
-  'Nhập đầu<br>trước ngày',
-  'Nhập đầu<br>sau ngày',
-  'Không nhập<br>(tháng)',
-  'Không bán<br>(ngày)',
-  'Tồn<br>tối đa',
-  'Tồn/Nhập<br>tối đa (%)',
-  'Size<br>khó',
-  'Size khó<br>TỪ',
-  'Size khó<br>ĐẾN',
-  'ĐK<br>SIZE',
-  '%<br>xả',
-  'Bật'
+  'Nhóm<br>áp dụng','Tên chương<br>trình xả','%<br>xả','TỪ<br>NGÀY','ĐẾN<br>NGÀY',
+  'Nhập đầu<br>trước ngày','Nhập đầu<br>sau ngày','Không nhập<br>(tháng)','Không bán<br>(ngày)',
+  'Tồn<br>tối đa','Tồn/Nhập<br>tối đa (%)','Size<br>khó','Size khó<br>TỪ','Size khó<br>ĐẾN','ĐK<br>SIZE','Bật'
 ];
 
-const HOT_COL_WIDTHS = [
-  112, 82, 82, 96, 96, 70, 70, 62, 82, 78, 68, 68, 90, 52, 42
-];
-
-
-function attachTodayButtonToDateEditor(instance, row, col) {
-  setTimeout(() => {
-    const editor = instance.getActiveEditor?.();
-    const pickerRoot =
-      document.querySelector('.pika-single:not(.is-hidden)') ||
-      document.querySelector('.pika-single');
-
-    if (!editor || !pickerRoot || pickerRoot.querySelector('.ht-date-today-btn')) return;
-
-    const wrap = document.createElement('div');
-    wrap.className = 'ht-date-today-wrap';
-
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'ht-date-today-btn';
-    btn.textContent = 'Hôm nay';
-
-    btn.addEventListener('mousedown', e => {
-      e.preventDefault();
-      e.stopPropagation();
-    });
-
-    btn.addEventListener('click', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      instance.setDataAtCell(row, col, todayDMY(), 'today-button');
-      try { editor.finishEditing(); } catch {}
-      scheduleAutoSave();
-    });
-
-    wrap.appendChild(btn);
-    pickerRoot.appendChild(wrap);
-  }, 0);
-}
+const HOT_COL_WIDTHS = [88,116,48,74,74,88,88,62,62,54,74,62,58,58,78,38];
 
 function renderHot() {
   if (!window.Handsontable) {
@@ -339,61 +295,22 @@ function renderHot() {
     colHeaders: HOT_HEADERS,
     colWidths: HOT_COL_WIDTHS,
     columns: [
-      {
-        data:'nhomhang',
-        type:'autocomplete',
-        source:groupSuggestionSource,
-        strict:false,
-        filter:true,
-        trimDropdown:false
-      },
-      {
-        data:'hieu_luc_tu', type:'date',
-        dateFormat:'DD-MM-YYYY', correctFormat:true,
-        allowEmpty:false, validator:dateDMYValidator, allowInvalid:true
-      },
-      {
-        data:'hieu_luc_den', type:'date',
-        dateFormat:'DD-MM-YYYY', correctFormat:true,
-        allowEmpty:true, validator:dateDMYValidator, allowInvalid:true
-      },
-      {
-        data:'nhap_dau_truoc_ngay', type:'date',
-        dateFormat:'DD-MM-YYYY', correctFormat:true,
-        allowEmpty:true, validator:dateDMYValidator, allowInvalid:true
-      },
-      {
-        data:'nhap_dau_sau_ngay', type:'date',
-        dateFormat:'DD-MM-YYYY', correctFormat:true,
-        allowEmpty:true, validator:dateDMYValidator, allowInvalid:true
-      },
-
-      // Numeric editor cua Handsontable dung input text, khong co nut spinner.
-      { data:'khong_nhap_thang', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
-      { data:'khong_ban_ngay', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
-      { data:'ton_toi_da', type:'numeric', validator:integerValidator, allowInvalid:true, numericFormat:{pattern:'0'} },
-      { data:'tyle_ton_pct', type:'numeric', validator:percentValidator, allowInvalid:true, numericFormat:{pattern:'0.[0]'} },
-
-      { data:'size_kho_text', type:'text', renderer:sharedSizeRenderer },
-      { data:'size_kho_tu', type:'numeric', validator:decimalValidator, allowInvalid:true, numericFormat:{pattern:'0.[00]'}, renderer:sharedSizeRenderer },
-      { data:'size_kho_den', type:'numeric', validator:decimalValidator, allowInvalid:true, numericFormat:{pattern:'0.[00]'}, renderer:sharedSizeRenderer },
-
-      {
-        data:'dieu_kien_size_label',
-        type:'dropdown',
-        source:['KHÔNG CHỌN','CÓ SIZE KHÓ','TẤT CẢ KHÓ'],
-        strict:true,
-        allowInvalid:false
-      },
-
-      {
-        data:'muc_giam_pct',
-        type:'dropdown',
-        source:[10,20,30,40,50,60,70],
-        strict:true,
-        allowInvalid:false
-      },
-      { data:'dang_ap_dung', type:'checkbox', className:'htCenter' }
+      {data:'nhomhang',type:'autocomplete',source:groupSuggestionSource,strict:false,filter:true,trimDropdown:false},
+      {data:'ten_chuong_trinh',type:'text',renderer:programNameRenderer,wordWrap:true},
+      {data:'muc_giam_pct',type:'dropdown',source:[10,20,30,40,50,60,70],strict:true,allowInvalid:false},
+      {data:'hieu_luc_tu',type:'date',dateFormat:'DD-MM-YYYY',correctFormat:true,allowEmpty:false,validator:dateDMYValidator,allowInvalid:true},
+      {data:'hieu_luc_den',type:'date',dateFormat:'DD-MM-YYYY',correctFormat:true,allowEmpty:true,validator:dateDMYValidator,allowInvalid:true},
+      {data:'nhap_dau_truoc_ngay',type:'date',dateFormat:'DD-MM-YYYY',correctFormat:true,allowEmpty:true,validator:dateDMYValidator,allowInvalid:true},
+      {data:'nhap_dau_sau_ngay',type:'date',dateFormat:'DD-MM-YYYY',correctFormat:true,allowEmpty:true,validator:dateDMYValidator,allowInvalid:true},
+      {data:'khong_nhap_thang',type:'numeric',validator:integerValidator,allowInvalid:true,numericFormat:{pattern:'0'}},
+      {data:'khong_ban_ngay',type:'numeric',validator:integerValidator,allowInvalid:true,numericFormat:{pattern:'0'}},
+      {data:'ton_toi_da',type:'numeric',validator:integerValidator,allowInvalid:true,numericFormat:{pattern:'0'}},
+      {data:'tyle_ton_pct',type:'numeric',validator:percentValidator,allowInvalid:true,numericFormat:{pattern:'0.[0]'}},
+      {data:'size_kho_text',type:'text',renderer:sharedSizeRenderer},
+      {data:'size_kho_tu',type:'numeric',validator:decimalValidator,allowInvalid:true,numericFormat:{pattern:'0.[00]'},renderer:sharedSizeRenderer},
+      {data:'size_kho_den',type:'numeric',validator:decimalValidator,allowInvalid:true,numericFormat:{pattern:'0.[00]'},renderer:sharedSizeRenderer},
+      {data:'dieu_kien_size_label',type:'dropdown',source:['KHÔNG CHỌN','CÓ SIZE KHÓ','TẤT CẢ KHÓ'],strict:true,allowInvalid:false},
+      {data:'dang_ap_dung',type:'checkbox',className:'htCenter'}
     ],
 
     width:'100%',
@@ -432,8 +349,15 @@ function renderHot() {
       if (label) label.innerHTML = HOT_HEADERS[col];
     },
 
+    cells(row) {
+      const cp = {};
+      if (this.toPhysicalRow(row) === selectedPhysicalRow) cp.className = 'rule-row-selected';
+      return cp;
+    },
+
     afterSelectionEnd(row) {
       selectedPhysicalRow = this.toPhysicalRow(row);
+      this.render();
     },
 
     afterChange(changes, source) {
@@ -542,6 +466,7 @@ function addRule() {
   const row = {
     id:null,
     nhomhang:'',
+    ten_chuong_trinh:'',
     hieu_luc_tu:todayDMY(),
     hieu_luc_den:null,
     nhap_dau_truoc_ngay:defaultNhapDauTruocNgayDMY(),
@@ -675,6 +600,7 @@ function payload() {
     rules: state.rules.map(r => ({
       id: r.id ?? null,
       nhomhang: norm(r.nhomhang),
+      ten_chuong_trinh: String(r.ten_chuong_trinh ?? '').trim() || null,
       hieu_luc_tu: dmyToISO(r.hieu_luc_tu),
       hieu_luc_den: r.hieu_luc_den ? dmyToISO(r.hieu_luc_den) : null,
       nhap_dau_truoc_ngay: r.nhap_dau_truoc_ngay ? dmyToISO(r.nhap_dau_truoc_ngay) : null,
@@ -776,6 +702,7 @@ function buildRuleSummary(r, rowNo) {
 
   parts.push(`Dòng ${rowNo}`);
   parts.push(`Nhóm ${r.nhomhang || ''}`);
+  if (String(r.ten_chuong_trinh || '').trim()) parts.push(`CT: ${String(r.ten_chuong_trinh).trim().replace(/\s+/g,' ')}`);
 
   if (r.hieu_luc_tu || r.hieu_luc_den) {
     const from = r.hieu_luc_tu || '...';
@@ -826,7 +753,10 @@ async function checkSelected() {
       return;
     }
 
-    validateAll();
+    clearTimeout(autoSaveTimer);
+    setStatus('Đang lưu dữ liệu trước khi kiểm tra...');
+    await persistCurrentState({silent:true});
+    if (hot && !hot.isDestroyed) hot.render();
 
     const r = state.rules[selectedPhysicalRow];
     const g = norm(r.nhomhang);
@@ -838,6 +768,7 @@ async function checkSelected() {
       p_rule: {
         id:r.id ?? null,
         nhomhang:g,
+        ten_chuong_trinh:String(r.ten_chuong_trinh ?? '').trim() || null,
         hieu_luc_tu:dmyToISO(r.hieu_luc_tu),
         hieu_luc_den:r.hieu_luc_den ? dmyToISO(r.hieu_luc_den) : null,
         nhap_dau_truoc_ngay:r.nhap_dau_truoc_ngay ? dmyToISO(r.nhap_dau_truoc_ngay) : null,
@@ -912,6 +843,20 @@ async function openStock(masp) {
   }
 }
 
+function viewMatchedImages() {
+  if (!Array.isArray(lastCheckItems) || !lastCheckItems.length) { alert('Chưa có sản phẩm để xem ảnh.'); return; }
+  const map = new Map();
+  lastCheckItems.forEach(x => {
+    const masp = norm(x?.masp);
+    if (!masp) return;
+    if (!map.has(masp)) map.set(masp,{masp,giale:Number(x?.giale||0)||0,toncs1:Number(x?.ton_cs1_thuc||0)||0,toncs2:Number(x?.ton_cs2_thuc||0)||0});
+  });
+  const list=[...map.values()];
+  if (!list.length) return alert('Không có mã sản phẩm hợp lệ để xem ảnh.');
+  sessionStorage.setItem('XNT14_MASP_LIST',JSON.stringify(list));
+  window.open('xemanhxnt14.html','_blank');
+}
+
 async function copyMasps() {
   const text = lastCheckItems.map(x => x.masp).filter(Boolean).join('\n');
   if (!text) {
@@ -947,6 +892,7 @@ export async function initQuanLyLuatXaSimple() {
   $('#btnHelp').onclick = () => modal('#helpOverlay', true);
   $('#btnCloseHelp').onclick = () => modal('#helpOverlay', false);
   $('#btnCloseCheck').onclick = () => modal('#checkOverlay', false);
+  $('#btnViewImages').onclick = viewMatchedImages;
   $('#btnCopyMasps').onclick = copyMasps;
 
   ['#helpOverlay','#checkOverlay'].forEach(id => {
