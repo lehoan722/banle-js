@@ -135,6 +135,77 @@
     }
   }
 
+  // ===== DANH MỤC NHÓM HÀNG ĐỒNG BỘ TỪ dmnhomhang.manhom =====
+  let sqNhomHangCache = null;
+  let sqNhomHangCacheAt = 0;
+  let sqNhomHangLoadPromise = null;
+  const SQ_NHOMHANG_CACHE_MS = 60 * 1000;
+
+  function normalizeNhomHangCode(v) {
+    return String(v || "").trim().toUpperCase();
+  }
+
+  function escapeHtmlAttr(v) {
+    return String(v ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  async function loadNhomHangOptions(force = false) {
+    const now = Date.now();
+    if (!force && Array.isArray(sqNhomHangCache) && now - sqNhomHangCacheAt < SQ_NHOMHANG_CACHE_MS) {
+      return sqNhomHangCache;
+    }
+    if (!force && sqNhomHangLoadPromise) return sqNhomHangLoadPromise;
+
+    sqNhomHangLoadPromise = (async () => {
+      const client = await waitForSupabaseReady(2000);
+      if (!client) throw new Error("Supabase chưa sẵn sàng");
+
+      const { data, error } = await client
+        .from("dmnhomhang")
+        .select("manhom")
+        .order("manhom", { ascending: true });
+
+      if (error) throw new Error(error.message || "Không đọc được danh mục nhóm hàng");
+
+      const list = Array.from(new Set(
+        (Array.isArray(data) ? data : [])
+          .map(r => normalizeNhomHangCode(r?.manhom))
+          .filter(Boolean)
+      ));
+      sqNhomHangCache = list;
+      sqNhomHangCacheAt = Date.now();
+      return list;
+    })();
+
+    try { return await sqNhomHangLoadPromise; }
+    finally { sqNhomHangLoadPromise = null; }
+  }
+
+  function buildNhomHangInputHtml(value = "", coso = "cs1") {
+    return `
+      <div class="sq-group-combo">
+        <input
+          type="text"
+          class="sq-vitri-input sq-group-input"
+          data-coso="${escapeHtmlAttr(coso)}"
+          data-loai="nhomhang"
+          value="${escapeHtmlAttr(normalizeNhomHangCode(value))}"
+          placeholder="Nhập / chọn nhóm hàng"
+          autocomplete="off"
+          spellcheck="false"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded="false"
+        />
+        <div class="sq-group-dropdown" role="listbox"></div>
+      </div>
+    `;
+  }
+
   // ===== CSS cho popup =====
   const css = `
   .card {
@@ -772,6 +843,18 @@
     margin-top: 10px;
     background: #f3f4f6;
   }
+
+  /* ===== Dropdown tìm nhanh NHÓM HÀNG lấy từ dmnhomhang ===== */
+  .sq-group-combo { position:relative; display:inline-block; min-width:180px; max-width:260px; flex:0 1 260px; }
+  .sq-group-combo .sq-group-input { width:100%; min-width:180px; max-width:260px; padding-right:28px; }
+  .sq-group-combo::after { content:"▾"; position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#64748b; pointer-events:none; font-size:13px !important; }
+  .sq-group-dropdown { display:none; position:absolute; left:0; right:0; top:calc(100% + 3px); z-index:100050; max-height:250px; overflow-y:auto; background:#fff; border:1px solid #93c5fd; border-radius:7px; box-shadow:0 8px 24px rgba(15,23,42,.18); }
+  .sq-group-dropdown.show { display:block; }
+  .sq-group-option { padding:6px 10px; cursor:pointer; border-bottom:1px solid #eef2f7; background:#fff; color:#1d4ed8; font-weight:800; user-select:none; }
+  .sq-group-option:last-child { border-bottom:none; }
+  .sq-group-option:hover, .sq-group-option.active { background:#dbeafe; }
+  .sq-group-status { padding:7px 10px; color:#64748b; background:#fff; font-size:13px !important; }
+  .sq-group-status.err { color:#b91c1c; background:#fff7f7; }
 
   /* ===== Layout cho ĐIỆN THOẠI DỌC ===== */
    @media (max-width: 800px) and (orientation: portrait) {
@@ -1684,15 +1767,7 @@ data-color-masp="${targetMasp}"
     <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
       <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm</button>
       <span class="sq-vitri-label"></span>
-      <input
-        type="text"
-        class="sq-vitri-input"
-        data-coso="cs1"
-        data-loai="nhomhang"
-        value="${nhomhang}"
-        placeholder="Nhập nhóm hàng"
-        autocomplete="off"
-      />
+      ${buildNhomHangInputHtml(nhomhang, "cs1")}
       <span class="sq-vitri-msg"></span>
     </div>
   `
@@ -1709,14 +1784,7 @@ data-color-masp="${targetMasp}"
     <div class="sq-vitri-action-row" data-coso="cs1" data-loai="nhomhang">
       <button type="button" class="sq-vitri-save-btn" data-coso="cs1" data-loai="nhomhang">Lưu nhóm</button>
       <span class="sq-vitri-label">Nhóm hàng:</span>
-      <input
-        type="text"
-        class="sq-vitri-input"
-        data-coso="cs1"
-        data-loai="nhomhang"
-        placeholder="Nhập nhóm hàng"
-        autocomplete="off"
-      />
+      ${buildNhomHangInputHtml("", "cs1")}
       <span class="sq-vitri-msg"></span>
     </div>
   `;
@@ -2914,6 +2982,112 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     });
   }
 
+
+  function bindNhomHangDropdown(popup) {
+    if (!popup) return;
+    popup.querySelectorAll('.sq-vitri-action-row[data-loai="nhomhang"]').forEach(row => {
+      const input = row.querySelector(".sq-group-input");
+      const dropdown = row.querySelector(".sq-group-dropdown");
+      if (!input || !dropdown || input.dataset.groupBound === "1") return;
+
+      input.dataset.groupBound = "1";
+      let options = [];
+      let filtered = [];
+      let activeIndex = -1;
+      let loaded = false;
+      let closeTimer = null;
+
+      const showStatus = (text, err = false) => {
+        dropdown.innerHTML = `<div class="sq-group-status${err ? " err" : ""}">${escapeHtmlAttr(text)}</div>`;
+        dropdown.classList.add("show");
+        input.setAttribute("aria-expanded", "true");
+      };
+
+      const render = () => {
+        if (!loaded) return;
+        const q = normalizeNhomHangCode(input.value);
+        filtered = options.filter(code => !q || code.includes(q));
+        if (!filtered.length) {
+          activeIndex = -1;
+          showStatus("Không có mã nhóm phù hợp", true);
+          return;
+        }
+        if (activeIndex < 0 || activeIndex >= filtered.length) activeIndex = 0;
+        dropdown.innerHTML = filtered.map((code, idx) => `
+          <div class="sq-group-option${idx === activeIndex ? " active" : ""}" role="option" data-group="${escapeHtmlAttr(code)}">${escapeHtmlAttr(code)}</div>
+        `).join("");
+        dropdown.classList.add("show");
+        input.setAttribute("aria-expanded", "true");
+      };
+
+      const ensureLoaded = async () => {
+        showStatus("Đang tải danh mục nhóm hàng...");
+        try {
+          options = await loadNhomHangOptions(false);
+          loaded = true;
+          render();
+        } catch (err) {
+          loaded = false;
+          showStatus("Lỗi tải dmnhomhang: " + (err?.message || err), true);
+        }
+      };
+
+      const close = () => {
+        dropdown.classList.remove("show");
+        input.setAttribute("aria-expanded", "false");
+        activeIndex = -1;
+      };
+
+      const selectCode = code => {
+        input.value = normalizeNhomHangCode(code);
+        close();
+        input.focus();
+      };
+
+      const refreshActive = () => {
+        dropdown.querySelectorAll(".sq-group-option").forEach((el, idx) => {
+          el.classList.toggle("active", idx === activeIndex);
+          if (idx === activeIndex) el.scrollIntoView({block:"nearest"});
+        });
+      };
+
+      input.addEventListener("focus", () => { if (closeTimer) clearTimeout(closeTimer); loaded ? render() : ensureLoaded(); });
+      input.addEventListener("click", e => { e.stopPropagation(); loaded ? render() : ensureLoaded(); });
+      input.addEventListener("input", () => { input.value = normalizeNhomHangCode(input.value); activeIndex = 0; loaded ? render() : ensureLoaded(); });
+
+      input.addEventListener("keydown", e => {
+        const open = dropdown.classList.contains("show");
+        if (e.key === "ArrowDown") {
+          e.preventDefault(); e.stopPropagation();
+          if (!open) { loaded ? render() : ensureLoaded(); return; }
+          if (filtered.length) { activeIndex = (activeIndex + 1 + filtered.length) % filtered.length; refreshActive(); }
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault(); e.stopPropagation();
+          if (!open) { loaded ? render() : ensureLoaded(); return; }
+          if (filtered.length) { activeIndex = (activeIndex - 1 + filtered.length) % filtered.length; refreshActive(); }
+          return;
+        }
+        if (e.key === "Enter" && open && filtered.length) {
+          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+          selectCode(filtered[Math.max(0, activeIndex)]);
+          return;
+        }
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+      }, true);
+
+      dropdown.addEventListener("mousedown", e => {
+        const opt = e.target.closest(".sq-group-option[data-group]");
+        if (!opt) return;
+        e.preventDefault(); e.stopPropagation();
+        selectCode(opt.dataset.group);
+      });
+      dropdown.addEventListener("click", e => e.stopPropagation());
+      input.addEventListener("blur", () => { closeTimer = setTimeout(close,120); });
+    });
+  }
+
   function bindVitriActions(popup) {
     if (!popup) return;
 
@@ -2930,7 +3104,29 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
       const runSave = async () => {
         const masp = String(popup.dataset.masp || "").trim().toUpperCase();
-        const vitri = String(input.value || "").trim();
+        let vitri = String(input.value || "").trim();
+
+        if (loai === "nhomhang") {
+          vitri = normalizeNhomHangCode(vitri);
+          input.value = vitri;
+          if (vitri) {
+            let nhomList;
+            try {
+              nhomList = await loadNhomHangOptions(false);
+            } catch (err) {
+              if (msgEl) { msgEl.textContent = "Không đọc được danh mục dmnhomhang"; msgEl.className = "sq-vitri-msg err"; }
+              input.focus();
+              return;
+            }
+            if (!nhomList.includes(vitri)) {
+              if (msgEl) { msgEl.textContent = "Mã nhóm không có trong dmnhomhang"; msgEl.className = "sq-vitri-msg err"; }
+              input.focus(); input.select();
+              input.dispatchEvent(new Event("input", { bubbles:true }));
+              return;
+            }
+          }
+        }
+
         const nhan =
           loai === "baymau"
             ? "vị trí bày mẫu"
@@ -2977,18 +3173,23 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
           if (isAdminNow) {
             row.innerHTML = `
       <button type="button" class="sq-vitri-save-btn" data-coso="${coso}" data-loai="${loai}">${btnLabel}</button>
-      
-      <input
-        type="text"
-        class="sq-vitri-input"
-        data-coso="${coso}"
-        data-loai="${loai}"
-        value="${vitriMoi}"
-        autocomplete="off"
-      />
+      ${loai === "nhomhang"
+        ? buildNhomHangInputHtml(vitriMoi, coso)
+        : `
+          <input
+            type="text"
+            class="sq-vitri-input"
+            data-coso="${coso}"
+            data-loai="${loai}"
+            value="${escapeHtmlAttr(vitriMoi)}"
+            autocomplete="off"
+          />
+        `
+      }
       <span class="sq-vitri-msg ok">${rs.message || "Đã lưu"}</span>
     `;
             bindVitriActions(popup);
+            bindNhomHangDropdown(popup);
             bindColorLinks(popup);
             return;
           }
@@ -3031,6 +3232,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
+          if (loai === "nhomhang" && row.querySelector(".sq-group-dropdown.show")) return;
           e.preventDefault();
           e.stopPropagation();
           runSave();
@@ -3441,8 +3643,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     // auto-fit độ rộng cột theo nội dung
     applyAutoFitInPopup(popup);
 
-    // bind Lưu kho kho nhanh cho CS1 / CS2
+    // bind Lưu kho / bày mẫu / nhóm hàng
     bindVitriActions(popup);
+    bindNhomHangDropdown(popup);
     bindFormAction(popup);
 
     // bind lưu/xóa giảm giá và mở hàng giảm giá cùng nhóm
