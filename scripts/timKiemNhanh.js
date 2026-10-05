@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=31";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.20-NO-DEFAULT-SUBGROUP";
-console.log("[TimKiemNhanh] BUILD 1.2.20-NO-DEFAULT-SUBGROUP");
+window.TIM_KIEM_NHANH_BUILD = "1.2.20-XA-ALL-GROUPS";
+console.log("[TimKiemNhanh] BUILD 1.2.20-XA-ALL-GROUPS");
 
 const supabase = getSupabaseClient();
 
@@ -255,19 +255,11 @@ function renderGroups(){
   main.querySelectorAll(".main-group").forEach(b=>b.onclick=async()=>{
     const key=b.dataset.main;
     state.mainGroup=key;
-
-    // KHONG tu dong chon nhom nho mac dinh nua.
-    // Khi nguoi dung chon mot nhom lon, dat group ve rong va cho ho
-    // chon cu the nhom nho ben duoi roi moi tim.
-    state.group="";
-
+    const cfg=MAIN_GROUPS[key];
+    if(!cfg.groups.some(x=>norm(x)===norm(state.group)))state.group=cfg.defaultGroup;
     clearSourceForManualFilter();
-    renderGroups();
-    renderSubgroups(true);
-    renderSizes();
-
-    // Xoa ket qua cu de tranh hieu nham la da tim theo nhom lon moi.
-    clearResults("Chọn một nhóm nhỏ để bắt đầu tìm kiếm.");
+    renderGroups();renderSubgroups(true);renderSizes();
+    if(state.size)await search(true);
   });
   renderSubgroups(false);
 }
@@ -281,13 +273,7 @@ function renderSubgroups(forceOpen=false){
   box.innerHTML=rows.map(g=>`<button type="button" class="subgroup ${norm(g.manhom)===norm(state.group)?"on":""}" data-group="${esc(g.manhom)}">${esc(g.ten_hien_thi||g.manhom)}</button>`).join("");
   box.classList.toggle("show",forceOpen);
   box.querySelectorAll(".subgroup").forEach(b=>b.onclick=async()=>{
-    state.group=b.dataset.group;
-    clearSourceForManualFilter();
-    renderGroups();
-    box.classList.remove("show");
-    renderSizes();
-
-    // Chi den day moi duoc chay tim kiem theo nhom nho cu the.
+    state.group=b.dataset.group;clearSourceForManualFilter();renderGroups();box.classList.remove("show");renderSizes();
     if(state.size)await search(true);
   });
 }
@@ -376,16 +362,14 @@ async function fetchUnifiedDiscountRows(){
 
     total=Number(raw[0]?.total_count||total||0);
 
-    const xaMap=state.mainGroup==="GIAY_DEP"
-      ? await getXaHangSuggestions({
-          supabase,
-          masps:raw.map(x=>x.masp),
-          denNgay:businessDate()
-        }).catch(err=>{
-          console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
-          return new Map();
-        })
-      : new Map();
+    const xaMap=await getXaHangSuggestions({
+      supabase,
+      masps:raw.map(x=>x.masp),
+      denNgay:businessDate()
+    }).catch(err=>{
+      console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
+      return new Map();
+    });
 
     const merged=attachXaHangSuggestions(raw,xaMap);
     merged.forEach(sp=>{
@@ -437,19 +421,18 @@ async function search(reset=true){
     const raw=(data||[]).map(x=>({...x}));
     const nextTotal=Number(raw[0]?.total_count||(reset?0:state.total)||0);
 
-    // V1 xa hang: chi can goi rule engine khi dang tim nhom GIAY_DEP.
-    // Chay song song voi buoc bo sung ton sau kiem de khong lam cham luong tim kiem.
-    const xaPromise=state.mainGroup==="GIAY_DEP"
-      ? getXaHangSuggestions({
-          supabase,
-          masps:raw.map(x=>x.masp),
-          denNgay:businessDate()
-        }).catch(err=>{
-          // Module xa hang la lop goi y phu: neu loi, Tim kiem nhanh van phai hoat dong binh thuong.
-          console.warn("[TimKiemNhanh] Module goi y xa hang loi, bo qua:",err);
-          return new Map();
-        })
-      : Promise.resolve(new Map());
+    // Data-driven xả hàng:
+    // gọi rule engine cho MỌI nhóm hàng, vì rpc_goiy_xahang_v1 hiện đọc luật
+    // trực tiếp từ xa_luat_nhomhang và không còn giới hạn GIAY_DEP.
+    // Chạy song song với bước bổ sung tồn sau kiểm để không làm chậm luồng tìm kiếm.
+    const xaPromise=getXaHangSuggestions({
+      supabase,
+      masps:raw.map(x=>x.masp),
+      denNgay:businessDate()
+    }).catch(err=>{
+      console.warn("[TimKiemNhanh] Module goi y xa hang loi, bo qua:",err);
+      return new Map();
+    });
 
     const [checked,xaMap]=await Promise.all([
       enrichProductsAfterCheck(raw),
