@@ -1,4 +1,4 @@
-// scripts/quanlyluatxahang_simple.js - V2.9 TEN CHUONG TRINH + XEM ANH + SAVE BEFORE CHECK
+// scripts/quanlyluatxahang_simple.js - V2.9.1 FIX HIGHLIGHT HANDSONTABLE
 // - Handsontable + Filters + ColumnSorting + DropdownMenu
 // - Cac cot so nhap truc tiep, KHONG co spinner.
 // - DK SIZE dropdown 3 gia tri.
@@ -276,6 +276,25 @@ const HOT_HEADERS = [
 
 const HOT_COL_WIDTHS = [88,116,48,74,74,88,88,62,62,54,74,62,58,58,78,38];
 
+
+function paintSelectedRuleRow(instance) {
+  if (!instance || instance.isDestroyed) return;
+
+  const root = instance.rootElement;
+  root?.querySelectorAll('td.rule-row-selected')
+    .forEach(td => td.classList.remove('rule-row-selected'));
+
+  if (selectedPhysicalRow < 0) return;
+
+  const visualRow = instance.toVisualRow(selectedPhysicalRow);
+  if (visualRow == null || visualRow < 0) return;
+
+  for (let c = 0; c < instance.countCols(); c++) {
+    const td = instance.getCell(visualRow, c);
+    if (td) td.classList.add('rule-row-selected');
+  }
+}
+
 function renderHot() {
   if (!window.Handsontable) {
     alert('Handsontable chưa được tải.');
@@ -349,15 +368,16 @@ function renderHot() {
       if (label) label.innerHTML = HOT_HEADERS[col];
     },
 
-    cells(row) {
-      const cp = {};
-      if (this.toPhysicalRow(row) === selectedPhysicalRow) cp.className = 'rule-row-selected';
-      return cp;
-    },
-
     afterSelectionEnd(row) {
       selectedPhysicalRow = this.toPhysicalRow(row);
-      this.render();
+      paintSelectedRuleRow(this);
+    },
+
+    afterRender() {
+      const instance = this;
+      requestAnimationFrame(() => {
+        paintSelectedRuleRow(instance);
+      });
     },
 
     afterChange(changes, source) {
