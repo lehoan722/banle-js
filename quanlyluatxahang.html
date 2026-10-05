@@ -108,6 +108,9 @@ h1{font-size:20px;margin:0}
   margin-left:1px!important;
 }
 
+
+.handsontable td.rule-row-selected{background:#fff4bf!important}
+.handsontable td.program-name-cell{white-space:normal!important;line-height:1.15!important;vertical-align:middle!important}
 </style>
 </head>
 <body>
@@ -146,6 +149,7 @@ h1{font-size:20px;margin:0}
         <div id="checkSubtitle" style="font-size:12px;color:var(--muted)"></div>
       </div>
       <div style="display:flex;gap:6px">
+        <button class="btn green" id="btnViewImages">Xem ảnh</button>
         <button class="btn secondary" id="btnCopyMasps">Copy danh sách mã</button>
         <button class="btn secondary" id="btnCloseCheck">Đóng</button>
       </div>
@@ -181,6 +185,8 @@ h1{font-size:20px;margin:0}
       </div>
       <h3>Lọc và sắp xếp</h3>
       <p>Bấm nút menu ở tiêu đề từng cột để lọc, sắp xếp tăng/giảm hoặc lọc theo giá trị.</p>
+      <h3>Tên chương trình xả</h3>
+      <p>Ghi tên ngắn gọn để dễ nhớ, ví dụ: <b>Dọn giày cũ 2024</b>, <b>Xả hè cuối mùa</b>. Ô này cho phép xuống dòng.</p>
       <h3>Nhóm áp dụng</h3>
       <p>Gõ trực tiếp mã nhóm. Danh mục nhóm hàng chỉ dùng làm danh sách gợi ý; khi lưu hệ thống vẫn kiểm tra mã nhóm có tồn tại.</p>
       <h3>Ngày tháng</h3>
@@ -208,7 +214,7 @@ h1{font-size:20px;margin:0}
       <h3>Tự động lưu</h3>
       <p>Sau mỗi thay đổi hợp lệ, hệ thống tự lưu âm thầm sau khoảng 0,7 giây. Nút Lưu dữ liệu vẫn giữ để lưu thủ công khi cần.</p>
       <h3>Kiểm tra SP áp dụng</h3>
-      <p>Chọn một dòng rồi bấm kiểm tra. Popup sẽ hiện ngay tóm tắt đầy đủ điều kiện của dòng luật đang chọn, tổng SP, số SP thỏa và danh sách mã. Có thể copy mã và bấm mã để mở StockQuickPopup.</p>
+      <p>Chọn một dòng rồi bấm kiểm tra. Hệ thống sẽ <b>lưu dữ liệu trước</b>, sau đó mới kiểm tra. Popup hiện tóm tắt luật, tổng SP, số SP thỏa và danh sách mã. Có thể bấm <b>Xem ảnh</b> để mở toàn bộ mã thỏa trên xemanhxnt14, copy mã hoặc bấm mã để mở StockQuickPopup.</p>
     </div>
   </div>
 </div>
