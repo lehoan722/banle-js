@@ -862,18 +862,27 @@
       width: 68vw;
       max-width: 68vw;
 
-      /* Tăng chiều cao popup gần hết màn hình, giữ nguyên chiều rộng */
-      height: calc(100vh - 12px);
-      max-height: calc(100vh - 12px);
-
-      overflow-y: auto;
-      overflow-x: hidden;
-
-      top: 6px;
+      /* iPhone/Safari: dùng top + bottom thay cho 100vh để luôn nằm trong
+         vùng nhìn thấy thật, kể cả khi thanh địa chỉ/thanh công cụ đang hiện. */
+      top: 4px;
       right: 6px;
+      bottom: calc(4px + env(safe-area-inset-bottom, 0px));
       left: auto;
 
-      padding: 6px 8px;
+      height: auto !important;
+      max-height: none !important;
+
+      overflow-y: auto !important;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      touch-action: pan-y;
+
+      /* Chừa vùng cuộn cuối để Lưu nhóm / Lưu form / Giảm giá có thể
+         kéo hẳn lên phía trên các nút nổi CK KHẨN / BM. */
+      padding: 6px 8px calc(130px + env(safe-area-inset-bottom, 0px)) 8px;
+      scroll-padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px));
+
       font-size: 16px;
       line-height: 1.2;
     }
@@ -981,8 +990,15 @@
    .sq-vitri-actions-wrap {
   margin-top: 6px;
   padding-top: 4px;
+  padding-bottom: 24px;
   order: 3;
   flex: 0 0 auto;
+}
+
+/* Cho các dòng cuối luôn có thể cuộn hoàn toàn vào vùng nhìn thấy */
+.sq-vitri-action-row:last-child,
+.sq-discount-wrap:last-child {
+  scroll-margin-bottom: 140px;
 }
 
     .sq-vitri-action-row {
