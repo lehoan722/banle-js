@@ -487,10 +487,18 @@ async function prepareKmXaContext(spData, masp, gia, defaultKm) {
         return null;
     }
 
-    let adminPct = Number(spData.giam_gia_pct || 0) || 0;
+    // QUAN TRỌNG: phải phân biệt 3 trạng thái của giam_gia_pct:
+    //   NULL = Admin không can thiệp, cho phép luật xả quyết định
+    //   0    = Admin KHÓA luật xả
+    //   >0   = Admin đặt mức giảm thủ công và được ưu tiên
+    const adminRaw = spData.giam_gia_pct;
+    const adminHasValue = adminRaw !== null && adminRaw !== undefined && String(adminRaw).trim() !== "";
+    let adminPct = adminHasValue ? Number(adminRaw) : null;
+    if (adminPct !== null && !Number.isFinite(adminPct)) adminPct = null;
+
     let rulePct = 0;
-    let maxPct = adminPct;
-    let source = adminPct > 0 ? "ADMIN" : "NONE";
+    let maxPct = adminPct === null ? 0 : Math.max(0, Number(adminPct) || 0);
+    let source = adminPct === null ? "NONE" : (Number(adminPct) === 0 ? "ADMIN_LOCK" : "ADMIN");
 
     try {
         const { data, error } = await supabase.rpc("rpc_km_max_pct_v1", {
@@ -501,22 +509,48 @@ async function prepareKmXaContext(spData, masp, gia, defaultKm) {
 
         const row = Array.isArray(data) ? data[0] : data;
         if (row) {
-            adminPct = Number(row.admin_pct || adminPct || 0) || 0;
-            rulePct = Number(row.rule_pct || 0) || 0;
-            maxPct = Number(row.max_pct || Math.max(adminPct, rulePct)) || 0;
-            source = String(row.source || source || "NONE");
+            // KHÔNG dùng || ở đây vì số 0 là giá trị hợp lệ và có ý nghĩa KHÓA luật xả.
+            if (Object.prototype.hasOwnProperty.call(row, "admin_pct")) {
+                adminPct = row.admin_pct == null ? null : Number(row.admin_pct);
+            }
+            if (Object.prototype.hasOwnProperty.call(row, "rule_pct")) {
+                rulePct = row.rule_pct == null ? 0 : Number(row.rule_pct);
+            }
+            if (Object.prototype.hasOwnProperty.call(row, "max_pct")) {
+                maxPct = row.max_pct == null ? 0 : Number(row.max_pct);
+            }
+            source = String(row.source ?? source ?? "NONE").toUpperCase();
         }
     } catch (err) {
-        console.warn("[KM XA] Không lấy được rpc_km_max_pct_v1, fallback admin:", err);
-        maxPct = adminPct;
-        rulePct = 0;
-        source = adminPct > 0 ? "ADMIN" : "NONE";
+        console.warn("[KM XA] Không lấy được rpc_km_max_pct_v1, fallback theo giam_gia_pct:", err);
+
+        // Fallback vẫn phải giữ nguyên quy tắc ưu tiên Admin.
+        if (adminPct !== null) {
+            maxPct = Math.max(0, Number(adminPct) || 0);
+            rulePct = 0;
+            source = Number(adminPct) === 0 ? "ADMIN_LOCK" : "ADMIN";
+        } else {
+            maxPct = 0;
+            rulePct = 0;
+            source = "NONE";
+        }
     }
+
+    // Bảo vệ cuối cùng: ADMIN_LOCK luôn thắng tuyệt đối.
+    const isAdminLock = source === "ADMIN_LOCK" || (adminPct !== null && Number(adminPct) === 0);
+    if (isAdminLock) {
+        adminPct = 0;
+        maxPct = 0;
+        source = "ADMIN_LOCK";
+    }
+
+    if (!Number.isFinite(rulePct)) rulePct = 0;
+    if (!Number.isFinite(maxPct) || maxPct < 0) maxPct = 0;
 
     const ctx = {
         masp: String(masp).trim().toUpperCase(),
         gia: Number(gia || 0),
-        defaultKm: Number(defaultKm || 0),
+        defaultKm: isAdminLock ? 0 : Number(defaultKm || 0),
         adminPct,
         rulePct,
         maxPct,
@@ -533,19 +567,28 @@ async function prepareKmXaContext(spData, masp, gia, defaultKm) {
     if (!kmEl) return ctx;
 
     if (maxPct > 0) {
-        const hintValue = `${formatMoneyVN(defaultKm)}-${Math.round(maxPct)}`;
+        const hintValue = `${formatMoneyVN(ctx.defaultKm)}-${Math.round(maxPct)}`;
         ctx.hintValue = hintValue;
 
         kmEl.dataset.clearanceEnabled = "1";
         kmEl.dataset.clearanceMaxPct = String(maxPct);
-        kmEl.dataset.clearanceDefaultKm = String(defaultKm);
+        kmEl.dataset.clearanceDefaultKm = String(ctx.defaultKm);
         kmEl.dataset.clearanceHintValue = hintValue;
         kmEl.readOnly = false;
         kmEl.value = hintValue;
         kmEl.title = "";
     } else {
+        // Không có quyền xả (đặc biệt ADMIN_LOCK): đóng hoàn toàn context xả
+        // và trả KM về đúng giá trị thực tế, không để rule cũ rơi xuống UI.
         resetKmXaContext();
-        kmEl.value = formatMoneyVN(defaultKm);
+        kmEl.value = formatMoneyVN(isAdminLock ? 0 : ctx.defaultKm);
+
+        if (isAdminLock) {
+            const ttEl = document.getElementById("thanhtien");
+            const sl = toInt(document.getElementById("soluong")?.value || "1") || 1;
+            const giaBan = toInt(document.getElementById("gia")?.value || "0");
+            if (ttEl) ttEl.value = (giaBan * sl).toLocaleString("vi-VN");
+        }
     }
 
     return ctx;
