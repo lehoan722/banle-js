@@ -1,4 +1,4 @@
-// scripts/xaHangRules.js - V3
+// scripts/xaHangRules.js - V4 ADMIN OVERRIDE
 // Module dung chung doc goi y xa hang.
 // Toan bo luat V2 nam trong rpc_goiy_xahang_v1.
 // KHONG ghi dmhanghoa.giam_gia_pct.
@@ -56,13 +56,31 @@ export function attachXaHangSuggestions(rows, suggestionMap) {
   return (rows || []).map((sp) => {
     const suggestion = map.get(norm(sp?.masp)) || null;
     const rulePct = Number(suggestion?.goi_y_pct || 0);
-    const adminPct = Number(sp?.giam_gia_pct || 0);
-    const effectivePct = Math.max(adminPct, rulePct);
 
-    let source = "";
-    if (adminPct > 0 && rulePct > 0) source = "BOTH";
-    else if (adminPct > 0) source = "ADMIN";
-    else if (rulePct > 0) source = "RULE";
+    // 3 trang thai Admin:
+    // NULL/undefined/"" = khong can thiep -> theo RULE
+    // 0                 = khoa giam
+    // >0                = override tuyet doi
+    const rawAdmin = sp?.giam_gia_pct;
+    const hasAdminOverride =
+      rawAdmin !== null &&
+      rawAdmin !== undefined &&
+      String(rawAdmin).trim() !== "";
+
+    const adminPct = hasAdminOverride
+      ? Math.max(0, Number(rawAdmin) || 0)
+      : null;
+
+    const effectivePct = hasAdminOverride
+      ? adminPct
+      : rulePct;
+
+    let source = "NONE";
+    if (hasAdminOverride) {
+      source = adminPct > 0 ? "ADMIN" : "ADMIN_LOCK";
+    } else if (rulePct > 0) {
+      source = "RULE";
+    }
 
     return {
       ...sp,
@@ -70,6 +88,7 @@ export function attachXaHangSuggestions(rows, suggestionMap) {
       goi_y_xa_rule: suggestion?.rule_code || "",
       goi_y_xa_detail: suggestion,
       giam_gia_admin_pct: adminPct,
+      giam_gia_admin_override: hasAdminOverride,
       giam_gia_hieu_luc: effectivePct,
       giam_gia_nguon: source
     };
