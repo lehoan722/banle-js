@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=31";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.22-SIZE0-FALLBACK";
-console.log("[TimKiemNhanh] BUILD 1.2.22-SIZE0-FALLBACK");
+window.TIM_KIEM_NHANH_BUILD = "1.2.23-RULE-SCAN+SIZE0";
+console.log("[TimKiemNhanh] BUILD 1.2.23-RULE-SCAN+SIZE0");
 
 const supabase = getSupabaseClient();
 
@@ -78,7 +78,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.21 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.23 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
@@ -390,82 +390,87 @@ async function enrichProductsAfterCheck(rows){
 
 
 async function fetchUnifiedDiscountRows(){
-  const exactPool=[];
-  const zeroPool=[];
-  let exactOffset=0;
-  let zeroOffset=0;
-  let exactTotal=0;
-  let zeroTotal=0;
+  // Chế độ Giảm giá phải quét toàn bộ ứng viên của NHÓM,
+  // KHÔNG được để RPC loại sớm theo giam_gia_pct hoặc tồn size máy.
+  // Sau khi có tập ứng viên:
+  //   1) ghép ADMIN + RULE
+  //   2) lọc effective discount > 0
+  //   3) lấy tồn sau kiểm
+  //   4) đúng size trước, size 0 fallback sau.
+  const all=[];
+  let offset=0;
+  let total=0;
   let guard=0;
 
   do{
-    const base={...params(0),p_mode:"similar",p_limit:40};
-    const pExact={...base,p_sizes:[state.size],p_offset:exactOffset};
-    const pZero={...base,p_sizes:[SIZE_FALLBACK_ZERO],p_offset:zeroOffset};
+    const p={
+      ...params(offset),
+      p_mode:"discount_scan",
+      p_sizes:[state.size,SIZE_FALLBACK_ZERO],
+      p_offset:offset,
+      p_limit:40
+    };
 
-    const [resExact,resZero]=await Promise.all([
-      (exactTotal===0||exactOffset<exactTotal)
-        ? supabase.rpc("sales_copilot_tim_san_pham_v1111",pExact)
-        : Promise.resolve({data:[],error:null}),
-      (zeroTotal===0||zeroOffset<zeroTotal)
-        ? supabase.rpc("sales_copilot_tim_san_pham_v1111",pZero)
-        : Promise.resolve({data:[],error:null})
-    ]);
+    const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",p);
+    if(error)throw error;
 
-    if(resExact.error)throw resExact.error;
-    if(resZero.error)throw resZero.error;
+    const raw=(data||[]).map(x=>({...x}));
+    if(!raw.length)break;
 
-    const rawExact=(resExact.data||[]).map(x=>({...x}));
-    const rawZero=(resZero.data||[]).map(x=>({...x}));
+    total=Number(raw[0]?.total_count||total||0);
+    all.push(...raw);
 
-    if(guard===0){
-      exactTotal=Number(rawExact[0]?.total_count||0);
-      zeroTotal=Number(rawZero[0]?.total_count||0);
-    }
-
-    exactPool.push(...rawExact);
-    zeroPool.push(...rawZero);
-
-    exactOffset+=rawExact.length;
-    zeroOffset+=rawZero.length;
+    offset+=raw.length;
     guard++;
+  }while(offset<total && guard<80);
 
-    const exactDone=exactOffset>=exactTotal || rawExact.length===0;
-    const zeroDone=zeroOffset>=zeroTotal || rawZero.length===0;
-    if(exactDone&&zeroDone)break;
-  }while(guard<60);
-
-  const rawMap=new Map();
-  [...exactPool,...zeroPool].forEach(x=>{
-    const k=norm(x.masp);
-    if(k&&!rawMap.has(k))rawMap.set(k,x);
+  const dedupMap=new Map();
+  all.forEach(x=>{
+    const k=norm(x?.masp);
+    if(k&&!dedupMap.has(k))dedupMap.set(k,x);
   });
-  const raw=[...rawMap.values()];
+  const raw=[...dedupMap.values()];
   if(!raw.length)return[];
 
-  const xaMap=await getXaHangSuggestions({
-    supabase,
-    masps:raw.map(x=>x.masp),
-    denNgay:businessDate()
-  }).catch(err=>{
-    console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
-    return new Map();
-  });
+  // Ghép luật xả theo batch để tránh giới hạn payload/rpc quá lớn.
+  const xaMap=new Map();
+  const CHUNK=300;
+
+  for(let i=0;i<raw.length;i+=CHUNK){
+    const chunk=raw.slice(i,i+CHUNK);
+    const part=await getXaHangSuggestions({
+      supabase,
+      masps:chunk.map(x=>x.masp),
+      denNgay:businessDate()
+    }).catch(err=>{
+      console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
+      return new Map();
+    });
+
+    part.forEach((v,k)=>xaMap.set(k,v));
+  }
 
   const merged=attachXaHangSuggestions(raw,xaMap)
     .filter(sp=>Number(sp.giam_gia_hieu_luc||0)>0);
 
+  // Chỉ đọc tồn sau kiểm cho hàng thực sự có giảm hiệu lực.
   const checked=await enrichProductsAfterCheck(merged);
   const {exact,zeroOnly}=splitExactAndSizeZero(checked);
 
   const sortDiscount=(a,b)=>{
     const d=Number(b.giam_gia_hieu_luc||0)-Number(a.giam_gia_hieu_luc||0);
     if(d)return d;
+
+    const ar=Number(a.giam_gia_rule_pct||0);
+    const br=Number(b.giam_gia_rule_pct||0);
+    if(br!==ar)return br-ar;
+
     return String(a.masp||"").localeCompare(String(b.masp||""),"vi",{numeric:true});
   };
 
   exact.sort(sortDiscount);
   zeroOnly.sort(sortDiscount);
+
   return [...exact,...zeroOnly];
 }
 
