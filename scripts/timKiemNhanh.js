@@ -4,12 +4,45 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=31";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.21-MERGED-NO-DEFAULT+XA-ALL";
-console.log("[TimKiemNhanh] BUILD 1.2.21-MERGED-NO-DEFAULT+XA-ALL");
+window.TIM_KIEM_NHANH_BUILD = "1.2.22-SIZE0-FALLBACK";
+console.log("[TimKiemNhanh] BUILD 1.2.22-SIZE0-FALLBACK");
 
 const supabase = getSupabaseClient();
 
 const SIZE_LIST=["38","39","40","41","42","43","44","45","46"];
+
+const SIZE_FALLBACK_ZERO="0";
+
+function stockForAny(sp,size){
+  const x=sp?.ton_sizes?.[String(size)]||{};
+  return Number(state.diadiem==="cs2"?x.ton_cs2:x.ton_cs1)||0;
+}
+
+function splitExactAndSizeZero(rows){
+  const exact=[];
+  const zeroOnly=[];
+  const seen=new Set();
+
+  for(const sp of (rows||[])){
+    const key=norm(sp?.masp);
+    if(!key||seen.has(key))continue;
+
+    if(state.size && stockForAny(sp,state.size)>0){
+      exact.push(sp);
+      seen.add(key);
+      continue;
+    }
+
+    if(stockForAny(sp,SIZE_FALLBACK_ZERO)>0){
+      sp.__size0_fallback=true;
+      zeroOnly.push(sp);
+      seen.add(key);
+    }
+  }
+
+  return {exact,zeroOnly,all:[...exact,...zeroOnly]};
+}
+
 const SIZE_CONVERSION={
   "38":["38","2","S","46","240","165"],
   "39":["39","3","M","48","245","170"],
@@ -327,7 +360,7 @@ async function fetchAfterCheckStockForMasp(maspRaw,{force=false}={}){
       base[s]={ton_cs1:Number(row.ton_cs1||0),ton_cs2:Number(row.ton_cs2||0)};
     });
     const check=checkRes?.data||{};const out={};
-    SIZE_LIST.forEach(s=>{
+    [...SIZE_LIST,SIZE_FALLBACK_ZERO].forEach(s=>{
       const b=base[s]||{ton_cs1:0,ton_cs2:0};
       const lech1=Number(check?.cs1?.lech?.[s]||0);const lech2=Number(check?.cs2?.lech?.[s]||0);
       out[s]={
@@ -357,55 +390,83 @@ async function enrichProductsAfterCheck(rows){
 
 
 async function fetchUnifiedDiscountRows(){
-  // Trang GIẢM GIÁ không được dùng p_mode="discount" của RPC cũ,
-  // vì RPC đó lọc cứng dmhanghoa.giam_gia_pct trước khi rule tự động được ghép.
-  // Ta lấy toàn bộ tập ứng viên "similar" theo đúng nhóm/size/form/màu,
-  // ghép ADMIN + RULE, rồi mới lọc giam_gia_hieu_luc > 0.
-  const allDiscounted=[];
-  let offset=0;
-  let total=0;
+  const exactPool=[];
+  const zeroPool=[];
+  let exactOffset=0;
+  let zeroOffset=0;
+  let exactTotal=0;
+  let zeroTotal=0;
   let guard=0;
 
   do{
-    const p={...params(offset),p_mode:"similar",p_offset:offset,p_limit:40};
-    const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",p);
-    if(error)throw error;
+    const base={...params(0),p_mode:"similar",p_limit:40};
+    const pExact={...base,p_sizes:[state.size],p_offset:exactOffset};
+    const pZero={...base,p_sizes:[SIZE_FALLBACK_ZERO],p_offset:zeroOffset};
 
-    const raw=(data||[]).map(x=>({...x}));
-    if(!raw.length)break;
+    const [resExact,resZero]=await Promise.all([
+      (exactTotal===0||exactOffset<exactTotal)
+        ? supabase.rpc("sales_copilot_tim_san_pham_v1111",pExact)
+        : Promise.resolve({data:[],error:null}),
+      (zeroTotal===0||zeroOffset<zeroTotal)
+        ? supabase.rpc("sales_copilot_tim_san_pham_v1111",pZero)
+        : Promise.resolve({data:[],error:null})
+    ]);
 
-    total=Number(raw[0]?.total_count||total||0);
+    if(resExact.error)throw resExact.error;
+    if(resZero.error)throw resZero.error;
 
-    const xaMap=await getXaHangSuggestions({
-      supabase,
-      masps:raw.map(x=>x.masp),
-      denNgay:businessDate()
-    }).catch(err=>{
-      console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
-      return new Map();
-    });
+    const rawExact=(resExact.data||[]).map(x=>({...x}));
+    const rawZero=(resZero.data||[]).map(x=>({...x}));
 
-    const merged=attachXaHangSuggestions(raw,xaMap);
-    merged.forEach(sp=>{
-      if(Number(sp.giam_gia_hieu_luc||0)>0)allDiscounted.push(sp);
-    });
+    if(guard===0){
+      exactTotal=Number(rawExact[0]?.total_count||0);
+      zeroTotal=Number(rawZero[0]?.total_count||0);
+    }
 
-    offset+=raw.length;
+    exactPool.push(...rawExact);
+    zeroPool.push(...rawZero);
+
+    exactOffset+=rawExact.length;
+    zeroOffset+=rawZero.length;
     guard++;
-  }while(offset<total && guard<30);
 
-  // Chỉ sau khi đã lọc ra hàng có giảm mới đọc tồn sau kiểm,
-  // tránh N+1 cho toàn bộ nhóm hàng.
-  const checked=await enrichProductsAfterCheck(allDiscounted);
-  const rows=checked.filter(sp=>stockFor(sp,state.size)>0);
+    const exactDone=exactOffset>=exactTotal || rawExact.length===0;
+    const zeroDone=zeroOffset>=zeroTotal || rawZero.length===0;
+    if(exactDone&&zeroDone)break;
+  }while(guard<60);
 
-  rows.sort((a,b)=>{
+  const rawMap=new Map();
+  [...exactPool,...zeroPool].forEach(x=>{
+    const k=norm(x.masp);
+    if(k&&!rawMap.has(k))rawMap.set(k,x);
+  });
+  const raw=[...rawMap.values()];
+  if(!raw.length)return[];
+
+  const xaMap=await getXaHangSuggestions({
+    supabase,
+    masps:raw.map(x=>x.masp),
+    denNgay:businessDate()
+  }).catch(err=>{
+    console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
+    return new Map();
+  });
+
+  const merged=attachXaHangSuggestions(raw,xaMap)
+    .filter(sp=>Number(sp.giam_gia_hieu_luc||0)>0);
+
+  const checked=await enrichProductsAfterCheck(merged);
+  const {exact,zeroOnly}=splitExactAndSizeZero(checked);
+
+  const sortDiscount=(a,b)=>{
     const d=Number(b.giam_gia_hieu_luc||0)-Number(a.giam_gia_hieu_luc||0);
     if(d)return d;
     return String(a.masp||"").localeCompare(String(b.masp||""),"vi",{numeric:true});
-  });
+  };
 
-  return rows;
+  exact.sort(sortDiscount);
+  zeroOnly.sort(sortDiscount);
+  return [...exact,...zeroOnly];
 }
 
 async function search(reset=true){
@@ -431,9 +492,27 @@ async function search(reset=true){
       return;
     }
 
-    const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",params(off));if(error)throw error;
-    const raw=(data||[]).map(x=>({...x}));
-    const nextTotal=Number(raw[0]?.total_count||(reset?0:state.total)||0);
+    const pExact=params(off);
+    const pZero={...params(off),p_sizes:[SIZE_FALLBACK_ZERO]};
+
+    const [resExact,resZero]=await Promise.all([
+      supabase.rpc("sales_copilot_tim_san_pham_v1111",pExact),
+      supabase.rpc("sales_copilot_tim_san_pham_v1111",pZero)
+    ]);
+    if(resExact.error)throw resExact.error;
+    if(resZero.error)throw resZero.error;
+
+    const rawExact=(resExact.data||[]).map(x=>({...x}));
+    const rawZero=(resZero.data||[]).map(x=>({...x}));
+
+    const rawMap=new Map();
+    rawExact.forEach(x=>rawMap.set(norm(x.masp),x));
+    rawZero.forEach(x=>{if(!rawMap.has(norm(x.masp)))rawMap.set(norm(x.masp),x)});
+    const raw=[...rawMap.values()];
+
+    const nextTotal=
+      Number(rawExact[0]?.total_count||0)
+      + Number(rawZero[0]?.total_count||0);
 
     // Data-driven xả hàng:
     // gọi rule engine cho MỌI nhóm hàng.
@@ -453,15 +532,18 @@ async function search(reset=true){
     ]);
 
     const checkedWithXa=attachXaHangSuggestions(checked,xaMap);
-    const rows=checkedWithXa.filter(sp=>stockFor(sp,state.size)>0);
+    const {exact,zeroOnly}=splitExactAndSizeZero(checkedWithXa);
+    const rows=[...exact,...zeroOnly];
 
     if(reset){
       state.products=rows;
-      state.offset=raw.length;
+      state.offset=Math.max(rawExact.length,rawZero.length);
       state.total=nextTotal;
     }else{
-      state.products=state.products.concat(rows);
-      state.offset=off+raw.length;
+      const existing=new Set(state.products.map(x=>norm(x.masp)));
+      const appendRows=rows.filter(x=>!existing.has(norm(x.masp)));
+      state.products=state.products.concat(appendRows);
+      state.offset=off+Math.max(rawExact.length,rawZero.length);
       state.total=nextTotal||state.total;
     }
 
@@ -496,7 +578,10 @@ function productCardHtml(sp,orderNo=0,totalNo=0){
   const xaClass=effectivePct?" discount-active":"";
   const strongClass=effectivePct>=50?" discount-strong":"";
   const badge=effectivePct>=50?`<div class="search-discount-badge">${effectivePct}%</div>`:"";
-  return `<article class="product${xaClass}${strongClass}" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">${badge}</div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div><div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
+  const size0Tag=sp.__size0_fallback
+    ? `<div class="size0-fallback-tag">Không quản lý size · Tồn size 0: ${stockForAny(sp,SIZE_FALLBACK_ZERO)}</div>`
+    : "";
+  return `<article class="product${xaClass}${strongClass}" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">${badge}</div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div>${size0Tag}<div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${sp.__size0_fallback ? `<button type="button" class="pick-size has" data-add="${esc(sp.masp)}" data-size="0">Size 0</button>` : SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
 }
 function bindProductCards(cards){
   cards.forEach(card=>{
