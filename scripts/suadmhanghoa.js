@@ -573,7 +573,7 @@ function initTable(colname = 'vitrikho1') {
     valueColumn = {
       data: colname,
       type: 'dropdown',
-      source: ['', '10', '20', '30', '50', '60'],
+      source: ['', '0', '10', '20', '30', '50', '60'],
       strict: true,
       allowInvalid: false,
       width: 150
@@ -1136,7 +1136,7 @@ function nowLocalTimestamp() {
 }
 
 function validateGiamGiaPctRows(rows) {
-  const allowed = new Set([10, 20, 30, 50, 60]);
+  const allowed = new Set([0, 10, 20, 30, 50, 60]);
 
   for (const row of rows) {
     const raw = row.rawVal;
@@ -1244,7 +1244,7 @@ async function luuDuLieu() {
       alert(
         `❌ Mức giảm giá không hợp lệ ở dòng ${dong} (${checkPct.masp}).\n\n` +
         `Giá trị: ${checkPct.value}\n` +
-        `Chỉ cho phép: 10, 20, 30, 50, 60 hoặc để trống để xóa giảm giá.`
+        `Chỉ cho phép: 0, 10, 20, 30, 50, 60. 0 = khóa luật giảm; để trống = NULL, theo luật tự động.`
       );
 
       try {
