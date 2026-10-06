@@ -1,3 +1,4 @@
+// HOAN TUYET - BAN NV: ADMIN_LOCK chi khoa LUAT XA, giu KHUYEN MAI CO BAN - V2
 // HOAN TUYET - KM MOBILE SELECT V2.2
 // HOAN TUYET - LINE MODEL V2 - NO AGGREGATE
 // HOAN TUYET HOADON - KM FIFO V1.3 FULL FIX ENTER KM
@@ -550,11 +551,17 @@ async function prepareKmXaContext(spData, masp, gia, defaultKm) {
     const ctx = {
         masp: String(masp).trim().toUpperCase(),
         gia: Number(gia || 0),
-        defaultKm: isAdminLock ? 0 : Number(defaultKm || 0),
+
+        // QUAN TRỌNG:
+        // defaultKm là khuyến mại bán hàng thông thường từ tinhKhuyenMai().
+        // ADMIN_LOCK chỉ khóa LUẬT XẢ, không được xóa defaultKm.
+        defaultKm: Number(defaultKm || 0),
+
         adminPct,
         rulePct,
         maxPct,
         source,
+        isAdminLock,
         pendingSize: null,
         selectedPct: null,
         selectedKm: null,
@@ -578,17 +585,17 @@ async function prepareKmXaContext(spData, masp, gia, defaultKm) {
         kmEl.value = hintValue;
         kmEl.title = "";
     } else {
-        // Không có quyền xả (đặc biệt ADMIN_LOCK): đóng hoàn toàn context xả
-        // và trả KM về đúng giá trị thực tế, không để rule cũ rơi xuống UI.
+        // Không có quyền xả:
+        // - ADMIN_LOCK: chỉ khóa luật xả tự động.
+        // - Không có rule: cũng không có context xả.
+        //
+        // CẢ HAI trường hợp vẫn phải giữ khuyến mại bán hàng thông thường
+        // đã được tinhKhuyenMai() tính trước đó (ví dụ 10k/20k hoặc % ở cột khuyenmai).
         resetKmXaContext();
-        kmEl.value = formatMoneyVN(isAdminLock ? 0 : ctx.defaultKm);
+        kmEl.value = formatMoneyVN(ctx.defaultKm);
 
-        if (isAdminLock) {
-            const ttEl = document.getElementById("thanhtien");
-            const sl = toInt(document.getElementById("soluong")?.value || "1") || 1;
-            const giaBan = toInt(document.getElementById("gia")?.value || "0");
-            if (ttEl) ttEl.value = (giaBan * sl).toLocaleString("vi-VN");
-        }
+        // Tính lại thành tiền theo KM cơ bản, KHÔNG ép KM về 0.
+        recalcThanhtienFromForm();
     }
 
     return ctx;
