@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cân đối bán nhầm size CS1 - SAFE V2</title>
+  <style>
+    body { font-family: Arial; margin:0; }
+    .header { background:#0b57d0; color:white; padding:10px; font-size:24px; font-weight:700; text-align:center; }
+    .toolbar { display:flex; gap:8px; align-items:center; padding:8px; background:#eef6ff; flex-wrap:wrap; }
+    input,select,button,textarea { font-size:16px; padding:6px; box-sizing:border-box; }
+    #maUuTien { width:210px; height:68px; resize:vertical; }
+    button { font-weight:700; cursor:pointer; }
+    #btnTai { background:#0b57d0; color:white; border:0; border-radius:6px; }
+    #btnCanDoi { background:#b00020; color:white; border:0; border-radius:6px; }
+    #status { font-weight:700; color:#003366; }
+    .table-wrap { height:calc(100vh - 140px); overflow:auto; }
+    table { width:100%; border-collapse:collapse; }
+    th,td { border:1px solid #ccc; padding:6px; text-align:center; font-size:14px; vertical-align:top; }
+    th { background:#f3f3f3; position:sticky; top:0; z-index:1; }
+    .neg { color:#b00020; font-weight:700; }
+    .pos { color:#0b7a00; font-weight:700; }
+    .muted { color:#666; }
+    .reason { text-align:left; min-width:240px; }
+    .move { white-space:nowrap; margin:2px 0; }
+    .badge { display:inline-block; padding:4px 7px; border-radius:999px; font-weight:700; }
+    .badge-a { background:#dff5df; color:#136b13; }
+    .badge-b { background:#fff1bf; color:#8a5a00; }
+    .badge-c { background:#ffdede; color:#9b111e; }
+    .btnExecOne { background:#0b7a00; color:white; border:0; border-radius:6px; }
+  </style>
+</head>
+<body>
+  <div class="header">CÂN ĐỐI BÁN NHẦM SIZE CS1 — SAFE V2</div>
+
+  <div id="app-container" style="display:none;">
+    <div class="toolbar">
+      <label>Cơ sở:
+        <input id="diadiem" value="cs1" readonly style="width:70px;">
+      </label>
+
+      <input id="manv" type="hidden">
+      <input id="tennv" readonly placeholder="Tên NV" style="width:160px;">
+
+      <label>Từ ngày:<input id="tuNgay" type="date"></label>
+      <label>Đến ngày:<input id="denNgay" type="date"></label>
+
+      <label>
+        <span>Mã cần kiểm tra:</span>
+        <textarea id="maUuTien" placeholder="Để trống = toàn bộ&#10;Hoặc mỗi dòng 1 mã SP"></textarea>
+      </label>
+
+      <button id="btnTai">Phân tích V2</button>
+      <button id="btnCanDoi">Cân đối plan A đã chọn</button>
+      <button id="btnChonHet">Chọn hết A</button>
+      <button id="btnBoChon">Bỏ chọn</button>
+
+      <!-- Giữ ID cũ để JS có thể ẩn; không dùng log V1 trên màn V2 -->
+      <button id="btnTaiLichSu" type="button" style="display:none;">Tải lịch sử</button>
+      <button id="btnKhoiPhuc" type="button" style="display:none;">Khôi phục</button>
+
+      <span id="status">Chưa phân tích</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Chọn</th>
+            <th>STT</th>
+            <th>Mã SP</th>
+            <th>Tồn theo size</th>
+            <th>Mức</th>
+            <th>Lý do</th>
+            <th>Kế hoạch / Gợi ý</th>
+            <th>Tổng âm</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyKetQua"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="login-container"></div>
+
+  <script type="module">
+    import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+    khoiTaoDangNhapDungChung({
+      macDinhDiaDiem: "cs1",
+      tuDongKhoaCoSo: true,
+      loginApiPath: "/api/login-cs1",
+      onLoginSuccess: async (nhanvien, { diadiem, session }) => {
+        if (diadiem) localStorage.setItem("diadiem", diadiem);
+        if (session?.access_token) localStorage.setItem("supabase_access_token", session.access_token);
+        localStorage.setItem("manv", nhanvien.manv || "");
+        localStorage.setItem("tennv", nhanvien.tennv || "");
+        document.getElementById("manv").value = nhanvien.manv || "";
+        document.getElementById("tennv").value = nhanvien.tennv || "";
+        document.getElementById("diadiem").value = "cs1";
+        document.getElementById("app-container").style.display = "block";
+      }
+    });
+  </script>
+
+  <script src="./scripts/stockQuickPopup.js?v=1"></script>
+  <script type="module" src="./scripts/can_doi_ban_nham_size_v2.js"></script>
+</body>
+</html>
