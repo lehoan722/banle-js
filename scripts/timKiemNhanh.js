@@ -2,10 +2,10 @@ import { getSupabaseClient, khoiTaoDangNhapDungChung, dangXuatDungChung } from "
 import { setupScanner } from "./scanner.js";
 import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
-import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=31";
+import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=32";
 
-window.TIM_KIEM_NHANH_BUILD = "1.2.23-RULE-SCAN+SIZE0";
-console.log("[TimKiemNhanh] BUILD 1.2.23-RULE-SCAN+SIZE0");
+window.TIM_KIEM_NHANH_BUILD = "1.2.24-ADMIN-OVERRIDE";
+console.log("[TimKiemNhanh] BUILD 1.2.24-ADMIN-OVERRIDE");
 
 const supabase = getSupabaseClient();
 
@@ -78,7 +78,7 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V1.2.23 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.24 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
 const AFTER_CHECK_CACHE=new Map();
