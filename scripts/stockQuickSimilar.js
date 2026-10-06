@@ -41,16 +41,29 @@
     }
 
     out.forEach(item => {
-      const adminPct = Number(item.giam_gia_pct || 0);
+      const rawAdmin = item.giam_gia_pct;
+      const hasAdminOverride =
+        rawAdmin !== null &&
+        rawAdmin !== undefined &&
+        String(rawAdmin).trim() !== "";
+
+      const adminPct = hasAdminOverride
+        ? Math.max(0, Number(rawAdmin) || 0)
+        : null;
+
       const rulePct = Number(item.goi_y_xa_pct || 0);
+
       item.giam_gia_admin_pct = adminPct;
-      item.giam_gia_hieu_luc = Math.max(adminPct, rulePct);
+      item.giam_gia_admin_override = hasAdminOverride;
+      item.giam_gia_hieu_luc = hasAdminOverride ? adminPct : rulePct;
       item.giam_gia_nguon =
-        adminPct > 0 && rulePct > 0 ? "BOTH" :
-        adminPct > 0 ? "ADMIN" :
-        rulePct > 0 ? "RULE" : "";
-      // Giữ tên field cũ để toàn bộ viewer/list cũ tự dùng mức hiệu lực.
-      item.giam_gia_pct = item.giam_gia_hieu_luc || null;
+        hasAdminOverride
+          ? (adminPct > 0 ? "ADMIN" : "ADMIN_LOCK")
+          : (rulePct > 0 ? "RULE" : "NONE");
+
+      // Field cũ vẫn phản ánh mức HIỆU LỰC.
+      // Nếu Admin khóa = 0 thì PHẢI giữ 0, không đổi thành NULL.
+      item.giam_gia_pct = item.giam_gia_hieu_luc;
     });
 
     return out;
