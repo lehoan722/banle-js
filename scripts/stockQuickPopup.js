@@ -1,3 +1,4 @@
+// HOAN TUYET - STOCK QUICK ADMIN DISCOUNT OVERRIDE 0-LOCK V1
 // HOAN TUYET - STOCK QUICK BUSINESS DATE FIX V2
 // HOAN TUYET - STOCK QUICK CANONICAL SIZE FIX V1
 // stockQuickPopup.js
@@ -1372,8 +1373,12 @@ data-color-masp="${targetMasp}"
       return { ok: false, message: "Mã sản phẩm trống" };
     }
 
-    if (pct !== null && ![10, 20, 30, 50].includes(pct)) {
-      return { ok: false, message: "Chỉ cho phép mức giảm 10, 20, 30 hoặc 50" };
+    // ADMIN override:
+    //   null = không can thiệp, sản phẩm tiếp tục theo luật xả tự động
+    //   0    = khóa luật xả, sản phẩm không giảm giá
+    //   >0   = dùng đúng mức Admin đặt
+    if (pct !== null && ![0, 10, 20, 30, 50].includes(pct)) {
+      return { ok: false, message: "Chỉ cho phép 0, 10, 20, 30 hoặc 50. Để trống = theo luật xả tự động." };
     }
 
     const client = getSupabaseClient();
@@ -2308,16 +2313,17 @@ data-color-masp="${targetMasp}"
             <input
               class="sq-discount-input"
               type="number"
-              min="10"
+              min="0"
               max="50"
               step="10"
               list="sq-discount-options"
               value="${giam_gia_pct == null ? "" : giam_gia_pct}"
-              placeholder="Trống"
+              placeholder="Trống = theo luật"
               inputmode="numeric"
               autocomplete="off"
             />
             <datalist id="sq-discount-options">
+              <option value="0" label="0 = khóa luật xả"></option>
               <option value="10"></option>
               <option value="20"></option>
               <option value="30"></option>
@@ -2331,7 +2337,13 @@ data-color-masp="${targetMasp}"
         <div class="sq-discount-wrap">
           <div class="sq-discount-row">
             <span class="sq-discount-label">Giảm giá:</span>
-            <span class="sq-vitri-value-readonly">${giam_gia_pct == null ? "Không giảm" : `${giam_gia_pct}%`}</span>
+            <span class="sq-vitri-value-readonly">${
+              giam_gia_pct == null
+                ? "Theo luật xả"
+                : giam_gia_pct === 0
+                  ? "0% · Khóa luật xả"
+                  : `${giam_gia_pct}% · Admin`
+            }</span>
           </div>
         </div>
       `;
@@ -2877,8 +2889,12 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
         const raw = String(input.value || "").trim();
         const pct = raw === "" ? null : Number(raw);
 
-        if (pct !== null && ![10, 20, 30, 50].includes(pct)) {
-          alert("Chỉ được nhập mức giảm 10, 20, 30 hoặc 50. Để trống là xóa giảm giá.");
+        if (pct !== null && ![0, 10, 20, 30, 50].includes(pct)) {
+          alert(
+            "Chỉ được nhập 0, 10, 20, 30 hoặc 50.\n" +
+            "0 = KHÓA luật xả, sản phẩm không giảm giá.\n" +
+            "Để trống = bỏ can thiệp Admin và tiếp tục theo luật xả tự động."
+          );
           input.value = lastSaved;
           input.focus();
           input.select();
@@ -2888,9 +2904,12 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
         if (raw === lastSaved) return;
 
         const masp = String(popup.dataset.masp || "").trim().toUpperCase();
-        const actionText = pct === null
-          ? `xóa giảm giá của sản phẩm ${masp}`
-          : `lưu mức giảm ${pct}% cho sản phẩm ${masp}`;
+        const actionText =
+          pct === null
+            ? `bỏ can thiệp Admin cho sản phẩm ${masp} và cho sản phẩm tiếp tục theo luật xả tự động`
+            : pct === 0
+              ? `đặt 0% cho sản phẩm ${masp} để KHÓA luật xả tự động`
+              : `lưu mức giảm Admin ${pct}% cho sản phẩm ${masp}`;
 
         const ok = window.confirm(`Bạn có muốn ${actionText} không?`);
         if (!ok) {
@@ -2918,7 +2937,13 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
           } catch (_) { }
 
           if (msgEl) {
-            msgEl.textContent = rs.message || "Đã lưu";
+            msgEl.textContent =
+              rs.message ||
+              (pct === null
+                ? "Đã chuyển về theo luật xả"
+                : pct === 0
+                  ? "Đã khóa luật xả (0%)"
+                  : `Đã lưu Admin ${pct}%`);
             msgEl.className = "sq-discount-msg ok";
           }
           return;
