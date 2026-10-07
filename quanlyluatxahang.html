@@ -111,6 +111,81 @@ h1{font-size:20px;margin:0}
 
 .handsontable td.rule-row-selected{background:#fff4bf!important}
 .handsontable td.program-name-cell{white-space:normal!important;line-height:1.15!important;vertical-align:middle!important}
+
+/* V3.1 - multi group + conflict */
+.handsontable td.multi-group-cell{
+  white-space:normal!important;
+  line-height:1.15!important;
+  font-weight:700;
+  color:#1d4ed8;
+}
+.handsontable td.rule-row-conflict{
+  background:#fee2e2!important;
+  color:#991b1b!important;
+}
+.handsontable td.rule-row-selected{
+  background:#fff4bf!important;
+}
+.handsontable td.rule-row-selected.rule-row-conflict{
+  background:#ffd6a5!important;
+}
+
+.multi-group-editor{
+  display:none;
+  position:fixed;
+  z-index:20050;
+  background:#fff;
+  border:1px solid #94a3b8;
+  border-radius:10px;
+  box-shadow:0 18px 50px rgba(15,23,42,.28);
+  overflow:hidden;
+  font-size:13px;
+}
+.multi-group-head{padding:8px;border-bottom:1px solid #e5e7eb}
+.multi-group-search{
+  width:100%;
+  padding:8px 10px;
+  border:1px solid #cbd5e1;
+  border-radius:7px;
+  font-size:13px;
+}
+.multi-group-selected{
+  padding:7px 9px;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-weight:700;
+  min-height:30px;
+}
+.multi-group-list{
+  max-height:260px;
+  overflow:auto;
+  padding:4px 0;
+}
+.multi-group-option{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  cursor:pointer;
+}
+.multi-group-option:hover{background:#f1f5f9}
+.multi-group-option input{width:17px;height:17px}
+.multi-group-actions{
+  display:flex;
+  gap:6px;
+  padding:8px;
+  border-top:1px solid #e5e7eb;
+  background:#f8fafc;
+}
+.multi-group-actions button{
+  border:0;
+  border-radius:999px;
+  padding:6px 11px;
+  cursor:pointer;
+}
+.multi-group-actions .mg-ok{background:#2563eb;color:#fff;font-weight:700}
+.multi-group-actions .mg-cancel,.multi-group-actions .mg-clear{background:#e5e7eb;color:#111}
+
 </style>
 </head>
 <body>
@@ -121,7 +196,7 @@ h1{font-size:20px;margin:0}
       <div>
         <h1>Quản Lý Luật Xả Hàng</h1>
         <div class="sub">
-          Mỗi dòng = 1 luật theo NHÓM HÀNG. Có thể lọc/sắp xếp ngay trên tiêu đề cột.
+          Mỗi dòng = 1 luật; một luật có thể áp dụng nhiều nhóm hàng. Có thể lọc/sắp xếp ngay trên tiêu đề cột.
           Nếu nhiều luật cùng thỏa, lấy % xả lớn nhất.
         </div>
       </div>
@@ -188,7 +263,8 @@ h1{font-size:20px;margin:0}
       <h3>Tên chương trình xả</h3>
       <p>Ghi tên ngắn gọn để dễ nhớ, ví dụ: <b>Dọn giày cũ 2024</b>, <b>Xả hè cuối mùa</b>. Ô này cho phép xuống dòng.</p>
       <h3>Nhóm áp dụng</h3>
-      <p>Gõ trực tiếp mã nhóm. Danh mục nhóm hàng chỉ dùng làm danh sách gợi ý; khi lưu hệ thống vẫn kiểm tra mã nhóm có tồn tại.</p>
+      <p>Bấm vào ô Nhóm áp dụng để mở danh sách có checkbox. Có thể tích nhiều nhóm trong cùng một luật, ví dụ <b>AP, SM, TD</b>.</p>
+      <p>Có ô tìm nhanh theo mã hoặc tên nhóm.</p>
       <h3>Ngày tháng</h3>
       <p>TỪ NGÀY, ĐẾN NGÀY, NHẬP ĐẦU TRƯỚC NGÀY và NHẬP ĐẦU SAU NGÀY đều dùng dạng <b>DD-MM-YYYY</b>.</p>
       <p>Khi mở lịch chọn ngày có nút <b>Hôm nay</b> để chọn nhanh.</p>
@@ -204,8 +280,13 @@ h1{font-size:20px;margin:0}
       </ul>
       <h3>Size khó</h3>
       <p>
-        Size khó / Size khó TỪ / Size khó ĐẾN đều nhập trực tiếp.
-        Một nhóm chỉ có một cấu hình size khó dùng chung. Tất cả dòng cùng nhóm đều hiển thị giá trị thật; sửa size ở bất kỳ dòng nào sẽ tự đồng bộ sang toàn bộ dòng của nhóm đó.
+        Size khó / Size khó TỪ / Size khó ĐẾN là <b>cấu hình riêng của từng luật</b>.
+        Không còn tự đồng bộ size khó giữa các luật cùng nhóm.
+      </p>
+      <p>
+        Nếu hai luật cùng chứa ít nhất một nhóm, thời gian hiệu lực chồng nhau, cả hai đều dùng
+        <b>CÓ SIZE KHÓ</b> hoặc <b>TẤT CẢ KHÓ</b> nhưng cấu hình size khó khác nhau,
+        hệ thống sẽ tô đỏ/cảnh báo và <b>không cho lưu</b>.
       </p>
       <h3>ĐK SIZE</h3>
       <p>Chỉ chọn một trong 3 giá trị: <b>KHÔNG CHỌN</b>, <b>CÓ SIZE KHÓ</b>, <b>TẤT CẢ KHÓ</b>.</p>
@@ -223,7 +304,7 @@ h1{font-size:20px;margin:0}
 
 <script type="module">
 import { khoiTaoDangNhapDungChung, dangXuatDungChung } from './scripts/authModule.js';
-import { initQuanLyLuatXaSimple } from './scripts/quanlyluatxahang_simple.js';
+import { initQuanLyLuatXaSimple } from './scripts/quanlyluatxahang_simple.js?v=31';
 
 khoiTaoDangNhapDungChung({
   appContainerId:'app-container',
