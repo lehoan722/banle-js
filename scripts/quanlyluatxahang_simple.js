@@ -1,4 +1,4 @@
-// scripts/quanlyluatxahang_simple.js - V3.1 MULTI GROUP + SIZE RIENG TUNG LUAT
+// scripts/quanlyluatxahang_simple.js - V3.1.3 LABELS: HIEU LUC TU/DEN + NHAP DAU TU/DEN
 // - Handsontable + Filters + ColumnSorting + DropdownMenu
 // - Cac cot so nhap truc tiep, KHONG co spinner.
 // - DK SIZE dropdown 3 gia tri.
@@ -426,8 +426,8 @@ function perRuleSizeRenderer() {
 
 
 const HOT_HEADERS = [
-  'Nhóm<br>áp dụng','Tên chương<br>trình xả','%<br>xả','TỪ<br>NGÀY','ĐẾN<br>NGÀY',
-  'Nhập đầu<br>trước ngày','Nhập đầu<br>sau ngày','Không nhập<br>(tháng)','Không bán<br>(ngày)',
+  'Nhóm<br>áp dụng','Tên chương<br>trình xả','%<br>xả','Hiệu lực<br>TỪ NGÀY','Hiệu lực<br>ĐẾN NGÀY',
+  'Nhập đầu<br>TỪ NGÀY','Nhập đầu<br>ĐẾN NGÀY','Không nhập<br>(tháng)','Không bán<br>(ngày)',
   'Tồn<br>tối đa','Tồn/Nhập<br>tối đa (%)','Size<br>khó','Size khó<br>TỪ','Size khó<br>ĐẾN','ĐK<br>SIZE','Bật'
 ];
 
@@ -487,8 +487,8 @@ function renderHot() {
       {data:'muc_giam_pct',type:'dropdown',source:[10,20,30,40,50,60,70],strict:true,allowInvalid:false},
       {data:'hieu_luc_tu',type:'date',dateFormat:'DD-MM-YYYY',correctFormat:true,allowEmpty:false,validator:dateDMYValidator,allowInvalid:true},
       {data:'hieu_luc_den',type:'date',dateFormat:'DD-MM-YYYY',correctFormat:true,allowEmpty:true,validator:dateDMYValidator,allowInvalid:true},
-      {data:'nhap_dau_truoc_ngay',type:'date',dateFormat:'DD-MM-YYYY',correctFormat:true,allowEmpty:true,validator:dateDMYValidator,allowInvalid:true},
       {data:'nhap_dau_sau_ngay',type:'date',dateFormat:'DD-MM-YYYY',correctFormat:true,allowEmpty:true,validator:dateDMYValidator,allowInvalid:true},
+      {data:'nhap_dau_truoc_ngay',type:'date',dateFormat:'DD-MM-YYYY',correctFormat:true,allowEmpty:true,validator:dateDMYValidator,allowInvalid:true},
       {data:'khong_nhap_thang',type:'numeric',validator:integerValidator,allowInvalid:true,numericFormat:{pattern:'0'}},
       {data:'khong_ban_ngay',type:'numeric',validator:integerValidator,allowInvalid:true,numericFormat:{pattern:'0'}},
       {data:'ton_toi_da',type:'numeric',validator:integerValidator,allowInvalid:true,numericFormat:{pattern:'0'}},
@@ -524,7 +524,7 @@ function renderHot() {
       const prop = this.colToProp(col);
       if ([
         'hieu_luc_tu','hieu_luc_den',
-        'nhap_dau_truoc_ngay','nhap_dau_sau_ngay'
+        'nhap_dau_sau_ngay','nhap_dau_truoc_ngay'
       ].includes(prop)) {
         attachTodayButtonToDateEditor(this, row, col);
       }
