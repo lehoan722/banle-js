@@ -1,5 +1,6 @@
 // /api/thoitiet/sync.js
 // Vercel Serverless Function - dong bo Open-Meteo -> Supabase
+// V1.3: lich su chia theo nam, kiem tra nam thieu, nap bo sung phan thieu
 // ENV BAT BUOC:
 //   SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
@@ -91,10 +92,73 @@ function dailyRows(data, mapFn) {
   return out;
 }
 
-async function syncHistory(loc) {
+
+function isLeapYear(y) {
+  return y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+}
+
+function expectedDaysForYear(year) {
   const today = new Date();
-  const end = addDays(today,-2); // reanalysis co do tre; tranh ngay gan nhat
-  const start = new Date(Date.UTC(end.getUTCFullYear()-10,end.getUTCMonth(),end.getUTCDate()));
+  const safeEnd = addDays(today,-2); // reanalysis co do tre
+  const currentYear = safeEnd.getUTCFullYear();
+
+  if (year < currentYear) return isLeapYear(year) ? 366 : 365;
+  if (year > currentYear) return 0;
+
+  const start = new Date(Date.UTC(year,0,1));
+  return Math.floor((safeEnd - start) / 86400000) + 1;
+}
+
+function historyRangeForYear(year) {
+  const today = new Date();
+  const safeEnd = addDays(today,-2);
+  const currentYear = safeEnd.getUTCFullYear();
+
+  const start = new Date(Date.UTC(year,0,1));
+  const end = year === currentYear
+    ? safeEnd
+    : new Date(Date.UTC(year,11,31));
+
+  return {start,end};
+}
+
+async function countHistoryYear(loc, year) {
+  const {start,end} = historyRangeForYear(year);
+  if (end < start) return 0;
+
+  const url = env("SUPABASE_URL").replace(/\/$/,"") +
+    `/rest/v1/thoitiet_ngay?select=ngay&ma_dia_diem=eq.${encodeURIComponent(loc.ma_dia_diem)}` +
+    `&ngay=gte.${ymd(start)}&ngay=lte.${ymd(end)}`;
+
+  const key = env("SUPABASE_SERVICE_ROLE_KEY");
+  const r = await fetch(url,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  if (!r.ok) throw new Error(`SUPABASE_COUNT_${r.status}: ${await r.text()}`);
+  const data = await r.json();
+  return data.length;
+}
+
+async function checkHistoryYears(loc, fromYear, toYear) {
+  const out=[];
+  for(let y=fromYear;y<=toYear;y++) {
+    const expected = expectedDaysForYear(y);
+    const count = await countHistoryYear(loc,y);
+    out.push({
+      nam:y,
+      so_dong:count,
+      so_ngay_can_co:expected,
+      trang_thai: expected > 0 && count >= expected ? "DU" : "THIEU",
+      thieu: Math.max(0, expected-count)
+    });
+  }
+  return out;
+}
+
+async function syncHistoryYear(loc, year) {
+  const {start,end} = historyRangeForYear(year);
+  if (end < start) {
+    return {nam:year,bo_qua:true,ly_do:"NAM_TUONG_LAI"};
+  }
+
   const q = new URLSearchParams({
     latitude:String(loc.vi_do),
     longitude:String(loc.kinh_do),
@@ -103,6 +167,7 @@ async function syncHistory(loc) {
     daily:DAILY_VARS,
     timezone:loc.mui_gio || "Asia/Bangkok"
   });
+
   const data = await openMeteo(`https://archive-api.open-meteo.com/v1/archive?${q}`);
   const rows = dailyRows(data,(d,i)=>({
     ma_dia_diem:loc.ma_dia_diem,
@@ -120,8 +185,44 @@ async function syncHistory(loc) {
     nguon_du_lieu:"OPEN_METEO_ERA5_BEST_MATCH",
     cap_nhat_luc:new Date().toISOString()
   }));
+
   await upsertRows("thoitiet_ngay","ma_dia_diem,ngay",rows);
-  return rows.length;
+
+  return {
+    nam:year,
+    tu:ymd(start),
+    den:ymd(end),
+    so_dong_ghi:rows.length
+  };
+}
+
+async function syncHistoryRange(loc, fromYear, toYear) {
+  if (toYear < fromYear) throw new Error("TU_NAM_LON_HON_DEN_NAM");
+  if (toYear - fromYear + 1 > 2) {
+    throw new Error("MOI_LAN_CHI_NEN_DONG_BO_TOI_DA_2_NAM_DE_TRANH_TIMEOUT");
+  }
+
+  const result=[];
+  for(let y=fromYear;y<=toYear;y++) {
+    result.push(await syncHistoryYear(loc,y));
+  }
+  return result;
+}
+
+async function syncMissingHistory(loc, fromYear, toYear) {
+  const check = await checkHistoryYears(loc,fromYear,toYear);
+  const missing = check.filter(x=>x.trang_thai==="THIEU").slice(0,2);
+  const synced=[];
+
+  for(const x of missing) {
+    synced.push(await syncHistoryYear(loc,x.nam));
+  }
+
+  return {
+    kiem_tra:check,
+    da_dong_bo:synced,
+    con_thieu:check.filter(x=>x.trang_thai==="THIEU").length - synced.length
+  };
 }
 
 async function syncForecast15(loc) {
@@ -328,11 +429,44 @@ export default async function handler(req,res) {
     const locs = await getLocations();
     const result=[];
 
+    const safeEnd = addDays(new Date(),-2);
+    const defaultToYear = safeEnd.getUTCFullYear();
+    const defaultFromYear = defaultToYear - 9;
+
+    const qYear = Number(req.query?.nam);
+    const qFrom = Number(req.query?.tu_nam);
+    const qTo = Number(req.query?.den_nam);
+
+    const fromYear = Number.isInteger(qFrom) ? qFrom : defaultFromYear;
+    const toYear = Number.isInteger(qTo) ? qTo : defaultToYear;
+
     for (const loc of locs) {
       const one={ma_dia_diem:loc.ma_dia_diem};
 
-      if (mode==="lichsu" || mode==="tat_ca") {
-        one.lichsu = await chayAnToan("lichsu", () => syncHistory(loc));
+      if (mode==="kiemtra_lichsu") {
+        one.lichsu = await chayAnToan("kiemtra_lichsu", () =>
+          checkHistoryYears(loc,fromYear,toYear)
+        );
+        result.push(one);
+        continue;
+      }
+
+      if (mode==="lichsu") {
+        if (Number.isInteger(qYear)) {
+          one.lichsu = await chayAnToan("lichsu_nam", () =>
+            syncHistoryYear(loc,qYear)
+          );
+        } else {
+          one.lichsu = await chayAnToan("lichsu_khoang", () =>
+            syncHistoryRange(loc,fromYear,toYear)
+          );
+        }
+      }
+
+      if (mode==="lichsu_thieu") {
+        one.lichsu = await chayAnToan("lichsu_thieu", () =>
+          syncMissingHistory(loc,fromYear,toYear)
+        );
       }
 
       if (mode==="du_bao_15" || mode==="du_bao" || mode==="tat_ca") {
@@ -343,7 +477,10 @@ export default async function handler(req,res) {
         one.xu_huong = await chayAnToan("xu_huong", () => syncSeasonal(loc));
       }
 
-      one.chi_so = await chayAnToan("chi_so", () => refreshIndicators(loc));
+      if (mode!=="kiemtra_lichsu") {
+        one.chi_so = await chayAnToan("chi_so", () => refreshIndicators(loc));
+      }
+
       result.push(one);
     }
 
@@ -356,6 +493,11 @@ export default async function handler(req,res) {
     return res.status(ok ? 200 : 207).json({
       ok,
       mode,
+      tham_so:{
+        nam:Number.isInteger(qYear)?qYear:null,
+        tu_nam:fromYear,
+        den_nam:toYear
+      },
       result,
       at:new Date().toISOString()
     });
