@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "./authModule.js";
+import { getSupabaseClient } from "./authModule.js"; 
 const sb = getSupabaseClient();
 
 const $=id=>document.getElementById(id);
