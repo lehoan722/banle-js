@@ -1,4 +1,4 @@
-// scripts/quanlyluatxahang_simple.js - V3.1.3 LABELS: HIEU LUC TU/DEN + NHAP DAU TU/DEN
+// scripts/quanlyluatxahang_simple.js - V3.1.4 ROW COLOR BY DISCOUNT
 // - Handsontable + Filters + ColumnSorting + DropdownMenu
 // - Cac cot so nhap truc tiep, KHONG co spinner.
 // - DK SIZE dropdown 3 gia tri.
@@ -438,12 +438,36 @@ function paintSelectedRuleRow(instance) {
   if (!instance || instance.isDestroyed) return;
 
   const root = instance.rootElement;
-  root?.querySelectorAll('td.rule-row-selected, td.rule-row-conflict')
-    .forEach(td => {
-      td.classList.remove('rule-row-selected');
-      td.classList.remove('rule-row-conflict');
-    });
+  root?.querySelectorAll(
+    'td.rule-row-selected, td.rule-row-conflict, td.rule-discount-20, td.rule-discount-50'
+  ).forEach(td => {
+    td.classList.remove('rule-row-selected');
+    td.classList.remove('rule-row-conflict');
+    td.classList.remove('rule-discount-20');
+    td.classList.remove('rule-discount-50');
+  });
 
+  // 20% = chữ xanh; 50% = chữ đỏ.
+  for (let physicalRow = 0; physicalRow < state.rules.length; physicalRow++) {
+    const pct = Number(state.rules[physicalRow]?.muc_giam_pct);
+    const visual = instance.toVisualRow(physicalRow);
+    if (visual == null || visual < 0) continue;
+
+    const cls = pct === 20
+      ? 'rule-discount-20'
+      : pct === 50
+        ? 'rule-discount-50'
+        : '';
+
+    if (!cls) continue;
+
+    for (let c = 0; c < instance.countCols(); c++) {
+      const td = instance.getCell(visual, c);
+      if (td) td.classList.add(cls);
+    }
+  }
+
+  // Xung đột vẫn giữ nền cảnh báo.
   for (const physicalRow of conflictRows) {
     const visual = instance.toVisualRow(physicalRow);
     if (visual == null || visual < 0) continue;
@@ -453,7 +477,9 @@ function paintSelectedRuleRow(instance) {
     }
   }
 
+  // Dòng đang chọn vẫn giữ nền vàng nhạt.
   if (selectedPhysicalRow < 0) return;
+
   const visualRow = instance.toVisualRow(selectedPhysicalRow);
   if (visualRow == null || visualRow < 0) return;
 
