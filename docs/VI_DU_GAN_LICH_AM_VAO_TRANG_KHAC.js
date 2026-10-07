@@ -1,4 +1,4 @@
-// VI DU GAN LICH AM VAO MOT O NGAY CUA TRANG BAO CAO
+// VI DU GAN LICH AM VAO MOT O NGAY CUA TRANG BAO CAO 
 
 import { moLichAmPicker } from './scripts/lichAmPicker.js';
 
