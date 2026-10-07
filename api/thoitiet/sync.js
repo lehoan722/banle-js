@@ -128,7 +128,7 @@ async function syncForecast15(loc) {
   const q = new URLSearchParams({
     latitude:String(loc.vi_do),
     longitude:String(loc.kinh_do),
-    daily:DAILY_VARS + ",precipitation_probability_max",
+    daily:DAILY_VARS,
     timezone:loc.mui_gio || "Asia/Bangkok",
     forecast_days:"15"
   });
@@ -145,7 +145,7 @@ async function syncForecast15(loc) {
     nhiet_do_max:d.temperature_2m_max?.[i],
     do_am_tb:d.relative_humidity_2m_mean?.[i],
     luong_mua:d.precipitation_sum?.[i],
-    xac_suat_mua:d.precipitation_probability_max?.[i],
+    xac_suat_mua:null,
     gio_max:d.wind_speed_10m_max?.[i],
     ma_thoi_tiet:d.weather_code?.[i],
     muc_tin_cay:i<=5?"CAO":(i<=10?"TRUNG_BINH":"THAM_KHAO"),
@@ -257,24 +257,109 @@ async function refreshIndicators(loc) {
   if (!r.ok) throw new Error(`REFRESH_CHISO_${r.status}: ${await r.text()}`);
 }
 
+
+async function kiemTraKetNoi() {
+  const out = {
+    env: {
+      SUPABASE_URL: !!process.env.SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      WEATHER_SYNC_SECRET: !!process.env.WEATHER_SYNC_SECRET,
+      CRON_SECRET: !!process.env.CRON_SECRET
+    },
+    supabase: null,
+    open_meteo: null
+  };
+
+  try {
+    const locs = await getLocations();
+    out.supabase = {
+      ok: true,
+      so_dia_diem: locs.length,
+      dia_diem: locs.map(x => x.ma_dia_diem)
+    };
+
+    const loc = locs[0];
+    if (loc) {
+      const q = new URLSearchParams({
+        latitude:String(loc.vi_do),
+        longitude:String(loc.kinh_do),
+        daily:"weather_code,temperature_2m_mean,temperature_2m_min,temperature_2m_max,precipitation_sum,wind_speed_10m_max",
+        timezone:loc.mui_gio || "Asia/Bangkok",
+        forecast_days:"3"
+      });
+
+      const data = await openMeteo(`https://api.open-meteo.com/v1/ecmwf?${q}`);
+      out.open_meteo = {
+        ok:true,
+        so_ngay:data?.daily?.time?.length || 0,
+        tu:data?.daily?.time?.[0] || null,
+        den:data?.daily?.time?.at?.(-1) || null
+      };
+    }
+  } catch(e) {
+    if (!out.supabase?.ok) out.supabase = {ok:false,error:String(e?.message||e)};
+    else out.open_meteo = {ok:false,error:String(e?.message||e)};
+  }
+
+  return out;
+}
+
+async function chayAnToan(name, fn) {
+  try {
+    return {ok:true, ket_qua:await fn()};
+  } catch(e) {
+    return {ok:false, loi:String(e?.message||e)};
+  }
+}
+
 export default async function handler(req,res) {
   try {
-    if (!checkSecret(req)) return res.status(401).json({ok:false,error:"UNAUTHORIZED"});
+    if (!checkSecret(req)) {
+      return res.status(401).json({ok:false,error:"UNAUTHORIZED"});
+    }
+
     const mode = String(req.query?.mode || "du_bao").toLowerCase();
+
+    if (mode === "kiemtra") {
+      const kq = await kiemTraKetNoi();
+      return res.status(200).json({ok:true,mode,kiem_tra:kq,at:new Date().toISOString()});
+    }
+
     const locs = await getLocations();
     const result=[];
 
     for (const loc of locs) {
       const one={ma_dia_diem:loc.ma_dia_diem};
-      if (mode==="lichsu" || mode==="tat_ca") one.lichsu = await syncHistory(loc);
-      if (mode==="du_bao" || mode==="tat_ca") {
-        one.du_bao_15 = await syncForecast15(loc);
-        one.xu_huong = await syncSeasonal(loc);
+
+      if (mode==="lichsu" || mode==="tat_ca") {
+        one.lichsu = await chayAnToan("lichsu", () => syncHistory(loc));
       }
-      await refreshIndicators(loc);
+
+      if (mode==="du_bao_15" || mode==="du_bao" || mode==="tat_ca") {
+        one.du_bao_15 = await chayAnToan("du_bao_15", () => syncForecast15(loc));
+      }
+
+      if (mode==="xu_huong" || mode==="du_bao" || mode==="tat_ca") {
+        one.xu_huong = await chayAnToan("xu_huong", () => syncSeasonal(loc));
+      }
+
+      one.chi_so = await chayAnToan("chi_so", () => refreshIndicators(loc));
       result.push(one);
     }
-    return res.status(200).json({ok:true,mode,result,at:new Date().toISOString()});
+
+    const ok = result.every(x =>
+      (!x.lichsu || x.lichsu.ok) &&
+      (!x.du_bao_15 || x.du_bao_15.ok) &&
+      (!x.xu_huong || x.xu_huong.ok)
+    );
+
+    return res.status(ok ? 200 : 207).json({
+      ok,
+      mode,
+      result,
+      at:new Date().toISOString()
+    });
+
   } catch(e) {
     console.error(e);
     return res.status(500).json({ok:false,error:String(e?.message||e)});
