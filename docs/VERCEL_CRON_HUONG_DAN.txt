@@ -1,4 +1,4 @@
-Nếu dự án đã có vercel.json, KHÔNG ghi đè. Chỉ thêm phần cron tương đương:
+Nếu dự án đã có vercel.json, KHÔNG ghi đè. Chỉ thêm phần cron tương đương: 
 
 {
   "crons": [
