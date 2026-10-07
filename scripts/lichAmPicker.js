@@ -1,6 +1,6 @@
 // scripts/lichAmPicker.js
 // Dung o bat ky trang nao:
-// import { moLichAmPicker } from './scripts/lichAmPicker.js';
+// import { moLichAmPicker } from './scripts/lichAmPicker.js'; 
 // const kq = await moLichAmPicker({ ngayMacDinh:'2026-10-07', maDiaDiem:'THAI_NGUYEN' });
 // if (kq) { input.value = kq.ngay_duong; }
 
