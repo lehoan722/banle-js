@@ -1,0 +1,24 @@
+Nếu dự án đã có vercel.json, KHÔNG ghi đè. Chỉ thêm phần cron tương đương:
+
+{
+  "crons": [
+    {
+      "path": "/api/thoitiet/sync?mode=du_bao",
+      "schedule": "15 21 * * *"
+    }
+  ]
+}
+
+21:15 UTC = 04:15 sáng hôm sau tại Việt Nam (UTC+7).
+EC46 thường cập nhật khoảng tối UTC; chạy lúc này giúp lấy forecast mới.
+
+ENV Vercel bắt buộc:
+SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+CRON_SECRET=<chuoi_bi_mat_dai>
+
+Chạy lịch sử 10 năm CHỈ MỘT LẦN sau deploy:
+https://TEN-DOMAIN/api/thoitiet/sync?mode=lichsu&secret=WEATHER_SYNC_SECRET
+
+Nếu dùng secret query:
+WEATHER_SYNC_SECRET=<chuoi_bi_mat_khac>
