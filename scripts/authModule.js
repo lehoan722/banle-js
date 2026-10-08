@@ -55,6 +55,7 @@ function clearLocalAuthProfile({ keepBranch = true, keepIdentifier = true } = {}
     "manv",
     "tennv",
     "is_admin",
+    "auth_kind",
     "quyen_sua_hoadon"
   ].forEach((k) => {
     try { localStorage.removeItem(k); } catch { }
@@ -110,6 +111,15 @@ function syncGlobalsFromLocalStorageGlobal() {
 
 async function checkIsAdminBestEffortGlobal() {
   try {
+    // Nếu app đã biết chắc đây là phiên NHÂN VIÊN/warehouse thì KHÔNG gọi RPC is_admin.
+    // Warehouse token không có quyền execute RPC này nên trình duyệt sẽ hiện 401 dù đăng nhập vẫn thành công.
+    const authKind = (localStorage.getItem("auth_kind") || "").trim().toLowerCase();
+    const cachedIsAdmin = localStorage.getItem("is_admin");
+    const cachedManv = (localStorage.getItem("manv") || "").trim();
+
+    if (authKind === "employee") return false;
+    if (authKind !== "admin" && cachedIsAdmin === "false" && cachedManv) return false;
+
     const { data, error } = await window.supabase.rpc("is_admin");
     if (error) return false;
     return data === true;
@@ -127,6 +137,7 @@ async function hydrateCurrentUserFromSession(macDinhDiaDiem = "cs1") {
   const isAdmin = await checkIsAdminBestEffortGlobal();
 
   localStorage.setItem("is_admin", isAdmin ? "true" : "false");
+  localStorage.setItem("auth_kind", isAdmin ? "admin" : "employee");
 
   if (isAdmin) {
     try {
@@ -479,6 +490,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     localStorage.setItem("tennv", String(nhanvien?.tennv || "").trim());
     localStorage.setItem("quyen_sua_hoadon", nhanvien?.sua_hoadon ? "true" : "false");
     localStorage.setItem("is_admin", "false");
+    localStorage.setItem("auth_kind", "employee");
 
     syncGlobalsFromLocalStorageGlobal();
 
@@ -533,6 +545,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
     localStorage.setItem("diadiem", cs);
     localStorage.setItem("is_admin", "true");
+    localStorage.setItem("auth_kind", "admin");
     localStorage.setItem("manv", manvAdmin);
     localStorage.setItem("tennv", tenAdmin);
     localStorage.setItem("quyen_sua_hoadon", "true");
@@ -569,6 +582,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     localStorage.setItem("tennv", String(p.tennv || "").trim());
     localStorage.setItem("quyen_sua_hoadon", p.sua_hoadon ? "true" : "false");
     localStorage.setItem("is_admin", isAdmin ? "true" : "false");
+    localStorage.setItem("auth_kind", isAdmin ? "admin" : "employee");
     localStorage.setItem("last_login_identifier", String(p.manv || "PASSKEY"));
 
     syncGlobalsFromLocalStorageGlobal();
@@ -838,6 +852,7 @@ export async function dangXuatDungChung(options = {}) {
   localStorage.removeItem('manv');
   localStorage.removeItem('tennv');
   localStorage.removeItem('is_admin');
+  localStorage.removeItem('auth_kind');
   localStorage.removeItem('quyen_sua_hoadon');
 
   // Xóa cờ unlock trang nhạy cảm hiện tại
