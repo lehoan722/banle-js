@@ -396,19 +396,9 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   }
 
   function resolveLoginApiPath(cs) {
-    try {
-      // Vẫn cho phép từng trang truyền loginApiPath riêng nếu thật sự cần.
-      if (typeof loginApiPath === "function") return loginApiPath(cs);
-      if (loginApiPath && typeof loginApiPath === "object") {
-        return loginApiPath[cs] || loginApiPath.default || "/api/login-cs1";
-      }
-      if (typeof loginApiPath === "string" && loginApiPath.trim()) {
-        return loginApiPath.trim();
-      }
-    } catch { }
-
-    // CS1 và CS2 cùng dùng CHUNG một API.
-    // API /api/login-cs1 tự chọn tài khoản warehouse theo body.diadiem.
+    // CS1 và CS2 BẮT BUỘC dùng chung một API.
+    // Cố ý bỏ qua loginApiPath truyền từ các trang cũ (ví dụ /api/login-cs2),
+    // để sau khi xóa /api/login-cs2 thì mọi trang vẫn đăng nhập bình thường.
     return "/api/login-cs1";
   }
 
