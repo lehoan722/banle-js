@@ -307,7 +307,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
               style="padding:8px 16px; margin-right:8px; background:#111827; color:white; border:0; border-radius:6px;">
         🔐 Khuôn mặt / vân tay
       </button>
-      <button type="submit" style="padding:8px 16px;">Đăng nhập bằng mật khẩu</button>
+      <button type="submit" id="btn-login-password" style="padding:8px 16px;">Đăng nhập bằng mật khẩu</button>
       <div style="font-size:12px;color:#666;margin-top:8px;line-height:1.35;">
         Lần đầu vẫn đăng nhập bằng mật khẩu để thiết lập Passkey.
       </div>
@@ -322,6 +322,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   const errorEl = document.getElementById("login-error");
   const form = document.getElementById("form-login-dungchung");
   const btnPasskey = document.getElementById("btn-login-passkey");
+  const btnLoginPassword = document.getElementById("btn-login-password");
 
   if (btnPasskey && !passkeyManager.isSupported()) {
     btnPasskey.disabled = true;
@@ -478,7 +479,17 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
     const result = await resp.json().catch(() => ({}));
     if (!resp.ok || !result.ok) {
-      return { ok: false, error: result?.error || "Đăng nhập thất bại" };
+      return {
+        ok: false,
+        status: resp.status,
+        code: result?.code || result?.ma_loi || "",
+        error: result?.error || "Đăng nhập thất bại",
+        retry_after_seconds: Number(result?.retry_after_seconds || result?.thu_lai_sau_giay || 0),
+        phamvi_khoa: result?.phamvi_khoa || null,
+        khoa_den: result?.khoa_den || null,
+        solan_sai: Number(result?.solan_sai || 0),
+        con_lai_truoc_khi_khoa: Number(result?.con_lai_truoc_khi_khoa || 0),
+      };
     }
 
     const { session, nhanvien, diadiem } = result;
@@ -677,6 +688,139 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     btnPasskey.addEventListener("click", dangNhapBangPasskey);
   }
 
+  // ===== Countdown khi dang nhap bang mat khau bi rate-limit =====
+  let boDemKhoaDangNhap = null;
+  let khoaDangNhapHienTai = null;
+
+  function dinhDangDemNguoc(giay) {
+    const s = Math.max(0, Math.ceil(Number(giay) || 0));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+  }
+
+  function khoaStorageKey(phamvi, cs, manv) {
+    if (phamvi === "IP") return "login_rate_lock:IP";
+    return `login_rate_lock:TAIKHOAN_IP:${String(cs || "").toLowerCase()}:${String(manv || "").trim().toUpperCase()}`;
+  }
+
+  function xoaBoDemKhoa() {
+    if (boDemKhoaDangNhap) {
+      clearInterval(boDemKhoaDangNhap);
+      boDemKhoaDangNhap = null;
+    }
+  }
+
+  function batLaiNutDangNhap() {
+    xoaBoDemKhoa();
+    khoaDangNhapHienTai = null;
+    if (btnLoginPassword) {
+      btnLoginPassword.disabled = false;
+      btnLoginPassword.textContent = "Đăng nhập bằng mật khẩu";
+    }
+  }
+
+  function luuKhoaDangNhap(lock) {
+    try {
+      const key = khoaStorageKey(lock.phamvi_khoa, lock.cs, lock.manv);
+      localStorage.setItem(key, JSON.stringify(lock));
+    } catch { }
+  }
+
+  function xoaKhoaDangNhapDaLuu(lock) {
+    try {
+      const key = khoaStorageKey(lock.phamvi_khoa, lock.cs, lock.manv);
+      localStorage.removeItem(key);
+    } catch { }
+  }
+
+  function batDauDemNguocKhoa({ retry_after_seconds, phamvi_khoa, khoa_den, cs, manv }) {
+    const now = Date.now();
+    let hetHanMs = khoa_den ? new Date(khoa_den).getTime() : NaN;
+    if (!Number.isFinite(hetHanMs)) {
+      hetHanMs = now + Math.max(1, Number(retry_after_seconds) || 60) * 1000;
+    }
+
+    const lock = {
+      phamvi_khoa: phamvi_khoa === "IP" ? "IP" : "TAIKHOAN_IP",
+      cs: String(cs || "").toLowerCase(),
+      manv: String(manv || "").trim().toUpperCase(),
+      het_han_ms: hetHanMs,
+    };
+
+    khoaDangNhapHienTai = lock;
+    luuKhoaDangNhap(lock);
+    xoaBoDemKhoa();
+
+    const capNhat = () => {
+      const conLai = Math.ceil((lock.het_han_ms - Date.now()) / 1000);
+      if (conLai <= 0) {
+        xoaKhoaDangNhapDaLuu(lock);
+        batLaiNutDangNhap();
+        errorEl.style.color = "#166534";
+        errorEl.textContent = "✅ Đã hết thời gian khóa. Bạn có thể đăng nhập lại.";
+        return;
+      }
+
+      if (btnLoginPassword) {
+        btnLoginPassword.disabled = true;
+        btnLoginPassword.textContent = `Thử lại sau ${dinhDangDemNguoc(conLai)}`;
+      }
+      errorEl.style.color = "#b91c1c";
+      errorEl.textContent =
+        lock.phamvi_khoa === "IP"
+          ? `⛔ Thiết bị/mạng này đang tạm khóa đăng nhập. Còn ${dinhDangDemNguoc(conLai)}.`
+          : `⛔ Tài khoản này đang tạm khóa đăng nhập. Còn ${dinhDangDemNguoc(conLai)}.`;
+    };
+
+    capNhat();
+    boDemKhoaDangNhap = setInterval(capNhat, 1000);
+  }
+
+  function khoiPhucKhoaDaLuu() {
+    try {
+      const cs = (csSelect.value || macDinhDiaDiem || "cs1").toLowerCase();
+      const manv = (manvInput.value || localStorage.getItem("last_login_identifier") || "").trim().toUpperCase();
+      const keys = [
+        "login_rate_lock:IP",
+        khoaStorageKey("TAIKHOAN_IP", cs, manv),
+      ];
+
+      for (const key of keys) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const lock = JSON.parse(raw);
+        if (!lock?.het_han_ms || Number(lock.het_han_ms) <= Date.now()) {
+          localStorage.removeItem(key);
+          continue;
+        }
+        batDauDemNguocKhoa({
+          retry_after_seconds: Math.ceil((Number(lock.het_han_ms) - Date.now()) / 1000),
+          phamvi_khoa: lock.phamvi_khoa,
+          khoa_den: new Date(Number(lock.het_han_ms)).toISOString(),
+          cs: lock.cs || cs,
+          manv: lock.manv || manv,
+        });
+        break;
+      }
+    } catch { }
+  }
+
+  // Neu chi khoa tai khoan+IP thi doi ma NV/co so duoc phep thu tai khoan khac.
+  function xuLyThayDoiDanhTinhDangNhap() {
+    if (!khoaDangNhapHienTai || khoaDangNhapHienTai.phamvi_khoa === "IP") return;
+    const csMoi = String(csSelect.value || "").toLowerCase();
+    const manvMoi = String(manvInput.value || "").trim().toUpperCase();
+    if (csMoi !== khoaDangNhapHienTai.cs || manvMoi !== khoaDangNhapHienTai.manv) {
+      xoaKhoaDangNhapDaLuu(khoaDangNhapHienTai);
+      batLaiNutDangNhap();
+      errorEl.textContent = "";
+    }
+  }
+
+  csSelect.addEventListener("change", xuLyThayDoiDanhTinhDangNhap);
+  manvInput.addEventListener("input", xuLyThayDoiDanhTinhDangNhap);
+
   async function xuLyDangNhap(e) {
     e.preventDefault();
 
@@ -716,8 +860,21 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       }
 
       if (!looksLikeEmail) {
-        // Hiện đúng lỗi server (sai mã NV / sai mật khẩu / thiếu ENV / warehouse...).
+        if (emp.status === 429 || emp.code === "LOGIN_RATE_LIMITED" || emp.code === "VUOT_GIOI_HAN") {
+          batDauDemNguocKhoa({
+            retry_after_seconds: emp.retry_after_seconds,
+            phamvi_khoa: emp.phamvi_khoa,
+            khoa_den: emp.khoa_den,
+            cs,
+            manv: manvUpper,
+          });
+          return;
+        }
+
         errorEl.textContent = "❌ " + (emp.error || "Không đăng nhập được");
+        if (emp.solan_sai > 0 && emp.con_lai_truoc_khi_khoa > 0) {
+          errorEl.textContent += ` (đã sai ${emp.solan_sai} lần, còn ${emp.con_lai_truoc_khi_khoa} lần trước khi tạm khóa)`;
+        }
         return;
       }
     } catch (err) {
@@ -752,6 +909,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
   }
 
   form.addEventListener("submit", xuLyDangNhap);
+  setTimeout(khoiPhucKhoaDaLuu, 0);
 
   // =======================================================
   // AUTO: nếu đã có session (hoặc phục hồi được session) -> bỏ qua login overlay
