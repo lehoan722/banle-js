@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quản trị đăng nhập - Shop Hoàn Tuyết</title>
+  <style>
+    :root { font-family: Arial, Helvetica, sans-serif; color: #111827; background: #f3f4f6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .wrap { max-width: 1500px; margin: 0 auto; padding: 18px; }
+    .top { display:flex; gap:12px; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+    h1 { margin:0; font-size:24px; }
+    .muted { color:#6b7280; font-size:13px; }
+    .panel { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.05); margin-bottom:14px; }
+    .cards { display:grid; grid-template-columns:repeat(5,minmax(120px,1fr)); gap:10px; margin-bottom:14px; }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; }
+    .card .so { font-size:27px; font-weight:700; margin-top:4px; }
+    .filters { display:grid; grid-template-columns:repeat(6,minmax(130px,1fr)); gap:10px; align-items:end; }
+    label { display:block; font-size:12px; font-weight:700; margin-bottom:5px; color:#374151; }
+    input, select, button { font:inherit; }
+    input, select { width:100%; padding:9px 10px; border:1px solid #d1d5db; border-radius:8px; background:#fff; }
+    button { padding:9px 12px; border:0; border-radius:8px; cursor:pointer; background:#111827; color:white; }
+    button.secondary { background:#e5e7eb; color:#111827; }
+    button.warn { background:#b45309; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .tablewrap { overflow:auto; max-height:68vh; }
+    table { width:100%; border-collapse:collapse; min-width:1180px; }
+    th, td { padding:9px 8px; border-bottom:1px solid #e5e7eb; text-align:left; font-size:13px; vertical-align:top; }
+    th { position:sticky; top:0; background:#f9fafb; z-index:1; font-size:12px; }
+    .tag { display:inline-block; padding:3px 7px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; }
+    .ok { background:#dcfce7; color:#166534; }
+    .fail { background:#fee2e2; color:#991b1b; }
+    .block { background:#ffedd5; color:#9a3412; }
+    .sys { background:#e0e7ff; color:#3730a3; }
+    .foot { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+    #thongbao { min-height:20px; font-size:13px; }
+    .danger { color:#b91c1c; }
+    .success { color:#166534; }
+    @media (max-width: 900px) {
+      .cards { grid-template-columns:repeat(2,1fr); }
+      .filters { grid-template-columns:repeat(2,1fr); }
+      .wrap { padding:10px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Quản trị lịch sử đăng nhập</h1>
+      <div class="muted">Giờ hiển thị theo Việt Nam (Asia/Ho_Chi_Minh). Chỉ ADMIN được truy cập dữ liệu.</div>
+    </div>
+    <div class="actions">
+      <button class="secondary" id="btn-tailai">Tải lại</button>
+      <button class="secondary" onclick="location.href='/'">Về trang chính</button>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="muted">Tổng lượt</div><div class="so" id="tk-tong">0</div></div>
+    <div class="card"><div class="muted">Thành công</div><div class="so" id="tk-thanhcong">0</div></div>
+    <div class="card"><div class="muted">Sai đăng nhập</div><div class="so" id="tk-thatbai">0</div></div>
+    <div class="card"><div class="muted">Bị rate-limit</div><div class="so" id="tk-bikhoa">0</div></div>
+    <div class="card"><div class="muted">Lỗi hệ thống</div><div class="so" id="tk-loi">0</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="filters">
+      <div><label>Từ ngày</label><input id="ngaytu" type="date"></div>
+      <div><label>Đến ngày</label><input id="ngayden" type="date"></div>
+      <div><label>Cơ sở</label><select id="diadiem"><option value="">Tất cả</option><option value="cs1">Cơ sở 1</option><option value="cs2">Cơ sở 2</option></select></div>
+      <div><label>Kết quả</label><select id="ketqua"><option value="">Tất cả</option><option value="THANHCONG">Thành công</option><option value="THATBAI">Sai đăng nhập</option><option value="BI_KHOA">Bị rate-limit</option><option value="TAIKHOAN_BI_KHOA">Tài khoản bị khóa</option><option value="LOI_HE_THONG">Lỗi hệ thống</option></select></div>
+      <div><label>Mã nhân viên</label><input id="manv" placeholder="VD: HIEN99"></div>
+      <div><label>Địa chỉ IP</label><input id="ip" placeholder="VD: 113.160..."></div>
+      <div class="actions"><button id="btn-loc">Lọc dữ liệu</button><button class="secondary" id="btn-xoa-loc">Xóa lọc</button></div>
+    </div>
+    <div id="thongbao"></div>
+  </div>
+
+  <div class="panel">
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Mã NV nhập</th>
+            <th>Cơ sở</th>
+            <th>Kết quả</th>
+            <th>Lý do</th>
+            <th>Số lần sai</th>
+            <th>Khóa đến</th>
+            <th>Phạm vi</th>
+            <th>Địa chỉ IP</th>
+            <th>Thiết bị / trình duyệt</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="foot">
+      <div class="muted" id="phantrang-info"></div>
+      <div class="actions"><button class="secondary" id="btn-truoc">Trang trước</button><button class="secondary" id="btn-sau">Trang sau</button></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { getSupabaseClient } from "./scripts/authModule.js";
+
+  const supabase = getSupabaseClient();
+  let trang = 1;
+  const kichthuoc = 50;
+  let tongso = 0;
+
+  const $ = (id) => document.getElementById(id);
+
+  function ngayVietNam(offsetDays = 0) {
+    const d = new Date(Date.now() + offsetDays * 86400000);
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(d);
+    const obj = Object.fromEntries(parts.map(p => [p.type, p.value]));
+    return `${obj.year}-${obj.month}-${obj.day}`;
+  }
+
+  $("ngayden").value = ngayVietNam(0);
+  $("ngaytu").value = ngayVietNam(-6);
+
+  function fmtTime(v) {
+    if (!v) return "";
+    try {
+      return new Intl.DateTimeFormat("vi-VN", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit",
+        hour12: false,
+      }).format(new Date(v));
+    } catch { return String(v); }
+  }
+
+  function esc(v) {
+    return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  }
+
+  function ketquaTag(v) {
+    const map = {
+      THANHCONG: ["Thành công", "ok"],
+      THATBAI: ["Sai đăng nhập", "fail"],
+      BI_KHOA: ["Bị rate-limit", "block"],
+      TAIKHOAN_BI_KHOA: ["Tài khoản bị khóa", "block"],
+      LOI_HE_THONG: ["Lỗi hệ thống", "sys"],
+    };
+    const x = map[v] || [v || "", "sys"];
+    return `<span class="tag ${x[1]}">${esc(x[0])}</span>`;
+  }
+
+  async function layTokenAdmin() {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) throw new Error("Chưa có phiên đăng nhập. Hãy đăng nhập ADMIN ở hệ thống trước.");
+    return token;
+  }
+
+  function layBoLoc() {
+    return {
+      hanhdong: "quantri_danhsach",
+      ngaytu: $("ngaytu").value || "",
+      ngayden: $("ngayden").value || "",
+      diadiem: $("diadiem").value || "",
+      ketqua: $("ketqua").value || "",
+      manv: $("manv").value.trim(),
+      ip: $("ip").value.trim(),
+      trang,
+      kichthuoc,
+    };
+  }
+
+  async function taiDuLieu() {
+    $("thongbao").className = "";
+    $("thongbao").textContent = "Đang tải dữ liệu…";
+    try {
+      const token = await layTokenAdmin();
+      const resp = await fetch("/api/login-cs1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        cache: "no-store",
+        body: JSON.stringify(layBoLoc()),
+      });
+      const r = await resp.json().catch(() => ({}));
+      if (!resp.ok || !r.ok) throw new Error(r.error || "Không tải được dữ liệu");
+
+      tongso = Number(r.tongso) || 0;
+      const tk = r.thongke || {};
+      $("tk-tong").textContent = tk.tong ?? 0;
+      $("tk-thanhcong").textContent = tk.thanhcong ?? 0;
+      $("tk-thatbai").textContent = tk.thatbai ?? 0;
+      $("tk-bikhoa").textContent = (Number(tk.bikhoa) || 0) + (Number(tk.taikhoankhoa) || 0);
+      $("tk-loi").textContent = tk.loihethong ?? 0;
+
+      renderRows(r.dulieu || []);
+      const tongTrang = Math.max(1, Math.ceil(tongso / kichthuoc));
+      $("phantrang-info").textContent = `Trang ${trang}/${tongTrang} • ${tongso} dòng`;
+      $("btn-truoc").disabled = trang <= 1;
+      $("btn-sau").disabled = trang >= tongTrang;
+      $("thongbao").textContent = "";
+    } catch (e) {
+      $("thongbao").className = "danger";
+      $("thongbao").textContent = "❌ " + (e?.message || e);
+      $("tbody").innerHTML = "";
+    }
+  }
+
+  function renderRows(rows) {
+    if (!rows.length) {
+      $("tbody").innerHTML = `<tr><td colspan="11" class="muted">Không có dữ liệu phù hợp.</td></tr>`;
+      return;
+    }
+
+    const now = Date.now();
+    $("tbody").innerHTML = rows.map(r => {
+      const khoaConHieuLuc = r.khoa_den && new Date(r.khoa_den).getTime() > now;
+      const coTheMo = r.ketqua === "BI_KHOA" && khoaConHieuLuc;
+      return `<tr>
+        <td>${esc(fmtTime(r.thoigian))}</td>
+        <td><b>${esc(r.manv_nhap || "")}</b></td>
+        <td>${esc((r.diadiem || "").toUpperCase())}</td>
+        <td>${ketquaTag(r.ketqua)}</td>
+        <td>${esc(r.lydo || "")}</td>
+        <td>${r.solan_sai ?? ""}</td>
+        <td>${esc(fmtTime(r.khoa_den))}</td>
+        <td>${esc(r.phamvi_khoa || "")}</td>
+        <td><code>${esc(r.diachi_ip_tho || "")}</code></td>
+        <td title="${esc(r.thongtin_thietbi || "")}">${esc((r.thongtin_thietbi || "").slice(0, 80))}</td>
+        <td>${coTheMo ? `<button class="warn" data-unlock="${r.id}">Mở khóa</button>` : ""}</td>
+      </tr>`;
+    }).join("");
+
+    document.querySelectorAll("[data-unlock]").forEach(btn => {
+      btn.addEventListener("click", () => moKhoa(Number(btn.dataset.unlock), btn));
+    });
+  }
+
+  async function moKhoa(id, btn) {
+    if (!confirm("Mở khóa rate-limit cho lần đăng nhập này?")) return;
+    btn.disabled = true;
+    try {
+      const token = await layTokenAdmin();
+      const resp = await fetch("/api/login-cs1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ hanhdong: "quantri_mo_khoa", id_lichsu: id }),
+      });
+      const r = await resp.json().catch(() => ({}));
+      if (!resp.ok || !r.ok) throw new Error(r.error || "Không mở khóa được");
+      $("thongbao").className = "success";
+      $("thongbao").textContent = "✅ " + r.message;
+      await taiDuLieu();
+    } catch (e) {
+      $("thongbao").className = "danger";
+      $("thongbao").textContent = "❌ " + (e?.message || e);
+      btn.disabled = false;
+    }
+  }
+
+  $("btn-loc").addEventListener("click", () => { trang = 1; taiDuLieu(); });
+  $("btn-tailai").addEventListener("click", taiDuLieu);
+  $("btn-xoa-loc").addEventListener("click", () => {
+    $("ngayden").value = ngayVietNam(0);
+    $("ngaytu").value = ngayVietNam(-6);
+    $("diadiem").value = "";
+    $("ketqua").value = "";
+    $("manv").value = "";
+    $("ip").value = "";
+    trang = 1;
+    taiDuLieu();
+  });
+  $("btn-truoc").addEventListener("click", () => { if (trang > 1) { trang--; taiDuLieu(); } });
+  $("btn-sau").addEventListener("click", () => { if (trang * kichthuoc < tongso) { trang++; taiDuLieu(); } });
+  $("manv").addEventListener("keydown", e => { if (e.key === "Enter") { trang = 1; taiDuLieu(); } });
+  $("ip").addEventListener("keydown", e => { if (e.key === "Enter") { trang = 1; taiDuLieu(); } });
+
+  taiDuLieu();
+</script>
+</body>
+</html>
