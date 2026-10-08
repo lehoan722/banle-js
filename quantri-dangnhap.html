@@ -38,6 +38,14 @@
     #thongbao { min-height:20px; font-size:13px; }
     .danger { color:#b91c1c; }
     .success { color:#166534; }
+
+    .admin-login-overlay { position:fixed; inset:0; background:rgba(17,24,39,.45); display:none; align-items:center; justify-content:center; z-index:9999; padding:16px; }
+    .admin-login-box { width:min(430px,100%); background:#fff; border-radius:14px; padding:20px; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+    .admin-login-box h2 { margin:0 0 8px; font-size:22px; }
+    .admin-login-box .row { margin-top:12px; }
+    .admin-login-box .actions { margin-top:14px; }
+    .admin-login-note { margin-top:10px; font-size:12px; color:#6b7280; line-height:1.4; }
+
     @media (max-width: 900px) {
       .cards { grid-template-columns:repeat(2,1fr); }
       .filters { grid-template-columns:repeat(2,1fr); }
@@ -53,6 +61,7 @@
       <div class="muted">Giờ hiển thị theo Việt Nam (Asia/Ho_Chi_Minh). Chỉ ADMIN được truy cập dữ liệu.</div>
     </div>
     <div class="actions">
+      <button class="secondary" id="btn-dangnhap-admin">Đăng nhập ADMIN</button>
       <button class="secondary" id="btn-tailai">Tải lại</button>
       <button class="secondary" onclick="location.href='/'">Về trang chính</button>
     </div>
@@ -107,10 +116,47 @@
   </div>
 </div>
 
+
+<div class="admin-login-overlay" id="admin-login-overlay">
+  <div class="admin-login-box">
+    <h2>Xác thực ADMIN</h2>
+    <div class="muted">Trang quản trị dùng phiên ADMIN riêng trong tab này, không làm thay đổi phiên đăng nhập nhân viên ở các trang bán hàng.</div>
+    <div class="row">
+      <label>Email ADMIN</label>
+      <input id="admin-email" type="email" autocomplete="username" placeholder="admin@email.com">
+    </div>
+    <div class="row">
+      <label>Mật khẩu</label>
+      <input id="admin-password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu ADMIN">
+    </div>
+    <div class="actions">
+      <button id="btn-admin-login-submit">Xác nhận ADMIN</button>
+      <button class="secondary" id="btn-admin-login-cancel">Đóng</button>
+    </div>
+    <div id="admin-login-error" class="danger" style="margin-top:10px;min-height:20px"></div>
+    <div class="admin-login-note">Mật khẩu chỉ được gửi trực tiếp tới Supabase Auth để xác thực và không được ghi vào lịch sử đăng nhập.</div>
+  </div>
+</div>
+
 <script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/+esm";
   import { getSupabaseClient } from "./scripts/authModule.js";
 
   const supabase = getSupabaseClient();
+
+  // Client ADMIN rieng cho trang quan tri.
+  // persistSession=false de KHONG ghi de session nhan vien dang dung o cac tab khac.
+  const SUPABASE_URL = "https://rddjrmbyftlcvrgzlyby.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM";
+  const supabaseQuanTri = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+
+  let tokenAdminTam = "";
   let trang = 1;
   const kichthuoc = 50;
   let tongso = 0;
@@ -157,11 +203,95 @@
     return `<span class="tag ${x[1]}">${esc(x[0])}</span>`;
   }
 
+  function hienFormAdmin(message = "") {
+    $("admin-login-error").textContent = message || "";
+    $("admin-login-overlay").style.display = "flex";
+    setTimeout(() => $("admin-email")?.focus(), 50);
+  }
+
+  function anFormAdmin() {
+    $("admin-login-overlay").style.display = "none";
+    $("admin-login-error").textContent = "";
+    $("admin-password").value = "";
+  }
+
   async function layTokenAdmin() {
-    const { data } = await supabase.auth.getSession();
-    const token = data?.session?.access_token;
-    if (!token) throw new Error("Chưa có phiên đăng nhập. Hãy đăng nhập ADMIN ở hệ thống trước.");
-    return token;
+    if (tokenAdminTam) return tokenAdminTam;
+
+    // Chi tai su dung session dung chung neu authModule da danh dau ro rang la ADMIN.
+    // Neu dang la employee/warehouse thi KHONG gui token do len API quan tri,
+    // tranh phat sinh 401 ngay khi vua mo trang.
+    const authKind = (localStorage.getItem("auth_kind") || "").trim().toLowerCase();
+    const isAdminLocal = localStorage.getItem("is_admin") === "true";
+    if (authKind === "admin" && isAdminLocal) {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      if (token) return token;
+    }
+
+    throw new Error("CAN_ADMIN_LOGIN");
+  }
+
+  async function dangNhapAdminRieng() {
+    const email = ($("admin-email").value || "").trim().toLowerCase();
+    const password = $("admin-password").value || "";
+    const btn = $("btn-admin-login-submit");
+
+    if (!email || !password) {
+      $("admin-login-error").textContent = "Vui lòng nhập email và mật khẩu ADMIN.";
+      return;
+    }
+
+    btn.disabled = true;
+    $("admin-login-error").textContent = "Đang xác thực ADMIN…";
+
+    try {
+      const { data, error } = await supabaseQuanTri.auth.signInWithPassword({ email, password });
+      if (error || !data?.session?.access_token) {
+        throw new Error("Email hoặc mật khẩu ADMIN không đúng.");
+      }
+
+      // Luu token chi trong bien memory cua trang nay.
+      // Khong setSession vao window.supabase va khong ghi localStorage.
+      tokenAdminTam = data.session.access_token;
+
+      // Kiem tra ngay bang chinh API quan tri.
+      const resp = await fetch("/api/login-cs1", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokenAdminTam}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          hanhdong: "quantri_danhsach",
+          ngaytu: $("ngaytu").value || "",
+          ngayden: $("ngayden").value || "",
+          trang: 1,
+          kichthuoc: 1,
+        }),
+      });
+      const r = await resp.json().catch(() => ({}));
+
+      if (!resp.ok || !r.ok) {
+        tokenAdminTam = "";
+        await supabaseQuanTri.auth.signOut().catch(() => {});
+        if (resp.status === 403) {
+          throw new Error("Tài khoản này đăng nhập được nhưng không có quyền ADMIN.");
+        }
+        throw new Error(r.error || "Phiên ADMIN không hợp lệ.");
+      }
+
+      anFormAdmin();
+      $("thongbao").className = "success";
+      $("thongbao").textContent = "✅ Đã xác thực ADMIN.";
+      trang = 1;
+      await taiDuLieu();
+    } catch (e) {
+      $("admin-login-error").textContent = "❌ " + (e?.message || e);
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   function layBoLoc() {
@@ -207,8 +337,23 @@
       $("btn-sau").disabled = trang >= tongTrang;
       $("thongbao").textContent = "";
     } catch (e) {
+      const msg = e?.message || String(e);
+      if (msg === "CAN_ADMIN_LOGIN") {
+        $("thongbao").className = "";
+        $("thongbao").textContent = "Cần xác thực ADMIN để xem dữ liệu.";
+        $("tbody").innerHTML = "";
+        hienFormAdmin();
+        return;
+      }
+
+      // Neu token tam het han/khong hop le thi yeu cau xac thuc lai.
+      if (/Phiên đăng nhập ADMIN không hợp lệ|Chưa đăng nhập ADMIN/i.test(msg)) {
+        tokenAdminTam = "";
+        hienFormAdmin(msg);
+      }
+
       $("thongbao").className = "danger";
-      $("thongbao").textContent = "❌ " + (e?.message || e);
+      $("thongbao").textContent = "❌ " + msg;
       $("tbody").innerHTML = "";
     }
   }
@@ -282,6 +427,21 @@
   $("manv").addEventListener("keydown", e => { if (e.key === "Enter") { trang = 1; taiDuLieu(); } });
   $("ip").addEventListener("keydown", e => { if (e.key === "Enter") { trang = 1; taiDuLieu(); } });
 
+  $("btn-dangnhap-admin").addEventListener("click", () => hienFormAdmin());
+  $("btn-admin-login-cancel").addEventListener("click", anFormAdmin);
+  $("btn-admin-login-submit").addEventListener("click", dangNhapAdminRieng);
+  $("admin-password").addEventListener("keydown", e => {
+    if (e.key === "Enter") dangNhapAdminRieng();
+  });
+  $("admin-email").addEventListener("keydown", e => {
+    if (e.key === "Enter") $("admin-password").focus();
+  });
+  $("admin-login-overlay").addEventListener("click", e => {
+    if (e.target === $("admin-login-overlay")) anFormAdmin();
+  });
+
+  // Neu tab hien tai dang co session ADMIN dung chung thi tai luon.
+  // Neu dang la employee/warehouse thi chi hien form ADMIN rieng, khong gui token employee len API.
   taiDuLieu();
 </script>
 </body>
