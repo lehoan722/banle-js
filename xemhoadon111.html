@@ -207,6 +207,112 @@
     .loai-ct-actions button:hover {
       background: #e6dba8;
     }
+  
+    /* ===== LICH AM + THOI TIET V1 ===== */
+    .ngay-loc-wrap{
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      margin:4px 2px;
+      vertical-align:middle;
+    }
+    .ngay-loc-wrap input[type="date"]{
+      margin:0;
+    }
+    .btn-lich-am{
+      border:1px solid #7aa7e8;
+      background:#eef6ff;
+      color:#1455a0;
+      border-radius:5px;
+      padding:6px 8px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .btn-lich-am:hover{background:#dceeff}
+    .lich-thoitiet-toggle{
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      margin:4px 8px;
+      padding:5px 8px;
+      border:1px solid #cfd8e3;
+      border-radius:6px;
+      background:#f8fbff;
+      user-select:none;
+    }
+    .ngay-boi-canh{
+      margin-top:3px;
+      font-size:11px;
+      line-height:1.25;
+      color:#47719f;
+      cursor:pointer;
+      white-space:normal;
+    }
+    .ngay-boi-canh:hover{
+      color:#0b57b7;
+      text-decoration:underline;
+    }
+    .ngay-boi-canh .am{
+      color:#d83232;
+      font-weight:700;
+    }
+    .ngay-boi-canh .wx{
+      color:#49667e;
+    }
+
+    #popupBoiCanhNgay{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.35);
+      z-index:12000;
+      align-items:center;
+      justify-content:center;
+      padding:12px;
+    }
+    #popupBoiCanhNgay .bc-card{
+      width:min(520px,96vw);
+      max-height:88vh;
+      overflow:auto;
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 12px 40px rgba(0,0,0,.25);
+      border:1px solid #c9d8eb;
+    }
+    #popupBoiCanhNgay .bc-head{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:12px 14px;
+      font-weight:800;
+      background:#eef5ff;
+      border-bottom:1px solid #d6e2f2;
+      position:sticky;
+      top:0;
+    }
+    #popupBoiCanhNgay .bc-close{
+      margin-left:auto;
+      border:0;
+      background:transparent;
+      font-size:20px;
+      cursor:pointer;
+    }
+    #popupBoiCanhNgay .bc-body{padding:12px 14px}
+    #popupBoiCanhNgay .bc-row{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:12px;
+      padding:7px 0;
+      border-bottom:1px dashed #e1e6ec;
+    }
+    #popupBoiCanhNgay .bc-row b{text-align:right}
+    #popupBoiCanhNgay .bc-history{
+      margin-top:12px;
+      padding:10px;
+      background:#f8fafc;
+      border-radius:8px;
+    }
+
   </style>
 </head>
 
@@ -219,8 +325,18 @@
     <h2>📋 Tra cứu Hóa Đơn Bán Lẻ</h2>
 
 
-    <label><input type="date" id="tuNgay" placeholder="Từ ngày:"></label>
-    <label><input type="date" id="denNgay" placeholder="Đến ngày:"></label>
+    <span class="ngay-loc-wrap">
+      <label>Từ ngày: <input type="date" id="tuNgay" placeholder="Từ ngày:"></label>
+      <button type="button" class="btn-lich-am" onclick="moLichChoInput('tuNgay')">📅 Lịch âm</button>
+    </span>
+    <span class="ngay-loc-wrap">
+      <label>Đến ngày: <input type="date" id="denNgay" placeholder="Đến ngày:"></label>
+      <button type="button" class="btn-lich-am" onclick="moLichChoInput('denNgay')">📅 Lịch âm</button>
+    </span>
+    <label class="lich-thoitiet-toggle">
+      <input type="checkbox" id="chkHienLichThoiTiet" checked>
+      Hiện lịch âm & thời tiết
+    </label>
     <label><input type="text" id="locNV" placeholder="Mã nhân viên:"></label>
     <label><input type="text" id="locKhach" placeholder="Khách hàng:"></label>
     <label><input type="text" id="locGhiChu" placeholder="Ghi chú (tìm chứa):"></label>
@@ -343,6 +459,18 @@
     </table>
 
 
+
+    <!-- Popup bối cảnh ngày: lịch âm + thời tiết -->
+    <div id="popupBoiCanhNgay" onclick="if(event.target===this) dongBoiCanhNgay()">
+      <div class="bc-card">
+        <div class="bc-head">
+          <span id="bcNgayTitle">Bối cảnh ngày</span>
+          <button type="button" class="bc-close" onclick="dongBoiCanhNgay()">✕</button>
+        </div>
+        <div class="bc-body" id="bcNgayBody"></div>
+      </div>
+    </div>
+
     <div id="popup">
       <div class="drag-header" id="popupHeader">
         Chi tiết hóa đơn: <span id="sohdCT"></span>
@@ -386,7 +514,195 @@
     }
 
 
+
     let rowDangChon = null;
+
+    // ===== LICH AM + THOI TIET V1 =====
+    const lichThoiTietMap = new Map();
+
+    function escapeHtml111(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function tenThoiTiet111(code) {
+      const m = {
+        0:"Trời quang",1:"Khá quang",2:"Có mây",3:"Nhiều mây",
+        45:"Sương mù",48:"Sương mù",
+        51:"Mưa phùn",53:"Mưa phùn",55:"Mưa phùn",
+        61:"Mưa nhẹ",63:"Mưa",65:"Mưa lớn",
+        80:"Mưa rào",81:"Mưa rào",82:"Mưa rào mạnh",
+        95:"Dông",96:"Dông",99:"Dông mạnh"
+      };
+      return m[Number(code)] || "";
+    }
+
+    function layNgayKey111(hd) {
+      const n = String(hd?.ngay || "").trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(n)) return n;
+
+      const s = String(hd?.created_at || "").trim();
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+      return "";
+    }
+
+    async function taiNenLichThoiTiet(tuNgay, denNgay) {
+      lichThoiTietMap.clear();
+
+      const chk = document.getElementById("chkHienLichThoiTiet");
+      if (!chk?.checked) return;
+      if (!tuNgay && !denNgay) return;
+
+      const tu = tuNgay || denNgay;
+      const den = denNgay || tuNgay;
+      if (!tu || !den || !window.supabase) return;
+
+      const { data, error } = await window.supabase.rpc("rpc_lich_thoitiet_khoang_v1", {
+        p_tu: tu,
+        p_den: den,
+        p_dia_diem: "THAI_NGUYEN"
+      });
+
+      if (error) {
+        console.warn("Không tải được lịch âm/thời tiết:", error.message);
+        return;
+      }
+
+      (data || []).forEach(r => {
+        if (r?.ngay_duong) lichThoiTietMap.set(String(r.ngay_duong), r);
+      });
+    }
+
+    function taoHtmlLichThoiTiet(ngayKey) {
+      const chk = document.getElementById("chkHienLichThoiTiet");
+      if (!chk?.checked || !ngayKey) return "";
+
+      const r = lichThoiTietMap.get(String(ngayKey));
+      if (!r) return "";
+
+      const am = `${r.ngay_am}/${r.thang_am}${r.thang_am_nhuan ? " nhuận" : ""}`;
+      const temp = (r.nhiet_do_min != null && r.nhiet_do_max != null)
+        ? `${Number(r.nhiet_do_min).toFixed(1)}–${Number(r.nhiet_do_max).toFixed(1)}°C`
+        : "";
+      const tt = tenThoiTiet111(r.ma_thoi_tiet);
+      const mua = r.luong_mua != null ? `mưa ${Number(r.luong_mua).toFixed(1)}mm` : "";
+      const weather = [temp, tt, mua].filter(Boolean).join(" • ");
+
+      return `
+        <div class="ngay-boi-canh"
+             onclick="event.stopPropagation(); moBoiCanhNgay('${escapeHtml111(ngayKey)}')"
+             title="Bấm để xem lịch âm và bối cảnh thời tiết">
+          <span class="am">Âm ${escapeHtml111(am)}</span>
+          ${weather ? `<span class="wx"> • ${escapeHtml111(weather)}</span>` : ""}
+        </div>`;
+    }
+
+    async function moLichChoInput(inputId) {
+      try {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        const mod = await import("./scripts/lichAmPicker.js?v=1");
+        const kq = await mod.moLichAmPicker({
+          ngayMacDinh: input.value || null,
+          maDiaDiem: "THAI_NGUYEN",
+          tieuDe: inputId === "tuNgay" ? "Chọn TỪ NGÀY" : "Chọn ĐẾN NGÀY"
+        });
+
+        if (!kq?.ngay_duong) return;
+        input.value = kq.ngay_duong;
+      } catch (e) {
+        console.error(e);
+        alert("Không mở được lịch âm: " + (e?.message || e));
+      }
+    }
+
+    function dongBoiCanhNgay() {
+      const p = document.getElementById("popupBoiCanhNgay");
+      if (p) p.style.display = "none";
+    }
+
+    async function moBoiCanhNgay(ngayKey) {
+      const p = document.getElementById("popupBoiCanhNgay");
+      const title = document.getElementById("bcNgayTitle");
+      const body = document.getElementById("bcNgayBody");
+      if (!p || !title || !body) return;
+
+      let r = lichThoiTietMap.get(String(ngayKey));
+
+      if (!r && window.supabase) {
+        const { data } = await window.supabase.rpc("rpc_lich_thoitiet_khoang_v1", {
+          p_tu: ngayKey,
+          p_den: ngayKey,
+          p_dia_diem: "THAI_NGUYEN"
+        });
+        r = data?.[0] || null;
+        if (r?.ngay_duong) lichThoiTietMap.set(String(r.ngay_duong), r);
+      }
+
+      if (!r) {
+        title.textContent = `Bối cảnh ngày ${ngayKey}`;
+        body.innerHTML = "Chưa có dữ liệu lịch âm/thời tiết cho ngày này.";
+        p.style.display = "flex";
+        return;
+      }
+
+      title.textContent = `${ngayKey.split("-").reverse().join("/")} • Âm ${r.ngay_am}/${r.thang_am}/${r.nam_am}${r.thang_am_nhuan ? " nhuận" : ""}`;
+
+      let lichSu = [];
+      try {
+        const { data } = await window.supabase.rpc("rpc_thoitiet_lichsu_cung_ngay_v1", {
+          p_ngay: ngayKey,
+          p_dia_diem: "THAI_NGUYEN",
+          p_so_nam: 10
+        });
+        lichSu = data || [];
+      } catch (_) {}
+
+      const avg = (arr, key) => {
+        const a = arr.map(x => Number(x?.[key])).filter(Number.isFinite);
+        return a.length ? a.reduce((s,v)=>s+v,0)/a.length : null;
+      };
+
+      const avgTemp = avg(lichSu, "nhiet_do_tb");
+      const chenhlech = (avgTemp != null && r.nhiet_do_tb != null)
+        ? Number(r.nhiet_do_tb) - avgTemp
+        : null;
+
+      const rows = [
+        ["Âm lịch", `${r.ngay_am}/${r.thang_am}/${r.nam_am}${r.thang_am_nhuan ? " (nhuận)" : ""}`],
+        ["Đến Tết", r.so_ngay_den_tet == null ? "—" : `${r.so_ngay_den_tet} ngày`],
+        ["Loại dữ liệu", r.loai_du_lieu || "—"],
+        ["Nhiệt độ TB", r.nhiet_do_tb == null ? "—" : `${Number(r.nhiet_do_tb).toFixed(1)}°C`],
+        ["Thấp / cao", (r.nhiet_do_min == null || r.nhiet_do_max == null) ? "—" : `${Number(r.nhiet_do_min).toFixed(1)} / ${Number(r.nhiet_do_max).toFixed(1)}°C`],
+        ["Độ ẩm", r.do_am_tb == null ? "—" : `${Number(r.do_am_tb).toFixed(0)}%`],
+        ["Mưa", r.luong_mua == null ? "—" : `${Number(r.luong_mua).toFixed(1)} mm`],
+        ["Gió max", r.gio_max == null ? "—" : `${Number(r.gio_max).toFixed(1)} km/h`],
+        ["Trạng thái", tenThoiTiet111(r.ma_thoi_tiet) || "—"],
+        ["Mức tin cậy", r.muc_tin_cay || "—"],
+        ["Nguồn", r.nguon_du_lieu || "—"]
+      ];
+
+      body.innerHTML = rows.map(([k,v]) =>
+        `<div class="bc-row"><span>${escapeHtml111(k)}</span><b>${escapeHtml111(v)}</b></div>`
+      ).join("");
+
+      if (lichSu.length) {
+        body.innerHTML += `
+          <div class="bc-history">
+            <b>10 năm cùng ngày</b><br>
+            Nhiệt độ TB lịch sử: <b>${avgTemp == null ? "—" : avgTemp.toFixed(1) + "°C"}</b>
+            ${chenhlech == null ? "" : `<br>Ngày này so với TB lịch sử: <b>${chenhlech >= 0 ? "+" : ""}${chenhlech.toFixed(1)}°C</b>`}
+          </div>`;
+      }
+
+      p.style.display = "flex";
+    }
 
 
 
@@ -625,6 +941,9 @@
       let denNgay = document.getElementById("denNgay").value;
       // v2 lọc theo DATE => KHÔNG nối giờ phút giây
 
+      // Nạp nền lịch âm + thời tiết đúng 1 lần cho khoảng ngày đang lọc
+      await taiNenLichThoiTiet(tuNgay, denNgay);
+
       const nv = document.getElementById("locNV").value.trim().toUpperCase();
       const sohd = document.getElementById("locSoHD").value.trim();
       const khach = document.getElementById("locKhach").value.trim();
@@ -802,7 +1121,10 @@
       // map => array + format hiển thị ngày/tháng/năm
       let hienThiData = Array.from(groupMap.entries())
         .map(([key, val]) => {
-          if (loaiTongHop === "ngay") val.created_at = key.split('-').reverse().join('/');
+          if (loaiTongHop === "ngay") {
+            val.ngay = key;
+            val.created_at = key.split('-').reverse().join('/');
+          }
           if (loaiTongHop === "thang") val.created_at = key.slice(5, 7) + "/" + key.slice(0, 4);
           if (loaiTongHop === "nam") val.created_at = key;
           return val;
@@ -825,7 +1147,10 @@
           <td>${stt++}</td>
           <td><input type="checkbox" class="chkRow"/></td>
           <td style="font-weight:600">${Number(hd.sohd || 0).toLocaleString()}</td>
-          <td>${hd.created_at || ""}</td>
+          <td>
+            ${hd.created_at || ""}
+            ${loaiTongHop === "ngay" ? taoHtmlLichThoiTiet(hd.ngay) : ""}
+          </td>
           <td></td>
           <td></td>
           <td></td>
@@ -903,7 +1228,10 @@
         });
         hienThiData = Array.from(groupMap.entries()).map(([key, val]) => {
           // Định dạng lại ngày/tháng/năm để hiển thị
-          if (loaiTongHop === "ngay") val.created_at = key.split('-').reverse().join('/');
+          if (loaiTongHop === "ngay") {
+            val.ngay = key;
+            val.created_at = key.split('-').reverse().join('/');
+          }
           if (loaiTongHop === "thang") val.created_at = key.slice(5, 7) + "/" + key.slice(0, 4);
           if (loaiTongHop === "nam") val.created_at = key;
           return val;
@@ -1005,7 +1333,10 @@
   <td>${idx + 1}</td>
   <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
   <td>${hd.sohd || ""}</td>
-  <td>${dinhDangNgayGio(hd.created_at)}</td>
+  <td>
+    ${dinhDangNgayGio(hd.created_at)}
+    ${taoHtmlLichThoiTiet(layNgayKey111(hd))}
+  </td>
   <td>${dinhDangNgayGio(hd.updated_at)}</td>
   <td>${hd.manv || ""}</td>
   <td>${hd.khachhang || ""}</td>
@@ -1515,6 +1846,12 @@
     function bindEventsAfterAdmin() {
       const el = document.getElementById("loaiTongHop");
       if (el) el.onchange = taiDanhSachHoaDon;
+
+      const chkLich = document.getElementById("chkHienLichThoiTiet");
+      if (chkLich) {
+        chkLich.onchange = () => taiDanhSachHoaDon();
+      }
+
       bindPagingEvents();
     }
 
@@ -1545,7 +1882,10 @@
 
     // Đóng popup bằng phím ESC
     document.addEventListener('keydown', function (e) {
-      if (e.key === "Escape") dongPopup();
+      if (e.key === "Escape") {
+        dongPopup();
+        dongBoiCanhNgay();
+      }
     });
 
 
