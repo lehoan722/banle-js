@@ -71,18 +71,22 @@ export default async function handler(req, res) {
       });
     }
 
-    const body = await readBody(req).catch(() => null);
-    if (!body) {
+    // Vercel/Next có thể đã parse JSON sẵn vào req.body.
+    // Chỉ đọc stream thủ công khi req.body chưa có để tránh mất body.
+    let body = req.body;
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      body = await readBody(req).catch(() => null);
+    }
+    if (!body || typeof body !== "object") {
       return res.status(400).json({
         ok: false,
         error: "Body JSON không hợp lệ",
       });
     }
 
-    const manvUpper = String(body.manv || "")
-      .trim()
-      .toUpperCase();
-    const passwordNV = String(body.passwordNV || "");
+    const manvUpper = String(body.manv || "").trim().toUpperCase();
+    // Giữ tương thích login-cs2 cũ: bỏ khoảng trắng thừa hai đầu mật khẩu.
+    const passwordNV = String(body.passwordNV || "").trim();
     const { diadiem, email: warehouseEmail, password: warehousePassword } =
       pickWarehouse(body.diadiem);
 
@@ -105,11 +109,14 @@ export default async function handler(req, res) {
       auth: { persistSession: false },
     });
 
-    const { data: nv, error: nvErr } = await supabaseAdmin
+    const { data: nvArr, error: nvErr } = await supabaseAdmin
       .from("dmnhanvien")
       .select("*")
-      .eq("manv", manvUpper)
-      .maybeSingle();
+      // ilike không phân biệt hoa/thường, tránh tài khoản cũ lưu manv khác kiểu chữ.
+      .ilike("manv", manvUpper)
+      .limit(1);
+
+    const nv = Array.isArray(nvArr) ? nvArr[0] : null;
 
     if (nvErr) {
       return res.status(500).json({
@@ -131,12 +138,13 @@ export default async function handler(req, res) {
       nv.mat_khau ??
       null;
 
-    if (String(storedPass ?? "") !== String(passwordNV)) {
+    const storedPassNormalized = String(storedPass ?? "").trim();
+    if (!storedPassNormalized || storedPassNormalized !== passwordNV) {
       return res.status(401).json({ ok: false, error: "Sai mật khẩu nhân viên" });
     }
 
-    // Nếu bạn có cột active và muốn khóa nhân viên
-    if (nv.active === false) {
+    // Hỗ trợ cả tên cột active cũ và trangthai đang dùng ở authModule.
+    if (nv.active === false || nv.trangthai === false) {
       return res.status(403).json({ ok: false, error: "Nhân viên đang bị khóa" });
     }
 
@@ -184,7 +192,7 @@ export default async function handler(req, res) {
     console.error("login-cs1 error:", err);
     return res.status(500).json({
       ok: false,
-      error: "Lỗi server không xác định",
+      error: "Lỗi server: " + (err?.message || "không xác định"),
     });
   }
 }
