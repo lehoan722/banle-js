@@ -109,17 +109,31 @@ function syncGlobalsFromLocalStorageGlobal() {
   } catch { }
 }
 
-async function checkIsAdminBestEffortGlobal() {
+async function checkIsAdminBestEffortGlobal({ forceRpc = false } = {}) {
   try {
-    // Nếu app đã biết chắc đây là phiên NHÂN VIÊN/warehouse thì KHÔNG gọi RPC is_admin.
-    // Warehouse token không có quyền execute RPC này nên trình duyệt sẽ hiện 401 dù đăng nhập vẫn thành công.
     const authKind = (localStorage.getItem("auth_kind") || "").trim().toLowerCase();
     const cachedIsAdmin = localStorage.getItem("is_admin");
     const cachedManv = (localStorage.getItem("manv") || "").trim();
+    const lastIdentifier = (localStorage.getItem("last_login_identifier") || "").trim();
 
-    if (authKind === "employee") return false;
-    if (authKind !== "admin" && cachedIsAdmin === "false" && cachedManv) return false;
+    // Khi chỉ đang hydrate / tải lại trang: tin loại phiên đã lưu cục bộ,
+    // KHÔNG gọi RPC is_admin. Việc xác minh admin thật sự chỉ làm lúc đăng nhập mới.
+    if (!forceRpc) {
+      if (authKind === "employee") return false;
+      if (authKind === "admin" && cachedIsAdmin === "true") return true;
 
+      // Tương thích dữ liệu localStorage từ bản cũ trước khi có auth_kind.
+      if (cachedIsAdmin === "true" && (cachedManv || lastIdentifier.includes("@"))) {
+        return true;
+      }
+      if (cachedIsAdmin === "false" && cachedManv) return false;
+
+      // Không đủ dấu vết để kết luận thì mặc định là nhân viên.
+      // Quan trọng: không phát sinh request /rpc/is_admin khi vừa tải trang.
+      return false;
+    }
+
+    // Chỉ đăng nhập ADMIN mới bắt buộc xác minh quyền bằng RPC.
     const { data, error } = await window.supabase.rpc("is_admin");
     if (error) return false;
     return data === true;
@@ -511,7 +525,7 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       return { ok: false, error: "Không đăng nhập được" };
     }
 
-    const isAdmin = await checkIsAdminBestEffortGlobal();
+    const isAdmin = await checkIsAdminBestEffortGlobal({ forceRpc: true });
     if (!isAdmin) {
       await window.supabase.auth.signOut().catch(() => { });
       return { ok: false, error: "Không được phép đăng nhập" };
