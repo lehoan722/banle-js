@@ -397,11 +397,19 @@ export function khoiTaoDangNhapDungChung(options = {}) {
 
   function resolveLoginApiPath(cs) {
     try {
+      // Vẫn cho phép từng trang truyền loginApiPath riêng nếu thật sự cần.
       if (typeof loginApiPath === "function") return loginApiPath(cs);
-      if (loginApiPath && typeof loginApiPath === "object") return loginApiPath[cs];
-      if (typeof loginApiPath === "string" && loginApiPath.trim()) return loginApiPath.trim();
+      if (loginApiPath && typeof loginApiPath === "object") {
+        return loginApiPath[cs] || loginApiPath.default || "/api/login-cs1";
+      }
+      if (typeof loginApiPath === "string" && loginApiPath.trim()) {
+        return loginApiPath.trim();
+      }
     } catch { }
-    return `/api/login-${cs}`;
+
+    // CS1 và CS2 cùng dùng CHUNG một API.
+    // API /api/login-cs1 tự chọn tài khoản warehouse theo body.diadiem.
+    return "/api/login-cs1";
   }
 
 
