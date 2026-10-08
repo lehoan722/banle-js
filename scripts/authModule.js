@@ -688,13 +688,14 @@ export function khoiTaoDangNhapDungChung(options = {}) {
       }
 
       if (!looksLikeEmail) {
-        errorEl.textContent = "❌ Không đăng nhập được";
+        // Hiện đúng lỗi server (sai mã NV / sai mật khẩu / thiếu ENV / warehouse...).
+        errorEl.textContent = "❌ " + (emp.error || "Không đăng nhập được");
         return;
       }
     } catch (err) {
       if (!looksLikeEmail) {
         console.error(err);
-        errorEl.textContent = "❌ Không đăng nhập được";
+        errorEl.textContent = "❌ " + (err?.message || "Không đăng nhập được");
         return;
       }
     }
