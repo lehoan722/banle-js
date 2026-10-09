@@ -47,3 +47,18 @@ export async function phanBoSizeNhapBu(masp,tongSl,ngay=null){
   if(error) throw error;
   return Array.isArray(data)?data:[];
 }
+export async function getTongQuanNccNhapBuV1(ngay=null){
+  const {data,error}=await supabase.rpc('rpc_nhapbu_tongquan_ncc_v1',{
+    p_ngay:ngay||null
+  });
+  if(error) throw error;
+  return Array.isArray(data)?data:[];
+}
+
+export async function getTongQuanHeThongNhapBuV1(ngay=null){
+  const {data,error}=await supabase.rpc('rpc_nhapbu_tongquan_hethong_v1',{
+    p_ngay:ngay||null
+  });
+  if(error) throw error;
+  return data||{};
+}
