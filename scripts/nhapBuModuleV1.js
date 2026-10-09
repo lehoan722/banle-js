@@ -62,3 +62,10 @@ export async function getTongQuanHeThongNhapBuV1(ngay=null){
   if(error) throw error;
   return data||{};
 }
+
+
+export async function resetNhapBuConfig(){
+  const {data,error}=await supabase.rpc('rpc_nhapbu_cauhinh_reset_v1');
+  if(error) throw error;
+  return data||{};
+}
