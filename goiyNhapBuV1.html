@@ -43,6 +43,28 @@ th{background:#f8fbff;position:sticky;top:0;z-index:1;white-space:nowrap}
 .modalHead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .modalHead h3{margin:0;color:#075f9f}.modalHead button{margin-left:auto}
 .sizeRow{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding:8px;border-bottom:1px solid #edf2f6}
+
+.summaryCards{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(140px,1fr));
+  gap:8px;
+  margin-bottom:10px
+}
+.summaryCard{
+  background:#fff;
+  border:1px solid #dbe4ed;
+  border-radius:10px;
+  padding:10px
+}
+.summaryCard .k{font-size:11px;color:#64748b;font-weight:800}
+.summaryCard .v{font-size:21px;font-weight:900;color:#075f9f;margin-top:3px}
+.nccOverview{background:#fff;border:1px solid #dbe4ed;border-radius:12px;overflow:hidden}
+.nccOverview table{min-width:900px}
+.nccOverview tr.nccRow{cursor:pointer}
+.nccOverview tr.nccRow:hover{background:#eef6ff}
+.nccOverview .need{color:#b42318;font-weight:900}
+.nccOverview .watch{color:#9a6700;font-weight:900}
+.backBar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
 @media(max-width:800px){.configGrid{grid-template-columns:1fr 1fr}textarea{width:100%}.field{flex:1 1 100%}}
 </style>
 </head>
@@ -79,7 +101,7 @@ th{background:#f8fbff;position:sticky;top:0;z-index:1;white-space:nowrap}
       <div class="row">
         <button id="load" class="p">Tải gợi ý</button>
         <button id="fresh" class="g">Refresh rồi tải</button>
-        <button id="all" class="s">Top toàn hệ thống</button>
+        <button id="all" class="s">Tổng quan NCC</button>
         <button id="toggleCfg" class="w">Cấu hình</button>
       </div>
     </div>
@@ -102,6 +124,12 @@ th{background:#f8fbff;position:sticky;top:0;z-index:1;white-space:nowrap}
   <div style="margin-top:10px"><button id="saveCfg" class="g">Lưu cấu hình</button></div>
 </div>
 
+<div id="summaryCards" class="summaryCards"></div>
+<div id="overviewWrap" class="nccOverview"></div>
+<div id="detailToolbar" class="backBar hidden">
+  <button id="backOverview" class="s">← Tổng quan NCC</button>
+  <div id="detailTitle" class="title" style="font-size:18px;margin:0"></div>
+</div>
 <div id="result"></div>
 
 </main>
@@ -119,14 +147,14 @@ th{background:#f8fbff;position:sticky;top:0;z-index:1;white-space:nowrap}
 </div>
 
 <script type="module">
-import {getNhapBuV1,refreshNhapBuV1,getNhapBuConfig,setNhapBuConfig,phanBoSizeNhapBu} from './scripts/nhapBuModuleV1.js';
+import {getNhapBuV1,refreshNhapBuV1,getNhapBuConfig,setNhapBuConfig,phanBoSizeNhapBu,getTongQuanNccNhapBuV1,getTongQuanHeThongNhapBuV1} from './scripts/nhapBuModuleV1.js';
 
 const $=id=>document.getElementById(id);
 const fmt=(v,d=1)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d});
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 $('date').value=today();
 
-let rows=[],currentSizeRow=null;
+let rows=[],overviewRows=[],currentSizeRow=null;
 
 function codes(){
   return [...new Set($('codes').value.split(/\r?\n/).map(x=>x.trim().toUpperCase()).filter(Boolean))];
@@ -135,56 +163,166 @@ function badge(a){
   const m={NHAP_NGAY:['NHẬP NGAY','nhap'],GOI_Y_KEM_NCC:['GỢI Ý KÈM NCC','kem'],CHUAN_BI_NHAP:['CHUẨN BỊ','cb'],THEO_DOI:['THEO DÕI','td'],CHUA_DEN_NGUONG:['CHƯA ĐẾN NGƯỠNG','td'],CHUA_CAN_NHAP:['CHƯA CẦN','td'],CHUA_CO_DOT_NHAP:['CHƯA CÓ ĐỢT NHẬP','td']};
   const x=m[a]||[a||'—','td']; return `<span class="badge ${x[1]}">${x[0]}</span>`;
 }
-function render(){
-  const by=new Map();
-  rows.forEach(r=>{const k=r.nhacc||'(CHƯA CÓ NCC)';if(!by.has(k))by.set(k,[]);by.get(k).push(r)});
-  if(!rows.length){$('result').innerHTML='<div class="card">Không có mã đạt điều kiện hiển thị.</div>';return}
-  $('result').innerHTML=[...by.entries()].map(([ncc,a])=>{
-    const main=a.filter(x=>x.hanh_dong==='NHAP_NGAY').length;
-    const sum=a.filter(x=>['NHAP_NGAY','GOI_Y_KEM_NCC','CHUAN_BI_NHAP'].includes(x.hanh_dong)).reduce((s,x)=>s+Number(x.sl_can_bu||0),0);
-    return `<section class="ncc">
-      <div class="nccHead">
-        <div class="nccName">${ncc}</div>
-        <div class="nccSum">${a.length} mã · ${main} mã nhập ngay · tổng SL đang gợi ý ${fmt(sum,0)}</div>
-      </div>
-      <div class="tableWrap"><table><thead><tr>
-        <th>Hành động</th><th>Mã SP</th><th>Tên</th><th>Nhóm</th><th>Điểm</th>
-        <th>Đợt nhập</th><th>Tỷ lệ bán đợt</th><th>Bán 3/7/14/21/30</th>
-        <th>Tốc độ 3/7/14/21/30</th><th>P nhóm</th><th>Tồn CS1/CS2/Tổng</th>
-        <th>Ngày tồn đủ bán</th><th>Size</th><th>SL bù</th><th>Lý do</th>
-      </tr></thead><tbody>
-      ${a.map((r,i)=>`<tr>
-        <td>${badge(r.hanh_dong)}${r.can_luu_y_chuyen_kho?'<div class="warn mini">Nên kiểm tra chuyển kho</div>':''}</td>
-        <td class="code">${r.masp}</td><td>${r.tensp||''}</td><td>${r.nhomhang||''}</td>
-        <td><span class="num">${fmt(r.diem_can_nhap_bu,1)}</span>/100</td>
-        <td><div class="mini">${r.ngay_bat_dau_dot||'—'} → ${r.ngay_ket_thuc_dot||'—'}<br>Nhập đợt: <b>${fmt(r.sl_nhap_dot,0)}</b><br>Tồn sau đợt: <b>${fmt(r.ton_sau_dot_nhap,0)}</b></div></td>
-        <td><span class="num">${fmt(r.ty_le_ban_dot,1)}%</span><div class="mini">Đã bán ${fmt(r.ban_sau_dot,0)}</div></td>
-        <td>${fmt(r.ban_3,0)}/${fmt(r.ban_7,0)}/${fmt(r.ban_14,0)}/${fmt(r.ban_21,0)}/${fmt(r.ban_30,0)}</td>
-        <td class="mini">${fmt(r.toc_do_3,2)}/${fmt(r.toc_do_7,2)}/${fmt(r.toc_do_14,2)}/${fmt(r.toc_do_21,2)}/${fmt(r.toc_do_30,2)}<br><b>Hiện tại: ${fmt(r.toc_do_hien_tai,2)} SP/ngày hiệu dụng</b></td>
-        <td><span class="num">P${fmt(r.toc_do_percentile,0)}</span><div class="mini">P50 ${fmt(r.toc_do_nhom_p50,2)} · P75 ${fmt(r.toc_do_nhom_p75,2)} · P90 ${fmt(r.toc_do_nhom_p90,2)}</div></td>
-        <td><b>${fmt(r.ton_cs1_thuc,0)} / ${fmt(r.ton_cs2_thuc,0)} / ${fmt(r.ton_he_thong,0)}</b></td>
-        <td><span class="num">${fmt(r.so_ngay_ton_du_ban,1)}</span> ngày</td>
-        <td><div class="mini">Đủ size HT: <b>${fmt(r.do_day_du_size_he_thong,1)}%</b><br>Tin cậy NLBH: <b>${fmt(r.confidence_score,1)}</b></div></td>
-        <td><button class="p sizeBtn" data-masp="${r.masp}" data-sl="${r.sl_can_bu}">+${fmt(r.sl_can_bu,0)} · size</button></td>
-        <td class="mini">${r.ly_do||''}</td>
-      </tr>`).join('')}
-      </tbody></table></div>
-    </section>`
-  }).join('');
+
+function renderDetail(){
+  if(!rows.length){
+    $('result').innerHTML='<div class="card">Không có mã thuộc diện hiển thị.</div>';
+    return;
+  }
+  const ncc=rows[0]?.nhacc||'';
+  const a=[...rows].sort((x,y)=>{
+    const rank={NHAP_NGAY:1,GOI_Y_KEM_NCC:2,CHUAN_BI_NHAP:3,THEO_DOI:4,CHUA_CAN_NHAP:5,CHUA_DEN_NGUONG:6,CHUA_CO_DOT_NHAP:7};
+    return (rank[x.hanh_dong]||9)-(rank[y.hanh_dong]||9) || Number(y.diem_can_nhap_bu||0)-Number(x.diem_can_nhap_bu||0);
+  });
+
+  $('result').innerHTML=`<section class="ncc">
+    <div class="tableWrap"><table><thead><tr>
+      <th>Hành động</th><th>Mã SP</th><th>Tên</th><th>Nhóm</th><th>Điểm</th>
+      <th>Đợt nhập</th><th>Tỷ lệ bán đợt</th><th>Bán 3/7/14/21/30</th>
+      <th>Tốc độ 3/7/14/21/30</th><th>P nhóm</th><th>Tồn CS1/CS2/Tổng</th>
+      <th>Ngày tồn đủ bán</th><th>Size</th><th>SL bù</th><th>Lý do</th>
+    </tr></thead><tbody>
+    ${a.map(r=>`<tr>
+      <td>${badge(r.hanh_dong)}${r.can_luu_y_chuyen_kho?'<div class="warn mini">Nên kiểm tra chuyển kho</div>':''}</td>
+      <td class="code">${r.masp}</td><td>${r.tensp||''}</td><td>${r.nhomhang||''}</td>
+      <td><span class="num">${fmt(r.diem_can_nhap_bu,1)}</span>/100</td>
+      <td><div class="mini">${r.ngay_bat_dau_dot||'—'} → ${r.ngay_ket_thuc_dot||'—'}<br>Nhập đợt: <b>${fmt(r.sl_nhap_dot,0)}</b><br>Tồn sau đợt: <b>${fmt(r.ton_sau_dot_nhap,0)}</b></div></td>
+      <td><span class="num">${fmt(r.ty_le_ban_dot,1)}%</span><div class="mini">Đã bán ${fmt(r.ban_sau_dot,0)}</div></td>
+      <td>${fmt(r.ban_3,0)}/${fmt(r.ban_7,0)}/${fmt(r.ban_14,0)}/${fmt(r.ban_21,0)}/${fmt(r.ban_30,0)}</td>
+      <td class="mini">${fmt(r.toc_do_3,2)}/${fmt(r.toc_do_7,2)}/${fmt(r.toc_do_14,2)}/${fmt(r.toc_do_21,2)}/${fmt(r.toc_do_30,2)}<br><b>Hiện tại: ${fmt(r.toc_do_hien_tai,2)} SP/ngày hiệu dụng</b></td>
+      <td><span class="num">P${fmt(r.toc_do_percentile,0)}</span><div class="mini">P50 ${fmt(r.toc_do_nhom_p50,2)} · P75 ${fmt(r.toc_do_nhom_p75,2)} · P90 ${fmt(r.toc_do_nhom_p90,2)}</div></td>
+      <td><b>${fmt(r.ton_cs1_thuc,0)} / ${fmt(r.ton_cs2_thuc,0)} / ${fmt(r.ton_he_thong,0)}</b></td>
+      <td><span class="num">${fmt(r.so_ngay_ton_du_ban,1)}</span> ngày</td>
+      <td><div class="mini">Đủ size HT: <b>${fmt(r.do_day_du_size_he_thong,1)}%</b><br>Tin cậy NLBH: <b>${fmt(r.confidence_score,1)}</b></div></td>
+      <td><button class="p sizeBtn" data-masp="${r.masp}" data-sl="${r.sl_can_bu}">+${fmt(r.sl_can_bu,0)} · size</button></td>
+      <td class="mini">${r.ly_do||''}</td>
+    </tr>`).join('')}
+    </tbody></table></div>
+  </section>`;
 
   document.querySelectorAll('.sizeBtn').forEach(b=>b.onclick=()=>openSize(b.dataset.masp,Number(b.dataset.sl||0)));
 }
-async function load(all=false,fresh=false){
-  const cs=all?[]:codes(),sup=all?'':$('supplier').value.trim();
-  if(!all&&!cs.length&&!sup)return alert('Nhập mã sản phẩm hoặc nhà cung cấp.');
-  $('status').textContent=fresh?'Đang refresh NLBH/XNT rồi tính nhập bù...':'Đang tính gợi ý...';
-  try{
-    if(fresh)await refreshNhapBuV1({masps:cs,nhacc:sup||null,days:Number($('days').value)});
-    rows=await getNhapBuV1({masps:cs.length?cs:null,nhacc:sup||null,ngay:$('date').value||null,limit:1000});
-    render();
-    $('status').textContent=`Đã tải ${rows.length} mã.`;
-  }catch(e){console.error(e);$('status').textContent='Lỗi: '+(e?.message||e)}
+
+function renderOverview(){
+  $('result').innerHTML='';
+  $('detailToolbar').classList.add('hidden');
+  $('overviewWrap').classList.remove('hidden');
+
+  if(!overviewRows.length){
+    $('overviewWrap').innerHTML='<div class="card">Không có nhà cung cấp nào đang có mã cần nhập hoặc cần quan tâm.</div>';
+    return;
+  }
+
+  $('overviewWrap').innerHTML=`<div class="tableWrap"><table>
+    <thead><tr>
+      <th>Nhà cung cấp</th>
+      <th>SP thuộc diện phân tích</th>
+      <th>Mã cần nhập</th>
+      <th>Mã cần quan tâm</th>
+      <th>Tổng SL cần nhập</th>
+      <th>Điểm cao nhất</th>
+      <th>Điểm TB mã cần nhập</th>
+    </tr></thead>
+    <tbody>
+      ${overviewRows.map(r=>`<tr class="nccRow" data-ncc="${String(r.nhacc).replaceAll('"','&quot;')}">
+        <td class="code">${r.nhacc}</td>
+        <td>${fmt(r.so_sp_dien_quan_tam,0)}</td>
+        <td class="need">${fmt(r.so_ma_can_nhap,0)}</td>
+        <td class="watch">${fmt(r.so_ma_can_quan_tam,0)}</td>
+        <td class="num">${fmt(r.tong_sl_can_nhap,0)}</td>
+        <td>${fmt(r.diem_cao_nhat,1)}</td>
+        <td>${fmt(r.diem_tb_can_nhap,1)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+
+  document.querySelectorAll('.nccRow').forEach(tr=>{
+    tr.onclick=()=>loadSupplierDetail(tr.dataset.ncc);
+  });
 }
+
+async function loadOverview(){
+  $('status').textContent='Đang tổng hợp toàn hệ thống theo nhà cung cấp...';
+  $('supplier').value='';
+  $('codes').value='';
+  try{
+    const [sum,ncc]=await Promise.all([
+      getTongQuanHeThongNhapBuV1($('date').value||null),
+      getTongQuanNccNhapBuV1($('date').value||null)
+    ]);
+    overviewRows=ncc||[];
+    $('summaryCards').innerHTML=`
+      <div class="summaryCard"><div class="k">Thời gian quan tâm</div><div class="v">${fmt(sum.so_thang_quan_tam,0)} tháng</div></div>
+      <div class="summaryCard"><div class="k">SP thuộc diện phân tích</div><div class="v">${fmt(sum.so_sp_dien_phan_tich,0)}</div></div>
+      <div class="summaryCard"><div class="k">Mã cần nhập</div><div class="v">${fmt(sum.so_ma_can_nhap,0)}</div></div>
+      <div class="summaryCard"><div class="k">Mã cần quan tâm</div><div class="v">${fmt(sum.so_ma_can_quan_tam,0)}</div></div>
+      <div class="summaryCard"><div class="k">Tổng SL cần nhập</div><div class="v">${fmt(sum.tong_sl_can_nhap,0)}</div></div>`;
+    renderOverview();
+    $('status').textContent=`Đã tổng hợp ${overviewRows.length} nhà cung cấp cần xử lý.`;
+  }catch(e){
+    console.error(e);
+    $('status').textContent='Lỗi tổng quan: '+(e?.message||e);
+  }
+}
+
+async function loadSupplierDetail(ncc){
+  $('status').textContent=`Đang tải chi tiết NCC ${ncc}...`;
+  try{
+    rows=await getNhapBuV1({masps:null,nhacc:ncc,ngay:$('date').value||null,limit:5000});
+    $('overviewWrap').classList.add('hidden');
+    $('detailToolbar').classList.remove('hidden');
+    $('detailTitle').textContent=`NHÀ CUNG CẤP: ${ncc} · ${rows.length} mã`;
+    renderDetail();
+    $('status').textContent=`Đã tải ${rows.length} mã của ${ncc}.`;
+  }catch(e){
+    console.error(e);
+    $('status').textContent='Lỗi: '+(e?.message||e);
+  }
+}
+
+
+async function load(all=false,fresh=false){
+  const cs=codes();
+  const sup=$('supplier').value.trim();
+
+  if(all || (!cs.length && !sup)){
+    return loadOverview();
+  }
+
+  $('status').textContent=fresh?'Đang refresh dữ liệu rồi tính nhập bù...':'Đang tính gợi ý...';
+  try{
+    if(fresh){
+      await refreshNhapBuV1({
+        masps:cs.length?cs:null,
+        nhacc:cs.length?null:(sup||null),
+        days:Number($('days').value)
+      });
+    }
+
+    rows=await getNhapBuV1({
+      masps:cs.length?cs:null,
+      nhacc:cs.length?null:(sup||null),
+      ngay:$('date').value||null,
+      limit:5000
+    });
+
+    $('overviewWrap').classList.add('hidden');
+    $('detailToolbar').classList.remove('hidden');
+
+    if(cs.length){
+      $('detailTitle').textContent=`KIỂM TRA ${rows.length} MÃ SẢN PHẨM`;
+    }else{
+      $('detailTitle').textContent=`NHÀ CUNG CẤP: ${sup} · ${rows.length} mã`;
+    }
+
+    renderDetail();
+    $('status').textContent=`Đã tải ${rows.length} mã.`;
+  }catch(e){
+    console.error(e);
+    $('status').textContent='Lỗi: '+(e?.message||e);
+  }
+}
+
 async function loadCfg(){
   const c=await getNhapBuConfig(),x=c.chung||{};
   $('cfg_gap').value=x.so_ngay_gop_dot_nhap??3;
@@ -214,7 +352,8 @@ $('saveCfg').onclick=async()=>{
 $('toggleCfg').onclick=async()=>{$('configCard').classList.toggle('hidden');if(!$('configCard').classList.contains('hidden'))await loadCfg()};
 $('load').onclick=()=>load(false,false);
 $('fresh').onclick=()=>load(false,true);
-$('all').onclick=()=>load(true,false);
+$('all').onclick=()=>loadOverview();
+$('backOverview').onclick=()=>renderOverview();
 
 async function openSize(masp,sl){
   currentSizeRow={masp};$('sizeTitle').textContent='Phân bổ size · '+masp;$('sizeTotal').value=Math.max(1,sl||1);
@@ -231,5 +370,8 @@ async function recalcSize(){
 $('recalcSize').onclick=recalcSize;
 $('closeSize').onclick=()=>{$('sizeModal').style.display='none'};
 $('sizeModal').onclick=e=>{if(e.target===$('sizeModal'))$('sizeModal').style.display='none'};
+
+// Mac dinh mo trang la tai Tong quan NCC.
+setTimeout(()=>loadOverview(),0);
 </script>
 </body></html>
