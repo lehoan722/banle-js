@@ -91,6 +91,7 @@ th{background:#f8fbff;position:sticky;top:0;z-index:1;white-space:nowrap}
   <div class="title" style="font-size:18px">CẤU HÌNH NHẬP BÙ</div>
   <div class="configGrid">
     <div class="field"><label>Gộp đợt nhập ≤ ngày</label><input type="number" id="cfg_gap"></div>
+    <div class="field"><label>Chỉ quan tâm hàng nhập trong vòng (tháng)</label><input type="number" min="1" max="36" id="cfg_recent_months"></div>
     <div class="field"><label>Ngưỡng bắt đầu xét (%)</label><input type="number" step="0.1" id="cfg_ratio"></div>
     <div class="field"><label>Hàng về sau (ngày)</label><input type="number" id="cfg_lead"></div>
     <div class="field"><label>Mục tiêu bán sau hàng về (ngày)</label><input type="number" id="cfg_target"></div>
@@ -187,6 +188,7 @@ async function load(all=false,fresh=false){
 async function loadCfg(){
   const c=await getNhapBuConfig(),x=c.chung||{};
   $('cfg_gap').value=x.so_ngay_gop_dot_nhap??3;
+  $('cfg_recent_months').value=x.so_thang_nhap_gan_nhat_quan_tam??6;
   $('cfg_ratio').value=x.nguong_ty_le_ban_dot??12;
   $('cfg_lead').value=x.so_ngay_hang_ve??3;
   $('cfg_target').value=x.so_ngay_muc_tieu??14;
@@ -198,6 +200,7 @@ $('saveCfg').onclick=async()=>{
   try{
     await setNhapBuConfig({
       so_ngay_gop_dot_nhap:Number($('cfg_gap').value),
+      so_thang_nhap_gan_nhat_quan_tam:Number($('cfg_recent_months').value),
       nguong_ty_le_ban_dot:Number($('cfg_ratio').value),
       so_ngay_hang_ve:Number($('cfg_lead').value),
       so_ngay_muc_tieu:Number($('cfg_target').value),
