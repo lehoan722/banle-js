@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gợi ý nhập bù V1</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+.wrap{max-width:1600px;margin:auto;padding:12px}
+.card{background:#fff;border:1px solid #dbe4ed;border-radius:12px;padding:12px;margin-bottom:10px}
+.title{font-size:23px;font-weight:900;color:#075f9f;margin-bottom:8px}
+.subt{font-size:13px;color:#607086;margin-bottom:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:800;color:#526171}
+textarea,input,button,select{font:inherit}
+textarea,input,select{border:1px solid #b9c8d6;border-radius:8px;padding:9px;background:#fff}
+textarea{width:280px;min-height:70px}
+button{height:40px;border:0;border-radius:8px;padding:0 14px;font-weight:900;cursor:pointer}
+.p{background:#0878d1;color:#fff}.g{background:#15945d;color:#fff}.s{background:#e7f1f8;color:#075f9f}.w{background:#fff3cd;color:#7a5900}
+.status{font-size:13px;color:#607086;margin-top:8px}
+.ncc{border:1px solid #d6e1ec;border-radius:11px;margin:10px 0;overflow:hidden;background:#fff}
+.nccHead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:11px 12px;background:#eef6ff;border-bottom:1px solid #d6e1ec;cursor:pointer}
+.nccName{font-size:18px;font-weight:900;color:#075f9f}
+.nccSum{font-size:13px;color:#516579}
+.badge{padding:4px 7px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}
+.nhap{background:#ffd8d8;color:#a41313}.kem{background:#fff0b8;color:#805700}.cb{background:#dff1ff;color:#075f9f}.td{background:#edf0f3;color:#65727f}
+.tableWrap{overflow:auto}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:1500px}
+th,td{padding:8px;border-bottom:1px solid #e7edf3;border-right:1px solid #edf2f6;vertical-align:top}
+th{background:#f8fbff;position:sticky;top:0;z-index:1;white-space:nowrap}
+.code{font-weight:900;color:#075f9f}
+.num{font-weight:900;font-size:15px}
+.mini{font-size:11px;color:#69798a;line-height:1.35}
+.warn{color:#b42318;font-weight:900}
+.ok{color:#0c7b4a;font-weight:900}
+.configGrid{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:8px}
+.configGrid input{width:100%}
+.hidden{display:none}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;align-items:center;justify-content:center;padding:12px}
+.modalCard{width:min(620px,96vw);max-height:88vh;overflow:auto;background:#fff;border-radius:12px;padding:14px}
+.modalHead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.modalHead h3{margin:0;color:#075f9f}.modalHead button{margin-left:auto}
+.sizeRow{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding:8px;border-bottom:1px solid #edf2f6}
+@media(max-width:800px){.configGrid{grid-template-columns:1fr 1fr}textarea{width:100%}.field{flex:1 1 100%}}
+</style>
+</head>
+<body>
+<div id="login-container"></div>
+<div id="app-container">
+<main class="wrap">
+
+<div class="card">
+  <div class="title">GỢI Ý NHẬP BÙ V1</div>
+  <div class="subt">
+    Nhập 1 mã → tự xác định <b>nhà cung cấp</b> → mở toàn bộ mã cùng NCC.
+    Nhập bù được tính cho <b>toàn hệ thống CS1 + CS2</b>; chuyển kho chỉ là cảnh báo.
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>Mã sản phẩm (mỗi mã 1 dòng)</label>
+      <textarea id="codes" placeholder="A123&#10;B456"></textarea>
+    </div>
+    <div class="field">
+      <label>Hoặc nhà cung cấp</label>
+      <input id="supplier" placeholder="Giá trị cột nhacc">
+    </div>
+    <div class="field">
+      <label>Ngày tính</label>
+      <input type="date" id="date">
+    </div>
+    <div class="field">
+      <label>Kỳ NLBH</label>
+      <select id="days"><option>180</option><option selected>365</option><option>730</option></select>
+    </div>
+    <div class="field">
+      <label>Thao tác</label>
+      <div class="row">
+        <button id="load" class="p">Tải gợi ý</button>
+        <button id="fresh" class="g">Refresh rồi tải</button>
+        <button id="all" class="s">Top toàn hệ thống</button>
+        <button id="toggleCfg" class="w">Cấu hình</button>
+      </div>
+    </div>
+  </div>
+  <div id="status" class="status">Sẵn sàng.</div>
+</div>
+
+<div id="configCard" class="card hidden">
+  <div class="title" style="font-size:18px">CẤU HÌNH NHẬP BÙ</div>
+  <div class="configGrid">
+    <div class="field"><label>Gộp đợt nhập ≤ ngày</label><input type="number" id="cfg_gap"></div>
+    <div class="field"><label>Ngưỡng bắt đầu xét (%)</label><input type="number" step="0.1" id="cfg_ratio"></div>
+    <div class="field"><label>Hàng về sau (ngày)</label><input type="number" id="cfg_lead"></div>
+    <div class="field"><label>Mục tiêu bán sau hàng về (ngày)</label><input type="number" id="cfg_target"></div>
+    <div class="field"><label>Điểm nhập chính</label><input type="number" step="0.1" id="cfg_main"></div>
+    <div class="field"><label>Điểm gợi ý kèm NCC</label><input type="number" step="0.1" id="cfg_comp"></div>
+    <div class="field"><label>Mẫu bán size tối thiểu</label><input type="number" id="cfg_size"></div>
+  </div>
+  <div style="margin-top:10px"><button id="saveCfg" class="g">Lưu cấu hình</button></div>
+</div>
+
+<div id="result"></div>
+
+</main>
+</div>
+
+<div id="sizeModal" class="modal">
+  <div class="modalCard">
+    <div class="modalHead"><h3 id="sizeTitle">Phân bổ size</h3><button id="closeSize" class="s">Đóng</button></div>
+    <div class="row" style="margin-bottom:10px">
+      <div class="field"><label>Tổng số lượng muốn nhập</label><input type="number" id="sizeTotal" min="1"></div>
+      <button id="recalcSize" class="p">Tính lại size</button>
+    </div>
+    <div id="sizeBody"></div>
+  </div>
+</div>
+
+<script type="module">
+import {getNhapBuV1,refreshNhapBuV1,getNhapBuConfig,setNhapBuConfig,phanBoSizeNhapBu} from './scripts/nhapBuModuleV1.js';
+
+const $=id=>document.getElementById(id);
+const fmt=(v,d=1)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d});
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+$('date').value=today();
+
+let rows=[],currentSizeRow=null;
+
+function codes(){
+  return [...new Set($('codes').value.split(/\r?\n/).map(x=>x.trim().toUpperCase()).filter(Boolean))];
+}
+function badge(a){
+  const m={NHAP_NGAY:['NHẬP NGAY','nhap'],GOI_Y_KEM_NCC:['GỢI Ý KÈM NCC','kem'],CHUAN_BI_NHAP:['CHUẨN BỊ','cb'],THEO_DOI:['THEO DÕI','td'],CHUA_DEN_NGUONG:['CHƯA ĐẾN NGƯỠNG','td'],CHUA_CAN_NHAP:['CHƯA CẦN','td'],CHUA_CO_DOT_NHAP:['CHƯA CÓ ĐỢT NHẬP','td']};
+  const x=m[a]||[a||'—','td']; return `<span class="badge ${x[1]}">${x[0]}</span>`;
+}
+function render(){
+  const by=new Map();
+  rows.forEach(r=>{const k=r.nhacc||'(CHƯA CÓ NCC)';if(!by.has(k))by.set(k,[]);by.get(k).push(r)});
+  if(!rows.length){$('result').innerHTML='<div class="card">Không có mã đạt điều kiện hiển thị.</div>';return}
+  $('result').innerHTML=[...by.entries()].map(([ncc,a])=>{
+    const main=a.filter(x=>x.hanh_dong==='NHAP_NGAY').length;
+    const sum=a.filter(x=>['NHAP_NGAY','GOI_Y_KEM_NCC','CHUAN_BI_NHAP'].includes(x.hanh_dong)).reduce((s,x)=>s+Number(x.sl_can_bu||0),0);
+    return `<section class="ncc">
+      <div class="nccHead">
+        <div class="nccName">${ncc}</div>
+        <div class="nccSum">${a.length} mã · ${main} mã nhập ngay · tổng SL đang gợi ý ${fmt(sum,0)}</div>
+      </div>
+      <div class="tableWrap"><table><thead><tr>
+        <th>Hành động</th><th>Mã SP</th><th>Tên</th><th>Nhóm</th><th>Điểm</th>
+        <th>Đợt nhập</th><th>Tỷ lệ bán đợt</th><th>Bán 3/7/14/21/30</th>
+        <th>Tốc độ 3/7/14/21/30</th><th>P nhóm</th><th>Tồn CS1/CS2/Tổng</th>
+        <th>Ngày tồn đủ bán</th><th>Size</th><th>SL bù</th><th>Lý do</th>
+      </tr></thead><tbody>
+      ${a.map((r,i)=>`<tr>
+        <td>${badge(r.hanh_dong)}${r.can_luu_y_chuyen_kho?'<div class="warn mini">Nên kiểm tra chuyển kho</div>':''}</td>
+        <td class="code">${r.masp}</td><td>${r.tensp||''}</td><td>${r.nhomhang||''}</td>
+        <td><span class="num">${fmt(r.diem_can_nhap_bu,1)}</span>/100</td>
+        <td><div class="mini">${r.ngay_bat_dau_dot||'—'} → ${r.ngay_ket_thuc_dot||'—'}<br>Nhập đợt: <b>${fmt(r.sl_nhap_dot,0)}</b><br>Tồn sau đợt: <b>${fmt(r.ton_sau_dot_nhap,0)}</b></div></td>
+        <td><span class="num">${fmt(r.ty_le_ban_dot,1)}%</span><div class="mini">Đã bán ${fmt(r.ban_sau_dot,0)}</div></td>
+        <td>${fmt(r.ban_3,0)}/${fmt(r.ban_7,0)}/${fmt(r.ban_14,0)}/${fmt(r.ban_21,0)}/${fmt(r.ban_30,0)}</td>
+        <td class="mini">${fmt(r.toc_do_3,2)}/${fmt(r.toc_do_7,2)}/${fmt(r.toc_do_14,2)}/${fmt(r.toc_do_21,2)}/${fmt(r.toc_do_30,2)}<br><b>Hiện tại: ${fmt(r.toc_do_hien_tai,2)} SP/ngày hiệu dụng</b></td>
+        <td><span class="num">P${fmt(r.toc_do_percentile,0)}</span><div class="mini">P50 ${fmt(r.toc_do_nhom_p50,2)} · P75 ${fmt(r.toc_do_nhom_p75,2)} · P90 ${fmt(r.toc_do_nhom_p90,2)}</div></td>
+        <td><b>${fmt(r.ton_cs1_thuc,0)} / ${fmt(r.ton_cs2_thuc,0)} / ${fmt(r.ton_he_thong,0)}</b></td>
+        <td><span class="num">${fmt(r.so_ngay_ton_du_ban,1)}</span> ngày</td>
+        <td><div class="mini">Đủ size HT: <b>${fmt(r.do_day_du_size_he_thong,1)}%</b><br>Tin cậy NLBH: <b>${fmt(r.confidence_score,1)}</b></div></td>
+        <td><button class="p sizeBtn" data-masp="${r.masp}" data-sl="${r.sl_can_bu}">+${fmt(r.sl_can_bu,0)} · size</button></td>
+        <td class="mini">${r.ly_do||''}</td>
+      </tr>`).join('')}
+      </tbody></table></div>
+    </section>`
+  }).join('');
+
+  document.querySelectorAll('.sizeBtn').forEach(b=>b.onclick=()=>openSize(b.dataset.masp,Number(b.dataset.sl||0)));
+}
+async function load(all=false,fresh=false){
+  const cs=all?[]:codes(),sup=all?'':$('supplier').value.trim();
+  if(!all&&!cs.length&&!sup)return alert('Nhập mã sản phẩm hoặc nhà cung cấp.');
+  $('status').textContent=fresh?'Đang refresh NLBH/XNT rồi tính nhập bù...':'Đang tính gợi ý...';
+  try{
+    if(fresh)await refreshNhapBuV1({masps:cs,nhacc:sup||null,days:Number($('days').value)});
+    rows=await getNhapBuV1({masps:cs.length?cs:null,nhacc:sup||null,ngay:$('date').value||null,limit:1000});
+    render();
+    $('status').textContent=`Đã tải ${rows.length} mã.`;
+  }catch(e){console.error(e);$('status').textContent='Lỗi: '+(e?.message||e)}
+}
+async function loadCfg(){
+  const c=await getNhapBuConfig(),x=c.chung||{};
+  $('cfg_gap').value=x.so_ngay_gop_dot_nhap??3;
+  $('cfg_ratio').value=x.nguong_ty_le_ban_dot??12;
+  $('cfg_lead').value=x.so_ngay_hang_ve??3;
+  $('cfg_target').value=x.so_ngay_muc_tieu??14;
+  $('cfg_main').value=x.nguong_nhap_chinh??75;
+  $('cfg_comp').value=x.nguong_goi_y_kem_ncc??60;
+  $('cfg_size').value=x.nguong_du_du_lieu_size??5;
+}
+$('saveCfg').onclick=async()=>{
+  try{
+    await setNhapBuConfig({
+      so_ngay_gop_dot_nhap:Number($('cfg_gap').value),
+      nguong_ty_le_ban_dot:Number($('cfg_ratio').value),
+      so_ngay_hang_ve:Number($('cfg_lead').value),
+      so_ngay_muc_tieu:Number($('cfg_target').value),
+      nguong_nhap_chinh:Number($('cfg_main').value),
+      nguong_goi_y_kem_ncc:Number($('cfg_comp').value),
+      nguong_du_du_lieu_size:Number($('cfg_size').value)
+    });
+    alert('Đã lưu cấu hình.');
+  }catch(e){alert('Lỗi: '+(e?.message||e))}
+};
+$('toggleCfg').onclick=async()=>{$('configCard').classList.toggle('hidden');if(!$('configCard').classList.contains('hidden'))await loadCfg()};
+$('load').onclick=()=>load(false,false);
+$('fresh').onclick=()=>load(false,true);
+$('all').onclick=()=>load(true,false);
+
+async function openSize(masp,sl){
+  currentSizeRow={masp};$('sizeTitle').textContent='Phân bổ size · '+masp;$('sizeTotal').value=Math.max(1,sl||1);
+  $('sizeModal').style.display='flex';await recalcSize();
+}
+async function recalcSize(){
+  if(!currentSizeRow)return;
+  $('sizeBody').textContent='Đang tính...';
+  try{
+    const a=await phanBoSizeNhapBu(currentSizeRow.masp,Number($('sizeTotal').value),$('date').value||null);
+    $('sizeBody').innerHTML=a.length?a.map(x=>`<div class="sizeRow"><b>${x.size}</b><span>${fmt(Number(x.ty_trong)*100,1)}%</span><b>${fmt(x.sl_de_nghi,0)} chiếc</b><span class="mini">${x.nguon}</span></div>`).join(''):'Chưa đủ profile size để phân bổ.';
+  }catch(e){$('sizeBody').textContent='Lỗi: '+(e?.message||e)}
+}
+$('recalcSize').onclick=recalcSize;
+$('closeSize').onclick=()=>{$('sizeModal').style.display='none'};
+$('sizeModal').onclick=e=>{if(e.target===$('sizeModal'))$('sizeModal').style.display='none'};
+</script>
+</body></html>
