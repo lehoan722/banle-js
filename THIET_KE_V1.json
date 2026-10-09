@@ -1,0 +1,22 @@
+{
+  "version": "V1",
+  "source": {
+    "supplier": "dmhanghoa.nhacc",
+    "sales": [
+      "xnt_ngay_v2.xuatban_cs1",
+      "xnt_ngay_v2.xuatban_cs2"
+    ],
+    "purchase": "xnt_ngay_v2.nhapmua",
+    "effective_days": "nlbh2_daily_opportunity_v2",
+    "stock": "rpc_nen_ton_thuc_v1"
+  },
+  "defaults": {
+    "batch_gap_days": 3,
+    "start_ratio_pct": 12,
+    "lead_days": 3,
+    "target_after_arrival_days": 14,
+    "main_score": 75,
+    "companion_supplier_score": 60,
+    "size_min_sales": 5
+  }
+}
