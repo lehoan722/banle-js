@@ -182,7 +182,7 @@ function renderDetail(){
     <div class="tableWrap"><table><thead><tr>
       <th>Hành động</th><th>Mã SP</th><th>Tên</th><th>Nhóm</th><th>Điểm</th>
       <th>Đợt nhập</th><th>Tỷ lệ bán đợt</th><th>Bán 3/7/14/21/30</th>
-      <th>Tốc độ 3/7/14/21/30</th><th>P nhóm</th><th>Tồn CS1/CS2/Tổng</th>
+      <th>Tốc độ 3/7/14/21/30</th><th>Tốc độ nhập bù</th><th>P nhóm</th><th>Tồn CS1/CS2/Tổng</th>
       <th>Ngày tồn đủ bán</th><th>Size</th><th>SL bù</th><th>Lý do</th>
     </tr></thead><tbody>
     ${a.map(r=>`<tr>
@@ -193,6 +193,7 @@ function renderDetail(){
       <td><span class="num">${fmt(r.ty_le_ban_dot,1)}%</span><div class="mini">Đã bán ${fmt(r.ban_sau_dot,0)}</div></td>
       <td>${fmt(r.ban_3,0)}/${fmt(r.ban_7,0)}/${fmt(r.ban_14,0)}/${fmt(r.ban_21,0)}/${fmt(r.ban_30,0)}</td>
       <td class="mini">${fmt(r.toc_do_3,2)}/${fmt(r.toc_do_7,2)}/${fmt(r.toc_do_14,2)}/${fmt(r.toc_do_21,2)}/${fmt(r.toc_do_30,2)}<br><b>Hiện tại: ${fmt(r.toc_do_hien_tai,2)} SP/ngày hiệu dụng</b></td>
+      <td><span class="num">${fmt(r.toc_do_nhap_bu,2)}</span><div class="mini">MAX(hiện tại, 30 ngày)</div></td>
       <td><span class="num">P${fmt(r.toc_do_percentile,0)}</span><div class="mini">P50 ${fmt(r.toc_do_nhom_p50,2)} · P75 ${fmt(r.toc_do_nhom_p75,2)} · P90 ${fmt(r.toc_do_nhom_p90,2)}</div></td>
       <td><b>${fmt(r.ton_cs1_thuc,0)} / ${fmt(r.ton_cs2_thuc,0)} / ${fmt(r.ton_he_thong,0)}</b></td>
       <td><span class="num">${fmt(r.so_ngay_ton_du_ban,1)}</span> ngày</td>
