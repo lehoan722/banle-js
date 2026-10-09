@@ -121,7 +121,10 @@ th{background:#f8fbff;position:sticky;top:0;z-index:1;white-space:nowrap}
     <div class="field"><label>Điểm gợi ý kèm NCC</label><input type="number" step="0.1" id="cfg_comp"></div>
     <div class="field"><label>Mẫu bán size tối thiểu</label><input type="number" id="cfg_size"></div>
   </div>
-  <div style="margin-top:10px"><button id="saveCfg" class="g">Lưu cấu hình</button></div>
+  <div style="margin-top:10px" class="row">
+    <button id="saveCfg" class="g">Lưu cấu hình</button>
+    <button id="resetCfg" class="w">↺ Đặt lại cấu hình chuẩn</button>
+  </div>
 </div>
 
 <div id="summaryCards" class="summaryCards"></div>
@@ -147,7 +150,7 @@ th{background:#f8fbff;position:sticky;top:0;z-index:1;white-space:nowrap}
 </div>
 
 <script type="module">
-import {getNhapBuV1,refreshNhapBuV1,getNhapBuConfig,setNhapBuConfig,phanBoSizeNhapBu,getTongQuanNccNhapBuV1,getTongQuanHeThongNhapBuV1} from './scripts/nhapBuModuleV1.js';
+import {getNhapBuV1,refreshNhapBuV1,getNhapBuConfig,setNhapBuConfig,phanBoSizeNhapBu,getTongQuanNccNhapBuV1,getTongQuanHeThongNhapBuV1,resetNhapBuConfig} from './scripts/nhapBuModuleV1.js';
 
 const $=id=>document.getElementById(id);
 const fmt=(v,d=1)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d});
@@ -349,6 +352,30 @@ $('saveCfg').onclick=async()=>{
     alert('Đã lưu cấu hình.');
   }catch(e){alert('Lỗi: '+(e?.message||e))}
 };
+
+$('resetCfg').onclick=async()=>{
+  if(!confirm(
+    'Đặt lại cấu hình nhập bù về chuẩn ban đầu?\n\n'+
+    'Gộp đợt nhập: 3 ngày\n'+
+    'Quan tâm hàng nhập gần: 6 tháng\n'+
+    'Ngưỡng bán đợt: 12%\n'+
+    'Hàng về: 3 ngày\n'+
+    'Mục tiêu sau hàng về: 14 ngày\n'+
+    'Điểm nhập chính: 75\n'+
+    'Điểm gợi ý kèm NCC: 60\n'+
+    'Mẫu size tối thiểu: 5'
+  )) return;
+
+  try{
+    await resetNhapBuConfig();
+    await loadCfg();
+    alert('Đã đặt lại cấu hình chuẩn.');
+    await loadOverview();
+  }catch(e){
+    alert('Lỗi đặt lại cấu hình: '+(e?.message||e));
+  }
+};
+
 $('toggleCfg').onclick=async()=>{$('configCard').classList.toggle('hidden');if(!$('configCard').classList.contains('hidden'))await loadCfg()};
 $('load').onclick=()=>load(false,false);
 $('fresh').onclick=()=>load(false,true);
