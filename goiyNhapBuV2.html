@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gợi ý nhập bù V2 - XNT19</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+.wrap{padding:12px}.card{background:#fff;border:1px solid #dbe4ed;border-radius:12px;padding:12px;margin-bottom:10px}
+.title{font-size:23px;font-weight:900;color:#075f9f}.sub{font-size:13px;color:#5d6b7b;margin-top:5px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}.field{display:flex;flex-direction:column;gap:4px}
+label{font-size:12px;font-weight:800;color:#526171}textarea,input,select{border:1px solid #b9c8d6;border-radius:8px;padding:8px;font:inherit}
+textarea{width:270px;min-height:72px}button{height:40px;border:0;border-radius:8px;padding:0 14px;font-weight:900;cursor:pointer}
+.p{background:#0878d1;color:white}.g{background:#15945d;color:#fff}.s{background:#e6f1f8;color:#075f9f}.w{background:#fff1bf;color:#725100}
+.summary{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+.box{background:#fff;border:1px solid #dbe4ed;border-radius:11px;padding:10px}.box .k{font-size:11px;color:#607086;font-weight:800}.box .v{font-size:22px;color:#075f9f;font-weight:900}
+.tableWrap{overflow:auto;background:#fff;border:1px solid #dbe4ed;border-radius:12px}table{border-collapse:collapse;width:100%;min-width:1500px}
+th,td{padding:8px;border-bottom:1px solid #e4ebf1;border-right:1px solid #edf2f6;vertical-align:top}th{background:#f5f9fd;white-space:nowrap;position:sticky;top:0}
+.code{font-weight:900;color:#075f9f}.num{font-weight:900}.mini{font-size:11px;color:#64748b;line-height:1.35}
+.badge{padding:4px 7px;border-radius:999px;font-size:11px;font-weight:900}.need{background:#ffdada;color:#a51616}.watch{background:#fff0bd;color:#7f5b00}.no{background:#edf1f4;color:#64748b}
+.nccRow{cursor:pointer}.nccRow:hover{background:#eef6ff}.hidden{display:none}.status{font-size:12px;color:#607086;margin-top:7px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;align-items:center;justify-content:center;padding:12px}
+.modalCard{background:#fff;border-radius:12px;width:min(1000px,96vw);max-height:90vh;overflow:auto;padding:12px}
+pre{white-space:pre-wrap;background:#f7fafc;border:1px solid #dbe4ed;border-radius:8px;padding:10px;font-size:12px}
+.cfg{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:8px}
+@media(max-width:800px){.summary,.cfg{grid-template-columns:1fr 1fr}textarea{width:100%}.field{flex:1 1 100%}}
+</style>
+</head>
+<body>
+<div id="login-container"></div>
+<div id="app-container"><main class="wrap">
+
+<div class="card">
+  <div class="title">GỢI Ý NHẬP BÙ V2 · ĐỘC LẬP XNT19</div>
+  <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
+  <div class="row" style="margin-top:10px">
+    <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
+    <div class="field"><label>Nhà cung cấp</label><input id="supplier" placeholder="Giá trị cột nhacc"></div>
+    <div class="field"><label>Ngày tính</label><input id="date" type="date"></div>
+    <div class="field"><label>Thao tác</label><div class="row">
+      <button id="load" class="p">Tải dữ liệu</button>
+      <button id="refresh" class="g">Làm mới dữ liệu</button>
+      <button id="overview" class="s">Tổng quan NCC</button>
+      <button id="config" class="w">Cấu hình</button>
+    </div></div>
+  </div>
+  <div id="status" class="status">Sẵn sàng.</div>
+</div>
+
+<div id="cfgCard" class="card hidden">
+  <div class="title" style="font-size:18px">CẤU HÌNH NHẬP BÙ V2</div>
+  <div class="cfg">
+    <div class="field"><label>Quan tâm hàng nhập trong (tháng)</label><input id="c_recent" type="number" min="1"></div>
+    <div class="field"><label>Gộp đợt nhập ≤ ngày</label><input id="c_gap" type="number" min="0"></div>
+    <div class="field"><label>Ngưỡng tỷ lệ bán đợt (%)</label><input id="c_ratio" type="number"></div>
+    <div class="field"><label>Hàng về sau (ngày)</label><input id="c_lead" type="number"></div>
+    <div class="field"><label>Mục tiêu sau hàng về (ngày)</label><input id="c_target" type="number"></div>
+    <div class="field"><label>Điểm cần quan tâm</label><input id="c_watch" type="number"></div>
+    <div class="field"><label>Mẫu size tối thiểu</label><input id="c_size" type="number"></div>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button id="saveCfg" class="g">Lưu cấu hình</button>
+    <button id="resetCfg" class="w">↺ Đặt lại cấu hình chuẩn</button>
+  </div>
+</div>
+
+<div id="summary" class="summary"></div>
+<div id="toolbar" class="row hidden" style="margin-bottom:8px"><button id="back" class="s">← Tổng quan NCC</button><b id="detailTitle"></b></div>
+<div id="content"></div>
+
+</main></div>
+
+<div id="modal" class="modal"><div class="modalCard">
+  <div class="row"><h3 id="modalTitle" style="margin:0;color:#075f9f">Kiểm tra</h3><button id="close" class="s" style="margin-left:auto">Đóng</button></div>
+  <div id="modalBody"></div>
+</div></div>
+
+<script type="module">
+import {
+ refreshNhapBuV2,tongQuanHeThongV2,tongQuanNccV2,chiTietNhapBuV2,
+ kiemTraNguonV2,phanBoSizeV2,getConfigV2,setConfigV2,resetConfigV2
+} from './scripts/nhapBuV2.js';
+
+const $=id=>document.getElementById(id);
+const fmt=(v,d=1)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d});
+const today=()=>{let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+$('date').value=today();
+
+const codes=()=>[...new Set($('codes').value.split(/\r?\n/).map(x=>x.trim().toUpperCase()).filter(Boolean))];
+
+function badge(a){
+  if(a==='CAN_NHAP_BU') return '<span class="badge need">CẦN NHẬP BÙ</span>';
+  if(a==='CAN_QUAN_TAM') return '<span class="badge watch">CẦN QUAN TÂM</span>';
+  if(a==='CHUA_DEN_NGUONG') return '<span class="badge no">CHƯA ĐẾN NGƯỠNG</span>';
+  if(a==='CHUA_CO_DOT_NHAP') return '<span class="badge no">CHƯA CÓ ĐỢT</span>';
+  return '<span class="badge no">CHƯA CẦN</span>';
+}
+
+async function loadSummary(){
+  const s=await tongQuanHeThongV2($('date').value||null);
+  $('summary').innerHTML=`
+    <div class="box"><div class="k">Thời gian quan tâm</div><div class="v">${fmt(s.so_thang_quan_tam,0)} tháng</div></div>
+    <div class="box"><div class="k">SP thuộc diện phân tích</div><div class="v">${fmt(s.so_sp_dien_phan_tich,0)}</div></div>
+    <div class="box"><div class="k">Mã cần nhập</div><div class="v">${fmt(s.so_ma_can_nhap,0)}</div></div>
+    <div class="box"><div class="k">Mã cần quan tâm</div><div class="v">${fmt(s.so_ma_can_quan_tam,0)}</div></div>
+    <div class="box"><div class="k">Tổng SL cần nhập</div><div class="v">${fmt(s.tong_sl_can_nhap,0)}</div></div>`;
+  return s;
+}
+
+async function showOverview(){
+  $('status').textContent='Đang tải tổng quan NCC...';
+  $('toolbar').classList.add('hidden');
+  const rows=await tongQuanNccV2($('date').value||null);
+  $('content').innerHTML=`<div class="tableWrap"><table style="min-width:900px"><thead><tr>
+    <th>Nhà cung cấp</th><th>SP phân tích</th><th>Mã cần nhập</th><th>Mã cần quan tâm</th><th>Tổng SL cần nhập</th><th>Điểm cao nhất</th>
+  </tr></thead><tbody>${rows.map(r=>`<tr class="nccRow" data-ncc="${r.nhacc}">
+    <td class="code">${r.nhacc}</td><td>${fmt(r.so_sp_dien_phan_tich,0)}</td>
+    <td class="num">${fmt(r.so_ma_can_nhap,0)}</td><td>${fmt(r.so_ma_can_quan_tam,0)}</td>
+    <td class="num">${fmt(r.tong_sl_can_nhap,0)}</td><td>${fmt(r.diem_cao_nhat,1)}</td>
+  </tr>`).join('')}</tbody></table></div>`;
+  document.querySelectorAll('.nccRow').forEach(tr=>tr.onclick=()=>showDetail({nhacc:tr.dataset.ncc}));
+  $('status').textContent=`Đã tải ${rows.length} nhà cung cấp cần xử lý.`;
+}
+
+async function showDetail({masps=null,nhacc=null,hienTatCa=false}={}){
+  const rows=await chiTietNhapBuV2({ngay:$('date').value||null,masps,nhacc,hienTatCa});
+  $('toolbar').classList.remove('hidden');
+  $('detailTitle').textContent=masps?.length?`KIỂM TRA ${rows.length} MÃ`:`NHÀ CUNG CẤP: ${nhacc||''} · ${rows.length} mã`;
+  $('content').innerHTML=`<div class="tableWrap"><table><thead><tr>
+    <th>Hành động</th><th>Mã SP</th><th>Tên</th><th>Nhóm</th><th>Điểm</th>
+    <th>Đợt nhập</th><th>Tỷ lệ bán đợt</th><th>Bán 3/7/14/21/30</th>
+    <th>Tốc độ 3/7/14/21/30</th><th>Tốc độ nhập bù</th><th>P nhóm</th>
+    <th>Tồn CS1/CS2/Tổng</th><th>Ngày đủ bán</th><th>SL bù</th><th>Kiểm tra</th><th>Lý do</th>
+  </tr></thead><tbody>${rows.map(r=>`<tr>
+    <td>${badge(r.hanh_dong)}${r.can_luu_y_chuyen_kho?'<div class="mini" style="color:#b42318;font-weight:900">Nên kiểm tra chuyển kho</div>':''}</td>
+    <td class="code">${r.masp}</td><td>${r.tensp||''}</td><td>${r.nhomhang||''}</td><td><b>${fmt(r.diem_uu_tien,1)}</b>/100</td>
+    <td class="mini">${r.ngay_bat_dau_dot||'—'} → ${r.ngay_ket_thuc_dot||'—'}<br>Nhập: <b>${fmt(r.sl_nhap_dot,0)}</b><br>Tồn sau đợt: <b>${fmt(r.ton_sau_dot,0)}</b></td>
+    <td><b>${fmt(r.ty_le_ban_dot,1)}%</b><div class="mini">Đã bán ${fmt(r.ban_sau_dot,0)}</div></td>
+    <td>${fmt(r.ban_3,0)}/${fmt(r.ban_7,0)}/${fmt(r.ban_14,0)}/${fmt(r.ban_21,0)}/${fmt(r.ban_30,0)}</td>
+    <td class="mini">${fmt(r.toc_do_3,2)}/${fmt(r.toc_do_7,2)}/${fmt(r.toc_do_14,2)}/${fmt(r.toc_do_21,2)}/${fmt(r.toc_do_30,2)}<br>Ngắn hạn: <b>${fmt(r.toc_do_ngan_han,2)}</b></td>
+    <td><b>${fmt(r.toc_do_nhap_bu,2)}</b></td>
+    <td><b>P${fmt(r.toc_do_percentile,0)}</b><div class="mini">P50 ${fmt(r.toc_do_nhom_p50,2)} · P75 ${fmt(r.toc_do_nhom_p75,2)} · P90 ${fmt(r.toc_do_nhom_p90,2)}</div></td>
+    <td><b>${fmt(r.ton_cs1,0)} / ${fmt(r.ton_cs2,0)} / ${fmt(r.ton_he_thong,0)}</b></td>
+    <td><b>${fmt(r.so_ngay_ton_du_ban,1)}</b> ngày</td>
+    <td><button class="p sizeBtn" data-m="${r.masp}" data-sl="${r.sl_can_bu}">+${fmt(r.sl_can_bu,0)} · size</button></td>
+    <td><button class="s checkBtn" data-m="${r.masp}">Kiểm tra</button></td>
+    <td class="mini">${r.ly_do||''}</td>
+  </tr>`).join('')}</tbody></table></div>`;
+  document.querySelectorAll('.checkBtn').forEach(b=>b.onclick=()=>openCheck(b.dataset.m));
+  document.querySelectorAll('.sizeBtn').forEach(b=>b.onclick=()=>openSize(b.dataset.m,Number(b.dataset.sl||0)));
+}
+
+async function openCheck(masp){
+  $('modalTitle').textContent='KIỂM TRA NGUỒN · '+masp;
+  $('modal').style.display='flex'; $('modalBody').innerHTML='Đang tải...';
+  try{
+    const d=await kiemTraNguonV2(masp,$('date').value||null);
+    $('modalBody').innerHTML=`
+      <h4>Snapshot nhập bù</h4><pre>${JSON.stringify(d.snapshot,null,2)}</pre>
+      <h4>Tồn XNT19 V6</h4><pre>${JSON.stringify(d.ton_xnt19,null,2)}</pre>
+      <h4>Tồn theo size XNT19 V6</h4><pre>${JSON.stringify(d.ton_size_xnt19,null,2)}</pre>
+      <h4>Phát sinh 90 ngày</h4><pre>${JSON.stringify(d.phat_sinh_90_ngay,null,2)}</pre>`;
+  }catch(e){$('modalBody').textContent='Lỗi: '+(e?.message||e)}
+}
+
+async function openSize(masp,sl){
+  if(sl<=0){alert('Mã này hiện chưa có số lượng cần bù.');return}
+  $('modalTitle').textContent='PHÂN BỔ SIZE · '+masp;
+  $('modal').style.display='flex'; $('modalBody').innerHTML='Đang tính...';
+  try{
+    const a=await phanBoSizeV2(masp,sl,$('date').value||null);
+    $('modalBody').innerHTML=`<div class="tableWrap"><table style="min-width:600px"><thead><tr><th>Size</th><th>Tỷ trọng</th><th>Tồn hiện tại</th><th>SL đề nghị</th><th>Nguồn</th></tr></thead><tbody>
+      ${a.map(x=>`<tr><td><b>${x.size}</b></td><td>${fmt(Number(x.ty_trong)*100,1)}%</td><td>${fmt(x.ton_hien_tai,0)}</td><td><b>${fmt(x.sl_de_nghi,0)}</b></td><td>${x.nguon}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  }catch(e){$('modalBody').textContent='Lỗi: '+(e?.message||e)}
+}
+
+async function refreshScope(){
+  const cs=codes(),sup=$('supplier').value.trim();
+  $('status').textContent='Đang làm mới trực tiếp từ XNT19 V6...';
+  try{
+    const r=await refreshNhapBuV2({ngay:$('date').value||null,masps:cs.length?cs:null,nhacc:cs.length?null:(sup||null)});
+    await loadSummary();
+    if(cs.length) await showDetail({masps:cs,hienTatCa:true});
+    else if(sup) await showDetail({nhacc:sup,hienTatCa:false});
+    else await showOverview();
+    $('status').textContent=`Đã làm mới ${r.processed||0} mã · phạm vi ${r.scope_text||''}.`;
+  }catch(e){console.error(e);$('status').textContent='Lỗi làm mới: '+(e?.message||e)}
+}
+
+async function loadCurrent(){
+  const cs=codes(),sup=$('supplier').value.trim();
+  if(cs.length) return showDetail({masps:cs,hienTatCa:true});
+  if(sup) return showDetail({nhacc:sup,hienTatCa:false});
+  return showOverview();
+}
+
+async function loadCfg(){
+  const d=await getConfigV2(),c=d.chung||{};
+  $('c_recent').value=c.so_thang_nhap_gan_nhat_quan_tam??6;
+  $('c_gap').value=c.so_ngay_gop_dot_nhap??3;
+  $('c_ratio').value=c.nguong_ty_le_ban_dot??12;
+  $('c_lead').value=c.so_ngay_hang_ve??3;
+  $('c_target').value=c.so_ngay_muc_tieu??14;
+  $('c_watch').value=c.nguong_diem_quan_tam??60;
+  $('c_size').value=c.nguong_du_du_lieu_size??5;
+}
+
+$('saveCfg').onclick=async()=>{
+  await setConfigV2({
+    so_thang_nhap_gan_nhat_quan_tam:Number($('c_recent').value),
+    so_ngay_gop_dot_nhap:Number($('c_gap').value),
+    nguong_ty_le_ban_dot:Number($('c_ratio').value),
+    so_ngay_hang_ve:Number($('c_lead').value),
+    so_ngay_muc_tieu:Number($('c_target').value),
+    nguong_diem_quan_tam:Number($('c_watch').value),
+    nguong_du_du_lieu_size:Number($('c_size').value)
+  });
+  alert('Đã lưu cấu hình. Bấm Làm mới dữ liệu để tính lại.');
+};
+
+$('resetCfg').onclick=async()=>{
+  if(!confirm('Đặt lại toàn bộ cấu hình nhập bù V2 về chuẩn ban đầu?')) return;
+  await resetConfigV2(); await loadCfg();
+  alert('Đã đặt lại cấu hình chuẩn. Bấm Làm mới dữ liệu để tính lại.');
+};
+
+$('config').onclick=async()=>{$('cfgCard').classList.toggle('hidden');if(!$('cfgCard').classList.contains('hidden'))await loadCfg()};
+$('load').onclick=loadCurrent;
+$('refresh').onclick=refreshScope;
+$('overview').onclick=showOverview;
+$('back').onclick=showOverview;
+$('close').onclick=()=>{$('modal').style.display='none'};
+$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').style.display='none'};
+
+(async()=>{
+  try{
+    const s=await loadSummary();
+    if(!s.refreshed_at){
+      $('status').textContent='Chưa có snapshot V2 hôm nay. Đang tạo lần đầu từ XNT19 V6...';
+      await refreshNhapBuV2({ngay:$('date').value||null});
+      await loadSummary();
+    }
+    await showOverview();
+  }catch(e){
+    console.error(e);
+    $('status').textContent='Lỗi khởi tạo: '+(e?.message||e);
+  }
+})();
+</script>
+</body></html>
