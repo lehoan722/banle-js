@@ -676,34 +676,6 @@ function buildDefaultLineMeta() {
     };
 }
 
-// ===== BAN LE CS1 - FALLBACK NHAN VIEN DANG NHAP V1 =====
-// Nguyen tac:
-// 1) Neu dong ban tai quay match duoc hoa don nhan vien bannvcs1_ => GIU NGUYEN NV tu van/ban do.
-// 2) Neu KHONG co hoa don nhan vien phu hop => gan manv_ban/tennv_ban = NV dang dang nhap trang banlemtcs1.
-// 3) Fallback nay CHI ap dung cho banlemtcs1, khong tu dong anh huong CS2.
-// 4) tu_van_ct_id / tu_van_sohd van NULL de phan biet ban truc tiep tai quay voi dong co hoa don tu van.
-function buildBanLeCs1LoginFallbackMeta() {
-    const meta = buildDefaultLineMeta();
-    const path = String(location.pathname || "").toLowerCase();
-    if (!path.includes("banlemtcs1")) return meta;
-
-    const manv = String(
-        document.getElementById("manv")?.value ||
-        localStorage.getItem("manv") ||
-        ""
-    ).trim();
-
-    const tennv = String(
-        document.getElementById("tennv")?.value ||
-        localStorage.getItem("tennv") ||
-        ""
-    ).trim();
-
-    meta.manv_ban = manv || null;
-    meta.tennv_ban = tennv || null;
-    return meta;
-}
-
 function currentEmployeeLineMeta(ctx, usedClearance) {
     const manv = String(document.getElementById("manv")?.value || localStorage.getItem("manv") || "").trim();
     const tennv = String(document.getElementById("tennv")?.value || "").trim();
@@ -749,19 +721,15 @@ function applyTuVanToCurrentForm(tuVan) {
 
 function consumeTuVanLineMeta(masp, size) {
     const tv = window.__TU_VAN_SELECTED;
-
-    // Khong co hoa don NV match: nhan vien dang nhap tai quay CS1 nhan doanh thu dong nay.
-    if (!tv) return buildBanLeCs1LoginFallbackMeta();
+    if (!tv) return buildDefaultLineMeta();
 
     const sameMasp = String(tv.masp || "").toUpperCase() === String(masp || "").toUpperCase();
     const sameSize = String(tv.size ?? "").trim().toUpperCase() === String(size ?? "").trim().toUpperCase();
 
-    // Co context tu van nhung khong dung ma/size dang ban => coi nhu khong match.
-    if (!sameMasp || !sameSize) return buildBanLeCs1LoginFallbackMeta();
+    if (!sameMasp || !sameSize) return buildDefaultLineMeta();
 
     window.__TU_VAN_SELECTED = null;
 
-    // Co hoa don nhan vien match: uu tien tuyet doi nhan vien cua dong tu van.
     return {
         km_pct: tv.km_pct == null ? null : Number(tv.km_pct),
         km_max_pct: tv.km_max_pct == null ? null : Number(tv.km_max_pct),
