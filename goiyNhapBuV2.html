@@ -16,13 +16,19 @@ textarea{width:270px;min-height:72px}button{height:40px;border:0;border-radius:8
 .box{background:#fff;border:1px solid #dbe4ed;border-radius:11px;padding:10px}.box .k{font-size:11px;color:#607086;font-weight:800}.box .v{font-size:22px;color:#075f9f;font-weight:900}
 .tableWrap{overflow:auto;background:#fff;border:1px solid #dbe4ed;border-radius:12px}table{border-collapse:collapse;width:100%;min-width:1500px}
 th,td{padding:8px;border-bottom:1px solid #e4ebf1;border-right:1px solid #edf2f6;vertical-align:top}th{background:#f5f9fd;white-space:nowrap;position:sticky;top:0}
-.code{font-weight:900;color:#075f9f}.num{font-weight:900}.mini{font-size:11px;color:#64748b;line-height:1.35}
+.code{font-weight:900;color:#075f9f}.codeLink{cursor:pointer;text-decoration:underline;text-underline-offset:2px}.num{font-weight:900}.mini{font-size:11px;color:#64748b;line-height:1.35}
 .badge{padding:4px 7px;border-radius:999px;font-size:11px;font-weight:900}.need{background:#ffdada;color:#a51616}.watch{background:#fff0bd;color:#7f5b00}.no{background:#edf1f4;color:#64748b}
 .nccRow{cursor:pointer}.nccRow:hover{background:#eef6ff}.hidden{display:none}.status{font-size:12px;color:#607086;margin-top:7px}
 .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;align-items:center;justify-content:center;padding:12px}
 .modalCard{background:#fff;border-radius:12px;width:min(1000px,96vw);max-height:90vh;overflow:auto;padding:12px}
 pre{white-space:pre-wrap;background:#f7fafc;border:1px solid #dbe4ed;border-radius:8px;padding:10px;font-size:12px}
 .cfg{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:8px}
+
+.win{font-weight:900;white-space:nowrap}.w3{color:#c62828}.w7{color:#1565c0}.w14{color:#2e7d32}.w21{color:#8e24aa}.w30{color:#ef6c00}
+.groupRead{font-weight:900;color:#075f9f}.liveOk{color:#137333;font-weight:900}.liveWarn{color:#b42318;font-weight:900}
+.auditTable{min-width:640px}.auditTable th{position:static}.sectionTitle{font-size:15px;color:#075f9f;margin:14px 0 6px;font-weight:900}
+.autoSaveNote{font-size:11px;color:#64748b;margin-top:8px}
+
 @media(max-width:800px){.summary,.cfg{grid-template-columns:1fr 1fr}textarea{width:100%}.field{flex:1 1 100%}}
 </style>
 </head>
@@ -39,7 +45,7 @@ pre{white-space:pre-wrap;background:#f7fafc;border:1px solid #dbe4ed;border-radi
     <div class="field"><label>Ngày tính</label><input id="date" type="date"></div>
     <div class="field"><label>Thao tác</label><div class="row">
       <button id="load" class="p">Tải dữ liệu</button>
-      <button id="refresh" class="g">Làm mới dữ liệu</button>
+      <button id="refresh" class="g">Tính lại dữ liệu nền</button>
       <button id="overview" class="s">Tổng quan NCC</button>
       <button id="config" class="w">Cấu hình</button>
     </div></div>
@@ -59,9 +65,9 @@ pre{white-space:pre-wrap;background:#f7fafc;border:1px solid #dbe4ed;border-radi
     <div class="field"><label>Mẫu size tối thiểu</label><input id="c_size" type="number"></div>
   </div>
   <div class="row" style="margin-top:10px">
-    <button id="saveCfg" class="g">Lưu cấu hình</button>
     <button id="resetCfg" class="w">↺ Đặt lại cấu hình chuẩn</button>
   </div>
+  <div class="autoSaveNote">Các thay đổi cấu hình được tự động lưu âm thầm.</div>
 </div>
 
 <div id="summary" class="summary"></div>
@@ -75,6 +81,7 @@ pre{white-space:pre-wrap;background:#f7fafc;border:1px solid #dbe4ed;border-radi
   <div id="modalBody"></div>
 </div></div>
 
+<script type="module" src="./scripts/stockQuickPopup.js"></script>
 <script type="module">
 import {
  refreshNhapBuV2,tongQuanHeThongV2,tongQuanNccV2,chiTietNhapBuV2,
@@ -83,6 +90,16 @@ import {
 
 const $=id=>document.getElementById(id);
 const fmt=(v,d=1)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d});
+const fmtSpeed=v=>{
+  if(v==null||v==='') return '—';
+  const n=Number(v);
+  if(Math.abs(n)<0.0000001) return '0';
+  return n.toLocaleString('vi-VN',{minimumFractionDigits:2,maximumFractionDigits:2});
+};
+const winHtml=(vals,kind='qty')=>{
+  const cls=['w3','w7','w14','w21','w30'];
+  return vals.map((v,i)=>`<span class="win ${cls[i]}">${kind==='speed'?fmtSpeed(v):fmt(v,0)}</span>`).join('<span class="mini"> / </span>');
+};
 const today=()=>{let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 $('date').value=today();
 
@@ -122,45 +139,120 @@ async function showOverview(){
   $('status').textContent=`Đã tải ${rows.length} nhà cung cấp cần xử lý.`;
 }
 
+
 async function showDetail({masps=null,nhacc=null,hienTatCa=false}={}){
   const rows=await chiTietNhapBuV2({ngay:$('date').value||null,masps,nhacc,hienTatCa});
   $('toolbar').classList.remove('hidden');
   $('detailTitle').textContent=masps?.length?`KIỂM TRA ${rows.length} MÃ`:`NHÀ CUNG CẤP: ${nhacc||''} · ${rows.length} mã`;
+
   $('content').innerHTML=`<div class="tableWrap"><table><thead><tr>
     <th>Hành động</th><th>Mã SP</th><th>Tên</th><th>Nhóm</th><th>Điểm</th>
     <th>Đợt nhập</th><th>Tỷ lệ bán đợt</th><th>Bán 3/7/14/21/30</th>
-    <th>Tốc độ 3/7/14/21/30</th><th>Tốc độ nhập bù</th><th>P nhóm</th>
+    <th>Tốc độ 3/7/14/21/30</th><th>So với nhóm</th>
     <th>Tồn CS1/CS2/Tổng</th><th>Ngày đủ bán</th><th>SL bù</th><th>Kiểm tra</th><th>Lý do</th>
   </tr></thead><tbody>${rows.map(r=>`<tr>
     <td>${badge(r.hanh_dong)}${r.can_luu_y_chuyen_kho?'<div class="mini" style="color:#b42318;font-weight:900">Nên kiểm tra chuyển kho</div>':''}</td>
-    <td class="code">${r.masp}</td><td>${r.tensp||''}</td><td>${r.nhomhang||''}</td><td><b>${fmt(r.diem_uu_tien,1)}</b>/100</td>
-    <td class="mini">${r.ngay_bat_dau_dot||'—'} → ${r.ngay_ket_thuc_dot||'—'}<br>Nhập: <b>${fmt(r.sl_nhap_dot,0)}</b><br>Tồn sau đợt: <b>${fmt(r.ton_sau_dot,0)}</b></td>
+    <td class="code"><span class="codeLink" data-m="${r.masp}" title="Bấm để xem nhanh tồn, size, ảnh sản phẩm">${r.masp}</span></td>
+    <td>${r.tensp||''}</td><td>${r.nhomhang||''}</td><td><b>${fmt(r.diem_uu_tien,1)}</b>/100</td>
+    <td class="mini">
+      ${r.ngay_bat_dau_dot||'—'} → ${r.ngay_ket_thuc_dot||'—'}<br>
+      Nhập đợt: <b>${fmt(r.sl_nhap_dot,0)}</b><br>
+      Tồn sau đợt: <b>${fmt(r.ton_sau_dot,0)}</b><br>
+      Tồn hiện tại: <b>${fmt(r.ton_he_thong,0)}</b>
+    </td>
     <td><b>${fmt(r.ty_le_ban_dot,1)}%</b><div class="mini">Đã bán ${fmt(r.ban_sau_dot,0)}</div></td>
-    <td>${fmt(r.ban_3,0)}/${fmt(r.ban_7,0)}/${fmt(r.ban_14,0)}/${fmt(r.ban_21,0)}/${fmt(r.ban_30,0)}</td>
-    <td class="mini">${fmt(r.toc_do_3,2)}/${fmt(r.toc_do_7,2)}/${fmt(r.toc_do_14,2)}/${fmt(r.toc_do_21,2)}/${fmt(r.toc_do_30,2)}<br>Ngắn hạn: <b>${fmt(r.toc_do_ngan_han,2)}</b></td>
-    <td><b>${fmt(r.toc_do_nhap_bu,2)}</b></td>
-    <td><b>P${fmt(r.toc_do_percentile,0)}</b><div class="mini">P50 ${fmt(r.toc_do_nhom_p50,2)} · P75 ${fmt(r.toc_do_nhom_p75,2)} · P90 ${fmt(r.toc_do_nhom_p90,2)}</div></td>
-    <td><b>${fmt(r.ton_cs1,0)} / ${fmt(r.ton_cs2,0)} / ${fmt(r.ton_he_thong,0)}</b></td>
+    <td>${winHtml([r.ban_3,r.ban_7,r.ban_14,r.ban_21,r.ban_30],'qty')}</td>
+    <td>
+      ${winHtml([r.toc_do_3,r.toc_do_7,r.toc_do_14,r.toc_do_21,r.toc_do_30],'speed')}
+      <div class="mini">SP/ngày</div>
+    </td>
+    <td>
+      <div class="groupRead">Nhanh hơn ${fmt(r.toc_do_percentile,0)}%</div>
+      <div class="mini">${fmt(r.so_ma_trong_nhom,0)} mã cùng nhóm</div>
+    </td>
+    <td>
+      <b>${fmt(r.ton_cs1,0)} / ${fmt(r.ton_cs2,0)} / ${fmt(r.ton_he_thong,0)}</b>
+      <div class="mini ${r.ton_nguon==='XNT19_LIVE'?'liveOk':'liveWarn'}">${r.ton_nguon==='XNT19_LIVE'?'XNT19 LIVE':'Snapshot dự phòng'}</div>
+    </td>
     <td><b>${fmt(r.so_ngay_ton_du_ban,1)}</b> ngày</td>
-    <td><button class="p sizeBtn" data-m="${r.masp}" data-sl="${r.sl_can_bu}">+${fmt(r.sl_can_bu,0)} · size</button></td>
+    <td>
+      ${Number(r.sl_can_bu||0)>0
+        ? `<button class="p sizeBtn" data-m="${r.masp}" data-sl="${r.sl_can_bu}">Bù ${fmt(r.sl_can_bu,0)} → chia size</button>`
+        : '<b>0</b>'}
+    </td>
     <td><button class="s checkBtn" data-m="${r.masp}">Kiểm tra</button></td>
     <td class="mini">${r.ly_do||''}</td>
   </tr>`).join('')}</tbody></table></div>`;
+
+  document.querySelectorAll('.codeLink').forEach(el=>el.onclick=()=>{
+    const m=el.dataset.m;
+    if(typeof window.stockQuickPopup==='function') window.stockQuickPopup(m);
+    else console.warn('stockQuickPopup chưa sẵn sàng',m);
+  });
   document.querySelectorAll('.checkBtn').forEach(b=>b.onclick=()=>openCheck(b.dataset.m));
   document.querySelectorAll('.sizeBtn').forEach(b=>b.onclick=()=>openSize(b.dataset.m,Number(b.dataset.sl||0)));
 }
 
+
 async function openCheck(masp){
   $('modalTitle').textContent='KIỂM TRA NGUỒN · '+masp;
-  $('modal').style.display='flex'; $('modalBody').innerHTML='Đang tải...';
+  $('modal').style.display='flex';
+  $('modalBody').innerHTML='Đang tải...';
+
   try{
     const d=await kiemTraNguonV2(masp,$('date').value||null);
+    const s=d.snapshot||{};
+    const l=d.ton_xnt19||{};
+    const sizes=Array.isArray(d.ton_size_xnt19)?d.ton_size_xnt19:[];
+    const daily=Array.isArray(d.phat_sinh_90_ngay)?d.phat_sinh_90_ngay:[];
+
+    const snap1=Number(s.ton_cs1||0),snap2=Number(s.ton_cs2||0),snapT=Number(s.ton_he_thong||0);
+    const live1=Number(l.ton_cs1||0),live2=Number(l.ton_cs2||0),liveT=Number(l.ton_he_thong||0);
+    const diff=(snap1!==live1||snap2!==live2||snapT!==liveT);
+
+    const speed30=Number(s.toc_do_nhap_bu||0);
+    const coverLive=speed30>0?liveT/speed30:null;
+    const lead=Number($('c_lead').value||3);
+    const target=Number($('c_target').value||14);
+    const slLive=speed30>0?Math.max(0,Math.ceil(speed30*(lead+target)-liveT)):0;
+
     $('modalBody').innerHTML=`
-      <h4>Snapshot nhập bù</h4><pre>${JSON.stringify(d.snapshot,null,2)}</pre>
-      <h4>Tồn XNT19 V6</h4><pre>${JSON.stringify(d.ton_xnt19,null,2)}</pre>
-      <h4>Tồn theo size XNT19 V6</h4><pre>${JSON.stringify(d.ton_size_xnt19,null,2)}</pre>
-      <h4>Phát sinh 90 ngày</h4><pre>${JSON.stringify(d.phat_sinh_90_ngay,null,2)}</pre>`;
-  }catch(e){$('modalBody').textContent='Lỗi: '+(e?.message||e)}
+      <div class="sectionTitle">Tổng hợp dễ đọc</div>
+      <div class="tableWrap"><table class="auditTable"><tbody>
+        <tr><th>Mã SP</th><td><b>${masp}</b></td><th>NCC</th><td>${s.nhacc||'—'}</td></tr>
+        <tr><th>Nhóm</th><td>${s.nhomhang||'—'}</td><th>Nhập gần nhất</th><td>${s.ngay_nhap_mua_gan_nhat||'—'}</td></tr>
+        <tr><th>Đợt nhập</th><td>${s.ngay_bat_dau_dot||'—'} → ${s.ngay_ket_thuc_dot||'—'}</td><th>Nhập đợt</th><td>${fmt(s.sl_nhap_dot,0)}</td></tr>
+        <tr><th>Tồn sau đợt</th><td>${fmt(s.ton_sau_dot,0)}</td><th>Tỷ lệ bán đợt</th><td>${fmt(s.ty_le_ban_dot,1)}%</td></tr>
+        <tr><th>Tồn hiện tại LIVE</th><td><b>${fmt(liveT,0)}</b></td><th>SL bù theo tồn LIVE</th><td><b>${fmt(slLive,0)}</b></td></tr>
+        <tr><th>Ngày đủ bán LIVE</th><td>${coverLive==null?'—':fmt(coverLive,1)+' ngày'}</td><th>Điểm ưu tiên</th><td>${fmt(s.diem_uu_tien,1)}/100</td></tr>
+      </tbody></table></div>
+
+      <div class="sectionTitle">Đối chiếu tồn</div>
+      <div class="tableWrap"><table class="auditTable"><thead><tr><th>Nguồn</th><th>CS1</th><th>CS2</th><th>Tổng</th></tr></thead><tbody>
+        <tr><td>Snapshot V2</td><td>${fmt(snap1,0)}</td><td>${fmt(snap2,0)}</td><td>${fmt(snapT,0)}</td></tr>
+        <tr><td><b>XNT19 LIVE</b></td><td><b>${fmt(live1,0)}</b></td><td><b>${fmt(live2,0)}</b></td><td><b>${fmt(liveT,0)}</b></td></tr>
+        <tr><td>Đang dùng để quyết định</td><td><b>${fmt(live1,0)}</b></td><td><b>${fmt(live2,0)}</b></td><td><b>${fmt(liveT,0)}</b></td></tr>
+      </tbody></table></div>
+      ${diff?'<div class="liveWarn" style="margin-top:6px">⚠ Snapshot khác XNT19 LIVE. Quyết định nhập bù hiện dùng XNT19 LIVE.</div>':'<div class="liveOk" style="margin-top:6px">✓ Snapshot và XNT19 LIVE đang khớp.</div>'}
+
+      <div class="sectionTitle">Bán và tốc độ</div>
+      <div class="tableWrap"><table class="auditTable"><thead><tr><th></th><th class="w3">3 ngày</th><th class="w7">7 ngày</th><th class="w14">14 ngày</th><th class="w21">21 ngày</th><th class="w30">30 ngày</th><th>45</th><th>60</th><th>90</th></tr></thead><tbody>
+        <tr><th>SL bán</th><td>${fmt(s.ban_3,0)}</td><td>${fmt(s.ban_7,0)}</td><td>${fmt(s.ban_14,0)}</td><td>${fmt(s.ban_21,0)}</td><td>${fmt(s.ban_30,0)}</td><td>${fmt(s.ban_45,0)}</td><td>${fmt(s.ban_60,0)}</td><td>${fmt(s.ban_90,0)}</td></tr>
+        <tr><th>Tốc độ/ngày</th><td>${fmtSpeed(s.toc_do_3)}</td><td>${fmtSpeed(s.toc_do_7)}</td><td>${fmtSpeed(s.toc_do_14)}</td><td>${fmtSpeed(s.toc_do_21)}</td><td>${fmtSpeed(s.toc_do_30)}</td><td>—</td><td>—</td><td>—</td></tr>
+      </tbody></table></div>
+
+      <div class="sectionTitle">Tồn theo size · XNT19 LIVE</div>
+      <div class="tableWrap"><table class="auditTable"><thead><tr><th>Size</th><th>CS1</th><th>CS2</th><th>Tổng</th></tr></thead><tbody>
+        ${sizes.length?sizes.map(x=>`<tr><td><b>${x.size||'—'}</b></td><td>${fmt(x.ton_cs1,0)}</td><td>${fmt(x.ton_cs2,0)}</td><td><b>${fmt(x.ton_tong,0)}</b></td></tr>`).join(''):'<tr><td colspan="4">Không có dữ liệu size.</td></tr>'}
+      </tbody></table></div>
+
+      <div class="sectionTitle">Phát sinh 90 ngày</div>
+      <div class="tableWrap"><table class="auditTable"><thead><tr><th>Ngày</th><th>Nhập mua</th><th>Bán CS1</th><th>Bán CS2</th><th>Tổng bán</th></tr></thead><tbody>
+        ${daily.length?daily.map(x=>`<tr><td>${x.ngay}</td><td>${fmt(x.nhapmua,0)}</td><td>${fmt(x.ban_cs1,0)}</td><td>${fmt(x.ban_cs2,0)}</td><td><b>${fmt(x.ban_tong,0)}</b></td></tr>`).join(''):'<tr><td colspan="5">Không có phát sinh.</td></tr>'}
+      </tbody></table></div>`;
+  }catch(e){
+    $('modalBody').textContent='Lỗi: '+(e?.message||e);
+  }
 }
 
 async function openSize(masp,sl){
@@ -177,14 +269,14 @@ async function openSize(masp,sl){
 
 async function refreshScope(){
   const cs=codes(),sup=$('supplier').value.trim();
-  $('status').textContent='Đang làm mới trực tiếp từ XNT19 V6...';
+  $('status').textContent='Đang tính lại dữ liệu nền từ XNT19 V6...';
   try{
     const r=await refreshNhapBuV2({ngay:$('date').value||null,masps:cs.length?cs:null,nhacc:cs.length?null:(sup||null)});
     await loadSummary();
     if(cs.length) await showDetail({masps:cs,hienTatCa:true});
     else if(sup) await showDetail({nhacc:sup,hienTatCa:false});
     else await showOverview();
-    $('status').textContent=`Đã làm mới ${r.processed||0} mã · phạm vi ${r.scope_text||''}.`;
+    $('status').textContent=`Đã tính lại ${r.processed||0} mã · phạm vi ${r.scope_text||''}.`;
   }catch(e){console.error(e);$('status').textContent='Lỗi làm mới: '+(e?.message||e)}
 }
 
@@ -206,23 +298,39 @@ async function loadCfg(){
   $('c_size').value=c.nguong_du_du_lieu_size??5;
 }
 
-$('saveCfg').onclick=async()=>{
-  await setConfigV2({
-    so_thang_nhap_gan_nhat_quan_tam:Number($('c_recent').value),
-    so_ngay_gop_dot_nhap:Number($('c_gap').value),
-    nguong_ty_le_ban_dot:Number($('c_ratio').value),
-    so_ngay_hang_ve:Number($('c_lead').value),
-    so_ngay_muc_tieu:Number($('c_target').value),
-    nguong_diem_quan_tam:Number($('c_watch').value),
-    nguong_du_du_lieu_size:Number($('c_size').value)
+
+
+let cfgSaveTimer=null;
+async function saveCfgSilently(){
+  try{
+    await setConfigV2({
+      so_thang_nhap_gan_nhat_quan_tam:Number($('c_recent').value),
+      so_ngay_gop_dot_nhap:Number($('c_gap').value),
+      nguong_ty_le_ban_dot:Number($('c_ratio').value),
+      so_ngay_hang_ve:Number($('c_lead').value),
+      so_ngay_muc_tieu:Number($('c_target').value),
+      nguong_diem_quan_tam:Number($('c_watch').value),
+      nguong_du_du_lieu_size:Number($('c_size').value)
+    });
+  }catch(e){
+    console.error('Lỗi tự lưu cấu hình V2',e);
+  }
+}
+['c_recent','c_gap','c_ratio','c_lead','c_target','c_watch','c_size'].forEach(id=>{
+  $(id).addEventListener('input',()=>{
+    clearTimeout(cfgSaveTimer);
+    cfgSaveTimer=setTimeout(saveCfgSilently,650);
   });
-  alert('Đã lưu cấu hình. Bấm Làm mới dữ liệu để tính lại.');
-};
+  $(id).addEventListener('change',()=>{
+    clearTimeout(cfgSaveTimer);
+    saveCfgSilently();
+  });
+});
 
 $('resetCfg').onclick=async()=>{
   if(!confirm('Đặt lại toàn bộ cấu hình nhập bù V2 về chuẩn ban đầu?')) return;
   await resetConfigV2(); await loadCfg();
-  alert('Đã đặt lại cấu hình chuẩn. Bấm Làm mới dữ liệu để tính lại.');
+  alert('Đã đặt lại cấu hình chuẩn. Bấm Tính lại dữ liệu nền để tính lại.');
 };
 
 $('config').onclick=async()=>{$('cfgCard').classList.toggle('hidden');if(!$('cfgCard').classList.contains('hidden'))await loadCfg()};
