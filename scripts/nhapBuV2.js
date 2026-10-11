@@ -28,7 +28,7 @@ export async function tongQuanNccV2(ngay=null){
 
 export async function chiTietNhapBuV2({ngay=null,masps=null,nhacc=null,hienTatCa=false}={}){
   const codes=masps?cleanCodes(masps):null;
-  const {data,error}=await supabase.rpc('rpc_nhapbu2_chitiet_v1',{
+  const {data,error}=await supabase.rpc('rpc_nhapbu2_chitiet_live_v1',{
     p_ngay:ngay||null,
     p_masps:codes?.length?codes:null,
     p_nhacc:nhacc?.trim()||null,
