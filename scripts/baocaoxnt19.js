@@ -522,13 +522,13 @@ window.gotoPage = async function () {
 
 // ===================== LOAD DATA =====================
 async function fetchCount(params) {
-    const { data, error } = await supabase.rpc("baocaoxnt19_count_v5", buildCountParams(params));
+    const { data, error } = await supabase.rpc("baocaoxnt19_count_v6", buildCountParams(params));
     if (error) throw error;
     return data;
 }
 
 async function fetchPaged(params) {
-    const fn = "baocaoxnt19_paged_v5";
+    const fn = "baocaoxnt19_paged_v6";
     const { data, error } = await supabase.rpc(fn, params);
     if (error) throw error;
 
@@ -537,7 +537,7 @@ async function fetchPaged(params) {
 }
 
 async function fetchSummary(params) {
-    const { data, error } = await supabase.rpc("baocaoxnt19_summary_v5", buildCountParams(params));
+    const { data, error } = await supabase.rpc("baocaoxnt19_summary_v6", buildCountParams(params));
     if (error) throw error;
     return Array.isArray(data) ? (data[0] || null) : data;
 }
@@ -546,7 +546,7 @@ async function fetchSummary(params) {
 // Metadata duoc lap lai tren moi dong; client chi doc dong dau roi loai khoi rows render.
 async function fetchPageBundleV5(params) {
     // V5 trả đúng 1 JSONB nên không bị Supabase/PostgREST cắt response tại 1000 rows.
-    const { data, error } = await supabase.rpc("baocaoxnt19_bundle_v5", params);
+    const { data, error } = await supabase.rpc("baocaoxnt19_bundle_v6", params);
     if (error) throw error;
 
     // Scalar jsonb thuong ve truc tiep object; giu fallback neu client tra array 1 phan tu.
@@ -670,7 +670,7 @@ window.taiBaoCaoXNT = function () {
             let params = buildParams(currentPage);
 
             // V5: chỉ 1 RPC cho count + page + summary.
-            stage = 'BUNDLE_V5_LITE';
+            stage = 'BUNDLE_V6';
             if (loading) loading.textContent = 'Đang tổng hợp báo cáo...';
             let bundle = await fetchPageBundleV5(params);
 
@@ -678,7 +678,7 @@ window.taiBaoCaoXNT = function () {
             if (!bundle.rows.length && currentPage > 1) {
                 currentPage = 1;
                 params = buildParams(1);
-                stage = 'BUNDLE_V5_LITE_PAGE1';
+                stage = 'BUNDLE_V6_PAGE1';
                 bundle = await fetchPageBundleV5(params);
             }
 
@@ -1352,7 +1352,7 @@ window.moTrangChuyenKho = async () => {
 
     // 3) Đếm + lấy toàn bộ dữ liệu theo size
     const countParams = buildCountParams(p);
-    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt19_count_v5', countParams);
+    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt19_count_v6', countParams);
     if (cntErr) { alert('Lỗi COUNT: ' + cntErr.message); return; }
     const total = Number(cntData || 0);
 
@@ -1360,7 +1360,7 @@ window.moTrangChuyenKho = async () => {
     const all = [];
     for (let offset = 0; offset < total; offset += pageSize) {
         const pageParams = { ...p, p_limit: pageSize, p_offset: offset };
-        const { data, error } = await supabase.rpc('baocaoxnt19_paged_v5', pageParams);
+        const { data, error } = await supabase.rpc('baocaoxnt19_paged_v6', pageParams);
         if (error) { alert('Lỗi Paged: ' + error.message); return; }
         all.push(...(data || []));
     }
