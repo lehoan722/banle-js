@@ -522,7 +522,7 @@ window.gotoPage = async function () {
 
 // ===================== LOAD DATA =====================
 async function fetchCount(params) {
-    const { data, error } = await supabase.rpc("baocaoxnt19_count_v6", buildCountParams(params));
+    const { data, error } = await supabase.rpc("baocaoxnt19_count_v5", buildCountParams(params));
     if (error) throw error;
     return data;
 }
@@ -1352,7 +1352,7 @@ window.moTrangChuyenKho = async () => {
 
     // 3) Đếm + lấy toàn bộ dữ liệu theo size
     const countParams = buildCountParams(p);
-    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt19_count_v6', countParams);
+    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt19_count_v5', countParams);
     if (cntErr) { alert('Lỗi COUNT: ' + cntErr.message); return; }
     const total = Number(cntData || 0);
 
