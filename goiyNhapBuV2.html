@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2 - XNT19</title>
+<title>Gợi ý nhập bù V2.2 - XNT19</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
 .wrap{padding:12px}.card{background:#fff;border:1px solid #dbe4ed;border-radius:12px;padding:12px;margin-bottom:10px}
@@ -12,7 +12,7 @@
 label{font-size:12px;font-weight:800;color:#526171}textarea,input,select{border:1px solid #b9c8d6;border-radius:8px;padding:8px;font:inherit}
 textarea{width:270px;min-height:72px}button{height:40px;border:0;border-radius:8px;padding:0 14px;font-weight:900;cursor:pointer}
 .p{background:#0878d1;color:white}.g{background:#15945d;color:#fff}.s{background:#e6f1f8;color:#075f9f}.w{background:#fff1bf;color:#725100}
-.summary{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin-bottom:10px}
 .box{background:#fff;border:1px solid #dbe4ed;border-radius:11px;padding:10px}.box .k{font-size:11px;color:#607086;font-weight:800}.box .v{font-size:22px;color:#075f9f;font-weight:900}
 .tableWrap{overflow:auto;background:#fff;border:1px solid #dbe4ed;border-radius:12px}table{border-collapse:collapse;width:100%;min-width:1500px}
 th,td{padding:8px;border-bottom:1px solid #e4ebf1;border-right:1px solid #edf2f6;vertical-align:top}th{background:#f5f9fd;white-space:nowrap;position:sticky;top:0}
@@ -29,15 +29,60 @@ pre{white-space:pre-wrap;background:#f7fafc;border:1px solid #dbe4ed;border-radi
 .auditTable{min-width:640px}.auditTable th{position:static}.sectionTitle{font-size:15px;color:#075f9f;margin:14px 0 6px;font-weight:900}
 .autoSaveNote{font-size:11px;color:#64748b;margin-top:8px}
 
+
+/* ===== V2.2: StockQuickPopup gọn riêng trên trang Nhập bù ===== */
+body.nb2-page .sq-stock-popup{
+  width:min(820px,calc(100vw - 18px)) !important;
+  max-width:min(820px,calc(100vw - 18px)) !important;
+  min-width:0 !important;
+  top:6px !important;
+  right:6px !important;
+  height:calc(100vh - 12px) !important;
+  max-height:calc(100vh - 12px) !important;
+  padding:6px 8px !important;
+  font-size:15px !important;
+  line-height:1.18 !important;
+}
+body.nb2-page .sq-stock-popup .sq-stock-popup-header{font-size:14px !important;line-height:1.15 !important}
+body.nb2-page .sq-stock-popup .sq-title-text,
+body.nb2-page .sq-stock-popup .sq-title-masp{font-size:15px !important}
+body.nb2-page .sq-stock-popup th,
+body.nb2-page .sq-stock-popup td{font-size:14px !important;padding-top:3px !important;padding-bottom:3px !important}
+body.nb2-page .sq-stock-popup .sq-stock-table-wrapper{overflow-x:auto !important;max-width:100% !important}
+body.nb2-page .sq-stock-popup .sq-img-wrapper img{max-height:300px !important;object-fit:contain !important}
+
+/* ===== Giải thích cấu hình ===== */
+.infoTip{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;min-width:18px;padding:0;margin-left:4px;
+  border-radius:50%;border:1px solid #93b4d1;background:#eef6ff;color:#075f9f;
+  font-size:11px;font-weight:900;vertical-align:middle;cursor:pointer
+}
+.infoTip::after{
+  content:attr(data-tip);display:none;position:absolute;z-index:10020;
+  left:50%;top:calc(100% + 7px);transform:translateX(-50%);
+  width:min(320px,80vw);padding:8px 10px;border-radius:8px;
+  background:#172033;color:#fff;font-size:12px;font-weight:500;line-height:1.35;
+  box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:normal;text-align:left
+}
+.infoTip:hover::after,.infoTip:focus::after,.infoTip.open::after{display:block}
+
+.badge.sizeNeed{background:#ffd1d1;color:#9f1111;border:1px solid #f0a7a7}
+.badge.sizeWatch{background:#ffeaa7;color:#765500;border:1px solid #e8cd70}
+.sizeHot{color:#b42318;font-weight:900}
+.sizeWatchTxt{color:#8a6500;font-weight:900}
+.sizeTable{min-width:980px !important}
+.sizeTable th{position:static}
+
 @media(max-width:800px){.summary,.cfg{grid-template-columns:1fr 1fr}textarea{width:100%}.field{flex:1 1 100%}}
 </style>
 </head>
-<body>
+<body class="nb2-page">
 <div id="login-container"></div>
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.2 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -56,13 +101,42 @@ pre{white-space:pre-wrap;background:#f7fafc;border:1px solid #dbe4ed;border-radi
 <div id="cfgCard" class="card hidden">
   <div class="title" style="font-size:18px">CẤU HÌNH NHẬP BÙ V2</div>
   <div class="cfg">
-    <div class="field"><label>Quan tâm hàng nhập trong (tháng)</label><input id="c_recent" type="number" min="1"></div>
-    <div class="field"><label>Gộp đợt nhập ≤ ngày</label><input id="c_gap" type="number" min="0"></div>
-    <div class="field"><label>Ngưỡng tỷ lệ bán đợt (%)</label><input id="c_ratio" type="number"></div>
-    <div class="field"><label>Hàng về sau (ngày)</label><input id="c_lead" type="number"></div>
-    <div class="field"><label>Mục tiêu sau hàng về (ngày)</label><input id="c_target" type="number"></div>
-    <div class="field"><label>Điểm cần quan tâm</label><input id="c_watch" type="number"></div>
-    <div class="field"><label>Mẫu size tối thiểu</label><input id="c_size" type="number"></div>
+    <div class="field">
+      <label>Quan tâm hàng nhập trong (tháng)<button type="button" class="infoTip" data-tip="Chỉ những mã có nhập mua gần nhất trong khoảng thời gian này mới được đưa vào diện phân tích nhập bù.">ⓘ</button></label>
+      <input id="c_recent" type="number" min="1">
+    </div>
+    <div class="field">
+      <label>Gộp đợt nhập ≤ ngày<button type="button" class="infoTip" data-tip="Hai lần nhập mua cách nhau không quá số ngày này được coi là cùng một đợt nhập.">ⓘ</button></label>
+      <input id="c_gap" type="number" min="0">
+    </div>
+    <div class="field">
+      <label>Ngưỡng tỷ lệ bán đợt (%)<button type="button" class="infoTip" data-tip="Đối với nhập bù thông thường, mã phải bán được tối thiểu tỷ lệ này của tồn sau đợt mới được xét. Nhánh thiếu size nhanh hoạt động độc lập với ngưỡng này.">ⓘ</button></label>
+      <input id="c_ratio" type="number">
+    </div>
+    <div class="field">
+      <label>Hàng về sau (ngày)<button type="button" class="infoTip" data-tip="Số ngày trung bình từ lúc đặt hàng nhà cung cấp đến khi hàng thực tế về cửa hàng.">ⓘ</button></label>
+      <input id="c_lead" type="number">
+    </div>
+    <div class="field">
+      <label>Nhập đủ bán cho (ngày)<button type="button" class="infoTip" data-tip="Sau khi hàng về, hệ thống tính lượng nhập để đủ bán thêm số ngày này. Ví dụ hàng về 3 ngày và nhập đủ bán 14 ngày thì chân trời tính là 17 ngày.">ⓘ</button></label>
+      <input id="c_target" type="number">
+    </div>
+    <div class="field">
+      <label>Điểm cần quan tâm<button type="button" class="infoTip" data-tip="Mã chưa cần nhập ngay nhưng có điểm ưu tiên từ mức này trở lên sẽ nằm trong nhóm Cần quan tâm. Điểm không được dùng để phủ quyết mã đã thực sự cần nhập.">ⓘ</button></label>
+      <input id="c_watch" type="number">
+    </div>
+    <div class="field">
+      <label>Bán tối thiểu để học size riêng (SP)<button type="button" class="infoTip" data-tip="Nếu mã đã bán theo size ít nhất số lượng này trong 90 ngày, hệ thống học tỷ trọng size của chính mã. Nếu chưa đủ, hệ thống dùng tỷ trọng size của nhóm hàng trong 365 ngày.">ⓘ</button></label>
+      <input id="c_size" type="number" min="1">
+    </div>
+    <div class="field">
+      <label>Kiểm tra thiếu size trong (ngày)<button type="button" class="infoTip" data-tip="Cửa sổ thời gian gần nhất để phát hiện một size đang bán nhưng vừa bị hết. Mặc định 10 ngày.">ⓘ</button></label>
+      <input id="c_size_days" type="number" min="1">
+    </div>
+    <div class="field">
+      <label>Size bán tối thiểu để bù (SP)<button type="button" class="infoTip" data-tip="Nếu tồn size bằng 0 và size đó bán ít nhất số SP này trong cửa sổ thiếu size, mã được đặc cách Cần nhập bù · Thiếu size. Mặc định 2 SP.">ⓘ</button></label>
+      <input id="c_size_sales" type="number" min="1">
+    </div>
   </div>
   <div class="row" style="margin-top:10px">
     <button id="resetCfg" class="w">↺ Đặt lại cấu hình chuẩn</button>
@@ -106,7 +180,9 @@ $('date').value=today();
 const codes=()=>[...new Set($('codes').value.split(/\r?\n/).map(x=>x.trim().toUpperCase()).filter(Boolean))];
 
 function badge(a){
+  if(a==='CAN_NHAP_BU_THIEU_SIZE') return '<span class="badge sizeNeed">CẦN NHẬP BÙ · THIẾU SIZE</span>';
   if(a==='CAN_NHAP_BU') return '<span class="badge need">CẦN NHẬP BÙ</span>';
+  if(a==='CAN_QUAN_TAM_THIEU_SIZE') return '<span class="badge sizeWatch">CẦN QUAN TÂM · THIẾU SIZE</span>';
   if(a==='CAN_QUAN_TAM') return '<span class="badge watch">CẦN QUAN TÂM</span>';
   if(a==='CHUA_DEN_NGUONG') return '<span class="badge no">CHƯA ĐẾN NGƯỠNG</span>';
   if(a==='CHUA_CO_DOT_NHAP') return '<span class="badge no">CHƯA CÓ ĐỢT</span>';
@@ -119,7 +195,9 @@ async function loadSummary(){
     <div class="box"><div class="k">Thời gian quan tâm</div><div class="v">${fmt(s.so_thang_quan_tam,0)} tháng</div></div>
     <div class="box"><div class="k">SP thuộc diện phân tích</div><div class="v">${fmt(s.so_sp_dien_phan_tich,0)}</div></div>
     <div class="box"><div class="k">Mã cần nhập</div><div class="v">${fmt(s.so_ma_can_nhap,0)}</div></div>
+    <div class="box"><div class="k">Trong đó thiếu size</div><div class="v">${fmt(s.so_ma_nhap_thieu_size,0)}</div></div>
     <div class="box"><div class="k">Mã cần quan tâm</div><div class="v">${fmt(s.so_ma_can_quan_tam,0)}</div></div>
+    <div class="box"><div class="k">Quan tâm thiếu size</div><div class="v">${fmt(s.so_ma_quan_tam_thieu_size,0)}</div></div>
     <div class="box"><div class="k">Tổng SL cần nhập</div><div class="v">${fmt(s.tong_sl_can_nhap,0)}</div></div>`;
   return s;
 }
@@ -128,11 +206,13 @@ async function showOverview(){
   $('status').textContent='Đang tải tổng quan NCC...';
   $('toolbar').classList.add('hidden');
   const rows=await tongQuanNccV2($('date').value||null);
-  $('content').innerHTML=`<div class="tableWrap"><table style="min-width:900px"><thead><tr>
-    <th>Nhà cung cấp</th><th>SP phân tích</th><th>Mã cần nhập</th><th>Mã cần quan tâm</th><th>Tổng SL cần nhập</th><th>Điểm cao nhất</th>
+  $('content').innerHTML=`<div class="tableWrap"><table style="min-width:1120px"><thead><tr>
+    <th>Nhà cung cấp</th><th>SP phân tích</th><th>Mã cần nhập</th><th>↳ Thiếu size</th>
+    <th>Mã cần quan tâm</th><th>↳ Quan tâm thiếu size</th><th>Tổng SL cần nhập</th><th>Điểm cao nhất</th>
   </tr></thead><tbody>${rows.map(r=>`<tr class="nccRow" data-ncc="${r.nhacc}">
     <td class="code">${r.nhacc}</td><td>${fmt(r.so_sp_dien_phan_tich,0)}</td>
-    <td class="num">${fmt(r.so_ma_can_nhap,0)}</td><td>${fmt(r.so_ma_can_quan_tam,0)}</td>
+    <td class="num">${fmt(r.so_ma_can_nhap,0)}</td><td class="sizeHot">${fmt(r.so_ma_nhap_thieu_size,0)}</td>
+    <td>${fmt(r.so_ma_can_quan_tam,0)}</td><td class="sizeWatchTxt">${fmt(r.so_ma_quan_tam_thieu_size,0)}</td>
     <td class="num">${fmt(r.tong_sl_can_nhap,0)}</td><td>${fmt(r.diem_cao_nhat,1)}</td>
   </tr>`).join('')}</tbody></table></div>`;
   document.querySelectorAll('.nccRow').forEach(tr=>tr.onclick=()=>showDetail({nhacc:tr.dataset.ncc}));
@@ -151,7 +231,12 @@ async function showDetail({masps=null,nhacc=null,hienTatCa=false}={}){
     <th>Tốc độ 3/7/14/21/30</th><th>So với nhóm</th>
     <th>Tồn CS1/CS2/Tổng</th><th>Ngày đủ bán</th><th>SL bù</th><th>Kiểm tra</th><th>Lý do</th>
   </tr></thead><tbody>${rows.map(r=>`<tr>
-    <td>${badge(r.hanh_dong)}${r.can_luu_y_chuyen_kho?'<div class="mini" style="color:#b42318;font-weight:900">Nên kiểm tra chuyển kho</div>':''}</td>
+    <td>
+      ${badge(r.hanh_dong)}
+      ${Number(r.so_size_thieu_nhap||0)>0?`<div class="mini sizeHot">Thiếu: ${(r.ds_size_thieu_nhap||[]).join(', ')}</div>`:''}
+      ${Number(r.so_size_thieu_quan_tam||0)>0?`<div class="mini sizeWatchTxt">Theo dõi: ${(r.ds_size_thieu_quan_tam||[]).join(', ')}</div>`:''}
+      ${r.can_luu_y_chuyen_kho?'<div class="mini" style="color:#b42318;font-weight:900">Nên kiểm tra chuyển kho</div>':''}
+    </td>
     <td class="code"><span class="codeLink" data-m="${r.masp}" title="Bấm để xem nhanh tồn, size, ảnh sản phẩm">${r.masp}</span></td>
     <td>${r.tensp||''}</td><td>${r.nhomhang||''}</td><td><b>${fmt(r.diem_uu_tien,1)}</b>/100</td>
     <td class="mini">
@@ -227,6 +312,14 @@ async function openCheck(masp){
         <tr><th>Ngày đủ bán LIVE</th><td>${coverLive==null?'—':fmt(coverLive,1)+' ngày'}</td><th>Điểm ưu tiên</th><td>${fmt(s.diem_uu_tien,1)}/100</td></tr>
       </tbody></table></div>
 
+      ${(d.tinh_hieu_size&&Object.keys(d.tinh_hieu_size).length)?`
+      <div class="sectionTitle">Tín hiệu thiếu size</div>
+      <div class="tableWrap"><table class="auditTable"><tbody>
+        <tr><th>Size cần nhập bù</th><td class="sizeHot">${(d.tinh_hieu_size.ds_size_thieu_nhap||[]).join(', ')||'—'}</td></tr>
+        <tr><th>Size cần quan tâm</th><td class="sizeWatchTxt">${(d.tinh_hieu_size.ds_size_thieu_quan_tam||[]).join(', ')||'—'}</td></tr>
+        <tr><th>SL tối thiểu do thiếu size</th><td><b>${fmt(d.tinh_hieu_size.sl_bu_thieu_size,0)}</b></td></tr>
+      </tbody></table></div>`:''}
+
       <div class="sectionTitle">Đối chiếu tồn</div>
       <div class="tableWrap"><table class="auditTable"><thead><tr><th>Nguồn</th><th>CS1</th><th>CS2</th><th>Tổng</th></tr></thead><tbody>
         <tr><td>Snapshot V2</td><td>${fmt(snap1,0)}</td><td>${fmt(snap2,0)}</td><td>${fmt(snapT,0)}</td></tr>
@@ -255,16 +348,54 @@ async function openCheck(masp){
   }
 }
 
+
 async function openSize(masp,sl){
   if(sl<=0){alert('Mã này hiện chưa có số lượng cần bù.');return}
   $('modalTitle').textContent='PHÂN BỔ SIZE · '+masp;
-  $('modal').style.display='flex'; $('modalBody').innerHTML='Đang tính...';
+  $('modal').style.display='flex';
+  $('modalBody').innerHTML='Đang tính...';
   try{
     const a=await phanBoSizeV2(masp,sl,$('date').value||null);
-    $('modalBody').innerHTML=`<div class="tableWrap"><table style="min-width:600px"><thead><tr><th>Size</th><th>Tỷ trọng</th><th>Tồn hiện tại</th><th>SL đề nghị</th><th>Nguồn</th></tr></thead><tbody>
-      ${a.map(x=>`<tr><td><b>${x.size}</b></td><td>${fmt(Number(x.ty_trong)*100,1)}%</td><td>${fmt(x.ton_hien_tai,0)}</td><td><b>${fmt(x.sl_de_nghi,0)}</b></td><td>${x.nguon}</td></tr>`).join('')}
-    </tbody></table></div>`;
-  }catch(e){$('modalBody').textContent='Lỗi: '+(e?.message||e)}
+    const sourceText=x=>{
+      if(String(x.nguon||'').startsWith('THIEU_SIZE_')) return 'Thiếu size';
+      if(x.nguon==='SKU_90_NGAY') return 'Mã này · 90 ngày';
+      if(x.nguon==='NHOM_365_NGAY') return 'Nhóm · 365 ngày';
+      return x.nguon||'—';
+    };
+    $('modalBody').innerHTML=`
+      <div class="mini" style="margin:4px 0 8px">
+        <b>${masp}</b> · Tổng đề nghị bù: <b>${fmt(sl,0)} SP</b>
+      </div>
+      <div class="tableWrap"><table class="sizeTable"><thead><tr>
+        <th>Size</th>
+        <th>SL đề nghị</th>
+        <th>Tồn sau đề nghị</th>
+        <th>Tồn sau đợt</th>
+        <th>Bán trong kỳ</th>
+        <th>Bán gần đây</th>
+        <th>Tồn hiện tại</th>
+        <th>Tỷ trọng</th>
+        <th>Nguồn</th>
+      </tr></thead><tbody>
+        ${a.map(x=>`<tr>
+          <td><b>${x.size}</b></td>
+          <td class="${x.loai_goi_y==='THIEU_SIZE_CAN_NHAP'?'sizeHot':x.loai_goi_y==='THIEU_SIZE_CAN_QUAN_TAM'?'sizeWatchTxt':''}"><b>${fmt(x.sl_de_nghi,0)}</b></td>
+          <td>${fmt(x.ton_sau_de_nghi,0)}</td>
+          <td>${fmt(x.ton_sau_dot,0)}</td>
+          <td>${fmt(x.ban_trong_ky,0)}</td>
+          <td>${fmt(x.ban_gan_ngay,0)}</td>
+          <td><b>${fmt(x.ton_hien_tai,0)}</b></td>
+          <td>${fmt(Number(x.ty_trong||0)*100,1)}%</td>
+          <td>
+            ${sourceText(x)}
+            ${x.loai_goi_y==='THIEU_SIZE_CAN_NHAP'?'<div class="mini sizeHot">Hết size + bán nhanh</div>':''}
+            ${x.loai_goi_y==='THIEU_SIZE_CAN_QUAN_TAM'?'<div class="mini sizeWatchTxt">Hết size · cần theo dõi</div>':''}
+          </td>
+        </tr>`).join('')}
+      </tbody></table></div>`;
+  }catch(e){
+    $('modalBody').textContent='Lỗi: '+(e?.message||e);
+  }
 }
 
 async function refreshScope(){
@@ -296,6 +427,8 @@ async function loadCfg(){
   $('c_target').value=c.so_ngay_muc_tieu??14;
   $('c_watch').value=c.nguong_diem_quan_tam??60;
   $('c_size').value=c.nguong_du_du_lieu_size??5;
+  $('c_size_days').value=c.so_ngay_kiem_tra_thieu_size??10;
+  $('c_size_sales').value=c.so_sp_ban_toi_thieu_size_thieu??2;
 }
 
 
@@ -310,13 +443,15 @@ async function saveCfgSilently(){
       so_ngay_hang_ve:Number($('c_lead').value),
       so_ngay_muc_tieu:Number($('c_target').value),
       nguong_diem_quan_tam:Number($('c_watch').value),
-      nguong_du_du_lieu_size:Number($('c_size').value)
+      nguong_du_du_lieu_size:Number($('c_size').value),
+      so_ngay_kiem_tra_thieu_size:Number($('c_size_days').value),
+      so_sp_ban_toi_thieu_size_thieu:Number($('c_size_sales').value)
     });
   }catch(e){
     console.error('Lỗi tự lưu cấu hình V2',e);
   }
 }
-['c_recent','c_gap','c_ratio','c_lead','c_target','c_watch','c_size'].forEach(id=>{
+['c_recent','c_gap','c_ratio','c_lead','c_target','c_watch','c_size','c_size_days','c_size_sales'].forEach(id=>{
   $(id).addEventListener('input',()=>{
     clearTimeout(cfgSaveTimer);
     cfgSaveTimer=setTimeout(saveCfgSilently,650);
@@ -326,6 +461,17 @@ async function saveCfgSilently(){
     saveCfgSilently();
   });
 });
+
+
+document.querySelectorAll('.infoTip').forEach(t=>{
+  t.addEventListener('click',e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    document.querySelectorAll('.infoTip.open').forEach(x=>{if(x!==t)x.classList.remove('open')});
+    t.classList.toggle('open');
+  });
+});
+document.addEventListener('click',()=>document.querySelectorAll('.infoTip.open').forEach(x=>x.classList.remove('open')));
 
 $('resetCfg').onclick=async()=>{
   if(!confirm('Đặt lại toàn bộ cấu hình nhập bù V2 về chuẩn ban đầu?')) return;
