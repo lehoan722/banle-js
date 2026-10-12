@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.3 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.4 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -173,6 +173,35 @@ body.nb2-page .sq-stock-popup .sq-stock-table-wrapper td:not(:first-child){
 .orderBody .handsontable td.order-red{color:#d71920 !important;font-weight:900 !important}
 .orderBody .handsontable td.order-blue{color:#143cff !important;font-weight:900 !important}
 
+
+/* V2.3.4 - đường tắt nghiệp vụ chính */
+.nccOrderLink{
+  color:#0b5fa5;
+  font-weight:900;
+  text-decoration:underline;
+  cursor:pointer;
+  font-size:16px;
+}
+.nccOrderLink:hover{color:#003f78}
+.nccDetailHint{
+  display:inline-block;
+  margin-left:7px;
+  font-size:11px;
+  color:#6b7280;
+  text-decoration:underline;
+  cursor:pointer;
+  font-weight:600;
+}
+.nccDetailHint:hover{color:#111827}
+
+.orderMaspLink{
+  color:#0b5fa5;
+  text-decoration:underline;
+  cursor:pointer;
+  font-weight:800;
+}
+.orderMaspLink:hover{color:#003f78}
+
 .orderBtn{height:34px;padding:0 12px;background:#0f766e;color:#fff}
 .zeroBlank{color:transparent}
 
@@ -184,7 +213,7 @@ body.nb2-page .sq-stock-popup .sq-stock-table-wrapper td:not(:first-child){
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.3 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.4 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -366,14 +395,39 @@ async function showOverview(){
   $('content').innerHTML=`<div class="tableWrap"><table style="min-width:1120px"><thead><tr>
     <th>Nhà cung cấp</th><th>SP phân tích</th><th>Mã cần nhập</th><th>↳ Thiếu size</th>
     <th>Mã cần quan tâm</th><th>↳ Quan tâm thiếu size</th><th>Tổng SL cần nhập</th><th>Điểm cao nhất</th>
-  </tr></thead><tbody>${rows.map(r=>`<tr class="nccRow" data-ncc="${r.nhacc}">
-    <td class="code">${r.nhacc}</td><td>${fmt(r.so_sp_dien_phan_tich,0)}</td>
+  </tr></thead><tbody>${rows.map(r=>`<tr class="nccRow" data-ncc="${r.nhacc}" title="Bấm ngoài mã NCC để xem chi tiết phân tích">
+    <td class="code">
+      <span class="nccOrderLink" data-ncc="${r.nhacc}" title="Bấm để mở ngay Tổng hợp nhập bù">${r.nhacc}</span>
+      <span class="nccDetailHint" data-ncc="${r.nhacc}" title="Xem bảng phân tích chi tiết">chi tiết</span>
+    </td>
+    <td>${fmt(r.so_sp_dien_phan_tich,0)}</td>
     <td class="num">${fmt(r.so_ma_can_nhap,0)}</td><td class="sizeHot">${fmt(r.so_ma_nhap_thieu_size,0)}</td>
     <td>${fmt(r.so_ma_can_quan_tam,0)}</td><td class="sizeWatchTxt">${fmt(r.so_ma_quan_tam_thieu_size,0)}</td>
     <td class="num">${fmt(r.tong_sl_can_nhap,0)}</td><td>${fmt(r.diem_cao_nhat,1)}</td>
   </tr>`).join('')}</tbody></table></div>`;
-  document.querySelectorAll('.nccRow').forEach(tr=>tr.onclick=()=>showDetail({nhacc:tr.dataset.ncc}));
-  $('status').textContent=`Đã tải ${rows.length} nhà cung cấp cần xử lý.`;
+
+  document.querySelectorAll('.nccOrderLink').forEach(el=>{
+    el.onclick=(e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      openSupplierOrderFor(el.dataset.ncc);
+    };
+  });
+
+  document.querySelectorAll('.nccDetailHint').forEach(el=>{
+    el.onclick=(e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      showDetail({nhacc:el.dataset.ncc});
+    };
+  });
+
+  /* Giữ đường xem sâu: bấm phần còn lại của dòng vẫn mở chi tiết */
+  document.querySelectorAll('.nccRow').forEach(tr=>{
+    tr.onclick=()=>showDetail({nhacc:tr.dataset.ncc});
+  });
+
+  $('status').textContent=`Đã tải ${rows.length} nhà cung cấp cần xử lý. Bấm mã NCC để mở Tổng hợp nhập bù.`;
 }
 
 
@@ -571,6 +625,14 @@ async function openSize(masp,sl){
 }
 
 
+
+async function openSupplierOrderFor(ncc){
+  const code=String(ncc||'').trim();
+  if(!code)return;
+  currentSupplier=code;
+  await openSupplierOrder();
+}
+
 async function openSupplierOrder(){
   const ncc=currentSupplier;
   if(!ncc){return}
@@ -643,6 +705,17 @@ function rebuildOrderGroupColors(){
   }
 }
 
+
+function orderMaspRenderer(instance,td,row,col,prop,value,cellProperties){
+  Handsontable.renderers.TextRenderer(
+    instance,td,row,col,prop,value,cellProperties
+  );
+  const masp=String(value||'').trim();
+  td.innerHTML=masp
+    ? `<span class="orderMaspLink" data-masp="${masp}" title="Bấm để xem nhanh tồn, size và ảnh">${masp}</span>`
+    : '';
+}
+
 function orderBlankRenderer(instance,td,row,col,prop,value,cellProperties){
   Handsontable.renderers.TextRenderer(
     instance,td,row,col,prop,value,cellProperties
@@ -683,7 +756,9 @@ function applyOrderGroupColor(TD,row){
 function orderColumnsForMode(){
   const cols=(orderCompact?ORDER_COMPACT_COLUMNS:ORDER_FULL_COLUMNS).map(c=>({...c}));
   for(const c of cols){
-    if(c.data==='ton_hien_tai'||c.data==='ban_gan'){
+    if(c.data==='masp'){
+      c.renderer=orderMaspRenderer;
+    }else if(c.data==='ton_hien_tai'||c.data==='ban_gan'){
       c.renderer=orderBlankRenderer;
     }
   }
@@ -773,6 +848,30 @@ function buildOrderHot(){
       updateOrderStats();
       orderHot.render();
     },
+
+
+afterOnCellMouseDown(event,coords,TD){
+  if(coords.row<0 || coords.col<0)return;
+
+  const prop=this.colToProp(coords.col);
+  if(prop!=='masp')return;
+
+  const physical=this.toPhysicalRow(coords.row);
+  if(physical==null)return;
+
+  const rowData=this.getSourceDataAtRow(physical);
+  const masp=String(rowData?.masp||'').trim();
+  if(!masp)return;
+
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+
+  if(window.stockQuickPopup){
+    window.stockQuickPopup(masp);
+  }else{
+    console.warn('Chưa load stockQuickPopup.js');
+  }
+},
 
     afterColumnSort(){
       /* STT hiển thị lại theo thứ tự đang nhìn */
