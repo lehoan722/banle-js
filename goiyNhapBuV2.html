@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.1 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.2 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -52,6 +52,38 @@ body.nb2-page .sq-stock-popup th,
 body.nb2-page .sq-stock-popup td{font-size:14px !important;padding-top:3px !important;padding-bottom:3px !important}
 body.nb2-page .sq-stock-popup .sq-stock-table-wrapper{overflow-x:auto !important;max-width:100% !important}
 body.nb2-page .sq-stock-popup .sq-img-wrapper img{max-height:300px !important;object-fit:contain !important}
+body.nb2-page .sq-stock-popup .sq-stock-table-wrapper{
+  overflow-x:auto !important;
+}
+body.nb2-page .sq-stock-popup .sq-stock-table-wrapper table{
+  width:max-content !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  table-layout:auto !important;
+}
+body.nb2-page .sq-stock-popup .sq-stock-table-wrapper th,
+body.nb2-page .sq-stock-popup .sq-stock-table-wrapper td{
+  width:auto !important;
+  min-width:0 !important;
+  max-width:none !important;
+  white-space:nowrap !important;
+  padding-left:4px !important;
+  padding-right:4px !important;
+}
+body.nb2-page .sq-stock-popup .sq-stock-table-wrapper th:first-child,
+body.nb2-page .sq-stock-popup .sq-stock-table-wrapper td:first-child{
+  width:190px !important;
+  min-width:190px !important;
+  max-width:190px !important;
+}
+body.nb2-page .sq-stock-popup .sq-stock-table-wrapper th:not(:first-child),
+body.nb2-page .sq-stock-popup .sq-stock-table-wrapper td:not(:first-child){
+  width:52px !important;
+  min-width:44px !important;
+  max-width:58px !important;
+  text-align:center !important;
+}
+
 
 /* ===== Giải thích cấu hình ===== */
 .infoTip{
@@ -86,7 +118,13 @@ body.nb2-page .sq-stock-popup .sq-img-wrapper img{max-height:300px !important;ob
 .orderStats{font-size:12px;color:#526171;font-weight:700}
 .orderActions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
 .orderBody{flex:1;min-height:0;padding:8px}
-#hotOrder{width:100%;height:100%}
+#hotOrder{width:100%;height:100%;overflow:hidden}
+.orderBody .handsontable{max-width:100%!important}
+.orderBody .wtHolder{max-width:100%!important}
+.orderBody .ht_master .wtHolder{overflow:auto!important}
+.orderBody .handsontable th,
+.orderBody .handsontable td{padding-left:4px!important;padding-right:4px!important;white-space:nowrap!important}
+
 .handsontable th{background:#f4f7fa!important;font-weight:800!important}
 .handsontable td{font-size:12px}
 .handsontable .htDropdownMenu,.htFiltersMenu{z-index:12000!important}
@@ -103,7 +141,7 @@ body.nb2-page .sq-stock-popup .sq-img-wrapper img{max-height:300px !important;ob
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.1 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.2 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -533,19 +571,19 @@ function buildOrderHot(){
       'Bán gần','Tên','Nhóm','Lý do'
     ],
     columns:[
-      {data:'stt',type:'numeric',readOnly:true,width:55},
-      {data:'masp',type:'text',readOnly:true,width:180},
-      {data:'size',type:'text',readOnly:true,width:75},
-      {data:'sl_goi_y',type:'numeric',readOnly:true,width:130},
-      {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:85,className:'order-red'},
-      {data:'ton_hien_tai',type:'numeric',readOnly:true,width:95,renderer:blankRenderer},
-      {data:'ton_sau_dat',type:'numeric',readOnly:true,width:105,className:'order-blue'},
-      {data:'ban_gan',type:'numeric',readOnly:true,width:80,renderer:blankRenderer},
-      {data:'ten',type:'text',readOnly:true,width:155},
-      {data:'nhom',type:'text',readOnly:true,width:90},
-      {data:'ly_do',type:'text',readOnly:true,width:110}
+      {data:'stt',type:'numeric',readOnly:true,width:42},
+      {data:'masp',type:'text',readOnly:true,width:145},
+      {data:'size',type:'text',readOnly:true,width:52},
+      {data:'sl_goi_y',type:'numeric',readOnly:true,width:112},
+      {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:72,className:'order-red'},
+      {data:'ton_hien_tai',type:'numeric',readOnly:true,width:82,renderer:blankRenderer},
+      {data:'ton_sau_dat',type:'numeric',readOnly:true,width:92,className:'order-blue'},
+      {data:'ban_gan',type:'numeric',readOnly:true,width:72,renderer:blankRenderer},
+      {data:'ten',type:'text',readOnly:true,width:115},
+      {data:'nhom',type:'text',readOnly:true,width:58},
+      {data:'ly_do',type:'text',readOnly:true,width:88}
     ],
-    stretchH:'all',
+    stretchH:'none',
     height:'100%',
     licenseKey:'non-commercial-and-evaluation',
     filters:true,
@@ -554,7 +592,7 @@ function buildOrderHot(){
     manualColumnResize:true,
     contextMenu:true,
     copyPaste:true,
-    fixedColumnsStart:3,
+    fixedColumnsStart:0,
     hiddenColumns:{
       columns:[],
       indicators:true
@@ -598,6 +636,14 @@ function buildOrderHot(){
     }
   });
 
+  requestAnimationFrame(()=>{
+    if(orderHot){
+      orderHot.updateSettings({
+        width:Math.max(760,$('hotOrder').clientWidth)
+      });
+      orderHot.render();
+    }
+  });
   applyOrderCompact(false);
   updateOrderStats();
 }
@@ -615,8 +661,19 @@ function applyOrderCompact(force){
   if(!orderHot)return;
   const plugin=orderHot.getPlugin('hiddenColumns');
   const hide=[3,5,6,7,8,9,10]; // chỉ giữ STT, Mã SP, Size, SL đặt
-  if(orderCompact) plugin.hideColumns(hide);
-  else plugin.showColumns(hide);
+  if(orderCompact){
+    plugin.hideColumns(hide);
+    orderHot.updateSettings({
+      stretchH:'none',
+      width:Math.min(520,Math.max(420,$('hotOrder').clientWidth))
+    });
+  }else{
+    plugin.showColumns(hide);
+    orderHot.updateSettings({
+      stretchH:'none',
+      width:Math.max(760,$('hotOrder').clientWidth)
+    });
+  }
   orderHot.render();
   $('orderCompact').textContent=orderCompact?'Hiện đầy đủ':'Rút gọn';
 }
