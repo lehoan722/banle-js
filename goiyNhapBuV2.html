@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.2 - XNT19</title>
+<title>Gợi ý nhập bù V2.3 - XNT19</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
+<script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
 .wrap{padding:12px}.card{background:#fff;border:1px solid #dbe4ed;border-radius:12px;padding:12px;margin-bottom:10px}
@@ -74,6 +76,25 @@ body.nb2-page .sq-stock-popup .sq-img-wrapper img{max-height:300px !important;ob
 .sizeTable{min-width:980px !important}
 .sizeTable th{position:static}
 
+
+/* ===== V2.3 - Tong hop bu NCC ===== */
+.orderModal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:11000;padding:10px}
+.orderModal.show{display:flex;align-items:stretch;justify-content:center}
+.orderCard{width:min(1500px,99vw);height:calc(100vh - 20px);background:#fff;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 70px rgba(0,0,0,.28)}
+.orderHead{padding:9px 12px;border-bottom:1px solid #dbe4ed;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.orderHead h3{margin:0;color:#075f9f;font-size:19px}
+.orderStats{font-size:12px;color:#526171;font-weight:700}
+.orderActions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.orderBody{flex:1;min-height:0;padding:8px}
+#hotOrder{width:100%;height:100%}
+.handsontable th{background:#f4f7fa!important;font-weight:800!important}
+.handsontable td{font-size:12px}
+.handsontable .htDropdownMenu,.htFiltersMenu{z-index:12000!important}
+.handsontable td.order-red{color:#d71920!important;font-weight:900!important}
+.handsontable td.order-blue{color:#143cff!important;font-weight:900!important}
+.orderBtn{height:34px;padding:0 12px;background:#0f766e;color:#fff}
+.zeroBlank{color:transparent}
+
 @media(max-width:800px){.summary,.cfg{grid-template-columns:1fr 1fr}textarea{width:100%}.field{flex:1 1 100%}}
 </style>
 </head>
@@ -82,7 +103,7 @@ body.nb2-page .sq-stock-popup .sq-img-wrapper img{max-height:300px !important;ob
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.2 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -145,7 +166,7 @@ body.nb2-page .sq-stock-popup .sq-img-wrapper img{max-height:300px !important;ob
 </div>
 
 <div id="summary" class="summary"></div>
-<div id="toolbar" class="row hidden" style="margin-bottom:8px"><button id="back" class="s">← Tổng quan NCC</button><b id="detailTitle"></b></div>
+<div id="toolbar" class="row hidden" style="margin-bottom:8px"><button id="back" class="s">← Tổng quan NCC</button><b id="detailTitle"></b><button id="orderBtn" class="orderBtn hidden">Tổng hợp bù</button></div>
 <div id="content"></div>
 
 </main></div>
@@ -154,6 +175,24 @@ body.nb2-page .sq-stock-popup .sq-img-wrapper img{max-height:300px !important;ob
   <div class="row"><h3 id="modalTitle" style="margin:0;color:#075f9f">Kiểm tra</h3><button id="close" class="s" style="margin-left:auto">Đóng</button></div>
   <div id="modalBody"></div>
 </div></div>
+
+
+<div id="orderModal" class="orderModal">
+  <div class="orderCard">
+    <div class="orderHead">
+      <h3 id="orderTitle">TỔNG HỢP NHẬP BÙ</h3>
+      <span id="orderStats" class="orderStats"></span>
+      <div class="orderActions">
+        <button id="orderCompact" class="s">Rút gọn</button>
+        <button id="orderCopyShort" class="p">Copy đơn đặt</button>
+        <button id="orderCopyAll" class="s">Copy toàn bộ</button>
+        <button id="orderReset" class="w">Đặt lại theo gợi ý</button>
+        <button id="orderClose" class="s">Đóng</button>
+      </div>
+    </div>
+    <div class="orderBody"><div id="hotOrder"></div></div>
+  </div>
+</div>
 
 <script type="module" src="./scripts/stockQuickPopup.js"></script>
 <script type="module">
@@ -164,6 +203,7 @@ import {
 
 const $=id=>document.getElementById(id);
 const fmt=(v,d=1)=>v==null||v===''?'—':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:d});
+const blank0=v=>v==null||v===''||Number(v)===0?'':Number(v).toLocaleString('vi-VN',{maximumFractionDigits:1});
 const fmtSpeed=v=>{
   if(v==null||v==='') return '—';
   const n=Number(v);
@@ -178,6 +218,11 @@ const today=()=>{let d=new Date();return `${d.getFullYear()}-${String(d.getMonth
 $('date').value=today();
 
 const codes=()=>[...new Set($('codes').value.split(/\r?\n/).map(x=>x.trim().toUpperCase()).filter(Boolean))];
+let currentSupplier=null;
+let currentDetailRows=[];
+let orderHot=null;
+let orderRows=[];
+let orderCompact=false;
 
 function badge(a){
   if(a==='CAN_NHAP_BU_THIEU_SIZE') return '<span class="badge sizeNeed">CẦN NHẬP BÙ · THIẾU SIZE</span>';
@@ -204,7 +249,7 @@ async function loadSummary(){
 
 async function showOverview(){
   $('status').textContent='Đang tải tổng quan NCC...';
-  $('toolbar').classList.add('hidden');
+  $('toolbar').classList.add('hidden'); currentSupplier=null; $('orderBtn').classList.add('hidden');
   const rows=await tongQuanNccV2($('date').value||null);
   $('content').innerHTML=`<div class="tableWrap"><table style="min-width:1120px"><thead><tr>
     <th>Nhà cung cấp</th><th>SP phân tích</th><th>Mã cần nhập</th><th>↳ Thiếu size</th>
@@ -223,7 +268,10 @@ async function showOverview(){
 async function showDetail({masps=null,nhacc=null,hienTatCa=false}={}){
   const rows=await chiTietNhapBuV2({ngay:$('date').value||null,masps,nhacc,hienTatCa});
   $('toolbar').classList.remove('hidden');
+  currentDetailRows=rows;
+  currentSupplier=(!masps?.length && nhacc)?nhacc:null;
   $('detailTitle').textContent=masps?.length?`KIỂM TRA ${rows.length} MÃ`:`NHÀ CUNG CẤP: ${nhacc||''} · ${rows.length} mã`;
+  $('orderBtn').classList.toggle('hidden',!currentSupplier);
 
   $('content').innerHTML=`<div class="tableWrap"><table><thead><tr>
     <th>Hành động</th><th>Mã SP</th><th>Tên</th><th>Nhóm</th><th>Điểm</th>
@@ -336,12 +384,24 @@ async function openCheck(masp){
 
       <div class="sectionTitle">Tồn theo size · XNT19 LIVE</div>
       <div class="tableWrap"><table class="auditTable"><thead><tr><th>Size</th><th>CS1</th><th>CS2</th><th>Tổng</th></tr></thead><tbody>
-        ${sizes.length?sizes.map(x=>`<tr><td><b>${x.size||'—'}</b></td><td>${fmt(x.ton_cs1,0)}</td><td>${fmt(x.ton_cs2,0)}</td><td><b>${fmt(x.ton_tong,0)}</b></td></tr>`).join(''):'<tr><td colspan="4">Không có dữ liệu size.</td></tr>'}
+        ${sizes.length?sizes.map(x=>`<tr><td><b>${x.size||'—'}</b></td><td>${blank0(x.ton_cs1)}</td><td>${blank0(x.ton_cs2)}</td><td><b>${blank0(x.ton_tong)}</b></td></tr>`).join(''):'<tr><td colspan="4">Không có dữ liệu size.</td></tr>'}
       </tbody></table></div>
 
       <div class="sectionTitle">Phát sinh 90 ngày</div>
-      <div class="tableWrap"><table class="auditTable"><thead><tr><th>Ngày</th><th>Nhập mua</th><th>Bán CS1</th><th>Bán CS2</th><th>Tổng bán</th></tr></thead><tbody>
-        ${daily.length?daily.map(x=>`<tr><td>${x.ngay}</td><td>${fmt(x.nhapmua,0)}</td><td>${fmt(x.ban_cs1,0)}</td><td>${fmt(x.ban_cs2,0)}</td><td><b>${fmt(x.ban_tong,0)}</b></td></tr>`).join(''):'<tr><td colspan="5">Không có phát sinh.</td></tr>'}
+      <div class="tableWrap"><table class="auditTable"><thead><tr>
+        <th>Ngày</th><th>Nhập mua</th><th>Bán CS1</th><th>Bán CS2</th><th>Tổng bán</th>
+        <th>Bán tích lũy</th><th>Tồn</th><th>Thiếu size</th>
+      </tr></thead><tbody>
+        ${daily.length?daily.map(x=>`<tr>
+          <td>${x.ngay}</td>
+          <td>${blank0(x.nhapmua)}</td>
+          <td>${blank0(x.ban_cs1)}</td>
+          <td>${blank0(x.ban_cs2)}</td>
+          <td><b>${blank0(x.ban_tong)}</b></td>
+          <td>${blank0(x.ban_tich_luy)}</td>
+          <td>${blank0(x.ton)}</td>
+          <td>${Array.isArray(x.thieu_size)?x.thieu_size.join(', '):(x.thieu_size||'')}</td>
+        </tr>`).join(''):'<tr><td colspan="8">Không có phát sinh.</td></tr>'}
       </tbody></table></div>`;
   }catch(e){
     $('modalBody').textContent='Lỗi: '+(e?.message||e);
@@ -379,12 +439,12 @@ async function openSize(masp,sl){
       </tr></thead><tbody>
         ${a.map(x=>`<tr>
           <td><b>${x.size}</b></td>
-          <td class="${x.loai_goi_y==='THIEU_SIZE_CAN_NHAP'?'sizeHot':x.loai_goi_y==='THIEU_SIZE_CAN_QUAN_TAM'?'sizeWatchTxt':''}"><b>${fmt(x.sl_de_nghi,0)}</b></td>
-          <td>${fmt(x.ton_sau_de_nghi,0)}</td>
-          <td>${fmt(x.ton_sau_dot,0)}</td>
-          <td>${fmt(x.ban_trong_ky,0)}</td>
-          <td>${fmt(x.ban_gan_ngay,0)}</td>
-          <td><b>${fmt(x.ton_hien_tai,0)}</b></td>
+          <td class="${x.loai_goi_y==='THIEU_SIZE_CAN_NHAP'?'sizeHot':x.loai_goi_y==='THIEU_SIZE_CAN_QUAN_TAM'?'sizeWatchTxt':''}"><b>${blank0(x.sl_de_nghi)}</b></td>
+          <td>${blank0(x.ton_sau_de_nghi)}</td>
+          <td>${blank0(x.ton_sau_dot)}</td>
+          <td>${blank0(x.ban_trong_ky)}</td>
+          <td>${blank0(x.ban_gan_ngay)}</td>
+          <td><b>${blank0(x.ton_hien_tai)}</b></td>
           <td>${fmt(Number(x.ty_trong||0)*100,1)}%</td>
           <td>
             ${sourceText(x)}
@@ -397,6 +457,194 @@ async function openSize(masp,sl){
     $('modalBody').textContent='Lỗi: '+(e?.message||e);
   }
 }
+
+
+async function openSupplierOrder(){
+  const ncc=currentSupplier;
+  if(!ncc){return}
+  $('orderModal').classList.add('show');
+  $('orderTitle').textContent='TỔNG HỢP NHẬP BÙ · NCC: '+ncc;
+  $('orderStats').textContent='Đang tổng hợp dữ liệu size...';
+  $('hotOrder').innerHTML='';
+
+  try{
+    const rows=await chiTietNhapBuV2({
+      ngay:$('date').value||null,
+      nhacc:ncc,
+      hienTatCa:false
+    });
+    const needRows=rows.filter(r=>
+      Number(r.sl_can_bu||0)>0 &&
+      ['CAN_NHAP_BU_THIEU_SIZE','CAN_NHAP_BU'].includes(r.hanh_dong)
+    );
+
+    const chunks=await Promise.all(needRows.map(async r=>{
+      const sizes=await phanBoSizeV2(r.masp,Number(r.sl_can_bu||0),$('date').value||null);
+      return sizes
+        .filter(x=>Number(x.sl_de_nghi||0)>0)
+        .map(x=>({
+          stt:0,
+          masp:r.masp,
+          size:x.size,
+          sl_goi_y:Number(x.sl_de_nghi||0),
+          sl_dat:Number(x.sl_de_nghi||0),
+          ton_hien_tai:Number(x.ton_hien_tai||0),
+          ton_sau_dat:Number(x.ton_hien_tai||0)+Number(x.sl_de_nghi||0),
+          ban_gan:Number(x.ban_gan_ngay||0),
+          ten:r.tensp||'',
+          nhom:r.nhomhang||'',
+          ly_do:String(x.loai_goi_y||'').startsWith('THIEU_SIZE')?'Thiếu size':'Phân bổ'
+        }));
+    }));
+
+    orderRows=chunks.flat()
+      .sort((a,b)=>a.masp.localeCompare(b.masp,'vi',{numeric:true}) ||
+                   String(a.size).localeCompare(String(b.size),'vi',{numeric:true}))
+      .map((r,i)=>({...r,stt:i+1}));
+
+    buildOrderHot();
+  }catch(e){
+    console.error(e);
+    $('orderStats').textContent='Lỗi: '+(e?.message||e);
+  }
+}
+
+function buildOrderHot(){
+  if(orderHot){orderHot.destroy();orderHot=null}
+  const container=$('hotOrder');
+
+  const blankRenderer=(instance,td,row,col,prop,value,cellProperties)=>{
+    Handsontable.renderers.TextRenderer.apply(this,arguments);
+    if((prop==='ton_hien_tai'||prop==='ban_gan') && Number(value||0)===0) td.textContent='';
+  };
+
+  orderHot=new Handsontable(container,{
+    data:orderRows,
+    rowHeaders:false,
+    colHeaders:[
+      'STT','Mã SP','Size','SL hệ thống gợi ý',
+      '<span style="color:#d71920">SL đặt</span>',
+      'Tồn hiện tại',
+      '<span style="color:#143cff">Tồn sau Đặt</span>',
+      'Bán gần','Tên','Nhóm','Lý do'
+    ],
+    columns:[
+      {data:'stt',type:'numeric',readOnly:true,width:55},
+      {data:'masp',type:'text',readOnly:true,width:180},
+      {data:'size',type:'text',readOnly:true,width:75},
+      {data:'sl_goi_y',type:'numeric',readOnly:true,width:130},
+      {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:85,className:'order-red'},
+      {data:'ton_hien_tai',type:'numeric',readOnly:true,width:95,renderer:blankRenderer},
+      {data:'ton_sau_dat',type:'numeric',readOnly:true,width:105,className:'order-blue'},
+      {data:'ban_gan',type:'numeric',readOnly:true,width:80,renderer:blankRenderer},
+      {data:'ten',type:'text',readOnly:true,width:155},
+      {data:'nhom',type:'text',readOnly:true,width:90},
+      {data:'ly_do',type:'text',readOnly:true,width:110}
+    ],
+    stretchH:'all',
+    height:'100%',
+    licenseKey:'non-commercial-and-evaluation',
+    filters:true,
+    dropdownMenu:true,
+    columnSorting:true,
+    manualColumnResize:true,
+    contextMenu:true,
+    copyPaste:true,
+    fixedColumnsStart:3,
+    hiddenColumns:{
+      columns:[],
+      indicators:true
+    },
+    afterChange(changes,source){
+      if(!changes || source==='loadData' || source==='calc') return;
+      let changed=false;
+      for(const [row,prop,oldVal,newVal] of changes){
+        if(prop==='sl_dat'){
+          const v=Math.max(0,Math.round(Number(newVal)||0));
+          orderRows[row].sl_dat=v;
+          orderRows[row].ton_sau_dat=Number(orderRows[row].ton_hien_tai||0)+v;
+          changed=true;
+        }
+      }
+      if(changed){
+        orderHot.loadData(orderRows);
+        updateOrderStats();
+      }
+    },
+    afterColumnSort(){
+      const visual=[];
+      for(let r=0;r<orderHot.countRows();r++){
+        const physical=orderHot.toPhysicalRow(r);
+        if(physical!=null && orderRows[physical]) visual.push(orderRows[physical]);
+      }
+      // chỉ thay STT hiển thị theo thứ tự nhìn, không phá dữ liệu gốc
+      for(let r=0;r<orderHot.countRows();r++){
+        orderHot.setDataAtCell(r,0,r+1,'calc');
+      }
+    }
+  });
+
+  applyOrderCompact(false);
+  updateOrderStats();
+}
+
+function updateOrderStats(){
+  const active=orderRows.filter(r=>Number(r.sl_dat||0)>0);
+  const ma=new Set(active.map(r=>r.masp)).size;
+  const goiY=orderRows.reduce((s,r)=>s+Number(r.sl_goi_y||0),0);
+  const dat=orderRows.reduce((s,r)=>s+Number(r.sl_dat||0),0);
+  $('orderStats').textContent=`${ma} mã · ${active.length} dòng size · Gợi ý ${goiY} SP · SL đặt ${dat} SP`;
+}
+
+function applyOrderCompact(force){
+  orderCompact=force;
+  if(!orderHot)return;
+  const plugin=orderHot.getPlugin('hiddenColumns');
+  const hide=[3,5,6,7,8,9,10]; // chỉ giữ STT, Mã SP, Size, SL đặt
+  if(orderCompact) plugin.hideColumns(hide);
+  else plugin.showColumns(hide);
+  orderHot.render();
+  $('orderCompact').textContent=orderCompact?'Hiện đầy đủ':'Rút gọn';
+}
+
+function orderRowsVisual(){
+  if(!orderHot)return orderRows;
+  const arr=[];
+  for(let r=0;r<orderHot.countRows();r++){
+    const physical=orderHot.toPhysicalRow(r);
+    if(physical!=null && orderRows[physical]) arr.push(orderRows[physical]);
+  }
+  return arr;
+}
+
+async function copyText(txt){
+  try{
+    await navigator.clipboard.writeText(txt);
+  }catch{
+    const ta=document.createElement('textarea');
+    ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+  }
+}
+
+async function copyOrderShort(){
+  const rows=orderRowsVisual().filter(r=>Number(r.sl_dat||0)>0);
+  const lines=[['STT','Mã SP','Size','SL đặt'].join('\t')];
+  rows.forEach((r,i)=>lines.push([i+1,r.masp,r.size,r.sl_dat].join('\t')));
+  await copyText(lines.join('\n'));
+}
+
+async function copyOrderAll(){
+  const rows=orderRowsVisual();
+  const head=['STT','Mã SP','Size','SL hệ thống gợi ý','SL đặt','Tồn hiện tại','Tồn sau Đặt','Bán gần','Tên','Nhóm','Lý do'];
+  const lines=[head.join('\t')];
+  rows.forEach((r,i)=>lines.push([
+    i+1,r.masp,r.size,r.sl_goi_y,r.sl_dat,
+    r.ton_hien_tai||'',r.ton_sau_dat||'',r.ban_gan||'',
+    r.ten,r.nhom,r.ly_do
+  ].join('\t')));
+  await copyText(lines.join('\n'));
+}
+
 
 async function refreshScope(){
   const cs=codes(),sup=$('supplier').value.trim();
@@ -484,6 +732,19 @@ $('load').onclick=loadCurrent;
 $('refresh').onclick=refreshScope;
 $('overview').onclick=showOverview;
 $('back').onclick=showOverview;
+$('orderBtn').onclick=openSupplierOrder;
+$('orderClose').onclick=()=>{$('orderModal').classList.remove('show')};
+$('orderCompact').onclick=()=>applyOrderCompact(!orderCompact);
+$('orderCopyShort').onclick=copyOrderShort;
+$('orderCopyAll').onclick=copyOrderAll;
+$('orderReset').onclick=()=>{
+  orderRows.forEach(r=>{
+    r.sl_dat=Number(r.sl_goi_y||0);
+    r.ton_sau_dat=Number(r.ton_hien_tai||0)+Number(r.sl_dat||0);
+  });
+  if(orderHot)orderHot.loadData(orderRows);
+  updateOrderStats();
+};
 $('close').onclick=()=>{$('modal').style.display='none'};
 $('modal').onclick=e=>{if(e.target===$('modal'))$('modal').style.display='none'};
 
