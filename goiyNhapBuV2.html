@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.1 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -103,7 +103,7 @@ body.nb2-page .sq-stock-popup .sq-img-wrapper img{max-height:300px !important;ob
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.1 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -513,19 +513,23 @@ function buildOrderHot(){
   if(orderHot){orderHot.destroy();orderHot=null}
   const container=$('hotOrder');
 
-  const blankRenderer=(instance,td,row,col,prop,value,cellProperties)=>{
-    Handsontable.renderers.TextRenderer.apply(this,arguments);
-    if((prop==='ton_hien_tai'||prop==='ban_gan') && Number(value||0)===0) td.textContent='';
-  };
+  function blankRenderer(instance,td,row,col,prop,value,cellProperties){
+    Handsontable.renderers.TextRenderer(
+      instance,td,row,col,prop,value,cellProperties
+    );
+    if((prop==='ton_hien_tai'||prop==='ban_gan') && Number(value||0)===0){
+      td.textContent='';
+    }
+  }
 
   orderHot=new Handsontable(container,{
     data:orderRows,
     rowHeaders:false,
     colHeaders:[
       'STT','Mã SP','Size','SL hệ thống gợi ý',
-      '<span style="color:#d71920">SL đặt</span>',
+      'SL đặt',
       'Tồn hiện tại',
-      '<span style="color:#143cff">Tồn sau Đặt</span>',
+      'Tồn sau Đặt',
       'Bán gần','Tên','Nhóm','Lý do'
     ],
     columns:[
@@ -554,6 +558,16 @@ function buildOrderHot(){
     hiddenColumns:{
       columns:[],
       indicators:true
+    },
+    afterGetColHeader(col,TH){
+      const txt=(TH.textContent||'').trim();
+      if(txt==='SL đặt'){
+        TH.style.color='#d71920';
+        TH.style.fontWeight='900';
+      }else if(txt==='Tồn sau Đặt'){
+        TH.style.color='#143cff';
+        TH.style.fontWeight='900';
+      }
     },
     afterChange(changes,source){
       if(!changes || source==='loadData' || source==='calc') return;
