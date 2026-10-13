@@ -17,6 +17,7 @@ const val = id => ($(id)?.value ?? "").trim();
 const bool = id => !!$(id)?.checked;
 const num = v => Number(v || 0);
 const fmt = v => num(v).toLocaleString("vi-VN");
+const fmtPct = v => `${num(v).toLocaleString("vi-VN", {minimumFractionDigits:1, maximumFractionDigits:1})}%`;
 
 function toLocalISO(d) {
   const pad = n => String(n).padStart(2,"0");
@@ -192,6 +193,8 @@ function renderTable(rows) {
       colHeaders: columns.map(c=>c.title)
     });
   }
+
+  bindAutoCompactOnTableScroll();
 }
 
 function renderSummary(s) {
@@ -200,10 +203,20 @@ function renderSummary(s) {
   $("sumDTCS1").textContent = fmt(s?.doanhthu_cs1);
   $("sumSLCS2").textContent = fmt(s?.sl_cs2);
   $("sumDTCS2").textContent = fmt(s?.doanhthu_cs2);
-  $("sumSLTong").textContent = fmt(s?.sl_tong);
-  $("sumVonTong").textContent = fmt(s?.doanhthu_von_tong);
-  $("sumDTTong").textContent = fmt(s?.doanhthu_tong);
-  $("sumLoiNhuanTong").textContent = fmt(s?.loinhuan_tong);
+
+  const slTong = num(s?.sl_tong);
+  const von = num(s?.doanhthu_von_tong);
+  const doanhthu = num(s?.doanhthu_tong);
+  const loinhuan = num(s?.loinhuan_tong);
+
+  $("sumSLTong").textContent = fmt(slTong);
+  $("sumVonTong").textContent = fmt(von);
+  $("sumDTTong").textContent = fmt(doanhthu);
+  $("sumLoiNhuanTong").textContent = fmt(loinhuan);
+
+  // V1.3: hai ty suat loi nhuan quan tri.
+  $("sumPctVon").textContent = fmtPct(von !== 0 ? (loinhuan / von) * 100 : 0);
+  $("sumPctDT").textContent = fmtPct(doanhthu !== 0 ? (loinhuan / doanhthu) * 100 : 0);
 }
 
 function updatePagingBar() {
@@ -466,20 +479,78 @@ document.addEventListener("keydown",e=>{
 });
 
 
+
+// ============================================================
+// V1.3 - TU DONG THU GON PHAN DAU KHI CUON DU LIEU
+// ============================================================
+let hotScrollHolder = null;
+let hotScrollBound = false;
+let resizeObserver = null;
+
+function setDataFocusMode(on) {
+  const changed = document.body.classList.toggle("data-focus", !!on);
+  if (!changed) return;
+
+  // Header/summary thay doi chieu cao => bao Handsontable tinh lai khung.
+  requestAnimationFrame(() => {
+    hotInstance?.refreshDimensions?.();
+    hotInstance?.render?.();
+  });
+}
+
+function bindAutoCompactOnTableScroll() {
+  if (!hotInstance || hotScrollBound) return;
+
+  // Handsontable cuon du lieu trong wtHolder cua master table.
+  const holder = document.querySelector("#hot .ht_master .wtHolder");
+  if (!holder) {
+    setTimeout(bindAutoCompactOnTableScroll, 100);
+    return;
+  }
+
+  hotScrollHolder = holder;
+  hotScrollBound = true;
+
+  holder.addEventListener("scroll", () => {
+    // Cuon xuong: an ten bao cao + bo loc + tong.
+    // Ve sat dau bang: hien lai de thay doi dieu kien loc.
+    setDataFocusMode(holder.scrollTop > 24);
+  }, { passive:true });
+
+  // Khi vung bang doi kich thuoc (do an/hien header), cap nhat HOT.
+  const wrap = document.querySelector(".table-wrap");
+  if (wrap && "ResizeObserver" in window) {
+    resizeObserver = new ResizeObserver(() => {
+      hotInstance?.refreshDimensions?.();
+    });
+    resizeObserver.observe(wrap);
+  }
+}
+
 // ============================================================
 // INIT
 // ============================================================
 document.addEventListener("DOMContentLoaded",()=>{
-  const now=new Date();
-  const from=new Date(now);
-  from.setDate(now.getDate()-30);
+  const now = new Date();
 
-  $("tuNgay").value=toLocalISO(from);
-  $("denNgay").value=toLocalISO(now);
+  // V1.3: mac dinh tu ngay = ngay 01 cua thang hien tai,
+  // den ngay = dung ngay hien tai.
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  $("tuNgay").value = toLocalISO(firstDay);
+  $("denNgay").value = toLocalISO(now);
 
-  $("pageSize").addEventListener("change",async()=>{
-    currentPage=1;
-    await window.taiBaoCaoBanHang();
+  // MO TRANG KHONG TAI DU LIEU.
+  // Chi dung khung bang trang + bo loc mac dinh; nguoi dung bam "Xem bao cao" moi truy van DB.
+  renderTable([]);
+  renderSummary({});
+  totalRows = 0;
+  updatePagingBar();
+
+  $("pageSize").addEventListener("change",()=>{
+    // Khong tu dong tai lai khi chi doi page size.
+    // Lan bam Xem bao cao tiep theo se dung gia tri moi.
+    currentPage = 1;
+    updatePagingBar();
   });
 
   $("viewMode").addEventListener("change",window.changeViewMode);
