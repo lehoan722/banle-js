@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.7 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.8 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -364,7 +364,7 @@ body.nb2-page .sq-stock-popup.show{
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.7 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.8 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -1008,19 +1008,19 @@ function buildOrderHot(){
         src.ton_sau_dat=Number(src.ton_hien_tai||0)+n;
       }
       if(changed)orderHot.render();
-      syncOrderStats();
+      updateOrderStats();
     },
 
     afterRemoveRow(){
-      syncOrderStats();
+      updateOrderStats();
     },
 
     afterUndo(){
-      syncOrderStats();
+      updateOrderStats();
     },
 
     afterRedo(){
-      syncOrderStats();
+      updateOrderStats();
     },
 
     afterOnCellMouseDown(event,coords,TD){
@@ -1051,7 +1051,7 @@ function buildOrderHot(){
   });
 
   applyOrderCompact(false);
-  syncOrderStats();
+  updateOrderStats();
 }
 
 function applyOrderCompact(force){
@@ -1138,6 +1138,32 @@ async function copyOrderAll(){
 }
 
 
+
+async function refreshChunkWithRetry(args,{maxRetry=3}={}){
+  let lastErr=null;
+  for(let attempt=1;attempt<=maxRetry;attempt++){
+    try{
+      return await refreshNhapBuV2(args);
+    }catch(e){
+      lastErr=e;
+      const msg=String(e?.message||e||'').toLowerCase();
+      const retryable=
+        msg.includes('deadlock') ||
+        msg.includes('nhapbu_refresh_busy') ||
+        msg.includes('statement timeout') ||
+        msg.includes('canceling statement');
+
+      if(!retryable || attempt>=maxRetry) throw e;
+
+      const waitMs=attempt*900;
+      $('status').textContent=
+        `Dữ liệu đang bị khóa/tải nặng. Tự thử lại ${attempt}/${maxRetry-1} sau ${waitMs/1000}s...`;
+      await new Promise(resolve=>setTimeout(resolve,waitMs));
+    }
+  }
+  throw lastErr;
+}
+
 async function refreshScope(){
   const cs=codes();
   const sup=$('supplier').value.trim();
@@ -1171,7 +1197,7 @@ async function refreshScope(){
       return;
     }
 
-    const CHUNK=80;
+    const CHUNK=50;
     let processed=0;
     for(let i=0;i<allCodes.length;i+=CHUNK){
       const part=allCodes.slice(i,i+CHUNK);
@@ -1181,11 +1207,11 @@ async function refreshScope(){
       $('status').textContent=
         `Đang tính lại lô ${soLo}/${tongLo} · ${Math.min(i+part.length,allCodes.length)}/${allCodes.length} mã...`;
 
-      const r=await refreshNhapBuV2({
+      const r=await refreshChunkWithRetry({
         ngay,
         masps:part,
         nhacc:null
-      });
+      },{maxRetry:3});
       processed+=Number(r?.processed||0);
 
       /* nhường UI một nhịp để trang không có cảm giác treo */
@@ -1204,7 +1230,7 @@ async function refreshScope(){
     else if(sup) await showDetail({nhacc:sup,hienTatCa:false});
     else await showOverview();
 
-    $('status').textContent=`Đã tính lại ${processed}/${allCodes.length} mã · chuẩn nhóm chỉ tính 1 lần · theo lô 80 mã.`;
+    $('status').textContent=`Đã tính lại ${processed}/${allCodes.length} mã · chuẩn nhóm tính 1 lần · theo lô 50 mã an toàn.`;
   }catch(e){
     console.error(e);
     const msg=e?.message||String(e);
