@@ -74,3 +74,28 @@ export async function resetConfigV2(){
   if(error) throw error;
   return data||{};
 }
+
+
+export async function danhSachRefreshNhapBuV2({ngay=null,masps=null,nhacc=null}={}){
+  const codes=masps?cleanCodes(masps):null;
+  const {data,error}=await supabase.rpc('rpc_nhapbu2_danhsach_refresh_v1',{
+    p_ngay:ngay||null,
+    p_masps:codes?.length?codes:null,
+    p_nhacc:nhacc?.trim()||null
+  });
+  if(error) throw error;
+  return (Array.isArray(data)?data:[])
+    .map(x=>String(x?.masp||'').trim().toUpperCase())
+    .filter(Boolean);
+}
+
+export async function donDepSnapshotNhapBuV2({ngay=null,masps=null,nhacc=null}={}){
+  const codes=masps?cleanCodes(masps):null;
+  const {data,error}=await supabase.rpc('rpc_nhapbu2_dondep_snapshot_v1',{
+    p_ngay:ngay||null,
+    p_masps:codes?.length?codes:null,
+    p_nhacc:nhacc?.trim()||null
+  });
+  if(error) throw error;
+  return Number(data||0);
+}
