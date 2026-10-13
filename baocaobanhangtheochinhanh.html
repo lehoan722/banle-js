@@ -64,7 +64,9 @@
     #loadingMsg{height:17px;margin-top:4px;color:#c0392b;font-size:12px;font-weight:700}
 
     .summary{
-      flex:0 0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+      flex:0 0 auto;
+      display:grid;
+      grid-template-columns:minmax(190px,.62fr) minmax(190px,.62fr) minmax(620px,2.2fr);
       gap:7px;padding:7px 9px
     }
     .sum-card{
@@ -78,7 +80,21 @@
     .sum-values{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;justify-content:flex-end}
     .sum-values div{white-space:nowrap}
     .sum-values span{font-size:11px;color:#75808e;margin-right:4px}
-    .sum-values b{font-size:18px}
+    .sum-values b{font-size:17px}
+    .sum-card.cs1 .sum-values,
+    .sum-card.cs2 .sum-values{gap:9px}
+    .sum-card.cs1 .sum-values b,
+    .sum-card.cs2 .sum-values b{font-size:15px}
+    .sum-card.total .sum-values{gap:13px;flex-wrap:wrap;justify-content:flex-end}
+    .sum-card.total .sum-values b{font-size:16px}
+    .sum-card.total .pct b{color:#9b2c2c}
+
+    /* V1.3: khi cuon bang xuong, an toan bo phan dau.
+       Handsontable van giu header cot o sat dau man hinh. */
+    body.data-focus .header,
+    body.data-focus .summary{display:none!important}
+    body.data-focus .table-wrap{padding-top:4px}
+
 
     .table-wrap{flex:1 1 auto;min-height:0;padding:0 9px 6px}
     #hot{height:100%;background:#fff;border:1px solid #d6dee6;border-radius:6px;overflow:hidden}
@@ -111,6 +127,11 @@
     .popup-row{
       display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #eee;
       border-radius:0;padding:8px 10px;font-weight:500
+    }
+
+    @media(max-width:1100px){
+      .summary{grid-template-columns:1fr 1fr}
+      .sum-card.total{grid-column:1 / -1}
     }
 
     @media(max-width:900px){
@@ -299,6 +320,8 @@
         <div><span>DT vốn</span><b id="sumVonTong">0</b></div>
         <div><span>DT bán</span><b id="sumDTTong">0</b></div>
         <div><span>Lợi nhuận</span><b id="sumLoiNhuanTong">0</b></div>
+        <div class="pct"><span>% LN/Vốn</span><b id="sumPctVon">0,0%</b></div>
+        <div class="pct"><span>% LN/DT</span><b id="sumPctDT">0,0%</b></div>
       </div>
     </div>
   </div>
@@ -349,9 +372,8 @@
         if (!ok) return;
       }
 
-      if (window.taiBaoCaoBanHang) {
-        await window.taiBaoCaoBanHang();
-      }
+      // V1.3: KHONG tu dong tai bao cao khi vua dang nhap/mo trang.
+      // Nguoi dung chon dieu kien xong va bam "Xem bao cao" moi truy van DB.
     }
   });
 </script>
