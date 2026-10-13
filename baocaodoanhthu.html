@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Báo cáo doanh thu theo chi nhánh</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script type="module" src="scripts/supabaseClient.js"></script>
+  <script type="module" src="scripts/baocaodoanhthu.js"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/14.3.0/handsontable.full.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+
+  <style>
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f6f8;color:#1f2937}
+    body{overflow:hidden}
+    #app-container{height:100%;display:flex;flex-direction:column}
+
+    .topbar{
+      flex:0 0 auto;background:#fff;border-bottom:1px solid #dbe2ea;
+      padding:10px 12px 8px;box-shadow:0 1px 4px rgba(0,0,0,.06)
+    }
+    .title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+    h1{font-size:20px;margin:0;color:#174b7a}
+    .rule-badge{
+      font-size:12px;background:#fff3cd;border:1px solid #ffe08a;color:#705400;
+      padding:5px 8px;border-radius:6px
+    }
+
+    .filters{display:flex;flex-wrap:wrap;align-items:end;gap:7px 10px}
+    .field{display:flex;flex-direction:column;gap:3px}
+    .field label{font-size:12px;font-weight:700;color:#526273}
+    input,select,button{font:inherit}
+    input,select{
+      height:32px;border:1px solid #bcc7d3;border-radius:5px;background:#fff;padding:4px 7px
+    }
+    .with-btn{display:flex;gap:3px}
+    .with-btn input{width:145px}
+    button{
+      border:1px solid #aab6c3;background:#fff;border-radius:5px;padding:6px 10px;
+      cursor:pointer;font-weight:600
+    }
+    button:hover{background:#eef5fb}
+    .primary{background:#1976d2;color:#fff;border-color:#1976d2}
+    .primary:hover{background:#115fae}
+    .success{background:#178b52;color:#fff;border-color:#178b52}
+    .success:hover{background:#116b3f}
+
+    #loadingMsg{min-height:18px;color:#c0392b;font-size:13px;font-weight:700;margin-top:5px}
+
+    .cards{
+      flex:0 0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:8px;padding:8px 10px
+    }
+    .card{background:#fff;border:1px solid #d9e2ea;border-radius:8px;padding:8px 12px;min-width:0}
+    .card.cs1{border-left:5px solid #2f80ed}
+    .card.cs2{border-left:5px solid #8e44ad}
+    .card.total{border-left:5px solid #c0392b;background:#fffaf9}
+    .card-title{font-size:12px;font-weight:800;color:#64748b}
+    .card-value{font-size:23px;font-weight:900;margin-top:2px;white-space:nowrap}
+    .card-sub{font-size:12px;color:#667085;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .grid-wrap{flex:1 1 auto;min-height:0;padding:0 10px 7px}
+    #hot{height:100%;background:#fff;border:1px solid #d9e2ea;border-radius:6px;overflow:hidden}
+
+    #hot .handsontable td.row-even{background:#f8fbfd}
+    #hot .handsontable td.row-odd{background:#fff}
+    #hot .handsontable thead th{background:#eaf2f8;color:#263238;font-weight:800}
+    #hot .handsontable .colHeader{white-space:pre-line!important;line-height:1.08;text-align:center}
+    #hot .handsontable td:nth-child(7),
+    #hot .handsontable td:nth-child(13),
+    #hot .handsontable td:nth-child(19){font-weight:800}
+    .day-link{border:0;background:transparent;color:#0b63b6;text-decoration:underline;padding:0;font-weight:800}
+
+    .pager{
+      flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;
+      padding:6px 8px;background:#fff;border-top:1px solid #dbe2ea
+    }
+    .pager select{height:30px}
+    #pageInfo{font-size:13px;font-weight:700}
+
+    .modal{
+      display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+      z-index:5000;align-items:center;justify-content:center;padding:18px
+    }
+    .modal.show{display:flex}
+    .modal-box{
+      width:min(1200px,96vw);max-height:92vh;background:#fff;border-radius:10px;
+      box-shadow:0 12px 35px rgba(0,0,0,.3);display:flex;flex-direction:column;overflow:hidden
+    }
+    .modal-head{
+      display:flex;align-items:center;justify-content:space-between;padding:10px 12px;
+      background:#edf4fa;border-bottom:1px solid #d9e2ea
+    }
+    .modal-head h2{font-size:17px;margin:0}
+    .modal-body{padding:10px;overflow:auto}
+    .detail-total{padding:7px 10px;background:#fff4da;border:1px solid #f0d18a;border-radius:6px;margin-bottom:8px}
+    .detail-table-wrap{overflow:auto}
+    .detail-table{width:100%;border-collapse:collapse;font-size:13px}
+    .detail-table th,.detail-table td{border:1px solid #dfe5eb;padding:6px 7px;white-space:nowrap}
+    .detail-table th{position:sticky;top:0;background:#eef3f7}
+    .detail-table .num{text-align:right}
+    .detail-table .strong{font-weight:800}
+    .error,.fatal{padding:24px;color:#b00020;font-size:18px;font-weight:700}
+    .detail-loading{padding:20px;text-align:center}
+
+    .search-box{width:min(520px,94vw)}
+    #searchInput{width:100%;margin:8px 0}
+    #searchList{max-height:55vh;overflow:auto}
+    .search-row{
+      width:100%;display:flex;justify-content:space-between;gap:12px;text-align:left;
+      border:0;border-bottom:1px solid #eee;border-radius:0;padding:9px 8px
+    }
+    .search-row small{color:#7b8794}
+
+    @media(max-width:800px){
+      body{overflow:auto}
+      #app-container{height:auto;min-height:100dvh}
+      .cards{grid-template-columns:1fr}
+      .grid-wrap{height:62vh;flex:none}
+      .rule-badge{display:none}
+      .card-value{font-size:20px}
+    }
+  </style>
+</head>
+
+<body>
+<div id="app-container">
+
+  <div class="topbar">
+    <div class="title-row">
+      <h1>BÁO CÁO DOANH THU THEO CHI NHÁNH</h1>
+      <div class="rule-badge">Chỉ tính HĐ thực bán: <b>bancs1 + bancs2</b> • Không tính hóa đơn bán nhân viên</div>
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label>Địa điểm</label>
+        <select id="diadiemSelect">
+          <option value="">Tất cả</option>
+          <option value="cs1">Cơ sở 1</option>
+          <option value="cs2">Cơ sở 2</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Từ ngày</label>
+        <input type="date" id="tuNgay">
+      </div>
+
+      <div class="field">
+        <label>Đến ngày</label>
+        <input type="date" id="denNgay">
+      </div>
+
+      <div class="field">
+        <label>Nhân viên trên HĐ</label>
+        <div class="with-btn">
+          <input id="nhanvienInput" placeholder="Mã/tên NV">
+          <button type="button" onclick="openSearch('nhanvien')">🔍</button>
+          <button type="button" onclick="document.getElementById('nhanvienInput').value=''">✕</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Khách hàng</label>
+        <div class="with-btn">
+          <input id="khachhangInput" placeholder="Mã/tên khách">
+          <button type="button" onclick="openSearch('khachhang')">🔍</button>
+          <button type="button" onclick="document.getElementById('khachhangInput').value=''">✕</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Hình thức TT</label>
+        <select id="hinhthucttSelect">
+          <option value="">Tất cả</option>
+        </select>
+      </div>
+
+      <button class="primary" onclick="xemBaoCaoDoanhThu()">Xem báo cáo</button>
+      <button onclick="resetFilters()">Bỏ lọc</button>
+      <button class="success" onclick="xuatExcelDoanhThu()">Xuất Excel trang này</button>
+    </div>
+
+    <div id="loadingMsg"></div>
+  </div>
+
+  <div class="cards">
+    <div class="card cs1">
+      <div class="card-title">DOANH THU CƠ SỞ 1</div>
+      <div class="card-value" id="sumCS1">0</div>
+      <div class="card-sub" id="subCS1">0 HĐ • 0 SP • KM 0</div>
+    </div>
+    <div class="card cs2">
+      <div class="card-title">DOANH THU CƠ SỞ 2</div>
+      <div class="card-value" id="sumCS2">0</div>
+      <div class="card-sub" id="subCS2">0 HĐ • 0 SP • KM 0</div>
+    </div>
+    <div class="card total">
+      <div class="card-title">TỔNG DOANH THU</div>
+      <div class="card-value" id="sumTong">0</div>
+      <div class="card-sub" id="subTong">0 HĐ • 0 SP • KM 0</div>
+    </div>
+  </div>
+
+  <div class="grid-wrap">
+    <div id="hot"></div>
+  </div>
+
+  <div class="pager">
+    <span>Số ngày/trang</span>
+    <select id="pageSize">
+      <option value="31">31</option>
+      <option value="100" selected>100</option>
+      <option value="366">366</option>
+    </select>
+    <button id="btnPrev" onclick="prevPage()">⬅ Trước</button>
+    <span id="pageInfo">Trang 1/1</span>
+    <button id="btnNext" onclick="nextPage()">Sau ➡</button>
+  </div>
+</div>
+
+<!-- CHI TIET HOA DON -->
+<div id="detailModal" class="modal" onclick="if(event.target===this)closeDetail()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 id="detailTitle">Chi tiết hóa đơn</h2>
+      <button onclick="closeDetail()">Đóng ✕</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<!-- TIM KIEM -->
+<div id="searchModal" class="modal" onclick="if(event.target===this)closeSearch()">
+  <div class="modal-box search-box">
+    <div class="modal-head">
+      <h2 id="searchTitle">Tìm kiếm</h2>
+      <button onclick="closeSearch()">Đóng ✕</button>
+    </div>
+    <div class="modal-body">
+      <input id="searchInput" placeholder="Nhập từ khóa...">
+      <div id="searchList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DANG NHAP / PHAN QUYEN CHUAN DU AN -->
+<script type="module">
+  import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+
+  khoiTaoDangNhapDungChung({
+    appContainerId: "app-container",
+    macDinhDiaDiem: "",
+    tuDongKhoaCoSo: false,
+    loginApiPath: "/api/login-cs1",
+
+    async onLoginSuccess(nv, ctx) {
+      if (window.kiemTraQuyenXemTrang) {
+        const ok = await window.kiemTraQuyenXemTrang("baocaodoanhthu.html");
+        if (!ok) return;
+      }
+      if (window.taiBaoCaoDoanhThu) {
+        await window.taiBaoCaoDoanhThu();
+      }
+    }
+  });
+</script>
+</body>
+</html>
