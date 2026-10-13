@@ -1,3 +1,4 @@
+// HOAN TUYET - STOCK QUICK PHAT SINH 90 NGAY V1
 // HOAN TUYET - STOCK QUICK ADMIN DISCOUNT OVERRIDE 0-LOCK V1
 // HOAN TUYET - STOCK QUICK BUSINESS DATE FIX V2
 // HOAN TUYET - STOCK QUICK CANONICAL SIZE FIX V1
@@ -1208,24 +1209,46 @@ data-color-masp="${targetMasp}"
     }
   }
 
-  function openStockHistoryFromTitleMasp(maspRaw) {
+  let phatSinh90NgayLoadPromise = null;
+
+  async function openPhatSinh90NgayFromTitleMasp(maspRaw) {
     const masp = String(maspRaw || "").trim().toUpperCase();
     if (!masp) return;
 
-    // Mở thẳng Sổ chi tiết tồn kho với mã SP trên tiêu đề.
-    // Trang sochitiettonkho.html nhận ?masp=... sẽ tự điền ô mã
-    // và tự chạy báo cáo ngay, tương đương thao tác nhập mã + nhấn Enter.
-    const url =
-      "https://app.hoantuyet.vn/sochitiettonkho.html?masp=" +
-      encodeURIComponent(masp);
+    try {
+      if (!window.PhatSinh90NgayPopup?.open) {
+        if (!phatSinh90NgayLoadPromise) {
+          phatSinh90NgayLoadPromise = import("/scripts/phatSinh90NgayPopup.js?v=1")
+            .catch((err) => {
+              phatSinh90NgayLoadPromise = null;
+              throw err;
+            });
+        }
+        await phatSinh90NgayLoadPromise;
+      }
 
-    const child = window.open(url, "_blank");
-    if (!child) {
-      alert("Trình duyệt đang chặn mở tab mới. Hãy cho phép mở tab mới rồi thử lại.");
-      return;
+      if (window.PhatSinh90NgayPopup?.open) {
+        await window.PhatSinh90NgayPopup.open(masp);
+        return;
+      }
+
+      throw new Error("Module Phát sinh 90 ngày chưa sẵn sàng");
+    } catch (err) {
+      console.warn("[StockQuickPopup] Không mở được Phát sinh 90 ngày:", err);
+
+      // Fallback an toàn: nếu module mới lỗi thì vẫn giữ đường cũ tới Sổ chi tiết tồn kho.
+      const url =
+        "https://app.hoantuyet.vn/sochitiettonkho.html?masp=" +
+        encodeURIComponent(masp);
+
+      const child = window.open(url, "_blank");
+      if (!child) {
+        alert("Không mở được Phát sinh 90 ngày. Trình duyệt cũng đang chặn mở tab mới.");
+        return;
+      }
+
+      try { child.focus(); } catch (_) { }
     }
-
-    try { child.focus(); } catch (_) { }
   }
 
 
@@ -2373,7 +2396,7 @@ data-color-masp="${targetMasp}"
         <span class="sq-close">✕</span>
         <div class="sq-stock-popup-header">
   <span class="sq-title-text">
-  <span class="sq-title-masp" data-masp="${upper}" title="Bấm để xem sổ chi tiết tồn kho">${upper}</span>
+  <span class="sq-title-masp" data-masp="${upper}" title="Bấm để xem Phát sinh 90 ngày">${upper}</span>
 ${mau_khac ? ` / ${buildOtherColorLinksHtml(upper, mau_khac)}` : ""}
 ${nhomhang ? ` / ${nhomhang}` : ""}
 ${giale ? ` / <span class="sq-title-price">${formatShortPrice(giale)}</span>` : ""}${nhacc ? ` / <span class="sq-title-nhacc">${nhacc}</span>` : ""} - ${nhap_dau_ma || "--"} - ${nhap_cuoi_ma || "--"}${formatGiaNhapAn(gianhap) ? `-${formatGiaNhapAn(gianhap)}` : ""}
@@ -3747,7 +3770,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
         e.stopImmediatePropagation();
 
         const masp = titleMaspEl.dataset.masp || popup.dataset.masp || "";
-        openStockHistoryFromTitleMasp(masp);
+        openPhatSinh90NgayFromTitleMasp(masp);
       });
     }
 
