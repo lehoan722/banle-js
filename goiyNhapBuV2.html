@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.9 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.10 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -357,6 +357,23 @@ body.nb2-page .sq-stock-popup.show{
   }
 }
 
+
+/* ===== V2.3.10: FIX RENDER TỔNG HỢP NHẬP BÙ ===== */
+.orderBody{
+  position:relative !important;
+}
+#hotOrder{
+  display:block !important;
+  height:auto !important;
+  width:auto !important;
+  min-height:120px !important;
+  overflow:visible !important;
+}
+#hotOrder .handsontable{
+  visibility:visible !important;
+  opacity:1 !important;
+}
+
 </style>
 </head>
 <body class="nb2-page">
@@ -364,7 +381,7 @@ body.nb2-page .sq-stock-popup.show{
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.9 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.10 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -923,19 +940,24 @@ function orderColumnsForMode(){
 
 function buildOrderHot(){
   if(orderHot){orderHot.destroy();orderHot=null}
+
   const container=$('hotOrder');
+  const body=document.querySelector('.orderBody');
   rebuildOrderGroupColors();
 
-  const body=document.querySelector('.orderBody');
-  const bodyH=Math.max(220,body?.clientHeight||500);
-  const naturalH=Math.max(120,50 + orderRows.length*25 + 12);
-  const hotH=Math.min(bodyH-4,naturalH);
+  const bodyH=Math.max(260,Math.floor(body?.getBoundingClientRect?.().height||500));
+  const naturalH=Math.max(140,50 + orderRows.length*25 + 12);
+  const hotH=Math.min(bodyH-8,naturalH);
 
-  container.style.width=ORDER_FULL_WIDTH+'px';
-  container.style.minWidth=ORDER_FULL_WIDTH+'px';
-  container.style.maxWidth=ORDER_FULL_WIDTH+'px';
-  container.style.height=hotH+'px';
-  container.style.minHeight=hotH+'px';
+  /* CSS cũ từng có height:100%!important nên phải ép kích thước thật bằng important */
+  container.style.setProperty('width',ORDER_FULL_WIDTH+'px','important');
+  container.style.setProperty('min-width',ORDER_FULL_WIDTH+'px','important');
+  container.style.setProperty('max-width',ORDER_FULL_WIDTH+'px','important');
+  container.style.setProperty('height',hotH+'px','important');
+  container.style.setProperty('min-height',hotH+'px','important');
+  container.style.setProperty('display','block','important');
+
+  orderCompact=false;
 
   orderHot=new Handsontable(container,{
     data:orderRows,
@@ -943,8 +965,8 @@ function buildOrderHot(){
     colHeaders:ORDER_FULL_HEADERS,
     columns:orderColumnsForMode(),
     width:ORDER_FULL_WIDTH,
-    stretchH:'none',
     height:hotH,
+    stretchH:'none',
     rowHeights:24,
     columnHeaderHeight:50,
     renderAllRows:true,
@@ -966,24 +988,13 @@ function buildOrderHot(){
       const headers=orderCompact?ORDER_COMPACT_HEADERS:ORDER_FULL_HEADERS;
       const raw=headers[col] ?? '';
       const span=TH.querySelector('.colHeader');
-      if(span){
-        span.innerHTML=String(raw).split('\\n').join('<br>');
-      }
+      if(span) span.innerHTML=String(raw).split('\\n').join('<br>');
+
       const plain=String(raw).replace(/\\n/g,' ').trim();
       TH.style.fontWeight='800';
-      if(plain==='SL đặt'){
-        TH.style.color='#d71920';
-      }else if(plain==='Tồn sau Đặt'){
-        TH.style.color='#143cff';
-      }else{
-        TH.style.color='';
-      }
-    },
-
-    cells(row,col,prop){
-      const cp={};
-      cp.renderer=orderColumnsForMode()[col]?.renderer;
-      return cp;
+      TH.style.color=
+        plain==='SL đặt' ? '#d71920' :
+        plain==='Tồn sau Đặt' ? '#143cff' : '';
     },
 
     afterRenderer(TD,row,col,prop,value,cellProperties){
@@ -1001,27 +1012,17 @@ function buildOrderHot(){
         if(physical==null)continue;
         const src=orderHot.getSourceDataAtRow(physical);
         const n=Math.max(0,Math.round(Number(newVal||0)));
-        if(Number(src.sl_dat)!==n){
-          src.sl_dat=n;
-          changed=true;
-        }
+        src.sl_dat=n;
         src.ton_sau_dat=Number(src.ton_hien_tai||0)+n;
+        changed=true;
       }
       if(changed)orderHot.render();
       updateOrderStats();
     },
 
-    afterRemoveRow(){
-      updateOrderStats();
-    },
-
-    afterUndo(){
-      updateOrderStats();
-    },
-
-    afterRedo(){
-      updateOrderStats();
-    },
+    afterRemoveRow(){updateOrderStats()},
+    afterUndo(){updateOrderStats()},
+    afterRedo(){updateOrderStats()},
 
     afterOnCellMouseDown(event,coords,TD){
       if(coords.row<0 || coords.col<0)return;
@@ -1041,8 +1042,6 @@ function buildOrderHot(){
           window.StockQuick.showFor(TD,masp);
         }else if(typeof window.stockQuickPopup==='function'){
           window.stockQuickPopup(masp);
-        }else{
-          console.warn('stockQuickPopup.js chưa sẵn sàng');
         }
       }catch(err){
         console.error('Lỗi mở stockQuickPopup từ Tổng hợp bù',err);
@@ -1050,10 +1049,22 @@ function buildOrderHot(){
     }
   });
 
-  applyOrderCompact(false);
   updateOrderStats();
-}
 
+  /* Chờ modal ổn định kích thước rồi buộc Handsontable đo lại */
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      try{
+        container.style.setProperty('height',hotH+'px','important');
+        container.style.setProperty('width',ORDER_FULL_WIDTH+'px','important');
+        orderHot?.refreshDimensions?.();
+        orderHot?.render?.();
+      }catch(err){
+        console.error('Lỗi render lại Tổng hợp nhập bù',err);
+      }
+    });
+  });
+}
 
 function updateOrderStats(){
   const rows=getOrderSourceRows();
@@ -1077,9 +1088,9 @@ function applyOrderCompact(force){
   const width=orderCompact?ORDER_COMPACT_WIDTH:ORDER_FULL_WIDTH;
 
   const body=document.querySelector('.orderBody');
-  const bodyH=Math.max(220,body?.clientHeight||500);
-  const naturalH=Math.max(120,(orderCompact?42:50)+orderHot.countRows()*25+12);
-  const hotH=Math.min(bodyH-4,naturalH);
+  const bodyH=Math.max(260,Math.floor(body?.getBoundingClientRect?.().height||500));
+  const naturalH=Math.max(140,(orderCompact?42:50)+orderHot.countRows()*25+12);
+  const hotH=Math.min(bodyH-8,naturalH);
 
   orderHot.updateSettings({
     colHeaders:headers,
@@ -1096,13 +1107,15 @@ function applyOrderCompact(force){
   });
 
   const hotEl=$('hotOrder');
-  hotEl.style.width=width+'px';
-  hotEl.style.minWidth=width+'px';
-  hotEl.style.maxWidth=width+'px';
-  hotEl.style.height=hotH+'px';
-  hotEl.style.minHeight=hotH+'px';
+  hotEl.style.setProperty('width',width+'px','important');
+  hotEl.style.setProperty('min-width',width+'px','important');
+  hotEl.style.setProperty('max-width',width+'px','important');
+  hotEl.style.setProperty('height',hotH+'px','important');
+  hotEl.style.setProperty('min-height',hotH+'px','important');
 
+  orderHot.refreshDimensions?.();
   orderHot.render();
+
   $('orderCompact').textContent=orderCompact?'Hiện đầy đủ':'Rút gọn';
 
   if(body){
