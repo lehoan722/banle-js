@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.12 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.13 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -358,7 +358,7 @@ body.nb2-page .sq-stock-popup.show{
 }
 
 
-/* ===== V2.3.12: FIX RENDER TỔNG HỢP NHẬP BÙ ===== */
+/* ===== V2.3.13: FIX RENDER TỔNG HỢP NHẬP BÙ ===== */
 .orderBody{
   position:relative !important;
 }
@@ -376,7 +376,7 @@ body.nb2-page .sq-stock-popup.show{
 
 
 /* ==========================================================
-   V2.3.12 - RESPONSIVE TÁCH RIÊNG DESKTOP / TABLET / MOBILE
+   V2.3.13 - RESPONSIVE TÁCH RIÊNG DESKTOP / TABLET / MOBILE
    Không sửa stockQuickPopup.js
    ========================================================== */
 .orderModal{padding:8px !important}
@@ -437,7 +437,7 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
 
 
 /* ==========================================================
-   V2.3.12 - FIX WIDTH THỰC TẾ + STOCKQUICK MOBILE
+   V2.3.13 - FIX WIDTH THỰC TẾ + STOCKQUICK MOBILE
    ========================================================== */
 .orderMaspLink{
   border:0 !important;
@@ -487,6 +487,50 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
   }
 }
 
+
+/* ==========================================================
+   V2.3.13 - IPHONE: CỘT RÚT GỌN CO SÁT + STOCKQUICK ĐÚNG PHIÊN
+   ========================================================== */
+@media (max-width:600px){
+  .orderBody{
+    padding:2px !important;
+  }
+
+  /* Không ép bảng rút gọn chiếm toàn bề ngang */
+  #hotOrder{
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none !important;
+    margin:0 !important;
+  }
+
+  .orderBody .handsontable td{
+    padding-left:1px !important;
+    padding-right:1px !important;
+    font-size:11px !important;
+  }
+
+  .orderBody .handsontable th .colHeader{
+    font-size:10.5px !important;
+    padding:1px 0 !important;
+    line-height:1.0 !important;
+  }
+
+  .orderMaspLink{
+    font-size:11.5px !important;
+    line-height:1.05 !important;
+  }
+
+  /* StockQuick vẫn nổi trên bảng nhập bù, nhưng không can thiệp dữ liệu/logic */
+  body.nb2-page .sq-stock-popup,
+  body.nb2-page .sq-stock-popup.show{
+    z-index:16000 !important;
+    top:4px !important;
+    right:4px !important;
+    max-width:calc(100vw - 8px) !important;
+  }
+}
+
 </style>
 </head>
 <body class="nb2-page">
@@ -494,7 +538,7 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.12 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.13 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -593,9 +637,9 @@ import {
  danhSachRefreshNhapBuV2,donDepSnapshotNhapBuV2,refreshChuanNhom365NhapBuV2
 } from './scripts/nhapBuV2.js';
 
-import { getSupabaseClient } from './scripts/authModule.js';
+import { getSupabaseClient, khoiTaoDangNhapDungChung } from './scripts/authModule.js';
 
-// V2.3.12: StockQuickPopup dùng window.supabase.
+// V2.3.13: StockQuickPopup dùng window.supabase.
 // Gán rõ client dùng chung để desktop/mobile cùng một nguồn dữ liệu.
 try{
   const __nb2Supabase = getSupabaseClient();
@@ -1120,18 +1164,20 @@ function orderWidthsForCurrentMode(){
   const mode=orderDeviceMode();
 
   if(orderCompact){
-    if(mode==='mobile') return [34,132,44,54];
-    if(mode==='tablet') return [38,150,48,58];
-    return [42,160,52,62];
+    // Rút gọn = co sát dữ liệu, tuyệt đối không kéo giãn 4 cột ra hết màn hình.
+    if(mode==='mobile') return [30,118,36,44];
+    if(mode==='tablet') return [34,132,42,50];
+    return [38,145,46,56];
   }
 
   if(mode==='mobile'){
-    return [34,126,44,58,52,54,58,46,78,46,76];
+    // Bản đầy đủ vẫn giữ cột nhỏ để vuốt ngang dễ đọc.
+    return [30,112,36,50,44,46,50,42,68,40,66];
   }
   if(mode==='tablet'){
-    return [40,138,50,74,58,64,68,52,92,52,90];
+    return [36,132,46,66,52,58,62,48,84,48,82];
   }
-  return [44,150,54,92,62,74,78,58,112,62,132];
+  return [42,148,52,86,60,70,74,56,108,60,124];
 }
 
 function calcOrderTableLayout(){
@@ -1162,12 +1208,40 @@ function calcOrderTableLayout(){
 
   // Mobile
   if(orderCompact){
-    // 4 cột rút gọn luôn vừa ngang màn hình.
-    return {colWidths:widths,tableWidth:bodyWidth,stretchH:'all'};
+    // Rút gọn phải NHỎ hơn bản đầy đủ: chỉ dùng đúng tổng chiều rộng dữ liệu.
+    // Không stretchH:'all' vì chính nó làm 4 cột bị phình to trên iPhone.
+    return {colWidths:widths,tableWidth:Math.min(baseWidth,bodyWidth),stretchH:'none'};
   }
 
-  // Mobile đầy đủ: giữ cột nhỏ và cho vuốt ngang.
+  // Mobile đầy đủ: cột hẹp + vuốt ngang.
   return {colWidths:widths,tableWidth:baseWidth,stretchH:'none'};
+}
+
+
+function dongBoNgayChoStockQuick(){
+  try{
+    const denNgay=String($('date')?.value||'').trim();
+    if(!denNgay)return;
+    let old={};
+    try{old=JSON.parse(sessionStorage.getItem('XNT14_FILTERS')||'{}')||{}}catch{}
+    old.den_ngay=denNgay;
+    sessionStorage.setItem('XNT14_FILTERS',JSON.stringify(old));
+  }catch(e){
+    console.warn('[NhapBuV2] Không đồng bộ được ngày cho StockQuickPopup',e);
+  }
+}
+
+async function damBaoStockQuickCoSession(){
+  try{
+    const client=getSupabaseClient();
+    if(!client?.auth?.getSession)return false;
+    window.supabase=client;
+    const {data}=await client.auth.getSession();
+    return !!data?.session;
+  }catch(e){
+    console.warn('[NhapBuV2] Không kiểm tra được session StockQuick',e);
+    return false;
+  }
 }
 
 function bindOrderStockQuickLinks(){
@@ -1178,7 +1252,7 @@ function bindOrderStockQuickLinks(){
 
   // Học đúng cách Tìm kiếm nhanh:
   // bấm vào chính phần tử Mã SP đang hiển thị rồi gọi StockQuick.showFor().
-  container.addEventListener('click', e=>{
+  container.addEventListener('click', async e=>{
     const link=e.target.closest('.orderMaspLink[data-stock]');
     if(!link || !container.contains(link)) return;
 
@@ -1188,11 +1262,25 @@ function bindOrderStockQuickLinks(){
     const masp=String(link.dataset.stock||'').trim().toUpperCase();
     if(!masp) return;
 
+    // StockQuickPopup tự dùng window.supabase + XNT14_FILTERS.
+    // Đồng bộ cả hai ngay trước khi mở để iPhone không bị rơi vào trạng thái
+    // "popup mở được nhưng RPC xntnhanh chạy bằng phiên/ ngày không đúng".
+    dongBoNgayChoStockQuick();
+
+    const coSession=await damBaoStockQuickCoSession();
+    if(!coSession){
+      console.warn('[NhapBuV2] Chưa có Supabase session cho StockQuickPopup trên origin hiện tại.');
+      $('status').textContent='Phiên đăng nhập trên thiết bị này chưa sẵn sàng cho xem tồn nhanh. Hãy đăng nhập lại một lần.';
+      return;
+    }
+
     try{
       if(window.StockQuick?.showFor){
-        window.StockQuick.showFor(link,masp);
+        await window.StockQuick.showFor(link,masp);
       }else if(typeof window.stockQuickPopup==='function'){
-        window.stockQuickPopup(masp);
+        await window.stockQuickPopup(masp);
+      }else{
+        console.warn('[NhapBuV2] stockQuickPopup chưa sẵn sàng',masp);
       }
     }catch(err){
       console.error('[NhapBuV2] Lỗi mở StockQuickPopup',err);
@@ -1631,8 +1719,15 @@ $('orderReset').onclick=()=>{
 $('close').onclick=()=>{$('modal').style.display='none'};
 $('modal').onclick=e=>{if(e.target===$('modal'))$('modal').style.display='none'};
 
-(async()=>{
+let nb2Started=false;
+async function startNhapBuV2(){
+  if(nb2Started)return;
+  nb2Started=true;
+
   try{
+    const client=getSupabaseClient();
+    if(client)window.supabase=client;
+
     const s=await loadSummary();
     if(!s.refreshed_at){
       $('status').textContent='Chưa có snapshot V2 hôm nay. Đang tạo lần đầu theo từng lô an toàn...';
@@ -1640,16 +1735,37 @@ $('modal').onclick=e=>{if(e.target===$('modal'))$('modal').style.display='none'}
     }
     await showOverview();
   }catch(e){
+    nb2Started=false;
     console.error(e);
     $('status').textContent='Lỗi khởi tạo: '+(e?.message||e);
   }
+}
+
+const nb2InitialBranch=(()=>{
+  try{
+    const v=String(sessionStorage.getItem('diadiem')||localStorage.getItem('diadiem')||'cs1').trim().toLowerCase();
+    return ['cs1','cs2'].includes(v)?v:'cs1';
+  }catch{return 'cs1'}
 })();
+
+khoiTaoDangNhapDungChung({
+  loginContainerId:'login-container',
+  appContainerId:'app-container',
+  macDinhDiaDiem:nb2InitialBranch,
+  tuDongKhoaCoSo:false,
+  onLoginSuccess:async()=>{
+    const client=getSupabaseClient();
+    if(client)window.supabase=client;
+    await startNhapBuV2();
+    return true;
+  }
+});
 
 let nb2ResizeTimer=null;
 window.addEventListener('resize',()=>{
   clearTimeout(nb2ResizeTimer);
   nb2ResizeTimer=setTimeout(()=>{
-    if(orderHot && !$('orderModal').classList.contains('hidden')){
+    if(orderHot && $('orderModal').classList.contains('show')){
       try{ buildOrderHot(); }catch(e){ console.error(e); }
     }
   },180);
