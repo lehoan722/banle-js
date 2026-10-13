@@ -116,6 +116,7 @@ function allColumns() {
     {data:"mausac", title:"Màu", width:75, renderer:textRenderer},
     {data:"nhacc", title:"Nhà cung cấp", width:110, renderer:textRenderer},
     {data:"giale", title:"Giá lẻ", width:85, renderer:moneyRenderer},
+    {data:"gianhap", title:"Giá nhập", width:85, renderer:moneyRenderer},
 
     {data:"sl_cs1", title:"SL bán\nCS1", width:72, renderer:zeroRenderer, metric:"sl"},
     {data:"doanhthu_cs1", title:"Doanh thu\nCS1", width:110, renderer:moneyRenderer, metric:"dt"},
@@ -126,7 +127,9 @@ function allColumns() {
     {data:"giabq_cs2", title:"Giá BQ\nCS2", width:90, renderer:moneyRenderer, metric:"dt"},
 
     {data:"sl_tong", title:"Tổng\nSL bán", width:80, renderer:zeroRenderer, metric:"sl"},
+    {data:"doanhthu_von_tong", title:"Tổng DT\nvốn", width:115, renderer:moneyRenderer, metric:"dt"},
     {data:"doanhthu_tong", title:"Tổng\ndoanh thu", width:120, renderer:moneyRenderer, metric:"dt"},
+    {data:"loinhuan_tong", title:"Lợi nhuận", width:110, renderer:moneyRenderer, metric:"dt"},
     {data:"giabq_tong", title:"Giá BQ\nchung", width:95, renderer:moneyRenderer, metric:"dt"}
   ];
 }
@@ -134,7 +137,15 @@ function allColumns() {
 function visibleColumns() {
   const mode = val("viewMode") || "both";
   const cols = allColumns();
-  if (mode === "qty") return cols.filter(c => !c.metric || c.metric === "sl");
+
+  // YEU CAU V1.2:
+  // "Chi so luong" chi con:
+  // Ma hang | Size | Gia BQ CS1 | SL ban CS1 | SL ban CS2 | Tong SL ban.
+  if (mode === "qty") {
+    const wanted = ["masp","size","giabq_cs1","sl_cs1","sl_cs2","sl_tong"];
+    return wanted.map(key => cols.find(c => c.data === key)).filter(Boolean);
+  }
+
   if (mode === "money") return cols.filter(c => !c.metric || c.metric === "dt");
   return cols;
 }
@@ -190,7 +201,9 @@ function renderSummary(s) {
   $("sumSLCS2").textContent = fmt(s?.sl_cs2);
   $("sumDTCS2").textContent = fmt(s?.doanhthu_cs2);
   $("sumSLTong").textContent = fmt(s?.sl_tong);
+  $("sumVonTong").textContent = fmt(s?.doanhthu_von_tong);
   $("sumDTTong").textContent = fmt(s?.doanhthu_tong);
+  $("sumLoiNhuanTong").textContent = fmt(s?.loinhuan_tong);
 }
 
 function updatePagingBar() {
@@ -327,6 +340,7 @@ window.xuatExcelToanBoBanHang = async function(){
       "Màu sắc":r.mausac,
       "Nhà cung cấp":r.nhacc,
       "Giá lẻ":num(r.giale),
+      "Giá nhập":num(r.gianhap),
       "SL bán CS1":num(r.sl_cs1),
       "Doanh thu CS1":num(r.doanhthu_cs1),
       "Giá BQ CS1":num(r.giabq_cs1),
@@ -334,7 +348,9 @@ window.xuatExcelToanBoBanHang = async function(){
       "Doanh thu CS2":num(r.doanhthu_cs2),
       "Giá BQ CS2":num(r.giabq_cs2),
       "Tổng SL bán":num(r.sl_tong),
+      "Tổng doanh thu vốn":num(r.doanhthu_von_tong),
       "Tổng doanh thu":num(r.doanhthu_tong),
+      "Lợi nhuận":num(r.loinhuan_tong),
       "Giá BQ chung":num(r.giabq_tong)
     }));
 
