@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.6 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.7 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -326,6 +326,37 @@ body.nb2-page .sq-stock-popup.show{
   }
 }
 
+
+/* ===== V2.3.7: tiêu đề bảng chi tiết bám đầu màn hình ===== */
+.detailTableWrap{
+  overflow:visible !important;
+  border-radius:12px;
+}
+.detailTableWrap table{
+  min-width:1500px;
+}
+.detailTableWrap thead{
+  position:sticky;
+  top:0;
+  z-index:40;
+}
+.detailTableWrap thead th{
+  position:sticky !important;
+  top:0 !important;
+  z-index:41 !important;
+  box-shadow:0 2px 0 #b9c8d6;
+  background:#f5f9fd !important;
+}
+
+/* Trên màn hình hẹp vẫn ưu tiên kéo ngang */
+@media(max-width:900px){
+  .detailTableWrap{
+    overflow-x:auto !important;
+    overflow-y:visible !important;
+    -webkit-overflow-scrolling:touch;
+  }
+}
+
 </style>
 </head>
 <body class="nb2-page">
@@ -333,7 +364,7 @@ body.nb2-page .sq-stock-popup.show{
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.6 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.7 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -429,7 +460,7 @@ body.nb2-page .sq-stock-popup.show{
 import {
  refreshNhapBuV2,tongQuanHeThongV2,tongQuanNccV2,chiTietNhapBuV2,
  kiemTraNguonV2,phanBoSizeV2,getConfigV2,setConfigV2,resetConfigV2,
- danhSachRefreshNhapBuV2,donDepSnapshotNhapBuV2
+ danhSachRefreshNhapBuV2,donDepSnapshotNhapBuV2,refreshChuanNhom365NhapBuV2
 } from './scripts/nhapBuV2.js';
 
 const $=id=>document.getElementById(id);
@@ -563,11 +594,11 @@ async function showDetail({masps=null,nhacc=null,hienTatCa=false}={}){
   $('detailTitle').textContent=masps?.length?`KIỂM TRA ${rows.length} MÃ`:`NHÀ CUNG CẤP: ${nhacc||''} · ${rows.length} mã`;
   $('orderBtn').classList.toggle('hidden',!currentSupplier);
 
-  $('content').innerHTML=`<div class="tableWrap"><table><thead><tr>
-    <th>Hành động</th><th>Mã SP</th><th>Tên</th><th>Nhóm</th><th>Điểm</th>
+  $('content').innerHTML=`<div class="tableWrap detailTableWrap"><table><thead><tr>
+    <th>Hành động</th><th>Mã SP</th><th>SL bù</th><th>Kiểm tra</th><th>Điểm</th>
     <th>Đợt nhập</th><th>Tỷ lệ bán đợt</th><th>Bán 3/7/14/21/30</th>
     <th>Tốc độ 3/7/14/21/30</th><th>So với nhóm</th>
-    <th>Tồn CS1/CS2/Tổng</th><th>Ngày đủ bán</th><th>SL bù</th><th>Kiểm tra</th><th>Lý do</th>
+    <th>Tồn CS1/CS2/Tổng</th><th>Ngày đủ bán</th><th>Tên</th><th>Nhóm</th><th>Lý do</th>
   </tr></thead><tbody>${rows.map(r=>`<tr>
     <td>
       ${badge(r.hanh_dong)}
@@ -576,7 +607,13 @@ async function showDetail({masps=null,nhacc=null,hienTatCa=false}={}){
       ${r.can_luu_y_chuyen_kho?'<div class="mini" style="color:#b42318;font-weight:900">Nên kiểm tra chuyển kho</div>':''}
     </td>
     <td class="code"><span class="codeLink" data-m="${r.masp}" title="Bấm để xem nhanh tồn, size, ảnh sản phẩm">${r.masp}</span></td>
-    <td>${r.tensp||''}</td><td>${r.nhomhang||''}</td><td><b>${fmt(r.diem_uu_tien,1)}</b>/100</td>
+    <td>
+      ${Number(r.sl_can_bu||0)>0
+        ? `<button class="p sizeBtn" data-m="${r.masp}" data-sl="${r.sl_can_bu}">Bù ${fmt(r.sl_can_bu,0)} → chia size</button>`
+        : '<b>0</b>'}
+    </td>
+    <td><button class="s checkBtn" data-m="${r.masp}">Kiểm tra</button></td>
+    <td><b>${fmt(r.diem_uu_tien,1)}</b>/100</td>
     <td class="mini">
       ${r.ngay_bat_dau_dot||'—'} → ${r.ngay_ket_thuc_dot||'—'}<br>
       Nhập đợt: <b>${fmt(r.sl_nhap_dot,0)}</b><br>
@@ -598,12 +635,8 @@ async function showDetail({masps=null,nhacc=null,hienTatCa=false}={}){
       <div class="mini ${r.ton_nguon==='XNT19_LIVE'?'liveOk':'liveWarn'}">${r.ton_nguon==='XNT19_LIVE'?'XNT19 LIVE':'Snapshot dự phòng'}</div>
     </td>
     <td><b>${fmt(r.so_ngay_ton_du_ban,1)}</b> ngày</td>
-    <td>
-      ${Number(r.sl_can_bu||0)>0
-        ? `<button class="p sizeBtn" data-m="${r.masp}" data-sl="${r.sl_can_bu}">Bù ${fmt(r.sl_can_bu,0)} → chia size</button>`
-        : '<b>0</b>'}
-    </td>
-    <td><button class="s checkBtn" data-m="${r.masp}">Kiểm tra</button></td>
+    <td>${r.tensp||''}</td>
+    <td>${r.nhomhang||''}</td>
     <td class="mini">${r.ly_do||''}</td>
   </tr>`).join('')}</tbody></table></div>`;
 
@@ -615,7 +648,6 @@ async function showDetail({masps=null,nhacc=null,hienTatCa=false}={}){
   document.querySelectorAll('.checkBtn').forEach(b=>b.onclick=()=>openCheck(b.dataset.m));
   document.querySelectorAll('.sizeBtn').forEach(b=>b.onclick=()=>openSize(b.dataset.m,Number(b.dataset.sl||0)));
 }
-
 
 async function openCheck(masp){
   $('modalTitle').textContent='KIỂM TRA NGUỒN · '+masp;
@@ -894,6 +926,17 @@ function buildOrderHot(){
   const container=$('hotOrder');
   rebuildOrderGroupColors();
 
+  const body=document.querySelector('.orderBody');
+  const bodyH=Math.max(220,body?.clientHeight||500);
+  const naturalH=Math.max(120,50 + orderRows.length*25 + 12);
+  const hotH=Math.min(bodyH-4,naturalH);
+
+  container.style.width=ORDER_FULL_WIDTH+'px';
+  container.style.minWidth=ORDER_FULL_WIDTH+'px';
+  container.style.maxWidth=ORDER_FULL_WIDTH+'px';
+  container.style.height=hotH+'px';
+  container.style.minHeight=hotH+'px';
+
   orderHot=new Handsontable(container,{
     data:orderRows,
     rowHeaders:false,
@@ -901,12 +944,12 @@ function buildOrderHot(){
     columns:orderColumnsForMode(),
     width:ORDER_FULL_WIDTH,
     stretchH:'none',
-    height:'100%',
+    height:hotH,
     rowHeights:24,
     columnHeaderHeight:50,
+    renderAllRows:true,
     licenseKey:'non-commercial-and-evaluation',
 
-    /* Giống tinh thần XNT19: lọc/sort/context menu/resize */
     filters:true,
     dropdownMenu:true,
     columnSorting:true,
@@ -916,7 +959,6 @@ function buildOrderHot(){
     autoRowSize:false,
     copyPaste:true,
 
-    /* Cho xóa dòng + Ctrl+Z/Ctrl+Y */
     undo:true,
     contextMenu:['remove_row','undo','redo'],
 
@@ -938,105 +980,78 @@ function buildOrderHot(){
       }
     },
 
+    cells(row,col,prop){
+      const cp={};
+      cp.renderer=orderColumnsForMode()[col]?.renderer;
+      return cp;
+    },
+
     afterRenderer(TD,row,col,prop,value,cellProperties){
       applyOrderGroupColor(TD,row);
+      if(prop==='sl_dat')TD.classList.add('order-red');
+      if(prop==='ton_sau_dat')TD.classList.add('order-blue');
     },
 
     afterChange(changes,source){
-      if(!changes || source==='loadData' || source==='calc') return;
-
-      let needRender=false;
-      for(const [visualRow,prop,oldVal,newVal] of changes){
+      if(!changes || source==='loadData')return;
+      let changed=false;
+      for(const [row,prop,oldVal,newVal] of changes){
         if(prop!=='sl_dat')continue;
-
-        const physical=orderHot.toPhysicalRow(visualRow);
+        const physical=orderHot.toPhysicalRow(row);
         if(physical==null)continue;
-
-        const r=orderHot.getSourceDataAtRow(physical);
-        if(!r)continue;
-
-        const v=Math.max(0,Math.round(Number(newVal)||0));
-        r.sl_dat=v;
-        r.ton_sau_dat=Number(r.ton_hien_tai||0)+v;
-        needRender=true;
+        const src=orderHot.getSourceDataAtRow(physical);
+        const n=Math.max(0,Math.round(Number(newVal||0)));
+        if(Number(src.sl_dat)!==n){
+          src.sl_dat=n;
+          changed=true;
+        }
+        src.ton_sau_dat=Number(src.ton_hien_tai||0)+n;
       }
-
-      if(needRender){
-        orderHot.render();
-        updateOrderStats();
-      }
+      if(changed)orderHot.render();
+      syncOrderStats();
     },
 
     afterRemoveRow(){
-      /* Built-in remove_row của Handsontable có UndoRedo hỗ trợ */
-      updateOrderStats();
-      orderHot.render();
+      syncOrderStats();
     },
 
     afterUndo(){
-      updateOrderStats();
-      orderHot.render();
+      syncOrderStats();
     },
 
     afterRedo(){
-      updateOrderStats();
-      orderHot.render();
+      syncOrderStats();
     },
 
+    afterOnCellMouseDown(event,coords,TD){
+      if(coords.row<0 || coords.col<0)return;
+      const prop=orderHot.colToProp(coords.col);
+      if(prop!=='masp')return;
 
-afterOnCellMouseDown(event,coords,TD){
-  if(coords.row<0 || coords.col<0)return;
+      const physical=orderHot.toPhysicalRow(coords.row);
+      const rowData=physical==null?null:orderHot.getSourceDataAtRow(physical);
+      const masp=String(rowData?.masp||'').trim();
+      if(!masp)return;
 
-  const prop=this.colToProp(coords.col);
-  if(prop!=='masp')return;
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
 
-  const physical=this.toPhysicalRow(coords.row);
-  if(physical==null)return;
-
-  const rowData=this.getSourceDataAtRow(physical);
-  const masp=String(rowData?.masp||'').trim();
-  if(!masp)return;
-
-  event?.preventDefault?.();
-  event?.stopPropagation?.();
-
-  try{
-    if(window.StockQuick?.showFor){
-      window.StockQuick.showFor(TD,masp);
-    }else if(typeof window.stockQuickPopup==='function'){
-      window.stockQuickPopup(masp);
-    }else{
-      console.warn('stockQuickPopup.js chưa sẵn sàng');
-    }
-  }catch(err){
-    console.error('Lỗi mở stockQuickPopup từ Tổng hợp bù',err);
-  }
-},
-
-    afterColumnSort(){
-      /* STT hiển thị lại theo thứ tự đang nhìn */
-      for(let r=0;r<orderHot.countRows();r++){
-        const physical=orderHot.toPhysicalRow(r);
-        const obj=physical==null?null:orderHot.getSourceDataAtRow(physical);
-        if(obj)obj.stt=r+1;
+      try{
+        if(window.StockQuick?.showFor){
+          window.StockQuick.showFor(TD,masp);
+        }else if(typeof window.stockQuickPopup==='function'){
+          window.stockQuickPopup(masp);
+        }else{
+          console.warn('stockQuickPopup.js chưa sẵn sàng');
+        }
+      }catch(err){
+        console.error('Lỗi mở stockQuickPopup từ Tổng hợp bù',err);
       }
-      orderHot.render();
     }
   });
 
-  orderCompact=false;
   applyOrderCompact(false);
-  updateOrderStats();
-}
-
-function updateOrderStats(){
-  const rows=getOrderSourceRows();
-  const active=rows.filter(r=>Number(r?.sl_dat||0)>0);
-  const ma=new Set(active.map(r=>r.masp)).size;
-  const goiY=rows.reduce((s,r)=>s+Number(r?.sl_goi_y||0),0);
-  const dat=rows.reduce((s,r)=>s+Number(r?.sl_dat||0),0);
-  $('orderStats').textContent=
-    `${ma} mã · ${active.length} dòng size · Gợi ý ${goiY} SP · SL đặt ${dat} SP`;
+  syncOrderStats();
 }
 
 function applyOrderCompact(force){
@@ -1047,33 +1062,39 @@ function applyOrderCompact(force){
   const cols=orderColumnsForMode();
   const width=orderCompact?ORDER_COMPACT_WIDTH:ORDER_FULL_WIDTH;
 
+  const body=document.querySelector('.orderBody');
+  const bodyH=Math.max(220,body?.clientHeight||500);
+  const naturalH=Math.max(120,(orderCompact?42:50)+orderHot.countRows()*25+12);
+  const hotH=Math.min(bodyH-4,naturalH);
+
   orderHot.updateSettings({
     colHeaders:headers,
     columns:cols,
     width,
+    height:hotH,
     stretchH:'none',
     autoColumnSize:false,
     autoRowSize:false,
-
-    /* Rút gọn để chụp ảnh: bỏ nút lọc làm phình cột */
     filters:!orderCompact,
     dropdownMenu:!orderCompact,
     columnSorting:!orderCompact,
     columnHeaderHeight:orderCompact?42:50
   });
 
-  /* container bám đúng chiều rộng bảng, outer .orderBody lo kéo ngang */
   const hotEl=$('hotOrder');
   hotEl.style.width=width+'px';
   hotEl.style.minWidth=width+'px';
   hotEl.style.maxWidth=width+'px';
+  hotEl.style.height=hotH+'px';
+  hotEl.style.minHeight=hotH+'px';
 
   orderHot.render();
   $('orderCompact').textContent=orderCompact?'Hiện đầy đủ':'Rút gọn';
 
-  /* Sau đổi chế độ luôn trở về đầu bảng để không tưởng là mất cột */
-  const body=document.querySelector('.orderBody');
-  if(body) body.scrollLeft=0;
+  if(body){
+    body.scrollLeft=0;
+    body.scrollTop=0;
+  }
 }
 
 function orderRowsVisual(){
@@ -1126,6 +1147,10 @@ async function refreshScope(){
   $('status').textContent='Đang xác định danh sách cần tính lại...';
 
   try{
+    /* Chuẩn nhóm 365 tính đúng 1 lần, không lặp lại ở từng lô */
+    $('status').textContent='Đang cập nhật chuẩn tốc độ nhóm 365 ngày...';
+    await refreshChuanNhom365NhapBuV2(ngay);
+
     const allCodes=await danhSachRefreshNhapBuV2({
       ngay,
       masps:cs.length?cs:null,
@@ -1146,7 +1171,7 @@ async function refreshScope(){
       return;
     }
 
-    const CHUNK=40;
+    const CHUNK=80;
     let processed=0;
     for(let i=0;i<allCodes.length;i+=CHUNK){
       const part=allCodes.slice(i,i+CHUNK);
@@ -1179,7 +1204,7 @@ async function refreshScope(){
     else if(sup) await showDetail({nhacc:sup,hienTatCa:false});
     else await showOverview();
 
-    $('status').textContent=`Đã tính lại ${processed}/${allCodes.length} mã theo từng lô an toàn.`;
+    $('status').textContent=`Đã tính lại ${processed}/${allCodes.length} mã · chuẩn nhóm chỉ tính 1 lần · theo lô 80 mã.`;
   }catch(e){
     console.error(e);
     const msg=e?.message||String(e);
