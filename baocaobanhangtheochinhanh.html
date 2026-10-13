@@ -1,0 +1,358 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Báo cáo bán hàng theo chi nhánh</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script type="module" src="scripts/supabaseClient.js"></script>
+  <script src="scripts/stockQuickPopup.js"></script>
+  <script type="module" src="scripts/baocaobanhangtheochinhanh.js"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/14.3.0/handsontable.full.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
+
+  <style>
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;color:#263238;background:#f4f6f8}
+    body{overflow:hidden}
+    #app-container{height:100%;display:flex;flex-direction:column}
+
+    .header{
+      flex:0 0 auto;background:#fff;border-bottom:1px solid #d6dee6;
+      padding:8px 10px 6px;box-shadow:0 1px 4px rgba(0,0,0,.06)
+    }
+
+    .title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;gap:10px}
+    .title-row h1{margin:0;font-size:20px;color:#175a91}
+    .rule{
+      font-size:12px;color:#714f00;background:#fff5cf;border:1px solid #efd77c;
+      border-radius:6px;padding:5px 9px;white-space:nowrap
+    }
+
+    .filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px 9px}
+    .field{display:flex;flex-direction:column;gap:2px}
+    .field>label,.field-label{font-size:11px;font-weight:700;color:#5f6c7b}
+    input,select,button{font:inherit}
+    input,select{
+      height:31px;border:1px solid #bcc7d2;border-radius:4px;padding:4px 6px;background:#fff
+    }
+    .input-group{display:flex;gap:2px}
+    .input-group input{width:120px}
+    .icon-btn{height:31px;padding:3px 7px;background:#f5f6f7}
+    button{
+      border:1px solid #aeb8c2;border-radius:5px;background:#fff;cursor:pointer;
+      padding:6px 10px;font-weight:700
+    }
+    button:hover{background:#eef4f9}
+    .primary{background:#1976d2;color:#fff;border-color:#1976d2}
+    .primary:hover{background:#135fa9}
+    .green{background:#138a4b;color:#fff;border-color:#138a4b}
+    .green:hover{background:#0f6e3c}
+
+    #maspList{
+      width:150px;height:68px;resize:vertical;border:1px solid #bcc7d2;border-radius:4px;padding:5px
+    }
+
+    .inline-check{height:31px;display:flex;align-items:center;gap:5px;padding:0 4px;font-size:13px}
+    .inline-check input{height:auto}
+
+    #sosanhTheoWrap{display:none}
+
+    #loadingMsg{height:17px;margin-top:4px;color:#c0392b;font-size:12px;font-weight:700}
+
+    .summary{
+      flex:0 0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:7px;padding:7px 9px
+    }
+    .sum-card{
+      background:#fff;border:1px solid #d7e0e8;border-radius:7px;
+      padding:7px 11px;display:flex;align-items:center;justify-content:space-between;gap:10px
+    }
+    .sum-card.cs1{border-left:5px solid #2f80ed}
+    .sum-card.cs2{border-left:5px solid #8e44ad}
+    .sum-card.total{border-left:5px solid #c0392b;background:#fffaf9}
+    .sum-label{font-size:12px;font-weight:900;color:#637182}
+    .sum-values{display:flex;gap:18px;align-items:baseline}
+    .sum-values div{white-space:nowrap}
+    .sum-values span{font-size:11px;color:#75808e;margin-right:4px}
+    .sum-values b{font-size:18px}
+
+    .table-wrap{flex:1 1 auto;min-height:0;padding:0 9px 6px}
+    #hot{height:100%;background:#fff;border:1px solid #d6dee6;border-radius:6px;overflow:hidden}
+
+    #hot .handsontable .colHeader{white-space:pre-line!important;line-height:1.08;text-align:center;font-weight:800}
+    #hot .handsontable thead th{background:#eaf2f8}
+    #hot .handsontable td.row-even{background:#f7fafc}
+    #hot .handsontable td.row-odd{background:#fff}
+    .masp-link{color:#135fa9;text-decoration:underline;cursor:pointer;font-weight:700}
+
+    .pager{
+      flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;
+      background:#fff;border-top:1px solid #d6dee6;padding:5px 8px
+    }
+    .pager select{height:29px}
+    #pageInfo{font-size:13px;font-weight:700}
+
+    .modal{
+      position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:5000;
+      display:none;align-items:flex-start;justify-content:center;padding-top:12vh
+    }
+    .modal.show{display:flex}
+    .popup-box{
+      width:min(580px,94vw);background:#fff;border-radius:8px;overflow:hidden;
+      box-shadow:0 12px 30px rgba(0,0,0,.25)
+    }
+    .popup-head{display:flex;gap:6px;padding:8px;background:#eef3f7}
+    #popupSearchInput{flex:1}
+    #popupSearchList{max-height:55vh;overflow:auto}
+    .popup-row{
+      display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #eee;
+      border-radius:0;padding:8px 10px;font-weight:500
+    }
+
+    @media(max-width:900px){
+      body{overflow:auto}
+      #app-container{height:auto;min-height:100dvh}
+      .rule{display:none}
+      .summary{grid-template-columns:1fr}
+      .table-wrap{height:65vh;flex:none}
+    }
+  </style>
+</head>
+
+<body>
+<div id="app-container">
+
+  <div class="header">
+    <div class="title-row">
+      <h1>BÁO CÁO BÁN HÀNG THEO CHI NHÁNH</h1>
+      <div class="rule">Chỉ tính <b>bancs1 + bancs2</b> • Không tính hóa đơn bán nhân viên</div>
+    </div>
+
+    <div class="filters">
+
+      <div class="field">
+        <label>Địa điểm</label>
+        <select id="diadiemSelect">
+          <option value="">Tất cả</option>
+          <option value="cs1">Cơ sở 1</option>
+          <option value="cs2">Cơ sở 2</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Từ ngày</label>
+        <input type="date" id="tuNgay">
+      </div>
+
+      <div class="field">
+        <label>Đến ngày</label>
+        <input type="date" id="denNgay">
+      </div>
+
+      <div class="field">
+        <label>Nhà cung cấp</label>
+        <div class="input-group">
+          <input id="nhaccInput" placeholder="NCC">
+          <button class="icon-btn" onclick="openPopupSearch('nhacc')">🔍</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Nhóm hàng</label>
+        <div class="input-group">
+          <input id="nhomhangInput" placeholder="Nhóm">
+          <button class="icon-btn" onclick="openPopupSearch('nhomhang')">🔍</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Chủng loại</label>
+        <div class="input-group">
+          <input id="chungloaiInput" placeholder="Chủng loại">
+          <button class="icon-btn" onclick="openPopupSearch('chungloai')">🔍</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Màu sắc</label>
+        <div class="input-group">
+          <input id="mausacInput" placeholder="Màu">
+          <button class="icon-btn" onclick="openPopupSearch('mausac')">🔍</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Size</label>
+        <div class="input-group">
+          <input id="sizeInput" placeholder="Size">
+          <button class="icon-btn" onclick="openPopupSearch('size')">🔍</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Mã hàng</label>
+        <div class="input-group">
+          <input id="maspInput" placeholder="Mã SP">
+          <button class="icon-btn" onclick="openPopupSearch('mahang')">🔍</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Khách hàng</label>
+        <div class="input-group">
+          <input id="khachhangInput" placeholder="Khách hàng">
+          <button class="icon-btn" onclick="openPopupSearch('khachhang')">🔍</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Nhân viên bán</label>
+        <div class="input-group">
+          <input id="nhanvienInput" placeholder="Nhân viên">
+          <button class="icon-btn" onclick="openPopupSearch('nhanvien')">🔍</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Từ giá</label>
+        <input type="number" id="tuGia" style="width:86px" min="0" step="1000">
+      </div>
+
+      <div class="field">
+        <label>Đến giá</label>
+        <input type="number" id="denGia" style="width:86px" min="0" step="1000">
+      </div>
+
+      <div class="field">
+        <label>So sánh chi nhánh</label>
+        <select id="sosanhSelect">
+          <option value="">Không lọc</option>
+          <option value="chi_cs1">Chỉ CS1 có bán</option>
+          <option value="chi_cs2">Chỉ CS2 có bán</option>
+          <option value="ca_hai">Cả hai cơ sở cùng bán</option>
+          <option value="cs1_lon_hon">CS1 bán nhiều hơn CS2</option>
+          <option value="cs2_lon_hon">CS2 bán nhiều hơn CS1</option>
+        </select>
+      </div>
+
+      <div class="field" id="sosanhTheoWrap">
+        <label>So sánh theo</label>
+        <select id="sosanhTheoSelect">
+          <option value="soluong">Số lượng</option>
+          <option value="doanhthu">Doanh thu</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Dạng hiển thị</label>
+        <select id="viewMode">
+          <option value="both">Số lượng + Doanh thu</option>
+          <option value="qty">Chỉ số lượng</option>
+          <option value="money">Chỉ doanh thu</option>
+        </select>
+      </div>
+
+      <label class="inline-check">
+        <input type="checkbox" id="tonghopSizeCheckbox">
+        Tổng hợp size
+      </label>
+
+      <button class="primary" onclick="currentPage=1;taiBaoCaoBanHang()">Xem báo cáo</button>
+      <button onclick="resetFilters()">Bỏ lọc</button>
+      <button class="green" onclick="xuatExcelToanBoBanHang()">Xuất Excel</button>
+
+      <div class="field">
+        <label>Nhiều mã SP</label>
+        <textarea id="maspList" placeholder="Mỗi mã 1 dòng"></textarea>
+      </div>
+
+    </div>
+
+    <div id="loadingMsg"></div>
+  </div>
+
+  <div class="summary">
+    <div class="sum-card cs1">
+      <div class="sum-label">CƠ SỞ 1</div>
+      <div class="sum-values">
+        <div><span>SL</span><b id="sumSLCS1">0</b></div>
+        <div><span>DT</span><b id="sumDTCS1">0</b></div>
+      </div>
+    </div>
+
+    <div class="sum-card cs2">
+      <div class="sum-label">CƠ SỞ 2</div>
+      <div class="sum-values">
+        <div><span>SL</span><b id="sumSLCS2">0</b></div>
+        <div><span>DT</span><b id="sumDTCS2">0</b></div>
+      </div>
+    </div>
+
+    <div class="sum-card total">
+      <div class="sum-label">TỔNG 2 CƠ SỞ</div>
+      <div class="sum-values">
+        <div><span>SL</span><b id="sumSLTong">0</b></div>
+        <div><span>DT</span><b id="sumDTTong">0</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div id="hot"></div>
+  </div>
+
+  <div class="pager">
+    <span>Số dòng/trang</span>
+    <select id="pageSize">
+      <option value="500">500</option>
+      <option value="1000" selected>1000</option>
+      <option value="2000">2000</option>
+      <option value="5000">5000</option>
+      <option value="10000">10000</option>
+    </select>
+
+    <button id="btnPrev" onclick="prevPage()">⬅ Trang trước</button>
+    <span id="pageInfo">Trang 1/1</span>
+    <button id="btnNext" onclick="nextPage()">Trang sau ➡</button>
+  </div>
+
+</div>
+
+<div id="popupSearch" class="modal" onclick="if(event.target===this)closePopupSearch()">
+  <div class="popup-box">
+    <div class="popup-head">
+      <input id="popupSearchInput" placeholder="Nhập từ khóa tìm kiếm...">
+      <button onclick="closePopupSearch()">Đóng ✕</button>
+    </div>
+    <div id="popupSearchList"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+
+  khoiTaoDangNhapDungChung({
+    appContainerId: "app-container",
+    macDinhDiaDiem: "",
+    tuDongKhoaCoSo: false,
+    loginApiPath: "/api/login-cs1",
+
+    async onLoginSuccess(nv, ctx) {
+      if (window.kiemTraQuyenXemTrang) {
+        const ok = await window.kiemTraQuyenXemTrang("baocaobanhangtheochinhanh.html");
+        if (!ok) return;
+      }
+
+      if (window.taiBaoCaoBanHang) {
+        await window.taiBaoCaoBanHang();
+      }
+    }
+  });
+</script>
+
+</body>
+</html>
