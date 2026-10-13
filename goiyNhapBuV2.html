@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.8 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.9 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -364,7 +364,7 @@ body.nb2-page .sq-stock-popup.show{
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.8 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.9 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -1054,6 +1054,20 @@ function buildOrderHot(){
   updateOrderStats();
 }
 
+
+function updateOrderStats(){
+  const rows=getOrderSourceRows();
+  const active=rows.filter(r=>Number(r?.sl_dat||0)>0);
+  const ma=new Set(active.map(r=>String(r?.masp||'').trim()).filter(Boolean)).size;
+  const goiY=rows.reduce((s,r)=>s+Number(r?.sl_goi_y||0),0);
+  const dat=rows.reduce((s,r)=>s+Number(r?.sl_dat||0),0);
+
+  if($('orderStats')){
+    $('orderStats').textContent=
+      `${ma} mã · ${active.length} dòng size · Gợi ý ${goiY} SP · SL đặt ${dat} SP`;
+  }
+}
+
 function applyOrderCompact(force){
   orderCompact=!!force;
   if(!orderHot)return;
@@ -1197,7 +1211,7 @@ async function refreshScope(){
       return;
     }
 
-    const CHUNK=50;
+    const CHUNK=100;
     let processed=0;
     for(let i=0;i<allCodes.length;i+=CHUNK){
       const part=allCodes.slice(i,i+CHUNK);
@@ -1230,7 +1244,7 @@ async function refreshScope(){
     else if(sup) await showDetail({nhacc:sup,hienTatCa:false});
     else await showOverview();
 
-    $('status').textContent=`Đã tính lại ${processed}/${allCodes.length} mã · chuẩn nhóm tính 1 lần · theo lô 50 mã an toàn.`;
+    $('status').textContent=`Đã tính lại ${processed}/${allCodes.length} mã · chuẩn nhóm tính 1 lần · theo lô 100 mã.`;
   }catch(e){
     console.error(e);
     const msg=e?.message||String(e);
