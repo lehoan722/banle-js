@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.15 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.16 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -358,7 +358,7 @@ body.nb2-page .sq-stock-popup.show{
 }
 
 
-/* ===== V2.3.15: FIX RENDER TỔNG HỢP NHẬP BÙ ===== */
+/* ===== V2.3.16: FIX RENDER TỔNG HỢP NHẬP BÙ ===== */
 .orderBody{
   position:relative !important;
 }
@@ -376,7 +376,7 @@ body.nb2-page .sq-stock-popup.show{
 
 
 /* ==========================================================
-   V2.3.15 - RESPONSIVE TÁCH RIÊNG DESKTOP / TABLET / MOBILE
+   V2.3.16 - RESPONSIVE TÁCH RIÊNG DESKTOP / TABLET / MOBILE
    Không sửa stockQuickPopup.js
    ========================================================== */
 .orderModal{padding:8px !important}
@@ -437,7 +437,7 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
 
 
 /* ==========================================================
-   V2.3.15 - FIX WIDTH THỰC TẾ + STOCKQUICK MOBILE
+   V2.3.16 - FIX WIDTH THỰC TẾ + STOCKQUICK MOBILE
    ========================================================== */
 .orderMaspLink{
   border:0 !important;
@@ -489,7 +489,7 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
 
 
 /* ==========================================================
-   V2.3.15 - IPHONE: CỘT RÚT GỌN CO SÁT + STOCKQUICK ĐÚNG PHIÊN
+   V2.3.16 - IPHONE: CỘT RÚT GỌN CO SÁT + STOCKQUICK ĐÚNG PHIÊN
    ========================================================== */
 @media (max-width:600px){
   .orderBody{
@@ -533,7 +533,7 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
 
 
 /* ==========================================================
-   V2.3.15 - RÚT GỌN MOBILE VỪA KHÍT MÀN HÌNH
+   V2.3.16 - RÚT GỌN MOBILE VỪA KHÍT MÀN HÌNH
    ========================================================== */
 @media (max-width:600px){
   .orderCard.isCompact .orderBody{
@@ -583,6 +583,13 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
   }
 }
 
+
+/* V2.3.16 - Tốc độ tích lũy trong Phát sinh 90 ngày */
+.cumRate{font-weight:800;white-space:nowrap}
+.cumRateTop1{color:#d71920 !important;font-weight:900}
+.cumRateTop2{color:#1268d8 !important;font-weight:900}
+.cumRateUnit{font-size:11px;color:#667085;font-weight:600}
+
 </style>
 </head>
 <body class="nb2-page">
@@ -590,7 +597,7 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.15 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.16 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -691,7 +698,7 @@ import {
 
 import { getSupabaseClient, khoiTaoDangNhapDungChung } from './scripts/authModule.js';
 
-// V2.3.15: StockQuickPopup dùng window.supabase.
+// V2.3.16: StockQuickPopup dùng window.supabase.
 // Gán rõ client dùng chung để desktop/mobile cùng một nguồn dữ liệu.
 try{
   const __nb2Supabase = getSupabaseClient();
@@ -935,6 +942,36 @@ async function showDetail({masps=null,nhacc=null,hienTatCa=false}={}){
   document.querySelectorAll('.sizeBtn').forEach(b=>b.onclick=()=>openSize(b.dataset.m,Number(b.dataset.sl||0)));
 }
 
+
+function getCumRateRow(x){
+  const sold=Number(x?.ban_tich_luy||0);
+  const days=Number(x?.so_ngay_ban_tich_luy);
+  if(!(Number(x?.ban_tong||0)>0) || !(sold>0) || !Number.isFinite(days)) return null;
+  // Nếu bán ngay trong ngày đầu đợt thì tính tối thiểu 1 ngày để tránh chia 0.
+  const denom=Math.max(1,days);
+  return sold/denom;
+}
+function fmtCumRate(v){
+  if(v==null || !Number.isFinite(Number(v))) return '';
+  return Number(v).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1});
+}
+function cumRateRanks(rows){
+  const vals=[];
+  for(const x of (rows||[])){
+    const r=getCumRateRow(x);
+    if(r!=null) vals.push(Number(r.toFixed(10)));
+  }
+  const distinct=[...new Set(vals)].sort((a,b)=>b-a);
+  return {top1:distinct[0]??null,top2:distinct[1]??null};
+}
+function cumRateClass(rate,ranks){
+  if(rate==null) return '';
+  const v=Number(rate.toFixed(10));
+  if(ranks.top1!=null && Math.abs(v-ranks.top1)<1e-9) return 'cumRateTop1';
+  if(ranks.top2!=null && Math.abs(v-ranks.top2)<1e-9) return 'cumRateTop2';
+  return '';
+}
+
 async function openCheck(masp){
   $('modalTitle').textContent='KIỂM TRA NGUỒN · '+masp;
   $('modal').style.display='flex';
@@ -946,6 +983,7 @@ async function openCheck(masp){
     const l=d.ton_xnt19||{};
     const sizes=Array.isArray(d.ton_size_xnt19)?d.ton_size_xnt19:[];
     const daily=Array.isArray(d.phat_sinh_90_ngay)?d.phat_sinh_90_ngay:[];
+    const dailyRateRanks=cumRateRanks(daily);
 
     const snap1=Number(s.ton_cs1||0),snap2=Number(s.ton_cs2||0),snapT=Number(s.ton_he_thong||0);
     const live1=Number(l.ton_cs1||0),live2=Number(l.ton_cs2||0),liveT=Number(l.ton_he_thong||0);
@@ -998,7 +1036,7 @@ async function openCheck(masp){
       <div class="sectionTitle">Phát sinh 90 ngày</div>
       <div class="tableWrap"><table class="auditTable"><thead><tr>
         <th>Ngày</th><th>Nhập mua</th><th>Bán CS1</th><th>Bán CS2</th><th>Tổng bán</th>
-        <th>Bán tích lũy<br><span class="mini">SL / số ngày</span></th><th>Tồn</th><th>Thiếu size</th>
+        <th>Bán tích lũy<br><span class="mini">SL / số ngày = SP/ngày</span></th><th>Tồn</th><th>Thiếu size</th>
       </tr></thead><tbody>
         ${daily.length?daily.map(x=>`<tr>
           <td>${x.ngay}</td>
@@ -1006,11 +1044,12 @@ async function openCheck(masp){
           <td>${blank0(x.ban_cs1)}</td>
           <td>${blank0(x.ban_cs2)}</td>
           <td><b>${blank0(x.ban_tong)}</b></td>
-          <td>${
-            Number(x.ban_tong||0)>0 && Number(x.ban_tich_luy||0)>0
-              ? `<b>${fmt(x.ban_tich_luy,0)}</b><span class="mini"> / ${fmt(x.so_ngay_ban_tich_luy,0)} ngày</span>`
-              : blank0(x.ban_tich_luy)
-          }</td>
+          <td>${(()=>{
+            if(!(Number(x.ban_tong||0)>0) || !(Number(x.ban_tich_luy||0)>0)) return blank0(x.ban_tich_luy);
+            const rate=getCumRateRow(x);
+            const rankClass=cumRateClass(rate,dailyRateRanks);
+            return `<b>${fmt(x.ban_tich_luy,0)}</b><span class="mini"> / ${fmt(x.so_ngay_ban_tich_luy,0)} ngày</span>${rate!=null?` <span class="cumRate ${rankClass}">= ${fmtCumRate(rate)}</span><span class="cumRateUnit"> SP/ngày</span>`:''}`;
+          })()}</td>
           <td>${blank0(x.ton)}</td>
           <td>${Array.isArray(x.thieu_size)?x.thieu_size.join(', '):(x.thieu_size||'')}</td>
         </tr>`).join(''):'<tr><td colspan="8">Không có phát sinh.</td></tr>'}
