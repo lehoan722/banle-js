@@ -145,7 +145,7 @@ function buildRows(history) {
 
   return history.map((r, i) => {
     const ngay = pick(r, ["ngay", "ngay_ps", "date"], "");
-    const nhap = pick(r, ["nhap_mua", "nhap", "tong_nhap"], 0);
+    const nhap = pick(r, ["nhapmua", "nhap_mua", "nhap", "tong_nhap"], 0);
     const b1 = pick(r, ["ban_cs1", "xuat_ban_cs1"], 0);
     const b2 = pick(r, ["ban_cs2", "xuat_ban_cs2"], 0);
     const tongBan = pick(r, ["tong_ban", "ban_tong"], num(b1) + num(b2));
