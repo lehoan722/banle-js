@@ -99,3 +99,12 @@ export async function donDepSnapshotNhapBuV2({ngay=null,masps=null,nhacc=null}={
   if(error) throw error;
   return Number(data||0);
 }
+
+
+export async function refreshChuanNhom365NhapBuV2(ngay=null){
+  const {data,error}=await supabase.rpc('rpc_nhapbu2_refresh_chuan_nhom365_v1',{
+    p_ngay:ngay||null
+  });
+  if(error) throw error;
+  return Number(data||0);
+}
