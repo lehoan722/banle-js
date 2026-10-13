@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.10 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.11 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -358,7 +358,7 @@ body.nb2-page .sq-stock-popup.show{
 }
 
 
-/* ===== V2.3.10: FIX RENDER TỔNG HỢP NHẬP BÙ ===== */
+/* ===== V2.3.11: FIX RENDER TỔNG HỢP NHẬP BÙ ===== */
 .orderBody{
   position:relative !important;
 }
@@ -374,6 +374,67 @@ body.nb2-page .sq-stock-popup.show{
   opacity:1 !important;
 }
 
+
+/* ==========================================================
+   V2.3.11 - RESPONSIVE TÁCH RIÊNG DESKTOP / TABLET / MOBILE
+   Không sửa stockQuickPopup.js
+   ========================================================== */
+.orderModal{padding:8px !important}
+.orderCard{overflow:hidden !important}
+.orderBody{
+  overflow:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  touch-action:pan-x pan-y !important;
+}
+#hotOrder{display:block !important}
+.orderBody .handsontable th .colHeader{
+  white-space:normal !important;
+  overflow-wrap:anywhere !important;
+  word-break:normal !important;
+  line-height:1.05 !important;
+  text-align:center !important;
+}
+
+@media (min-width:1000px){
+  .orderCard{width:96vw !important;max-width:96vw !important;height:88vh !important}
+  .orderHead{flex-wrap:wrap !important}
+  .orderBody{width:100% !important;max-width:100% !important;overflow-x:auto !important}
+}
+
+@media (min-width:601px) and (max-width:999px){
+  .orderCard{width:98vw !important;max-width:98vw !important;height:92vh !important}
+  .orderHead{flex-wrap:wrap !important}
+  .orderActions{width:100% !important;margin-left:0 !important;flex-wrap:wrap !important}
+  .orderBody{overflow-x:auto !important}
+}
+
+@media (max-width:600px){
+  .orderModal{padding:2px !important;align-items:flex-start !important}
+  .orderCard{
+    width:calc(100vw - 4px) !important;
+    max-width:calc(100vw - 4px) !important;
+    height:calc(100vh - 8px) !important;
+    border-radius:10px !important;
+  }
+  .orderHead{padding:10px 8px !important;gap:6px !important;flex-wrap:wrap !important}
+  .orderHead h3{width:100% !important;font-size:18px !important;line-height:1.15 !important}
+  .orderStats{width:100% !important;font-size:12px !important;line-height:1.2 !important}
+  .orderActions{
+    width:100% !important;margin-left:0 !important;
+    display:flex !important;flex-wrap:wrap !important;gap:6px !important;
+  }
+  .orderActions button{height:38px !important;padding:0 10px !important;font-size:13px !important}
+  .orderBody{padding:4px !important;overflow-x:auto !important;overflow-y:auto !important;width:100% !important}
+  .orderBody .handsontable td{
+    padding-left:2px !important;padding-right:2px !important;
+    font-size:11px !important;white-space:nowrap !important;
+  }
+  .orderBody .handsontable th .colHeader{font-size:11px !important;padding:1px !important}
+}
+
+body.nb2-page .sq-stock-popup,
+body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
+
 </style>
 </head>
 <body class="nb2-page">
@@ -381,7 +442,7 @@ body.nb2-page .sq-stock-popup.show{
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.10 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.11 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -508,31 +569,80 @@ const ORDER_FULL_HEADERS=[
   'STT','Mã SP','Size','SL hệ thống\ngợi ý','SL\nđặt',
   'Tồn\nhiện tại','Tồn sau\nĐặt','Bán\ngần','Tên','Nhóm','Lý do'
 ];
-
-const ORDER_FULL_COLUMNS=[
-  {data:'stt',type:'numeric',readOnly:true,width:36},
-  {data:'masp',type:'text',readOnly:true,width:118},
-  {data:'size',type:'text',readOnly:true,width:42},
-  {data:'sl_goi_y',type:'numeric',readOnly:true,width:64},
-  {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:52,className:'order-red'},
-  {data:'ton_hien_tai',type:'numeric',readOnly:true,width:58},
-  {data:'ton_sau_dat',type:'numeric',readOnly:true,width:62,className:'order-blue'},
-  {data:'ban_gan',type:'numeric',readOnly:true,width:48},
-  {data:'ten',type:'text',readOnly:true,width:82},
-  {data:'nhom',type:'text',readOnly:true,width:48},
-  {data:'ly_do',type:'text',readOnly:true,width:74}
-];
-
 const ORDER_COMPACT_HEADERS=['STT','Mã SP','Size','SL\nđặt'];
-const ORDER_COMPACT_COLUMNS=[
-  {data:'stt',type:'numeric',readOnly:true,width:34},
-  {data:'masp',type:'text',readOnly:true,width:126},
-  {data:'size',type:'text',readOnly:true,width:44},
-  {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:54,className:'order-red'}
-];
 
-const ORDER_FULL_WIDTH=686;
-const ORDER_COMPACT_WIDTH=258;
+function orderDeviceMode(){
+  const w=window.innerWidth||document.documentElement.clientWidth||1200;
+  if(w<=600) return 'mobile';
+  if(w<=999) return 'tablet';
+  return 'desktop';
+}
+function orderFullColumnsByDevice(){
+  const mode=orderDeviceMode();
+  if(mode==='mobile') return [
+    {data:'stt',type:'numeric',readOnly:true,width:34},
+    {data:'masp',type:'text',readOnly:true,width:126},
+    {data:'size',type:'text',readOnly:true,width:44},
+    {data:'sl_goi_y',type:'numeric',readOnly:true,width:58},
+    {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:52,className:'order-red'},
+    {data:'ton_hien_tai',type:'numeric',readOnly:true,width:54},
+    {data:'ton_sau_dat',type:'numeric',readOnly:true,width:58,className:'order-blue'},
+    {data:'ban_gan',type:'numeric',readOnly:true,width:46},
+    {data:'ten',type:'text',readOnly:true,width:78},
+    {data:'nhom',type:'text',readOnly:true,width:46},
+    {data:'ly_do',type:'text',readOnly:true,width:76}
+  ];
+  if(mode==='tablet') return [
+    {data:'stt',type:'numeric',readOnly:true,width:40},
+    {data:'masp',type:'text',readOnly:true,width:138},
+    {data:'size',type:'text',readOnly:true,width:50},
+    {data:'sl_goi_y',type:'numeric',readOnly:true,width:74},
+    {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:58,className:'order-red'},
+    {data:'ton_hien_tai',type:'numeric',readOnly:true,width:64},
+    {data:'ton_sau_dat',type:'numeric',readOnly:true,width:68,className:'order-blue'},
+    {data:'ban_gan',type:'numeric',readOnly:true,width:52},
+    {data:'ten',type:'text',readOnly:true,width:92},
+    {data:'nhom',type:'text',readOnly:true,width:52},
+    {data:'ly_do',type:'text',readOnly:true,width:90}
+  ];
+  return [
+    {data:'stt',type:'numeric',readOnly:true,width:44},
+    {data:'masp',type:'text',readOnly:true,width:150},
+    {data:'size',type:'text',readOnly:true,width:54},
+    {data:'sl_goi_y',type:'numeric',readOnly:true,width:88},
+    {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:64,className:'order-red'},
+    {data:'ton_hien_tai',type:'numeric',readOnly:true,width:76},
+    {data:'ton_sau_dat',type:'numeric',readOnly:true,width:80,className:'order-blue'},
+    {data:'ban_gan',type:'numeric',readOnly:true,width:62},
+    {data:'ten',type:'text',readOnly:true,width:118},
+    {data:'nhom',type:'text',readOnly:true,width:68},
+    {data:'ly_do',type:'text',readOnly:true,width:150}
+  ];
+}
+function orderCompactColumnsByDevice(){
+  const mode=orderDeviceMode();
+  if(mode==='mobile') return [
+    {data:'stt',type:'numeric',readOnly:true,width:34},
+    {data:'masp',type:'text',readOnly:true,width:138},
+    {data:'size',type:'text',readOnly:true,width:44},
+    {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:54,className:'order-red'}
+  ];
+  if(mode==='tablet') return [
+    {data:'stt',type:'numeric',readOnly:true,width:38},
+    {data:'masp',type:'text',readOnly:true,width:150},
+    {data:'size',type:'text',readOnly:true,width:48},
+    {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:58,className:'order-red'}
+  ];
+  return [
+    {data:'stt',type:'numeric',readOnly:true,width:42},
+    {data:'masp',type:'text',readOnly:true,width:160},
+    {data:'size',type:'text',readOnly:true,width:52},
+    {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:62,className:'order-red'}
+  ];
+}
+function sumColumnWidths(cols){
+  return cols.reduce((s,c)=>s+Number(c.width||80),0)+4;
+}
 
 function badge(a){
   if(a==='CAN_NHAP_BU_THIEU_SIZE') return '<span class="badge sizeNeed">CẦN NHẬP BÙ · THIẾU SIZE</span>';
@@ -927,7 +1037,7 @@ function applyOrderGroupColor(TD,row){
 }
 
 function orderColumnsForMode(){
-  const cols=(orderCompact?ORDER_COMPACT_COLUMNS:ORDER_FULL_COLUMNS).map(c=>({...c}));
+  const cols=(orderCompact?orderCompactColumnsByDevice():orderFullColumnsByDevice()).map(c=>({...c}));
   for(const c of cols){
     if(c.data==='masp'){
       c.renderer=orderMaspRenderer;
@@ -938,6 +1048,7 @@ function orderColumnsForMode(){
   return cols;
 }
 
+
 function buildOrderHot(){
   if(orderHot){orderHot.destroy();orderHot=null}
 
@@ -945,56 +1056,53 @@ function buildOrderHot(){
   const body=document.querySelector('.orderBody');
   rebuildOrderGroupColors();
 
+  const mode=orderDeviceMode();
+  orderCompact=(mode==='mobile');
+
+  const cols=orderColumnsForMode();
+  const headers=orderCompact?ORDER_COMPACT_HEADERS:ORDER_FULL_HEADERS;
+  const width=sumColumnWidths(cols);
+
   const bodyH=Math.max(260,Math.floor(body?.getBoundingClientRect?.().height||500));
-  const naturalH=Math.max(140,50 + orderRows.length*25 + 12);
+  const naturalH=Math.max(140,(orderCompact?42:50)+orderRows.length*25+12);
   const hotH=Math.min(bodyH-8,naturalH);
 
-  /* CSS cũ từng có height:100%!important nên phải ép kích thước thật bằng important */
-  container.style.setProperty('width',ORDER_FULL_WIDTH+'px','important');
-  container.style.setProperty('min-width',ORDER_FULL_WIDTH+'px','important');
-  container.style.setProperty('max-width',ORDER_FULL_WIDTH+'px','important');
+  container.style.setProperty('width',width+'px','important');
+  container.style.setProperty('min-width',width+'px','important');
+  container.style.setProperty('max-width',width+'px','important');
   container.style.setProperty('height',hotH+'px','important');
   container.style.setProperty('min-height',hotH+'px','important');
   container.style.setProperty('display','block','important');
 
-  orderCompact=false;
-
   orderHot=new Handsontable(container,{
     data:orderRows,
     rowHeaders:false,
-    colHeaders:ORDER_FULL_HEADERS,
-    columns:orderColumnsForMode(),
-    width:ORDER_FULL_WIDTH,
-    height:hotH,
-    stretchH:'none',
+    colHeaders:headers,
+    columns:cols,
+    width,height:hotH,stretchH:'none',
     rowHeights:24,
-    columnHeaderHeight:50,
+    columnHeaderHeight:orderCompact?42:50,
     renderAllRows:true,
     licenseKey:'non-commercial-and-evaluation',
-
-    filters:true,
-    dropdownMenu:true,
-    columnSorting:true,
+    filters:!orderCompact,
+    dropdownMenu:!orderCompact,
+    columnSorting:!orderCompact,
     manualColumnResize:true,
     manualRowResize:false,
     autoColumnSize:false,
     autoRowSize:false,
     copyPaste:true,
-
     undo:true,
     contextMenu:['remove_row','undo','redo'],
 
     afterGetColHeader(col,TH){
-      const headers=orderCompact?ORDER_COMPACT_HEADERS:ORDER_FULL_HEADERS;
-      const raw=headers[col] ?? '';
+      const hs=orderCompact?ORDER_COMPACT_HEADERS:ORDER_FULL_HEADERS;
+      const raw=hs[col] ?? '';
       const span=TH.querySelector('.colHeader');
       if(span) span.innerHTML=String(raw).split('\\n').join('<br>');
-
       const plain=String(raw).replace(/\\n/g,' ').trim();
       TH.style.fontWeight='800';
-      TH.style.color=
-        plain==='SL đặt' ? '#d71920' :
-        plain==='Tồn sau Đặt' ? '#143cff' : '';
+      TH.style.color=plain==='SL đặt'?'#d71920':plain==='Tồn sau Đặt'?'#143cff':'';
     },
 
     afterRenderer(TD,row,col,prop,value,cellProperties){
@@ -1028,7 +1136,6 @@ function buildOrderHot(){
       if(coords.row<0 || coords.col<0)return;
       const prop=orderHot.colToProp(coords.col);
       if(prop!=='masp')return;
-
       const physical=orderHot.toPhysicalRow(coords.row);
       const rowData=physical==null?null:orderHot.getSourceDataAtRow(physical);
       const masp=String(rowData?.masp||'').trim();
@@ -1037,34 +1144,36 @@ function buildOrderHot(){
       event?.preventDefault?.();
       event?.stopPropagation?.();
 
-      try{
+      const anchor=TD;
+      if(orderDeviceMode()==='mobile'){
+        setTimeout(()=>{
+          if(window.StockQuick?.showFor){
+            window.StockQuick.showFor(anchor,masp);
+          }else if(typeof window.stockQuickPopup==='function'){
+            window.stockQuickPopup(masp);
+          }
+        },0);
+      }else{
         if(window.StockQuick?.showFor){
-          window.StockQuick.showFor(TD,masp);
+          window.StockQuick.showFor(anchor,masp);
         }else if(typeof window.stockQuickPopup==='function'){
           window.stockQuickPopup(masp);
         }
-      }catch(err){
-        console.error('Lỗi mở stockQuickPopup từ Tổng hợp bù',err);
       }
     }
   });
 
   updateOrderStats();
+  $('orderCompact').textContent=orderCompact?'Hiện đầy đủ':'Rút gọn';
 
-  /* Chờ modal ổn định kích thước rồi buộc Handsontable đo lại */
   requestAnimationFrame(()=>{
     requestAnimationFrame(()=>{
-      try{
-        container.style.setProperty('height',hotH+'px','important');
-        container.style.setProperty('width',ORDER_FULL_WIDTH+'px','important');
-        orderHot?.refreshDimensions?.();
-        orderHot?.render?.();
-      }catch(err){
-        console.error('Lỗi render lại Tổng hợp nhập bù',err);
-      }
+      orderHot?.refreshDimensions?.();
+      orderHot?.render?.();
     });
   });
 }
+
 
 function updateOrderStats(){
   const rows=getOrderSourceRows();
@@ -1079,13 +1188,14 @@ function updateOrderStats(){
   }
 }
 
+
 function applyOrderCompact(force){
   orderCompact=!!force;
   if(!orderHot)return;
 
   const headers=orderCompact?ORDER_COMPACT_HEADERS:ORDER_FULL_HEADERS;
   const cols=orderColumnsForMode();
-  const width=orderCompact?ORDER_COMPACT_WIDTH:ORDER_FULL_WIDTH;
+  const width=sumColumnWidths(cols);
 
   const body=document.querySelector('.orderBody');
   const bodyH=Math.max(260,Math.floor(body?.getBoundingClientRect?.().height||500));
@@ -1093,16 +1203,9 @@ function applyOrderCompact(force){
   const hotH=Math.min(bodyH-8,naturalH);
 
   orderHot.updateSettings({
-    colHeaders:headers,
-    columns:cols,
-    width,
-    height:hotH,
-    stretchH:'none',
-    autoColumnSize:false,
-    autoRowSize:false,
-    filters:!orderCompact,
-    dropdownMenu:!orderCompact,
-    columnSorting:!orderCompact,
+    colHeaders:headers,columns:cols,width,height:hotH,stretchH:'none',
+    autoColumnSize:false,autoRowSize:false,
+    filters:!orderCompact,dropdownMenu:!orderCompact,columnSorting:!orderCompact,
     columnHeaderHeight:orderCompact?42:50
   });
 
@@ -1115,14 +1218,10 @@ function applyOrderCompact(force){
 
   orderHot.refreshDimensions?.();
   orderHot.render();
-
   $('orderCompact').textContent=orderCompact?'Hiện đầy đủ':'Rút gọn';
-
-  if(body){
-    body.scrollLeft=0;
-    body.scrollTop=0;
-  }
+  if(body){body.scrollLeft=0;body.scrollTop=0}
 }
+
 
 function orderRowsVisual(){
   if(!orderHot)return orderRows;
@@ -1391,5 +1490,16 @@ $('modal').onclick=e=>{if(e.target===$('modal'))$('modal').style.display='none'}
     $('status').textContent='Lỗi khởi tạo: '+(e?.message||e);
   }
 })();
+
+let nb2ResizeTimer=null;
+window.addEventListener('resize',()=>{
+  clearTimeout(nb2ResizeTimer);
+  nb2ResizeTimer=setTimeout(()=>{
+    if(orderHot && !$('orderModal').classList.contains('hidden')){
+      try{ buildOrderHot(); }catch(e){ console.error(e); }
+    }
+  },180);
+});
+
 </script>
 </body></html>
