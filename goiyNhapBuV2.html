@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.5 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.6 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -183,17 +183,6 @@ body.nb2-page .sq-stock-popup .sq-stock-table-wrapper td:not(:first-child){
   font-size:16px;
 }
 .nccOrderLink:hover{color:#003f78}
-.nccDetailHint{
-  display:inline-block;
-  margin-left:7px;
-  font-size:11px;
-  color:#6b7280;
-  text-decoration:underline;
-  cursor:pointer;
-  font-weight:600;
-}
-.nccDetailHint:hover{color:#111827}
-
 .orderMaspLink{
   color:#0b5fa5;
   text-decoration:underline;
@@ -249,6 +238,94 @@ body.nb2-page .sq-stock-popup .sq-stock-table-wrapper td:not(:first-child){
 }
 
 @media(max-width:800px){.summary,.cfg{grid-template-columns:1fr 1fr}textarea{width:100%}.field{flex:1 1 100%}}
+
+/* ===== V2.3.6: Tổng hợp bù responsive thật trên điện thoại ===== */
+.orderModal{
+  overflow:hidden !important;
+}
+.orderCard{
+  max-width:calc(100vw - 10px) !important;
+}
+.orderBody{
+  overflow-x:auto !important;
+  overflow-y:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  touch-action:pan-x pan-y !important;
+  overscroll-behavior:contain !important;
+}
+#hotOrder{
+  display:inline-block !important;
+  width:auto !important;
+  min-width:0 !important;
+  max-width:none !important;
+  height:100% !important;
+}
+.orderBody .handsontable,
+.orderBody .wtHider,
+.orderBody .wtHolder{
+  max-width:none !important;
+}
+.orderBody .handsontable th .colHeader{
+  white-space:normal !important;
+  word-break:normal !important;
+  overflow-wrap:anywhere !important;
+  line-height:1.05 !important;
+  text-align:center !important;
+  padding:1px 2px !important;
+}
+.orderBody .handsontable th{
+  vertical-align:middle !important;
+}
+
+/* StockQuick phải nổi TRÊN popup Tổng hợp bù */
+body.nb2-page .sq-stock-popup,
+body.nb2-page .sq-stock-popup.show{
+  z-index:13050 !important;
+}
+
+@media(max-width:600px){
+  .orderModal{padding:3px !important}
+  .orderCard{
+    width:calc(100vw - 6px) !important;
+    max-width:calc(100vw - 6px) !important;
+    height:calc(100vh - 6px) !important;
+    border-radius:9px !important;
+  }
+  .orderHead{
+    padding:8px !important;
+    gap:6px !important;
+  }
+  .orderHead h3{
+    font-size:18px !important;
+    width:100% !important;
+  }
+  .orderStats{
+    width:100% !important;
+    font-size:12px !important;
+  }
+  .orderActions{
+    margin-left:0 !important;
+    width:100% !important;
+    gap:5px !important;
+  }
+  .orderActions button{
+    height:38px !important;
+    padding:0 10px !important;
+    font-size:13px !important;
+  }
+  .orderBody{
+    padding:5px !important;
+  }
+  .orderBody .handsontable td{
+    padding-left:2px !important;
+    padding-right:2px !important;
+    font-size:11px !important;
+  }
+  .orderBody .handsontable th .colHeader{
+    font-size:11px !important;
+  }
+}
+
 </style>
 </head>
 <body class="nb2-page">
@@ -256,7 +333,7 @@ body.nb2-page .sq-stock-popup .sq-stock-table-wrapper td:not(:first-child){
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.5 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.6 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -351,7 +428,8 @@ body.nb2-page .sq-stock-popup .sq-stock-table-wrapper td:not(:first-child){
 <script type="module">
 import {
  refreshNhapBuV2,tongQuanHeThongV2,tongQuanNccV2,chiTietNhapBuV2,
- kiemTraNguonV2,phanBoSizeV2,getConfigV2,setConfigV2,resetConfigV2
+ kiemTraNguonV2,phanBoSizeV2,getConfigV2,setConfigV2,resetConfigV2,
+ danhSachRefreshNhapBuV2,donDepSnapshotNhapBuV2
 } from './scripts/nhapBuV2.js';
 
 const $=id=>document.getElementById(id);
@@ -379,34 +457,34 @@ let orderCompact=false;
 let orderGroupColorMap=new Map();
 
 const ORDER_FULL_HEADERS=[
-  'STT','Mã SP','Size','SL hệ thống\ngợi ý','SL đặt',
+  'STT','Mã SP','Size','SL hệ thống\ngợi ý','SL\nđặt',
   'Tồn\nhiện tại','Tồn sau\nĐặt','Bán\ngần','Tên','Nhóm','Lý do'
 ];
 
 const ORDER_FULL_COLUMNS=[
-  {data:'stt',type:'numeric',readOnly:true,width:42},
-  {data:'masp',type:'text',readOnly:true,width:132},
-  {data:'size',type:'text',readOnly:true,width:50},
-  {data:'sl_goi_y',type:'numeric',readOnly:true,width:84},
-  {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:62,className:'order-red'},
-  {data:'ton_hien_tai',type:'numeric',readOnly:true,width:70},
-  {data:'ton_sau_dat',type:'numeric',readOnly:true,width:72,className:'order-blue'},
-  {data:'ban_gan',type:'numeric',readOnly:true,width:58},
-  {data:'ten',type:'text',readOnly:true,width:95},
-  {data:'nhom',type:'text',readOnly:true,width:54},
-  {data:'ly_do',type:'text',readOnly:true,width:82}
+  {data:'stt',type:'numeric',readOnly:true,width:36},
+  {data:'masp',type:'text',readOnly:true,width:118},
+  {data:'size',type:'text',readOnly:true,width:42},
+  {data:'sl_goi_y',type:'numeric',readOnly:true,width:64},
+  {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:52,className:'order-red'},
+  {data:'ton_hien_tai',type:'numeric',readOnly:true,width:58},
+  {data:'ton_sau_dat',type:'numeric',readOnly:true,width:62,className:'order-blue'},
+  {data:'ban_gan',type:'numeric',readOnly:true,width:48},
+  {data:'ten',type:'text',readOnly:true,width:82},
+  {data:'nhom',type:'text',readOnly:true,width:48},
+  {data:'ly_do',type:'text',readOnly:true,width:74}
 ];
 
 const ORDER_COMPACT_HEADERS=['STT','Mã SP','Size','SL\nđặt'];
 const ORDER_COMPACT_COLUMNS=[
-  {data:'stt',type:'numeric',readOnly:true,width:42},
-  {data:'masp',type:'text',readOnly:true,width:142},
-  {data:'size',type:'text',readOnly:true,width:52},
-  {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:62,className:'order-red'}
+  {data:'stt',type:'numeric',readOnly:true,width:34},
+  {data:'masp',type:'text',readOnly:true,width:126},
+  {data:'size',type:'text',readOnly:true,width:44},
+  {data:'sl_dat',type:'numeric',numericFormat:{pattern:'0'},width:54,className:'order-red'}
 ];
 
-const ORDER_FULL_WIDTH=805;
-const ORDER_COMPACT_WIDTH=305;
+const ORDER_FULL_WIDTH=686;
+const ORDER_COMPACT_WIDTH=258;
 
 function badge(a){
   if(a==='CAN_NHAP_BU_THIEU_SIZE') return '<span class="badge sizeNeed">CẦN NHẬP BÙ · THIẾU SIZE</span>';
@@ -433,20 +511,32 @@ async function loadSummary(){
 
 async function showOverview(){
   $('status').textContent='Đang tải tổng quan NCC...';
-  $('toolbar').classList.add('hidden'); currentSupplier=null; $('orderBtn').classList.add('hidden');
+  $('toolbar').classList.add('hidden');
+  currentSupplier=null;
+  $('orderBtn').classList.add('hidden');
+
   const rows=await tongQuanNccV2($('date').value||null);
-  $('content').innerHTML=`<div class="tableWrap"><table style="min-width:1120px"><thead><tr>
-    <th>Nhà cung cấp</th><th>SP phân tích</th><th>Mã cần nhập</th><th>↳ Thiếu size</th>
-    <th>Mã cần quan tâm</th><th>↳ Quan tâm thiếu size</th><th>Tổng SL cần nhập</th><th>Điểm cao nhất</th>
-  </tr></thead><tbody>${rows.map(r=>`<tr class="nccRow" data-ncc="${r.nhacc}" title="Bấm ngoài mã NCC để xem chi tiết phân tích">
+
+  $('content').innerHTML=`<div class="tableWrap"><table style="min-width:1050px"><thead><tr>
+    <th>Nhà cung cấp</th>
+    <th>Tổng SL cần nhập</th>
+    <th>↳ Quan tâm thiếu size</th>
+    <th>SP phân tích</th>
+    <th>Mã cần nhập</th>
+    <th>↳ Thiếu size</th>
+    <th>Mã cần quan tâm</th>
+    <th>Điểm cao nhất</th>
+  </tr></thead><tbody>${rows.map(r=>`<tr class="nccRow" data-ncc="${r.nhacc}" title="Bấm dòng để xem chi tiết phân tích">
     <td class="code">
-      <span class="nccOrderLink" data-ncc="${r.nhacc}" title="Bấm để mở ngay Tổng hợp nhập bù">${r.nhacc}</span>
-      <span class="nccDetailHint" data-ncc="${r.nhacc}" title="Xem bảng phân tích chi tiết">chi tiết</span>
+      <span class="nccOrderLink" data-ncc="${r.nhacc}" title="Bấm mã NCC để mở ngay Tổng hợp nhập bù">${r.nhacc}</span>
     </td>
-    <td>${fmt(r.so_sp_dien_phan_tich,0)}</td>
-    <td class="num">${fmt(r.so_ma_can_nhap,0)}</td><td class="sizeHot">${fmt(r.so_ma_nhap_thieu_size,0)}</td>
-    <td>${fmt(r.so_ma_can_quan_tam,0)}</td><td class="sizeWatchTxt">${fmt(r.so_ma_quan_tam_thieu_size,0)}</td>
-    <td class="num">${fmt(r.tong_sl_can_nhap,0)}</td><td>${fmt(r.diem_cao_nhat,1)}</td>
+    <td class="num">${blank0(r.tong_sl_can_nhap)}</td>
+    <td class="sizeWatchTxt">${blank0(r.so_ma_quan_tam_thieu_size)}</td>
+    <td>${blank0(r.so_sp_dien_phan_tich)}</td>
+    <td class="num">${blank0(r.so_ma_can_nhap)}</td>
+    <td class="sizeHot">${blank0(r.so_ma_nhap_thieu_size)}</td>
+    <td>${blank0(r.so_ma_can_quan_tam)}</td>
+    <td>${fmt(r.diem_cao_nhat,1)}</td>
   </tr>`).join('')}</tbody></table></div>`;
 
   document.querySelectorAll('.nccOrderLink').forEach(el=>{
@@ -457,22 +547,13 @@ async function showOverview(){
     };
   });
 
-  document.querySelectorAll('.nccDetailHint').forEach(el=>{
-    el.onclick=(e)=>{
-      e.preventDefault();
-      e.stopPropagation();
-      showDetail({nhacc:el.dataset.ncc});
-    };
-  });
-
-  /* Giữ đường xem sâu: bấm phần còn lại của dòng vẫn mở chi tiết */
+  /* Bấm phần còn lại của dòng vẫn mở phân tích chi tiết */
   document.querySelectorAll('.nccRow').forEach(tr=>{
     tr.onclick=()=>showDetail({nhacc:tr.dataset.ncc});
   });
 
   $('status').textContent=`Đã tải ${rows.length} nhà cung cấp cần xử lý. Bấm mã NCC để mở Tổng hợp nhập bù.`;
 }
-
 
 async function showDetail({masps=null,nhacc=null,hienTatCa=false}={}){
   const rows=await chiTietNhapBuV2({ngay:$('date').value||null,masps,nhacc,hienTatCa});
@@ -822,7 +903,7 @@ function buildOrderHot(){
     stretchH:'none',
     height:'100%',
     rowHeights:24,
-    columnHeaderHeight:48,
+    columnHeaderHeight:50,
     licenseKey:'non-commercial-and-evaluation',
 
     /* Giống tinh thần XNT19: lọc/sort/context menu/resize */
@@ -831,6 +912,8 @@ function buildOrderHot(){
     columnSorting:true,
     manualColumnResize:true,
     manualRowResize:false,
+    autoColumnSize:false,
+    autoRowSize:false,
     copyPaste:true,
 
     /* Cho xóa dòng + Ctrl+Z/Ctrl+Y */
@@ -917,10 +1000,16 @@ afterOnCellMouseDown(event,coords,TD){
   event?.preventDefault?.();
   event?.stopPropagation?.();
 
-  if(window.stockQuickPopup){
-    window.stockQuickPopup(masp);
-  }else{
-    console.warn('Chưa load stockQuickPopup.js');
+  try{
+    if(window.StockQuick?.showFor){
+      window.StockQuick.showFor(TD,masp);
+    }else if(typeof window.stockQuickPopup==='function'){
+      window.stockQuickPopup(masp);
+    }else{
+      console.warn('stockQuickPopup.js chưa sẵn sàng');
+    }
+  }catch(err){
+    console.error('Lỗi mở stockQuickPopup từ Tổng hợp bù',err);
   }
 },
 
@@ -958,20 +1047,33 @@ function applyOrderCompact(force){
   const cols=orderColumnsForMode();
   const width=orderCompact?ORDER_COMPACT_WIDTH:ORDER_FULL_WIDTH;
 
-  /*
-   * Không dùng HiddenColumns nữa.
-   * Đổi trực tiếp bộ columns nên rút gọn luôn đủ 4 cột,
-   * hiện lại luôn đủ 11 cột và không bị khóa chiều rộng.
-   */
   orderHot.updateSettings({
     colHeaders:headers,
     columns:cols,
     width,
-    stretchH:'none'
+    stretchH:'none',
+    autoColumnSize:false,
+    autoRowSize:false,
+
+    /* Rút gọn để chụp ảnh: bỏ nút lọc làm phình cột */
+    filters:!orderCompact,
+    dropdownMenu:!orderCompact,
+    columnSorting:!orderCompact,
+    columnHeaderHeight:orderCompact?42:50
   });
+
+  /* container bám đúng chiều rộng bảng, outer .orderBody lo kéo ngang */
+  const hotEl=$('hotOrder');
+  hotEl.style.width=width+'px';
+  hotEl.style.minWidth=width+'px';
+  hotEl.style.maxWidth=width+'px';
 
   orderHot.render();
   $('orderCompact').textContent=orderCompact?'Hiện đầy đủ':'Rút gọn';
+
+  /* Sau đổi chế độ luôn trở về đầu bảng để không tưởng là mất cột */
+  const body=document.querySelector('.orderBody');
+  if(body) body.scrollLeft=0;
 }
 
 function orderRowsVisual(){
@@ -1016,16 +1118,77 @@ async function copyOrderAll(){
 
 
 async function refreshScope(){
-  const cs=codes(),sup=$('supplier').value.trim();
-  $('status').textContent='Đang tính lại dữ liệu nền từ XNT19 V6...';
+  const cs=codes();
+  const sup=$('supplier').value.trim();
+  const ngay=$('date').value||null;
+
+  $('refresh').disabled=true;
+  $('status').textContent='Đang xác định danh sách cần tính lại...';
+
   try{
-    const r=await refreshNhapBuV2({ngay:$('date').value||null,masps:cs.length?cs:null,nhacc:cs.length?null:(sup||null)});
+    const allCodes=await danhSachRefreshNhapBuV2({
+      ngay,
+      masps:cs.length?cs:null,
+      nhacc:cs.length?null:(sup||null)
+    });
+
+    if(!allCodes.length){
+      await donDepSnapshotNhapBuV2({
+        ngay,
+        masps:cs.length?cs:null,
+        nhacc:cs.length?null:(sup||null)
+      });
+      await loadSummary();
+      if(cs.length) await showDetail({masps:cs,hienTatCa:true});
+      else if(sup) await showDetail({nhacc:sup,hienTatCa:false});
+      else await showOverview();
+      $('status').textContent='Không có mã nào thuộc diện phân tích trong phạm vi hiện tại.';
+      return;
+    }
+
+    const CHUNK=40;
+    let processed=0;
+    for(let i=0;i<allCodes.length;i+=CHUNK){
+      const part=allCodes.slice(i,i+CHUNK);
+      const soLo=Math.floor(i/CHUNK)+1;
+      const tongLo=Math.ceil(allCodes.length/CHUNK);
+
+      $('status').textContent=
+        `Đang tính lại lô ${soLo}/${tongLo} · ${Math.min(i+part.length,allCodes.length)}/${allCodes.length} mã...`;
+
+      const r=await refreshNhapBuV2({
+        ngay,
+        masps:part,
+        nhacc:null
+      });
+      processed+=Number(r?.processed||0);
+
+      /* nhường UI một nhịp để trang không có cảm giác treo */
+      await new Promise(resolve=>setTimeout(resolve,30));
+    }
+
+    /* Chỉ dọn dữ liệu cũ SAU KHI mọi lô đã thành công */
+    await donDepSnapshotNhapBuV2({
+      ngay,
+      masps:cs.length?cs:null,
+      nhacc:cs.length?null:(sup||null)
+    });
+
     await loadSummary();
     if(cs.length) await showDetail({masps:cs,hienTatCa:true});
     else if(sup) await showDetail({nhacc:sup,hienTatCa:false});
     else await showOverview();
-    $('status').textContent=`Đã tính lại ${r.processed||0} mã · phạm vi ${r.scope_text||''}.`;
-  }catch(e){console.error(e);$('status').textContent='Lỗi làm mới: '+(e?.message||e)}
+
+    $('status').textContent=`Đã tính lại ${processed}/${allCodes.length} mã theo từng lô an toàn.`;
+  }catch(e){
+    console.error(e);
+    const msg=e?.message||String(e);
+    $('status').textContent=
+      'Lỗi làm mới: '+msg+
+      ' · Dữ liệu các lô đã hoàn thành vẫn được giữ, không xóa toàn bộ snapshot.';
+  }finally{
+    $('refresh').disabled=false;
+  }
 }
 
 async function loadCurrent(){
@@ -1141,9 +1304,8 @@ $('modal').onclick=e=>{if(e.target===$('modal'))$('modal').style.display='none'}
   try{
     const s=await loadSummary();
     if(!s.refreshed_at){
-      $('status').textContent='Chưa có snapshot V2 hôm nay. Đang tạo lần đầu từ XNT19 V6...';
-      await refreshNhapBuV2({ngay:$('date').value||null});
-      await loadSummary();
+      $('status').textContent='Chưa có snapshot V2 hôm nay. Đang tạo lần đầu theo từng lô an toàn...';
+      await refreshScope();
     }
     await showOverview();
   }catch(e){
