@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gợi ý nhập bù V2.3.13 - XNT19</title>
+<title>Gợi ý nhập bù V2.3.14 - XNT19</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.css">
 <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 <style>
@@ -358,7 +358,7 @@ body.nb2-page .sq-stock-popup.show{
 }
 
 
-/* ===== V2.3.13: FIX RENDER TỔNG HỢP NHẬP BÙ ===== */
+/* ===== V2.3.14: FIX RENDER TỔNG HỢP NHẬP BÙ ===== */
 .orderBody{
   position:relative !important;
 }
@@ -376,7 +376,7 @@ body.nb2-page .sq-stock-popup.show{
 
 
 /* ==========================================================
-   V2.3.13 - RESPONSIVE TÁCH RIÊNG DESKTOP / TABLET / MOBILE
+   V2.3.14 - RESPONSIVE TÁCH RIÊNG DESKTOP / TABLET / MOBILE
    Không sửa stockQuickPopup.js
    ========================================================== */
 .orderModal{padding:8px !important}
@@ -437,7 +437,7 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
 
 
 /* ==========================================================
-   V2.3.13 - FIX WIDTH THỰC TẾ + STOCKQUICK MOBILE
+   V2.3.14 - FIX WIDTH THỰC TẾ + STOCKQUICK MOBILE
    ========================================================== */
 .orderMaspLink{
   border:0 !important;
@@ -489,7 +489,7 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
 
 
 /* ==========================================================
-   V2.3.13 - IPHONE: CỘT RÚT GỌN CO SÁT + STOCKQUICK ĐÚNG PHIÊN
+   V2.3.14 - IPHONE: CỘT RÚT GỌN CO SÁT + STOCKQUICK ĐÚNG PHIÊN
    ========================================================== */
 @media (max-width:600px){
   .orderBody{
@@ -531,6 +531,58 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
   }
 }
 
+
+/* ==========================================================
+   V2.3.14 - RÚT GỌN MOBILE VỪA KHÍT MÀN HÌNH
+   ========================================================== */
+@media (max-width:600px){
+  .orderCard.isCompact .orderBody{
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    padding:3px !important;
+  }
+
+  .orderCard.isCompact #hotOrder{
+    width:100% !important;
+    min-width:100% !important;
+    max-width:100% !important;
+    margin:0 !important;
+    overflow:hidden !important;
+  }
+
+  /* Bỏ các width:auto cũ đã làm Handsontable tính sai kích thước cột trên iPhone */
+  .orderCard.isCompact #hotOrder .handsontable,
+  .orderCard.isCompact #hotOrder .wtHider,
+  .orderCard.isCompact #hotOrder .wtHolder{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+  }
+
+  .orderCard.isCompact #hotOrder .wtHolder{
+    overflow-x:hidden !important;
+  }
+
+  .orderCard.isCompact .handsontable th,
+  .orderCard.isCompact .handsontable td{
+    padding-left:2px !important;
+    padding-right:2px !important;
+  }
+
+  .orderCard.isCompact .handsontable th .colHeader{
+    white-space:normal !important;
+    overflow-wrap:normal !important;
+    word-break:normal !important;
+    line-height:1.05 !important;
+    font-size:11px !important;
+  }
+
+  .orderCard.isCompact .orderMaspLink{
+    font-size:12px !important;
+    white-space:nowrap !important;
+  }
+}
+
 </style>
 </head>
 <body class="nb2-page">
@@ -538,7 +590,7 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
 <div id="app-container"><main class="wrap">
 
 <div class="card">
-  <div class="title">GỢI Ý NHẬP BÙ V2.3.13 · ĐỘC LẬP XNT19</div>
+  <div class="title">GỢI Ý NHẬP BÙ V2.3.14 · ĐỘC LẬP XNT19</div>
   <div class="sub">Không dùng Năng lực bán. Nhập, bán, tồn và size đều lấy trực tiếp từ XNT19 V6 chuẩn.</div>
   <div class="row" style="margin-top:10px">
     <div class="field"><label>Mã sản phẩm (mỗi mã 1 dòng)</label><textarea id="codes" placeholder="409-AP.TRANG&#10;442-APMD.TRANG"></textarea></div>
@@ -613,7 +665,7 @@ body.nb2-page .sq-stock-popup.show{z-index:15000 !important}
 
 
 <div id="orderModal" class="orderModal">
-  <div class="orderCard">
+  <div id="orderCard" class="orderCard">
     <div class="orderHead">
       <h3 id="orderTitle">TỔNG HỢP NHẬP BÙ</h3>
       <span id="orderStats" class="orderStats"></span>
@@ -639,7 +691,7 @@ import {
 
 import { getSupabaseClient, khoiTaoDangNhapDungChung } from './scripts/authModule.js';
 
-// V2.3.13: StockQuickPopup dùng window.supabase.
+// V2.3.14: StockQuickPopup dùng window.supabase.
 // Gán rõ client dùng chung để desktop/mobile cùng một nguồn dữ liệu.
 try{
   const __nb2Supabase = getSupabaseClient();
@@ -1165,7 +1217,7 @@ function orderWidthsForCurrentMode(){
 
   if(orderCompact){
     // Rút gọn = co sát dữ liệu, tuyệt đối không kéo giãn 4 cột ra hết màn hình.
-    if(mode==='mobile') return [30,118,36,44];
+    if(mode==='mobile') return [38,170,48,62];
     if(mode==='tablet') return [34,132,42,50];
     return [38,145,46,56];
   }
@@ -1208,9 +1260,9 @@ function calcOrderTableLayout(){
 
   // Mobile
   if(orderCompact){
-    // Rút gọn phải NHỎ hơn bản đầy đủ: chỉ dùng đúng tổng chiều rộng dữ liệu.
-    // Không stretchH:'all' vì chính nó làm 4 cột bị phình to trên iPhone.
-    return {colWidths:widths,tableWidth:Math.min(baseWidth,bodyWidth),stretchH:'none'};
+    // Rút gọn mobile: viewport bảng vừa đúng bề ngang vùng hiển thị iPhone.
+    // Cột dùng độ rộng cố định, KHÔNG stretch nên không cột nào tự phình bất thường.
+    return {colWidths:widths,tableWidth:bodyWidth,stretchH:'none'};
   }
 
   // Mobile đầy đủ: cột hẹp + vuốt ngang.
@@ -1297,6 +1349,7 @@ function buildOrderHot(){
 
   const mode=orderDeviceMode();
   orderCompact=(mode==='mobile');
+  $('orderCard')?.classList.toggle('isCompact',orderCompact);
 
   const cols=orderColumnsForMode();
   const headers=orderCompact?ORDER_COMPACT_HEADERS:ORDER_FULL_HEADERS;
@@ -1419,6 +1472,7 @@ function updateOrderStats(){
 
 function applyOrderCompact(force){
   orderCompact=!!force;
+  $('orderCard')?.classList.toggle('isCompact',orderCompact);
   if(!orderHot)return;
 
   const headers=orderCompact?ORDER_COMPACT_HEADERS:ORDER_FULL_HEADERS;
