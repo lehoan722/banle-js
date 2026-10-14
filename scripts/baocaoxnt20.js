@@ -1,0 +1,1428 @@
+
+// scripts/baocaoXNT20.js
+import { supabase } from "./supabaseClient.js";
+import * as authModule from "./authModule.js";
+import { initDatHangChuyenKhoKhan } from "./datHangChuyenKhoKhan.js";
+// THÊM DÒNG NÀY (quan trọng), đảm bảo popup chạy được trên mọi trang kiểu module.
+window.supabase = supabase;
+
+
+// ===================== ĐẶT HÀNG CHUYỂN KHO KHẨN CẤP =====================
+// stockQuickPopup chỉ gọi window.DatHangChuyenKhoKhan.openFromStockQuick().
+// Vì vậy trang XNT17 phải chủ động import + init module này sau khi đăng nhập.
+let datHangKhanXNT20Initialized = false;
+
+function syncDatHangKhanCosoFromFilter() {
+    const dd = (document.getElementById("diadiemSelect")?.value || "").trim().toLowerCase();
+    // Chỉ set khi filter đang chỉ rõ CS1/CS2. Nếu đang "Tất cả", để module
+    // fallback sang localStorage / ngữ cảnh đăng nhập như thiết kế gốc.
+    if (dd === "cs1" || dd === "cs2") {
+        window.__BANLE_PAGE_DIADIEM = dd;
+    } else {
+        delete window.__BANLE_PAGE_DIADIEM;
+    }
+}
+
+window.initDatHangKhanXNT20 = async function initDatHangKhanXNT20(nvFromLogin = null) {
+    if (datHangKhanXNT20Initialized) {
+        syncDatHangKhanCosoFromFilter();
+        window.DatHangChuyenKhoKhan?.refresh?.();
+        return;
+    }
+
+    try {
+        const nv = nvFromLogin || await authModule.getCurrentUserInfo();
+
+        initDatHangChuyenKhoKhan({
+            supabase,
+            // Không truyền ctx.diadiem cố định để khi đổi bộ lọc CS1/CS2 module
+            // luôn đọc được window.__BANLE_PAGE_DIADIEM mới nhất.
+            manvDangNhap: nv?.manv || "",
+            isAdmin: !!nv?.is_admin,
+        });
+
+        datHangKhanXNT20Initialized = true;
+        syncDatHangKhanCosoFromFilter();
+
+        const dd = document.getElementById("diadiemSelect");
+        if (dd && dd.dataset.dhkhanSyncBound !== "1") {
+            dd.dataset.dhkhanSyncBound = "1";
+            dd.addEventListener("change", () => {
+                syncDatHangKhanCosoFromFilter();
+                window.DatHangChuyenKhoKhan?.refresh?.();
+            });
+        }
+
+        console.log("[XNT20] Đã khởi tạo module đặt hàng chuyển kho khẩn cấp");
+    } catch (err) {
+        console.error("[XNT20] Không khởi tạo được đặt hàng khẩn cấp:", err);
+    }
+};
+
+
+let hotInstance;
+let currentPage = 1;
+let pageSize = 1000;
+let totalRows = 0;
+
+// ===================== AUTH ===================== 
+(function injectQuickViewCss() {
+    const css = `
+    #previewGrid { display:grid; gap:10px; overflow:auto; }
+    .preview-card { border-radius:10px; background:#fff; box-shadow:0 0 0 1px #eee inset; padding:8px; }
+    .preview-card.selected { box-shadow:0 0 0 2px #3b82f6 inset; }
+    .preview-card img { width:100%; height:auto; aspect-ratio: 4/3; object-fit: cover; border-radius:8px; display:block; cursor: zoom-in; }
+    .preview-cap { margin-top:6px; font-size:13px; color:#374151; text-align:center; }
+    .preview-cap .cap-link { font-weight:700; color:#111; text-decoration:none; cursor:pointer; }
+    .preview-cap .cap-link:hover { text-decoration:underline; }
+
+    /* Lightbox */
+    .lb-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.75);
+      display:none; align-items:center; justify-content:center; z-index: 9999;
+    }
+    .lb-backdrop.show { display:flex; }
+    .lb-wrap { max-width: 92vw; max-height: 92vh; }
+    .lb-wrap img { width:100%; height:100%; object-fit:contain; }
+    .lb-close { position:absolute; top:14px; right:18px; font-size:22px; color:#fff; cursor:pointer; }
+  `;
+    const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
+
+    // Lightbox DOM
+    const lb = document.createElement('div');
+    lb.className = 'lb-backdrop';
+    lb.innerHTML = `
+    <div class="lb-close" title="Đóng">✕</div>
+    <div class="lb-wrap"><img alt="Ảnh lớn"></div>
+  `;
+    document.body.appendChild(lb);
+
+    lb.addEventListener('click', (e) => {
+        if (e.target.classList.contains('lb-backdrop') || e.target.classList.contains('lb-close')) {
+            lb.classList.remove('show');
+        }
+    });
+
+    window.openLightbox = (src) => {
+        const img = lb.querySelector('.lb-wrap img');
+        img.src = src;
+        lb.classList.add('show');
+    };
+})();
+
+
+// ================== KIỂM SOÁT QUYỀN TRUY CẬP TRANG (chuẩn auth) ==================
+async function kiemTraQuyenXemTrang(pathTrang) {
+    // 1. Lấy thông tin nhân viên đang đăng nhập từ authModule
+    const nv = await authModule.getCurrentUserInfo();
+
+    if (!nv || !nv.manv) {
+        hienCamTruyCap("Bạn chưa đăng nhập.");
+        return false;
+    }
+
+    // 2. Lấy danh sách trang được phép xem
+    const { data, error } = await supabase.rpc("get_pages_for_manv", {
+        p_manv: nv.manv,
+    });
+
+    if (error) {
+        hienCamTruyCap("Lỗi kiểm tra phân quyền: " + error.message);
+        return false;
+    }
+
+    const dsTrang = data?.map((r) => r.path) || [];
+
+    // 3. Nếu KHÔNG phải admin và path trang không nằm trong danh sách → CẤM
+    if (!nv.is_admin && !dsTrang.includes(pathTrang)) {
+        hienCamTruyCap(
+            `Không có quyền truy cập trang này.<br> Mã NV: ${nv.manv} – ${nv.tennv}`
+        );
+        return false;
+    }
+
+    // 4. OK
+    return true;
+}
+
+// Hàm hiện thông báo cấm truy cập
+function hienCamTruyCap(msg) {
+    document.body.innerHTML = `
+    <div style="padding:24px;color:#b00020;font-size:20px;font-weight:bold">
+      ⛔ Không có quyền truy cập<br>
+      <div style="font-size:16px;margin-top:8px;color:#444">${msg}</div>
+    </div>
+  `;
+}
+
+// Cho phép gọi từ script inline trong HTML
+window.kiemTraQuyenXemTrang = kiemTraQuyenXemTrang;
+
+
+
+// ===================== BỘ LỌC NGHIỆP VỤ ĐA LỰA CHỌN =====================
+const XNT_CONDITIONS = [
+    { key: "duong", group: "TỒN CUỐI", label: "Chỉ hàng dương" },
+    { key: "am", group: "TỒN CUỐI", label: "Chỉ hàng âm" },
+    { key: "het", group: "TỒN CUỐI", label: "Hàng đã hết" },
+    { key: "co_nhap", group: "MUA HÀNG", label: "Phát sinh mua trong kỳ" },
+    { key: "khong_nhap", group: "MUA HÀNG", label: "Không phát sinh mua trong kỳ" },
+    { key: "co_ban", group: "BÁN HÀNG", label: "Phát sinh bán trong kỳ" },
+    { key: "khong_ban", group: "BÁN HÀNG", label: "Không phát sinh bán trong kỳ" },
+];
+const XNT_CONFLICTS = {
+    duong: ["am"],
+    am: ["duong"],
+    co_nhap: ["khong_nhap"],
+    khong_nhap: ["co_nhap"],
+    co_ban: ["khong_ban"],
+    khong_ban: ["co_ban"],
+};
+let xntConditionSelected = new Set();
+
+function setXntConditions(keys) {
+    xntConditionSelected = new Set(keys || []);
+    renderXntConditionPopup();
+    updateXntConditionDisplay();
+}
+
+function isXntConditionDisabled(key) {
+    return Array.from(xntConditionSelected).some(selected =>
+        selected !== key && (XNT_CONFLICTS[selected] || []).includes(key)
+    );
+}
+
+function updateXntConditionDisplay() {
+    const display = document.getElementById("xntConditionDisplay");
+    if (!display) return;
+    const selected = XNT_CONDITIONS.filter(x => xntConditionSelected.has(x.key));
+    if (!selected.length) display.value = "Không có điều kiện";
+    else if (selected.length <= 2) display.value = selected.map(x => x.label).join(", ");
+    else display.value = `${selected.length} điều kiện đã chọn`;
+    display.title = selected.map(x => x.label).join("\n");
+}
+
+function renderXntConditionPopup() {
+    const list = document.getElementById("xntConditionPopupList");
+    if (!list) return;
+    let html = "";
+    let lastGroup = null;
+    XNT_CONDITIONS.forEach(item => {
+        if (item.group !== lastGroup) {
+            lastGroup = item.group;
+            html += `<div class="xnt-filter-section-title">${item.group}</div>`;
+        }
+        const disabled = isXntConditionDisabled(item.key);
+        const checked = xntConditionSelected.has(item.key);
+        let reason = "";
+        if (disabled) {
+            const blocker = XNT_CONDITIONS.find(x => xntConditionSelected.has(x.key) && (XNT_CONFLICTS[x.key] || []).includes(item.key));
+            reason = blocker ? `Không thể chọn cùng “${blocker.label}”` : "Điều kiện xung đột";
+        }
+        html += `<div class="xnt-filter-row ${disabled ? 'is-disabled' : ''}" data-key="${item.key}" title="${reason}">
+            <div class="xnt-filter-label">${item.label}</div>
+            <input type="checkbox" class="xnt-filter-check" value="${item.key}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+        </div>`;
+    });
+    list.innerHTML = html;
+}
+
+function bindXntConditionEvents() {
+    const wrap = document.getElementById("xntConditionWrap");
+    const popup = document.getElementById("xntConditionPopup");
+    const list = document.getElementById("xntConditionPopupList");
+    const toggle = document.getElementById("toggleXntConditionPopup");
+    const display = document.getElementById("xntConditionDisplay");
+    const togglePopup = e => {
+        e?.preventDefault(); e?.stopPropagation();
+        if (popup) popup.style.display = popup.style.display === "block" ? "none" : "block";
+    };
+    toggle?.addEventListener("click", togglePopup);
+    display?.addEventListener("click", togglePopup);
+    list?.addEventListener("change", e => {
+        const chk = e.target.closest(".xnt-filter-check");
+        if (!chk || chk.disabled) return;
+        if (chk.checked) xntConditionSelected.add(chk.value); else xntConditionSelected.delete(chk.value);
+        renderXntConditionPopup(); updateXntConditionDisplay();
+    });
+    list?.addEventListener("click", e => {
+        if (e.target.closest(".xnt-filter-check")) return;
+        const row = e.target.closest(".xnt-filter-row");
+        if (!row) return;
+        const chk = row.querySelector(".xnt-filter-check");
+        if (!chk || chk.disabled) return;
+        chk.checked = !chk.checked;
+        chk.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    document.getElementById("btnXntClearAll")?.addEventListener("click", e => { e.stopPropagation(); setXntConditions([]); });
+    document.getElementById("btnXntDefault")?.addEventListener("click", e => { e.stopPropagation(); setXntConditions(["co_ban"]); });
+    document.getElementById("btnXntApply")?.addEventListener("click", async e => {
+        e.stopPropagation(); if (popup) popup.style.display = "none"; currentPage = 1; await window.taiBaoCaoXNT?.();
+    });
+    document.addEventListener("mousedown", e => { if (popup?.style.display === "block" && !wrap?.contains(e.target)) popup.style.display = "none"; });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    bindXntConditionEvents();
+    renderXntConditionPopup();
+    updateXntConditionDisplay();
+});
+
+// ===================== HELPERS =====================
+function val(id) { return document.getElementById(id)?.value ?? ""; }
+function bool(id) { return document.getElementById(id)?.checked ?? false; }
+function normMasp(s) { return (s || "").trim().toUpperCase(); }
+function toLocalISO(d) {
+    const pad = n => String(n).toString().padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+
+function getDSMasp() {
+    // 1) Giữ nguyên: đọc từ sessionStorage (luồng cũ)
+    const ss = sessionStorage.getItem("XNT17_MASPS");
+    if (ss) {
+        const arr = JSON.parse(ss).map(x => (x?.masp || x || "").toString().trim().toUpperCase());
+        const ta = document.getElementById("maspList");
+        if (ta) ta.value = arr.join("\n");
+        sessionStorage.removeItem("XNT17_MASPS");
+    } else {
+        // 2) MỚI: đọc từ localStorage (khi mở TAB MỚI)
+        const ls = localStorage.getItem("XNT17_MASPS_LS");
+        if (ls) {
+            try {
+                const payload = JSON.parse(ls);
+                const arr = (payload?.list || []).map(x => (x || "").toString().trim().toUpperCase());
+                const ta = document.getElementById("maspList");
+                if (ta) ta.value = arr.join("\n");
+            } finally {
+                // Xoá khoá ngay để không bị dính dữ liệu cho lần refresh sau
+                localStorage.removeItem("XNT17_MASPS_LS");
+            }
+        }
+    }
+
+    // phần còn lại giữ nguyên
+    const raw = document.getElementById("maspList")?.value || "";
+    const list = raw.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean);
+    if (list.length) return list;
+    const one = (document.getElementById("maspInput")?.value || "").trim().toUpperCase();
+    return one ? [one] : null;
+}
+
+
+
+function buildParams(page = 1) {
+    return {
+        tu_ngay: val("tuNgay") || null,
+        den_ngay: val("denNgay") || null,
+        p_dsmsp: getDSMasp(),
+        p_diadiem_filter: val("diadiemSelect") || null,
+        p_nhomhang_filter: val("nhomhangInput") || null,
+        p_chungloai_filter: val("chungloaiInput") || null,
+        p_mausac_filter: val("mausacInput") || null,
+        p_size_filter: val("sizeInput") || null,
+        p_nhacc_filter: (bool("locNCCCheckbox") ? (val("khachhangInput").trim() || null) : null),
+        p_khachhang_filter: (!bool("locNCCCheckbox") ? (val("khachhangInput").trim() || null) : null),
+        p_nhanvien_filter: val("nhanvienInput") || null,
+        p_tu_gia: val("tuGia") ? Number(val("tuGia")) : null,
+        p_den_gia: val("denGia") ? Number(val("denGia")) : null,
+        loc_duong: xntConditionSelected.has("duong"),
+        loc_am: xntConditionSelected.has("am"),
+        loc_het: xntConditionSelected.has("het"),
+        loc_phatsinh_nhap: xntConditionSelected.has("co_nhap"),
+        loc_khong_phatsinh_nhap: xntConditionSelected.has("khong_nhap"),
+        loc_phatsinh_xuat: xntConditionSelected.has("co_ban"),
+        loc_khong_phatsinh_xuat: xntConditionSelected.has("khong_ban"),
+        p_tonghop_size: bool("tonghopSizeCheckbox"),
+        p_limit: pageSize,
+        p_offset: (page - 1) * pageSize
+    };
+}
+
+// chỉ giữ đúng tham số mà baocaoxnt16_count cần (KHÔNG có p_limit, p_offset)
+function buildCountParams(params) {
+    const {
+        tu_ngay, den_ngay, p_dsmsp,
+        p_diadiem_filter, p_nhomhang_filter, p_chungloai_filter,
+        p_mausac_filter, p_size_filter, p_nhacc_filter,
+        p_khachhang_filter, p_nhanvien_filter,
+        p_tu_gia, p_den_gia,
+        loc_duong, loc_am, loc_het,
+        loc_phatsinh_nhap, loc_khong_phatsinh_nhap,
+        loc_phatsinh_xuat, loc_khong_phatsinh_xuat,
+        p_tonghop_size
+    } = params;
+
+    return {
+        tu_ngay, den_ngay, p_dsmsp,
+        p_diadiem_filter, p_nhomhang_filter, p_chungloai_filter,
+        p_mausac_filter, p_size_filter, p_nhacc_filter,
+        p_khachhang_filter, p_nhanvien_filter,
+        p_tu_gia, p_den_gia,
+        loc_duong, loc_am, loc_het,
+        loc_phatsinh_nhap, loc_khong_phatsinh_nhap,
+        loc_phatsinh_xuat, loc_khong_phatsinh_xuat,
+        p_tonghop_size
+    };
+}
+
+
+function zeroBlankRenderer(instance, td, row, col, prop, value, cellProperties) {
+    Handsontable.renderers.TextRenderer.apply(this, arguments);
+    if (value === 0 || value === "0") {
+        td.textContent = "";
+    } else if (typeof value === "number") {
+        td.textContent = value.toLocaleString("vi-VN");
+        td.style.textAlign = "right";
+    }
+}
+
+function maspRenderer(instance, td, row, col, prop, value, cellProperties) {
+    Handsontable.renderers.TextRenderer.apply(this, arguments);
+    const v = value ?? "";
+    td.innerHTML = v
+        ? `<span class="masp-link" data-masp="${v}">${v}</span>`
+        : "";
+}
+function maspTextRenderer(instance, td, row, col, prop, value) {
+    Handsontable.renderers.TextRenderer.apply(this, arguments);
+    td.textContent = value ?? "";
+}
+
+
+function attachMaspLinkHandler(container) {
+    container.addEventListener("click", (e) => {
+        const el = e.target.closest(".masp-link");
+        if (!el) return;
+        const masp = el.dataset.masp;
+        if (!masp) return;
+        const url = `https://banle-js.vercel.app/timkiemhanghoa333.html?masp=${encodeURIComponent(masp)}`;
+        window.open(url, "_blank");
+    });
+}
+
+// ===================== RENDER TABLE =====================
+function renderTable(rows) {
+    const container = document.getElementById("hot");
+    const columns = [
+        { data: 'masp', title: 'Mã hàng', width: 120, renderer: maspTextRenderer },
+        { data: 'size', title: 'Kích cỡ', width: 50, className: 'htCenter' },
+        { data: 'xuatban_cs1', title: 'Xuất bán CS1', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'xuatchinhanh_cs2', title: 'Xuất CN 2v1', width: 50, className: 'htRight', renderer: zeroBlankRenderer }, // ⬅️ MỚI
+
+        { data: 'xuatban_cs2', title: 'Xuất bán CS2', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'xuatchinhanh_cs1', title: 'Xuất CN 1v2', width: 50, className: 'htRight', renderer: zeroBlankRenderer }, // ⬅️ MỚI
+
+
+        { data: 'xuatban', title: 'Xuất bán (gộp)', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'ton_cs1', title: 'Tồn CS1', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'ton_cs2', title: 'Tồn CS2', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'nhapmua', title: 'Nhập mua', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'cuoiky', title: 'Cuối kỳ', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
+        { data: 'giale', title: 'Giá lẻ', width: 70, className: 'htRight', renderer: zeroBlankRenderer },
+    ];
+    if (!hotInstance) {
+        hotInstance = new Handsontable(container, {
+
+            data: rows,
+            columns,
+            rowHeaders: true,
+            colHeaders: columns.map(c => c.title),
+            stretchH: 'all',
+            licenseKey: 'non-commercial-and-evaluation',
+            height: 'calc(100vh - 280px)',
+            manualColumnResize: true,
+            manualRowResize: true,
+            contextMenu: true,
+            columnSorting: true,
+            renderAllRows: false,
+            filters: true,
+            dropdownMenu: true,
+            autoColumnSize: { samplingRatio: 23 },
+            cells: (row, col) => {
+                const props = {};
+                // Bỏ qua các hàng header ảo của Handsontable (row < 0) nếu có
+                if (row >= 0) {
+                    props.className = (row % 2 === 0) ? 'row-even' : 'row-odd';
+                }
+                return props;
+            },
+
+            afterRender() {
+                // nothing
+            },
+            afterOnCellMouseDown(event, coords, TD) {
+                openStockQuickForRowCol(coords.row, coords.col);
+            },
+            afterSelectionEnd(r) { showPreviewForRow(r); }
+        });
+
+
+
+
+        attachMaspLinkHandler(container);
+    } else {
+        hotInstance.updateSettings({ data: rows });
+    }
+}
+
+// ===================== SUMMARY =====================
+function renderSummary(rows) {
+    const el = document.getElementById("xntSummary");
+    if (!rows || !rows.length) { el.innerHTML = ""; return; }
+    const s = rows.reduce((a, r) => {
+        a.dauky += r.dauky || 0;
+        a.nhapmua += r.nhapmua || 0;
+        a.tongnhap += r.tongnhap || 0;
+        a.xuatban_cs1 += r.xuatban_cs1 || 0;
+        a.xuatchi_cs1 += r.xuatchinhanh_cs1 || 0;   // ⬅️ MỚI
+        a.xuatban_cs2 += r.xuatban_cs2 || 0;
+        a.xuatchi_cs2 += r.xuatchinhanh_cs2 || 0;   // ⬅️ MỚI
+        a.xuatban += r.xuatban || 0;
+        a.tongxuat += r.tongxuat || 0;
+        a.cuoiky += r.cuoiky || 0;
+        return a;
+    }, { dauky: 0, nhapmua: 0, tongnhap: 0, xuatban_cs1: 0, xuatchi_cs1: 0, xuatban_cs2: 0, xuatchi_cs2: 0, xuatban: 0, tongxuat: 0, cuoiky: 0 });
+
+    el.innerHTML = `<span style="background:#e3f2fd;padding:7px 14px;border-radius:8px;">
+  <b>TỔNG:</b>
+  Đầu kỳ: <b>${s.dauky.toLocaleString('vi-VN')}</b> |
+  Nhập mua: <b>${s.nhapmua.toLocaleString('vi-VN')}</b> |
+  Tổng nhập: <b>${s.tongnhap.toLocaleString('vi-VN')}</b> |
+  Xuất bán CS1: <b>${s.xuatban_cs1.toLocaleString('vi-VN')}</b> |
+  Xuất CN CS2: <b>${s.xuatchi_cs1.toLocaleString('vi-VN')}</b> |   <!-- ⬅️ MỚI -->
+  Xuất bán CS2: <b>${s.xuatban_cs2.toLocaleString('vi-VN')}</b> |
+  Xuất CN CS1: <b>${s.xuatchi_cs2.toLocaleString('vi-VN')}</b> |   <!-- ⬅️ MỚI -->
+  Xuất bán (gộp): <b>${s.xuatban.toLocaleString('vi-VN')}</b> |
+  Tổng xuất: <b>${s.tongxuat.toLocaleString('vi-VN')}</b> |
+  Cuối kỳ: <b>${s.cuoiky.toLocaleString('vi-VN')}</b>
+</span>`;
+
+}
+
+showPreviewForRow(0);
+
+// ===================== PAGINATION BAR =====================
+function updatePagingBar() {
+    const psEl = document.getElementById("pageSize");
+    pageSize = Number(psEl?.value || pageSize || 1000);
+    const totalPages = Math.max(1, Math.ceil((totalRows || 0) / pageSize));
+    document.getElementById("pageInfo").textContent = `Trang ${currentPage}/${totalPages} (Tổng: ${totalRows.toLocaleString('vi-VN')})`;
+    document.getElementById("btnPrev").disabled = currentPage <= 1;
+    document.getElementById("btnNext").disabled = currentPage >= totalPages;
+}
+window.prevPage = async function () { if (currentPage > 1) { currentPage--; await taiBaoCaoXNT(); } };
+window.nextPage = async function () { const max = Math.max(1, Math.ceil(totalRows / pageSize)); if (currentPage < max) { currentPage++; await taiBaoCaoXNT(); } };
+window.gotoPage = async function () {
+    const n = Number(document.getElementById("gotoPage").value || "1");
+    const max = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (n >= 1 && n <= max) { currentPage = n; await taiBaoCaoXNT(); }
+};
+
+// ===================== LOAD DATA =====================
+async function fetchCount(params) {
+    const { data, error } = await supabase.rpc("baocaoXNT20_count_v6", buildCountParams(params));
+    if (error) throw error;
+    return data;
+}
+
+async function fetchPaged(params) {
+    const fn = "baocaoxnt20_paged_v1";
+    const { data, error } = await supabase.rpc(fn, params);
+    if (error) throw error;
+
+    // ✅ FIX: loại mọi dòng rỗng (masp null/""), tránh lệch dòng toàn bảng
+    return (data || []).filter(r => r && r.masp && String(r.masp).trim() !== "");
+}
+
+async function fetchSummary(params) {
+    const { data, error } = await supabase.rpc("baocaoxnt20_summary_v1", buildCountParams(params));
+    if (error) throw error;
+    return Array.isArray(data) ? (data[0] || null) : data;
+}
+
+// XNT20 V6 CHUAN: 1 RPC trả về cùng lúc DỮ LIỆU TRANG + TOTAL ROWS + SUMMARY TOÀN BỘ.
+// Metadata duoc lap lai tren moi dong; client chi doc dong dau roi loai khoi rows render.
+async function fetchPageBundleXNT20(params) {
+    // XNT20 trả đúng 1 JSONB nên không bị Supabase/PostgREST cắt response tại 1000 rows.
+    const { data, error } = await supabase.rpc("baocaoxnt20_bundle_v1", params);
+    if (error) throw error;
+
+    // Scalar jsonb thuong ve truc tiep object; giu fallback neu client tra array 1 phan tu.
+    const payload = Array.isArray(data) ? (data[0] || {}) : (data || {});
+    const rows = Array.isArray(payload.rows)
+        ? payload.rows.filter(r => r && r.masp && String(r.masp).trim() !== '')
+        : [];
+    const sm = payload.summary || {};
+    const summary = {
+        dauky: Number(sm.dauky || 0),
+        nhapmua: Number(sm.nhapmua || 0),
+        tongnhap: Number(sm.tongnhap || 0),
+        xuatban_cs1: Number(sm.xuatban_cs1 || 0),
+        xuatchinhanh_cs1: Number(sm.xuatchinhanh_cs1 || 0),
+        xuatban_cs2: Number(sm.xuatban_cs2 || 0),
+        xuatchinhanh_cs2: Number(sm.xuatchinhanh_cs2 || 0),
+        xuatban: Number(sm.xuatban || 0),
+        tongxuat: Number(sm.tongxuat || 0),
+        cuoiky: Number(sm.cuoiky || 0),
+        ton_cs1: Number(sm.ton_cs1 || 0),
+        ton_cs2: Number(sm.ton_cs2 || 0)
+    };
+    return { rows, totalRows: Number(payload.total_rows || 0), summary };
+}
+
+// ===================== CHỐNG DEADLOCK / GỌI TRÙNG XNT20 =====================
+const XNT20_REFRESH_BATCH = 2000;      // Giảm phạm vi lock mỗi lượt (cũ: 5000)
+const XNT20_REFRESH_MAX_LOOPS = 15;    // Giữ tổng năng lực xử lý ~25.000 dirty keys
+const XNT20_DB_RETRY_COUNT = 3;        // Retry riêng lỗi deadlock/serialization
+const XNT20_DB_RETRY_BASE_MS = 250;
+
+let xnt20RefreshPromise = null;        // Không cho cùng tab refresh dirty chồng nhau
+let xnt20LoadPromise = null;           // Không cho cùng tab tải báo cáo chồng nhau
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isTransientDbConflict(err) {
+    const code = String(err?.code || '').toUpperCase();
+    const msg = String(err?.message || err || '').toLowerCase();
+    return code === '40P01' ||          // PostgreSQL deadlock_detected
+           code === '40001' ||          // serialization_failure
+           msg.includes('deadlock detected') ||
+           msg.includes('serialization failure') ||
+           msg.includes('could not serialize access');
+}
+
+async function refreshDirtyBatchWithRetry() {
+    let lastErr = null;
+
+    for (let attempt = 1; attempt <= XNT20_DB_RETRY_COUNT; attempt++) {
+        const { data, error } = await supabase.rpc('refresh_xnt20_dirty_v1', {
+            p_limit: XNT20_REFRESH_BATCH
+        });
+
+        if (!error) return data;
+        lastErr = error;
+
+        if (!isTransientDbConflict(error) || attempt >= XNT20_DB_RETRY_COUNT) {
+            console.error('[XNT20 REFRESH] RPC failed:', error);
+            throw error;
+        }
+
+        const waitMs = XNT20_DB_RETRY_BASE_MS * attempt;
+        console.warn(`[XNT20 REFRESH] Xung đột DB (${error.code || error.message}), thử lại ${attempt + 1}/${XNT20_DB_RETRY_COUNT} sau ${waitMs}ms`);
+        await sleep(waitMs);
+    }
+
+    throw lastErr || new Error('Không đồng bộ được dữ liệu XNT20.');
+}
+
+// Đồng bộ các khóa dirty trước khi đọc báo cáo.
+// Nếu trong CÙNG TAB có nhiều nơi gọi cùng lúc (xem báo cáo / xuất Excel), tất cả dùng chung 1 Promise.
+async function ensureXnt20Fresh(maxLoops = XNT20_REFRESH_MAX_LOOPS) {
+    if (xnt20RefreshPromise) return xnt20RefreshPromise;
+
+    xnt20RefreshPromise = (async () => {
+        for (let i = 0; i < maxLoops; i++) {
+            const data = await refreshDirtyBatchWithRetry();
+            const row = Array.isArray(data) ? data[0] : data;
+            const remaining = Number(row?.remaining || 0);
+
+            console.info(`[XNT20 REFRESH] lượt ${i + 1}/${maxLoops}, remaining=${remaining}`);
+            if (remaining <= 0) return;
+        }
+
+        // Không coi đây là lỗi: báo cáo vẫn đọc được, lần sau sẽ tiếp tục đồng bộ phần còn lại.
+        console.warn(`[XNT20 REFRESH] Còn dirty keys sau ${maxLoops} lượt; sẽ tiếp tục ở lần tải sau.`);
+    })();
+
+    try {
+        return await xnt20RefreshPromise;
+    } finally {
+        xnt20RefreshPromise = null;
+    }
+}
+
+
+window.taiBaoCaoXNT = function () {
+    // Nếu auto-load đang chạy mà người dùng bấm Xem báo cáo, dùng luôn request đang có,
+    // KHÔNG tạo thêm một chuỗi refresh + bundle mới.
+    if (xnt20LoadPromise) {
+        console.info('[XNT20] Đang tải báo cáo, bỏ qua yêu cầu gọi trùng.');
+        return xnt20LoadPromise;
+    }
+
+    xnt20LoadPromise = (async () => {
+        const loading = document.getElementById('loadingMsg');
+        const t0 = performance.now();
+        let stage = 'KHỞI TẠO';
+        if (loading) loading.textContent = 'Đang tải dữ liệu...';
+
+        try {
+            // Đồng bộ phát sinh mới trước khi đọc bảng tổng hợp.
+            stage = 'REFRESH_DIRTY';
+            if (loading) loading.textContent = 'Đang đồng bộ phát sinh mới...';
+            await ensureXnt20Fresh();
+
+            pageSize = Number(document.getElementById('pageSize')?.value || 1000);
+            let params = buildParams(currentPage);
+
+            // V5: chỉ 1 RPC cho count + page + summary.
+            stage = 'BUNDLE_XNT20';
+            if (loading) loading.textContent = 'Đang tổng hợp báo cáo...';
+            let bundle = await fetchPageBundleXNT20(params);
+
+            // Nếu đang ở trang >1 nhưng bộ lọc mới làm trang đó không còn dữ liệu, tự quay về trang 1.
+            if (!bundle.rows.length && currentPage > 1) {
+                currentPage = 1;
+                params = buildParams(1);
+                stage = 'BUNDLE_XNT20_PAGE1';
+                bundle = await fetchPageBundleXNT20(params);
+            }
+
+            totalRows = Number(bundle.totalRows || 0);
+            const rows = bundle.rows || [];
+
+            const masps = Array.from(new Map(rows.map(r => [String(r.masp || '').toUpperCase(), 1])).keys());
+            renderPreviewForMasps(masps);
+
+            renderTable(rows);
+            renderSummary(bundle.summary ? [bundle.summary] : []);
+
+            if (rows.length) {
+                focusPreview(String(rows[0].masp || '').toUpperCase());
+            }
+
+            updatePagingBar();
+            if (loading) loading.textContent = '';
+            console.info(`[XNT20 V5] ${rows.length}/${totalRows} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
+        } catch (err) {
+            console.error(`[XNT20 ${stage}]`, err);
+            if (loading) {
+                const detail = err?.message || err;
+                loading.textContent = `Lỗi tải dữ liệu [${stage}]: ${detail}`;
+            }
+        }
+    })();
+
+    return xnt20LoadPromise.finally(() => {
+        xnt20LoadPromise = null;
+    });
+};
+
+// ===================== EXCEL EXPORT (song song) =====================
+window.xuatExcelToanBoXNT20 = async function () {
+    if (typeof XLSX === "undefined") { alert("Thiếu thư viện XLSX."); return; }
+
+    // Export dung batch JSON rieng, KHONG dung RPC paged/count cu.
+    // 5000/batch giup payload vua phai, 17796 dong chi can 4 request.
+    const batchSize = 5000;
+    const ok = confirm(`Xuất toàn bộ dữ liệu XNT20 ra Excel (${batchSize.toLocaleString('vi-VN')} dòng/lượt). Tiếp tục?`);
+    if (!ok) return;
+
+    const loading = document.getElementById("loadingMsg");
+    const oldText = loading?.textContent || "";
+    const t0 = performance.now();
+
+    try {
+        if (loading) loading.textContent = "Đang đồng bộ dữ liệu trước khi xuất Excel...";
+        await ensureXnt20Fresh();
+
+        const base = buildParams(1);
+        const firstParams = { ...base, p_limit: batchSize, p_offset: 0 };
+        if (loading) loading.textContent = "Đang tải dữ liệu Excel: lượt 1...";
+        const first = await fetchPageBundleXNT20(firstParams);
+        const total = Number(first.totalRows || 0);
+        const totalBatches = Math.max(1, Math.ceil(total / batchSize));
+        const all = new Array(totalBatches);
+        all[0] = first.rows || [];
+
+        // 2 luong la du nhanh va nhe DB hon 3 luong cu.
+        let nextBatch = 2;
+        async function worker() {
+            while (true) {
+                const b = nextBatch++;
+                if (b > totalBatches) return;
+                const offset = (b - 1) * batchSize;
+                if (loading) loading.textContent = `Đang tải dữ liệu Excel: ${Math.min(b,totalBatches)}/${totalBatches}...`;
+                const bundle = await fetchPageBundleXNT20({ ...base, p_limit: batchSize, p_offset: offset });
+                all[b - 1] = bundle.rows || [];
+            }
+        }
+        if (totalBatches > 1) {
+            await Promise.all([worker(), worker()]);
+        }
+
+        const rows = all.flat();
+        if (!rows.length) {
+            alert("Không có dữ liệu để xuất Excel.");
+            return;
+        }
+
+        const headers = [
+            "STT", "Mã hàng", "Kích cỡ",
+            "Xuất bán CS1", "Xuất CN 2v1",
+            "Xuất bán CS2", "Xuất CN 1v2",
+            "Xuất bán (gộp)",
+            "Tồn CS1", "Tồn CS2",
+            "Nhập mua", "Cuối kỳ", "Giá lẻ",
+            "Đầu kỳ", "Xuất khác", "Tổng xuất",
+            "Nhập khác", "Tổng nhập", "Tên hàng"
+        ];
+        const aoa = [headers];
+        rows.forEach((r, i) => {
+            aoa.push([
+                i + 1,
+                r.masp ?? "", r.size ?? "",
+                r.xuatban_cs1 ?? 0, r.xuatchinhanh_cs2 ?? 0,
+                r.xuatban_cs2 ?? 0, r.xuatchinhanh_cs1 ?? 0,
+                r.xuatban ?? 0,
+                r.ton_cs1 ?? 0, r.ton_cs2 ?? 0,
+                r.nhapmua ?? 0, r.cuoiky ?? 0, r.giale ?? 0,
+                r.dauky ?? 0, r.xuatkhac ?? 0, r.tongxuat ?? 0,
+                r.nhapkhac ?? 0, r.tongnhap ?? 0, r.tenhang ?? ""
+            ]);
+        });
+
+        if (loading) loading.textContent = `Đang tạo file Excel ${rows.length.toLocaleString('vi-VN')} dòng...`;
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        XLSX.utils.book_append_sheet(wb, ws, "XNT20");
+
+        const d = new Date();
+        const pad = n => String(n).padStart(2,'0');
+        const stamp = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+        XLSX.writeFile(wb, `baocaoXNT20_${stamp}.xlsx`, { compression: true });
+
+        if (loading) loading.textContent = "";
+        console.info(`[XNT20 V5 Excel] ${rows.length}/${total} dòng trong ${((performance.now()-t0)/1000).toFixed(2)}s`);
+    } catch (err) {
+        console.error("[XNT20 V5 Excel]", err);
+        if (loading) loading.textContent = "Lỗi xuất Excel: " + (err?.message || err);
+        alert("Không xuất được Excel: " + (err?.message || err));
+    } finally {
+        if (loading && loading.textContent === oldText) loading.textContent = oldText;
+    }
+};
+
+// ===================== COPY BẢNG =====================
+window.copyBang = function () {
+    if (!hotInstance) return;
+    const data = hotInstance.getData();
+    const headers = hotInstance.getSettings().colHeaders;
+    const tsv = [headers.join("\t")]
+        .concat(data.map(row => row.map(v => (v ?? "")).join("\t")))
+        .join("\n");
+    navigator.clipboard.writeText(tsv).then(() => {
+        alert("Đã copy bảng vào clipboard.");
+    }).catch(err => alert("Không copy được: " + err));
+};
+
+// ===================== POPUP tìm kiếm (stubs, bạn nối API sau) =====================
+// ===================== POPUP TÌM KIẾM (PORT từ XNT15, đã tinh gọn) =====================
+window.currentPopupType = null;
+
+// Mở popup + nạp danh sách (trống => show ~100-500 dòng đầu)
+window.openPopupSearch = function (type, keyword = "") {
+    window.currentPopupType = type;
+    const popup = document.getElementById('popupSearch');
+    const input = document.getElementById('popupSearchInput');
+    const list = document.getElementById('popupSearchList');
+    if (!popup || !input || !list) return alert("Thiếu phần tử popupSearch trong HTML!");
+
+    popup.style.display = 'block';
+    input.value = keyword || "";
+    input.focus();
+
+    // Nếu không có keyword -> hiện nhanh danh sách đầu tiên
+    searchPopup(keyword || "");
+};
+
+window.closePopupSearch = function () {
+    const popup = document.getElementById('popupSearch');
+    if (popup) popup.style.display = 'none';
+};
+
+// ESC để đóng
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') window.closePopupSearch();
+});
+
+// Click nền để đóng
+document.addEventListener('click', (e) => {
+    const overlay = document.getElementById('popupSearch');
+    const content = document.getElementById('popupSearchContent');
+    if (!overlay || overlay.style.display !== 'block') return;
+    if (content && content.contains(e.target)) return; // click trong khung -> không đóng
+    if (e.target === overlay) window.closePopupSearch();
+});
+
+// Gõ trong ô tìm -> nạp danh sách
+document.getElementById('popupSearchInput')?.addEventListener('input', () => {
+    const keyword = document.getElementById('popupSearchInput').value.trim();
+    // Cho phép trống để hiển thị danh sách đầu
+    searchPopup(keyword);
+});
+
+// Gán phím Enter trên các input ngoài trang để mở popup
+[
+    { id: "khachhangInput", type: "khachhang" },
+    { id: "nhanvienInput", type: "nhanvien" },
+    { id: "nhomhangInput", type: "nhomhang" },
+    { id: "chungloaiInput", type: "chungloai" },
+    { id: "mausacInput", type: "mausac" },
+    { id: "sizeInput", type: "size" },
+    { id: "maspInput", type: "mahang" },
+].forEach(({ id, type }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') window.openPopupSearch(type, el.value);
+    });
+});
+
+// Render helper
+function renderPopupList(rows, type, field, extra) {
+    const list = document.getElementById('popupSearchList');
+    if (!rows?.length) {
+        list.innerHTML = '<i>Không có dữ liệu</i>';
+        return;
+    }
+    // Unique nhẹ cho các trường có thể trùng (nhóm, chủng loại, màu, size)
+    const needUniq = ['manhom', 'machungloai', 'mamau', 'size'].includes(field);
+    let data = rows;
+    if (needUniq) {
+        const seen = new Set();
+        data = rows.filter(r => {
+            const v = r[field];
+            if (!v || seen.has(v)) return false;
+            seen.add(v);
+            return true;
+        });
+    }
+
+    list.innerHTML = data.map(row => {
+        const val = row[field] ?? "";
+        const more =
+            row.tenkh ? " - " + row.tenkh :
+                row.tennv ? " - " + row.tennv :
+                    row.tennhom ? " - " + row.tennhom :
+                        row.tenchungloai ? " - " + row.tenchungloai :
+                            row.tenmau ? " - " + row.tenmau :
+                                row.tensp ? " - " + row.tensp :
+                                    row.mota ? " - " + row.mota : "";
+        const safe = String(val).replace(/'/g, "\\'");
+        return `
+      <div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+           onclick="selectPopupValue('${type}','${safe}',this)">
+        ${val}${more}
+      </div>`;
+    }).join('');
+}
+
+// Render riêng cho nhân viên: chỉ hiển thị tên, nhưng giữ lại manv để trả về input
+function renderNhanvienList(rows) {
+    const list = document.getElementById('popupSearchList');
+    if (!rows?.length) {
+        list.innerHTML = '<i>Không có dữ liệu</i>';
+        return;
+    }
+    list.innerHTML = rows.map(r => {
+        const manv = (r.manv ?? '').replace(/'/g, "\\'");
+        const tennv = (r.tennv ?? '').replace(/'/g, "\\'");
+        return `
+      <div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+           onclick="selectPopupValue('nhanvien','${manv}','${tennv}')">
+        ${r.tennv ?? ''}
+      </div>`;
+    }).join('');
+}
+
+
+// Hàm tìm kiếm chính cho popup
+
+async function searchPopup(keyword) {
+    const type = window.currentPopupType;
+    const list = document.getElementById('popupSearchList');
+    if (!type || !list) return;
+
+    // Nhánh NCC (lọc trong dmkhachhang, chỉ NCC)
+    if (type === 'khachhang' && document.getElementById('locNCCCheckbox')?.checked) {
+        let q = supabase.from('dmkhachhang').select('makh, tenkh').eq('la_ncc', true).limit(500);
+        if (keyword) q = q.or(`makh.ilike.%${keyword}%,tenkh.ilike.%${keyword}%`);
+        const { data, error } = await q;
+        if (error) { list.innerHTML = `<i>Lỗi: ${error.message}</i>`; return; }
+        renderPopupList(data, 'khachhang', 'makh', ', tenkh');
+        return;
+    }
+
+    // Bản đồ loại → bảng/field
+    let table = '', field = '', extra = '';
+    if (type === 'khachhang') { table = 'dmkhachhang'; field = 'makh'; extra = ', tenkh'; }
+    else if (type === 'nhanvien') { table = 'dmnhanvien'; field = 'manv'; extra = ', tennv'; }  // sẽ chỉ HIỂN THỊ tennv
+    else if (type === 'nhomhang') { table = 'dmnhomhang'; field = 'manhom'; extra = ', tennhom'; }
+    else if (type === 'chungloai') { table = 'dmchungloai'; field = 'machungloai'; extra = ', tenchungloai'; }
+    else if (type === 'mausac') { table = 'dmmausac'; field = 'mamau'; extra = ', tenmau'; }
+    else if (type === 'size') { table = 'dm_size'; field = 'size'; extra = ', mota'; }
+    else if (type === 'mahang') { table = 'dmhanghoa'; field = 'masp'; extra = ', tensp'; }
+    else { list.innerHTML = '<i>Loại tìm chưa hỗ trợ</i>'; return; }
+
+    // Truy vấn (trống keyword -> trả về danh sách đầu)
+    let query = supabase.from(table).select(`${field}${extra}`).limit(500);
+    if (keyword) {
+        // Tìm linh hoạt: nếu có cột tên thì tìm trên cả mã + tên
+        const hasName =
+            extra.includes('tenkh') || extra.includes('tennv') ||
+            extra.includes('tennhom') || extra.includes('tenchungloai') ||
+            extra.includes('tenmau') || extra.includes('tensp');
+        if (hasName) {
+            const nameCol =
+                extra.includes('tenkh') ? 'tenkh' :
+                    extra.includes('tennv') ? 'tennv' :
+                        extra.includes('tennhom') ? 'tennhom' :
+                            extra.includes('tenchungloai') ? 'tenchungloai' :
+                                extra.includes('tenmau') ? 'tenmau' :
+                                    extra.includes('tensp') ? 'tensp' : field;
+            query = query.or(`${field}.ilike.%${keyword}%,${nameCol}.ilike.%${keyword}%`);
+        } else {
+            query = query.ilike(field, `%${keyword}%`);
+        }
+    }
+
+    const { data, error } = await query;
+    if (error) { list.innerHTML = `<i>Lỗi: ${error.message}</i>`; return; }
+
+    // ---- CHỈ áp dụng riêng cho Nhân viên: hiển thị TÊN, không lộ mã ----
+    if (type === 'nhanvien') {
+        if (!data?.length) { list.innerHTML = '<i>Không có dữ liệu</i>'; return; }
+        list.innerHTML = data.map(r => {
+            const manv = String(r.manv ?? '').replace(/'/g, "\\'");
+            const tennv = String(r.tennv ?? '');
+            return `
+        <div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;"
+             onclick="selectPopupValue('nhanvien','${manv}')">
+          ${tennv}
+        </div>`;
+        }).join('');
+        return;
+    }
+
+    // Các loại khác dùng renderer chung
+    renderPopupList(data, type, field, extra);
+}
+
+
+// Người dùng chọn 1 giá trị
+window.selectPopupValue = function (type, value, label = '') {
+    const map = {
+        khachhang: 'khachhangInput',
+        nhanvien: 'nhanvienInput',
+        nhomhang: 'nhomhangInput',
+        chungloai: 'chungloaiInput',
+        mausac: 'mausacInput',
+        size: 'sizeInput',
+        mahang: 'maspInput',
+    };
+    const id = map[type];
+    if (id && document.getElementById(id)) {
+        // Giá trị trả về cho bộ lọc vẫn là "mã" để truy vấn chính xác
+        document.getElementById(id).value = value;
+    }
+
+    // Nếu có ô hiển thị tên nhân viên riêng, điền thêm cho đẹp (không bắt buộc)
+    if (type === 'nhanvien') {
+        const nameBox = document.getElementById('nhanvienNameInput') || document.getElementById('nhanvienLabel');
+        if (nameBox) nameBox.value = label || '';
+    }
+
+    window.closePopupSearch();
+};
+
+
+// Xoá nhanh 1 input bất kỳ
+window.clearInput = function (id) { const el = document.getElementById(id); if (el) el.value = ''; };
+
+
+
+
+// Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại) — đã lọc trùng theo MASP
+// Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại),
+// nhưng chỉ lấy những mã còn tồn kho > 0 tại cơ sở đang chọn (CS1/CS2)
+// Hiển thị ảnh cho toàn bộ mã đang có trong bảng (trang hiện tại) — đã lọc trùng theo MASP
+// và lọc theo tồn kho từng cơ sở (CS1/CS2) theo dropdown Địa điểm
+window.moTrangAnh = function () {
+    if (!hotInstance) {
+        alert("Chưa có dữ liệu để hiển thị ảnh.");
+        return;
+    }
+
+    // Lấy nguồn dữ liệu gốc của Handsontable (đúng theo thứ tự/đang có trong trang)
+    // Lấy dữ liệu theo THỨ TỰ ĐANG HIỂN THỊ trên bảng (sau khi bạn sort)
+    // (không lấy sourceData nữa, vì sourceData luôn theo thứ tự gốc)
+    const rowCount = hotInstance.countRows();
+    const colMasp = (hotInstance.propToCol ? hotInstance.propToCol("masp") : 0);
+
+    // Một số cột có thể đặt tên khác nhau giữa các phiên bản
+    const colGiale = (hotInstance.propToCol ? hotInstance.propToCol("giale") : -1);
+
+    const colTonCS1 =
+        (hotInstance.propToCol && hotInstance.propToCol("toncs1") >= 0) ? hotInstance.propToCol("toncs1")
+            : (hotInstance.propToCol && hotInstance.propToCol("ton_cs1") >= 0) ? hotInstance.propToCol("ton_cs1")
+                : -1;
+
+    const colTonCS2 =
+        (hotInstance.propToCol && hotInstance.propToCol("toncs2") >= 0) ? hotInstance.propToCol("toncs2")
+            : (hotInstance.propToCol && hotInstance.propToCol("ton_cs2") >= 0) ? hotInstance.propToCol("ton_cs2")
+                : -1;
+
+    const src = [];
+    for (let r = 0; r < rowCount; r++) {
+        const masp = (colMasp >= 0) ? hotInstance.getDataAtCell(r, colMasp) : "";
+        const giale = (colGiale >= 0) ? hotInstance.getDataAtCell(r, colGiale) : 0;
+        const toncs1 = (colTonCS1 >= 0) ? hotInstance.getDataAtCell(r, colTonCS1) : 0;
+        const toncs2 = (colTonCS2 >= 0) ? hotInstance.getDataAtCell(r, colTonCS2) : 0;
+
+        // Dựng object tối thiểu để phần filter/map phía dưới dùng lại y nguyên
+        src.push({
+            masp,
+            giale,
+            toncs1,
+            toncs2,
+            ton_cs1: toncs1,
+            ton_cs2: toncs2
+        });
+    }
+
+    // Đọc địa điểm đang chọn: '', 'cs1', 'cs2'
+    const diadiemEl = document.getElementById("diadiemSelect");
+    const branch = diadiemEl ? (diadiemEl.value || "") : "";
+
+    // Lọc theo tồn kho từng cơ sở
+    let filteredRows = src;
+    if (branch === "cs1") {
+        filteredRows = src.filter(r => {
+            const tonCS1 = Number(r?.toncs1 ?? r?.ton_cs1 ?? 0);
+            return tonCS1 > 0;
+        });
+    } else if (branch === "cs2") {
+        filteredRows = src.filter(r => {
+            const tonCS2 = Number(r?.toncs2 ?? r?.ton_cs2 ?? 0);
+            return tonCS2 > 0;
+        });
+    }
+    // Nếu để Tất cả (''), không lọc thêm
+
+    // Gom theo mã sản phẩm, ưu tiên giữ bản ghi có giale khác 0 nếu có
+    const map = new Map(); // key = MASP, value = { masp, giale, toncs1, toncs2 }
+    for (const r of filteredRows) {
+        const code = String(r?.masp || "").trim().toUpperCase();
+        if (!code) continue;
+
+        const price = Number(r?.giale || 0) || 0;
+        const t1 = Number(r?.toncs1 ?? r?.ton_cs1 ?? 0) || 0;
+        const t2 = Number(r?.toncs2 ?? r?.ton_cs2 ?? 0) || 0;
+
+        if (!map.has(code)) {
+            map.set(code, { masp: code, giale: price, toncs1: t1, toncs2: t2 });
+        } else {
+            const cur = map.get(code);
+
+            // ưu tiên bản có giá nếu bản cũ đang 0
+            if ((cur.giale || 0) === 0 && price > 0) {
+                map.set(code, { masp: code, giale: price, toncs1: t1, toncs2: t2 });
+            } else {
+                // nếu giá đã ổn, nhưng tồn đang 0 mà bản mới có tồn -> cập nhật tồn
+                if ((cur.toncs1 || 0) === 0 && t1 > 0) cur.toncs1 = t1;
+                if ((cur.toncs2 || 0) === 0 && t2 > 0) cur.toncs2 = t2;
+            }
+        }
+    }
+
+    const list = Array.from(map.values());
+    if (!list.length) {
+        alert("Không có mã hàng phù hợp với điều kiện tồn kho/địa điểm.");
+        return;
+    }
+
+    // Dùng cùng key sessionStorage như XNT15 để trang xem ảnh dùng chung được ngay
+    sessionStorage.setItem("XNT14_MASP_LIST", JSON.stringify(list));
+
+    // Mở trang xem ảnh XNT14 (đang dùng chung cho 15) ở tab mới 
+    window.open("xemanhxnt14.html", "_blank");
+};
+
+
+window.addEventListener("DOMContentLoaded", () => {
+    // Mặc định địa điểm luôn là Tất cả khi mở trang bình thường.
+    const ddDefault = document.getElementById("diadiemSelect");
+    if (ddDefault) ddDefault.value = "";
+
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 10);   // -1 hôm qua -10 = 10 ngày
+
+    const den = document.getElementById("denNgay");
+    const tu = document.getElementById("tuNgay");
+    if (den) den.value = toLocalISO(now);        // hôm nay
+    if (tu) tu.value = toLocalISO(yesterday);    // hôm qua
+
+    // Mặc định nghiệp vụ cũ: Phát sinh bán trong kỳ. Địa điểm vẫn để Tất cả (value="").
+    setXntConditions(["co_ban"]);
+
+    // ================== CHẾ ĐỘ TÌM SẢN PHẨM TƯƠNG ĐỒNG ==================
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const mode = params.get("mode");
+
+        // Chỉ xử lý khi mở bằng ?mode=similar
+        if (mode === "similar") {
+            const raw = localStorage.getItem("bantheosize_similar_params");
+            if (raw) {
+                const cfg = JSON.parse(raw);
+
+                const diadiemSelect = document.getElementById("diadiemSelect");
+                const sizeInput = document.getElementById("sizeInput");
+                const nhomhangInput = document.getElementById("nhomhangInput");
+
+                // branch: 'cs1' | 'cs2'
+                if (diadiemSelect && cfg.branch) {
+                    diadiemSelect.value = cfg.branch;
+                }
+                // sizeEU: chuỗi kích cỡ (vd: "41/XL/52/180")
+                if (sizeInput && cfg.sizeEU) {
+                    sizeInput.value = cfg.sizeEU;
+                }
+                // group: nhóm hàng của mã đang tìm
+                if (nhomhangInput && cfg.group) {
+                    nhomhangInput.value = cfg.group;
+                }
+            }
+
+            // Sau khi gán xong, tự động bấm nút "Xem báo cáo"
+            // dùng click() để đi qua guard ở script inline (nó gọi original() trực tiếp)
+            setTimeout(() => {
+                const btn = document.querySelector('button[onclick="taiBaoCaoXNT()"]');
+                if (btn) btn.click();
+            }, 300);
+
+            // Không cần auto-chạy gì thêm ở dưới
+            return;
+        }
+    } catch (e) {
+        console.error("Lỗi init chế độ similar:", e);
+    }
+
+    // ================== MỞ TRANG BÌNH THƯỜNG ==================
+    // Không tự chạy báo cáo nữa; người dùng phải bấm nút
+    // taiBaoCaoXNT();  // nếu muốn auto-chạy lại thì bỏ comment dòng này
+});
+
+
+/* ===== PREVIEW ẢNH (40%) =====
+ * Bạn nối nguồn ảnh của hệ thống tại hàm getImageUrl(masp).
+ * Tạm thời: dựng URL theo quy ước hiện có hoặc dùng API lấy ảnh đầu tiên.
+ */
+
+// ====== ẢNH SẢN PHẨM ======
+// ====== CẤU HÌNH LƯỚI ẢNH ======
+const IMAGES_PER_ROW = 2;  // ← đổi 1/2/3... là xong
+
+const IMG_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
+const IMG_EXTS = ["jpg", "jpeg", "png", "webp", "JPG", "JPEG", "PNG", "WEBP"];
+
+const PLACEHOLDER_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360">' +
+    '<rect width="100%" height="100%" fill="#f3f4f6"/>' +
+    '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-size="18">Chưa có ảnh</text></svg>'
+);
+
+// onerror: thử lần lượt các đuôi ảnh theo IMG_EXTS; hết thì đặt placeholder
+window.handleImageError = function (img, masp) {
+    const next = (parseInt(img.dataset.try || "0", 10) + 1);
+    if (next < IMG_EXTS.length) {
+        img.dataset.try = String(next);
+        img.src = IMG_BASE + encodeURIComponent(masp) + "." + IMG_EXTS[next];
+    } else {
+        img.onerror = null;
+        img.src = PLACEHOLDER_SVG;
+    }
+};
+
+function getImageUrl(masp) {
+    // Ảnh mặc định thử với .jpg trước; các đuôi khác sẽ được thử trong onerror
+    return IMG_BASE + encodeURIComponent(masp) + ".JPG";
+}
+
+
+// Lưu danh sách hiện tại để không render lại khi chỉ đổi selection
+let currentMaspsList = [];
+
+function renderPreviewForMasps(list) {
+    currentMaspsList = (list || []).map(x => String(x || "").toUpperCase());
+    const box = document.getElementById("previewGrid");
+    const title = document.getElementById("previewTitle");
+    if (!box) return;
+
+    box.style.gridTemplateColumns = `repeat(${IMAGES_PER_ROW}, minmax(0, 1fr))`;
+    title.textContent = `Ảnh nhanh (${currentMaspsList.length.toLocaleString('vi-VN')} mã)`;
+
+    const offset = (currentPage - 1) * pageSize; // STT toàn bộ; đổi =0 nếu muốn STT theo trang
+    const DETAIL_URL = "https://banle-js.vercel.app/timkiemhanghoa333.html";
+
+    box.innerHTML = currentMaspsList.map((m, i) => {
+        const stt = offset + i + 1;
+        const src = getImageUrl(m);
+        return `
+      <figure id="img-${m}" class="preview-card" data-masp="${m}">
+        <img loading="lazy"
+             src="${src}"
+             data-try="0"
+             alt="${m}"
+             onclick="openLightbox(this.src)"
+             onerror="handleImageError(this,'${m}')">
+        <figcaption class="preview-cap">
+          <span class="cap-link" onclick="window.open('${DETAIL_URL}?masp=${encodeURIComponent(m)}','_blank')">
+            ${stt}. ${m}
+          </span>
+        </figcaption>
+      </figure>`;
+    }).join("");
+}
+
+
+function focusPreview(masp) {
+    const box = document.getElementById('previewGrid');
+    if (!box || !masp) return;
+    const old = box.querySelector('.preview-card.selected');
+    if (old) old.classList.remove('selected');
+    const el = document.getElementById(`img-${masp}`);
+    if (el) {
+
+        el.classList.add('selected');
+        box.style.scrollBehavior = "auto";
+        el.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' });
+
+    }
+}
+
+
+function showPreviewForRow(r) {
+    const masp = getMaspAtVisualRow(r);
+    if (!masp) return;
+    focusPreview(masp);   // chỉ focus/scroll tới ảnh mã này (không re-render)
+}
+
+function getMaspAtVisualRow(r) {
+    if (!hotInstance || r == null || r < 0) return "";
+    const COL_MASP = 0; // cột 'Mã hàng' là cột 0 trong bảng của bạn
+    // Lấy trực tiếp từ lưới (visual cell), không cần map physical
+    const v = hotInstance.getDataAtCell(r, COL_MASP);
+    return String(v || "").toUpperCase().trim();
+}
+
+function openStockQuickForRowCol(r, c) {
+    if (!hotInstance) return;
+    if (r == null || r < 0) return;
+
+    // chỉ mở khi click cột "Mã hàng" (cột 0)
+    if (c !== 0) return;
+
+    const masp = getMaspAtVisualRow(r);
+    if (!masp) return;
+
+    // mở popup (dạng đơn giản)
+    if (window.stockQuickPopup) {
+        window.stockQuickPopup(masp);
+    } else {
+        console.warn("Chưa load stockQuickPopup.js");
+    }
+}
+
+
+// === ở cuối file hoặc gần các hàm button ===
+// Gom tất cả dữ liệu theo filter hiện tại rồi mở trang chuyển kho
+window.moTrangChuyenKho = async () => {
+    // 1) Lấy filter hiện tại
+    const p0 = buildParams(1);
+
+    // 2) BẮT BUỘC ép lấy theo size (không gộp)
+    const p = { ...p0, p_tonghop_size: false };
+
+    // 3) Đếm + lấy toàn bộ dữ liệu theo size
+    const countParams = buildCountParams(p);
+    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoXNT20_count_v6', countParams);
+    if (cntErr) { alert('Lỗi COUNT: ' + cntErr.message); return; }
+    const total = Number(cntData || 0);
+
+    const pageSize = 10000;
+    const all = [];
+    for (let offset = 0; offset < total; offset += pageSize) {
+        const pageParams = { ...p, p_limit: pageSize, p_offset: offset };
+        const { data, error } = await supabase.rpc('baocaoxnt20_paged_v1', pageParams);
+        if (error) { alert('Lỗi Paged: ' + error.message); return; }
+        all.push(...(data || []));
+    }
+
+    // 4) Đẩy dữ liệu & filter sang
+    sessionStorage.setItem('xnt17_transfer_rows', JSON.stringify(all));
+    sessionStorage.setItem('xnt17_transfer_filters', JSON.stringify(p));
+
+    window.open('baocaoxnt17_chuyenkho.html', '_blank');
+};
+
+// === MỞ TRANG GỢI Ý NHẬP BÙ (gom toàn bộ dữ liệu đã lọc, tổng hợp theo mã) ===
+window.moTrangGoiYNhapBu = async () => {
+    try {
+        // 1) Lấy filter hiện tại
+        const p0 = buildParams(1);
+
+        // 2) Ép tổng hợp theo MÃ (không tách size) cho nhu cầu nhập bù
+        const p = { ...p0, p_tonghop_size: true };
+
+        // 3) Đếm tổng số dòng
+        const totalRows = await fetchCount(p);
+
+        // 4) Lấy toàn bộ dữ liệu (gộp size) theo trang
+        const pageSizeAll = 10000;
+        const all = [];
+        for (let offset = 0; offset < totalRows; offset += pageSizeAll) {
+            const pageParams = { ...p, p_limit: pageSizeAll, p_offset: offset };
+            const page = await fetchPaged(pageParams);
+            all.push(...(page || []));
+        }
+
+        // 5) Lưu dataset & filter vào sessionStorage để trang mới đọc
+        const filters = {
+            tu_ngay: p.tu_ngay,
+            den_ngay: p.den_ngay,
+            diadiem: p.p_diadiem_filter || 'Tất cả',
+            nhomhang: p.p_nhomhang_filter || 'Tất cả',
+            raw: p
+        };
+        sessionStorage.setItem('xnt17_rows', JSON.stringify(all));
+        sessionStorage.setItem('xnt17_filters', JSON.stringify(filters));
+        sessionStorage.setItem('xnt17_url', window.location.href);
+
+        // 6) Fallback: truyền filter tối thiểu qua query string (đề phòng refresh trang mới)
+        const qs = new URLSearchParams({
+            tu_ngay: filters.tu_ngay || '',
+            den_ngay: filters.den_ngay || '',
+            diadiem: filters.diadiem || '',
+            nhomhang: filters.nhomhang || ''
+        }).toString();
+
+        window.open(`/goiynhapbu.html?${qs}`, '_blank');
+    } catch (err) {
+        console.error(err);
+        alert('Không mở được trang Gợi ý nhập bù: ' + (err?.message || err));
+    }
+};
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnGoiYNhapBu');
+    if (btn) btn.addEventListener('click', window.moTrangGoiYNhapBu);
+});
+
