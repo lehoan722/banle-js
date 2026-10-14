@@ -244,6 +244,7 @@ window.taiBaoCaoBanHang = function() {
 
       pageSize = Number(val("pageSize") || 1000);
       loading.textContent = "Đang tổng hợp bán hàng...";
+      const t0 = performance.now();
 
       let params = buildParams(currentPage);
       let {data,error} = await supabase.rpc("baocaobanhang_chinhanh_bundle_v1", params);
@@ -265,7 +266,7 @@ window.taiBaoCaoBanHang = function() {
       renderTable(rows);
       renderSummary(payload.summary || {});
       updatePagingBar();
-      loading.textContent = "";
+      loading.textContent = `Đã tải trong ${((performance.now()-t0)/1000).toFixed(2)} giây`;
     } catch(err) {
       console.error(err);
       loading.textContent = "Lỗi tải báo cáo: " + (err?.message || err);
@@ -328,15 +329,31 @@ window.xuatExcelToanBoBanHang = async function(){
     const all = [];
     all.push(...(payload.rows || []));
 
-    for (let b=1;b<batches;b++) {
-      loading.textContent = `Đang tải Excel ${b+1}/${batches}...`;
-      const r = await supabase.rpc("baocaobanhang_chinhanh_bundle_v1", {
-        ...base, p_limit:batchSize, p_offset:b*batchSize
-      });
-      if (r.error) throw r.error;
-      const p = Array.isArray(r.data) ? (r.data[0]||{}) : (r.data||{});
-      all.push(...(p.rows || []));
+    const jobs = [];
+    for (let b=1;b<batches;b++) jobs.push(b);
+
+    const results = new Array(Math.max(0,batches-1));
+
+    async function worker(workerId) {
+      while (jobs.length) {
+        const b = jobs.shift();
+        if (b == null) break;
+
+        loading.textContent = `Đang tải Excel batch ${b+1}/${batches}...`;
+
+        const r = await supabase.rpc("baocaobanhang_chinhanh_bundle_v1", {
+          ...base, p_limit:batchSize, p_offset:b*batchSize
+        });
+        if (r.error) throw r.error;
+
+        const p = Array.isArray(r.data) ? (r.data[0]||{}) : (r.data||{});
+        results[b-1] = p.rows || [];
+      }
     }
+
+    // V1.4: 2 luong song song de tang toc export nhung khong gay tai qua lon cho DB.
+    await Promise.all([worker(1), worker(2)]);
+    results.forEach(arr => all.push(...(arr || [])));
 
     if (!all.length) {
       alert("Không có dữ liệu để xuất.");
