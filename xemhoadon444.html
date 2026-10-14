@@ -1,986 +1,2117 @@
-
--- =====================================================================
--- HOAN TUYET - XEM HOA DON 111 V3 FAST
--- MASTER INSTALL / UPDATE - CHAY LAI AN TOAN
---
--- MUC TIEU:
--- 1) Giu nguyen ket qua nghiep vu cua V2.
--- 2) Khong SUM ct_hoadon_banle lai cho moi lan xem bao cao.
--- 3) Cache theo HOA DON:
---      sohd -> sl_detail, tong_detail
--- 4) Trigger delta cap nhat cache ngay khi chi tiet hoa don thay doi.
--- 5) Bundle JSON: 1 request lay ca tong + trang hien tai.
--- 6) Tong hop ngay/thang/nam lam tren DB, khong tai tat ca hoa don ve JS.
--- 7) Bo loc ma SP chi cham vao ct_hoadon_banle khi THUC SU co ma SP.
---
--- QUY TAC NGAY:
---   (created_at at time zone 'Asia/Ho_Chi_Minh')::date
---
--- QUYEN:
---   chi ADMIN nhu V2.
--- =====================================================================
-
-begin;
-
--- =====================================================================
--- 0) CACHE CHI TIET THEO HOA DON
--- =====================================================================
-create table if not exists public.xemhoadon111_ct_cache_v1 (
-  sohd text primary key,
-  sl_detail bigint not null default 0,
-  tong_detail numeric not null default 0,
-  updated_at timestamptz not null default now()
-);
-
-create index if not exists idx_xemhd111_cache_updated
-  on public.xemhoadon111_ct_cache_v1(updated_at);
-
-
--- =====================================================================
--- 1) FULL REBUILD CACHE
---    Co the chay lai bat cu luc nao neu muon doi chieu.
--- =====================================================================
-create or replace function public.xemhoadon111_rebuild_cache_v1()
-returns bigint
-language plpgsql
-security definer
-set search_path=public
-as $$
-declare
-  v_rows bigint;
-begin
-  truncate table public.xemhoadon111_ct_cache_v1;
-
-  insert into public.xemhoadon111_ct_cache_v1(
-    sohd, sl_detail, tong_detail, updated_at
-  )
-  select
-    ct.sohd,
-    sum(coalesce(ct.soluong,0))::bigint,
-    sum(
-      (coalesce(ct.gia,0)-coalesce(ct.km,0))
-      * coalesce(ct.soluong,0)
-    )::numeric,
-    now()
-  from public.ct_hoadon_banle ct
-  where nullif(trim(coalesce(ct.sohd,'')),'') is not null
-  group by ct.sohd;
-
-  get diagnostics v_rows = row_count;
-  return v_rows;
-end;
-$$;
-
-
--- =====================================================================
--- 2) DELTA CACHE - KHONG DIRTY, KHONG REBUILD NANG
--- =====================================================================
-create or replace function public.xemhoadon111_cache_delta_v1(
-  p_sohd text,
-  p_delta_sl bigint,
-  p_delta_tong numeric
-)
-returns void
-language plpgsql
-security definer
-set search_path=public
-as $$
-begin
-  if p_sohd is null or trim(p_sohd)='' then
-    return;
-  end if;
-
-  insert into public.xemhoadon111_ct_cache_v1(
-    sohd, sl_detail, tong_detail, updated_at
-  )
-  values(
-    p_sohd,
-    coalesce(p_delta_sl,0),
-    coalesce(p_delta_tong,0),
-    now()
-  )
-  on conflict(sohd)
-  do update set
-    sl_detail = public.xemhoadon111_ct_cache_v1.sl_detail
-                + excluded.sl_detail,
-    tong_detail = public.xemhoadon111_ct_cache_v1.tong_detail
-                  + excluded.tong_detail,
-    updated_at = now();
-
-  -- Don cac dong zero neu hoa don da het chi tiet.
-  delete from public.xemhoadon111_ct_cache_v1 c
-  where c.sohd=p_sohd
-    and c.sl_detail=0
-    and c.tong_detail=0
-    and not exists (
-      select 1
-      from public.ct_hoadon_banle d
-      where d.sohd=p_sohd
-    );
-end;
-$$;
-
-
--- =====================================================================
--- 3) TRIGGER DELTA TREN ct_hoadon_banle
--- =====================================================================
-create or replace function public.trg_xemhoadon111_ct_cache_v1()
-returns trigger
-language plpgsql
-security definer
-set search_path=public
-as $$
-declare
-  old_tt numeric:=0;
-  new_tt numeric:=0;
-begin
-  if tg_op in ('UPDATE','DELETE') then
-    old_tt :=
-      (coalesce(old.gia,0)-coalesce(old.km,0))
-      * coalesce(old.soluong,0);
-  end if;
-
-  if tg_op in ('INSERT','UPDATE') then
-    new_tt :=
-      (coalesce(new.gia,0)-coalesce(new.km,0))
-      * coalesce(new.soluong,0);
-  end if;
-
-  if tg_op='INSERT' then
-    perform public.xemhoadon111_cache_delta_v1(
-      new.sohd,
-      coalesce(new.soluong,0)::bigint,
-      new_tt
-    );
-    return new;
-  end if;
-
-  if tg_op='DELETE' then
-    perform public.xemhoadon111_cache_delta_v1(
-      old.sohd,
-      -coalesce(old.soluong,0)::bigint,
-      -old_tt
-    );
-    return old;
-  end if;
-
-  -- UPDATE
-  if old.sohd is distinct from new.sohd then
-    perform public.xemhoadon111_cache_delta_v1(
-      old.sohd,
-      -coalesce(old.soluong,0)::bigint,
-      -old_tt
-    );
-    perform public.xemhoadon111_cache_delta_v1(
-      new.sohd,
-      coalesce(new.soluong,0)::bigint,
-      new_tt
-    );
-  else
-    perform public.xemhoadon111_cache_delta_v1(
-      new.sohd,
-      (coalesce(new.soluong,0)-coalesce(old.soluong,0))::bigint,
-      new_tt-old_tt
-    );
-  end if;
-
-  return new;
-end;
-$$;
-
-drop trigger if exists trg_xemhoadon111_ct_cache_v1
-  on public.ct_hoadon_banle;
-
-create trigger trg_xemhoadon111_ct_cache_v1
-after insert or update or delete
-on public.ct_hoadon_banle
-for each row
-execute function public.trg_xemhoadon111_ct_cache_v1();
-
-
--- =====================================================================
--- 4) INDEX TOI UU
--- =====================================================================
-
--- Loc ngay chuan cua trang.
-create index if not exists idx_xemhd111_hd_created_vn
-on public.hoadon_banle (
-  ((created_at at time zone 'Asia/Ho_Chi_Minh')::date)
-);
-
--- Loc ngay + loai chung tu.
-create index if not exists idx_xemhd111_hd_created_loai
-on public.hoadon_banle (
-  ((created_at at time zone 'Asia/Ho_Chi_Minh')::date),
-  lower(coalesce(nullif(trim(loaihd),''), split_part(sohd,'_',1)))
-);
-
--- Paging sort.
-create index if not exists idx_xemhd111_hd_created_sohd_desc
-on public.hoadon_banle (created_at desc, sohd desc);
-
--- Tim ma SP trong 1 hoa don.
-create index if not exists idx_xemhd111_ct_sohd_masp_norm
-on public.ct_hoadon_banle (
-  sohd,
-  upper(trim(masp))
-);
-
--- Tim cac hoa don co 1 ma.
-create index if not exists idx_xemhd111_ct_masp_norm_sohd
-on public.ct_hoadon_banle (
-  upper(trim(masp)),
-  sohd
-);
-
-
--- =====================================================================
--- 5) COUNT V2 - GIU TEN CU DE TUONG THICH
---    KHONG GROUP ct_hoadon_banle MOI LAN.
--- =====================================================================
-create or replace function public.xemhoadon111_v2_count(
-  p_tu_ngay date,
-  p_den_ngay date,
-  p_loaihd_list text[] default null,
-  p_manv text default null,
-  p_khachhang text default null,
-  p_ghichu text default null,
-  p_sohd text default null,
-  p_tien_tu numeric default null,
-  p_tien_den numeric default null,
-  p_masp_list text[] default null,
-  p_must_contain_all boolean default false
-)
-returns table (
-  total_rows bigint,
-  total_sl_detail bigint,
-  total_tong_detail numeric,
-  total_chietkhau numeric,
-  total_thanhtoan_v2 numeric,
-  total_sl_header bigint,
-  total_lech_sl bigint
-)
-language plpgsql
-security definer
-set search_path=public
-as $$
-begin
-  if not public.is_admin() then
-    raise exception 'Bạn không có quyền xem báo cáo này';
-  end if;
-
-  return query
-  with
-  masp_norm as (
-    select case
-      when p_masp_list is null then null::text[]
-      else (
-        select array_agg(distinct upper(trim(x)))
-        from unnest(p_masp_list) x
-        where trim(x)<>''
-      )
-    end as a
-  ),
-  loai_norm as (
-    select case
-      when p_loaihd_list is null then null::text[]
-      else (
-        select array_agg(distinct lower(trim(x)))
-        from unnest(p_loaihd_list) x
-        where trim(x)<>''
-      )
-    end as a
-  ),
-  kh_norm as (
-    select
-      nullif(trim(p_khachhang),'') as q_raw,
-      lower(nullif(trim(p_khachhang),'')) as q_l,
-      (
-        select lower(trim(kh.tenkh))
-        from public.dmkhachhang kh
-        where lower(trim(kh.makh))
-          = lower(nullif(trim(p_khachhang),''))
-        limit 1
-      ) as tenkh_l
-  ),
-  hd_filtered as materialized (
-    select
-      hd.sohd,
-      hd.tongsl,
-      hd.chietkhau,
-      hd.thanhtoan
-    from public.hoadon_banle hd
-    cross join loai_norm ln
-    cross join kh_norm kn
-    cross join masp_norm mn
-    where
-      (hd.created_at at time zone 'Asia/Ho_Chi_Minh')::date
-        between p_tu_ngay and p_den_ngay
-
-      and (
-        ln.a is null
-        or lower(
-          coalesce(
-            nullif(trim(hd.loaihd),''),
-            split_part(hd.sohd,'_',1)
-          )
-        ) = any(ln.a)
-      )
-
-      and (
-        p_manv is null or trim(p_manv)=''
-        or lower(coalesce(trim(hd.manv),''))
-           like lower('%'||trim(p_manv)||'%')
-      )
-
-      and (
-        kn.q_raw is null
-        or (
-          kn.tenkh_l is not null
-          and lower(coalesce(trim(hd.khachhang),''))
-              in (kn.q_l,kn.tenkh_l)
-        )
-        or (
-          kn.tenkh_l is null
-          and lower(coalesce(trim(hd.khachhang),''))
-              like lower('%'||kn.q_raw||'%')
-        )
-      )
-
-      and (
-        p_sohd is null or trim(p_sohd)=''
-        or lower(hd.sohd)
-           like lower('%'||trim(p_sohd)||'%')
-      )
-
-      and (
-        p_ghichu is null or trim(p_ghichu)=''
-        or lower(coalesce(trim(hd.ghichu),''))
-           like lower('%'||trim(p_ghichu)||'%')
-      )
-
-      and (
-        p_tien_tu is null
-        or coalesce(hd.thanhtoan,0)>=p_tien_tu
-      )
-
-      and (
-        p_tien_den is null
-        or coalesce(hd.thanhtoan,0)<=p_tien_den
-      )
-
-      and (
-        mn.a is null
-        or cardinality(mn.a)=0
-        or (
-          case
-            when p_must_contain_all then
-              (
-                select count(distinct upper(trim(ct.masp)))
-                from public.ct_hoadon_banle ct
-                where ct.sohd=hd.sohd
-                  and upper(trim(ct.masp))=any(mn.a)
-              )=cardinality(mn.a)
-            else
-              exists (
-                select 1
-                from public.ct_hoadon_banle ct
-                where ct.sohd=hd.sohd
-                  and upper(trim(ct.masp))=any(mn.a)
-              )
-          end
-        )
-      )
-  )
-  select
-    count(*)::bigint,
-    coalesce(sum(coalesce(c.sl_detail,0)),0)::bigint,
-    coalesce(sum(coalesce(c.tong_detail,0)),0)::numeric,
-    coalesce(sum(coalesce(h.chietkhau,0)),0)::numeric,
-    coalesce(sum(coalesce(h.thanhtoan,0)),0)::numeric,
-    coalesce(sum(coalesce(h.tongsl,0)),0)::bigint,
-    coalesce(
-      sum(
-        coalesce(h.tongsl,0)::bigint
-        - coalesce(c.sl_detail,0)::bigint
-      ),
-      0
-    )::bigint
-  from hd_filtered h
-  left join public.xemhoadon111_ct_cache_v1 c
-    on c.sohd=h.sohd;
-end;
-$$;
-
-
--- =====================================================================
--- 6) PAGED V2 - GIU TEN CU DE TUONG THICH
--- =====================================================================
-create or replace function public.xemhoadon111_v2_paged(
-  p_tu_ngay date,
-  p_den_ngay date,
-  p_loaihd_list text[] default null,
-  p_manv text default null,
-  p_khachhang text default null,
-  p_ghichu text default null,
-  p_sohd text default null,
-  p_tien_tu numeric default null,
-  p_tien_den numeric default null,
-  p_masp_list text[] default null,
-  p_must_contain_all boolean default false,
-  p_limit integer default 2000,
-  p_offset integer default 0
-)
-returns table (
-  ngay date,
-  sohd text,
-  loai_eff text,
-  manv text,
-  tennv text,
-  khachhang text,
-  sl_detail bigint,
-  tong_detail numeric,
-  chietkhau numeric,
-  thanhtoan_v2 numeric,
-  sl_header integer,
-  lech_sl bigint,
-  created_at timestamptz,
-  updated_at timestamp,
-  kiem_nhapkho text,
-  ghichu text
-)
-language plpgsql
-security definer
-set search_path=public
-as $$
-begin
-  if not public.is_admin() then
-    raise exception 'Bạn không có quyền xem báo cáo này';
-  end if;
-
-  return query
-  with
-  masp_norm as (
-    select case
-      when p_masp_list is null then null::text[]
-      else (
-        select array_agg(distinct upper(trim(x)))
-        from unnest(p_masp_list) x
-        where trim(x)<>''
-      )
-    end as a
-  ),
-  loai_norm as (
-    select case
-      when p_loaihd_list is null then null::text[]
-      else (
-        select array_agg(distinct lower(trim(x)))
-        from unnest(p_loaihd_list) x
-        where trim(x)<>''
-      )
-    end as a
-  ),
-  kh_norm as (
-    select
-      nullif(trim(p_khachhang),'') as q_raw,
-      lower(nullif(trim(p_khachhang),'')) as q_l,
-      (
-        select lower(trim(kh.tenkh))
-        from public.dmkhachhang kh
-        where lower(trim(kh.makh))
-          = lower(nullif(trim(p_khachhang),''))
-        limit 1
-      ) as tenkh_l
-  ),
-  hd_filtered as materialized (
-    select
-      hd.sohd,
-      hd.ngay,
-      hd.manv,
-      hd.tennv,
-      hd.khachhang,
-      hd.tongsl,
-      hd.chietkhau,
-      hd.thanhtoan,
-      hd.created_at,
-      hd.updated_at,
-      hd.kiem_nhapkho,
-      hd.ghichu,
-      coalesce(
-        nullif(trim(hd.loaihd),''),
-        split_part(hd.sohd,'_',1)
-      ) as loai_eff
-    from public.hoadon_banle hd
-    cross join loai_norm ln
-    cross join kh_norm kn
-    cross join masp_norm mn
-    where
-      (hd.created_at at time zone 'Asia/Ho_Chi_Minh')::date
-        between p_tu_ngay and p_den_ngay
-
-      and (
-        ln.a is null
-        or lower(
-          coalesce(
-            nullif(trim(hd.loaihd),''),
-            split_part(hd.sohd,'_',1)
-          )
-        )=any(ln.a)
-      )
-
-      and (
-        p_manv is null or trim(p_manv)=''
-        or lower(coalesce(trim(hd.manv),''))
-           like lower('%'||trim(p_manv)||'%')
-      )
-
-      and (
-        kn.q_raw is null
-        or (
-          kn.tenkh_l is not null
-          and lower(coalesce(trim(hd.khachhang),''))
-              in (kn.q_l,kn.tenkh_l)
-        )
-        or (
-          kn.tenkh_l is null
-          and lower(coalesce(trim(hd.khachhang),''))
-              like lower('%'||kn.q_raw||'%')
-        )
-      )
-
-      and (
-        p_sohd is null or trim(p_sohd)=''
-        or lower(hd.sohd)
-           like lower('%'||trim(p_sohd)||'%')
-      )
-
-      and (
-        p_ghichu is null or trim(p_ghichu)=''
-        or lower(coalesce(trim(hd.ghichu),''))
-           like lower('%'||trim(p_ghichu)||'%')
-      )
-
-      and (
-        p_tien_tu is null
-        or coalesce(hd.thanhtoan,0)>=p_tien_tu
-      )
-
-      and (
-        p_tien_den is null
-        or coalesce(hd.thanhtoan,0)<=p_tien_den
-      )
-
-      and (
-        mn.a is null
-        or cardinality(mn.a)=0
-        or (
-          case
-            when p_must_contain_all then
-              (
-                select count(distinct upper(trim(ct.masp)))
-                from public.ct_hoadon_banle ct
-                where ct.sohd=hd.sohd
-                  and upper(trim(ct.masp))=any(mn.a)
-              )=cardinality(mn.a)
-            else
-              exists (
-                select 1
-                from public.ct_hoadon_banle ct
-                where ct.sohd=hd.sohd
-                  and upper(trim(ct.masp))=any(mn.a)
-              )
-          end
-        )
-      )
-  )
-  select
-    h.ngay::date,
-    h.sohd::text,
-    h.loai_eff::text,
-    h.manv::text,
-    h.tennv::text,
-    h.khachhang::text,
-    coalesce(c.sl_detail,0)::bigint,
-    coalesce(c.tong_detail,0)::numeric,
-    coalesce(h.chietkhau,0)::numeric,
-    coalesce(h.thanhtoan,0)::numeric,
-    coalesce(h.tongsl,0)::integer,
-    (
-      coalesce(h.tongsl,0)::bigint
-      - coalesce(c.sl_detail,0)::bigint
-    )::bigint,
-    h.created_at::timestamptz,
-    h.updated_at::timestamp,
-    h.kiem_nhapkho::text,
-    h.ghichu::text
-  from hd_filtered h
-  left join public.xemhoadon111_ct_cache_v1 c
-    on c.sohd=h.sohd
-  order by h.created_at desc,h.sohd desc
-  limit greatest(1,least(coalesce(p_limit,2000),20000))
-  offset greatest(coalesce(p_offset,0),0);
-end;
-$$;
-
-
--- =====================================================================
--- 7) BUNDLE V3
---    1 RPC = SUMMARY + TOTAL_ROWS + PAGE
---    JSONB scalar => khong bi gioi han 1000 row kieu table result.
--- =====================================================================
-create or replace function public.xemhoadon111_v3_bundle(
-  p_tu_ngay date,
-  p_den_ngay date,
-  p_loaihd_list text[] default null,
-  p_manv text default null,
-  p_khachhang text default null,
-  p_ghichu text default null,
-  p_sohd text default null,
-  p_tien_tu numeric default null,
-  p_tien_den numeric default null,
-  p_masp_list text[] default null,
-  p_must_contain_all boolean default false,
-  p_limit integer default 1000,
-  p_offset integer default 0
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path=public
-as $$
-declare
-  v_count record;
-  v_rows jsonb;
-begin
-  if not public.is_admin() then
-    raise exception 'Bạn không có quyền xem báo cáo này';
-  end if;
-
-  select *
-  into v_count
-  from public.xemhoadon111_v2_count(
-    p_tu_ngay,p_den_ngay,p_loaihd_list,p_manv,p_khachhang,
-    p_ghichu,p_sohd,p_tien_tu,p_tien_den,p_masp_list,
-    p_must_contain_all
-  );
-
-  select coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb)
-  into v_rows
-  from public.xemhoadon111_v2_paged(
-    p_tu_ngay,p_den_ngay,p_loaihd_list,p_manv,p_khachhang,
-    p_ghichu,p_sohd,p_tien_tu,p_tien_den,p_masp_list,
-    p_must_contain_all,p_limit,p_offset
-  ) x;
-
-  return jsonb_build_object(
-    'rows',v_rows,
-    'total_rows',coalesce(v_count.total_rows,0),
-    'summary',jsonb_build_object(
-      'total_sl_detail',coalesce(v_count.total_sl_detail,0),
-      'total_tong_detail',coalesce(v_count.total_tong_detail,0),
-      'total_chietkhau',coalesce(v_count.total_chietkhau,0),
-      'total_thanhtoan_v2',coalesce(v_count.total_thanhtoan_v2,0),
-      'total_sl_header',coalesce(v_count.total_sl_header,0),
-      'total_lech_sl',coalesce(v_count.total_lech_sl,0)
-    )
-  );
-end;
-$$;
-
-
--- =====================================================================
--- 8) GROUPED V3 - TONG HOP NGAY / THANG / NAM TREN DB
--- =====================================================================
-create or replace function public.xemhoadon111_v3_grouped(
-  p_tu_ngay date,
-  p_den_ngay date,
-  p_loaihd_list text[] default null,
-  p_manv text default null,
-  p_khachhang text default null,
-  p_ghichu text default null,
-  p_sohd text default null,
-  p_tien_tu numeric default null,
-  p_tien_den numeric default null,
-  p_masp_list text[] default null,
-  p_must_contain_all boolean default false,
-  p_group_by text default 'ngay'
-)
-returns table(
-  ky text,
-  so_hoa_don bigint,
-  tong_sl bigint,
-  tong_thanh_tien numeric,
-  tong_chiet_khau numeric,
-  tong_thanh_toan numeric
-)
-language plpgsql
-security definer
-set search_path=public
-as $$
-begin
-  if not public.is_admin() then
-    raise exception 'Bạn không có quyền xem báo cáo này';
-  end if;
-
-  if lower(coalesce(p_group_by,'ngay'))
-     not in ('ngay','thang','nam') then
-    raise exception 'p_group_by chỉ nhận ngay/thang/nam';
-  end if;
-
-  return query
-  with
-  masp_norm as (
-    select case
-      when p_masp_list is null then null::text[]
-      else (
-        select array_agg(distinct upper(trim(x)))
-        from unnest(p_masp_list) x
-        where trim(x)<>''
-      )
-    end as a
-  ),
-  loai_norm as (
-    select case
-      when p_loaihd_list is null then null::text[]
-      else (
-        select array_agg(distinct lower(trim(x)))
-        from unnest(p_loaihd_list) x
-        where trim(x)<>''
-      )
-    end as a
-  ),
-  kh_norm as (
-    select
-      nullif(trim(p_khachhang),'') as q_raw,
-      lower(nullif(trim(p_khachhang),'')) as q_l,
-      (
-        select lower(trim(kh.tenkh))
-        from public.dmkhachhang kh
-        where lower(trim(kh.makh))
-          = lower(nullif(trim(p_khachhang),''))
-        limit 1
-      ) as tenkh_l
-  ),
-  hd_filtered as materialized (
-    select
-      hd.sohd,
-      hd.created_at,
-      hd.chietkhau,
-      hd.thanhtoan
-    from public.hoadon_banle hd
-    cross join loai_norm ln
-    cross join kh_norm kn
-    cross join masp_norm mn
-    where
-      (hd.created_at at time zone 'Asia/Ho_Chi_Minh')::date
-        between p_tu_ngay and p_den_ngay
-
-      and (
-        ln.a is null
-        or lower(
-          coalesce(
-            nullif(trim(hd.loaihd),''),
-            split_part(hd.sohd,'_',1)
-          )
-        )=any(ln.a)
-      )
-
-      and (
-        p_manv is null or trim(p_manv)=''
-        or lower(coalesce(trim(hd.manv),''))
-           like lower('%'||trim(p_manv)||'%')
-      )
-
-      and (
-        kn.q_raw is null
-        or (
-          kn.tenkh_l is not null
-          and lower(coalesce(trim(hd.khachhang),''))
-              in (kn.q_l,kn.tenkh_l)
-        )
-        or (
-          kn.tenkh_l is null
-          and lower(coalesce(trim(hd.khachhang),''))
-              like lower('%'||kn.q_raw||'%')
-        )
-      )
-
-      and (
-        p_sohd is null or trim(p_sohd)=''
-        or lower(hd.sohd)
-           like lower('%'||trim(p_sohd)||'%')
-      )
-
-      and (
-        p_ghichu is null or trim(p_ghichu)=''
-        or lower(coalesce(trim(hd.ghichu),''))
-           like lower('%'||trim(p_ghichu)||'%')
-      )
-
-      and (
-        p_tien_tu is null
-        or coalesce(hd.thanhtoan,0)>=p_tien_tu
-      )
-
-      and (
-        p_tien_den is null
-        or coalesce(hd.thanhtoan,0)<=p_tien_den
-      )
-
-      and (
-        mn.a is null
-        or cardinality(mn.a)=0
-        or (
-          case
-            when p_must_contain_all then
-              (
-                select count(distinct upper(trim(ct.masp)))
-                from public.ct_hoadon_banle ct
-                where ct.sohd=hd.sohd
-                  and upper(trim(ct.masp))=any(mn.a)
-              )=cardinality(mn.a)
-            else
-              exists (
-                select 1
-                from public.ct_hoadon_banle ct
-                where ct.sohd=hd.sohd
-                  and upper(trim(ct.masp))=any(mn.a)
-              )
-          end
-        )
-      )
-  ),
-  x as (
-    select
-      case lower(p_group_by)
-        when 'ngay' then
-          to_char(
-            h.created_at at time zone 'Asia/Ho_Chi_Minh',
-            'YYYY-MM-DD'
-          )
-        when 'thang' then
-          to_char(
-            h.created_at at time zone 'Asia/Ho_Chi_Minh',
-            'YYYY-MM'
-          )
-        else
-          to_char(
-            h.created_at at time zone 'Asia/Ho_Chi_Minh',
-            'YYYY'
-          )
-      end as ky,
-      coalesce(c.sl_detail,0)::bigint as sl_detail,
-      coalesce(c.tong_detail,0)::numeric as tong_detail,
-      coalesce(h.chietkhau,0)::numeric as chietkhau,
-      coalesce(h.thanhtoan,0)::numeric as thanhtoan
-    from hd_filtered h
-    left join public.xemhoadon111_ct_cache_v1 c
-      on c.sohd=h.sohd
-  )
-  select
-    x.ky::text,
-    count(*)::bigint,
-    sum(x.sl_detail)::bigint,
-    sum(x.tong_detail)::numeric,
-    sum(x.chietkhau)::numeric,
-    sum(x.thanhtoan)::numeric
-  from x
-  group by x.ky
-  order by x.ky;
-end;
-$$;
-
-
--- =====================================================================
--- 9) HEALTH CHECK CACHE
--- =====================================================================
-create or replace function public.xemhoadon111_cache_health_v1()
-returns table(
-  so_hoa_don_cache bigint,
-  so_hoa_don_detail bigint,
-  lech_so_hoa_don bigint,
-  sl_cache bigint,
-  sl_raw bigint,
-  lech_sl bigint,
-  tong_cache numeric,
-  tong_raw numeric,
-  lech_tong numeric
-)
-language sql
-security definer
-set search_path=public
-as $$
-with c as (
-  select
-    count(*)::bigint n,
-    coalesce(sum(sl_detail),0)::bigint sl,
-    coalesce(sum(tong_detail),0)::numeric tong
-  from public.xemhoadon111_ct_cache_v1
-),
-r as (
-  select
-    count(distinct sohd)::bigint n,
-    coalesce(sum(coalesce(soluong,0)),0)::bigint sl,
-    coalesce(sum(
-      (coalesce(gia,0)-coalesce(km,0))
-      * coalesce(soluong,0)
-    ),0)::numeric tong
-  from public.ct_hoadon_banle
-)
-select
-  c.n,r.n,(c.n-r.n)::bigint,
-  c.sl,r.sl,(c.sl-r.sl)::bigint,
-  c.tong,r.tong,(c.tong-r.tong)::numeric
-from c cross join r;
-$$;
-
-
--- =====================================================================
--- 10) QUYEN
--- =====================================================================
-revoke all on public.xemhoadon111_ct_cache_v1 from anon;
-grant select on public.xemhoadon111_ct_cache_v1 to authenticated;
-
-revoke execute on function public.xemhoadon111_v2_count(
-  date,date,text[],text,text,text,text,numeric,numeric,text[],boolean
-) from anon;
-
-grant execute on function public.xemhoadon111_v2_count(
-  date,date,text[],text,text,text,text,numeric,numeric,text[],boolean
-) to authenticated;
-
-revoke execute on function public.xemhoadon111_v2_paged(
-  date,date,text[],text,text,text,text,numeric,numeric,text[],boolean,integer,integer
-) from anon;
-
-grant execute on function public.xemhoadon111_v2_paged(
-  date,date,text[],text,text,text,text,numeric,numeric,text[],boolean,integer,integer
-) to authenticated;
-
-revoke execute on function public.xemhoadon111_v3_bundle(
-  date,date,text[],text,text,text,text,numeric,numeric,text[],boolean,integer,integer
-) from anon;
-
-grant execute on function public.xemhoadon111_v3_bundle(
-  date,date,text[],text,text,text,text,numeric,numeric,text[],boolean,integer,integer
-) to authenticated;
-
-revoke execute on function public.xemhoadon111_v3_grouped(
-  date,date,text[],text,text,text,text,numeric,numeric,text[],boolean,text
-) from anon;
-
-grant execute on function public.xemhoadon111_v3_grouped(
-  date,date,text[],text,text,text,text,numeric,numeric,text[],boolean,text
-) to authenticated;
-
-grant execute on function public.xemhoadon111_rebuild_cache_v1()
-to authenticated;
-
-grant execute on function public.xemhoadon111_cache_health_v1()
-to authenticated;
-
-analyze public.hoadon_banle;
-analyze public.ct_hoadon_banle;
-analyze public.xemhoadon111_ct_cache_v1;
-
-commit;
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Xem hoa don</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+      cursor: pointer;
+    }
+
+    input,
+    select {
+      margin: 4px;
+      padding: 6px;
+    }
+
+    #popup {
+      display: none;
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      right: auto;
+      width: 600px;
+
+      min-width: 350px;
+      min-height: 200px;
+      height: 300px;
+      background: #fff;
+      border: 2px solid #4884ce;
+      overflow: auto;
+      padding: 20px;
+      z-index: 9999;
+      box-shadow: 0 2px 18px rgba(0, 0, 0, 0.2);
+      border-radius: 7px;
+      resize: both;
+      /* Cho phép thay đổi kích thước */
+
+    }
+
+    #popup .drag-header {
+      cursor: move;
+      background: #f3f7fa;
+      font-weight: bold;
+      padding: 8px 10px;
+      margin: -20px -20px 15px -20px;
+      border-bottom: 1px solid #4884ce;
+      border-radius: 7px 7px 0 0;
+      user-select: none;
+    }
+
+    thead tr th {
+      position: sticky;
+      top: 0;
+      background: #f9f9f9;
+      z-index: 2;
+    }
+
+    button.loc-btn {
+      background: #2196f3;
+      color: #fff;
+      border: none;
+      font-weight: bold;
+      padding: 7px 18px;
+      border-radius: 4px;
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    button.loc-btn:hover {
+      background: #1769aa;
+    }
+
+    button.xoa-btn {
+      background: #ffe066;
+      color: #555;
+      border: none;
+      font-weight: bold;
+      padding: 7px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button.xoa-btn:hover {
+      background: #ffe599;
+    }
+
+    .loai-ct-wrap {
+      display: inline-block;
+      position: relative;
+      vertical-align: middle;
+      margin: 4px;
+    }
+
+    .loai-ct-box {
+      display: flex;
+      align-items: stretch;
+      min-width: 230px;
+    }
+
+    #loaiChungTuDisplay {
+      width: 220px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .loai-ct-btn {
+      width: 34px;
+      border: 1px solid #999;
+      border-left: none;
+      background: #f3f3f3;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .loai-ct-btn:hover {
+      background: #e6e6e6;
+    }
+
+    .loai-ct-popup {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 9999;
+      background: #f8f3df;
+      border: 1px solid #c8b98b;
+      border-radius: 4px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+      width: 360px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 2px;
+      padding: 4px 0;
+    }
+
+    .loai-ct-row {
+      display: grid;
+      grid-template-columns: 1fr 28px;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-bottom: 1px solid #eadfb9;
+    }
+
+    .loai-ct-row:last-child {
+      border-bottom: none;
+    }
+
+    .loai-ct-row:hover {
+      background: #efe5bf;
+    }
+
+    .loai-ct-label {
+      border: 1px solid #aaa;
+      background: #fff;
+      padding: 5px 8px;
+      line-height: 1.2;
+      font-size: 13px;
+    }
+
+    .loai-ct-check {
+      width: 16px;
+      height: 16px;
+      justify-self: center;
+    }
+
+    .loai-ct-actions {
+      display: flex;
+      gap: 6px;
+      padding: 6px 8px;
+      border-bottom: 1px solid #d8cfa5;
+      background: #f5ecd0;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .loai-ct-actions button {
+      flex: 1;
+      padding: 5px;
+      font-size: 12px;
+      border: 1px solid #aaa;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .loai-ct-actions button:hover {
+      background: #e6dba8;
+    }
+  
+    /* ===== LICH AM + THOI TIET V1 ===== */
+    .ngay-loc-wrap{
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      margin:4px 2px;
+      vertical-align:middle;
+    }
+    .ngay-loc-wrap input[type="date"]{
+      margin:0;
+    }
+    .btn-lich-am{
+      border:1px solid #7aa7e8;
+      background:#eef6ff;
+      color:#1455a0;
+      border-radius:5px;
+      padding:6px 8px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .btn-lich-am:hover{background:#dceeff}
+    .lich-thoitiet-toggle{
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      margin:4px 8px;
+      padding:5px 8px;
+      border:1px solid #cfd8e3;
+      border-radius:6px;
+      background:#f8fbff;
+      user-select:none;
+    }
+    .ngay-boi-canh{
+      margin-top:3px;
+      font-size:11px;
+      line-height:1.25;
+      color:#47719f;
+      cursor:pointer;
+      white-space:normal;
+    }
+    .ngay-boi-canh:hover{
+      color:#0b57b7;
+      text-decoration:underline;
+    }
+    .ngay-boi-canh .am{
+      color:#d83232;
+      font-weight:700;
+    }
+    .ngay-boi-canh .wx{
+      color:#49667e;
+    }
+
+    #popupBoiCanhNgay{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.35);
+      z-index:12000;
+      align-items:center;
+      justify-content:center;
+      padding:12px;
+    }
+    #popupBoiCanhNgay .bc-card{
+      width:min(520px,96vw);
+      max-height:88vh;
+      overflow:auto;
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 12px 40px rgba(0,0,0,.25);
+      border:1px solid #c9d8eb;
+    }
+    #popupBoiCanhNgay .bc-head{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:12px 14px;
+      font-weight:800;
+      background:#eef5ff;
+      border-bottom:1px solid #d6e2f2;
+      position:sticky;
+      top:0;
+    }
+    #popupBoiCanhNgay .bc-close{
+      margin-left:auto;
+      border:0;
+      background:transparent;
+      font-size:20px;
+      cursor:pointer;
+    }
+    #popupBoiCanhNgay .bc-body{padding:12px 14px}
+    #popupBoiCanhNgay .bc-row{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:12px;
+      padding:7px 0;
+      border-bottom:1px dashed #e1e6ec;
+    }
+    #popupBoiCanhNgay .bc-row b{text-align:right}
+    #popupBoiCanhNgay .bc-history{
+      margin-top:12px;
+      padding:10px;
+      background:#f8fafc;
+      border-radius:8px;
+    }
+
+  </style>
+</head>
+
+<body>
+
+
+  <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
+  <div id="app-container">
+
+    <h2>📋 Tra cứu Hóa Đơn Bán Lẻ</h2>
+
+
+    <span class="ngay-loc-wrap">
+      <label>Từ ngày: <input type="date" id="tuNgay" placeholder="Từ ngày:"></label>
+      <button type="button" class="btn-lich-am" onclick="moLichChoInput('tuNgay')">📅 Lịch âm</button>
+    </span>
+    <span class="ngay-loc-wrap">
+      <label>Đến ngày: <input type="date" id="denNgay" placeholder="Đến ngày:"></label>
+      <button type="button" class="btn-lich-am" onclick="moLichChoInput('denNgay')">📅 Lịch âm</button>
+    </span>
+    <label class="lich-thoitiet-toggle">
+      <input type="checkbox" id="chkHienLichThoiTiet" checked>
+      Hiện lịch âm & thời tiết
+    </label>
+    <label><input type="text" id="locNV" placeholder="Mã nhân viên:"></label>
+    <label><input type="text" id="locKhach" placeholder="Khách hàng:"></label>
+    <label><input type="text" id="locGhiChu" placeholder="Ghi chú (tìm chứa):"></label>
+    <label><input type="number" id="tienTu" style="width:80px" placeholder="Tiền từ:"></label>
+    <label><input type="number" id="tienDen" style="width:80px" placeholder="Tiền đến:"></label>
+    <label> <input type="text" id="locSoHD" placeholder="so hd:"></label>
+    <label><input type="text" id="locMasp" placeholder="tim nhiều Mã SP cách nhau dấu phẩy"> </label>
+    <label style="user-select:none"> <input type="checkbox" id="chkMatchAll"> HĐ phải chứa tất cả mã </label>
+
+
+    <label for="loaiChungTuDisplay">Loại chứng từ:</label>
+
+    <div class="loai-ct-wrap" id="loaiChungTuWrap">
+      <div class="loai-ct-box">
+        <input type="text" id="loaiChungTuDisplay" readonly placeholder="Chọn loại chứng từ" />
+        <button type="button" id="toggleLoaiChungTuPopup" class="loai-ct-btn">▼</button>
+      </div>
+
+      <div id="loaiChungTuPopup" class="loai-ct-popup" style="display:none;">
+        <div id="loaiChungTuPopupList"></div>
+      </div>
+
+      <select id="loaiChungTu" multiple style="display:none;">
+        <option value="bancs1">ban cs1</option>
+        <option value="bancs2">ban cs2</option>
+
+        <option value="bannvcs1">ban nv cs1</option>
+        <option value="bannvcs2">ban nv cs2</option>
+
+        <option value="nmcs1">nhap moi cs1</option>
+        <option value="nmcs2">nhap moi cs2</option>
+
+        <option value="nhaptamcs1">nhap tam cs1</option>
+        <option value="nhaptamcs2">nhap tam cs2</option>
+
+        <option value="xcncs1">xuat cn cs1</option>
+        <option value="xcncs2">xuat cn cs2</option>
+
+        <option value="ncncs1">nhap cn cs1</option>
+        <option value="ncncs2">nhap cn cs2</option>
+
+        <option value="nhapkiemcs1">nhap kiem cs1</option>
+        <option value="nhapkiemcs2">nhap kiem cs2</option>
+
+        <option value="xuatkiemcs1">xuat kiem cs1</option>
+        <option value="xuatkiemcs2">xuat kiem cs2</option>
+
+        <option value="nhapdoics1">nhap doi tu khach cs1</option>
+        <option value="nhapdoics2">nhap doi tu khach cs2</option>
+
+        <option value="tralaincccs1">xuat tra lai ncc cs1</option>
+        <option value="tralaincccs2">xuat tra lai ncc cs2</option>
+
+        <option value="xuathuycs1">xuat huy cs1</option>
+        <option value="xuathuycs2">xuat huy cs2</option>
+      </select>
+    </div>
+
+    <label>
+
+      <select id="loaiTongHop" style="min-width:120px">
+        <option value="chitiet">Chi tiết từng hóa đơn</option>
+        <option value="ngay">Tổng hợp theo ngày</option>
+        <option value="thang">Tổng hợp theo tháng</option>
+        <option value="nam">Tổng hợp theo năm</option>
+      </select>
+    </label>
+
+
+    <button class="loc-btn" onclick="taiDanhSachHoaDon()">🔍 Lọc hóa đơn</button>
+    <button class="xoa-btn" onclick="xoaHoaDonDaChon()">❌ Xóa hóa đơn đã chọn</button>
+    <button id="btnCopyTable" class="loc-btn">📋 Copy bảng</button>
+    <button class="xoa-btn" onclick="boDanhDauKiemNhapKhoDaChon()">🧹 Xóa kiểm nhập kho đã chọn</button>
+
+    <br />
+
+    <div id="tongHopNhanh" style="font-size:1.1em;margin:12px 0;color:#0066cc;font-weight:bold;">
+      Tổng số lượng SP: <span id="tongSoLuong2">0</span> | Tổng tiền thanh toán: <span id="tongTien2">0</span>
+    </div>
+
+
+    <div id="pagingBar" style="margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <label><b>Số dòng/trang:</b></label>
+      <select id="pageSize">
+        <option value="1000" selected>1.000</option>
+        <option value="2000">2.000</option>
+        <option value="5000">5.000</option>
+        <option value="10000">10.000</option>
+      </select>
+
+      <button id="btnPrevPage" type="button">← Trang trước</button>
+      <span id="pageInfo">Trang 1/1</span>
+      <button id="btnNextPage" type="button">Trang sau →</button>
+
+      <span id="dangHienThiInfo" style="color:#666;"></span>
+    </div>
+
+    <table>
+      <thead>
+        <thead>
+          <tr>
+            <th>stt</th>
+            <th><input type="checkbox" id="chonTatCaHD"></th>
+            <th>Số HĐ</th>
+            <th>Ngày Tạo</th>
+            <th>Ngày sửa</th>
+            <th>NV</th>
+            <th>Khách</th>
+            <th>Tổng SL</th>
+            <th>Tổng thành tiền</th>
+            <th>Chiết khấu</th>
+            <th>TT</th>
+            <th>Kiểm nhập kho</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+
+      </thead>
+      <tbody id="dsHoaDon"></tbody>
+    </table>
+
+
+
+    <!-- Popup bối cảnh ngày: lịch âm + thời tiết -->
+    <div id="popupBoiCanhNgay" onclick="if(event.target===this) dongBoiCanhNgay()">
+      <div class="bc-card">
+        <div class="bc-head">
+          <span id="bcNgayTitle">Bối cảnh ngày</span>
+          <button type="button" class="bc-close" onclick="dongBoiCanhNgay()">✕</button>
+        </div>
+        <div class="bc-body" id="bcNgayBody"></div>
+      </div>
+    </div>
+
+    <div id="popup">
+      <div class="drag-header" id="popupHeader">
+        Chi tiết hóa đơn: <span id="sohdCT"></span>
+        <span style="float:right;cursor:pointer;color:#999;" onclick="dongPopup()">✖</span>
+      </div>
+      <button id="btnCopyHD" style="float:right; margin-bottom: 8px;">Copy</button>
+      <table>
+        <thead>
+          <tr>
+            <th>Mã SP</th>
+            <th>Tên SP</th>
+            <th>Size</th>
+            <th>SL</th>
+            <th>dvt</th>
+            <th>Giá</th>
+            <th>KM</th>
+            <th>Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody id="ctHoaDon"></tbody>
+      </table>
+      <button onclick="dongPopup()">Đóng</button>
+    </div>
+
+  </div>
+
+
+  <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
+
+  <script>
+    // ===== Helper: parse ngày theo local (tránh lệch UTC) =====
+    function toLocalDate(ngayStr, isoStr) {
+      if (ngayStr) {
+        const parts = String(ngayStr).split('-').map(Number);
+        const y = parts[0] || 1970;
+        const m = (parts[1] || 1) - 1;
+        const d = parts[2] || 1;
+        return new Date(y, m, d, 12, 0, 0); // 12h để tránh edge UTC/DST
+      }
+      return new Date(isoStr);
+    }
+
+
+
+    let rowDangChon = null;
+
+    // ===== LICH AM + THOI TIET V1 =====
+    const lichThoiTietMap = new Map();
+
+    function escapeHtml111(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function tenThoiTiet111(code) {
+      const m = {
+        0:"Trời quang",1:"Khá quang",2:"Có mây",3:"Nhiều mây",
+        45:"Sương mù",48:"Sương mù",
+        51:"Mưa phùn",53:"Mưa phùn",55:"Mưa phùn",
+        61:"Mưa nhẹ",63:"Mưa",65:"Mưa lớn",
+        80:"Mưa rào",81:"Mưa rào",82:"Mưa rào mạnh",
+        95:"Dông",96:"Dông",99:"Dông mạnh"
+      };
+      return m[Number(code)] || "";
+    }
+
+    function layNgayKey111(hd) {
+      const n = String(hd?.ngay || "").trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(n)) return n;
+
+      const s = String(hd?.created_at || "").trim();
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+      return "";
+    }
+
+    async function taiNenLichThoiTiet(tuNgay, denNgay) {
+      lichThoiTietMap.clear();
+
+      const chk = document.getElementById("chkHienLichThoiTiet");
+      if (!chk?.checked) return;
+      if (!tuNgay && !denNgay) return;
+
+      const tu = tuNgay || denNgay;
+      const den = denNgay || tuNgay;
+      if (!tu || !den || !window.supabase) return;
+
+      const { data, error } = await window.supabase.rpc("rpc_lich_thoitiet_khoang_v1", {
+        p_tu: tu,
+        p_den: den,
+        p_dia_diem: "THAI_NGUYEN"
+      });
+
+      if (error) {
+        console.warn("Không tải được lịch âm/thời tiết:", error.message);
+        return;
+      }
+
+      (data || []).forEach(r => {
+        if (r?.ngay_duong) lichThoiTietMap.set(String(r.ngay_duong), r);
+      });
+    }
+
+    function taoHtmlLichThoiTiet(ngayKey) {
+      const chk = document.getElementById("chkHienLichThoiTiet");
+      if (!chk?.checked || !ngayKey) return "";
+
+      const r = lichThoiTietMap.get(String(ngayKey));
+      if (!r) return "";
+
+      const am = `${r.ngay_am}/${r.thang_am}${r.thang_am_nhuan ? " nhuận" : ""}`;
+      const temp = (r.nhiet_do_min != null && r.nhiet_do_max != null)
+        ? `${Number(r.nhiet_do_min).toFixed(1)}–${Number(r.nhiet_do_max).toFixed(1)}°C`
+        : "";
+      const tt = tenThoiTiet111(r.ma_thoi_tiet);
+      const mua = r.luong_mua != null ? `mưa ${Number(r.luong_mua).toFixed(1)}mm` : "";
+      const weather = [temp, tt, mua].filter(Boolean).join(" • ");
+
+      return `
+        <div class="ngay-boi-canh"
+             onclick="event.stopPropagation(); moBoiCanhNgay('${escapeHtml111(ngayKey)}')"
+             title="Bấm để xem lịch âm và bối cảnh thời tiết">
+          <span class="am">Âm ${escapeHtml111(am)}</span>
+          ${weather ? `<span class="wx"> • ${escapeHtml111(weather)}</span>` : ""}
+        </div>`;
+    }
+
+    async function moLichChoInput(inputId) {
+      try {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        const mod = await import("./scripts/lichAmPicker.js?v=1");
+        const kq = await mod.moLichAmPicker({
+          ngayMacDinh: input.value || null,
+          maDiaDiem: "THAI_NGUYEN",
+          tieuDe: inputId === "tuNgay" ? "Chọn TỪ NGÀY" : "Chọn ĐẾN NGÀY"
+        });
+
+        if (!kq?.ngay_duong) return;
+        input.value = kq.ngay_duong;
+      } catch (e) {
+        console.error(e);
+        alert("Không mở được lịch âm: " + (e?.message || e));
+      }
+    }
+
+    function dongBoiCanhNgay() {
+      const p = document.getElementById("popupBoiCanhNgay");
+      if (p) p.style.display = "none";
+    }
+
+    async function moBoiCanhNgay(ngayKey) {
+      const p = document.getElementById("popupBoiCanhNgay");
+      const title = document.getElementById("bcNgayTitle");
+      const body = document.getElementById("bcNgayBody");
+      if (!p || !title || !body) return;
+
+      let r = lichThoiTietMap.get(String(ngayKey));
+
+      if (!r && window.supabase) {
+        const { data } = await window.supabase.rpc("rpc_lich_thoitiet_khoang_v1", {
+          p_tu: ngayKey,
+          p_den: ngayKey,
+          p_dia_diem: "THAI_NGUYEN"
+        });
+        r = data?.[0] || null;
+        if (r?.ngay_duong) lichThoiTietMap.set(String(r.ngay_duong), r);
+      }
+
+      if (!r) {
+        title.textContent = `Bối cảnh ngày ${ngayKey}`;
+        body.innerHTML = "Chưa có dữ liệu lịch âm/thời tiết cho ngày này.";
+        p.style.display = "flex";
+        return;
+      }
+
+      title.textContent = `${ngayKey.split("-").reverse().join("/")} • Âm ${r.ngay_am}/${r.thang_am}/${r.nam_am}${r.thang_am_nhuan ? " nhuận" : ""}`;
+
+      let lichSu = [];
+      try {
+        const { data } = await window.supabase.rpc("rpc_thoitiet_lichsu_cung_ngay_v1", {
+          p_ngay: ngayKey,
+          p_dia_diem: "THAI_NGUYEN",
+          p_so_nam: 10
+        });
+        lichSu = data || [];
+      } catch (_) {}
+
+      const avg = (arr, key) => {
+        const a = arr.map(x => Number(x?.[key])).filter(Number.isFinite);
+        return a.length ? a.reduce((s,v)=>s+v,0)/a.length : null;
+      };
+
+      const avgTemp = avg(lichSu, "nhiet_do_tb");
+      const chenhlech = (avgTemp != null && r.nhiet_do_tb != null)
+        ? Number(r.nhiet_do_tb) - avgTemp
+        : null;
+
+      const rows = [
+        ["Âm lịch", `${r.ngay_am}/${r.thang_am}/${r.nam_am}${r.thang_am_nhuan ? " (nhuận)" : ""}`],
+        ["Đến Tết", r.so_ngay_den_tet == null ? "—" : `${r.so_ngay_den_tet} ngày`],
+        ["Loại dữ liệu", r.loai_du_lieu || "—"],
+        ["Nhiệt độ TB", r.nhiet_do_tb == null ? "—" : `${Number(r.nhiet_do_tb).toFixed(1)}°C`],
+        ["Thấp / cao", (r.nhiet_do_min == null || r.nhiet_do_max == null) ? "—" : `${Number(r.nhiet_do_min).toFixed(1)} / ${Number(r.nhiet_do_max).toFixed(1)}°C`],
+        ["Độ ẩm", r.do_am_tb == null ? "—" : `${Number(r.do_am_tb).toFixed(0)}%`],
+        ["Mưa", r.luong_mua == null ? "—" : `${Number(r.luong_mua).toFixed(1)} mm`],
+        ["Gió max", r.gio_max == null ? "—" : `${Number(r.gio_max).toFixed(1)} km/h`],
+        ["Trạng thái", tenThoiTiet111(r.ma_thoi_tiet) || "—"],
+        ["Mức tin cậy", r.muc_tin_cay || "—"],
+        ["Nguồn", r.nguon_du_lieu || "—"]
+      ];
+
+      body.innerHTML = rows.map(([k,v]) =>
+        `<div class="bc-row"><span>${escapeHtml111(k)}</span><b>${escapeHtml111(v)}</b></div>`
+      ).join("");
+
+      if (lichSu.length) {
+        body.innerHTML += `
+          <div class="bc-history">
+            <b>10 năm cùng ngày</b><br>
+            Nhiệt độ TB lịch sử: <b>${avgTemp == null ? "—" : avgTemp.toFixed(1) + "°C"}</b>
+            ${chenhlech == null ? "" : `<br>Ngày này so với TB lịch sử: <b>${chenhlech >= 0 ? "+" : ""}${chenhlech.toFixed(1)}°C</b>`}
+          </div>`;
+      }
+
+      p.style.display = "flex";
+    }
+
+
+
+    // ====== V2 PAGING (tối đa 10.000 dòng/trang) ======
+    let currentPage = 1;
+    let totalPages = 1;
+    let lastParamsBase = null;   // params lọc (không gồm limit/offset)
+    let lastTotalRows = 0;
+    let lastLoaiTongHop = "chitiet";
+
+    // Lấy đủ mọi dòng hóa đơn từ Supabase (bằng .range để lấy từng trang, rồi gộp lại)
+    async function getAllHoaDon(query, pageSize = 1000) {
+      let from = 0;
+      let allData = [];
+      while (true) {
+        // nếu đã biết tổng dòng (count) thì có thể dừng sớm
+        if (lastTotalRows && offset >= lastTotalRows) break;
+        let { data, error } = await query.range(from, from + pageSize - 1);
+        if (error) {
+          alert("❌ Lỗi tải hóa đơn: " + error.message);
+          break;
+        }
+        if (data && data.length > 0) {
+          allData = allData.concat(data);
+          if (data.length < pageSize) break; // Trang cuối cùng
+          from += pageSize;
+        } else {
+          break;
+        }
+      }
+      return allData;
+    }
+
+
+    // ... (đoạn createClient, getAllHoaDon, v.v. của bạn giữ nguyên)
+
+    // Lấy tất cả sohd từ ct_hoadon_banle theo 1 mã (dùng phân trang .range giống getAllHoaDon)
+    async function getSohdByOneMasp(masp, pageSize = 2000) {
+      let from = 0;
+      const sohdSet = new Set();
+      while (true) {
+        // nếu đã biết tổng dòng (count) thì có thể dừng sớm
+        if (lastTotalRows && offset >= lastTotalRows) break;
+        const { data, error } = await window.supabase
+          .from('ct_hoadon_banle')
+          .select('sohd, masp')
+          .ilike('masp', `%${masp}%`)
+          .range(from, from + pageSize - 1);
+
+        if (error) { alert('❌ Lỗi tìm sohd theo mã: ' + error.message); break; }
+        if (!data || data.length === 0) break;
+
+        data.forEach(r => { if (r?.sohd) sohdSet.add(r.sohd); });
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return sohdSet;
+    }
+
+    // Lấy tập sohd theo nhiều mã: matchAll=true → giao nhau; matchAll=false → hợp
+    async function getSohdByMaspList(maspList, matchAll = true) {
+      if (!maspList.length) return new Set();
+      const sets = [];
+      for (const m of maspList) {
+        const s = await getSohdByOneMasp(m);
+        sets.push(s);
+      }
+      if (sets.length === 1) return sets[0];
+
+      if (matchAll) {
+        // Giao nhau
+        let inter = sets[0];
+        for (let i = 1; i < sets.length; i++) {
+          const next = sets[i];
+          inter = new Set([...inter].filter(x => next.has(x)));
+          if (inter.size === 0) break;
+        }
+        return inter;
+      } else {
+        // Hợp
+        const uni = new Set();
+        sets.forEach(s => s.forEach(x => uni.add(x)));
+        return uni;
+      }
+    }
+
+    function setDefaultLoaiChungTu() {
+      const select = document.getElementById('loaiChungTu');
+      if (!select) return;
+
+      const macDinh = new Set(['bancs1', 'bancs2']);
+
+      Array.from(select.options).forEach(opt => {
+        opt.selected = macDinh.has(opt.value);
+      });
+
+      updateLoaiChungTuDisplay();
+    }
+
+    function renderLoaiChungTuPopup() {
+      const select = document.getElementById('loaiChungTu');
+      const popupList = document.getElementById('loaiChungTuPopupList');
+      if (!select || !popupList) return;
+
+      let html = `
+  <div class="loai-ct-actions">
+    <button type="button" id="btnSelectAllLoai">✔ Chọn tất cả</button>
+    <button type="button" id="btnUnselectAllLoai">✖ Bỏ chọn</button>
+  </div>
+`;
+
+      Array.from(select.options).forEach(opt => {
+        html += `
+    <div class="loai-ct-row" data-value="${opt.value}">
+      <div class="loai-ct-label">${opt.text}</div>
+      <input type="checkbox" class="loai-ct-check" value="${opt.value}" ${opt.selected ? 'checked' : ''}>
+    </div>
+  `;
+      });
+
+      popupList.innerHTML = html;
+      updateLoaiChungTuDisplay();
+    }
+
+    function updateLoaiChungTuDisplay() {
+      const select = document.getElementById('loaiChungTu');
+      const display = document.getElementById('loaiChungTuDisplay');
+      if (!select || !display) return;
+
+      const selectedTexts = Array.from(select.selectedOptions).map(o => o.text.trim());
+      display.value = selectedTexts.join(', ');
+    }
+
+    function syncLoaiChungTuSelectFromPopup() {
+      const select = document.getElementById('loaiChungTu');
+      if (!select) return;
+
+      const checkedValues = new Set(
+        Array.from(document.querySelectorAll('.loai-ct-check:checked')).map(chk => chk.value)
+      );
+
+      Array.from(select.options).forEach(opt => {
+        opt.selected = checkedValues.has(opt.value);
+      });
+
+      updateLoaiChungTuDisplay();
+    }
+
+    function openLoaiChungTuPopup() {
+      const popup = document.getElementById('loaiChungTuPopup');
+      if (!popup) return;
+      popup.style.display = 'block';
+    }
+
+    function closeLoaiChungTuPopup() {
+      const popup = document.getElementById('loaiChungTuPopup');
+      if (!popup) return;
+      popup.style.display = 'none';
+    }
+
+    function bindLoaiChungTuPopupEvents() {
+      const wrap = document.getElementById('loaiChungTuWrap');
+      const popupList = document.getElementById('loaiChungTuPopupList');
+      const toggleBtn = document.getElementById('toggleLoaiChungTuPopup');
+      const display = document.getElementById('loaiChungTuDisplay');
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const popup = document.getElementById('loaiChungTuPopup');
+          if (!popup) return;
+          popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
+        });
+      }
+
+      if (display) {
+        display.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const popup = document.getElementById('loaiChungTuPopup');
+          if (!popup) return;
+          popup.style.display = (popup.style.display === 'block') ? 'none' : 'block';
+        });
+      }
+
+      if (popupList) {
+        popupList.addEventListener('change', function (e) {
+          if (e.target.classList.contains('loai-ct-check')) {
+            syncLoaiChungTuSelectFromPopup();
+          }
+        });
+      }
+
+      if (popupList) {
+        popupList.addEventListener('click', function (e) {
+          const row = e.target.closest('.loai-ct-row');
+          if (!row) return;
+
+          // Nếu bấm trực tiếp vào checkbox thì để sự kiện change xử lý
+          if (e.target.classList.contains('loai-ct-check')) return;
+
+          const chk = row.querySelector('.loai-ct-check');
+          if (!chk) return;
+
+          chk.checked = !chk.checked;
+          syncLoaiChungTuSelectFromPopup();
+        });
+      }
+
+      document.addEventListener('mousedown', function (e) {
+        if (!wrap?.contains(e.target)) {
+          closeLoaiChungTuPopup();
+        }
+      });
+
+      // ===== Chọn tất cả =====
+      document.addEventListener('click', function (e) {
+        if (e.target.id === 'btnSelectAllLoai') {
+          document.querySelectorAll('.loai-ct-check').forEach(chk => chk.checked = true);
+          syncLoaiChungTuSelectFromPopup();
+        }
+
+        if (e.target.id === 'btnUnselectAllLoai') {
+          document.querySelectorAll('.loai-ct-check').forEach(chk => chk.checked = false);
+          syncLoaiChungTuSelectFromPopup();
+        }
+      });
+
+    }
+
+
+    async function taiDanhSachHoaDon() {
+      const tuNgay = document.getElementById("tuNgay").value;
+      const denNgay = document.getElementById("denNgay").value;
+
+      await taiNenLichThoiTiet(tuNgay, denNgay);
+
+      const nv = document.getElementById("locNV").value.trim().toUpperCase();
+      const sohd = document.getElementById("locSoHD").value.trim();
+      const khach = document.getElementById("locKhach").value.trim();
+      const ghichu = document.getElementById("locGhiChu")?.value.trim() || "";
+
+      const tienTu = Number(document.getElementById("tienTu").value);
+      const tienDen = Number(document.getElementById("tienDen").value);
+
+      const selectLoai = document.getElementById("loaiChungTu");
+      const loaiChungTuArr = Array.from(selectLoai.selectedOptions).map(o => o.value);
+      updateLoaiChungTuDisplay();
+
+      const loaiTongHop = document.getElementById("loaiTongHop")?.value || "chitiet";
+      const tbody = document.getElementById("dsHoaDon");
+      tbody.innerHTML = "";
+
+      const maspRaw = document.getElementById('locMasp').value.trim();
+      const matchAll = document.getElementById('chkMatchAll').checked;
+
+      const maspList = maspRaw
+        ? maspRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+        : null;
+
+      const loaiList = (loaiChungTuArr && loaiChungTuArr.length)
+        ? loaiChungTuArr
+        : null;
+
+      const tienTu2 = (!isNaN(tienTu) && tienTu > 0) ? tienTu : null;
+      const tienDen2 = (!isNaN(tienDen) && tienDen > 0) ? tienDen : null;
+
+      const paramsBase = {
+        p_tu_ngay: tuNgay || null,
+        p_den_ngay: denNgay || null,
+        p_loaihd_list: loaiList,
+        p_manv: nv || null,
+        p_khachhang: khach || null,
+        p_ghichu: ghichu || null,
+        p_sohd: sohd || null,
+        p_tien_tu: tienTu2,
+        p_tien_den: tienDen2,
+        p_masp_list: maspList,
+        p_must_contain_all: !!matchAll
+      };
+
+      lastParamsBase = paramsBase;
+      lastLoaiTongHop = loaiTongHop;
+      currentPage = 1;
+
+      const pagingBar = document.getElementById('pagingBar');
+      const pageSizeSel = document.getElementById('pageSize');
+      const btnPrev = document.getElementById('btnPrevPage');
+      const btnNext = document.getElementById('btnNextPage');
+      const pageInfoEl = document.getElementById('pageInfo');
+      const dangHienThiEl = document.getElementById('dangHienThiInfo');
+
+      const t0 = performance.now();
+
+      // =========================================================
+      // CHI TIET: 1 RPC bundle = tong + tong dong + trang hien tai
+      // =========================================================
+      if (loaiTongHop === 'chitiet') {
+        if (pagingBar) pagingBar.style.display = 'flex';
+        if (pageSizeSel) pageSizeSel.disabled = false;
+        if (btnPrev) btnPrev.disabled = false;
+        if (btnNext) btnNext.disabled = false;
+
+        await loadPage();
+
+        const sec = ((performance.now() - t0) / 1000).toFixed(2);
+        if (dangHienThiEl) {
+          dangHienThiEl.textContent += ` | ${sec}s`;
+        }
+        return;
+      }
+
+      // =========================================================
+      // TONG HOP NGAY / THANG / NAM: DB GROUP TRUC TIEP
+      // KHONG tai tat ca hoa don ve trinh duyet nua.
+      // =========================================================
+      if (pagingBar) pagingBar.style.display = 'flex';
+      if (pageSizeSel) pageSizeSel.disabled = true;
+      if (btnPrev) btnPrev.disabled = true;
+      if (btnNext) btnNext.disabled = true;
+      if (pageInfoEl) pageInfoEl.textContent = 'Tổng hợp: DB';
+      if (dangHienThiEl) dangHienThiEl.textContent = 'Đang tổng hợp...';
+
+      const { data, error } = await window.supabase.rpc('xemhoadon111_v3_grouped', {
+        ...paramsBase,
+        p_group_by: loaiTongHop
+      });
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="13">❌ Lỗi tổng hợp: ${error.message}</td></tr>`;
+        return;
+      }
+
+      const rows = data || [];
+
+      let sumSL = 0, sumTong = 0, sumCK = 0, sumTT = 0;
+
+      rows.forEach((r, idx) => {
+        const ky = String(r.ky || "");
+        let hienThiKy = ky;
+
+        if (loaiTongHop === 'ngay' && /^\d{4}-\d{2}-\d{2}$/.test(ky)) {
+          hienThiKy = ky.split('-').reverse().join('/');
+        } else if (loaiTongHop === 'thang' && /^\d{4}-\d{2}$/.test(ky)) {
+          hienThiKy = ky.slice(5, 7) + "/" + ky.slice(0, 4);
+        }
+
+        const sl = Number(r.tong_sl || 0);
+        const tong = Number(r.tong_thanh_tien || 0);
+        const ck = Number(r.tong_chiet_khau || 0);
+        const tt = Number(r.tong_thanh_toan || 0);
+
+        sumSL += sl;
+        sumTong += tong;
+        sumCK += ck;
+        sumTT += tt;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td></td>
+          <td style="font-weight:600">${Number(r.so_hoa_don || 0).toLocaleString()}</td>
+          <td>
+            ${hienThiKy}
+            ${loaiTongHop === "ngay" ? taoHtmlLichThoiTiet(ky) : ""}
+          </td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td style="text-align:right">${sl.toLocaleString()}</td>
+          <td style="text-align:right">${tong.toLocaleString()}</td>
+          <td style="text-align:right">${ck.toLocaleString()}</td>
+          <td style="text-align:right">${tt.toLocaleString()}</td>
+          <td></td>
+          <td></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const trSum = document.createElement("tr");
+      trSum.style.fontWeight = "bold";
+      trSum.style.background = "#f8f8f8";
+      trSum.innerHTML = `
+        <td colspan="7" style="text-align:right">TỔNG</td>
+        <td style="text-align:right">${sumSL.toLocaleString()}</td>
+        <td style="text-align:right">${sumTong.toLocaleString()}</td>
+        <td style="text-align:right">${sumCK.toLocaleString()}</td>
+        <td style="text-align:right">${sumTT.toLocaleString()}</td>
+        <td></td>
+        <td></td>
+      `;
+      tbody.appendChild(trSum);
+
+      document.getElementById('tongSoLuong2').textContent = sumSL.toLocaleString();
+      document.getElementById('tongTien2').textContent = sumTT.toLocaleString();
+
+      const sec = ((performance.now() - t0) / 1000).toFixed(2);
+      if (dangHienThiEl) {
+        dangHienThiEl.textContent =
+          `Đang hiển thị ${rows.length.toLocaleString()} dòng tổng hợp | SL: ${sumSL.toLocaleString()} | TT: ${sumTT.toLocaleString()} | ${sec}s`;
+      }
+    }
+
+    function renderFromFiltered(filtered, loaiTongHop) {
+      const tbody = document.getElementById('dsHoaDon');
+      // SẮP XẾP THEO SỐ HÓA ĐƠN TỪ NHỎ ĐẾN LỚN (chỉ áp dụng cho chế độ chi tiết)
+      if (loaiTongHop === "chitiet") {
+        filtered.sort((a, b) => {
+
+
+          const s1 = (a.sohd || "").toString();
+          const s2 = (b.sohd || "").toString();
+          return s1.localeCompare(s2); // tăng dần
+        });
+      }
+
+      // ----------- XỬ LÝ TỔNG HỢP THEO NGÀY/THÁNG/NĂM ----------
+      let hienThiData = filtered;
+      if (loaiTongHop !== "chitiet") {
+        const groupMap = new Map();
+        filtered.forEach(hd => {
+          const d = toLocalDate(hd.ngay, hd.created_at);
+
+          let key = "";
+          if (loaiTongHop === "ngay") key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+          if (loaiTongHop === "thang") key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+          if (loaiTongHop === "nam") key = d.getFullYear() + "";
+          if (!groupMap.has(key)) {
+            groupMap.set(key, {
+              sohd: 1,
+              created_at: hd.created_at,
+              tongsl: Number(hd.tongsl || 0),
+              tongthanhtien: Number(hd.tongthanhtien || 0),
+              chietkhau: Number(hd.chietkhau || 0),
+              thanhtoan: Number(hd.thanhtoan || 0)
+            });
+          } else {
+            let obj = groupMap.get(key);
+            obj.sohd += 1;
+            obj.tongsl += Number(hd.tongsl || 0);
+            obj.tongthanhtien += Number(hd.tongthanhtien || 0);
+            obj.chietkhau += Number(hd.chietkhau || 0);
+            obj.thanhtoan += Number(hd.thanhtoan || 0);
+          }
+        });
+        hienThiData = Array.from(groupMap.entries()).map(([key, val]) => {
+          // Định dạng lại ngày/tháng/năm để hiển thị
+          if (loaiTongHop === "ngay") {
+            val.ngay = key;
+            val.created_at = key.split('-').reverse().join('/');
+          }
+          if (loaiTongHop === "thang") val.created_at = key.slice(5, 7) + "/" + key.slice(0, 4);
+          if (loaiTongHop === "nam") val.created_at = key;
+          return val;
+        });
+      }
+
+      // ------------- HÀM ĐỊNH DẠNG NGÀY  -------------
+
+      function normalizePgTimestamp(input) {
+        if (!input) return input;
+        let s = String(input).trim();
+
+        // nếu đang là dạng tổng hợp dd/mm/yyyy, mm/yyyy, yyyy thì giữ nguyên
+        if (
+          /^\d{2}\/\d{2}\/\d{4}$/.test(s) ||
+          /^\d{2}\/\d{4}$/.test(s) ||
+          /^\d{4}$/.test(s)
+        ) return s;
+
+        // Dạng Postgres hay gặp: "2026-01-05 12:45:53.299+00" hoặc "+07"
+        // -> đổi space thành 'T' để Date parse ổn định hơn
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) {
+          s = s.replace(' ', 'T');
+        }
+
+        // Nếu timezone là +00 hoặc +07 (thiếu :00) -> thêm :00
+        // ví dụ: 2026-01-05T12:45:53.299+00  ->  ...+00:00
+        //        2026-01-05T12:45:53+07      ->  ...+07:00
+        s = s.replace(/([+-]\d{2})$/, '$1:00');
+
+        // Nếu không có Z hoặc offset => ép về UTC (tránh bị hiểu như giờ local)
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/(Z|[+-]\d{2}:\d{2})$/.test(s)) {
+          s += 'Z';
+        }
+
+        return s;
+      }
+
+
+      function dinhDangNgay(ngayStr) {
+        if (!ngayStr) return "";
+        const d = new Date(normalizePgTimestamp(ngayStr));
+        return new Intl.DateTimeFormat("vi-VN", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }).format(d);
+      }
+
+      // ------------- HÀM ĐỊNH DẠNG NGÀY GIỜ -------------
+      function dinhDangNgayGio(ngayStr) {
+        if (!ngayStr) return "";
+
+        // Nếu chuỗi có dạng dd/mm/yyyy hoặc mm/yyyy hoặc yyyy thì giữ nguyên (đang tổng hợp)
+        if (
+          /^\d{2}\/\d{2}\/\d{4}$/.test(ngayStr) ||
+          /^\d{2}\/\d{4}$/.test(ngayStr) ||
+          /^\d{4}$/.test(ngayStr)
+        ) return ngayStr;
+
+        const d = new Date(normalizePgTimestamp(ngayStr));
+        const datePart = new Intl.DateTimeFormat("vi-VN", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }).format(d);
+
+        const timePart = new Intl.DateTimeFormat("vi-VN", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).format(d);
+
+        // timePart thường ra "09:18" => đổi thành "09h18"
+        return `${datePart} ${timePart.replace(":", "h")}`;
+      }
+      function dinhDangNgayOnly(ngayStr) {
+        if (!ngayStr) return "";
+        // nếu đã là dd/mm/yyyy thì giữ nguyên
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(ngayStr)) return ngayStr;
+
+        // nhận 'yyyy-mm-dd' hoặc timestamp => lấy phần ngày theo Asia/Ho_Chi_Minh
+        const d = new Date(normalizePgTimestamp(ngayStr));
+        return new Intl.DateTimeFormat("vi-VN", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }).format(d);
+      }
+
+      // ------------- HIỂN THỊ RA BẢNG -------------
+      hienThiData.forEach((hd, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+  <td>${idx + 1}</td>
+  <td><input type="checkbox" class="chonHD" data-sohd="${hd.sohd || ""}"></td>
+  <td>${hd.sohd || ""}</td>
+  <td>
+    ${dinhDangNgayGio(hd.created_at)}
+    ${taoHtmlLichThoiTiet(layNgayKey111(hd))}
+  </td>
+  <td>${dinhDangNgayGio(hd.updated_at)}</td>
+  <td>${hd.manv || ""}</td>
+  <td>${hd.khachhang || ""}</td>
+  <td>${hd.tongsl || 0}</td>
+  <td>${Number(hd.tongthanhtien || 0).toLocaleString()}</td>
+  <td>${Number(hd.chietkhau || 0).toLocaleString()}</td>
+  <td>${Number(hd.thanhtoan || 0).toLocaleString()}</td>
+  <td>${hd.kiem_nhapkho || ""}</td>
+  <td>${hd.ghichu || ""}</td>
+`;
+
+        // Click chọn dòng => tô vàng + hiện popup chi tiết
+        tr.addEventListener('click', async (ev) => {
+          // nếu bấm vào checkbox thì bỏ qua
+          if (ev.target && (ev.target.matches('input[type="checkbox"]') || ev.target.closest('input[type="checkbox"]'))) return;
+
+          if (rowDangChon && rowDangChon !== tr) rowDangChon.style.background = '';
+          rowDangChon = tr;
+          tr.style.background = '#ffe08a';
+
+          if (hd && hd.sohd) {
+            await xemChiTiet(hd.sohd);
+          }
+        });
+
+        // tránh click checkbox làm kích hoạt chọn dòng
+        const chk = tr.querySelector('input.chonHD');
+        if (chk) chk.addEventListener('click', (e) => e.stopPropagation());
+        tr.onclick = (e) => {
+          if (e.target.tagName !== 'INPUT' && loaiTongHop === "chitiet") {
+            document.querySelectorAll("#dsHoaDon tr").forEach(tr2 => tr2.style.backgroundColor = "");
+            tr.style.backgroundColor = "#ffe066";
+            rowDangChon = tr;
+            xemChiTiet(hd.sohd);
+          }
+        };
+
+        // Double-click vào cột Số HĐ để mở trang hóa đơn tương ứng
+        const sohdCell = tr.cells[2]; // cột thứ 3 = Số HĐ
+        if (sohdCell) {
+          sohdCell.style.cursor = 'pointer';
+          sohdCell.style.textDecoration = 'underline';
+
+          sohdCell.ondblclick = (ev) => {
+            ev.stopPropagation();           // không kích hoạt click chọn dòng
+            if (!hd.sohd) return;
+            openInvoiceBySohd(hd.sohd);     // hàm sẽ khai báo ở dưới
+          };
+        }
+
+        tbody.appendChild(tr);
+      });
+
+      // ------------- DÒNG TỔNG CUỐI BẢNG -------------
+      let tongSL = 0, tongThanhTien = 0, tongChietKhau = 0, tongTien = 0;
+      hienThiData.forEach(hd => {
+        tongSL += Number(hd.tongsl || 0);
+        tongThanhTien += Number(hd.tongthanhtien || 0);
+        tongChietKhau += Number(hd.chietkhau || 0);
+        tongTien += Number(hd.thanhtoan || 0);
+      });
+      // (v2) KHÔNG ghi đè tổng chuẩn (đã lấy từ RPC count)
+      // Nếu cần, chỉ dùng để hiển thị tổng của TRANG hiện tại:
+      const info = document.getElementById('dangHienThiInfo');
+      if (info) info.textContent = `Đang hiển thị ${hienThiData.length.toLocaleString()} hóa đơn của trang này | SL trang: ${tongSL.toLocaleString()} | TT trang: ${tongTien.toLocaleString()}`;
+      const trTong = document.createElement("tr");
+      trTong.style.fontWeight = "bold";
+      trTong.style.background = "#f8f8f8";
+      trTong.innerHTML = `
+          <td colspan="7" style="text-align:right">TỔNG</td>
+          <td id="tongSoLuong">${tongSL.toLocaleString()}</td>
+          <td id="tongThanhTien">${tongThanhTien.toLocaleString()}</td>
+          <td id="tongChietKhau">${tongChietKhau.toLocaleString()}</td>
+          <td id="tongTien">${tongTien.toLocaleString()}</td>
+          <td></td>
+        `;
+      tbody.appendChild(trTong);
+
+      // GẮN SỰ KIỆN CHỌN TẤT CẢ
+      setTimeout(() => {
+        const chonTatCa = document.getElementById('chonTatCaHD');
+        if (chonTatCa) {
+          chonTatCa.onclick = function () {
+            const checkboxes = document.querySelectorAll('.chonHD');
+            checkboxes.forEach(cb => { cb.checked = chonTatCa.checked; });
+          };
+        }
+      }, 10);
+    }
+
+
+    async function loadPage() {
+      if (!lastParamsBase) return;
+
+      const pageSize = Number(document.getElementById('pageSize')?.value || 1000);
+      const baseOffset = (currentPage - 1) * pageSize;
+
+      const infoEl = document.getElementById('dangHienThiInfo');
+      if (infoEl) infoEl.textContent = `Đang tải trang ${currentPage}...`;
+
+      const t0 = performance.now();
+
+      const { data, error } = await window.supabase.rpc('xemhoadon111_v3_bundle', {
+        ...lastParamsBase,
+        p_limit: pageSize,
+        p_offset: baseOffset
+      });
+
+      if (error) {
+        const tbody = document.getElementById('dsHoaDon');
+        if (tbody) tbody.innerHTML =
+          `<tr><td colspan="13">❌ Lỗi bundle: ${error.message}</td></tr>`;
+        return;
+      }
+
+      const pack = Array.isArray(data) ? (data[0] || {}) : (data || {});
+      const rows = pack.rows || [];
+      const summary = pack.summary || {};
+
+      lastTotalRows = Number(pack.total_rows || 0);
+      totalPages = Math.max(1, Math.ceil(lastTotalRows / pageSize));
+
+      document.getElementById('tongSoLuong2').textContent =
+        Number(summary.total_sl_detail || 0).toLocaleString();
+
+      document.getElementById('tongTien2').textContent =
+        Number(summary.total_thanhtoan_v2 || 0).toLocaleString();
+
+      const filtered = rows.map(r => ({
+        sohd: r.sohd,
+        ngay: r.ngay,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        manv: r.manv,
+        tennv: r.tennv,
+        khachhang: r.khachhang,
+        ghichu: r.ghichu,
+        kiem_nhapkho: r.kiem_nhapkho,
+
+        tongsl: r.sl_detail,
+        tongthanhtien: r.tong_detail,
+        chietkhau: r.chietkhau,
+        thanhtoan: r.thanhtoan_v2 ?? 0,
+
+        tongsl_header: r.sl_header,
+        lech_sl: r.lech_sl
+      }));
+
+      renderFromFiltered(filtered, 'chitiet');
+
+      const pageInfo = document.getElementById('pageInfo');
+      if (pageInfo) {
+        pageInfo.textContent =
+          `Trang ${currentPage}/${totalPages} (Tổng: ${lastTotalRows.toLocaleString()} HĐ)`;
+      }
+
+      const sec = ((performance.now() - t0) / 1000).toFixed(2);
+      if (infoEl) {
+        infoEl.textContent =
+          `Đang hiển thị ${filtered.length.toLocaleString()} hóa đơn của trang này | ${sec}s`;
+      }
+    }
+
+    function bindPagingEvents() {
+      const prev = document.getElementById('btnPrevPage');
+      const next = document.getElementById('btnNextPage');
+      const pageSizeEl = document.getElementById('pageSize');
+
+      if (prev) prev.addEventListener('click', async () => {
+        if (currentPage <= 1) return;
+        currentPage -= 1;
+        await loadPage();
+      });
+
+      if (next) next.addEventListener('click', async () => {
+        if (currentPage >= totalPages) return;
+        currentPage += 1;
+        await loadPage();
+      });
+
+      if (pageSizeEl) pageSizeEl.addEventListener('change', async () => {
+        // đổi số dòng/trang -> về trang 1
+        currentPage = 1;
+        const ps = Number(pageSizeEl.value || 10000);
+        totalPages = Math.max(1, Math.ceil((lastTotalRows || 0) / ps));
+        const pageInfo = document.getElementById('pageInfo');
+        if (pageInfo) pageInfo.textContent = `Trang ${currentPage}/${totalPages}`;
+        if (lastParamsBase) await loadPage();
+      });
+    }
+
+    async function copyText111(text) {
+      const t = String(text || "").trim();
+      if (!t) return false;
+
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(t);
+          return true;
+        }
+      } catch (e) { }
+
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = t;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return !!ok;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    async function xemChiTiet(sohd) {
+      const popupEl = document.getElementById("popup");
+      popupEl.style.display = "block";
+
+      // Neo popup chi tiết ở góc trên bên trái
+      popupEl.style.top = "10px";
+      popupEl.style.left = "10px";
+      popupEl.style.right = "auto";
+
+      document.getElementById("sohdCT").textContent = sohd;
+
+      // Bấm số hóa đơn thì copy luôn số HĐ
+      await copyText111(sohd);
+
+      const { data, error } = await window.supabase
+        .from("ct_hoadon_banle")
+        .select("*")
+        .eq("sohd", sohd);
+
+      const tbody = document.getElementById("ctHoaDon");
+      tbody.innerHTML = "";
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="8">Lỗi: ${error.message}</td></tr>`;
+        return;
+      }
+
+      (data || []).forEach(row => {
+        const tt = (Number(row.gia || 0) - Number(row.km || 0)) * Number(row.soluong || 0);
+        const masp = String(row.masp || "").trim().toUpperCase();
+
+        const tr = document.createElement("tr");
+        tr.dataset.masp = masp;
+        tr.title = "Bấm để copy mã SP và xem nhanh tồn kho";
+        tr.style.cursor = "pointer";
+
+        tr.innerHTML = `
+      <td>${row.masp || ""}</td>
+      <td>${row.tensp || ""}</td>
+      <td>${row.size || ""}</td>
+      <td>${row.soluong || ""}</td>
+      <td>${row.dvt || ""}</td>
+      <td>${row.gia || ""}</td>
+      <td>${row.km || ""}</td>
+      <td>${tt.toLocaleString("vi-VN")}</td>
+    `;
+
+        tr.addEventListener("click", async function (e) {
+          e.stopPropagation();
+
+          const m = this.dataset.masp;
+          if (!m) return;
+
+          await copyText111(m);
+
+          if (typeof window.stockQuickPopup === "function") {
+            window.stockQuickPopup(m);
+          } else {
+            alert("Chưa load stockQuickPopup.js nên không mở được popup tồn kho.");
+          }
+        });
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function dongPopup() {
+      document.getElementById("popup").style.display = "none";
+    }
+
+    async function xoaHoaDonDaChon() {
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      if (checkboxes.length === 0) {
+        alert("❌ Bạn chưa chọn hóa đơn nào để xóa.");
+        return;
+      }
+
+      // Gọi xác thực và chỉ xóa nếu xác thực thành công
+      kiemTraNhanVienTruocKhiXoa(async function () {
+
+        let dsXoa = [];
+        let doiUngList = [];
+        let coCCN = false;
+
+        for (const cb of checkboxes) {
+          const sohd = cb.getAttribute("data-sohd");
+          if (!sohd) continue;
+
+          const prefix = (sohd.split("_")[0] || "").toLowerCase();
+
+          // Chỉ chặn hóa đơn bán lẻ khi có tên khách hàng
+          if (prefix === "bancs1" || prefix === "bancs2") {
+            const tr = cb.closest("tr");
+
+            // Cột thứ 7 của bảng là cột Khách, chỉ số cells[6]
+            const tenKhach = String(
+              tr?.cells?.[6]?.textContent || ""
+            ).trim();
+
+            if (tenKhach) {
+              alert(
+                "❌ Không thể xóa hóa đơn " + sohd + ".\n\n" +
+                "Hóa đơn này có tên khách hàng: " + tenKhach + "\n" +
+                "Việc xóa có thể ảnh hưởng đến lịch sử tích điểm.\n\n" +
+                "Bạn chỉ được SỬA hóa đơn này."
+              );
+              return;
+            }
+          }
+
+          if (prefix.startsWith("xcn") || prefix.startsWith("ncn")) {
+            coCCN = true;
+            const so = sohd.split("_")[1];
+            let doiUng = "";
+            if (prefix === "xcncs1") doiUng = `ncncs2_${so}`;
+            if (prefix === "xcncs2") doiUng = `ncncs1_${so}`;
+            if (prefix === "ncncs1") doiUng = `xcncs2_${so}`;
+            if (prefix === "ncncs2") doiUng = `xcncs1_${so}`;
+
+            dsXoa.push(sohd);
+            if (doiUng) {
+              dsXoa.push(doiUng);
+              doiUngList.push(`${sohd} ↔ ${doiUng}`);
+            }
+          } else {
+            dsXoa.push(sohd);
+          }
+        }
+
+        dsXoa = [...new Set(dsXoa)]; // loại trùng
+
+        let xacNhan = false;
+        if (coCCN) {
+          xacNhan = confirm(
+            "⚠️ Hóa đơn chuyển chi nhánh phải xóa kèm cả hóa đơn đối ứng.\n" +
+            "Các cặp sẽ bị xóa:\n" +
+            doiUngList.join("\n") +
+            "\n\nBạn có đồng ý xóa toàn bộ không?"
+          );
+        } else {
+          xacNhan = confirm("Bạn có chắc chắn muốn xóa các hóa đơn đã chọn?");
+        }
+        if (!xacNhan) return;
+
+        // Thực hiện xóa (Bước 6: KHÔNG delete trực tiếp, chỉ gọi RPC)
+        const reason = prompt("Nhập lý do xóa (bắt buộc):", "Xóa nhầm") || "";
+        if (!reason.trim()) {
+          alert("❌ Bạn chưa nhập lý do xóa.");
+          return;
+        }
+
+        let okCount = 0;
+        let fail = [];
+
+        for (const sohd of dsXoa) {
+          const { data, error } = await window.supabase.rpc("admin_delete_invoice_hard_to_trash", {
+            p_sohd: sohd,
+            p_reason: reason.trim(),
+            p_source: location.pathname
+          });
+
+          if (error) {
+            fail.push(`${sohd}: ${error.message}`);
+            continue;
+          }
+          okCount++;
+        }
+
+        if (fail.length) {
+          alert(
+            `⚠️ Xóa được ${okCount}/${dsXoa.length} hóa đơn.\n` +
+            `Các hóa đơn lỗi:\n- ` + fail.join("\n- ")
+          );
+        } else {
+          alert(`✅ Đã xóa thành công ${okCount} hóa đơn (bao gồm đối ứng nếu có).`);
+        }
+
+        await taiDanhSachHoaDon(); // refresh lại bảng
+
+      });
+    }
+
+    async function boDanhDauKiemNhapKhoDaChon() {
+      const checkboxes = document.querySelectorAll(".chonHD:checked");
+      if (checkboxes.length === 0) {
+        alert("❌ Bạn chưa chọn hóa đơn nào.");
+        return;
+      }
+
+      kiemTraNhanVienTruocKhiXoa(async function () {
+        let dsSua = [];
+        let fail = [];
+        let okCount = 0;
+
+        for (const cb of checkboxes) {
+          const sohd = cb.getAttribute("data-sohd");
+          if (!sohd) continue;
+          dsSua.push(sohd);
+        }
+
+        dsSua = [...new Set(dsSua)];
+
+        const xacNhan = confirm(
+          `Bạn có chắc muốn xóa trạng thái kiểm nhập kho của ${dsSua.length} hóa đơn đã chọn không?\n\n` +
+          `Sau thao tác này, các phiếu sẽ trở về trạng thái CHƯA kiểm kho để có thể kiểm tra lại.`
+        );
+        if (!xacNhan) return;
+
+        const reason = prompt("Nhập lý do bỏ đánh dấu kiểm nhập kho:", "Kiểm lại phiếu") || "";
+
+        for (const sohd of dsSua) {
+          const { data, error } = await window.supabase.rpc("admin_clear_kiem_nhapkho", {
+            p_sohd: sohd,
+            p_reason: reason.trim(),
+            p_source: location.pathname
+          });
+
+          if (error) {
+            fail.push(`${sohd}: ${error.message}`);
+            continue;
+          }
+
+          okCount++;
+        }
+
+        if (fail.length) {
+          alert(
+            `⚠️ Đã bỏ đánh dấu được ${okCount}/${dsSua.length} hóa đơn.\n` +
+            `Các hóa đơn lỗi:\n- ` + fail.join("\n- ")
+          );
+        } else {
+          alert(`✅ Đã xóa trạng thái kiểm nhập kho thành công ${okCount} hóa đơn.`);
+        }
+
+        await taiDanhSachHoaDon();
+      });
+    }
+
+    // ✅ KHÔNG auto-load dữ liệu khi vừa mở trang.
+    // Chỉ sau khi xác nhận ADMIN thành công mới được gọi taiDanhSachHoaDon().
+    async function initFiltersFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const sohdQ = (params.get('sohd') || '').trim();
+
+      // Nếu có ?sohd= từ trang báo cáo:
+      if (sohdQ) {
+        // điền số HĐ vào ô lọc
+        document.getElementById('locSoHD').value = sohdQ;
+
+        // đoán prefix để tick loại chứng từ tương ứng (bancs1/bancs2/bannvcs...):
+        const prefix = sohdQ.split('_')[0];  // vd: "bancs1"
+        const selectLoai = document.getElementById("loaiChungTu");
+        // clear lựa chọn cũ
+        Array.from(selectLoai.options).forEach(o => (o.selected = false));
+        // chọn đúng option nếu có
+        const opt = Array.from(selectLoai.options).find(o => o.value === prefix);
+        if (opt) opt.selected = true;
+        updateLoaiChungTuDisplay();
+
+        // lấy ngày của hóa đơn -> đặt từ/đến đúng ngày đó
+        try {
+          const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+          const sb = createClient(
+            'https://rddjrmbyftlcvrgzlyby.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdX...cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
+          );
+          const { data } = await sb.from('hoadon_banle').select('ngay').eq('sohd', sohdQ).maybeSingle();
+          if (data?.ngay) {
+            const d = new Date(data.ngay);
+            const yyyy_mm_dd = d.toISOString().slice(0, 10);
+            document.getElementById('tuNgay').value = yyyy_mm_dd;
+            document.getElementById('denNgay').value = yyyy_mm_dd;
+          } else {
+            document.getElementById('tuNgay').value = '';
+            document.getElementById('denNgay').value = '';
+          }
+        } catch (e) { /* bỏ qua nếu lỗi nhỏ */ }
+        return;
+      }
+
+      // Không có ?sohd= -> mặc định ngày hôm nay + mặc định loại chứng từ bán cs1, cs2
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('tuNgay').value = today;
+      document.getElementById('denNgay').value = today;
+
+      const selectLoai = document.getElementById("loaiChungTu");
+      if (selectLoai) {
+        Array.from(selectLoai.options).forEach(o => {
+          o.selected =
+            o.value === 'bancs1' ||
+            o.value === 'bancs2';
+        });
+        updateLoaiChungTuDisplay();
+      }
+    }
+
+    function bindEventsAfterAdmin() {
+      const el = document.getElementById("loaiTongHop");
+      if (el) el.onchange = taiDanhSachHoaDon;
+
+      const chkLich = document.getElementById("chkHienLichThoiTiet");
+      if (chkLich) {
+        chkLich.onchange = () => taiDanhSachHoaDon();
+      }
+
+      bindPagingEvents();
+    }
+
+
+
+    // DRAG POPUP (kéo popup)
+    (function dragPopup() {
+      let popup = document.getElementById('popup');
+      let header = document.getElementById('popupHeader');
+      let offsetX, offsetY, isDragging = false;
+      if (header) {
+        header.onmousedown = function (e) {
+          isDragging = true;
+          let rect = popup.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+          document.onmousemove = function (ev) {
+            if (isDragging) {
+              popup.style.left = (ev.clientX - offsetX) + 'px';
+              popup.style.top = (ev.clientY - offsetY) + 'px';
+              popup.style.right = 'auto';
+            }
+          };
+          document.onmouseup = function () { isDragging = false; document.onmousemove = null; };
+        };
+      }
+    })();
+
+    // Đóng popup bằng phím ESC
+    document.addEventListener('keydown', function (e) {
+      if (e.key === "Escape") {
+        dongPopup();
+        dongBoiCanhNgay();
+      }
+    });
+
+
+    document.getElementById('btnCopyHD').onclick = function () {
+      // Chỉ copy dữ liệu CHI TIẾT (tbody), không copy dòng tiêu đề (thead)
+      const rows = Array.from(document.querySelectorAll("#ctHoaDon tr"));
+      if (!rows.length) return alert("Không có dữ liệu chi tiết để copy!");
+
+      const text = rows.map(tr =>
+        Array.from(tr.cells).map(td => (td.innerText || "").replace(/\n/g, " ")).join("\t")
+      ).join("\n");
+
+      navigator.clipboard.writeText(text).then(() => {
+        //alert("✅ Đã copy chi tiết hóa đơn (không gồm tiêu đề). Ctrl+V để dán vào Excel!");
+      });
+    };
+
+
+    document.getElementById('btnCopyTable').onclick = function () {
+      let table = document.querySelector("table");
+      if (!table) return alert("Không tìm thấy bảng dữ liệu!");
+
+      // Xác định vị trí cột checkbox
+      let ths = Array.from(table.querySelectorAll("thead tr th"));
+      let colChon = ths.findIndex(th => th.innerText.toLowerCase().includes("chon"));
+
+      // Lấy tiêu đề (bỏ cột chon nếu có)
+      let headers = ths.map((th, i) => i !== colChon ? th.innerText.replace(/\n/g, " ") : null)
+        .filter(x => x !== null).join('\t');
+
+      // Lấy từng dòng dữ liệu
+      let rows = Array.from(table.querySelectorAll("tbody#dsHoaDon tr"));
+      if (!rows.length) return alert("Không có dữ liệu để copy!");
+
+      let lines = rows
+        .filter(tr => !tr.textContent.includes("Không có dữ liệu"))
+        .map(tr => Array.from(tr.cells)
+          .map((td, i) => i !== colChon ? td.innerText.replace(/\n/g, " ") : null)
+          .filter(x => x !== null).join('\t')
+        );
+
+      let all = [headers].concat(lines).join('\n');
+
+      navigator.clipboard.writeText(all).then(() => {
+        //alert("✅ Đã copy toàn bộ bảng dữ liệu! Ctrl+V để dán vào Excel.");
+      });
+    };
+
+
+  </script>
+
+  <script>
+    // 👉 Hàm mở popup xác thực + kiểm tra quyền xóa hóa đơn
+    async function kiemTraNhanVienTruocKhiXoa(callbackSauXacThuc) {
+      (async () => {
+        // Không hỏi lại mật khẩu nữa: chỉ Confirm thao tác và để RLS quyết định quyền
+        const ok = confirm("Bạn có chắc muốn XÓA hóa đơn đã chọn không?");
+        if (!ok) return;
+
+        // Phải có session đăng nhập
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            alert("Phiên đăng nhập đã hết. Vui lòng đăng xuất và đăng nhập lại.");
+            return;
+          }
+
+          // (Khuyến nghị) kiểm tra quyền nhanh qua RPC is_admin() nếu có
+          try {
+            const { data: isAdmin, error } = await supabase.rpc('is_admin');
+            if (!error && isAdmin !== true) {
+              alert("Bạn không có quyền xóa hóa đơn.");
+              return;
+            }
+          } catch (e) {
+            // Nếu chưa có RPC is_admin() thì bỏ qua, để RLS tự chặn khi DELETE
+          }
+
+          if (typeof callbackSauXacThuc === 'function') {
+            await callbackSauXacThuc({ user_id: user.id, is_admin: true });
+          }
+        } catch (e) {
+          alert("Không kiểm tra được phiên đăng nhập. Vui lòng tải lại trang.");
+        }
+      })();
+    }
+  </script>
+
+
+  <!-- Popup xác thực nhân viên -->
+  <div id="popupXacThucNV"
+    style="display:none;position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid #2196f3;box-shadow:0 2px 18px #2196f322;padding:24px;z-index:10000;border-radius:8px;min-width:300px;">
+    <h3 style="color:#1976d2;margin:0 0 10px 0;">Xác thực nhân viên</h3>
+    <div style="margin-bottom:10px;">
+      <label>Mã NV: <input type="password" id="maNVCheck" style="width:120px"></label>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label>Mật khẩu: <input type="password" id="matkhauNVCheck" style="width:120px"></label>
+    </div>
+    <div id="msgCheckNV" style="color:#ad3a2b;margin:8px 0;min-height:18px;font-size:0.97em"></div>
+    <button id="btnKiemTraNV"
+      style="background:#1976d2;color:#fff;border:none;padding:8px 22px;border-radius:4px;font-weight:bold;">Kiểm
+      tra</button>
+    <button onclick="document.getElementById('popupXacThucNV').style.display='none'"
+      style="margin-left:8px;">Hủy</button>
+  </div>
+
+
+  <script>
+    function openInvoiceBySohd(sohd) {
+      if (!sohd) return;
+
+      const prefix = sohd.split('_')[0].toLowerCase();  // ví dụ: bancs1, nmcs2, xcncs2_...
+      let url = null;
+
+      // Bán lẻ thường
+      if (prefix === 'bancs1') {
+        url = `banlemtcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'bancs2') {
+        url = `banlemtcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Bán nhân viên
+      else if (prefix === 'bannvcs1') {
+        url = `bannvcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'bannvcs2') {
+        url = `bannvcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Nhập mới
+      else if (prefix === 'nmcs1') {
+        url = `nhapmoimtcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'nmcs2') {
+        url = `nhapmoimtcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Chuyển chi nhánh (2v1) – dùng cùng trang CCN2V1
+      else if (prefix === 'xcncs1' || prefix === 'ncncs1') {
+        url = `ccn2v1cs1.html?sohd=${encodeURIComponent(sohd)}&loaihd=${prefix}&diadiem=cs1`;
+      } else if (prefix === 'xcncs2' || prefix === 'ncncs2') {
+        url = `ccn2v1cs2.html?sohd=${encodeURIComponent(sohd)}&loaihd=${prefix}&diadiem=cs2`;
+      }
+
+      // Nhập kiểm, xuất kiểm
+      else if (prefix === 'nhapkiemcs1') {
+        url = `nhapkiemcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'nhapkiemcs2') {
+        url = `nhapkiemcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      } else if (prefix === 'xuatkiemcs1') {
+        url = `xuatkiemcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'xuatkiemcs2') {
+        url = `xuatkiemcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Nhập tạm
+      else if (prefix === 'nhaptamcs1') {
+        url = `nhaptamcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'nhaptamcs2') {
+        url = `nhaptamcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Nhập đổi từ khách
+      else if (prefix === 'nhapdoics1') {
+        url = `nhapdoimtcs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'nhapdoics2') {
+        url = `nhapdoimtcs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Xuất hủy
+      else if (prefix === 'xuathuycs1') {
+        url = `xuathuycs1.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs1`;
+      } else if (prefix === 'xuathuycs2') {
+        url = `xuathuycs2.html?sohd=${encodeURIComponent(sohd)}&diadiem=cs2`;
+      }
+
+      // Chưa cấu hình
+      if (!url) {
+        alert("Chưa cấu hình mở hóa đơn cho loại: " + prefix);
+        return;
+      }
+
+      window.open(`https://banle-js.vercel.app/${url}`, "_blank");
+    }
+
+  </script>
+
+  <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
+  <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
+  <script type="module">
+    import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+
+    khoiTaoDangNhapDungChung({
+      appContainerId: 'app-container',
+
+      // Không khóa cứng cơ sở, để nhân viên chọn CS1 / CS2
+      macDinhDiaDiem: '',
+      tuDongKhoaCoSo: false,
+
+      // API backend đăng nhập (tự theo cơ sở chọn: cs1/cs2)
+      loginApiPath: (cs) => `/api/login-${cs}`,
+
+      async onLoginSuccess(nv, ctx) {
+        // ✅ Check quyền admin bằng RPC (nguồn thật) => không tin localStorage / nv.is_admin
+        let isAdmin = false;
+        try {
+          const { data, error } = await window.supabase.rpc('is_admin');
+          isAdmin = (!error && data === true);
+        } catch (e) {
+          isAdmin = false;
+        }
+
+        if (!isAdmin) {
+          alert('Bạn không phải ADMIN, không được phép xem báo cáo này.');
+          const login = document.getElementById('login-container');
+          if (login) login.style.display = 'none';
+          const app = document.getElementById('app-container') || document.body;
+          app.style.display = '';
+          app.innerHTML = `
+            <h2 style="color:#c00; margin-top:20px; font-weight:bold;">🚫 Bạn không có quyền xem báo cáo này</h2>
+          `;
+          return false; // chặn không cho show app theo flow mặc định
+        }
+
+        // ✅ Admin OK -> lúc này mới init filter + bind events + load data
+        await initFiltersFromUrl();
+        renderLoaiChungTuPopup();
+        bindLoaiChungTuPopupEvents();
+        bindEventsAfterAdmin();
+
+        // Gắn popup tìm mã sản phẩm (chỉ admin)
+        try {
+          const { attachMaspPopup } = await import('./scripts/productSearchModule.js');
+          const elMasp = document.getElementById('locMasp');
+          if (elMasp) {
+            attachMaspPopup({
+              supabase: window.supabase,
+              maspInput: elMasp,
+              onPick: (p) => {
+                const cur = (elMasp.value || '').trim();
+                const v = (p?.masp || '').trim();
+                if (!v) return;
+                const set = new Set(
+                  cur ? cur.split(',').map(s => s.trim().toUpperCase()).filter(Boolean) : []
+                );
+                set.add(v.toUpperCase());
+                elMasp.value = Array.from(set).join(',');
+              }
+            });
+          }
+        } catch (e) {
+          // nếu module popup không tồn tại thì bỏ qua
+        }
+
+        // Gắn dropdown gợi ý KHÁCH HÀNG (giống cách mã sản phẩm)
+        try {
+          const { attachKhachPopup } = await import('./scripts/popupKhachhang.js');
+          const elKh = document.getElementById('locKhach');
+
+          if (elKh) {
+            attachKhachPopup({
+              supabase: window.supabase,
+              khInput: elKh,
+              onPick: (kh) => {
+                // chọn xong tự load luôn (giống bạn đang làm)
+                taiDanhSachHoaDon();
+              }
+            });
+          }
+        } catch (e) {
+          // nếu module không tồn tại thì bỏ qua
+        }
+
+        await taiDanhSachHoaDon();
+        return true;
+      }
+    });
+
+    function toLocalDate(ngayStr, isoStr) {
+      // ngayStr dạng YYYY-MM-DD (hoặc YYYY-MM) => tự dựng Date local để không bị lệch ngày do UTC
+      if (ngayStr) {
+        const parts = String(ngayStr).split('-').map(Number);
+        const y = parts[0] || 1970;
+        const m = (parts[1] || 1) - 1;
+        const d = parts[2] || 1;
+        return new Date(y, m, d, 12, 0, 0); // 12h để tránh DST/UTC edge
+      }
+      return new Date(isoStr);
+    }
+
+  </script>
+
+  <script src="./scripts/stockQuickPopup.js"></script>
+  <!---//Thêm “hàng rào” đăng nhập chuẩn auth cho xemhoadon111.html-->
+
+</body>
+
+</html>
