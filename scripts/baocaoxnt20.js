@@ -431,7 +431,7 @@ function renderTable(rows) {
             colHeaders: columns.map(c => c.title),
             stretchH: 'all',
             licenseKey: 'non-commercial-and-evaluation',
-            height: 'calc(100vh - 280px)',
+            height: Math.max(320, container.clientHeight || (window.innerHeight - 150)),
             manualColumnResize: true,
             manualRowResize: true,
             contextMenu: true,
@@ -463,9 +463,33 @@ function renderTable(rows) {
 
         attachMaspLinkHandler(container);
     } else {
-        hotInstance.updateSettings({ data: rows });
+        hotInstance.updateSettings({
+            data: rows,
+            height: Math.max(320, container.clientHeight || (window.innerHeight - 150))
+        });
+        hotInstance.render();
     }
 }
+
+
+// XNT20: giữ chiều cao bảng luôn khớp phần còn lại của viewport.
+function resizeXnt20TableToViewport() {
+    const container = document.getElementById("hot");
+    if (!container || !hotInstance) return;
+    const h = Math.max(320, Math.floor(container.clientHeight || (window.innerHeight - 150)));
+    hotInstance.updateSettings({ height: h });
+    hotInstance.render();
+}
+
+let xnt20ResizeTimer = null;
+window.addEventListener("resize", () => {
+    clearTimeout(xnt20ResizeTimer);
+    xnt20ResizeTimer = setTimeout(resizeXnt20TableToViewport, 100);
+});
+
+window.addEventListener("orientationchange", () => {
+    setTimeout(resizeXnt20TableToViewport, 180);
+});
 
 // ===================== SUMMARY =====================
 function renderSummary(rows) {
@@ -485,19 +509,33 @@ function renderSummary(rows) {
         return a;
     }, { dauky: 0, nhapmua: 0, tongnhap: 0, xuatban_cs1: 0, xuatchi_cs1: 0, xuatban_cs2: 0, xuatchi_cs2: 0, xuatban: 0, tongxuat: 0, cuoiky: 0 });
 
-    el.innerHTML = `<span style="background:#e3f2fd;padding:7px 14px;border-radius:8px;">
-  <b>TỔNG:</b>
-  Đầu kỳ: <b>${s.dauky.toLocaleString('vi-VN')}</b> |
-  Nhập mua: <b>${s.nhapmua.toLocaleString('vi-VN')}</b> |
-  Tổng nhập: <b>${s.tongnhap.toLocaleString('vi-VN')}</b> |
-  Xuất bán CS1: <b>${s.xuatban_cs1.toLocaleString('vi-VN')}</b> |
-  Xuất CN CS2: <b>${s.xuatchi_cs1.toLocaleString('vi-VN')}</b> |   <!-- ⬅️ MỚI -->
-  Xuất bán CS2: <b>${s.xuatban_cs2.toLocaleString('vi-VN')}</b> |
-  Xuất CN CS1: <b>${s.xuatchi_cs2.toLocaleString('vi-VN')}</b> |   <!-- ⬅️ MỚI -->
-  Xuất bán (gộp): <b>${s.xuatban.toLocaleString('vi-VN')}</b> |
-  Tổng xuất: <b>${s.tongxuat.toLocaleString('vi-VN')}</b> |
-  Cuối kỳ: <b>${s.cuoiky.toLocaleString('vi-VN')}</b>
-</span>`;
+    el.innerHTML = `
+      <div class="xnt-summary-box">
+        <div class="xnt-summary-row">
+          <span class="xnt-summary-label">TỔNG:</span>
+          <span class="xnt-summary-item">Đầu kỳ: <b>${s.dauky.toLocaleString('vi-VN')}</b></span>
+          <span class="xnt-summary-sep">|</span>
+          <span class="xnt-summary-item">Nhập mua: <b>${s.nhapmua.toLocaleString('vi-VN')}</b></span>
+          <span class="xnt-summary-sep">|</span>
+          <span class="xnt-summary-item">Tổng nhập: <b>${s.tongnhap.toLocaleString('vi-VN')}</b></span>
+          <span class="xnt-summary-sep">|</span>
+          <span class="xnt-summary-item">Xuất bán CS1: <b>${s.xuatban_cs1.toLocaleString('vi-VN')}</b></span>
+          <span class="xnt-summary-sep">|</span>
+          <span class="xnt-summary-item">Xuất CN CS2: <b>${s.xuatchi_cs1.toLocaleString('vi-VN')}</b></span>
+        </div>
+        <div class="xnt-summary-row">
+          <span class="xnt-summary-label">&nbsp;</span>
+          <span class="xnt-summary-item">Xuất bán CS2: <b>${s.xuatban_cs2.toLocaleString('vi-VN')}</b></span>
+          <span class="xnt-summary-sep">|</span>
+          <span class="xnt-summary-item">Xuất CN CS1: <b>${s.xuatchi_cs2.toLocaleString('vi-VN')}</b></span>
+          <span class="xnt-summary-sep">|</span>
+          <span class="xnt-summary-item">Xuất bán (gộp): <b>${s.xuatban.toLocaleString('vi-VN')}</b></span>
+          <span class="xnt-summary-sep">|</span>
+          <span class="xnt-summary-item">Tổng xuất: <b>${s.tongxuat.toLocaleString('vi-VN')}</b></span>
+          <span class="xnt-summary-sep">|</span>
+          <span class="xnt-summary-item">Cuối kỳ: <b>${s.cuoiky.toLocaleString('vi-VN')}</b></span>
+        </div>
+      </div>`;
 
 }
 
@@ -689,6 +727,7 @@ window.taiBaoCaoXNT = function () {
             renderPreviewForMasps(masps);
 
             renderTable(rows);
+            requestAnimationFrame(() => resizeXnt20TableToViewport());
             renderSummary(bundle.summary ? [bundle.summary] : []);
 
             if (rows.length) {
