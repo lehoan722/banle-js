@@ -431,6 +431,9 @@ function renderTable(rows) {
             colHeaders: columns.map(c => c.title),
             stretchH: 'all',
             licenseKey: 'non-commercial-and-evaluation',
+            selectionMode: 'single',
+            currentRowClassName: 'xnt-current-row',
+            outsideClickDeselects: false,
             height: Math.max(320, container.clientHeight || (window.innerHeight - 150)),
             manualColumnResize: true,
             manualRowResize: true,
@@ -453,9 +456,16 @@ function renderTable(rows) {
                 // nothing
             },
             afterOnCellMouseDown(event, coords, TD) {
-                openStockQuickForRowCol(coords.row, coords.col);
+                if (!coords || coords.row == null || coords.row < 0) return;
+                // Click cot Ma hang => StockQuickPopup.
+                if (coords.col === 0) {
+                    openStockQuickForRowCol(coords.row, coords.col);
+                }
             },
-            afterSelectionEnd(r) { showPreviewForRow(r); }
+            afterSelectionEnd(r) {
+                if (r == null || r < 0) return;
+                showPreviewForRow(r);
+            }
         });
 
 
@@ -472,13 +482,26 @@ function renderTable(rows) {
 }
 
 
-// XNT20: giữ chiều cao bảng luôn khớp phần còn lại của viewport.
+// XNT20 V2: Handsontable tu quan ly overlay; chi cap chieu cao qua API.
 function resizeXnt20TableToViewport() {
     const container = document.getElementById("hot");
     if (!container || !hotInstance) return;
-    const h = Math.max(320, Math.floor(container.clientHeight || (window.innerHeight - 150)));
-    hotInstance.updateSettings({ height: h });
+
+    const pager = document.getElementById("pagination");
+    const pagerH = pager ? Math.ceil(pager.getBoundingClientRect().height) : 56;
+    const rect = container.getBoundingClientRect();
+
+    // Khi workspace sticky o top, rect.top gan 0.
+    // Tru pagination + mot khoang an toan nho.
+    const available = Math.max(
+        320,
+        Math.floor(window.innerHeight - Math.max(0, rect.top) - pagerH - 4)
+    );
+
+    container.style.height = `${available}px`;
+    hotInstance.updateSettings({ height: available });
     hotInstance.render();
+    hotInstance.refreshDimensions?.();
 }
 
 let xnt20ResizeTimer = null;
@@ -490,6 +513,52 @@ window.addEventListener("resize", () => {
 window.addEventListener("orientationchange", () => {
     setTimeout(resizeXnt20TableToViewport, 180);
 });
+
+
+// ===================== AN / HIEN ANH 40% =====================
+function applyXnt20ImagePanelState(showImages, persist = true) {
+    const grid = document.querySelector(".main-grid");
+    const cb = document.getElementById("toggleImagePanelCheckbox");
+    if (!grid) return;
+
+    grid.classList.toggle("images-hidden", !showImages);
+    if (cb) cb.checked = !!showImages;
+
+    if (persist) {
+        localStorage.setItem("xnt20_show_images_40", showImages ? "1" : "0");
+    }
+
+    requestAnimationFrame(() => {
+        resizeXnt20TableToViewport();
+        hotInstance?.render?.();
+        hotInstance?.refreshDimensions?.();
+    });
+}
+
+function initXnt20ImagePanelToggle() {
+    const cb = document.getElementById("toggleImagePanelCheckbox");
+    if (!cb) return;
+
+    const saved = localStorage.getItem("xnt20_show_images_40");
+    const showImages = saved === null ? true : saved === "1";
+    applyXnt20ImagePanelState(showImages, false);
+
+    cb.addEventListener("change", () => {
+        applyXnt20ImagePanelState(cb.checked, true);
+    });
+}
+
+document.addEventListener("DOMContentLoaded", initXnt20ImagePanelToggle);
+
+
+let xnt20ScrollRaf = 0;
+window.addEventListener("scroll", () => {
+    if (xnt20ScrollRaf) return;
+    xnt20ScrollRaf = requestAnimationFrame(() => {
+        xnt20ScrollRaf = 0;
+        if (hotInstance) resizeXnt20TableToViewport();
+    });
+}, { passive: true });
 
 // ===================== SUMMARY =====================
 function renderSummary(rows) {
