@@ -511,6 +511,170 @@
         .xnt-filter-actions button {
             flex: 1; padding: 6px; font-size: 12px; border: 1px solid #aaa; background: #fff; cursor: pointer;
         }
+
+        /* =========================================================
+           XNT20 - GIAO DIEN CUON TU NHIEN + BANG STICKY TOAN MAN HINH
+           - Header / bo loc cuon di theo trang
+           - Khi bang cham dinh viewport, bang bam tren dinh
+           - Tieu de cot Handsontable luon nam tren cung cua bang
+           - Khong con nut mui ten an/hien header ben phai
+           ========================================================= */
+
+        html {
+            height: auto !important;
+            min-height: 100% !important;
+            overflow-y: auto !important;
+        }
+
+        body {
+            height: auto !important;
+            min-height: 100vh !important;
+            min-height: 100dvh !important;
+            display: block !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            overscroll-behavior-y: auto !important;
+        }
+
+        #app-container {
+            min-height: 100vh;
+        }
+
+        /* Bo nut an/hien header cu */
+        #headerToggle {
+            display: none !important;
+        }
+
+        /* Header/filter se cuon tu nhien ra khoi man hinh */
+        .filters-row {
+            position: relative !important;
+            z-index: 2;
+            background: #fff;
+        }
+
+        /* Cum bang + anh bam tren dinh sau khi nguoi dung cuon het bo loc */
+        .main-grid {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 50;
+            display: flex !important;
+            gap: 6px !important;
+            height: calc(100dvh - 58px) !important;
+            min-height: 420px;
+            background: #fff;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden;
+        }
+
+        .grid-left,
+        .grid-right {
+            min-height: 0 !important;
+            height: 100% !important;
+        }
+
+        .grid-left {
+            flex: 0 0 60% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+        }
+
+        .grid-right {
+            flex: 0 0 40% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+        }
+
+        /* Tong hop tach thanh 2 hang ro rang, khong de chu de len nhau */
+        #xntSummary {
+            flex: 0 0 auto;
+            margin: 0 0 6px 0 !important;
+            padding: 0 !important;
+            color: #2a394d;
+            line-height: 1.35 !important;
+            position: relative;
+            z-index: 60;
+            background: #fff;
+        }
+
+        #xntSummary .xnt-summary-box {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 6px 10px;
+            border: 1px solid #cfe0f4;
+            border-radius: 6px;
+            background: #eaf4ff;
+            box-sizing: border-box;
+        }
+
+        #xntSummary .xnt-summary-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            column-gap: 8px;
+            row-gap: 2px;
+            min-height: 24px;
+            white-space: normal;
+        }
+
+        #xntSummary .xnt-summary-label {
+            font-weight: 800;
+            margin-right: 6px;
+        }
+
+        #xntSummary .xnt-summary-item {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 3px;
+            white-space: nowrap;
+        }
+
+        #xntSummary .xnt-summary-sep {
+            color: #91a4b8;
+        }
+
+        /* HOT chiem toan bo chieu cao con lai */
+        #hot {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            margin-top: 0 !important;
+            overflow: hidden !important;
+        }
+
+        #hot > .handsontable {
+            height: 100% !important;
+        }
+
+        #hot .ht_master .wtHolder {
+            overflow: auto !important;
+        }
+
+        /* Anh nhanh cung chiem het chieu cao ben phai */
+        #previewTitle {
+            flex: 0 0 auto;
+            margin: 2px 0 4px 0;
+        }
+
+        #previewGrid {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            overflow: auto !important;
+        }
+
+        /* Pagination van co dinh cuoi man hinh */
+        #pagination {
+            z-index: 1200 !important;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                height: calc(100dvh - 54px) !important;
+            }
+        }
+
 </style>
 </head>
 
@@ -614,10 +778,7 @@
 
             </div>
         </div>
-
-        <button id="headerToggle" aria-label="Ẩn/hiện tiêu đề" title="Ẩn tiêu đề" onclick="toggleHeader()">⮜</button>
-
-        <!-- NÚT THU GỌN HEADER giữ nguyên -->
+<!-- NÚT THU GỌN HEADER giữ nguyên -->
 
         <div class="main-grid">
             <!-- Cột trái: Bảng (60%) -->
@@ -669,29 +830,7 @@
                 <div class="cap" id="imgCaption"></div>
             </div>
         </div>
-
-        <script>
-            (function initHeaderToggle() {
-                const btn = document.getElementById('headerToggle');
-                if (!btn) return;
-
-                // Khôi phục trạng thái lần trước
-                const saved = localStorage.getItem('xnt16HeaderCollapsed') === '1';
-                if (saved) document.body.classList.add('header-collapsed');
-                btn.textContent = saved ? '⮞' : '⮜';
-                btn.title = saved ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
-
-                window.toggleHeader = function () {
-                    const collapsed = document.body.classList.toggle('header-collapsed');
-                    btn.textContent = collapsed ? '⮞' : '⮜';
-                    btn.title = collapsed ? 'Hiện tiêu đề' : 'Ẩn tiêu đề';
-                    localStorage.setItem('xnt16HeaderCollapsed', collapsed ? '1' : '0');
-                    // Nếu bạn có Handsontable, có thể gọi render lại (tùy): window.hot?.render?.();
-                };
-            })();
-        </script>
-
-    </div>
+</div>
 
       <!-- HÀNG RÀO ĐĂNG NHẬP CHUẨN CHO BÁO CÁO XNT17 -->
   <script type="module">
