@@ -675,6 +675,224 @@
             }
         }
 
+
+        /* =========================================================
+           XNT20 FULLSCREEN V2
+           Muc tieu:
+           - cuon het bo loc + tong hop ra khoi man hinh
+           - khi den bang: CHI tieu de cot nam sat dinh viewport
+           - bang/anh chiem het chieu cao con lai
+           - khong can nut an/hien header cu
+           - giu day du hit-test / click / selection cua Handsontable
+           ========================================================= */
+
+        html {
+            height: auto !important;
+            min-height: 100% !important;
+            overflow-y: auto !important;
+        }
+
+        body {
+            height: auto !important;
+            min-height: 100vh !important;
+            min-height: 100dvh !important;
+            display: block !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            overscroll-behavior-y: auto !important;
+        }
+
+        #app-container {
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        #headerToggle {
+            display: none !important;
+        }
+
+        /* Bo loc va tong hop la noi dung binh thuong: cuon di hoan toan */
+        .filters-row,
+        #xntSummary {
+            position: relative !important;
+            top: auto !important;
+            z-index: 2 !important;
+        }
+
+        #xntSummary {
+            margin: 6px 8px 8px !important;
+        }
+
+        /* Workspace du lieu cao DUNG 1 viewport.
+           Nho vay body co du do dai de workspace cuon len sat top=0. */
+        .main-grid {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 80 !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            min-height: 500px !important;
+            display: flex !important;
+            gap: 6px !important;
+            margin: 0 !important;
+            padding: 0 0 58px 0 !important; /* nhường chỗ cho pagination fixed */
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            background: #fff !important;
+        }
+
+        .grid-left,
+        .grid-right {
+            height: 100% !important;
+            min-height: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        .grid-left {
+            flex: 0 0 60% !important;
+            min-width: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+        }
+
+        .grid-right {
+            flex: 0 0 calc(40% - 6px) !important;
+            min-width: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+        }
+
+        /* Khi tat anh: bang an het chieu ngang */
+        .main-grid.images-hidden .grid-right {
+            display: none !important;
+        }
+
+        .main-grid.images-hidden .grid-left {
+            flex: 1 1 100% !important;
+            width: 100% !important;
+        }
+
+        /* HOT la flex item full-height.
+           KHONG ep .handsontable height bang CSS:
+           Handsontable can tu quan ly overlay de click/toa do dung. */
+        #hot {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            pointer-events: auto !important;
+        }
+
+        #hot .handsontable,
+        #hot .wtHolder,
+        #hot .wtHider,
+        #hot .wtSpreader,
+        #hot table,
+        #hot td,
+        #hot th {
+            pointer-events: auto !important;
+        }
+
+        #hot .ht_master .wtHolder {
+            overflow: auto !important;
+        }
+
+        /* Hover: nhin ro ca dong chuot dang di qua */
+        #hot .handsontable tbody tr:hover td {
+            background: #eaf4ff !important;
+            filter: none !important;
+        }
+
+        /* Dong dang duoc chon */
+        #hot .handsontable td.xnt-current-row {
+            background: #dceeff !important;
+        }
+
+        /* O hien tai noi bat hon dong */
+        #hot .handsontable td.current {
+            background: #cfe8ff !important;
+        }
+
+        /* Khong de mau xen ke che selection */
+        #hot .handsontable td.area,
+        #hot .handsontable td.highlight {
+            background: #e4f2ff !important;
+        }
+
+        #previewTitle {
+            flex: 0 0 auto !important;
+            margin: 2px 0 4px !important;
+        }
+
+        #previewGrid {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            overflow: auto !important;
+        }
+
+        .xnt-image-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            padding: 4px 7px;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            background: #f8fafc;
+        }
+
+        /* Summary 2 dong ro rang */
+        #xntSummary .xnt-summary-box {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 6px 10px;
+            border: 1px solid #cfe0f4;
+            border-radius: 6px;
+            background: #eaf4ff;
+            box-sizing: border-box;
+        }
+
+        #xntSummary .xnt-summary-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            column-gap: 8px;
+            row-gap: 2px;
+            min-height: 24px;
+            line-height: 1.35;
+        }
+
+        #xntSummary .xnt-summary-label {
+            font-weight: 800;
+            margin-right: 6px;
+        }
+
+        #xntSummary .xnt-summary-item {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 3px;
+            white-space: nowrap;
+        }
+
+        #xntSummary .xnt-summary-sep {
+            color: #91a4b8;
+        }
+
+        #pagination {
+            z-index: 1400 !important;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                height: 100dvh !important;
+                padding-bottom: 56px !important;
+            }
+        }
+
 </style>
 </head>
 
@@ -759,6 +977,10 @@
                     <label style="font-weight:normal;">
                         <input type="checkbox" id="locNCCCheckbox" style="vertical-align:middle;"> Lọc theo nhà cung cấp
                     </label>
+                    <label class="xnt-image-toggle" style="font-weight:normal;">
+                        <input type="checkbox" id="toggleImagePanelCheckbox" checked style="vertical-align:middle;">
+                        Hiện ảnh 40%
+                    </label>
 
                     <!-- Nút xem báo cáo -->
                     <button class="main" onclick="taiBaoCaoXNT()">Xem bao cao</button>
@@ -780,10 +1002,12 @@
         </div>
 <!-- NÚT THU GỌN HEADER giữ nguyên -->
 
+        <div id="xntSummary" style="margin:6px 8px; font-weight:bold; color:#2a394d;"></div>
+
         <div class="main-grid">
             <!-- Cột trái: Bảng (60%) -->
             <div class="grid-left">
-                <div id="xntSummary" style="margin:10px 0; font-weight:bold; color:#2a394d;"></div>
+                
                 <div id="hot" style="margin-top: 4px;"></div>
 
                 <div id="pagination" style="margin-top:10px; text-align:center;">
