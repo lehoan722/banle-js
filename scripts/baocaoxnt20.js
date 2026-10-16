@@ -460,18 +460,14 @@ function renderTable(rows) {
             },
 
             afterRender() {
-                // nothing
+                window.dispatchEvent(new Event("xnt20-hot-rendered"));
             },
             afterOnCellMouseDown(event, coords, TD) {
                 if (!coords || coords.row == null || coords.row < 0) return;
                 showPreviewForRow(coords.row);
-                if (coords.col === 0) {
-                    openStockQuickForRowCol(coords.row, coords.col);
-                }
             },
             afterOnCellMouseOver(event, coords, TD) {
-                if (!coords || coords.row == null || coords.row < 0) return;
-                paintXnt20HoverRow(coords.row);
+                // V5 dùng document capture để không phụ thuộc overlay Handsontable.
             },
             afterSelectionEnd(r) {
                 if (r == null || r < 0) return;
@@ -624,6 +620,121 @@ function initXnt20GridPointerBehavior() {
 
     hotRoot.addEventListener("mouseleave", clearXnt20HoverRow);
 }
+
+
+// =====================================================================
+// XNT20 V5 - TUONG TAC BANG BAT O CAPTURE PHASE
+// =====================================================================
+(function initXnt20CaptureInteractions() {
+    if (window.__xnt20CaptureV5Ready) return;
+    window.__xnt20CaptureV5Ready = true;
+
+    let pendingHoverRow = -1;
+    let paintedHoverRow = -1;
+    let hoverRAF = 0;
+
+    function hotRoot() {
+        return document.getElementById("hot");
+    }
+
+    function coordsFromTarget(target) {
+        if (!hotInstance || !target) return null;
+        const root = hotRoot();
+        if (!root || !root.contains(target)) return null;
+        const td = target.closest?.("td");
+        if (!td || !root.contains(td)) return null;
+        try {
+            const coords = hotInstance.getCoords(td);
+            if (!coords || coords.row == null || coords.row < 0) return null;
+            return { td, row: coords.row, col: coords.col };
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function clearHoverRows() {
+        const root = hotRoot();
+        if (!root) return;
+        root.querySelectorAll("tr.xnt20-hover-row").forEach(tr => tr.classList.remove("xnt20-hover-row"));
+        paintedHoverRow = -1;
+    }
+
+    function paintHoverRow(row) {
+        if (!hotInstance || row == null || row < 0) {
+            clearHoverRows();
+            return;
+        }
+        if (paintedHoverRow === row) return;
+        const root = hotRoot();
+        if (!root) return;
+        clearHoverRows();
+        root.querySelectorAll(".handsontable tbody tr").forEach(tr => {
+            const td = tr.querySelector("td");
+            if (!td) return;
+            try {
+                const c = hotInstance.getCoords(td);
+                if (c && c.row === row) tr.classList.add("xnt20-hover-row");
+            } catch (_) {}
+        });
+        paintedHoverRow = row;
+    }
+
+    function scheduleHover(row) {
+        pendingHoverRow = row;
+        if (hoverRAF) return;
+        hoverRAF = requestAnimationFrame(() => {
+            hoverRAF = 0;
+            paintHoverRow(pendingHoverRow);
+        });
+    }
+
+    document.addEventListener("pointermove", (ev) => {
+        const root = hotRoot();
+        if (!root || !root.contains(ev.target)) {
+            scheduleHover(-1);
+            return;
+        }
+        const c = coordsFromTarget(ev.target);
+        scheduleHover(c ? c.row : -1);
+    }, true);
+
+    document.addEventListener("mousemove", (ev) => {
+        const root = hotRoot();
+        if (!root || !root.contains(ev.target)) return;
+        const c = coordsFromTarget(ev.target);
+        if (c) scheduleHover(c.row);
+    }, true);
+
+    document.addEventListener("click", (ev) => {
+        const c = coordsFromTarget(ev.target);
+        if (!c || c.col !== 0) return;
+        const masp = getMaspAtVisualRow(c.row);
+        if (!masp) return;
+        setTimeout(() => {
+            if (typeof window.stockQuickPopup === "function") {
+                window.stockQuickPopup(masp);
+            } else {
+                console.error("[XNT20 V5] stockQuickPopup chưa tồn tại", { masp, type: typeof window.stockQuickPopup });
+            }
+        }, 0);
+    }, true);
+
+    document.addEventListener("pointerout", (ev) => {
+        const root = hotRoot();
+        if (!root) return;
+        const fromInside = root.contains(ev.target);
+        const toInside = ev.relatedTarget && root.contains(ev.relatedTarget);
+        if (fromInside && !toInside) scheduleHover(-1);
+    }, true);
+
+    window.addEventListener("xnt20-hot-rendered", () => {
+        if (paintedHoverRow >= 0) {
+            const r = paintedHoverRow;
+            paintedHoverRow = -1;
+            scheduleHover(r);
+        }
+    });
+})();
 
 // ===================== SUMMARY =====================
 function renderSummary(rows) {
