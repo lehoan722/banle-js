@@ -1,3 +1,4 @@
+console.info('[XNT20] TUONGTAC V6 HITTEST loaded');
 
 // scripts/baocaoXNT20.js
 import { supabase } from "./supabaseClient.js";
@@ -392,22 +393,10 @@ function maspTextRenderer(instance, td, row, col, prop, value) {
 
 
 function attachMaspLinkHandler(container) {
-    if (!container || container.dataset.maspPopupBound === "1") return;
-    container.dataset.maspPopupBound = "1";
-    container.addEventListener("click", (e) => {
-        const el = e.target.closest(".masp-link");
-        if (!el || !container.contains(el)) return;
-        e.preventDefault();
-        e.stopPropagation();
-        const masp = String(el.dataset.masp || "").trim().toUpperCase();
-        if (!masp) return;
-        if (typeof window.stockQuickPopup === "function") {
-            window.stockQuickPopup(masp);
-        } else {
-            console.warn("[XNT20] Chưa load stockQuickPopup.js");
-        }
-    });
+    // V6: click Ma hang duoc xu ly bang hit-test theo toa do.
+    // Giu ham de khong thay doi cau truc renderTable.
 }
+
 
 // ===================== RENDER TABLE =====================
 function renderTable(rows) {
@@ -459,6 +448,17 @@ function renderTable(rows) {
                 return props;
             },
 
+            afterRenderer(TD, row, col, prop, value, cellProperties) {
+                // V6: ghi toa do visual truc tiep vao TD.
+                // Khong phu thuoc getCoords / overlay mapping cua Handsontable.
+                if (TD && row >= 0 && col >= 0) {
+                    TD.dataset.xntRow = String(row);
+                    TD.dataset.xntCol = String(col);
+                    if (col === 0) {
+                        TD.dataset.xntMasp = String(value || '').trim().toUpperCase();
+                    }
+                }
+            },
             afterRender() {
                 window.dispatchEvent(new Event("xnt20-hot-rendered"));
             },
@@ -623,115 +623,165 @@ function initXnt20GridPointerBehavior() {
 
 
 // =====================================================================
-// XNT20 V5 - TUONG TAC BANG BAT O CAPTURE PHASE
+// XNT20 V6 - HIT TEST THEO TOA DO MAN HINH
+// ---------------------------------------------------------------------
+// Ly do:
+// Handsontable co master table + clone/overlay. Sau khi doi layout sticky,
+// event.target / getCoords co the tro vao lop clone khong trung voi TD data.
+// V6 khong dua vao event bubbling va cung khong dua vao getCoords.
+// Moi TD duoc gan data-xnt-row / data-xnt-col ngay trong afterRenderer.
+// Mousemove/click dung elementsFromPoint + bounding-rect fallback de tim TD that.
 // =====================================================================
-(function initXnt20CaptureInteractions() {
-    if (window.__xnt20CaptureV5Ready) return;
-    window.__xnt20CaptureV5Ready = true;
+(function initXnt20HitTestV6() {
+    if (window.__xnt20HitTestV6Ready) return;
+    window.__xnt20HitTestV6Ready = true;
 
-    let pendingHoverRow = -1;
-    let paintedHoverRow = -1;
-    let hoverRAF = 0;
+    let lastRow = null;
+    let raf = 0;
+    let lastX = -1, lastY = -1;
 
-    function hotRoot() {
-        return document.getElementById("hot");
+    function getRoot() {
+        return document.getElementById('hot');
     }
 
-    function coordsFromTarget(target) {
-        if (!hotInstance || !target) return null;
-        const root = hotRoot();
-        if (!root || !root.contains(target)) return null;
-        const td = target.closest?.("td");
-        if (!td || !root.contains(td)) return null;
-        try {
-            const coords = hotInstance.getCoords(td);
-            if (!coords || coords.row == null || coords.row < 0) return null;
-            return { td, row: coords.row, col: coords.col };
-        } catch (_) {
-            return null;
+    function pointInsideRoot(x, y) {
+        const root = getRoot();
+        if (!root) return false;
+        const r = root.getBoundingClientRect();
+        return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    }
+
+    function findDataCellAtPoint(x, y) {
+        const root = getRoot();
+        if (!root || !pointInsideRoot(x, y)) return null;
+
+        // Cach 1: lay tat ca layer tai diem con tro, chon TD co metadata V6.
+        const stack = document.elementsFromPoint(x, y) || [];
+        for (const el of stack) {
+            const td = el?.closest?.('td[data-xnt-row][data-xnt-col]');
+            if (td && root.contains(td)) return td;
         }
-    }
 
-    function clearHoverRows() {
-        const root = hotRoot();
-        if (!root) return;
-        root.querySelectorAll("tr.xnt20-hover-row").forEach(tr => tr.classList.remove("xnt20-hover-row"));
-        paintedHoverRow = -1;
-    }
-
-    function paintHoverRow(row) {
-        if (!hotInstance || row == null || row < 0) {
-            clearHoverRows();
-            return;
-        }
-        if (paintedHoverRow === row) return;
-        const root = hotRoot();
-        if (!root) return;
-        clearHoverRows();
-        root.querySelectorAll(".handsontable tbody tr").forEach(tr => {
-            const td = tr.querySelector("td");
-            if (!td) return;
-            try {
-                const c = hotInstance.getCoords(td);
-                if (c && c.row === row) tr.classList.add("xnt20-hover-row");
-            } catch (_) {}
-        });
-        paintedHoverRow = row;
-    }
-
-    function scheduleHover(row) {
-        pendingHoverRow = row;
-        if (hoverRAF) return;
-        hoverRAF = requestAnimationFrame(() => {
-            hoverRAF = 0;
-            paintHoverRow(pendingHoverRow);
-        });
-    }
-
-    document.addEventListener("pointermove", (ev) => {
-        const root = hotRoot();
-        if (!root || !root.contains(ev.target)) {
-            scheduleHover(-1);
-            return;
-        }
-        const c = coordsFromTarget(ev.target);
-        scheduleHover(c ? c.row : -1);
-    }, true);
-
-    document.addEventListener("mousemove", (ev) => {
-        const root = hotRoot();
-        if (!root || !root.contains(ev.target)) return;
-        const c = coordsFromTarget(ev.target);
-        if (c) scheduleHover(c.row);
-    }, true);
-
-    document.addEventListener("click", (ev) => {
-        const c = coordsFromTarget(ev.target);
-        if (!c || c.col !== 0) return;
-        const masp = getMaspAtVisualRow(c.row);
-        if (!masp) return;
-        setTimeout(() => {
-            if (typeof window.stockQuickPopup === "function") {
-                window.stockQuickPopup(masp);
-            } else {
-                console.error("[XNT20 V5] stockQuickPopup chưa tồn tại", { masp, type: typeof window.stockQuickPopup });
+        // Cach 2: fallback scan cac TD dang render. Chi co vai chuc/vai tram TD visible.
+        const tds = root.querySelectorAll('td[data-xnt-row][data-xnt-col]');
+        for (const td of tds) {
+            const r = td.getBoundingClientRect();
+            if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+                return td;
             }
-        }, 0);
-    }, true);
+        }
+        return null;
+    }
 
-    document.addEventListener("pointerout", (ev) => {
-        const root = hotRoot();
+    function clearRowHighlight() {
+        const root = getRoot();
         if (!root) return;
-        const fromInside = root.contains(ev.target);
-        const toInside = ev.relatedTarget && root.contains(ev.relatedTarget);
-        if (fromInside && !toInside) scheduleHover(-1);
+        root.querySelectorAll('td.xnt20-v6-hover').forEach(td => td.classList.remove('xnt20-v6-hover'));
+        root.querySelectorAll('th.xnt20-v6-hover').forEach(th => th.classList.remove('xnt20-v6-hover'));
+        lastRow = null;
+    }
+
+    function highlightVisualRow(row) {
+        const root = getRoot();
+        if (!root) return;
+        const rowStr = String(row);
+        if (lastRow === rowStr) return;
+
+        clearRowHighlight();
+        lastRow = rowStr;
+
+        root.querySelectorAll(`td[data-xnt-row="${CSS.escape(rowStr)}"]`).forEach(td => {
+            td.classList.add('xnt20-v6-hover');
+        });
+    }
+
+    function handlePointer(x, y) {
+        if (!pointInsideRoot(x, y)) {
+            clearRowHighlight();
+            return;
+        }
+        const td = findDataCellAtPoint(x, y);
+        if (!td) return;
+        highlightVisualRow(td.dataset.xntRow);
+    }
+
+    // Dung mousemove toan document: khong quan tam lop nao dang nam tren HOT.
+    document.addEventListener('mousemove', (ev) => {
+        lastX = ev.clientX;
+        lastY = ev.clientY;
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+            raf = 0;
+            handlePointer(lastX, lastY);
+        });
     }, true);
 
-    window.addEventListener("xnt20-hot-rendered", () => {
-        if (paintedHoverRow >= 0) {
-            const r = paintedHoverRow;
-            paintedHoverRow = -1;
-            scheduleHover(r);
+    document.addEventListener('pointermove', (ev) => {
+        lastX = ev.clientX;
+        lastY = ev.clientY;
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+            raf = 0;
+            handlePointer(lastX, lastY);
+        });
+    }, true);
+
+    async function openStockQuickGuaranteed(masp) {
+        masp = String(masp || '').trim().toUpperCase();
+        if (!masp) return;
+
+        try {
+            let p;
+            if (window.StockQuick && typeof window.StockQuick.showFor === 'function') {
+                p = window.StockQuick.showFor(document.body, masp);
+            } else if (typeof window.stockQuickPopup === 'function') {
+                p = window.stockQuickPopup(masp);
+            } else {
+                console.error('[XNT20 V6] stockQuickPopup.js chua load');
+                alert('Chưa load stockQuickPopup.js nên không mở được popup tồn kho.');
+                return;
+            }
+
+            await Promise.resolve(p);
+
+            // Bao dam popup luon nam tren workspace sticky / pagination.
+            const popup = document.querySelector('.sq-stock-popup.show');
+            const host = document.getElementById('sq-stock-host');
+            if (host) {
+                host.style.position = 'relative';
+                host.style.zIndex = '2147483646';
+            }
+            if (popup) {
+                popup.style.zIndex = '2147483647';
+                popup.style.pointerEvents = 'auto';
+            }
+        } catch (err) {
+            console.error('[XNT20 V6] Loi mo StockQuickPopup:', err);
+            alert('Không mở được StockQuickPopup: ' + (err?.message || err));
+        }
+    }
+
+    // CLICK capture theo toa do, khong dua vao event.target.
+    document.addEventListener('click', (ev) => {
+        if (!pointInsideRoot(ev.clientX, ev.clientY)) return;
+        const td = findDataCellAtPoint(ev.clientX, ev.clientY);
+        if (!td) return;
+
+        const col = Number(td.dataset.xntCol);
+        if (col !== 0) return;
+
+        const masp = String(td.dataset.xntMasp || td.textContent || '').trim().toUpperCase();
+        if (!masp) return;
+
+        // Khong stopPropagation: Handsontable van select row/cell binh thuong.
+        setTimeout(() => openStockQuickGuaranteed(masp), 0);
+    }, true);
+
+    window.addEventListener('xnt20-hot-rendered', () => {
+        // HOT recycle DOM sau render -> cap lai highlight theo toa do chuot hien tai.
+        if (lastX >= 0 && lastY >= 0) {
+            lastRow = null;
+            requestAnimationFrame(() => handlePointer(lastX, lastY));
         }
     });
 })();
