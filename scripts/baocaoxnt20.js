@@ -392,13 +392,20 @@ function maspTextRenderer(instance, td, row, col, prop, value) {
 
 
 function attachMaspLinkHandler(container) {
+    if (!container || container.dataset.maspPopupBound === "1") return;
+    container.dataset.maspPopupBound = "1";
     container.addEventListener("click", (e) => {
         const el = e.target.closest(".masp-link");
-        if (!el) return;
-        const masp = el.dataset.masp;
+        if (!el || !container.contains(el)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const masp = String(el.dataset.masp || "").trim().toUpperCase();
         if (!masp) return;
-        const url = `https://banle-js.vercel.app/timkiemhanghoa333.html?masp=${encodeURIComponent(masp)}`;
-        window.open(url, "_blank");
+        if (typeof window.stockQuickPopup === "function") {
+            window.stockQuickPopup(masp);
+        } else {
+            console.warn("[XNT20] Chưa load stockQuickPopup.js");
+        }
     });
 }
 
@@ -406,7 +413,7 @@ function attachMaspLinkHandler(container) {
 function renderTable(rows) {
     const container = document.getElementById("hot");
     const columns = [
-        { data: 'masp', title: 'Mã hàng', width: 120, renderer: maspTextRenderer },
+        { data: 'masp', title: 'Mã hàng', width: 120, renderer: maspRenderer },
         { data: 'size', title: 'Kích cỡ', width: 50, className: 'htCenter' },
         { data: 'xuatban_cs1', title: 'Xuất bán CS1', width: 50, className: 'htRight', renderer: zeroBlankRenderer },
         { data: 'xuatchinhanh_cs2', title: 'Xuất CN 2v1', width: 50, className: 'htRight', renderer: zeroBlankRenderer }, // ⬅️ MỚI
@@ -458,6 +465,9 @@ function renderTable(rows) {
             afterOnCellMouseDown(event, coords, TD) {
                 if (!coords || coords.row == null || coords.row < 0) return;
                 showPreviewForRow(coords.row);
+                if (coords.col === 0) {
+                    openStockQuickForRowCol(coords.row, coords.col);
+                }
             },
             afterOnCellMouseOver(event, coords, TD) {
                 if (!coords || coords.row == null || coords.row < 0) return;
@@ -591,20 +601,7 @@ function initXnt20GridPointerBehavior() {
     if (!hotRoot || hotRoot.dataset.xnt20PointerReady === "1") return;
     hotRoot.dataset.xnt20PointerReady = "1";
 
-    // Click TD cot Ma hang -> StockQuickPopup, khong phu thuoc overlay hook.
-    hotRoot.addEventListener("click", (ev) => {
-        const td = ev.target?.closest?.("td");
-        if (!td || !hotRoot.contains(td) || !hotInstance) return;
-        const coords = hotInstance.getCoords(td);
-        if (!coords || coords.row < 0 || coords.col !== 0) return;
-        const masp = getMaspAtVisualRow(coords.row);
-        if (!masp) return;
-        if (typeof window.stockQuickPopup === "function") {
-            window.stockQuickPopup(masp);
-        } else {
-            console.warn("[XNT20] stockQuickPopup.js chưa sẵn sàng");
-        }
-    });
+    // StockQuickPopup dùng .masp-link + afterOnCellMouseDown fallback.
 
     // Wheel trong bang/header -> cuon du lieu HOT. Wheel ngoai bang -> cuon trang.
     hotRoot.addEventListener("wheel", (ev) => {
