@@ -7,9 +7,9 @@
     <!-- Liên kết Supabase và JS mới -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script type="module" src="scripts/supabaseClient.js"></script>
-    <script src="scripts/stockQuickPopup.js"></script>
+    <script src="scripts/stockQuickPopup.js?v=20261017-v6"></script>
 
-    <script type="module" src="./scripts/baocaoxnt20.js"></script>
+    <script type="module" src="./scripts/baocaoxnt20.js?v=20261017-v6"></script>
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/14.3.0/handsontable.full.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
@@ -938,6 +938,37 @@
             font-weight: 600 !important;
         }
         #hot .masp-link:hover { color: #002f9e !important; }
+
+
+        /* =========================================================
+           XNT20 V6 - HIT TEST / HIGHLIGHT / STOCKQUICK LAYER
+           ========================================================= */
+        #hot td.xnt20-v6-hover,
+        #hot th.xnt20-v6-hover {
+            background: #cfe8ff !important;
+            box-shadow: inset 0 1px 0 #8fc5f5, inset 0 -1px 0 #8fc5f5 !important;
+        }
+
+        #hot td[data-xnt-col="0"] {
+            cursor: pointer !important;
+        }
+
+        #hot td[data-xnt-col="0"] .masp-link {
+            color: #0645d8 !important;
+            text-decoration: underline !important;
+            cursor: pointer !important;
+            font-weight: 600 !important;
+        }
+
+        /* StockQuickPopup goc da z-index 9999; V6 ep cao nhat de loai tru hoan toan kha nang bi che. */
+        #sq-stock-host {
+            position: relative !important;
+            z-index: 2147483646 !important;
+        }
+        #sq-stock-host .sq-stock-popup {
+            z-index: 2147483647 !important;
+            pointer-events: auto !important;
+        }
 
 </style>
 </head>
