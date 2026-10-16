@@ -457,10 +457,11 @@ function renderTable(rows) {
             },
             afterOnCellMouseDown(event, coords, TD) {
                 if (!coords || coords.row == null || coords.row < 0) return;
-                // Click cot Ma hang => StockQuickPopup.
-                if (coords.col === 0) {
-                    openStockQuickForRowCol(coords.row, coords.col);
-                }
+                showPreviewForRow(coords.row);
+            },
+            afterOnCellMouseOver(event, coords, TD) {
+                if (!coords || coords.row == null || coords.row < 0) return;
+                paintXnt20HoverRow(coords.row);
             },
             afterSelectionEnd(r) {
                 if (r == null || r < 0) return;
@@ -560,6 +561,73 @@ window.addEventListener("scroll", () => {
     });
 }, { passive: true });
 
+// ===================== TUONG TAC BANG XNT20 V3 =====================
+let xnt20HoverVisualRow = -1;
+
+function clearXnt20HoverRow() {
+    if (!hotInstance || xnt20HoverVisualRow < 0) return;
+    const cols = hotInstance.countCols();
+    for (let c = 0; c < cols; c++) {
+        const td = hotInstance.getCell(xnt20HoverVisualRow, c);
+        if (td) td.classList.remove("xnt-hover-row");
+    }
+    xnt20HoverVisualRow = -1;
+}
+
+function paintXnt20HoverRow(row) {
+    if (!hotInstance || row == null || row < 0) return;
+    if (xnt20HoverVisualRow === row) return;
+    clearXnt20HoverRow();
+    xnt20HoverVisualRow = row;
+    const cols = hotInstance.countCols();
+    for (let c = 0; c < cols; c++) {
+        const td = hotInstance.getCell(row, c);
+        if (td) td.classList.add("xnt-hover-row");
+    }
+}
+
+function initXnt20GridPointerBehavior() {
+    const hotRoot = document.getElementById("hot");
+    if (!hotRoot || hotRoot.dataset.xnt20PointerReady === "1") return;
+    hotRoot.dataset.xnt20PointerReady = "1";
+
+    // Click TD cot Ma hang -> StockQuickPopup, khong phu thuoc overlay hook.
+    hotRoot.addEventListener("click", (ev) => {
+        const td = ev.target?.closest?.("td");
+        if (!td || !hotRoot.contains(td) || !hotInstance) return;
+        const coords = hotInstance.getCoords(td);
+        if (!coords || coords.row < 0 || coords.col !== 0) return;
+        const masp = getMaspAtVisualRow(coords.row);
+        if (!masp) return;
+        if (typeof window.stockQuickPopup === "function") {
+            window.stockQuickPopup(masp);
+        } else {
+            console.warn("[XNT20] stockQuickPopup.js chưa sẵn sàng");
+        }
+    });
+
+    // Wheel trong bang/header -> cuon du lieu HOT. Wheel ngoai bang -> cuon trang.
+    hotRoot.addEventListener("wheel", (ev) => {
+        if (!hotInstance) return;
+        const holder = hotRoot.querySelector(".ht_master .wtHolder") || hotRoot.querySelector(".wtHolder");
+        if (!holder) return;
+        const vertical = Math.abs(ev.deltaY) >= Math.abs(ev.deltaX);
+        if (vertical) {
+            if (holder.scrollHeight <= holder.clientHeight + 1) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            holder.scrollTop += ev.deltaY;
+        } else {
+            if (holder.scrollWidth <= holder.clientWidth + 1) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            holder.scrollLeft += ev.deltaX || ev.deltaY;
+        }
+    }, { passive: false, capture: true });
+
+    hotRoot.addEventListener("mouseleave", clearXnt20HoverRow);
+}
+
 // ===================== SUMMARY =====================
 function renderSummary(rows) {
     const el = document.getElementById("xntSummary");
@@ -629,7 +697,7 @@ window.gotoPage = async function () {
 
 // ===================== LOAD DATA =====================
 async function fetchCount(params) {
-    const { data, error } = await supabase.rpc("baocaoXNT20_count_v6", buildCountParams(params));
+    const { data, error } = await supabase.rpc("baocaoxnt20_count_v1", buildCountParams(params));
     if (error) throw error;
     return data;
 }
@@ -680,8 +748,8 @@ async function fetchPageBundleXNT20(params) {
 }
 
 // ===================== CHỐNG DEADLOCK / GỌI TRÙNG XNT20 =====================
-const XNT20_REFRESH_BATCH = 2000;      // Giảm phạm vi lock mỗi lượt (cũ: 5000)
-const XNT20_REFRESH_MAX_LOOPS = 15;    // Giữ tổng năng lực xử lý ~25.000 dirty keys
+const XNT20_REFRESH_BATCH = 100;      // Giảm phạm vi lock mỗi lượt (cũ: 5000)
+const XNT20_REFRESH_MAX_LOOPS = 50;    // Giữ tổng năng lực xử lý ~25.000 dirty keys
 const XNT20_DB_RETRY_COUNT = 3;        // Retry riêng lỗi deadlock/serialization
 const XNT20_DB_RETRY_BASE_MS = 250;
 
@@ -699,15 +767,22 @@ function isTransientDbConflict(err) {
            code === '40001' ||          // serialization_failure
            msg.includes('deadlock detected') ||
            msg.includes('serialization failure') ||
-           msg.includes('could not serialize access');
+           msg.includes('could not serialize access') ||
+           code === '57014' ||
+           msg.includes('statement timeout') ||
+           msg.includes('canceling statement due to statement timeout');
 }
 
 async function refreshDirtyBatchWithRetry() {
     let lastErr = null;
 
     for (let attempt = 1; attempt <= XNT20_DB_RETRY_COUNT; attempt++) {
+        const reportParams = buildParams(currentPage);
         const { data, error } = await supabase.rpc('refresh_xnt20_dirty_v1', {
-            p_limit: XNT20_REFRESH_BATCH
+            p_limit: XNT20_REFRESH_BATCH,
+            p_den_ngay: reportParams.den_ngay || null,
+            p_dsmsp: reportParams.p_dsmsp || null,
+            p_size_filter: reportParams.p_size_filter || null
         });
 
         if (!error) return data;
@@ -796,6 +871,7 @@ window.taiBaoCaoXNT = function () {
             renderPreviewForMasps(masps);
 
             renderTable(rows);
+            initXnt20GridPointerBehavior();
             requestAnimationFrame(() => resizeXnt20TableToViewport());
             renderSummary(bundle.summary ? [bundle.summary] : []);
 
@@ -1460,7 +1536,7 @@ window.moTrangChuyenKho = async () => {
 
     // 3) Đếm + lấy toàn bộ dữ liệu theo size
     const countParams = buildCountParams(p);
-    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoXNT20_count_v6', countParams);
+    const { data: cntData, error: cntErr } = await supabase.rpc('baocaoxnt20_count_v1', countParams);
     if (cntErr) { alert('Lỗi COUNT: ' + cntErr.message); return; }
     const total = Number(cntData || 0);
 
