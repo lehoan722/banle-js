@@ -14,7 +14,7 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/handsontable/14.3.0/handsontable.full.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/handsontable@14.3.0/dist/handsontable.full.min.js"></script>
 
-   
+
 
     <style>
         /* Body không cuộn; bảng cuộn trong vùng của nó */
@@ -429,7 +429,7 @@
         #hot .handsontable tbody tr:hover td {
             filter: brightness(0.98);
         }
-    
+
 
         /* ===== Bộ lọc nghiệp vụ đa lựa chọn XNT20 ===== */
         .xnt-filter-wrap {
@@ -437,11 +437,13 @@
             position: relative;
             vertical-align: middle;
         }
+
         .xnt-filter-box {
             display: inline-flex;
             align-items: stretch;
             min-width: 280px;
         }
+
         #xntConditionDisplay {
             width: 250px;
             background: #fff;
@@ -450,6 +452,7 @@
             border: 1px solid #ccc;
             border-radius: 3px 0 0 3px;
         }
+
         .xnt-filter-btn {
             width: 34px;
             border: 1px solid #999;
@@ -458,6 +461,7 @@
             cursor: pointer;
             border-radius: 0 3px 3px 0;
         }
+
         .xnt-filter-popup {
             position: absolute;
             top: 100%;
@@ -466,13 +470,14 @@
             background: #f8f3df;
             border: 1px solid #c8b98b;
             border-radius: 4px;
-            box-shadow: 0 3px 10px rgba(0,0,0,.12);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, .12);
             width: 390px;
             max-height: 420px;
             overflow-y: auto;
             margin-top: 2px;
             padding: 4px 0;
         }
+
         .xnt-filter-section-title {
             padding: 7px 10px 4px;
             font-weight: 700;
@@ -480,6 +485,7 @@
             background: #efe6c9;
             border-top: 1px solid #ded2ab;
         }
+
         .xnt-filter-row {
             display: grid;
             grid-template-columns: 1fr 30px;
@@ -488,8 +494,15 @@
             padding: 5px 8px;
             border-bottom: 1px solid #eadfb9;
         }
-        .xnt-filter-row:hover { background: #efe5bf; }
-        .xnt-filter-row.is-disabled { opacity: .45; }
+
+        .xnt-filter-row:hover {
+            background: #efe5bf;
+        }
+
+        .xnt-filter-row.is-disabled {
+            opacity: .45;
+        }
+
         .xnt-filter-label {
             border: 1px solid #aaa;
             background: #fff;
@@ -497,7 +510,13 @@
             line-height: 1.2;
             font-size: 13px;
         }
-        .xnt-filter-check { width: 16px; height: 16px; justify-self: center; }
+
+        .xnt-filter-check {
+            width: 16px;
+            height: 16px;
+            justify-self: center;
+        }
+
         .xnt-filter-actions {
             display: flex;
             gap: 6px;
@@ -508,8 +527,14 @@
             top: 0;
             z-index: 2;
         }
+
         .xnt-filter-actions button {
-            flex: 1; padding: 6px; font-size: 12px; border: 1px solid #aaa; background: #fff; cursor: pointer;
+            flex: 1;
+            padding: 6px;
+            font-size: 12px;
+            border: 1px solid #aaa;
+            background: #fff;
+            cursor: pointer;
         }
 
         /* =========================================================
@@ -644,7 +669,7 @@
             overflow: hidden !important;
         }
 
-        #hot > .handsontable {
+        #hot>.handsontable {
             height: 100% !important;
         }
 
@@ -735,7 +760,8 @@
             display: flex !important;
             gap: 6px !important;
             margin: 0 !important;
-            padding: 0 0 58px 0 !important; /* nhường chỗ cho pagination fixed */
+            padding: 0 0 58px 0 !important;
+            /* nhường chỗ cho pagination fixed */
             box-sizing: border-box !important;
             overflow: hidden !important;
             background: #fff !important;
@@ -914,30 +940,39 @@
         #hot .handsontable tbody tr:hover th {
             background: #dff0ff !important;
         }
+
         #hot .handsontable td.xnt-current-row {
             background: #cfe8ff !important;
         }
+
         #hot .masp-link {
             color: #0b57d0 !important;
             text-decoration: underline !important;
             cursor: pointer !important;
             font-weight: 600;
         }
-        #hot .masp-link:hover { color: #063a93 !important; }
+
+        #hot .masp-link:hover {
+            color: #063a93 !important;
+        }
 
 
         /* XNT20 V5 - HOVER CAPTURE */
-        #hot .handsontable tbody tr.xnt20-hover-row > td,
-        #hot .handsontable tbody tr.xnt20-hover-row > th {
+        #hot .handsontable tbody tr.xnt20-hover-row>td,
+        #hot .handsontable tbody tr.xnt20-hover-row>th {
             background: #d8ecff !important;
         }
+
         #hot .masp-link {
             color: #0645d8 !important;
             text-decoration: underline !important;
             cursor: pointer !important;
             font-weight: 600 !important;
         }
-        #hot .masp-link:hover { color: #002f9e !important; }
+
+        #hot .masp-link:hover {
+            color: #002f9e !important;
+        }
 
 
         /* =========================================================
@@ -965,21 +1000,48 @@
             position: relative !important;
             z-index: 2147483646 !important;
         }
+
         #sq-stock-host .sq-stock-popup {
             z-index: 2147483647 !important;
             pointer-events: auto !important;
         }
 
-</style>
+        .filters-row,
+        .filters-left {
+            position: relative !important;
+            z-index: 5000 !important;
+            overflow: visible !important;
+        }
+
+        #xntConditionWrap,
+        .xnt-filter-wrap {
+            position: relative !important;
+            z-index: 5001 !important;
+            overflow: visible !important;
+        }
+
+        #xntConditionPopup,
+        .xnt-filter-popup {
+            z-index: 2147483000 !important;
+            overflow-y: auto !important;
+        }
+
+        .main-grid,
+        .grid-left,
+        #hot,
+        .handsontable {
+            z-index: 50 !important;
+        }
+    </style>
 </head>
 
 <body>
-    <div id="app-container">        
+    <div id="app-container">
 
         <div class="filters-row">
             <div class="filters-left">
                 <div class="filters">
-                    
+
                     <label>
                         Địa điểm:
                         <select id="diadiemSelect">
@@ -1077,14 +1139,14 @@
 
             </div>
         </div>
-<!-- NÚT THU GỌN HEADER giữ nguyên -->
+        <!-- NÚT THU GỌN HEADER giữ nguyên -->
 
         <div id="xntSummary" style="margin:6px 8px; font-weight:bold; color:#2a394d;"></div>
 
         <div class="main-grid">
             <!-- Cột trái: Bảng (60%) -->
             <div class="grid-left">
-                
+
                 <div id="hot" style="margin-top: 4px;"></div>
 
                 <div id="pagination" style="margin-top:10px; text-align:center;">
@@ -1131,41 +1193,41 @@
                 <div class="cap" id="imgCaption"></div>
             </div>
         </div>
-</div>
+    </div>
 
-      <!-- HÀNG RÀO ĐĂNG NHẬP CHUẨN CHO BÁO CÁO XNT17 -->
-  <script type="module">
-    import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+    <!-- HÀNG RÀO ĐĂNG NHẬP CHUẨN CHO BÁO CÁO XNT17 -->
+    <script type="module">
+        import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-    khoiTaoDangNhapDungChung({
-      // id bọc toàn bộ app – sửa đúng theo trang của bạn:
-      appContainerId: "app-container",   // hoặc "app" nếu bạn dùng id đó
+        khoiTaoDangNhapDungChung({
+            // id bọc toàn bộ app – sửa đúng theo trang của bạn:
+            appContainerId: "app-container",   // hoặc "app" nếu bạn dùng id đó
 
-      macDinhDiaDiem: "",
-      tuDongKhoaCoSo: false,
-      loginApiPath: "/api/login-cs1",    // giống bảng lương tháng
+            macDinhDiaDiem: "",
+            tuDongKhoaCoSo: false,
+            loginApiPath: "/api/login-cs1",    // giống bảng lương tháng
 
-      async onLoginSuccess(nv, ctx) {
-        // 1. Kiểm tra quyền xem trang theo bảng nv_page
-        if (window.kiemTraQuyenXemTrang) {
-          const ok = await window.kiemTraQuyenXemTrang("baocaoxnt20.html");
-          if (!ok) {
-            // hienCamTruyCap đã hiển thị lý do, nên chỉ return
-            return;
-          }
-        }
+            async onLoginSuccess(nv, ctx) {
+                // 1. Kiểm tra quyền xem trang theo bảng nv_page
+                if (window.kiemTraQuyenXemTrang) {
+                    const ok = await window.kiemTraQuyenXemTrang("baocaoxnt20.html");
+                    if (!ok) {
+                        // hienCamTruyCap đã hiển thị lý do, nên chỉ return
+                        return;
+                    }
+                }
 
-        // 2. Khởi tạo module ĐẶT HÀNG KHẨN để StockQuick gọi được ngay trên XNT17
-        if (window.initDatHangKhanXNT20) {
-          await window.initDatHangKhanXNT20(nv);
-        }
-        // XNT20: khong auto-load. Nguoi dung bam "Xem bao cao" moi tai du lieu.
-      },
-    });
-  </script>
+                // 2. Khởi tạo module ĐẶT HÀNG KHẨN để StockQuick gọi được ngay trên XNT17
+                if (window.initDatHangKhanXNT20) {
+                    await window.initDatHangKhanXNT20(nv);
+                }
+                // XNT20: khong auto-load. Nguoi dung bam "Xem bao cao" moi tai du lieu.
+            },
+        });
+    </script>
 
-  
-    
+
+
 </body>
 
 </html>
