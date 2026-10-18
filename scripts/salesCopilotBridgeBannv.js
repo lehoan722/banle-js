@@ -1,5 +1,5 @@
 // scripts/salesCopilotBridgeBannv.js
-// V5.1 ISOLATED-TAB + CLEARANCE-PENDING FIX
+// V5.2 ISOLATED-TAB + CLEARANCE-PENDING + RELIABLE KM SELECT
 // Mỗi lần Sang bán gắn copilot_tx riêng vào tab mới.
 // Chỉ tab có đúng copilot_tx mới được đọc payload tương ứng. Tab bán cũ hoàn toàn không tranh nhận dữ liệu.
 // FIX: mã có quyền xả có thể dừng ở ô Khuyến mại để NV xác nhận; trạng thái này là hợp lệ, không báo lỗi giả.
@@ -14,7 +14,7 @@
 
   // Trang bán mở bình thường (không đi từ nút Sang bán) thì bridge đứng yên.
   if(!tx){
-    window.SalesCopilotBridge={consume:async()=>false,version:"5.1-isolated-tab-clearance-safe-idle"};
+    window.SalesCopilotBridge={consume:async()=>false,version:"5.2-isolated-tab-clearance-select-idle"};
     return;
   }
 
@@ -84,6 +84,33 @@
     return await waitUntil(()=>typeof window.hoadonNhanTuSalesCopilot==="function"?window.hoadonNhanTuSalesCopilot:null,15000,60);
   }
 
+  function focusSelectKhuyenMaiReliable(){
+    const kmEl=document.getElementById("khuyenmai");
+    if(!kmEl)return false;
+
+    const selectAll=()=>{
+      try{kmEl.focus({preventScroll:true})}catch(_){try{kmEl.focus()}catch(__){}}
+      try{kmEl.select()}catch(_){}
+      try{
+        const len=String(kmEl.value||"").length;
+        kmEl.setSelectionRange(0,len);
+      }catch(_){}
+    };
+
+    // Chạy ngay + nhiều nhịp ngắn để thắng các lần render/focus lại của trang bán.
+    selectAll();
+    if(typeof requestAnimationFrame==="function"){
+      requestAnimationFrame(()=>{
+        selectAll();
+        requestAnimationFrame(selectAll);
+      });
+    }
+    setTimeout(selectAll,25);
+    setTimeout(selectAll,80);
+    setTimeout(selectAll,160);
+    return true;
+  }
+
   function detectClearancePending(maspRaw,sizeRaw){
     const masp=normMasp(maspRaw);
     const size=normSize(sizeRaw)||"0";
@@ -113,7 +140,7 @@
         };
       }
     }catch(e){
-      console.warn("[COPILOT BRIDGE V5.1] Không kiểm tra được trạng thái chờ KM:",e);
+      console.warn("[COPILOT BRIDGE V5.2] Không kiểm tra được trạng thái chờ KM:",e);
     }
     return null;
   }
@@ -135,14 +162,14 @@
       // Vì vậy lỗi "đã xử lý nhưng chưa thấy sản phẩm" có thể chỉ là trạng thái chờ KM hợp lệ.
       const pending=detectClearancePending(masp,size);
       if(pending){
-        console.info("[COPILOT BRIDGE V5.1] Đã nhận mã và đang chờ NV xác nhận KM:",pending);
+        console.info("[COPILOT BRIDGE V5.2] Đã nhận mã và đang chờ NV xác nhận KM:",pending);
         return pending;
       }
       throw new Error(result?.error||`Không thêm được ${masp}/${size||"0"}.`);
     }
 
     const row=await waitUntil(()=>findSaleRow(masp,size),1800,45);
-    if(!row)console.warn("[COPILOT BRIDGE V5.1] State đã xác nhận nhưng DOM chưa render kịp:",{masp,size,result});
+    if(!row)console.warn("[COPILOT BRIDGE V5.2] State đã xác nhận nhưng DOM chưa render kịp:",{masp,size,result});
     return result;
   }
 
@@ -194,7 +221,7 @@
         pending_clearance:!!pendingClearance,
         pending_masp:pendingClearance?.masp||null,
         pending_size:pendingClearance?.size||null,
-        mode:"direct-api-v5.1-isolated-tab-clearance-safe"
+        mode:"direct-api-v5.2-isolated-tab-clearance-select"
       };
       localStorage.setItem(ACK_KEY,JSON.stringify(ack));
       cleanTxFromAddressBar();
@@ -202,11 +229,7 @@
       try{
         window.focus();
         if(pendingClearance){
-          const kmEl=document.getElementById("khuyenmai");
-          if(kmEl){
-            kmEl.focus({preventScroll:true});
-            kmEl.select?.();
-          }
+          focusSelectKhuyenMaiReliable();
         }else{
           document.getElementById("masp")?.focus();
         }
@@ -216,7 +239,7 @@
       console.error("[COPILOT BRIDGE V5] lỗi nhận dữ liệu:",e);
       finished=true;
       try{localStorage.removeItem(KEY)}catch(_){}
-      const ack={id:tx,transfer_id:tx,consumed_at:new Date().toISOString(),count:0,ok:false,error:String(e?.message||e),mode:"direct-api-v5.1-isolated-tab-clearance-safe"};
+      const ack={id:tx,transfer_id:tx,consumed_at:new Date().toISOString(),count:0,ok:false,error:String(e?.message||e),mode:"direct-api-v5.2-isolated-tab-clearance-select"};
       try{localStorage.setItem(ACK_KEY,JSON.stringify(ack))}catch(_){}
       alert("❌ Không nhận được dữ liệu từ Tìm kiếm nhanh: "+(e?.message||e));
       return false;
@@ -229,5 +252,5 @@
   window.addEventListener("focus",()=>{if(!finished)setTimeout(consume,20)});
   document.addEventListener("visibilitychange",()=>{if(!finished&&document.visibilityState==="visible")setTimeout(consume,20)});
 
-  window.SalesCopilotBridge={consume,version:"5.1-isolated-tab-clearance-safe"};
+  window.SalesCopilotBridge={consume,version:"5.2-isolated-tab-clearance-select"};
 })();
