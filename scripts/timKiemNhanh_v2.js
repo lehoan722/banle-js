@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=32";
 
-window.TIM_KIEM_NHANH_BUILD = "2.0.0-FAST-CACHE";
-console.log("[TimKiemNhanh V2] BUILD 2.0.0-FAST-CACHE");
+window.TIM_KIEM_NHANH_BUILD = "2.3.0-FAST-DISCOUNT-NEAR-SIZE";
+console.log("[TimKiemNhanh V2] BUILD 2.3.0-FAST-DISCOUNT-NEAR-SIZE");
 
 const supabase = getSupabaseClient();
 
@@ -406,61 +406,17 @@ async function enrichProductsAfterCheck(rows){
 }
 
 
-async function fetchUnifiedDiscountRows(){
-  // V2 FAST: quét ứng viên CÒN TỒN trực tiếp từ cache; không tính tồn lại từng mã.
-  // Rule engine hiện có vẫn được giữ nguyên để bảo toàn ADMIN + RULE.
-  const all=[];
-  let offset=0;
-  let total=0;
-  let guard=0;
-  const PAGE=500;
-
-  do{
-    const {data,error}=await supabase.rpc("timkiemnhanh_search_v2",paramsV2(offset,PAGE,"discount_scan"));
-    if(error)throw error;
-    const raw=normalizeFastRows(data||[]);
-    if(!raw.length)break;
-    total=Number(raw[0]?.total_count||total||0);
-    all.push(...raw);
-    offset+=raw.length;
-    guard++;
-  }while(offset<total && guard<20);
-
-  const dedupMap=new Map();
-  all.forEach(x=>{const k=norm(x?.masp);if(k&&!dedupMap.has(k))dedupMap.set(k,x)});
-  const raw=[...dedupMap.values()];
-  if(!raw.length)return[];
-
-  const xaMap=new Map();
-  const CHUNK=300;
-  for(let i=0;i<raw.length;i+=CHUNK){
-    const chunk=raw.slice(i,i+CHUNK);
-    const part=await getXaHangSuggestions({
-      supabase,
-      masps:chunk.map(x=>x.masp),
-      denNgay:businessDate()
-    }).catch(err=>{
-      console.warn("[TimKiemNhanh V2] Không đọc được rule giảm tự động:",err);
-      return new Map();
-    });
-    part.forEach((v,k)=>xaMap.set(k,v));
-  }
-
-  const merged=attachXaHangSuggestions(raw,xaMap)
-    .filter(sp=>Number(sp.giam_gia_hieu_luc||sp.giam_gia_pct||0)>0);
-
-  const exact=[];
-  const zeroOnly=[];
-  merged.forEach(sp=>(sp.__size0_fallback?zeroOnly:exact).push(sp));
-  const sortDiscount=(a,b)=>{
-    const d=Number(b.giam_gia_hieu_luc||b.giam_gia_pct||0)-Number(a.giam_gia_hieu_luc||a.giam_gia_pct||0);
-    if(d)return d;
-    const ar=Number(a.giam_gia_rule_pct||0),br=Number(b.giam_gia_rule_pct||0);
-    if(br!==ar)return br-ar;
-    return String(a.masp||"").localeCompare(String(b.masp||""),"vi",{numeric:true});
-  };
-  exact.sort(sortDiscount);zeroOnly.sort(sortDiscount);
-  return [...exact,...zeroOnly];
+async function fetchDiscountPageV23(offset=0,limit=40){
+  const {data,error}=await supabase.rpc("timkiemnhanh_giamgia_v23",{
+    p_diadiem:state.diadiem,
+    p_nhomhang:state.group,
+    p_size:state.size,
+    p_offset:Math.max(0,Number(offset||0)),
+    p_limit:Math.max(1,Number(limit||40)),
+    p_den_ngay:businessDate()
+  });
+  if(error)throw error;
+  return normalizeFastRows(data||[]);
 }
 
 async function search(reset=true){
@@ -470,12 +426,25 @@ async function search(reset=true){
   setLoading(true,reset);
   try{
     if(state.mode==="discount"){
-      const rows=await fetchUnifiedDiscountRows();
-      state.products=rows;
-      state.offset=rows.length;
-      state.total=rows.length;
-      renderProducts({reset:true,rows});
-      $("resultCount").textContent=`${rows.length}/${rows.length}`;
+      // V2.3: server xet TOAN BO ma con ban duoc theo size chon -> +1 -> -1,
+      // ap dung ADMIN + RULE truoc, sau do moi phan trang 40 dong.
+      const rows=await fetchDiscountPageV23(off,40);
+      const nextTotal=Number(rows[0]?.total_count||0);
+
+      if(reset){
+        state.products=rows;
+        state.offset=rows.length;
+        state.total=nextTotal;
+      }else{
+        const existing=new Set(state.products.map(x=>norm(x.masp)));
+        const appendRows=rows.filter(x=>!existing.has(norm(x.masp)));
+        state.products=state.products.concat(appendRows);
+        state.offset=off+rows.length;
+        state.total=nextTotal||state.total;
+      }
+
+      renderProducts({reset,rows});
+      $("resultCount").textContent=`${state.products.length}/${state.total||state.products.length}`;
       $("btnMore").style.display="none";
       return;
     }
@@ -539,7 +508,11 @@ function productCardHtml(sp,orderNo=0,totalNo=0){
     : "";
   const xaClass=effectivePct?" discount-active":"";
   const strongClass=effectivePct>=50?" discount-strong":"";
-  const badge=effectivePct>=50?`<div class="search-discount-badge">${effectivePct}%</div>`:"";
+  const isDiscountView=state.mode==="discount"&&effectivePct>0;
+  const discountBadge=isDiscountView?`<div class="search-discount-badge">${effectivePct}%</div>`:(effectivePct>=50?`<div class="search-discount-badge">${effectivePct}%</div>`:"");
+  const matchedSize=String(sp.matched_size||"").trim();
+  const sizeBadge=isDiscountView&&matchedSize?`<div class="search-size-badge">${esc(matchedSize)}</div>`:"";
+  const badge=`${sizeBadge}${discountBadge}`;
   const size0Tag=sp.__size0_fallback
     ? `<div class="size0-fallback-tag">Không quản lý size · Tồn size 0: ${stockForAny(sp,SIZE_FALLBACK_ZERO)}</div>`
     : "";
@@ -556,7 +529,12 @@ function bindProductCards(cards){
 function renderProducts({reset=true,rows=[]}={}){
   const box=$("productList");
   if(reset){
-    if(!state.products.length){box.innerHTML='<div class="empty" style="grid-column:1/-1">Không có sản phẩm còn đúng size tại cơ sở này theo tồn sau kiểm.</div>';return}
+    if(!state.products.length){
+      const msg=state.mode==="discount"
+        ?"Không có sản phẩm giảm giá còn bán được ở size đã chọn hoặc ±1 size tại cơ sở này."
+        :"Không có sản phẩm còn đúng size tại cơ sở này theo tồn sau kiểm.";
+      box.innerHTML=`<div class="empty" style="grid-column:1/-1">${esc(msg)}</div>`;return
+    }
     box.innerHTML=state.products.map((sp,i)=>productCardHtml(sp,i+1,state.total||state.products.length)).join("");
     bindProductCards(Array.from(box.querySelectorAll(".product")));
     return;
