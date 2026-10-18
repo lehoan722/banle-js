@@ -1,9 +1,8 @@
 // scripts/salesCopilotBridgeBannv.js
-// V5.4 ISOLATED-TAB PREFILL ONLY
-// Mỗi lần Sang bán gắn copilot_tx riêng vào tab mới.
-// Chỉ tab có đúng copilot_tx mới được đọc payload tương ứng.
-// Bridge CHỈ nạp mã/size/số lượng vào form rồi focus + select ô Mã hàng.
-// Người dùng nhấn Enter để chính luồng bán hiện tại xử lý và chuyển sang Khuyến mại nếu cần.
+// V5.5 ISOLATED-TAB - MINIMAL FAKE-ERROR FIX
+// Giữ nguyên Direct API của V5 gốc.
+// Chỉ sửa trường hợp hàng có quyền xả: API đã nạp đủ form nhưng chưa thêm dòng vì đang chờ xác nhận KM.
+// Khi đó không báo lỗi giả; focus + select ô Mã sản phẩm để NV nhấn Enter và đi tiếp sang Khuyến mại.
 
 (function(){
   "use strict";
@@ -15,7 +14,7 @@
 
   // Trang bán mở bình thường (không đi từ nút Sang bán) thì bridge đứng yên.
   if(!tx){
-    window.SalesCopilotBridge={consume:async()=>false,version:"5.4-isolated-tab-prefill-manual-enter-idle"};
+    window.SalesCopilotBridge={consume:async()=>false,version:"5.5-isolated-tab-minimal-fix-idle"};
     return;
   }
 
@@ -48,7 +47,7 @@
       if(!p||p.id!==tx||!Array.isArray(p.items)||!p.items.length)return null;
       return p;
     }catch(e){
-      console.warn("[COPILOT BRIDGE V5.4] payload lỗi",e);
+      console.warn("[COPILOT BRIDGE V5.5] payload lỗi",e);
       return null;
     }
   }
@@ -81,30 +80,54 @@
     await sleep(120);
   }
 
-  async function prefillOne(item){
-    const masp=normMasp(item?.masp);
-    const size=normSize(item?.size);
-    const qty=Math.max(1,parseInt(item?.soluong||1,10)||1);
-    if(!masp)throw new Error("Thiếu mã sản phẩm từ Tìm kiếm nhanh.");
+  async function getDirectApi(){
+    return await waitUntil(()=>typeof window.hoadonNhanTuSalesCopilot==="function"?window.hoadonNhanTuSalesCopilot:null,15000,60);
+  }
 
-    const maspEl=document.getElementById("masp");
-    const slEl=document.getElementById("soluong");
-    const sizeEl=document.getElementById("size");
+  function isClearancePendingAfterApi(maspRaw,sizeRaw,result){
+    const masp=normMasp(maspRaw);
+    const size=normSize(sizeRaw);
+    const msg=text(result?.error||"");
 
-    if(!maspEl||!slEl||!sizeEl){
-      throw new Error("Trang bán chưa sẵn sàng nhận mã/size/số lượng.");
+    // Chỉ coi là lỗi giả khi đúng kiểu lỗi xác nhận state sau khi xuLyMaSanPham đã chạy.
+    const looksLikeFakeStateError=
+      msg.includes("Đã xử lý") &&
+      msg.includes("chưa thấy sản phẩm trong dữ liệu bán");
+
+    if(!looksLikeFakeStateError)return false;
+
+    try{
+      const maspEl=document.getElementById("masp");
+      const sizeEl=document.getElementById("size");
+      const kmEl=document.getElementById("khuyenmai");
+      const ctx=window.__KM_XA_CTX;
+
+      const formMasp=normMasp(maspEl?.value)
+        .replace(/_(38|39|40|41|42|43|44|45|46|0)$/,"");
+      const formSize=normSize(sizeEl?.value||"");
+      const ctxMasp=normMasp(ctx?.masp||"");
+      const ctxPendingSize=normSize(ctx?.pendingSize||"");
+
+      const sameMasp=(formMasp===masp)||(ctxMasp===masp);
+      const sameSize=!size || formSize===size || ctxPendingSize===size;
+
+      // Quyền xả đang được arm trên ô KM/context.
+      const clearanceArmed=
+        kmEl?.dataset?.clearanceEnabled==="1" ||
+        Number(ctx?.maxPct||0)>0 ||
+        (text(kmEl?.value).includes("-") && Number(ctx?.maxPct||0)>0);
+
+      return !!(sameMasp && sameSize && clearanceArmed);
+    }catch(_){
+      return false;
     }
+  }
 
-    // Dùng đúng cú pháp hậu tố size mà hoadon.js hiện có hỗ trợ.
-    // Ví dụ: 1379-GHM_40
-    maspEl.value=size?`${masp}_${size}`:masp;
-    slEl.value=String(qty);
+  function focusSelectMasp(){
+    const maspEl=document.getElementById("masp");
+    if(!maspEl)return;
 
-    // Để Enter tại #masp chạy lại toàn bộ luồng chuẩn của trang bán.
-    // Không tự gọi Direct API, không tự thêm dòng, không phát sinh cảnh báo giả.
-    sizeEl.value="";
-
-    const selectMasp=()=>{
+    const doSelect=()=>{
       try{maspEl.focus({preventScroll:true})}catch(_){try{maspEl.focus()}catch(__){}}
       try{maspEl.select()}catch(_){}
       try{
@@ -113,17 +136,53 @@
       }catch(_){}
     };
 
-    selectMasp();
+    doSelect();
     if(typeof requestAnimationFrame==="function"){
       requestAnimationFrame(()=>{
-        selectMasp();
-        requestAnimationFrame(selectMasp);
+        doSelect();
+        requestAnimationFrame(doSelect);
       });
     }
-    setTimeout(selectMasp,30);
-    setTimeout(selectMasp,100);
+    setTimeout(doSelect,30);
+    setTimeout(doSelect,100);
+  }
 
-    return {ok:true,prefilled:true,masp,size:size||"0",soluong:qty};
+  async function addOne(item){
+    const masp=normMasp(item?.masp);
+    const size=normSize(item?.size);
+    const qty=Math.max(1,parseInt(item?.soluong||1,10)||1);
+    if(!masp)throw new Error("Thiếu mã sản phẩm từ Tìm kiếm nhanh.");
+
+    const api=await getDirectApi();
+    if(!api)throw new Error("Module hóa đơn chưa sẵn sàng nhận dữ liệu trực tiếp. Hãy tải lại trang bán một lần.");
+
+    const result=await api({masp,size,soluong:qty,source:"sales-copilot"});
+
+    if(!result||result.ok!==true){
+      // Hàng có quyền xả: hoadon.js có thể đã nạp đủ mã/size/giá/KM
+      // nhưng cố ý chưa thêm dòng vì đang chờ NV xác nhận Khuyến mại.
+      // Đây là trạng thái hợp lệ, không được alert lỗi giả.
+      if(isClearancePendingAfterApi(masp,size,result)){
+        console.info("[COPILOT BRIDGE V5.5] Hàng xả đã nạp form, chờ NV Enter lại ở Mã hàng:",{
+          masp,size,error:result?.error
+        });
+        focusSelectMasp();
+        return {
+          ok:true,
+          pending_clearance:true,
+          masp,
+          size:size||"0",
+          soluong:qty
+        };
+      }
+
+      // Các lỗi thật khác vẫn giữ nguyên hành vi V5 gốc.
+      throw new Error(result?.error||`Không thêm được ${masp}/${size||"0"}.`);
+    }
+
+    const row=await waitUntil(()=>findSaleRow(masp,size),1800,45);
+    if(!row)console.warn("[COPILOT BRIDGE V5.5] State đã xác nhận nhưng DOM chưa render kịp:",{masp,size,result});
+    return result;
   }
 
   function cleanTxFromAddressBar(){
@@ -146,12 +205,25 @@
       const basicReady=await waitUntil(()=>pageBasicReady(),12000,60);
       if(!basicReady)throw new Error("Trang bán chưa tạo xong các ô mã/size/số lượng.");
 
+      const apiReady=await getDirectApi();
+      if(!apiReady)throw new Error("Không tìm thấy API nhận dữ liệu của module hóa đơn.");
+
       await prefillCustomer(payload);
 
-      // Nút Sang bán hiện tại thực tế gửi từng sản phẩm.
-      // Nếu payload có nhiều item, chỉ nạp item đầu vào form để tránh ghi đè liên tiếp.
-      const item=payload.items[0];
-      const result=await prefillOne(item);
+      let pendingClearance=null;
+      let processedCount=0;
+
+      for(const item of payload.items){
+        const result=await addOne(item);
+        processedCount++;
+
+        if(result?.pending_clearance===true){
+          pendingClearance=result;
+          // Form đang chờ NV nhấn Enter tại Mã hàng rồi xử lý KM;
+          // không được đẩy item tiếp theo làm ghi đè form.
+          break;
+        }
+      }
 
       finished=true;
       localStorage.removeItem(KEY);
@@ -159,32 +231,30 @@
         id:payload.id,
         transfer_id:tx,
         consumed_at:new Date().toISOString(),
-        count:1,
+        count:processedCount,
         ok:true,
-        prefilled:true,
-        masp:result.masp,
-        size:result.size,
-        mode:"prefill-manual-enter-v5.4-isolated-tab"
+        pending_clearance:!!pendingClearance,
+        mode:"direct-api-v5.5-isolated-tab-minimal-fix"
       };
       localStorage.setItem(ACK_KEY,JSON.stringify(ack));
       cleanTxFromAddressBar();
 
-      // Sau khi tab thực sự active, gia cố focus/select ô Mã hàng.
-      const refocus=()=>{
-        const el=document.getElementById("masp");
-        if(!el)return;
-        try{el.focus({preventScroll:true})}catch(_){try{el.focus()}catch(__){}}
-        try{el.select()}catch(_){}
-        try{el.setSelectionRange(0,String(el.value||"").length)}catch(_){}
-      };
-      setTimeout(refocus,20);
-      setTimeout(refocus,120);
+      try{
+        window.focus();
+        // Hàng thường: giữ nguyên V5 gốc -> focus về Mã hàng.
+        // Hàng xả: cũng focus/select Mã hàng để NV chỉ cần Enter 1 lần.
+        const maspEl=document.getElementById("masp");
+        if(maspEl){
+          maspEl.focus();
+          if(pendingClearance)focusSelectMasp();
+        }
+      }catch(_){}
       return true;
     }catch(e){
-      console.error("[COPILOT BRIDGE V5.4] lỗi nhận dữ liệu:",e);
+      console.error("[COPILOT BRIDGE V5.5] lỗi nhận dữ liệu:",e);
       finished=true;
       try{localStorage.removeItem(KEY)}catch(_){}
-      const ack={id:tx,transfer_id:tx,consumed_at:new Date().toISOString(),count:0,ok:false,error:String(e?.message||e),mode:"prefill-manual-enter-v5.4-isolated-tab"};
+      const ack={id:tx,transfer_id:tx,consumed_at:new Date().toISOString(),count:0,ok:false,error:String(e?.message||e),mode:"direct-api-v5.5-isolated-tab-minimal-fix"};
       try{localStorage.setItem(ACK_KEY,JSON.stringify(ack))}catch(_){}
       alert("❌ Không nhận được dữ liệu từ Tìm kiếm nhanh: "+(e?.message||e));
       return false;
@@ -197,5 +267,5 @@
   window.addEventListener("focus",()=>{if(!finished)setTimeout(consume,20)});
   document.addEventListener("visibilitychange",()=>{if(!finished&&document.visibilityState==="visible")setTimeout(consume,20)});
 
-  window.SalesCopilotBridge={consume,version:"5.4-isolated-tab-prefill-manual-enter"};
+  window.SalesCopilotBridge={consume,version:"5.5-isolated-tab-minimal-fix"};
 })();
