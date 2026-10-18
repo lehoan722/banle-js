@@ -1,5 +1,5 @@
 // scripts/salesCopilotBridgeBannv.js
-// V5.2 ISOLATED-TAB + CLEARANCE-PENDING + RELIABLE KM SELECT
+// V5.3 ISOLATED-TAB + CLEARANCE-PENDING + PERSISTENT KM SELECT
 // Mỗi lần Sang bán gắn copilot_tx riêng vào tab mới.
 // Chỉ tab có đúng copilot_tx mới được đọc payload tương ứng. Tab bán cũ hoàn toàn không tranh nhận dữ liệu.
 // FIX: mã có quyền xả có thể dừng ở ô Khuyến mại để NV xác nhận; trạng thái này là hợp lệ, không báo lỗi giả.
@@ -14,7 +14,7 @@
 
   // Trang bán mở bình thường (không đi từ nút Sang bán) thì bridge đứng yên.
   if(!tx){
-    window.SalesCopilotBridge={consume:async()=>false,version:"5.2-isolated-tab-clearance-select-idle"};
+    window.SalesCopilotBridge={consume:async()=>false,version:"5.3-isolated-tab-clearance-persistent-select-idle"};
     return;
   }
 
@@ -24,6 +24,7 @@
 
   let running=false;
   let finished=false;
+  let pendingClearanceActive=false;
 
   function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
   function text(v){return String(v==null?"":v).trim()}
@@ -140,7 +141,7 @@
         };
       }
     }catch(e){
-      console.warn("[COPILOT BRIDGE V5.2] Không kiểm tra được trạng thái chờ KM:",e);
+      console.warn("[COPILOT BRIDGE V5.3] Không kiểm tra được trạng thái chờ KM:",e);
     }
     return null;
   }
@@ -162,14 +163,14 @@
       // Vì vậy lỗi "đã xử lý nhưng chưa thấy sản phẩm" có thể chỉ là trạng thái chờ KM hợp lệ.
       const pending=detectClearancePending(masp,size);
       if(pending){
-        console.info("[COPILOT BRIDGE V5.2] Đã nhận mã và đang chờ NV xác nhận KM:",pending);
+        console.info("[COPILOT BRIDGE V5.3] Đã nhận mã và đang chờ NV xác nhận KM:",pending);
         return pending;
       }
       throw new Error(result?.error||`Không thêm được ${masp}/${size||"0"}.`);
     }
 
     const row=await waitUntil(()=>findSaleRow(masp,size),1800,45);
-    if(!row)console.warn("[COPILOT BRIDGE V5.2] State đã xác nhận nhưng DOM chưa render kịp:",{masp,size,result});
+    if(!row)console.warn("[COPILOT BRIDGE V5.3] State đã xác nhận nhưng DOM chưa render kịp:",{masp,size,result});
     return result;
   }
 
@@ -205,6 +206,7 @@
         processedCount++;
         if(result?.pending_clearance===true){
           pendingClearance=result;
+          pendingClearanceActive=true;
           // Một tab đang chờ xác nhận KM thì không được tự đẩy tiếp item khác lên form.
           break;
         }
@@ -221,7 +223,7 @@
         pending_clearance:!!pendingClearance,
         pending_masp:pendingClearance?.masp||null,
         pending_size:pendingClearance?.size||null,
-        mode:"direct-api-v5.2-isolated-tab-clearance-select"
+        mode:"direct-api-v5.3-isolated-tab-clearance-persistent-select"
       };
       localStorage.setItem(ACK_KEY,JSON.stringify(ack));
       cleanTxFromAddressBar();
@@ -231,6 +233,7 @@
         if(pendingClearance){
           focusSelectKhuyenMaiReliable();
         }else{
+          pendingClearanceActive=false;
           document.getElementById("masp")?.focus();
         }
       }catch(_){}
@@ -239,7 +242,7 @@
       console.error("[COPILOT BRIDGE V5] lỗi nhận dữ liệu:",e);
       finished=true;
       try{localStorage.removeItem(KEY)}catch(_){}
-      const ack={id:tx,transfer_id:tx,consumed_at:new Date().toISOString(),count:0,ok:false,error:String(e?.message||e),mode:"direct-api-v5.2-isolated-tab-clearance-select"};
+      const ack={id:tx,transfer_id:tx,consumed_at:new Date().toISOString(),count:0,ok:false,error:String(e?.message||e),mode:"direct-api-v5.3-isolated-tab-clearance-persistent-select"};
       try{localStorage.setItem(ACK_KEY,JSON.stringify(ack))}catch(_){}
       alert("❌ Không nhận được dữ liệu từ Tìm kiếm nhanh: "+(e?.message||e));
       return false;
@@ -247,10 +250,66 @@
   }
 
   // Payload thường đã có trước khi tab mở; polling nhẹ để chờ auth + main.js + hoadon.js sẵn sàng.
-  const timer=setInterval(()=>{if(finished){clearInterval(timer);return}consume()},400);
-  setTimeout(consume,80);
-  window.addEventListener("focus",()=>{if(!finished)setTimeout(consume,20)});
-  document.addEventListener("visibilitychange",()=>{if(!finished&&document.visibilityState==="visible")setTimeout(consume,20)});
+  const timer=setInterval(()=>{
+    if(finished){
+      clearInterval(timer);
+      return;
+    }
+    consume();
+  },400);
 
-  window.SalesCopilotBridge={consume,version:"5.2-isolated-tab-clearance-select"};
+  setTimeout(consume,80);
+
+  window.addEventListener("focus",()=>{
+    if(pendingClearanceActive){
+      setTimeout(focusSelectKhuyenMaiReliable,20);
+      setTimeout(focusSelectKhuyenMaiReliable,150);
+      return;
+    }
+    if(!finished)setTimeout(consume,20);
+  });
+
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState!=="visible")return;
+    if(pendingClearanceActive){
+      setTimeout(focusSelectKhuyenMaiReliable,20);
+      setTimeout(focusSelectKhuyenMaiReliable,150);
+      return;
+    }
+    if(!finished)setTimeout(consume,20);
+  });
+
+  // Nếu trang đã xử lý payload khi tab còn ở nền, tiếp tục giữ vùng chọn KM
+  // trong vài giây đầu. Dừng tự nhiên khi người dùng gõ/Enter vì focus/select
+  // sau đó không còn được gọi bởi timer này quá lâu.
+  const kmReselectTimer=setInterval(()=>{
+    if(!pendingClearanceActive){
+      clearInterval(kmReselectTimer);
+      return;
+    }
+    if(document.visibilityState==="visible" && document.hasFocus()){
+      focusSelectKhuyenMaiReliable();
+    }
+  },350);
+  setTimeout(()=>clearInterval(kmReselectTimer),5000);
+
+  // Khi người dùng bắt đầu thao tác thật ở ô KM, không tiếp tục cưỡng bức select.
+  const kmEl=document.getElementById("khuyenmai");
+  if(kmEl){
+    const stopPersistent=()=>{
+      pendingClearanceActive=false;
+    };
+    kmEl.addEventListener("keydown",(e)=>{
+      if(e.key==="Enter" || e.key.length===1 || e.key==="Backspace" || e.key==="Delete"){
+        stopPersistent();
+      }
+    },true);
+    kmEl.addEventListener("input",stopPersistent,true);
+    kmEl.addEventListener("mousedown",()=>{
+      // cho phép người dùng tự đặt con trỏ/chọn tay mà bridge không giành lại
+      setTimeout(stopPersistent,0);
+    },true);
+  }
+
+  window.SalesCopilotBridge={consume,version:"5.3-isolated-tab-clearance-persistent-select"};
 })();
