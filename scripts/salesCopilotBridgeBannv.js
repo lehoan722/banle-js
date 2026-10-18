@@ -1,6 +1,8 @@
 // scripts/salesCopilotBridgeBannv.js
-// V5 ISOLATED-TAB: mỗi lần Sang bán gắn copilot_tx riêng vào tab mới.
+// V5.1 ISOLATED-TAB + CLEARANCE-PENDING FIX
+// Mỗi lần Sang bán gắn copilot_tx riêng vào tab mới.
 // Chỉ tab có đúng copilot_tx mới được đọc payload tương ứng. Tab bán cũ hoàn toàn không tranh nhận dữ liệu.
+// FIX: mã có quyền xả có thể dừng ở ô Khuyến mại để NV xác nhận; trạng thái này là hợp lệ, không báo lỗi giả.
 
 (function(){
   "use strict";
@@ -12,7 +14,7 @@
 
   // Trang bán mở bình thường (không đi từ nút Sang bán) thì bridge đứng yên.
   if(!tx){
-    window.SalesCopilotBridge={consume:async()=>false,version:"5.0-isolated-tab-idle"};
+    window.SalesCopilotBridge={consume:async()=>false,version:"5.1-isolated-tab-clearance-safe-idle"};
     return;
   }
 
@@ -82,6 +84,40 @@
     return await waitUntil(()=>typeof window.hoadonNhanTuSalesCopilot==="function"?window.hoadonNhanTuSalesCopilot:null,15000,60);
   }
 
+  function detectClearancePending(maspRaw,sizeRaw){
+    const masp=normMasp(maspRaw);
+    const size=normSize(sizeRaw)||"0";
+    try{
+      const ctx=window.__KM_XA_CTX;
+      const kmEl=document.getElementById("khuyenmai");
+      const maspEl=document.getElementById("masp");
+      const sizeEl=document.getElementById("size");
+
+      const ctxMasp=normMasp(ctx?.masp);
+      const pendingSize=normSize(ctx?.pendingSize||sizeEl?.value||"0")||"0";
+      const formMasp=normMasp(maspEl?.value).replace(/_(38|39|40|41|42|43|44|45|46|0)$/,"");
+      const clearanceEnabled=kmEl?.dataset?.clearanceEnabled==="1" || Number(ctx?.maxPct||0)>0;
+      const waiting=!!ctx && !ctx?.confirmed && clearanceEnabled;
+      const sameMasp=(ctxMasp===masp)||(formMasp===masp);
+      const sameSize=(pendingSize===size)||(size==="0"&&pendingSize==="0");
+
+      if(waiting&&sameMasp&&sameSize){
+        return {
+          ok:true,
+          pending_clearance:true,
+          masp,
+          size,
+          max_pct:Number(ctx?.maxPct||kmEl?.dataset?.clearanceMaxPct||0),
+          default_km:Number(ctx?.defaultKm||kmEl?.dataset?.clearanceDefaultKm||0),
+          hint_value:String(ctx?.hintValue||kmEl?.value||"")
+        };
+      }
+    }catch(e){
+      console.warn("[COPILOT BRIDGE V5.1] Không kiểm tra được trạng thái chờ KM:",e);
+    }
+    return null;
+  }
+
   async function addOne(item){
     const masp=normMasp(item?.masp);
     const size=normSize(item?.size);
@@ -92,10 +128,21 @@
     if(!api)throw new Error("Module hóa đơn chưa sẵn sàng nhận dữ liệu trực tiếp. Hãy tải lại trang bán một lần.");
 
     const result=await api({masp,size,soluong:qty,source:"sales-copilot"});
-    if(!result||result.ok!==true)throw new Error(result?.error||`Không thêm được ${masp}/${size||"0"}.`);
+
+    if(!result||result.ok!==true){
+      // Với hàng có quyền xả, hoadon.js cố ý chưa thêm dòng ngay:
+      // nó nạp mã/size/giá/KM rồi dừng ở ô Khuyến mại để NV xác nhận.
+      // Vì vậy lỗi "đã xử lý nhưng chưa thấy sản phẩm" có thể chỉ là trạng thái chờ KM hợp lệ.
+      const pending=detectClearancePending(masp,size);
+      if(pending){
+        console.info("[COPILOT BRIDGE V5.1] Đã nhận mã và đang chờ NV xác nhận KM:",pending);
+        return pending;
+      }
+      throw new Error(result?.error||`Không thêm được ${masp}/${size||"0"}.`);
+    }
 
     const row=await waitUntil(()=>findSaleRow(masp,size),1800,45);
-    if(!row)console.warn("[COPILOT BRIDGE V5] State đã xác nhận nhưng DOM chưa render kịp:",{masp,size,result});
+    if(!row)console.warn("[COPILOT BRIDGE V5.1] State đã xác nhận nhưng DOM chưa render kịp:",{masp,size,result});
     return result;
   }
 
@@ -123,21 +170,53 @@
       if(!apiReady)throw new Error("Không tìm thấy API nhận dữ liệu của module hóa đơn.");
 
       await prefillCustomer(payload);
-      for(const item of payload.items)await addOne(item);
+
+      let pendingClearance=null;
+      let processedCount=0;
+      for(const item of payload.items){
+        const result=await addOne(item);
+        processedCount++;
+        if(result?.pending_clearance===true){
+          pendingClearance=result;
+          // Một tab đang chờ xác nhận KM thì không được tự đẩy tiếp item khác lên form.
+          break;
+        }
+      }
 
       finished=true;
       localStorage.removeItem(KEY);
-      const ack={id:payload.id,transfer_id:tx,consumed_at:new Date().toISOString(),count:payload.items.length,mode:"direct-api-v5-isolated-tab"};
+      const ack={
+        id:payload.id,
+        transfer_id:tx,
+        consumed_at:new Date().toISOString(),
+        count:processedCount,
+        ok:true,
+        pending_clearance:!!pendingClearance,
+        pending_masp:pendingClearance?.masp||null,
+        pending_size:pendingClearance?.size||null,
+        mode:"direct-api-v5.1-isolated-tab-clearance-safe"
+      };
       localStorage.setItem(ACK_KEY,JSON.stringify(ack));
       cleanTxFromAddressBar();
 
-      try{window.focus();document.getElementById("masp")?.focus()}catch(_){}
+      try{
+        window.focus();
+        if(pendingClearance){
+          const kmEl=document.getElementById("khuyenmai");
+          if(kmEl){
+            kmEl.focus({preventScroll:true});
+            kmEl.select?.();
+          }
+        }else{
+          document.getElementById("masp")?.focus();
+        }
+      }catch(_){}
       return true;
     }catch(e){
       console.error("[COPILOT BRIDGE V5] lỗi nhận dữ liệu:",e);
       finished=true;
       try{localStorage.removeItem(KEY)}catch(_){}
-      const ack={id:tx,transfer_id:tx,consumed_at:new Date().toISOString(),count:0,ok:false,error:String(e?.message||e),mode:"direct-api-v5-isolated-tab"};
+      const ack={id:tx,transfer_id:tx,consumed_at:new Date().toISOString(),count:0,ok:false,error:String(e?.message||e),mode:"direct-api-v5.1-isolated-tab-clearance-safe"};
       try{localStorage.setItem(ACK_KEY,JSON.stringify(ack))}catch(_){}
       alert("❌ Không nhận được dữ liệu từ Tìm kiếm nhanh: "+(e?.message||e));
       return false;
@@ -150,5 +229,5 @@
   window.addEventListener("focus",()=>{if(!finished)setTimeout(consume,20)});
   document.addEventListener("visibilitychange",()=>{if(!finished&&document.visibilityState==="visible")setTimeout(consume,20)});
 
-  window.SalesCopilotBridge={consume,version:"5.0-isolated-tab"};
+  window.SalesCopilotBridge={consume,version:"5.1-isolated-tab-clearance-safe"};
 })();
