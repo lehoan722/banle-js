@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=32";
 
-window.TIM_KIEM_NHANH_BUILD = "2.3.0-FAST-DISCOUNT-NEAR-SIZE";
-console.log("[TimKiemNhanh V2] BUILD 2.3.0-FAST-DISCOUNT-NEAR-SIZE");
+window.TIM_KIEM_NHANH_BUILD = "2.4.0-FAST-ADMIN-FIRST-SIZE0";
+console.log("[TimKiemNhanh V2] BUILD 2.4.0-FAST-ADMIN-FIRST-SIZE0");
 
 const supabase = getSupabaseClient();
 
@@ -406,8 +406,8 @@ async function enrichProductsAfterCheck(rows){
 }
 
 
-async function fetchDiscountPageV23(offset=0,limit=40){
-  const {data,error}=await supabase.rpc("timkiemnhanh_giamgia_v23",{
+async function fetchDiscountPageV24(offset=0,limit=40){
+  const {data,error}=await supabase.rpc("timkiemnhanh_giamgia_v24",{
     p_diadiem:state.diadiem,
     p_nhomhang:state.group,
     p_size:state.size,
@@ -426,9 +426,9 @@ async function search(reset=true){
   setLoading(true,reset);
   try{
     if(state.mode==="discount"){
-      // V2.3: server xet TOAN BO ma con ban duoc theo size chon -> +1 -> -1,
-      // ap dung ADMIN + RULE truoc, sau do moi phan trang 40 dong.
-      const rows=await fetchDiscountPageV23(off,40);
+      // V2.4: server xet TOAN BO ma con ban duoc theo size chon -> +1 -> -1 -> size 0.
+      // ADMIN override RULE; trong tung nhom size, ADMIN xep truoc RULE; sau do moi phan trang 40 dong.
+      const rows=await fetchDiscountPageV24(off,40);
       const nextTotal=Number(rows[0]?.total_count||0);
 
       if(reset){
@@ -501,7 +501,8 @@ function productCardHtml(sp,orderNo=0,totalNo=0){
   const formSizes=compactFormSizes(sp);
   const orderText=orderNo>0?`${orderNo}/${totalNo||orderNo}`:"";
   const rulePct=Number(sp.goi_y_xa_pct||0);
-  const effectivePct=Number(sp.giam_gia_hieu_luc||sp.giam_gia_pct||rulePct||0);
+  const adminPct=Number(sp.giam_gia_admin_pct ?? sp.giam_gia_pct ?? 0);
+  const effectivePct=adminPct>0 ? adminPct : Number(sp.giam_gia_hieu_luc||rulePct||0);
   const orderXaText=effectivePct?`${orderText} ${effectivePct}`:orderText;
   const xaTitle=effectivePct
     ? `Giảm hiệu lực ${effectivePct}% · nguồn ${esc(sp.giam_gia_nguon||"ADMIN")} · luật ${esc(sp.goi_y_xa_detail?.rule_code||"")}`
@@ -531,7 +532,7 @@ function renderProducts({reset=true,rows=[]}={}){
   if(reset){
     if(!state.products.length){
       const msg=state.mode==="discount"
-        ?"Không có sản phẩm giảm giá còn bán được ở size đã chọn hoặc ±1 size tại cơ sở này."
+        ?"Không có sản phẩm giảm giá còn bán được ở size đã chọn, ±1 size hoặc size 0 tại cơ sở này."
         :"Không có sản phẩm còn đúng size tại cơ sở này theo tồn sau kiểm.";
       box.innerHTML=`<div class="empty" style="grid-column:1/-1">${esc(msg)}</div>`;return
     }
