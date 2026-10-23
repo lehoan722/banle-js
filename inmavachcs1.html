@@ -2015,38 +2015,14 @@
                     selectedColorOrder = parseColorsFromInput(data.mausac || '');
                     updateMauSacPreview();
                     syncPopupChecksFromInput();
-                    // Nếu đã có % lợi nhuận MỤC TIÊU được người dùng giữ từ trước,
-                    // thì % này phải là NGUỒN ĐIỀU KHIỂN ngay cả khi mã SP đã tồn tại.
-                    // KHÔNG nạp KM cũ từ database vào để tránh KM cũ ghi đè mục tiêu %LN.
-                    const dangCoPctLoiNhuanMucTieu =
-                        pctLoiNhuanMucTieu !== null && Number.isFinite(Number(pctLoiNhuanMucTieu));
-
-                    if (dangCoPctLoiNhuanMucTieu) {
-                        document.getElementById('khuyenmaiInput').value = '';
-                        if (giaSauKhuyenMaiOutput) giaSauKhuyenMaiOutput.value = '';
-                        if (loiNhuanTienOutput) loiNhuanTienOutput.value = '';
-                        if (loiNhuanPctOutput) {
-                            loiNhuanPctOutput.value = formatPctLoiNhuan(Number(pctLoiNhuanMucTieu));
-                        }
-                    } else {
-                        document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
-                    }
-
+                    document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
                     document.getElementById('nhaccInput').value = data.nhacc || '';
                     document.getElementById('nhomhangInput').value = data.nhomhang || '';
                     document.getElementById('chungloaiInput').value = data.chungloai || '';
                     document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
                     // [ADD] Khi load form sửa, cũng xét lại theo Giá lẻ đang có
                     syncQuanLyKichCoByGiaLe();
-
-                    if (dangCoPctLoiNhuanMucTieu) {
-                        // Tính lại KM từ %LN mục tiêu theo Giá nhập/Giá lẻ của mã vừa nạp.
-                        // Từ đây trở đi KM chỉ là KẾT QUẢ, không phải dữ liệu điều khiển.
-                        apDungPctLoiNhuanDaGiu();
-                    } else {
-                        capNhatThongTinLoiNhuan();
-                    }
-
+                    capNhatThongTinLoiNhuan();
                     document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
                 } else {
                     // Mã mới không tồn tại -> chuyển sang chế độ THÊM MỚI
@@ -2074,18 +2050,6 @@
 
                     // Mã mới: tự gán nhóm hàng theo hậu tố sau dấu "-"
                     autoFillNhomHangFromMasp({ force: true });
-
-                    // Tiền KM của mã trước tuyệt đối không được dùng làm đầu vào cho mã mới.
-                    // Giữ %LN mục tiêu, xóa KM cũ rồi mới tính ngược KM mới từ %LN.
-                    if (pctLoiNhuanMucTieu !== null) {
-                        if (khuyenmaiInput) khuyenmaiInput.value = '';
-                        if (giaSauKhuyenMaiOutput) giaSauKhuyenMaiOutput.value = '';
-                        if (loiNhuanTienOutput) loiNhuanTienOutput.value = '';
-                        if (loiNhuanPctOutput) loiNhuanPctOutput.value = formatPctLoiNhuan(pctLoiNhuanMucTieu);
-                    }
-                    // Nếu đã có % lợi nhuận mục tiêu và bộ giá hiện tại đủ dữ liệu,
-                    // áp dụng theo chiều %LN -> KM; không bao giờ lấy KM cũ -> %LN.
-                    apDungPctLoiNhuanDaGiu();
                 }
             }
 
@@ -2097,10 +2061,6 @@
             };
 
             function resetForm(keepMasp = false) {
-                // Trước khi reset/Lưu sang mã kế tiếp, nếu chưa có mục tiêu riêng thì
-                // chốt %LN đang hiển thị để tiếp tục giữ đúng % này cho sản phẩm sau.
-                chotPctLoiNhuanDangHienThiLamMucTieu();
-
                 // Checkbox bật = giữ nguyên trọn bộ 3 thông tin giá qua Lưu / Thêm mới:
                 // Giá nhập + Giá lẻ + % chiết khấu.
                 // Checkbox tắt = giữ nguyên luồng reset cũ của trang.
@@ -2108,12 +2068,6 @@
                 const giaNhapDangGiu = giuBoGia ? String(gianhapInput?.value || '').trim() : '';
                 const giaLeDangGiu = giuBoGia ? String(gialeInput?.value || '').trim() : '';
                 const ckDangGiu = giuBoGia ? String(chietKhauInput?.value || '').trim() : '';
-                // Chỉ giữ % lợi nhuận MỤC TIÊU đã được xác lập rõ ràng.
-                // Tuyệt đối không lấy % đang HIỂN THỊ (có thể chỉ là kết quả tính từ KM)
-                // để biến thành % mục tiêu cho sản phẩm kế tiếp.
-                const pctLoiNhuanDangGiu = pctLoiNhuanMucTieu !== null
-                    ? Number(pctLoiNhuanMucTieu)
-                    : null;
 
                 // Lấy giá trị các trường giữ lại hiện tại
                 const data = {};
@@ -2160,20 +2114,7 @@
                 selectedColorOrder = parseColorsFromInput(document.getElementById('mausacInput').value || '');
                 updateMauSacPreview();
                 syncPopupChecksFromInput();
-
-                // % lợi nhuận luôn được giữ qua Thêm mới/Lưu, độc lập với checkbox giữ bộ giá.
-                // QUAN TRỌNG: tiền Khuyến mãi là KẾT QUẢ theo từng sản phẩm nên không được giữ lại.
-                // Xóa KM cũ trước; khi có đủ Giá nhập/Giá lẻ, %LN mục tiêu sẽ là nguồn để tính lại KM mới.
-                pctLoiNhuanMucTieu = pctLoiNhuanDangGiu !== null && Number.isFinite(Number(pctLoiNhuanDangGiu))
-                    ? Number(pctLoiNhuanDangGiu)
-                    : null;
-                if (khuyenmaiInput) khuyenmaiInput.value = '';
-                if (giaSauKhuyenMaiOutput) giaSauKhuyenMaiOutput.value = '';
-                if (loiNhuanTienOutput) loiNhuanTienOutput.value = '';
-                if (loiNhuanPctOutput) {
-                    loiNhuanPctOutput.value = pctLoiNhuanMucTieu === null ? '' : formatPctLoiNhuan(pctLoiNhuanMucTieu);
-                }
-                if (!apDungPctLoiNhuanDaGiu()) capNhatThongTinLoiNhuan();
+                capNhatThongTinLoiNhuan();
             }
 
             // ==== Validate các trường bắt buộc ====
@@ -2704,10 +2645,6 @@ Bạn chưa nhập màu sắc.
             }
 
             let dangTinhTuPctLoiNhuan = false;
-            // % lợi nhuận mục tiêu được giữ lại qua Lưu / Thêm mới để áp dụng cho sản phẩm kế tiếp.
-            // null = người dùng đã xóa/không đặt mục tiêu.
-            let pctLoiNhuanMucTieu = null;
-            let dangSuaPctLoiNhuan = false;
 
             function formatPctLoiNhuan(value) {
                 const n = Number(value);
@@ -2727,22 +2664,7 @@ Bạn chưa nhập màu sắc.
                 return Number.isFinite(n) ? n : null;
             }
 
-            // Chốt %LN đang hiển thị thành mục tiêu trước khi người dùng sửa Giá lẻ/Giá nhập
-            // hoặc chuyển sang sản phẩm mới. Điều này bảo đảm %LN là giá trị được GIỮ,
-            // còn Khuyến mãi chỉ là KẾT QUẢ phải tính lại theo từng mức giá.
-            function chotPctLoiNhuanDangHienThiLamMucTieu() {
-                if (pctLoiNhuanMucTieu !== null && Number.isFinite(Number(pctLoiNhuanMucTieu))) {
-                    return Number(pctLoiNhuanMucTieu);
-                }
-                const pctDangHienThi = parsePctLoiNhuan(loiNhuanPctOutput?.value);
-                if (pctDangHienThi !== null && Number.isFinite(Number(pctDangHienThi))) {
-                    pctLoiNhuanMucTieu = Number(pctDangHienThi);
-                    return pctLoiNhuanMucTieu;
-                }
-                return null;
-            }
-
-            function capNhatThongTinLoiNhuan({ capNhatPctMucTieu = false } = {}) {
+            function capNhatThongTinLoiNhuan() {
                 if (!giaSauKhuyenMaiOutput || !loiNhuanTienOutput || !loiNhuanPctOutput) return;
 
                 const giale = parseMoney(gialeInput?.value);
@@ -2769,31 +2691,16 @@ Bạn chưa nhập màu sắc.
                     ? (loiNhuan < 0 ? '-' : '') + Math.abs(Math.round(loiNhuan)).toLocaleString('vi-VN')
                     : '';
 
-                // Khi đang gõ trực tiếp ô % lợi nhuận thì không ghi đè nội dung/caret.
-                if (!dangTinhTuPctLoiNhuan && !dangSuaPctLoiNhuan) {
-                    if (capNhatPctMucTieu) {
-                        // Chỉ khi NGƯỜI DÙNG chủ động sửa ô Khuyến mãi mới cho phép
-                        // chiều KM -> %LN cập nhật lại mục tiêu.
-                        loiNhuanPctOutput.value = pctLoiNhuan === null ? '' : formatPctLoiNhuan(pctLoiNhuan);
-                        if (pctLoiNhuan !== null && Number.isFinite(pctLoiNhuan)) {
-                            pctLoiNhuanMucTieu = pctLoiNhuan;
-                        }
-                    } else if (pctLoiNhuanMucTieu !== null && Number.isFinite(Number(pctLoiNhuanMucTieu))) {
-                        // Đã có %LN mục tiêu: luôn hiển thị đúng % cố định này.
-                        // Không cho kết quả tính từ KM/Giá bán tự ghi đè lên nó.
-                        loiNhuanPctOutput.value = formatPctLoiNhuan(pctLoiNhuanMucTieu);
-                    } else {
-                        // Chưa có mục tiêu: chỉ hiển thị % thực tế để tham khảo,
-                        // nhưng KHÔNG tự biến nó thành mục tiêu.
-                        loiNhuanPctOutput.value = pctLoiNhuan === null ? '' : formatPctLoiNhuan(pctLoiNhuan);
-                    }
+                // Khi đang tính ngược từ chính ô % lợi nhuận thì không ghi đè giá trị người dùng đang gõ.
+                if (!dangTinhTuPctLoiNhuan) {
+                    loiNhuanPctOutput.value = pctLoiNhuan === null ? '' : formatPctLoiNhuan(pctLoiNhuan);
                 }
             }
 
-            function tinhNguocTuPctLoiNhuan({ showMessage = false, preservePctText = false, pctOverride = null } = {}) {
+            function tinhNguocTuPctLoiNhuan({ showMessage = false } = {}) {
                 const giale = parseMoney(gialeInput?.value);
                 const gianhap = parseMoney(gianhapInput?.value);
-                const pct = pctOverride !== null ? Number(pctOverride) : parsePctLoiNhuan(loiNhuanPctOutput?.value);
+                const pct = parsePctLoiNhuan(loiNhuanPctOutput?.value);
 
                 if (pct === null) {
                     capNhatThongTinLoiNhuan();
@@ -2834,24 +2741,11 @@ Bạn chưa nhập màu sắc.
                         : '0';
                     giaSauKhuyenMaiOutput.value = formatMoneyInput(giaThuVe);
                     loiNhuanTienOutput.value = (loiNhuan < 0 ? '-' : '') + Math.abs(loiNhuan).toLocaleString('vi-VN');
-                    pctLoiNhuanMucTieu = pct;
-                    if (!preservePctText) {
-                        loiNhuanPctOutput.value = formatPctLoiNhuan(pct);
-                    }
+                    loiNhuanPctOutput.value = formatPctLoiNhuan(pct);
                 } finally {
                     dangTinhTuPctLoiNhuan = false;
                 }
                 return true;
-            }
-
-            function apDungPctLoiNhuanDaGiu({ showMessage = false } = {}) {
-                if (pctLoiNhuanMucTieu === null || !Number.isFinite(Number(pctLoiNhuanMucTieu))) return false;
-                if (parseMoney(gialeInput?.value) <= 0 || parseMoney(gianhapInput?.value) <= 0) return false;
-                return tinhNguocTuPctLoiNhuan({
-                    showMessage,
-                    preservePctText: dangSuaPctLoiNhuan,
-                    pctOverride: Number(pctLoiNhuanMucTieu)
-                });
             }
 
             function getChietKhauPct() {
@@ -3004,8 +2898,8 @@ Bạn chưa nhập màu sắc.
 
 
                 // ===== QUY TẮC BẠN YÊU CẦU =====
-                // Giá nhập phải >= 25% Giá lẻ
-                const giaNhapToiThieu = giale * 0.25;
+                // Giá nhập phải >= 30% Giá lẻ
+                const giaNhapToiThieu = giale * 0.30;
 
                 if (giaNhapMoi < giaNhapToiThieu) {
 
@@ -3026,7 +2920,7 @@ Bạn chưa nhập màu sắc.
                             'Giá nhập hiện chỉ bằng ' +
                             tyLe +
                             '% Giá lẻ.\n\n' +
-                            'Giá nhập phải ít nhất bằng 25% Giá lẻ.\n' +
+                            'Giá nhập phải ít nhất bằng 30% Giá lẻ.\n' +
                             'Hệ thống sẽ chuyển về ô % CK để bạn kiểm tra lại.'
                         );
                     }
@@ -3599,12 +3493,6 @@ Bạn chưa nhập màu sắc.
             attachEnterNav(formOrder);
             // [ADD] Đồng bộ khi rời ô và khi nhấn Enter tại ô Giá lẻ
             if (gialeInput) {
-                // Khi người dùng bắt đầu sửa Giá lẻ, chốt %LN đang hiển thị làm mục tiêu.
-                // Từ thời điểm này KM cũ không còn là nguồn điều khiển.
-                gialeInput.addEventListener('focus', () => {
-                    chotPctLoiNhuanDangHienThiLamMucTieu();
-                });
-
                 // Chế độ thường: sửa Giá lẻ -> giữ Giá nhập và tự tính lại % CK.
                 // Chế độ giữ CK: giữ nguyên % CK và tính Giá nhập theo % đó.
                 gialeInput.addEventListener('input', () => {
@@ -3617,7 +3505,7 @@ Bạn chưa nhập màu sắc.
                         chietKhauDoNguoiDungNhap = false;
                         tinhChietKhauTuGia();
                     }
-                    if (!apDungPctLoiNhuanDaGiu()) capNhatThongTinLoiNhuan();
+                    capNhatThongTinLoiNhuan();
                 });
 
                 gialeInput.addEventListener('change', () => {
@@ -3632,9 +3520,7 @@ Bạn chưa nhập màu sắc.
                         tinhChietKhauTuGia();
                     }
                     syncQuanLyKichCoByGiaLe();
-                    // Nếu đã có % lợi nhuận mục tiêu thì % này là NGUỒN ĐIỀU KHIỂN:
-                    // luôn tính lại KM từ % mục tiêu, không lấy KM hiện tại để tính ngược %.
-                    if (!apDungPctLoiNhuanDaGiu()) capNhatThongTinLoiNhuan();
+                    capNhatThongTinLoiNhuan();
                 });
 
                 gialeInput.addEventListener('blur', syncQuanLyKichCoByGiaLe);
@@ -3645,84 +3531,42 @@ Bạn chưa nhập màu sắc.
                 });
             }
 
-            gianhapInput?.addEventListener('focus', () => {
-                chotPctLoiNhuanDangHienThiLamMucTieu();
-            });
-            gianhapInput?.addEventListener('input', () => {
-                if (!apDungPctLoiNhuanDaGiu()) capNhatThongTinLoiNhuan();
-            });
-            gianhapInput?.addEventListener('change', () => {
-                if (!apDungPctLoiNhuanDaGiu()) capNhatThongTinLoiNhuan();
-            });
+            gianhapInput?.addEventListener('input', capNhatThongTinLoiNhuan);
+            gianhapInput?.addEventListener('change', capNhatThongTinLoiNhuan);
 
             // Hướng 1: nhập Khuyến mãi -> tự tính Giá thu về / Lợi nhuận / % lợi nhuận.
             khuyenmaiInput?.addEventListener('input', () => {
-                if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan({ capNhatPctMucTieu: true });
+                if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan();
             });
             khuyenmaiInput?.addEventListener('change', () => {
-                if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan({ capNhatPctMucTieu: true });
+                if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan();
             });
 
             // Hướng 2: nhập % lợi nhuận trên doanh thu -> tính ngược và ghi luôn TIỀN KM.
-            // Giá trị % này được giữ cho sản phẩm kế tiếp. Trong lúc gõ không tự chèn dấu %
-            // để Backspace/Delete hoạt động tự nhiên từng ký tự.
             loiNhuanPctOutput?.addEventListener('focus', function () {
-                dangSuaPctLoiNhuan = true;
                 this.value = String(this.value || '').replace('%', '').replace(',', '.');
-                // Khi vào ô %LN: bôi đen toàn bộ để gõ số mới thay ngay,
-                // hoặc bấm Backspace/Delete một lần là xóa sạch.
-                setTimeout(() => this.select?.(), 0);
-            });
-            loiNhuanPctOutput?.addEventListener('click', function () {
-                setTimeout(() => this.select?.(), 0);
+                setTimeout(() => this.select?.(), 10);
             });
             loiNhuanPctOutput?.addEventListener('input', function () {
-                const raw = String(this.value || '').trim();
-
-                // Cho phép xóa sạch bằng Backspace/Delete mà không bị hệ thống điền lại ngay.
-                if (!raw) {
-                    pctLoiNhuanMucTieu = null;
-                    return;
-                }
-
-                const pct = parsePctLoiNhuan(raw);
-                if (pct === null) return;
-                pctLoiNhuanMucTieu = pct;
-
                 dangTinhTuPctLoiNhuan = true;
                 try {
-                    tinhNguocTuPctLoiNhuan({ showMessage: false, preservePctText: true, pctOverride: pct });
+                    tinhNguocTuPctLoiNhuan({ showMessage: false });
                 } finally {
                     dangTinhTuPctLoiNhuan = false;
                 }
             });
             loiNhuanPctOutput?.addEventListener('change', function () {
-                const pct = parsePctLoiNhuan(this.value);
-                if (pct === null) {
-                    pctLoiNhuanMucTieu = null;
-                    return;
-                }
-                pctLoiNhuanMucTieu = pct;
-                tinhNguocTuPctLoiNhuan({ showMessage: true, preservePctText: true, pctOverride: pct });
+                tinhNguocTuPctLoiNhuan({ showMessage: true });
             });
             loiNhuanPctOutput?.addEventListener('blur', function () {
-                dangSuaPctLoiNhuan = false;
                 const pct = parsePctLoiNhuan(this.value);
-                if (pct !== null) {
-                    pctLoiNhuanMucTieu = pct;
-                    this.value = formatPctLoiNhuan(pct);
-                } else {
-                    this.value = '';
-                }
+                if (pct !== null) this.value = formatPctLoiNhuan(pct);
             });
             loiNhuanPctOutput?.addEventListener('keydown', function (e) {
                 if (e.key !== 'Enter') return;
                 e.preventDefault();
                 e.stopPropagation();
-                const pct = parsePctLoiNhuan(this.value);
-                if (pct === null) return;
-                pctLoiNhuanMucTieu = pct;
-                if (tinhNguocTuPctLoiNhuan({ showMessage: true, preservePctText: false, pctOverride: pct })) {
+                if (tinhNguocTuPctLoiNhuan({ showMessage: true })) {
                     const next = document.getElementById('nhaccInput');
                     next?.focus();
                     setTimeout(() => next?.select?.(), 10);
