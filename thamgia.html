@@ -125,6 +125,8 @@
       text-decoration: none;
     }
   </style>
+    <!-- Cau hinh Zalo dung chung -->
+    <script src="/scripts/zaloConfig.js"></script>
 </head>
 
 <body>
@@ -154,13 +156,13 @@
 
     <div id="oaLink" class="oa-link">
       Nếu chưa mở OA, bấm tại đây:<br>
-      <a href="https://zalo.me/s/2332738582622777725/">Quan tâm Zalo Official Account</a>
+      <a data-ht-zalo-oa-link href="#">Quan tâm Zalo Official Account</a>
     </div>
   </div>
 
   <script>
-    const GROUP_URL = "https://zalo.me/g/rz31sxl6fvcidvehzvty";
-    const OA_URL = "https://zalo.me/s/2332738582622777725/";
+    const GROUP_URL = window.HT_ZALO.getGroupUrl();
+    const OA_URL = window.HT_ZALO.getOAUrl();
 
     const params = new URLSearchParams(window.location.search);
     const sdtRaw = params.get("sdt") || params.get("phone") || "";
