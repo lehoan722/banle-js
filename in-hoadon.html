@@ -488,6 +488,8 @@
 
     }
   </style>
+    <!-- Cau hinh Zalo dung chung -->
+    <script src="/scripts/zaloConfig.js"></script>
 </head>
 
 <body>
@@ -550,7 +552,7 @@
             </div>
 
             <img class="zalo-club-img"
-              src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Fzalo.me%2Fg%2Frz31sxl6fvcidvehzvty"
+              data-ht-zalo-qr data-qr-size="220" src=""
               alt="QR nhóm Zalo Shop Hoàn Tuyết" />
 
             <div class="zalo-club-note">
@@ -1098,7 +1100,7 @@
 
           parts.push(
             `Mời anh/chị tham gia cộng đồng khuyến mại của shop để nhận ưu đãi và tích điểm khi mua hàng:
-https://zalo.me/g/rz31sxl6fvcidvehzvty`,
+${window.HT_ZALO.getGroupUrl()}`,
             `Shop chân thành cảm ơn!`
           );
 
