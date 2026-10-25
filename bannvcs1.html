@@ -393,6 +393,8 @@
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="banlemobilecs1.css?v=16">
 
+    <!-- Cau hinh Zalo dung chung -->
+    <script src="/scripts/zaloConfig.js"></script>
 </head>
 
 <body>
@@ -1458,7 +1460,7 @@
                 Quét mã để tham gia nhóm Zalo
             </div>
 
-            <img src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/QR_NHOM_ZALO.JPG"
+            <img data-ht-zalo-qr data-qr-size="260" src=""
                 style="
             width:260px;
             max-width:90%;
@@ -1565,7 +1567,7 @@ tương đương ${tienDiem.toLocaleString("vi-VN")}đ ưu đãi cho lần mua t
 
 Mời anh/chị tham gia cộng đồng khuyến mại của shop để nhận ưu đãi và tích điểm khi mua hàng:
 
-https://zalo.me/g/rz31sxl6fvcidvehzvty
+${window.HT_ZALO.getGroupUrl()}
 
 Shop chân thành cảm ơn!`;
         }
