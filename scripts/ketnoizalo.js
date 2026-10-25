@@ -89,7 +89,7 @@ function taoNoiDungMoiThamGia(rowData) {
 Cảm ơn anh/chị đã mua hàng tại shop. Hiện anh/chị đang có ${diem} điểm, tương đương ${tienDiem.toLocaleString("vi-VN")}đ ưu đãi cho lần mua tiếp theo.
 
 Mời anh/chị tham gia cộng đồng khuyến mại của shop để nhận ưu đãi và tích điểm khi mua hàng:
-https://zalo.me/g/rz31sxl6fvcidvehzvty
+${window.HT_ZALO.getGroupUrl()}
 
 Shop chân thành cảm ơn!`;
 }
