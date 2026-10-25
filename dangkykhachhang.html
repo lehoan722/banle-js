@@ -125,6 +125,8 @@
             line-height: 1.4;
         }
     </style>
+    <!-- Cau hinh Zalo dung chung -->
+    <script src="/scripts/zaloConfig.js"></script>
 </head>
 
 <body>
@@ -231,7 +233,7 @@
             btn.textContent = "Đã đăng ký";
 
             // Link nhóm Zalo của shop
-            const zaloGroupUrl = "https://zalo.me/g/rz31sxl6fvcidvehzvty";
+            const zaloGroupUrl = window.HT_ZALO.getGroupUrl();
 
             const box = document.querySelector(".box");
 
