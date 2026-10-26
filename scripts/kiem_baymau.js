@@ -1,4 +1,4 @@
-// Kiểm bày mẫu v1.5.2 - autosave từng thao tác
+// Kiểm bày mẫu v1.6.0 - lọc đối chiếu vị trí + copy bảng đang hiển thị
 import { supabase, startSessionKeeper } from './supabaseClient.js';
 import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 import {
@@ -34,6 +34,8 @@ let currentMultiResultRows = [];
 let currentMultiResultContext = null;
 let taskRealtimeChannel = null;
 let suppressTaskChange = false;
+let currentDisplayCompareRows = [];
+let currentDisplayCompareFilter = 'all';
 
 // Autosave: mọi thay đổi của phiên quét được ghi xuống server ngay,
 // để reload/thoát trang không làm mất phần dữ liệu đã kiểm.
@@ -192,9 +194,15 @@ function buildCellsRenderer(row, col) {
     props.renderer = function (...args) {
       Handsontable.renderers.TextRenderer.apply(this, args);
       const rowData = args[0].getSourceDataAtRow(args[2]) || {};
-      if (rowData.baymau_mismatch) {
-        args[1].style.background = '#f3e8ff';
-        args[1].style.color = '#581c87';
+      if (rowData.baymau_status === 'wrong') {
+        args[1].style.background = '#fee2e2';
+        args[1].style.color = '#991b1b';
+      } else if (rowData.baymau_status === 'missing') {
+        args[1].style.background = '#fff7cc';
+        args[1].style.color = '#92400e';
+      } else if (rowData.baymau_status === 'correct') {
+        args[1].style.background = '#ecfdf3';
+        args[1].style.color = '#166534';
       }
     };
   }
@@ -236,6 +244,7 @@ function initTable() {
     columnSorting: true,
     filters: true,
     dropdownMenu: true,
+    hiddenRows: { rows: [], indicators: false },
     licenseKey: 'non-commercial-and-evaluation',
     cells: buildCellsRenderer,
     afterChange(changes, source) {
@@ -257,6 +266,9 @@ function initTable() {
       const a = Math.min(row, row2);
       const b = Math.max(row, row2);
       for (let i = a; i <= b; i++) if (i >= 0) selectedRows.add(i);
+    },
+    beforeCopy(data, coords) {
+      replaceCopyDataWithVisibleDisplayRows(data, coords);
     },
     afterOnCellMouseDown(event, coords) {
       if (!coords || coords.row < 0) return;
@@ -309,6 +321,7 @@ function initTable() {
 }
 
 function showScanTable(rows = []) {
+  resetDisplayCompareView();
   tableMode = 'scan';
   const data = rows.length ? rows : [{ id: null, masp: '', vitri_baymau: '' }];
   hot.updateSettings({
@@ -325,6 +338,7 @@ function showScanTable(rows = []) {
 }
 
 function showStockLocationTable(rows) {
+  resetDisplayCompareView();
   tableMode = 'stock-location';
   hot.updateSettings({
     columns: [
@@ -359,24 +373,177 @@ function isDisplayPositionMatched(checkedPosition, catalogPosition) {
   return allowed.includes(checked);
 }
 
+function setDisplayCompareFilterVisible(visible) {
+  const panel = $('display-compare-filter');
+  if (!panel) return;
+  panel.classList.toggle('show', !!visible);
+}
+
+function resetDisplayCompareView() {
+  setDisplayCompareFilterVisible(false);
+  currentDisplayCompareFilter = 'all';
+  if (!hot) return;
+  const hiddenRows = hot.getPlugin('hiddenRows');
+  if (!hiddenRows) return;
+  const rowCount = typeof hot.countSourceRows === 'function' ? hot.countSourceRows() : 0;
+  if (rowCount > 0) hiddenRows.showRows(Array.from({ length: rowCount }, (_, index) => index));
+}
+
+function updateDisplayCompareFilterCounts(rows) {
+  const allRows = Array.isArray(rows) ? rows : [];
+  const counts = {
+    all: allRows.length,
+    correct: allRows.filter((r) => r.baymau_status === 'correct').length,
+    wrong: allRows.filter((r) => r.baymau_status === 'wrong').length,
+    missing: allRows.filter((r) => r.baymau_status === 'missing').length
+  };
+  const labels = {
+    all: `Tất cả (${counts.all})`,
+    correct: `✓ Đúng (${counts.correct})`,
+    wrong: `⚠ Sai vị trí (${counts.wrong})`,
+    missing: `? Chưa khai báo chuẩn (${counts.missing})`
+  };
+  Object.entries(labels).forEach(([key, label]) => {
+    const el = $(`btn-filter-display-${key}`);
+    if (el) el.textContent = label;
+  });
+  return counts;
+}
+
+function applyDisplayCompareFilter(filter = 'all', { updateMessage = true } = {}) {
+  if (tableMode !== 'display-location' || !hot) return;
+  const valid = ['all', 'correct', 'wrong', 'missing'];
+  currentDisplayCompareFilter = valid.includes(filter) ? filter : 'all';
+
+  document.querySelectorAll('.display-filter-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.filter === currentDisplayCompareFilter);
+  });
+
+  const hiddenRows = hot.getPlugin('hiddenRows');
+  const allIndexes = currentDisplayCompareRows.map((_, index) => index);
+  if (hiddenRows) {
+    hiddenRows.showRows(allIndexes);
+    if (currentDisplayCompareFilter !== 'all') {
+      const rowsToHide = currentDisplayCompareRows
+        .map((row, index) => row.baymau_status === currentDisplayCompareFilter ? null : index)
+        .filter((index) => index !== null);
+      hiddenRows.hideRows(rowsToHide);
+    }
+  }
+  hot.render();
+
+  if (updateMessage) {
+    const visibleCount = currentDisplayCompareFilter === 'all'
+      ? currentDisplayCompareRows.length
+      : currentDisplayCompareRows.filter((r) => r.baymau_status === currentDisplayCompareFilter).length;
+    const names = {
+      all: 'tất cả sản phẩm',
+      correct: 'sản phẩm đúng vị trí bày mẫu',
+      wrong: 'sản phẩm sai vị trí bày mẫu',
+      missing: 'sản phẩm chưa khai báo vị trí bày mẫu chuẩn'
+    };
+    setMessage(`Đang hiển thị ${visibleCount} ${names[currentDisplayCompareFilter]}. Bộ lọc chỉ ẩn/hiện dòng, không làm mất dữ liệu phiên.`, currentDisplayCompareFilter === 'wrong' || currentDisplayCompareFilter === 'missing' ? 'warn' : 'ok');
+  }
+}
+
+function getVisibleDisplayCompareRows() {
+  if (tableMode !== 'display-location') return [];
+  if (currentDisplayCompareFilter === 'all') return currentDisplayCompareRows.slice();
+  return currentDisplayCompareRows.filter((row) => row.baymau_status === currentDisplayCompareFilter);
+}
+
+async function writeTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const ok = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  if (!ok) throw new Error('Không thể ghi clipboard');
+}
+
+async function copyVisibleDisplayCompareTable() {
+  if (tableMode !== 'display-location') {
+    setMessage('Chức năng copy này chỉ dùng sau khi tải vị trí bày mẫu chuẩn.', 'warn');
+    return;
+  }
+  const rows = getVisibleDisplayCompareRows();
+  if (!rows.length) {
+    setMessage('Không có dòng nào đang hiển thị để copy.', 'warn');
+    return;
+  }
+  const lines = [
+    ['Mã SP', 'Vị trí đang kiểm', 'Vị trí bày mẫu chuẩn'],
+    ...rows.map((row) => [
+      String(row.masp || ''),
+      String(row.vitri_baymau || ''),
+      String(row.vitri_baymau_dm || '')
+    ])
+  ];
+  const text = lines.map((cols) => cols.map((value) => value.replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n');
+  try {
+    await writeTextToClipboard(text);
+    const names = { all: 'tất cả', correct: 'đúng vị trí', wrong: 'sai vị trí', missing: 'chưa khai báo vị trí chuẩn' };
+    setMessage(`Đã copy ${rows.length} dòng ${names[currentDisplayCompareFilter]} (kèm tiêu đề 3 cột). Có thể dán trực tiếp vào Google Sheets.`, 'ok');
+  } catch (err) {
+    console.error('Copy display compare failed:', err);
+    setMessage('Không copy được vào clipboard. Hãy cho phép quyền Clipboard trên trình duyệt rồi thử lại.', 'warn');
+  }
+}
+
+function replaceCopyDataWithVisibleDisplayRows(data, coords) {
+  if (tableMode !== 'display-location' || !hot || !Array.isArray(data) || !Array.isArray(coords)) return;
+  const hiddenRows = hot.getPlugin('hiddenRows');
+  const replacement = [];
+  for (const range of coords) {
+    const startRow = Math.min(range.startRow, range.endRow);
+    const endRow = Math.max(range.startRow, range.endRow);
+    const startCol = Math.min(range.startCol, range.endCol);
+    const endCol = Math.max(range.startCol, range.endCol);
+    for (let visualRow = startRow; visualRow <= endRow; visualRow += 1) {
+      if (visualRow < 0) continue;
+      if (hiddenRows && hiddenRows.isHidden(visualRow)) continue;
+      const rowValues = [];
+      for (let visualCol = startCol; visualCol <= endCol; visualCol += 1) {
+        rowValues.push(hot.getDataAtCell(visualRow, visualCol));
+      }
+      replacement.push(rowValues);
+    }
+  }
+  data.splice(0, data.length, ...replacement);
+}
+
 function showDisplayLocationTable(rows) {
   tableMode = 'display-location';
+  currentDisplayCompareRows = Array.isArray(rows) ? rows : [];
+  currentDisplayCompareFilter = 'all';
   hot.updateSettings({
     columns: [
       { data: 'masp', type: 'text', width: 150, readOnly: true },
       { data: 'vitri_baymau', type: 'text', width: 140, readOnly: true },
       { data: 'vitri_baymau_dm', type: 'text', width: 150, readOnly: true }
     ],
-    colHeaders: ['Mã SP', 'Vị trí đang kiểm', 'Vị trí mẫu trong danh mục'],
+    colHeaders: ['Mã SP', 'Vị trí đang kiểm', 'Vị trí bày mẫu chuẩn'],
     cells: buildCellsRenderer,
     readOnly: true,
-    columnSorting: false
+    columnSorting: false,
+    hiddenRows: { rows: [], indicators: false }
   });
-  hot.loadData(rows);
-  hot.render();
+  hot.loadData(currentDisplayCompareRows);
+  updateDisplayCompareFilterCounts(currentDisplayCompareRows);
+  setDisplayCompareFilterVisible(true);
+  applyDisplayCompareFilter('all', { updateMessage: false });
 }
 
 function showMultiLocationTable(rows, context = null) {
+  resetDisplayCompareView();
   tableMode = 'multi';
   currentMultiResultRows = Array.isArray(rows)
     ? rows.filter(x => x && x.masp && x.masp !== 'Không có mã bày nhiều vị trí')
@@ -400,6 +567,7 @@ function showMultiLocationTable(rows, context = null) {
 }
 
 function showUnshownTable(rows, context = null) {
+  resetDisplayCompareView();
   tableMode = 'unshown';
   currentResultRows = Array.isArray(rows) ? rows.filter(x => x && x.masp && x.masp !== 'Không có kết quả') : [];
   currentResultContext = context;
@@ -752,21 +920,22 @@ async function loadDisplayLocations() {
 
     const comparedRows = rows.map((r) => {
       const catalogPosition = map.get(r.masp) || '';
+      const hasStandardPosition = !!normalizeDisplayPosition(catalogPosition);
+      const matched = hasStandardPosition && isDisplayPositionMatched(r.vitri_baymau, catalogPosition);
+      const status = !hasStandardPosition ? 'missing' : (matched ? 'correct' : 'wrong');
       return {
         ...r,
         vitri_baymau_dm: catalogPosition,
-        baymau_mismatch: !isDisplayPositionMatched(r.vitri_baymau, catalogPosition)
+        baymau_status: status,
+        baymau_mismatch: status === 'wrong'
       };
     });
 
-    const mismatchCount = comparedRows.filter((r) => r.baymau_mismatch).length;
+    const correctCount = comparedRows.filter((r) => r.baymau_status === 'correct').length;
+    const wrongCount = comparedRows.filter((r) => r.baymau_status === 'wrong').length;
+    const missingCount = comparedRows.filter((r) => r.baymau_status === 'missing').length;
     showDisplayLocationTable(comparedRows);
-
-    if (mismatchCount > 0) {
-      setMessage(`Đã tải vị trí bày mẫu ${currentCoSo.toUpperCase()} cho ${rows.length} dòng. Có ${mismatchCount} dòng lệch chuẩn được tô tím nhạt.`, 'warn');
-    } else {
-      setMessage(`Đã tải vị trí bày mẫu ${currentCoSo.toUpperCase()} cho ${rows.length} dòng. Tất cả vị trí đều khớp.`, 'ok');
-    }
+    setMessage(`Đã đối chiếu ${rows.length} dòng: ${correctCount} đúng, ${wrongCount} sai vị trí, ${missingCount} chưa khai báo chuẩn.`, wrongCount > 0 || missingCount > 0 ? 'warn' : 'ok');
   } catch (err) {
     setMessage(`Không tải được vị trí bày mẫu: ${err.message || err}`, 'err');
   }
@@ -1432,6 +1601,12 @@ function attachEvents() {
   $('btn-load-session').addEventListener('click', showLoadSessions);
   $('btn-load-stock-location').addEventListener('click', loadStockLocations);
   $('btn-load-display-location').addEventListener('click', loadDisplayLocations);
+  ['all', 'correct', 'wrong', 'missing'].forEach((filter) => {
+    const btn = $(`btn-filter-display-${filter}`);
+    if (btn) btn.addEventListener('click', () => applyDisplayCompareFilter(filter));
+  });
+  const btnCopyDisplayFilter = $('btn-copy-display-filter');
+  if (btnCopyDisplayFilter) btnCopyDisplayFilter.addEventListener('click', copyVisibleDisplayCompareTable);
   $('btn-multi-location').addEventListener('click', showMultiLocations);
   $('btn-run-unshown').addEventListener('click', runUnshown);
   $('group-picker').addEventListener('change', appendSelectedGroup);
