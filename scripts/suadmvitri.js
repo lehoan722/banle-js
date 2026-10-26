@@ -626,28 +626,88 @@ function handleError(err) {
   setSummary('❌ Có lỗi khi xử lý dữ liệu.');
 }
 
-(function initPage() {
-  initTable();
-  attachEvents();
+function setStartupStatus(message, isError = false) {
+  const node = document.getElementById('startup-status');
+  if (!node) return;
+  node.style.display = 'block';
+  node.style.color = isError ? '#b42318' : '#111827';
+  node.innerHTML = message;
+}
 
-  khoiTaoDangNhapDungChung({
-    appContainerId: 'app-container',
-    macDinhDiaDiem: 'cs1',
-    tuDongKhoaCoSo: true,
-    loginApiPath: '/api/login-cs1',
-    onLoginSuccess: async (nhanvien) => {
-      if (!nhanvien?.is_admin) {
-        alert('Bạn không có quyền truy cập trang QUẢN LÝ DANH MỤC VỊ TRÍ.\nChỉ admin mới được phép chỉnh sửa!');
-        await dangXuatDungChung({ appContainerId: 'app-container' });
-        return;
-      }
+function hideStartupStatus() {
+  const node = document.getElementById('startup-status');
+  if (node) node.style.display = 'none';
+}
 
-      console.log('Admin đăng nhập thành công vào suadmvitri:', nhanvien.manv);
-      try {
-        await loadData();
-      } catch (err) {
-        handleError(err);
-      }
-    }
+async function ensureHandsontable() {
+  if (typeof window.Handsontable !== 'undefined') return true;
+
+  setStartupStatus('⏳ Thư viện bảng chưa tải được từ CDN chính. Đang thử nguồn dự phòng...');
+
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/handsontable@10.0.0/dist/handsontable.full.min.js';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Không tải được Handsontable từ cả CDN chính và CDN dự phòng.'));
+    document.head.appendChild(script);
   });
+
+  return typeof window.Handsontable !== 'undefined';
+}
+
+async function startBusinessUI() {
+  try {
+    const ok = await ensureHandsontable();
+    if (!ok) throw new Error('Handsontable chưa sẵn sàng.');
+
+    initTable();
+    attachEvents();
+
+    const app = document.getElementById('app-container');
+    if (app) app.style.display = 'block';
+    hideStartupStatus();
+
+    await loadData();
+  } catch (err) {
+    console.error('Lỗi khởi tạo suadmvitri:', err);
+    setStartupStatus(
+      '❌ Không khởi tạo được trang Quản lý Danh mục Vị trí.<br>' +
+      '<b>Chi tiết:</b> ' + escHtml(err?.message || err) +
+      '<br><br>Hãy kiểm tra Network xem file <b>scripts/suadmvitri.js</b>, <b>supabaseClient.js</b>, <b>authModule.js</b> và Handsontable có trả về HTTP 200 hay không.',
+      true
+    );
+  }
+}
+
+(function initPage() {
+  setStartupStatus('⏳ Đang kiểm tra đăng nhập Admin...');
+
+  try {
+    // Quan trọng: KHÔNG khởi tạo Handsontable trước đăng nhập.
+    // Nếu CDN bảng lỗi, trang đăng nhập vẫn phải hoạt động thay vì trắng hoàn toàn.
+    khoiTaoDangNhapDungChung({
+      appContainerId: 'app-container',
+      macDinhDiaDiem: 'cs1',
+      tuDongKhoaCoSo: true,
+      loginApiPath: '/api/login-cs1',
+      onLoginSuccess: async (nhanvien) => {
+        if (!nhanvien?.is_admin) {
+          alert('Bạn không có quyền truy cập trang QUẢN LÝ DANH MỤC VỊ TRÍ.\nChỉ admin mới được phép chỉnh sửa!');
+          await dangXuatDungChung({ appContainerId: 'app-container' });
+          return;
+        }
+
+        console.log('Admin đăng nhập thành công vào suadmvitri:', nhanvien.manv);
+        setStartupStatus('⏳ Đăng nhập thành công. Đang khởi tạo bảng dữ liệu...');
+        await startBusinessUI();
+      }
+    });
+  } catch (err) {
+    console.error('Lỗi gọi authModule:', err);
+    setStartupStatus(
+      '❌ Không khởi tạo được module đăng nhập.<br><b>Chi tiết:</b> ' + escHtml(err?.message || err) +
+      '<br><br>Kiểm tra lại hai file <b>scripts/authModule.js</b> và <b>scripts/supabaseClient.js</b>.',
+      true
+    );
+  }
 })();
