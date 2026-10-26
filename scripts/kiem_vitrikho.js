@@ -291,6 +291,11 @@ function initTable() {
       const b = Math.max(row, row2);
       for (let i = a; i <= b; i++) if (i >= 0) selectedRows.add(i);
     },
+    beforeCopy(data, coords) {
+      // Khi bảng đối chiếu đang lọc bằng HiddenRows, Handsontable mặc định có thể
+      // đưa cả dòng ẩn vào clipboard. Chủ động dựng lại dữ liệu copy chỉ từ dòng đang thấy.
+      replaceCopyDataWithVisibleRows(data, coords);
+    },
     afterOnCellMouseDown(event, coords) {
       if (!coords || coords.row < 0) return;
       if (tableMode === 'task') {
@@ -465,6 +470,92 @@ function applyLocationCompareFilter(filter = 'all', { updateMessage = true } = {
     };
     setMessage(`Đang hiển thị ${visibleCount} ${names[currentDisplayLocationFilter]}. Bộ lọc chỉ ẩn/hiện dòng, không làm mất dữ liệu phiên.`, currentDisplayLocationFilter === 'wrong' || currentDisplayLocationFilter === 'missing' ? 'warn' : 'ok');
   }
+}
+
+
+function getVisibleLocationCompareRows() {
+  if (tableMode !== 'display-location') return [];
+  if (currentDisplayLocationFilter === 'all') return currentDisplayLocationRows.slice();
+  return currentDisplayLocationRows.filter((row) => row.kho_status === currentDisplayLocationFilter);
+}
+
+async function writeTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const ok = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  if (!ok) throw new Error('Không thể ghi clipboard');
+}
+
+async function copyVisibleLocationCompareTable() {
+  if (tableMode !== 'display-location') {
+    setMessage('Chức năng copy này chỉ dùng sau khi tải vị trí kho chuẩn.', 'warn');
+    return;
+  }
+
+  const rows = getVisibleLocationCompareRows();
+  if (!rows.length) {
+    setMessage('Không có dòng nào đang hiển thị để copy.', 'warn');
+    return;
+  }
+
+  const lines = [
+    ['Mã SP', 'Vị trí kho đang kiểm', 'Vị trí kho chuẩn'],
+    ...rows.map((row) => [
+      String(row.masp || ''),
+      String(row.vitri_kho_kiem || ''),
+      String(row.vitri_kho_chuan || '')
+    ])
+  ];
+  const text = lines.map((cols) => cols.map((value) => value.replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n');
+
+  try {
+    await writeTextToClipboard(text);
+    const names = {
+      all: 'tất cả',
+      correct: 'đúng vị trí',
+      wrong: 'sai vị trí',
+      missing: 'chưa khai báo vị trí chuẩn'
+    };
+    setMessage(`Đã copy ${rows.length} dòng ${names[currentDisplayLocationFilter]} (kèm tiêu đề 3 cột). Có thể dán trực tiếp vào Google Sheets.`, 'ok');
+  } catch (err) {
+    console.error('Copy location compare failed:', err);
+    setMessage('Không copy được vào clipboard. Hãy cho phép quyền Clipboard trên trình duyệt rồi thử lại.', 'warn');
+  }
+}
+
+function replaceCopyDataWithVisibleRows(data, coords) {
+  if (tableMode !== 'display-location' || !hot || !Array.isArray(data) || !Array.isArray(coords)) return;
+  const hiddenRows = hot.getPlugin('hiddenRows');
+  const replacement = [];
+
+  for (const range of coords) {
+    const startRow = Math.min(range.startRow, range.endRow);
+    const endRow = Math.max(range.startRow, range.endRow);
+    const startCol = Math.min(range.startCol, range.endCol);
+    const endCol = Math.max(range.startCol, range.endCol);
+
+    for (let visualRow = startRow; visualRow <= endRow; visualRow += 1) {
+      if (visualRow < 0) continue;
+      if (hiddenRows && hiddenRows.isHidden(visualRow)) continue;
+      const rowValues = [];
+      for (let visualCol = startCol; visualCol <= endCol; visualCol += 1) {
+        rowValues.push(hot.getDataAtCell(visualRow, visualCol));
+      }
+      replacement.push(rowValues);
+    }
+  }
+
+  data.splice(0, data.length, ...replacement);
 }
 
 function showDisplayLocationTable(rows) {
@@ -1553,6 +1644,8 @@ function attachEvents() {
     const btn = $(`btn-filter-location-${filter}`);
     if (btn) btn.addEventListener('click', () => applyLocationCompareFilter(filter));
   });
+  const btnCopyLocationFilter = $('btn-copy-location-filter');
+  if (btnCopyLocationFilter) btnCopyLocationFilter.addEventListener('click', copyVisibleLocationCompareTable);
   $('btn-multi-location').addEventListener('click', showMultiLocations);
   $('btn-run-unshown').addEventListener('click', runUnshown);
   $('group-picker').addEventListener('change', appendSelectedGroup);
