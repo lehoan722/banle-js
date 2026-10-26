@@ -1,4 +1,4 @@
-// Kiểm vị trí kho v1.2 - autosave từng thao tác
+// Kiểm vị trí kho v1.3 - bổ sung lọc đối chiếu vị trí kho chuẩn
 import { supabase, startSessionKeeper } from './supabaseClient.js';
 import {
   khoiTaoDangNhapDungChung,
@@ -36,6 +36,8 @@ let currentResultRows = [];
 let currentResultContext = null;
 let currentMultiResultRows = [];
 let currentMultiResultContext = null;
+let currentDisplayLocationRows = [];
+let currentDisplayLocationFilter = 'all';
 let taskRealtimeChannel = null;
 let suppressTaskChange = false;
 
@@ -216,9 +218,15 @@ function buildCellsRenderer(row, col) {
     props.renderer = function (...args) {
       Handsontable.renderers.TextRenderer.apply(this, args);
       const rowData = args[0].getSourceDataAtRow(args[2]) || {};
-      if (rowData.kho_mismatch) {
-        args[1].style.background = '#f3e8ff';
-        args[1].style.color = '#581c87';
+      if (rowData.kho_status === 'correct') {
+        args[1].style.background = '#ecfdf3';
+        args[1].style.color = '#166534';
+      } else if (rowData.kho_status === 'wrong') {
+        args[1].style.background = '#fee2e2';
+        args[1].style.color = '#991b1b';
+      } else if (rowData.kho_status === 'missing') {
+        args[1].style.background = '#fff7cc';
+        args[1].style.color = '#92400e';
       }
     };
   }
@@ -260,6 +268,7 @@ function initTable() {
     columnSorting: true,
     filters: true,
     dropdownMenu: true,
+    hiddenRows: { rows: [], indicators: false },
     licenseKey: 'non-commercial-and-evaluation',
     cells: buildCellsRenderer,
     afterChange(changes, source) {
@@ -333,6 +342,7 @@ function initTable() {
 }
 
 function showScanTable(rows = []) {
+  resetLocationCompareView();
   tableMode = 'scan';
   const data = rows.length ? rows : [{ id: null, masp: '', vitri_kho_kiem: '' }];
   hot.updateSettings({
@@ -349,6 +359,7 @@ function showScanTable(rows = []) {
 }
 
 function showStockLocationTable(rows) {
+  resetLocationCompareView();
   tableMode = 'stock-location';
   hot.updateSettings({
     columns: [
@@ -383,8 +394,83 @@ function isDisplayPositionMatched(checkedPosition, catalogPosition) {
   return allowed.includes(checked);
 }
 
+function setLocationCompareFilterVisible(visible) {
+  const panel = $('location-compare-filter');
+  if (!panel) return;
+  panel.classList.toggle('show', !!visible);
+}
+
+function resetLocationCompareView() {
+  setLocationCompareFilterVisible(false);
+  currentDisplayLocationFilter = 'all';
+  if (!hot) return;
+  const hiddenRows = hot.getPlugin('hiddenRows');
+  if (!hiddenRows) return;
+  const rowCount = typeof hot.countSourceRows === 'function' ? hot.countSourceRows() : 0;
+  if (rowCount > 0) hiddenRows.showRows(Array.from({ length: rowCount }, (_, index) => index));
+}
+
+function updateLocationCompareFilterCounts(rows) {
+  const allRows = Array.isArray(rows) ? rows : [];
+  const counts = {
+    all: allRows.length,
+    correct: allRows.filter((r) => r.kho_status === 'correct').length,
+    wrong: allRows.filter((r) => r.kho_status === 'wrong').length,
+    missing: allRows.filter((r) => r.kho_status === 'missing').length
+  };
+  const labels = {
+    all: `Tất cả (${counts.all})`,
+    correct: `✓ Đúng (${counts.correct})`,
+    wrong: `⚠ Sai vị trí (${counts.wrong})`,
+    missing: `? Chưa khai báo chuẩn (${counts.missing})`
+  };
+  Object.entries(labels).forEach(([key, label]) => {
+    const el = $(`btn-filter-location-${key}`);
+    if (el) el.textContent = label;
+  });
+  return counts;
+}
+
+function applyLocationCompareFilter(filter = 'all', { updateMessage = true } = {}) {
+  if (tableMode !== 'display-location' || !hot) return;
+  const valid = ['all', 'correct', 'wrong', 'missing'];
+  currentDisplayLocationFilter = valid.includes(filter) ? filter : 'all';
+
+  document.querySelectorAll('.compare-filter-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.filter === currentDisplayLocationFilter);
+  });
+
+  const hiddenRows = hot.getPlugin('hiddenRows');
+  const allIndexes = currentDisplayLocationRows.map((_, index) => index);
+  if (hiddenRows) {
+    hiddenRows.showRows(allIndexes);
+    if (currentDisplayLocationFilter !== 'all') {
+      const rowsToHide = currentDisplayLocationRows
+        .map((row, index) => row.kho_status === currentDisplayLocationFilter ? null : index)
+        .filter((index) => index !== null);
+      hiddenRows.hideRows(rowsToHide);
+    }
+  }
+  hot.render();
+
+  if (updateMessage) {
+    const visibleCount = currentDisplayLocationFilter === 'all'
+      ? currentDisplayLocationRows.length
+      : currentDisplayLocationRows.filter((r) => r.kho_status === currentDisplayLocationFilter).length;
+    const names = {
+      all: 'tất cả sản phẩm',
+      correct: 'sản phẩm đúng vị trí',
+      wrong: 'sản phẩm sai vị trí',
+      missing: 'sản phẩm chưa khai báo vị trí chuẩn'
+    };
+    setMessage(`Đang hiển thị ${visibleCount} ${names[currentDisplayLocationFilter]}. Bộ lọc chỉ ẩn/hiện dòng, không làm mất dữ liệu phiên.`, currentDisplayLocationFilter === 'wrong' || currentDisplayLocationFilter === 'missing' ? 'warn' : 'ok');
+  }
+}
+
 function showDisplayLocationTable(rows) {
   tableMode = 'display-location';
+  currentDisplayLocationRows = Array.isArray(rows) ? rows : [];
+  currentDisplayLocationFilter = 'all';
   hot.updateSettings({
     columns: [
       { data: 'masp', type: 'text', width: 150, readOnly: true },
@@ -394,13 +480,17 @@ function showDisplayLocationTable(rows) {
     colHeaders: ['Mã SP', 'Vị trí kho đang kiểm', 'Vị trí kho chuẩn'],
     cells: buildCellsRenderer,
     readOnly: true,
-    columnSorting: false
+    columnSorting: false,
+    hiddenRows: { rows: [], indicators: false }
   });
-  hot.loadData(rows);
-  hot.render();
+  hot.loadData(currentDisplayLocationRows);
+  updateLocationCompareFilterCounts(currentDisplayLocationRows);
+  setLocationCompareFilterVisible(true);
+  applyLocationCompareFilter('all', { updateMessage: false });
 }
 
 function showMultiLocationTable(rows, context = null) {
+  resetLocationCompareView();
   tableMode = 'multi';
   currentMultiResultRows = Array.isArray(rows)
     ? rows.filter(x => x && x.masp && x.masp !== 'Không có mã bày nhiều vị trí')
@@ -424,6 +514,7 @@ function showMultiLocationTable(rows, context = null) {
 }
 
 function showUnshownTable(rows, context = null) {
+  resetLocationCompareView();
   tableMode = 'unshown';
   currentResultRows = Array.isArray(rows) ? rows.filter(x => x && x.masp && x.masp !== 'Không có kết quả') : [];
   currentResultContext = context;
@@ -775,21 +866,24 @@ async function loadDisplayLocations() {
 
     const comparedRows = rows.map((r) => {
       const catalogPosition = map.get(r.masp) || '';
+      const hasStandardPosition = !!normalizeDisplayPosition(catalogPosition);
+      const matched = hasStandardPosition && isDisplayPositionMatched(r.vitri_kho_kiem, catalogPosition);
+      const status = !hasStandardPosition ? 'missing' : (matched ? 'correct' : 'wrong');
       return {
         ...r,
         vitri_kho_chuan: catalogPosition,
-        kho_mismatch: !isDisplayPositionMatched(r.vitri_kho_kiem, catalogPosition)
+        kho_status: status,
+        kho_mismatch: status === 'wrong'
       };
     });
 
-    const mismatchCount = comparedRows.filter((r) => r.kho_mismatch).length;
+    const correctCount = comparedRows.filter((r) => r.kho_status === 'correct').length;
+    const wrongCount = comparedRows.filter((r) => r.kho_status === 'wrong').length;
+    const missingCount = comparedRows.filter((r) => r.kho_status === 'missing').length;
     showDisplayLocationTable(comparedRows);
 
-    if (mismatchCount > 0) {
-      setMessage(`Đã tải vị trí vị trí kho ${currentCoSo.toUpperCase()} cho ${rows.length} dòng. Có ${mismatchCount} dòng lệch chuẩn được tô tím nhạt.`, 'warn');
-    } else {
-      setMessage(`Đã tải vị trí vị trí kho ${currentCoSo.toUpperCase()} cho ${rows.length} dòng. Tất cả vị trí đều khớp.`, 'ok');
-    }
+    const message = `Đã đối chiếu ${rows.length} dòng: ${correctCount} đúng, ${wrongCount} sai vị trí, ${missingCount} chưa khai báo chuẩn.`;
+    setMessage(message, wrongCount > 0 || missingCount > 0 ? 'warn' : 'ok');
   } catch (err) {
     setMessage(`Không tải được vị trí vị trí kho: ${err.message || err}`, 'err');
   }
@@ -1193,6 +1287,7 @@ function taskPositionOptions(rowData) {
 }
 
 function showTaskTable(task, rows) {
+  resetLocationCompareView();
   tableMode = 'task';
   currentTaskId = task.id;
   currentTaskCode = task.macongviec || '';
@@ -1454,6 +1549,10 @@ function attachEvents() {
   $('btn-save').addEventListener('click', saveSession);
   $('btn-load-session').addEventListener('click', showLoadSessions);
   $('btn-load-stock-location').addEventListener('click', loadDisplayLocations);
+  ['all', 'correct', 'wrong', 'missing'].forEach((filter) => {
+    const btn = $(`btn-filter-location-${filter}`);
+    if (btn) btn.addEventListener('click', () => applyLocationCompareFilter(filter));
+  });
   $('btn-multi-location').addEventListener('click', showMultiLocations);
   $('btn-run-unshown').addEventListener('click', runUnshown);
   $('group-picker').addEventListener('change', appendSelectedGroup);
