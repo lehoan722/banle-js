@@ -10,7 +10,7 @@
 
   <!-- Dùng lại popup và module đăng nhập hiện có của hệ thống -->
   <script src="./scripts/stockQuickPopup.js?v=1.5.1"></script>
-  <script type="module" src="./scripts/kiem_baymau.js?v=1.5.2"></script>
+  <script type="module" src="./scripts/kiem_baymau.js?v=1.6.0"></script>
 
   <style>
     :root {
@@ -106,6 +106,39 @@
       border-top: 1px solid var(--line);
     }
     .command-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+
+
+    #display-compare-filter {
+      display: none;
+      margin-top: 7px;
+      padding-top: 7px;
+      border-top: 1px solid var(--line);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+    #display-compare-filter.show { display: grid; }
+    #btn-copy-display-filter {
+      grid-column: 1 / -1;
+      min-height: 40px;
+      background: #eef6ff;
+      color: #0f4f82;
+      border: 1px solid #8bbce8;
+    }
+    #btn-copy-display-filter:hover { background: #e1f0ff; }
+    .display-filter-btn {
+      min-height: 38px;
+      padding: 6px 7px;
+      font-size: 13px;
+      background: #fff;
+    }
+    .display-filter-btn.active {
+      border: 2px solid var(--primary);
+      background: #eaf3fb;
+      color: #0f4f82;
+    }
+    .display-filter-btn[data-filter="correct"] { color: #166534; }
+    .display-filter-btn[data-filter="wrong"] { color: #991b1b; }
+    .display-filter-btn[data-filter="missing"] { color: #92400e; }
 
     #check-panel {
       display: none;
@@ -234,6 +267,7 @@
       h1 { font-size: 18px; }
       input, select, button { min-height: 40px; font-size: 15px; padding: 7px 8px; }
       .command-grid { grid-template-columns: 1fr 1fr; }
+      #display-compare-filter { grid-template-columns: 1fr 1fr; }
       #hot { min-height: 470px; }
       .identity-row { font-size: 13px; }
       .handsontable td, .handsontable th { font-size: 13px !important; }
@@ -302,6 +336,14 @@
               <button id="btn-run-unshown" class="btn-primary" type="button">Kiểm tra hàng chưa bày mẫu</button>
             </div>
           </div>
+        </div>
+
+        <div id="display-compare-filter" aria-label="Lọc kết quả đối chiếu vị trí bày mẫu">
+          <button id="btn-filter-display-all" class="display-filter-btn active" data-filter="all" type="button">Tất cả (0)</button>
+          <button id="btn-filter-display-correct" class="display-filter-btn" data-filter="correct" type="button">✓ Đúng (0)</button>
+          <button id="btn-filter-display-wrong" class="display-filter-btn" data-filter="wrong" type="button">⚠ Sai vị trí (0)</button>
+          <button id="btn-filter-display-missing" class="display-filter-btn" data-filter="missing" type="button">? Chưa khai báo chuẩn (0)</button>
+          <button id="btn-copy-display-filter" type="button">📋 Copy bảng đang hiển thị</button>
         </div>
       </div>
     </div>
