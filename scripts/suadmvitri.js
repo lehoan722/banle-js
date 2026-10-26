@@ -663,11 +663,28 @@ async function startBusinessUI() {
     initTable();
     attachEvents();
 
-    const app = document.getElementById('app-container');
-    if (app) app.style.display = 'block';
-    hideStartupStatus();
+    // Đánh dấu Admin đã sẵn sàng. CSS !important sẽ giữ phần nghiệp vụ hiển thị
+    // ngay cả khi authModule thay đổi lại inline style display:none sau callback.
+    document.body.classList.add('admin-ready');
 
+    const app = document.getElementById('app-container');
+    if (app) {
+      app.style.setProperty('display', 'block', 'important');
+      app.removeAttribute('hidden');
+    }
+
+    console.log('[suadmvitri] UI đã mở, bắt đầu tải dữ liệu...');
     await loadData();
+    console.log('[suadmvitri] Tải dữ liệu hoàn tất.');
+
+    // Re-assert sau 0ms và 300ms để chống trường hợp authModule ghi đè style sau callback.
+    [0, 300].forEach(ms => setTimeout(() => {
+      document.body.classList.add('admin-ready');
+      const node = document.getElementById('app-container');
+      if (node) node.style.setProperty('display', 'block', 'important');
+    }, ms));
+
+    hideStartupStatus();
   } catch (err) {
     console.error('Lỗi khởi tạo suadmvitri:', err);
     setStartupStatus(
@@ -698,6 +715,9 @@ async function startBusinessUI() {
         }
 
         console.log('Admin đăng nhập thành công vào suadmvitri:', nhanvien.manv);
+        document.body.classList.add('admin-ready');
+        const app = document.getElementById('app-container');
+        if (app) app.style.setProperty('display', 'block', 'important');
         setStartupStatus('⏳ Đăng nhập thành công. Đang khởi tạo bảng dữ liệu...');
         await startBusinessUI();
       }
