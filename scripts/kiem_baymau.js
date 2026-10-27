@@ -1452,7 +1452,7 @@ async function assignCurrentSessionAsTask() {
     const { data, error } = await supabase.rpc('kbm_admin_create_task', {
       p_coso: currentCoSo,
       p_ten_congviec: normalizeText(name) || suggested || 'Bày mẫu toàn phiên',
-      p_nguon: 'PHIEN_KIEM',
+      p_nguon: 'HANG_CHUA_BAY',
       p_phien_nguon_id: currentSessionId,
       p_tu_ngay: null,
       p_den_ngay: null,
