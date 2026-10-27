@@ -1414,11 +1414,15 @@ async function assignCurrentSessionAsTask() {
   let rows = [];
   try {
     const { data, error } = await supabase.rpc('kbm_load_session', {
-      p_phien_id: currentSessionId,
-      p_coso: currentCoSo
+      p_phien_id: currentSessionId
     });
     if (error) throw error;
-    const sourceRows = Array.isArray(data?.rows) ? data.rows : [];
+    const payload = Array.isArray(data) ? data[0] : data;
+    if (!payload) throw new Error('Không tìm thấy phiên kiểm');
+    if (String(payload.coso || '').toLowerCase() !== currentCoSo) {
+      throw new Error('Phiên không thuộc cơ sở đang đăng nhập');
+    }
+    const sourceRows = Array.isArray(payload.rows) ? payload.rows : [];
     rows = sourceRows
       .map((x) => ({
         masp: normalizeMasp(x.masp),
