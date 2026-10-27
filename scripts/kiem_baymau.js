@@ -1,4 +1,4 @@
-// Kiểm bày mẫu v1.6.0 - lọc đối chiếu vị trí + copy bảng đang hiển thị
+// Kiểm bày mẫu v1.7.0 - giao bày mẫu trực tiếp từ toàn bộ phiên kiểm
 import { supabase, startSessionKeeper } from './supabaseClient.js';
 import { playSuccessBeep, playAlertBeep, setupBeepUnlockOnce } from './soundBeep.js';
 import {
@@ -143,7 +143,8 @@ function updateActionAvailability() {
     'btn-toggle-check',
     'btn-save-baymau',
     'btn-compare',
-    'btn-set-standard'
+    'btn-set-standard',
+    'btn-assign-session-task'
   ];
   analysisIds.forEach((id) => {
     const el = $(id);
@@ -1347,11 +1348,16 @@ function showTaskTable(task, rows) {
   currentTaskRows = Array.isArray(rows) ? rows.slice().sort((a,b) => Number(a.thu_tu)-Number(b.thu_tu)) : [];
 
   const isMulti = currentTaskType === 'NHIEU_VI_TRI';
+  const isSessionTask = currentTaskType === 'PHIEN_KIEM';
   const columns = isMulti ? [
     { data: 'da_baymau', type: 'checkbox', checkedTemplate: true, uncheckedTemplate: false, width: 52, readOnly: currentTaskStatus !== 'DANG_LAM' },
     { data: 'masp', type: 'text', width: 135, readOnly: true },
     { data: 'vitri_hien_co', type: 'text', width: 190, readOnly: true },
     { data: 'vitri_chuan', type: 'dropdown', width: 120, readOnly: currentTaskStatus !== 'DANG_LAM' }
+  ] : isSessionTask ? [
+    { data: 'da_baymau', type: 'checkbox', checkedTemplate: true, uncheckedTemplate: false, width: 52, readOnly: currentTaskStatus !== 'DANG_LAM' },
+    { data: 'masp', type: 'text', width: 180, readOnly: true },
+    { data: 'vitrikho', type: 'text', width: 170, readOnly: true }
   ] : [
     { data: 'da_baymau', type: 'checkbox', checkedTemplate: true, uncheckedTemplate: false, width: 48, readOnly: currentTaskStatus !== 'DANG_LAM' },
     { data: 'masp', type: 'text', width: 145, readOnly: true },
@@ -1363,7 +1369,9 @@ function showTaskTable(task, rows) {
     columns,
     colHeaders: isMulti
       ? ['Đã xử lý', 'Mã SP', 'Vị trí hiện có', 'Vị trí chuẩn']
-      : ['Đã bày', 'Mã SP', 'Tồn', 'Vị trí kho'],
+      : isSessionTask
+        ? ['Đã bày', 'Mã SP', 'Vị trí trong phiên kiểm']
+        : ['Đã bày', 'Mã SP', 'Tồn', 'Vị trí kho'],
     cells(row, col) {
       const props = buildCellsRenderer(row, col);
       if (isMulti && col === 3) {
@@ -1386,9 +1394,73 @@ function showTaskTable(task, rows) {
   hot.render();
   $('btn-task-complete').style.display = isAdmin ? '' : 'none';
   $('btn-task-complete').textContent = currentTaskStatus === 'HOAN_TAT' ? 'Mở lại phiếu' : 'Hoàn tất phiếu';
-  const label = isMulti ? 'xử lý nhiều vị trí' : 'bày mẫu';
+  const label = isMulti ? 'xử lý nhiều vị trí' : isSessionTask ? 'bày mẫu từ toàn phiên kiểm' : 'bày mẫu';
   setMessage(`Phiếu ${task.ten_congviec || task.macongviec} (${label}): ${taskProgressText()}. Thứ tự dòng được giữ nguyên trên mọi máy.`, currentTaskStatus === 'HOAN_TAT' ? 'ok' : '');
   subscribeTaskRealtime();
+}
+
+async function assignCurrentSessionAsTask() {
+  if (!isAdmin) return;
+
+  if (!currentSessionId) {
+    setMessage('Hãy lưu phiên kiểm trước khi giao bày mẫu.', 'warn');
+    return;
+  }
+  if (isDirty) {
+    setMessage('Phiên đang có thay đổi chưa lưu. Hãy lưu xong rồi giao việc.', 'warn');
+    return;
+  }
+
+  let rows = [];
+  try {
+    const { data, error } = await supabase.rpc('kbm_load_session', {
+      p_phien_id: currentSessionId,
+      p_coso: currentCoSo
+    });
+    if (error) throw error;
+    const sourceRows = Array.isArray(data?.rows) ? data.rows : [];
+    rows = sourceRows
+      .map((x) => ({
+        masp: normalizeMasp(x.masp),
+        ton: 0,
+        vitrikho: normalizeText(x.vitri_baymau),
+        vitri_hien_co: '',
+        vitri_chuan: ''
+      }))
+      .filter((x) => x.masp);
+  } catch (err) {
+    setMessage(`Không đọc được toàn bộ phiên để giao việc: ${err.message || err}`, 'err');
+    return;
+  }
+
+  if (!rows.length) {
+    setMessage('Phiên này không có sản phẩm để giao bày mẫu.', 'warn');
+    return;
+  }
+
+  const suggested = `Bày mẫu toàn phiên ${currentSessionCode || ''}${currentAreaName ? ' - ' + currentAreaName : ''}`.trim();
+  const name = prompt('Tên phiếu giao việc:', suggested);
+  if (name === null) return;
+
+  if (!confirm(`Giao toàn bộ ${rows.length} dòng của phiên ${currentSessionCode || ''} thành một phiếu bày mẫu?\n\nKhông so sánh vị trí chuẩn và không loại bỏ dòng nào.`)) return;
+
+  try {
+    const { data, error } = await supabase.rpc('kbm_admin_create_task', {
+      p_coso: currentCoSo,
+      p_ten_congviec: normalizeText(name) || suggested || 'Bày mẫu toàn phiên',
+      p_nguon: 'PHIEN_KIEM',
+      p_phien_nguon_id: currentSessionId,
+      p_tu_ngay: null,
+      p_den_ngay: null,
+      p_chungloai: null,
+      p_nhomhang: null,
+      p_rows: rows
+    });
+    if (error) throw error;
+    setMessage(`Đã giao toàn bộ phiên thành phiếu ${data.macongviec}, gồm ${data.so_dong} mã. Nhân viên có thể mở trong Danh sách công việc bày mẫu.`, 'ok');
+  } catch (err) {
+    setMessage(`Không tạo được phiếu bày mẫu toàn phiên: ${err.message || err}`, 'err');
+  }
 }
 
 async function saveCurrentResultAsTask() {
@@ -1453,7 +1525,7 @@ async function showTaskList() {
     $('task-list').innerHTML = rows.length ? rows.map(t => `
       <div class="session-row task-list-row" data-id="${t.id}">
         <div></div><div class="session-main">
-          <div class="session-title">${t.nguon === 'NHIEU_VI_TRI' ? '[Nhiều vị trí] ' : '[Chưa bày] '}${t.ten_congviec} · ${t.da_bay}/${t.tong_dong}${t.trangthai==='HOAN_TAT' ? ' · HOÀN TẤT' : ''}</div>
+          <div class="session-title">${t.nguon === 'NHIEU_VI_TRI' ? '[Nhiều vị trí] ' : t.nguon === 'PHIEN_KIEM' ? '[Từ phiên kiểm] ' : '[Chưa bày] '}${t.ten_congviec} · ${t.da_bay}/${t.tong_dong}${t.trangthai==='HOAN_TAT' ? ' · HOÀN TẤT' : ''}</div>
           <div class="session-meta">${t.macongviec} · ${t.ngay_tao} · ${t.tennv_tao || ''}</div>
         </div>
       </div>`).join('') : '<div>Chưa có phiếu công việc bày mẫu.</div>';
@@ -1624,6 +1696,7 @@ function attachEvents() {
   $('btn-merge').addEventListener('click', showMergeSessions);
   $('btn-confirm-merge').addEventListener('click', confirmMerge);
   $('btn-save-baymau').addEventListener('click', saveBayMauToCatalog);
+  $('btn-assign-session-task').addEventListener('click', assignCurrentSessionAsTask);
   $('btn-save-task').addEventListener('click', saveCurrentResultAsTask);
   $('btn-open-tasks').addEventListener('click', showTaskList);
   $('btn-task-complete').addEventListener('click', toggleTaskComplete);
@@ -1686,6 +1759,7 @@ function attachEvents() {
       $('btn-save-baymau').style.display = isAdmin ? '' : 'none';
       $('btn-set-standard').style.display = isAdmin ? '' : 'none';
       $('btn-delete-session').style.display = isAdmin ? '' : 'none';
+      $('btn-assign-session-task').style.display = isAdmin ? '' : 'none';
       $('btn-save-task').style.display = isAdmin ? '' : 'none';
       updateHeader();
       setDirty(true);
