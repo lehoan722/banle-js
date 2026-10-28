@@ -480,6 +480,31 @@
         }
     </style>
 
+
+    <style>
+        /* MOBILE V4 - hiển thị đầy đủ số hóa đơn */
+        @media (max-width: 480px) and (orientation: portrait) {
+            #sohd {
+                width: 255px !important;
+                max-width: 62vw !important;
+                min-width: 0 !important;
+                flex: 0 1 255px !important;
+                font-size: 16px !important;
+                letter-spacing: -0.2px !important;
+                padding-left: 7px !important;
+                padding-right: 7px !important;
+                box-sizing: border-box !important;
+            }
+            #btnQuetMasp { flex: 0 0 auto !important; }
+        }
+        @media (min-width: 400px) and (max-width: 480px) and (orientation: portrait) {
+            #sohd {
+                width: 275px !important;
+                max-width: 66vw !important;
+            }
+        }
+    </style>
+
 </head>
 
 <body class="popupnhanh">
