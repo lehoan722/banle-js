@@ -154,16 +154,16 @@
   function applyBasicStyles(host) {
     // CSS rất nhẹ, không phá style cũ. Có thể bỏ nếu bạn đã có CSS riêng.
     const css = `
-      .mc-wrap { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-      .mc-left { display:flex; gap:12px; flex-wrap:wrap; }
-      .mc-group { position:relative; }
-      .mc-btn { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:6px; background:#fff; }
+      .mc-wrap { display:flex; align-items:center; gap:10px; flex-wrap:nowrap; width:100%; min-width:0; }
+      .mc-left { display:flex; gap:10px; flex-wrap:nowrap; align-items:center; white-space:nowrap; min-width:0; }
+      .mc-group { position:relative; flex:0 0 auto; }
+      .mc-btn { cursor:pointer; padding:6px 9px; border:1px solid #ddd; border-radius:6px; background:#fff; white-space:nowrap; }
       .mc-btn:hover { background:#f5f5f5; }
       .mc-dd { position:absolute; top:100%; left:0; min-width:240px; z-index:1000; border:1px solid #ddd; background:#fff; border-radius:6px; padding:6px; display:none; box-shadow:0 6px 20px rgba(0,0,0,.08); }
       .mc-group:hover .mc-dd { display:block; }
       .mc-item { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:6px 8px; border-radius:4px; }
       .mc-item:hover { background:#f2f2f2; }
-      .mc-right { margin-left:auto; display:flex; gap:8px; align-items:center; }
+      .mc-right { margin-left:auto; display:flex; gap:8px; align-items:center; flex:0 0 auto; }
       .mc-search { padding:6px 10px; border:1px solid #ddd; border-radius:6px; min-width:220px; }
       .mc-badge { font-size:11px; opacity:.7; }
       .mc-refresh { cursor:pointer; }
