@@ -2,110 +2,242 @@ import "./stockQuickPopup.js";
 import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
 // =========================
-// SOUND FALLBACK NỘI BỘ
+// AUDIO MANAGER V2 - CHROME / MOBILE / DESKTOP
 // =========================
+//
+// Mục tiêu:
+// - Chỉ có 1 AudioContext dùng chung.
+// - Tự resume khi Chrome đưa tab về foreground.
+// - Nếu AudioContext bị closed thì tự tạo lại.
+// - Không gọi setup listener lặp nhiều lần.
+// - Trước mỗi beep đều đảm bảo audio thật sự sẵn sàng.
+// - Không phụ thuộc file MP3 ngoài.
+//
+// Lưu ý:
+// Chrome vẫn yêu cầu một thao tác người dùng đầu tiên
+// (touch/click/keydown) để mở khóa âm thanh.
+//
 let __audioCtx = null;
 let __audioUnlocked = false;
+let __audioListenersBound = false;
+let __audioRecovering = null;
 
-function getAudioCtx() {
+function createAudioCtx() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return null;
-    if (!__audioCtx) __audioCtx = new Ctx();
-    return __audioCtx;
+
+    const ctx = new Ctx({
+      latencyHint: "interactive"
+    });
+
+    __audioCtx = ctx;
+    __audioUnlocked = false;
+
+    try {
+      ctx.addEventListener?.("statechange", () => {
+        console.debug("[KNK AUDIO] state =", ctx.state);
+      });
+    } catch (e) { }
+
+    return ctx;
   } catch (e) {
+    console.warn("[KNK AUDIO] Không tạo được AudioContext:", e);
     return null;
   }
 }
 
-async function unlockAudioOnce() {
-  const ctx = getAudioCtx();
-  if (!ctx) return false;
-
+function getAudioCtx() {
   try {
-    if (ctx.state === "suspended") {
-      await ctx.resume();
+    if (!__audioCtx || __audioCtx.state === "closed") {
+      return createAudioCtx();
     }
-
-    if (!__audioUnlocked) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      gain.gain.value = 0.0001;
-      osc.frequency.value = 440;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.01);
-      __audioUnlocked = true;
-    }
-
-    return true;
+    return __audioCtx;
   } catch (e) {
-    return false;
+    return createAudioCtx();
   }
 }
 
-function setupBeepUnlockOnce(target = document) {
-  const handler = async () => {
-    await unlockAudioOnce();
+async function ensureAudioReady({ forcePrime = false } = {}) {
+  if (__audioRecovering) {
+    try {
+      return await __audioRecovering;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  __audioRecovering = (async () => {
+    let ctx = getAudioCtx();
+    if (!ctx) return false;
+
+    try {
+      // Chrome/Android có thể trả suspended sau khi đổi tab / khóa màn hình.
+      // Một số trình duyệt Chromium/WebKit có thể dùng trạng thái "interrupted".
+      if (ctx.state === "suspended" || ctx.state === "interrupted") {
+        try {
+          await ctx.resume();
+        } catch (e) {
+          console.warn("[KNK AUDIO] resume lần 1 thất bại:", e);
+        }
+      }
+
+      // Nếu context đã bị đóng trong lúc app chạy thì tạo lại.
+      if (ctx.state === "closed") {
+        ctx = createAudioCtx();
+        if (!ctx) return false;
+
+        if (ctx.state === "suspended" || ctx.state === "interrupted") {
+          try {
+            await ctx.resume();
+          } catch (e) {
+            console.warn("[KNK AUDIO] resume context mới thất bại:", e);
+          }
+        }
+      }
+
+      if (ctx.state !== "running") {
+        return false;
+      }
+
+      // Prime 1 lần bằng âm gần như im lặng sau gesture đầu tiên.
+      if (forcePrime || !__audioUnlocked) {
+        try {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          gain.gain.setValueAtTime(0.00001, ctx.currentTime);
+          osc.frequency.setValueAtTime(440, ctx.currentTime);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start();
+          osc.stop(ctx.currentTime + 0.015);
+
+          __audioUnlocked = true;
+        } catch (e) {
+          console.warn("[KNK AUDIO] prime thất bại:", e);
+        }
+      }
+
+      return ctx.state === "running";
+    } catch (e) {
+      console.warn("[KNK AUDIO] ensureAudioReady lỗi:", e);
+      return false;
+    }
+  })();
+
+  try {
+    return await __audioRecovering;
+  } finally {
+    __audioRecovering = null;
+  }
+}
+
+function bindAudioLifecycleOnce() {
+  if (__audioListenersBound) return;
+  __audioListenersBound = true;
+
+  // Gesture người dùng: đây là chìa khóa để Chrome cho phát âm thanh.
+  const gestureHandler = async () => {
+    await ensureAudioReady({ forcePrime: true });
   };
 
   ["pointerdown", "touchstart", "keydown", "click"].forEach(evt => {
-    target.addEventListener(evt, handler, { passive: true, capture: true });
+    document.addEventListener(evt, gestureHandler, {
+      passive: true,
+      capture: true
+    });
+  });
+
+  // Khi quay lại tab Chrome.
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState === "visible") {
+      // Không ép phát tiếng; chỉ cố phục hồi context.
+      await ensureAudioReady();
+    }
+  });
+
+  // Khi quay lại trang từ back-forward cache hoặc tab được hiện lại.
+  window.addEventListener("pageshow", async () => {
+    await ensureAudioReady();
+  });
+
+  // Khi cửa sổ/tab lấy focus lại.
+  window.addEventListener("focus", async () => {
+    await ensureAudioReady();
   });
 }
 
 function playTone(freq = 1000, duration = 0.15, volume = 0.25, type = "sine") {
   const ctx = getAudioCtx();
-  if (!ctx) return false;
+  if (!ctx || ctx.state !== "running") return false;
 
-  const start = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
+  try {
+    const start = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
 
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, start);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, start);
 
-  gain.gain.cancelScheduledValues(start);
-  gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.linearRampToValueAtTime(volume, start + 0.01);
-  gain.gain.setValueAtTime(volume, start + Math.max(0.02, duration - 0.04));
-  gain.gain.linearRampToValueAtTime(0.0001, start + duration);
+    gain.gain.cancelScheduledValues(start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(volume, start + 0.01);
+    gain.gain.setValueAtTime(volume, start + Math.max(0.02, duration - 0.04));
+    gain.gain.linearRampToValueAtTime(0.0001, start + duration);
 
-  osc.connect(gain);
-  gain.connect(ctx.destination);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
 
-  osc.start(start);
-  osc.stop(start + duration);
+    osc.start(start);
+    osc.stop(start + duration);
 
-  return true;
+    return true;
+  } catch (e) {
+    console.warn("[KNK AUDIO] playTone lỗi:", e);
+    return false;
+  }
+}
+
+async function playToneSafe(freq, duration, volume, type) {
+  const ok = await ensureAudioReady();
+  if (!ok) {
+    console.warn("[KNK AUDIO] Audio chưa sẵn sàng, bỏ qua beep lần này.");
+    return false;
+  }
+
+  // thử lần 1
+  if (playTone(freq, duration, volume, type)) return true;
+
+  // nếu state thay đổi đúng lúc phát, phục hồi rồi thử lại 1 lần
+  const ok2 = await ensureAudioReady();
+  if (!ok2) return false;
+
+  return playTone(freq, duration, volume, type);
 }
 
 let __alertBusy = false;
 
 function playSuccessBeep() {
-  unlockAudioOnce().then(() => {
-    playTone(2400, 0.12, 0.3, "sine");
-  });
+  playToneSafe(2400, 0.12, 0.30, "sine");
 }
 
 function playWaitSizeBeep() {
-  unlockAudioOnce().then(() => {
-    playTone(1200, 0.18, 0.4, "sine");
-  });
+  playToneSafe(1200, 0.18, 0.40, "sine");
 }
 
 function playAlertBeep() {
   if (__alertBusy) return false;
   __alertBusy = true;
 
-  unlockAudioOnce().then(() => {
-    playTone(800, 0.22, 0.28, "square");
-  }).finally(() => {
-    setTimeout(() => {
-      __alertBusy = false;
-    }, 260);
-  });
+  playToneSafe(800, 0.22, 0.28, "square")
+    .finally(() => {
+      setTimeout(() => {
+        __alertBusy = false;
+      }, 260);
+    });
 
   return true;
 }
@@ -125,7 +257,7 @@ function patchAlertWithBeep() {
 (function () {
   "use strict";
 
-  setupBeepUnlockOnce(document);
+  bindAudioLifecycleOnce();
   patchAlertWithBeep();
 
   const CFG = {
@@ -4608,9 +4740,7 @@ function patchAlertWithBeep() {
       console.error("[KNK] Lỗi gắn gợi ý mã sản phẩm realtime:", err);
     }
 
-    // Mở khóa beep cho trình duyệt
-    setupBeepUnlockOnce(document);
-
+    // Audio lifecycle đã được bind 1 lần ở đầu module.
     // Không reset phiếu ngay theo kiểu ép số 00001 nữa
     await khoiTaoSoPhieuBanDau();
 
