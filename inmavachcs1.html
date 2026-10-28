@@ -2015,7 +2015,7 @@
                     selectedColorOrder = parseColorsFromInput(data.mausac || '');
                     updateMauSacPreview();
                     syncPopupChecksFromInput();
-                    document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
+                    document.getElementById('khuyenmaiInput').value = chuanHoaKhuyenMai(data.khuyenmai || '');
                     document.getElementById('nhaccInput').value = data.nhacc || '';
                     document.getElementById('nhomhangInput').value = data.nhomhang || '';
                     document.getElementById('chungloaiInput').value = data.chungloai || '';
@@ -2275,7 +2275,7 @@
                     tensp: document.getElementById('tenspInput').value.trim(),
                     gianhap: parseInt(gianhapVal) || 0,
                     giale: parseInt(gialeVal) || 0,
-                    khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
+                    khuyenmai: chuanHoaKhuyenMai(document.getElementById('khuyenmaiInput').value),
                     nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),
                     nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
                     chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(),
@@ -2618,6 +2618,32 @@ Bạn chưa nhập màu sắc.
             const gialeInput = document.getElementById('gialeInput');
             const giuChietKhauCheckbox = document.getElementById('giuChietKhauCheckbox');
             const khuyenmaiInput = document.getElementById('khuyenmaiInput');
+
+            // =====================================================
+            // CHUẨN HÓA KHUYẾN MẠI
+            // Quy ước duy nhất từ 28/10/2026:
+            //   10      -> 10      (%)
+            //   20      -> 20      (%)
+            //   10.000  -> 10000   (tiền)
+            //   10,000  -> 10000   (tiền)
+            // Không lưu dấu phân tách vào dmhanghoa.khuyenmai.
+            // =====================================================
+            function chuanHoaKhuyenMai(value) {
+                return String(value ?? '')
+                    .trim()
+                    .replace(/[.,\s]/g, '')
+                    .replace(/[^0-9]/g, '');
+            }
+
+            function dongBoOThuongKhuyenMai() {
+                if (!khuyenmaiInput) return '';
+                const normalized = chuanHoaKhuyenMai(khuyenmaiInput.value);
+                if (khuyenmaiInput.value !== normalized) {
+                    khuyenmaiInput.value = normalized;
+                }
+                return normalized;
+            }
+
             const giaSauKhuyenMaiOutput = document.getElementById('giaSauKhuyenMaiOutput');
             const loiNhuanTienOutput = document.getElementById('loiNhuanTienOutput');
             const loiNhuanPctOutput = document.getElementById('loiNhuanPctOutput');
@@ -2680,7 +2706,7 @@ Bạn chưa nhập màu sắc.
                 // Dùng DUY NHẤT logic sẵn có trong khuyenmai.js.
                 // Ô KM có dữ liệu => truyền như khuyến mãi nhập tay.
                 // Ô KM trống => tinhKhuyenMai tự áp dụng quy tắc mặc định hiện hành.
-                const kmRaw = String(khuyenmaiInput?.value || '').trim();
+                const kmRaw = dongBoOThuongKhuyenMai();
                 const tienKhuyenMai = Number(tinhKhuyenMai({ khuyenmai: kmRaw }, giale, kmRaw || undefined)) || 0;
                 const giaSauKm = Math.max(0, giale - tienKhuyenMai);
                 const loiNhuan = gianhap > 0 ? giaSauKm - gianhap : 0;
@@ -2737,7 +2763,7 @@ Bạn chưa nhập màu sắc.
                 try {
                     // Ghi luôn TIỀN khuyến mãi vào ô KM. Giá trị 0 cũng được giữ rõ ràng.
                     khuyenmaiInput.value = tienKhuyenMai > 0
-                        ? tienKhuyenMai.toLocaleString('vi-VN')
+                        ? String(tienKhuyenMai)
                         : '0';
                     giaSauKhuyenMaiOutput.value = formatMoneyInput(giaThuVe);
                     loiNhuanTienOutput.value = (loiNhuan < 0 ? '-' : '') + Math.abs(loiNhuan).toLocaleString('vi-VN');
@@ -3536,10 +3562,15 @@ Bạn chưa nhập màu sắc.
 
             // Hướng 1: nhập Khuyến mãi -> tự tính Giá thu về / Lợi nhuận / % lợi nhuận.
             khuyenmaiInput?.addEventListener('input', () => {
+                dongBoOThuongKhuyenMai();
                 if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan();
             });
             khuyenmaiInput?.addEventListener('change', () => {
+                dongBoOThuongKhuyenMai();
                 if (!dangTinhTuPctLoiNhuan) capNhatThongTinLoiNhuan();
+            });
+            khuyenmaiInput?.addEventListener('blur', () => {
+                dongBoOThuongKhuyenMai();
             });
 
             // Hướng 2: nhập % lợi nhuận trên doanh thu -> tính ngược và ghi luôn TIỀN KM.
