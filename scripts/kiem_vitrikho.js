@@ -1710,12 +1710,29 @@ function attachEvents() {
   const today = new Date().toISOString().slice(0, 10);
   $('date-to').value = today;
 
-  // Trang Kiểm vị trí kho: KHÔNG được tự chọn cơ sở.
-  // Giữ mã nhân viên / mật khẩu theo cơ chế AuthModule/Chrome hiện tại,
-  // nhưng xóa riêng cơ sở đã nhớ để người dùng bắt buộc chọn lại.
+  // ============================================================
+  // Kiểm vị trí kho: BẮT BUỘC ĐĂNG NHẬP LẠI + TỰ CHỌN CƠ SỞ
+  // Không sửa authModule.js và không signOut session dùng chung.
+  //
+  // AuthModule bình thường sẽ tự vào app nếu Supabase đã có session
+  // từ một trang khác. Riêng trang này, ta tạm che getSession()
+  // trong đúng thời điểm AuthModule chạy kiểm tra auto-session.
+  // Sau khi khởi tạo xong, getSession() được trả lại nguyên trạng.
+  // ============================================================
+
   try { localStorage.removeItem('diadiem'); } catch (_) {}
   try { sessionStorage.removeItem('diadiem'); } catch (_) {}
   try { window.diadiem = ''; } catch (_) {}
+
+  const authClient = window.supabase?.auth;
+  const originalGetSession =
+    authClient && typeof authClient.getSession === 'function'
+      ? authClient.getSession.bind(authClient)
+      : null;
+
+  if (authClient && originalGetSession) {
+    authClient.getSession = async () => ({ data: { session: null }, error: null });
+  }
 
   khoiTaoDangNhapDungChung({
     appContainerId: 'app-container',
@@ -1743,47 +1760,39 @@ function attachEvents() {
     }
   });
 
-  // ============================================================
-  // BẮT BUỘC NGƯỜI DÙNG TỰ CHỌN CƠ SỞ
-  // AuthModule dùng chung có cơ chế nhớ diadiem và Passkey fallback CS1.
-  // Hai trang kiểm này cố ý ghi đè hành vi đó:
-  // - Dropdown luôn bắt đầu ở "-- Chọn cơ sở --"
-  // - Không tự lấy CS1/CS2 từ lần đăng nhập trước
-  // - Passkey cũng không được chạy nếu chưa chọn cơ sở
-  // ============================================================
+  // AuthModule đã thực hiện lượt kiểm tra auto-session bằng getSession tạm.
+  // Trả Supabase auth về nguyên trạng để toàn bộ chức năng khác hoạt động bình thường.
+  if (authClient && originalGetSession) {
+    authClient.getSession = originalGetSession;
+  }
+
+  // Ép ô Cơ sở về trạng thái trống sau khi AuthModule dựng form.
+  // Chỉ giữ trống cho đến khi CHÍNH người dùng thay đổi dropdown.
   (() => {
     const csSelect = document.getElementById('login-cs');
     const errorEl = document.getElementById('login-error');
     const passkeyBtn = document.getElementById('btn-login-passkey');
-    const loginContainer = document.getElementById('login-container');
-
     if (!csSelect) return;
 
     let userSelectedBranch = false;
-
-    // Xóa lựa chọn mà AuthModule vừa có thể gán từ localStorage/default.
     csSelect.value = '';
 
     csSelect.addEventListener('change', () => {
       userSelectedBranch = !!String(csSelect.value || '').trim();
     });
 
-    // AuthModule có một số bước async có thể gán lại cơ sở từ session.
-    // Trong thời gian form đăng nhập còn hiện và người dùng CHƯA tự chọn,
-    // chủ động giữ ô cơ sở ở trạng thái trống.
-    const keepBranchBlank = () => {
-      const loginVisible = !loginContainer || loginContainer.style.display !== 'none';
-      if (loginVisible && !userSelectedBranch && csSelect.value) {
-        csSelect.value = '';
-      }
+    const keepBlankUntilUserChooses = () => {
+      if (!userSelectedBranch && csSelect.value) csSelect.value = '';
     };
 
-    [0, 50, 150, 350, 700, 1200, 2000].forEach((ms) => {
-      setTimeout(keepBranchBlank, ms);
+    // AuthModule còn một số thao tác async sau khi dựng form.
+    // Giữ dropdown trống trong giai đoạn khởi tạo.
+    [0, 30, 80, 150, 300, 600, 1200].forEach((ms) => {
+      setTimeout(keepBlankUntilUserChooses, ms);
     });
 
-    // Passkey trong AuthModule có fallback về CS1 nếu cơ sở trống,
-    // nên chặn ở capture phase để bắt buộc chọn cơ sở trước.
+    // Passkey của AuthModule có fallback về CS1 khi cơ sở trống.
+    // Chặn riêng trên hai trang này nếu người dùng chưa chọn cơ sở.
     if (passkeyBtn) {
       passkeyBtn.addEventListener('click', (event) => {
         if (String(csSelect.value || '').trim()) return;
