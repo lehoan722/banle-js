@@ -373,6 +373,113 @@
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="kiem_nhapmobile.css">
 
+    <style>
+        /* =========================================================
+           MOBILE V3
+           1) THOÁT PM nằm cùng lưới nút footer.
+           2) Khi thu gọn footer, bảng dùng lại toàn bộ chiều cao.
+           3) Footer mở là lớp nổi, không giữ khoảng trắng cố định.
+           ========================================================= */
+        @media (max-width: 480px) {
+            /* Footer là lưới 4 cột như giao diện hiện tại */
+            .footer-buttons {
+                position: fixed !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                z-index: 2100 !important;
+
+                display: grid !important;
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+                gap: 6px !important;
+                padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)) 8px !important;
+                margin: 0 !important;
+
+                background: #dce9f9 !important;
+                transition: transform .20s ease, opacity .20s ease !important;
+                max-height: 48vh !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+
+            .footer-buttons button {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 100% !important;
+                min-width: 0 !important;
+                min-height: 54px !important;
+                margin: 0 !important;
+                padding: 6px 4px !important;
+                box-sizing: border-box !important;
+                white-space: normal !important;
+                text-align: center !important;
+            }
+
+            /* Bắt buộc nút logout gốc hiện trong cùng lưới */
+            #btn-logout {
+                display: flex !important;
+                background: #b00020 !important;
+                color: #fff !important;
+                border-color: #fff !important;
+                font-weight: 700 !important;
+            }
+
+            /* Thanh kéo luôn nổi độc lập */
+            #mobileFooterHandle {
+                position: fixed !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                bottom: 0 !important;
+                z-index: 2200 !important;
+                margin: 0 !important;
+            }
+
+            /* Khi THU GỌN: footer biến khỏi vùng nhìn và không chặn bảng */
+            body.mobile-footer-collapsed .footer-buttons {
+                transform: translateY(105%) !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+            }
+
+            /* Khi MỞ: footer hiện như panel nổi phía dưới */
+            body.mobile-footer-expanded .footer-buttons {
+                transform: translateY(0) !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                pointer-events: auto !important;
+            }
+
+            /* Quan trọng: bảng luôn được phép dùng toàn bộ phần còn lại */
+            #app-container {
+                height: 100dvh !important;
+                min-height: 100dvh !important;
+                overflow: hidden !important;
+            }
+
+            .main {
+                flex: 1 1 0 !important;
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                margin-bottom: 0 !important;
+                padding-bottom: 30px !important; /* chỉ chừa thanh kéo */
+                overflow: hidden !important;
+            }
+
+            .table-area {
+                height: 100% !important;
+                max-height: 100% !important;
+                min-height: 0 !important;
+                overflow: auto !important;
+                padding-bottom: 0 !important;
+            }
+        }
+    </style>
+
 </head>
 
 <body class="popupnhanh">
@@ -602,7 +709,7 @@
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
     <script type="module">
-        import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+        import { khoiTaoDangNhapDungChung, dangXuatDungChung } from "./scripts/authModule.js";
 
         // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
         khoiTaoDangNhapDungChung({
@@ -665,6 +772,41 @@
 
                 const loginContainer = document.getElementById("login-container");
                 if (loginContainer) loginContainer.style.display = "none";
+
+                // 8. NÚT THOÁT PM: đăng xuất sạch cho máy dùng chung
+                const btnLogout = document.getElementById("btn-logout");
+                if (btnLogout && !btnLogout.dataset.boundLogout) {
+                    btnLogout.dataset.boundLogout = "1";
+                    btnLogout.addEventListener("click", async () => {
+                        btnLogout.disabled = true;
+                        btnLogout.textContent = "Đang thoát...";
+
+                        try {
+                            // Đăng xuất session Supabase/Passkey bằng AuthModule trước.
+                            await dangXuatDungChung({
+                                loginContainerId: "login-container",
+                                appContainerId: "app-container",
+                                clearDraft: true,
+                                reloadPage: false
+                            });
+                        } catch (err) {
+                            console.warn("[KIEM NHAP CS2] Logout AuthModule có lỗi:", err);
+                        } finally {
+                            // Máy dùng chung: xóa sạch dữ liệu phiên người trước.
+                            try { localStorage.clear(); } catch (e) { }
+                            try { sessionStorage.clear(); } catch (e) { }
+
+                            try {
+                                window.manv = "";
+                                window.tennv = "";
+                                window.diadiem = "";
+                                window.bangKetQua = {};
+                            } catch (e) { }
+
+                            location.reload();
+                        }
+                    });
+                }
             }
         });
     </script>
@@ -1853,6 +1995,84 @@
                     }
                 });
             });
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const isMobile = window.matchMedia("(max-width: 480px)").matches;
+            const body = document.body;
+            const footer = document.querySelector(".footer-buttons");
+            const handle = document.getElementById("mobileFooterHandle");
+            const stat = document.getElementById("thongke_dautrang");
+
+            // ===== 1) Footer: khi đóng không giữ chỗ, khi mở thanh kéo nằm trên footer =====
+            function syncMobileFooterLayout() {
+                if (!isMobile || !footer || !handle) return;
+
+                if (body.classList.contains("mobile-footer-expanded")) {
+                    // Đợi browser tính đúng chiều cao của grid footer.
+                    requestAnimationFrame(() => {
+                        const h = Math.ceil(footer.getBoundingClientRect().height || 0);
+                        handle.style.setProperty("bottom", h + "px", "important");
+                    });
+                } else {
+                    handle.style.setProperty(
+                        "bottom",
+                        "calc(0px + env(safe-area-inset-bottom, 0px))",
+                        "important"
+                    );
+                }
+            }
+
+            if (isMobile && footer && handle) {
+                const classObserver = new MutationObserver(syncMobileFooterLayout);
+                classObserver.observe(body, {
+                    attributes: true,
+                    attributeFilter: ["class"]
+                });
+
+                window.addEventListener("resize", syncMobileFooterLayout);
+                window.addEventListener("orientationchange", syncMobileFooterLayout);
+                syncMobileFooterLayout();
+            }
+
+            // ===== 2) Đổi thống kê:
+            // "Nhập: 14/43 , Xuất: 13/38"
+            // -> "Nhập: 43 SP / 14 mã | Xuất: 38 SP / 13 mã"
+            function doiCachHienThiThongKe() {
+                if (!stat) return;
+
+                const raw = (stat.textContent || "").trim();
+                if (!raw || raw.includes(" SP / ")) return;
+
+                const m = raw.match(
+                    /Nhập:\s*(\d+)\s*\/\s*(\d+)\s*,?\s*Xuất:\s*(\d+)\s*\/\s*(\d+)/i
+                );
+                if (!m) return;
+
+                const maNhap = Number(m[1]) || 0;
+                const spNhap = Number(m[2]) || 0;
+                const maXuat = Number(m[3]) || 0;
+                const spXuat = Number(m[4]) || 0;
+
+                stat.textContent =
+                    `Nhập: ${spNhap} SP / ${maNhap} mã | Xuất: ${spXuat} SP / ${maXuat} mã`;
+            }
+
+            if (stat) {
+                const statObserver = new MutationObserver(() => {
+                    // Nghiệp vụ cũ vừa ghi "x/y" thì đổi ngay sang dạng dễ đọc.
+                    doiCachHienThiThongKe();
+                });
+                statObserver.observe(stat, {
+                    childList: true,
+                    characterData: true,
+                    subtree: true
+                });
+
+                doiCachHienThiThongKe();
+            }
         });
     </script>
 
