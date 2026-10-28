@@ -1872,7 +1872,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     selectedColorOrder = parseColorsFromInput(data.mausac || '');
                     updateMauSacPreview();
                     syncPopupChecksFromInput();
-                    document.getElementById('khuyenmaiInput').value = data.khuyenmai || '';
+                    document.getElementById('khuyenmaiInput').value = chuanHoaKhuyenMai(data.khuyenmai || '');
                     document.getElementById('nhaccInput').value = data.nhacc || '';
                     document.getElementById('nhomhangInput').value = data.nhomhang || '';
                     document.getElementById('chungloaiInput').value = data.chungloai || '';
@@ -2032,6 +2032,38 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
 
+            // =====================================================
+            // CHUẨN HÓA KHUYẾN MẠI
+            // Quy ước duy nhất từ 28/10/2026:
+            //   10      -> 10      (%)
+            //   20      -> 20      (%)
+            //   10.000  -> 10000   (tiền)
+            //   10,000  -> 10000   (tiền)
+            // Không lưu dấu phân tách vào dmhanghoa.khuyenmai.
+            // =====================================================
+            function chuanHoaKhuyenMai(value) {
+                return String(value ?? '')
+                    .trim()
+                    .replace(/[.,\s]/g, '')
+                    .replace(/[^0-9]/g, '');
+            }
+
+            const khuyenmaiInput = document.getElementById('khuyenmaiInput');
+
+            function dongBoOThuongKhuyenMai() {
+                if (!khuyenmaiInput) return '';
+                const normalized = chuanHoaKhuyenMai(khuyenmaiInput.value);
+                if (khuyenmaiInput.value !== normalized) {
+                    khuyenmaiInput.value = normalized;
+                }
+                return normalized;
+            }
+
+            // Chuẩn hóa ngay khi gõ/dán/rời ô.
+            khuyenmaiInput?.addEventListener('input', dongBoOThuongKhuyenMai);
+            khuyenmaiInput?.addEventListener('change', dongBoOThuongKhuyenMai);
+            khuyenmaiInput?.addEventListener('blur', dongBoOThuongKhuyenMai);
+
             // ==== Nút Lưu (submit form) ====
             document.getElementById('addProductForm').onsubmit = async function (e) {
                 e.preventDefault();
@@ -2062,7 +2094,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     tensp: document.getElementById('tenspInput').value.trim(),
                     gianhap: parseInt(gianhapVal) || 1,
                     giale: parseInt(gialeVal) || 0,
-                    khuyenmai: document.getElementById('khuyenmaiInput').value.trim(),
+                    khuyenmai: chuanHoaKhuyenMai(document.getElementById('khuyenmaiInput').value),
                     nhacc: document.getElementById('nhaccInput').value.trim().toUpperCase(),
                     nhomhang: document.getElementById('nhomhangInput').value.trim().toUpperCase(),
                     chungloai: document.getElementById('chungloaiInput').value.trim().toUpperCase(),
