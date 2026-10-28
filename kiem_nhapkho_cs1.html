@@ -1708,17 +1708,41 @@
                 window.capNhatQuyenGiaoDien();
             }
 
-            // 4. gắn nút logout dùng authModule.js
+            // 4. NÚT THOÁT PM: đăng xuất sạch cho máy dùng chung
             const btnLogout = document.getElementById("btn-logout");
             if (btnLogout && !btnLogout.dataset.boundLogout) {
                 btnLogout.dataset.boundLogout = "1";
                 btnLogout.addEventListener("click", async () => {
-                    await dangXuatDungChung({
-                        loginContainerId: "login-container",
-                        appContainerId: "app-container",
-                        clearDraft: false,
-                        reloadPage: true
-                    });
+                    btnLogout.disabled = true;
+                    btnLogout.textContent = "Đang thoát...";
+
+                    try {
+                        // Đăng xuất session Supabase/Passkey bằng AuthModule trước.
+                        await dangXuatDungChung({
+                            loginContainerId: "login-container",
+                            appContainerId: "app-container",
+                            clearDraft: true,
+                            reloadPage: false
+                        });
+                    } catch (err) {
+                        console.warn("[KIEM NHAP CS1] Logout AuthModule có lỗi:", err);
+                    } finally {
+                        // Trang này dùng trên máy chung:
+                        // xóa toàn bộ dữ liệu trình duyệt của phiên trước để người sau
+                        // không dùng lại manv/tennv/session/last_login_identifier/cache.
+                        try { localStorage.clear(); } catch (e) { }
+                        try { sessionStorage.clear(); } catch (e) { }
+
+                        // Xóa trạng thái JS đang giữ trong RAM trước khi reload.
+                        try {
+                            window.manv = "";
+                            window.tennv = "";
+                            window.diadiem = "";
+                            window.bangKetQua = {};
+                        } catch (e) { }
+
+                        location.reload();
+                    }
                 });
             }
         }
