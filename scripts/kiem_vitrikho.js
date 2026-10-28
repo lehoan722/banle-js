@@ -16,7 +16,7 @@ startSessionKeeper();
 let hot = null;
 let currentSessionId = null;
 let currentSessionCode = '';
-let currentCoSo = 'cs1';
+let currentCoSo = '';
 let currentManv = '';
 let currentTenNv = '';
 let isAdmin = false;
@@ -1710,14 +1710,24 @@ function attachEvents() {
   const today = new Date().toISOString().slice(0, 10);
   $('date-to').value = today;
 
+  // Trang Kiểm vị trí kho: KHÔNG được tự chọn cơ sở.
+  // Giữ mã nhân viên / mật khẩu theo cơ chế AuthModule/Chrome hiện tại,
+  // nhưng xóa riêng cơ sở đã nhớ để người dùng bắt buộc chọn lại.
+  try { localStorage.removeItem('diadiem'); } catch (_) {}
+  try { sessionStorage.removeItem('diadiem'); } catch (_) {}
+  try { window.diadiem = ''; } catch (_) {}
+
   khoiTaoDangNhapDungChung({
     appContainerId: 'app-container',
-    macDinhDiaDiem: 'cs1',
+    macDinhDiaDiem: '',
     tuDongKhoaCoSo: false,
     loginApiPath: (cs) => `/api/login-${cs}`,
     onLoginSuccess: async (nhanvien, context) => {
       const info = getCurrentUserInfo();
-      currentCoSo = String(context?.diadiem || info.diadiem || 'cs1').trim().toLowerCase();
+      currentCoSo = String(context?.diadiem || info.diadiem || '').trim().toLowerCase();
+      if (!currentCoSo) {
+        throw new Error('Chưa chọn cơ sở. Hãy đăng nhập lại và chọn đúng cơ sở.');
+      }
       currentManv = normalizeMasp(nhanvien?.manv || info.manv);
       currentTenNv = normalizeText(nhanvien?.tennv || info.tennv || currentManv);
       isAdmin = !!(nhanvien?.is_admin || info.is_admin);
@@ -1732,4 +1742,62 @@ function attachEvents() {
       setTimeout(() => $('current-location').focus(), 80);
     }
   });
+
+  // ============================================================
+  // BẮT BUỘC NGƯỜI DÙNG TỰ CHỌN CƠ SỞ
+  // AuthModule dùng chung có cơ chế nhớ diadiem và Passkey fallback CS1.
+  // Hai trang kiểm này cố ý ghi đè hành vi đó:
+  // - Dropdown luôn bắt đầu ở "-- Chọn cơ sở --"
+  // - Không tự lấy CS1/CS2 từ lần đăng nhập trước
+  // - Passkey cũng không được chạy nếu chưa chọn cơ sở
+  // ============================================================
+  (() => {
+    const csSelect = document.getElementById('login-cs');
+    const errorEl = document.getElementById('login-error');
+    const passkeyBtn = document.getElementById('btn-login-passkey');
+    const loginContainer = document.getElementById('login-container');
+
+    if (!csSelect) return;
+
+    let userSelectedBranch = false;
+
+    // Xóa lựa chọn mà AuthModule vừa có thể gán từ localStorage/default.
+    csSelect.value = '';
+
+    csSelect.addEventListener('change', () => {
+      userSelectedBranch = !!String(csSelect.value || '').trim();
+    });
+
+    // AuthModule có một số bước async có thể gán lại cơ sở từ session.
+    // Trong thời gian form đăng nhập còn hiện và người dùng CHƯA tự chọn,
+    // chủ động giữ ô cơ sở ở trạng thái trống.
+    const keepBranchBlank = () => {
+      const loginVisible = !loginContainer || loginContainer.style.display !== 'none';
+      if (loginVisible && !userSelectedBranch && csSelect.value) {
+        csSelect.value = '';
+      }
+    };
+
+    [0, 50, 150, 350, 700, 1200, 2000].forEach((ms) => {
+      setTimeout(keepBranchBlank, ms);
+    });
+
+    // Passkey trong AuthModule có fallback về CS1 nếu cơ sở trống,
+    // nên chặn ở capture phase để bắt buộc chọn cơ sở trước.
+    if (passkeyBtn) {
+      passkeyBtn.addEventListener('click', (event) => {
+        if (String(csSelect.value || '').trim()) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        if (errorEl) {
+          errorEl.style.color = 'red';
+          errorEl.textContent = 'Vui lòng chọn cơ sở trước khi đăng nhập!';
+        }
+        csSelect.focus();
+      }, true);
+    }
+  })();
 })();
