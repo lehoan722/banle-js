@@ -1749,30 +1749,43 @@ function attachEvents() {
   $('date-to').value = today;
 
   // ============================================================
-  // Kiểm bày mẫu: LOGIN THÔNG MINH THEO SESSION + BẮT BUỘC CHỌN CƠ SỞ
+  // Kiểm bày mẫu: BẮT BUỘC ĐĂNG NHẬP LẠI + TỰ CHỌN CƠ SỞ
+  // Không sửa authModule.js và không signOut session dùng chung.
   //
-  // 1) Nếu thiết bị ĐÃ có Supabase session từ trang khác:
-  //    - không hỏi lại mật khẩu
-  //    - chỉ hiện người dùng hiện tại + chọn CS1/CS2
-  //
-  // 2) Nếu CHƯA có session:
-  //    - dùng AuthModule đầy đủ như bình thường
-  //    - cơ sở luôn để trống, bắt buộc người dùng tự chọn
-  //
-  // Không sửa authModule.js.
+  // AuthModule bình thường sẽ tự vào app nếu Supabase đã có session
+  // từ một trang khác. Riêng trang này, ta tạm che getSession()
+  // trong đúng thời điểm AuthModule chạy kiểm tra auto-session.
+  // Sau khi khởi tạo xong, getSession() được trả lại nguyên trạng.
   // ============================================================
 
-  async function apDungNguoiDungChoTrang(nhanvien, context) {
-    const info = getCurrentUserInfo();
-    currentCoSo = String(context?.diadiem || info.diadiem || '').trim().toLowerCase();
-    if (!currentCoSo) {
-      throw new Error('Chưa chọn cơ sở.');
-    }
+  try { localStorage.removeItem('diadiem'); } catch (_) {}
+  try { sessionStorage.removeItem('diadiem'); } catch (_) {}
+  try { window.diadiem = ''; } catch (_) {}
 
-    currentManv = normalizeMasp(nhanvien?.manv || info.manv);
-    currentTenNv = normalizeText(nhanvien?.tennv || info.tennv || currentManv);
-    isAdmin = !!(nhanvien?.is_admin || info.is_admin);
+  const authClient = window.supabase?.auth;
+  const originalGetSession =
+    authClient && typeof authClient.getSession === 'function'
+      ? authClient.getSession.bind(authClient)
+      : null;
 
+  if (authClient && originalGetSession) {
+    authClient.getSession = async () => ({ data: { session: null }, error: null });
+  }
+
+  khoiTaoDangNhapDungChung({
+    appContainerId: 'app-container',
+    macDinhDiaDiem: '',
+    tuDongKhoaCoSo: false,
+    loginApiPath: (cs) => `/api/login-${cs}`,
+    onLoginSuccess: async (nhanvien, context) => {
+      const info = getCurrentUserInfo();
+      currentCoSo = String(context?.diadiem || info.diadiem || '').trim().toLowerCase();
+      if (!currentCoSo) {
+        throw new Error('Chưa chọn cơ sở. Hãy đăng nhập lại và chọn đúng cơ sở.');
+      }
+      currentManv = normalizeMasp(nhanvien?.manv || info.manv);
+      currentTenNv = normalizeText(nhanvien?.tennv || info.tennv || currentManv);
+      isAdmin = !!(nhanvien?.is_admin || info.is_admin);
       $('btn-merge').style.display = isAdmin ? '' : 'none';
       $('btn-save-baymau').style.display = isAdmin ? '' : 'none';
       $('btn-set-standard').style.display = isAdmin ? '' : 'none';
@@ -1783,188 +1796,50 @@ function attachEvents() {
       setDirty(true);
       await loadFilterOptions();
       setTimeout(() => $('current-location').focus(), 80);
-  }
-
-  function hienBangChonCoSo(session, info) {
-    // Xóa riêng cơ sở cũ để không có khả năng dùng nhầm chi nhánh.
-    try { localStorage.removeItem('diadiem'); } catch (_) {}
-    try { sessionStorage.removeItem('diadiem'); } catch (_) {}
-    try { window.diadiem = ''; } catch (_) {}
-
-    const old = document.getElementById('page-branch-gate');
-    if (old) old.remove();
-
-    const gate = document.createElement('div');
-    gate.id = 'page-branch-gate';
-    gate.style.cssText = [
-      'position:fixed',
-      'inset:0',
-      'z-index:100000',
-      'background:#fff',
-      'display:flex',
-      'align-items:center',
-      'justify-content:center',
-      'padding:16px',
-      'font-family:Arial,Helvetica,sans-serif'
-    ].join(';');
-
-    const userLabel = info.tennv || info.manv || session?.user?.email || 'Người dùng đã đăng nhập';
-
-    gate.innerHTML = `
-      <div style="width:min(390px,100%);background:#f9f9f9;padding:24px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.16);">
-        <h2 style="margin:0 0 14px;font-size:22px;">Chọn cơ sở</h2>
-        <div style="padding:10px 12px;background:#eef6ff;border:1px solid #b8d8f5;border-radius:8px;margin-bottom:14px;line-height:1.45;">
-          <div style="font-size:13px;color:#506070;">Đang đăng nhập</div>
-          <div style="font-weight:700;font-size:17px;">${userLabel}</div>
-          ${info.manv ? `<div style="font-size:13px;color:#506070;">Mã NV: ${info.manv}</div>` : ''}
-        </div>
-
-        <label for="page-branch-select" style="display:block;font-weight:700;margin-bottom:6px;">Cơ sở làm việc</label>
-        <select id="page-branch-select" style="width:100%;padding:10px;font-size:17px;border:1px solid #aaa;border-radius:8px;margin-bottom:12px;">
-          <option value="">-- Chọn cơ sở --</option>
-          <option value="cs1">Cơ sở 1</option>
-          <option value="cs2">Cơ sở 2</option>
-        </select>
-
-        <button id="page-branch-continue" type="button"
-          style="width:100%;padding:11px 14px;font-size:17px;font-weight:700;background:#1769aa;color:#fff;border:0;border-radius:8px;">
-          Tiếp tục
-        </button>
-
-        <div id="page-branch-error" style="min-height:20px;color:#b91c1c;margin-top:9px;font-size:14px;"></div>
-      </div>`;
-
-    document.body.appendChild(gate);
-
-    const select = document.getElementById('page-branch-select');
-    const button = document.getElementById('page-branch-continue');
-    const error = document.getElementById('page-branch-error');
-
-    select.value = '';
-    setTimeout(() => select.focus(), 50);
-
-    button.addEventListener('click', async () => {
-      const cs = String(select.value || '').trim().toLowerCase();
-      if (!cs) {
-        error.textContent = 'Vui lòng chọn cơ sở!';
-        select.focus();
-        return;
-      }
-
-      button.disabled = true;
-      button.textContent = 'Đang mở...';
-      error.textContent = '';
-
-      try {
-        localStorage.setItem('diadiem', cs);
-        sessionStorage.setItem('diadiem', cs);
-        window.diadiem = cs;
-
-        await apDungNguoiDungChoTrang(
-          {
-            manv: info.manv,
-            tennv: info.tennv,
-            is_admin: info.is_admin,
-            sua_hoadon: info.quyen_sua_hoadon
-          },
-          { diadiem: cs, session, login_method: 'existing_session' }
-        );
-
-        const app = document.getElementById('app-container');
-        if (app) app.style.display = '';
-        gate.remove();
-      } catch (err) {
-        console.error(err);
-        error.textContent = 'Không mở được trang: ' + (err?.message || err);
-        button.disabled = false;
-        button.textContent = 'Tiếp tục';
-      }
-    });
-
-    select.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        button.click();
-      }
-    });
-  }
-
-  function enhanceLoginFormForChrome() {
-    const form = document.getElementById('form-login-dungchung');
-    const user = document.getElementById('login-manv');
-    const pass = document.getElementById('login-password-nv');
-    const cs = document.getElementById('login-cs');
-    if (!form || !user || !pass || !cs) return false;
-
-    form.setAttribute('autocomplete', 'on');
-    user.setAttribute('name', 'username');
-    user.setAttribute('autocomplete', 'username');
-    user.setAttribute('autocapitalize', 'none');
-    user.setAttribute('spellcheck', 'false');
-    pass.setAttribute('name', 'password');
-    pass.setAttribute('autocomplete', 'current-password');
-    cs.setAttribute('name', 'branch');
-    cs.setAttribute('autocomplete', 'off');
-
-    // Luôn bắt đầu bằng cơ sở trống.
-    cs.value = '';
-    return true;
-  }
-
-  async function khoiTaoDangNhapTheoSession() {
-    const authClient = window.supabase?.auth;
-    let session = null;
-
-    try {
-      const result = authClient && typeof authClient.getSession === 'function'
-        ? await authClient.getSession()
-        : null;
-      session = result?.data?.session || null;
-    } catch (err) {
-      console.warn('[Kiểm bày mẫu] Không đọc được session hiện tại:', err);
     }
+  });
 
-    const info = getCurrentUserInfo();
+  // AuthModule đã thực hiện lượt kiểm tra auto-session bằng getSession tạm.
+  // Trả Supabase auth về nguyên trạng để toàn bộ chức năng khác hoạt động bình thường.
+  if (authClient && originalGetSession) {
+    authClient.getSession = originalGetSession;
+  }
 
-    // Có session + có nhận diện người dùng từ lần login trước:
-    // chỉ bắt chọn cơ sở, KHÔNG gọi AuthModule.
-    if (session && (info.manv || info.tennv || session?.user?.email)) {
-      const app = document.getElementById('app-container');
-      if (app) app.style.display = 'none';
-      hienBangChonCoSo(session, info);
-      return;
-    }
-
-    // Không có session: dùng login đầy đủ.
-    // Xóa cơ sở cũ trước khi AuthModule dựng form để không tự chọn.
-    try { localStorage.removeItem('diadiem'); } catch (_) {}
-    try { sessionStorage.removeItem('diadiem'); } catch (_) {}
-    try { window.diadiem = ''; } catch (_) {}
-
-    khoiTaoDangNhapDungChung({
-      appContainerId: 'app-container',
-      macDinhDiaDiem: '',
-      tuDongKhoaCoSo: false,
-      loginApiPath: (cs) => `/api/login-${cs}`,
-      onLoginSuccess: async (nhanvien, context) => {
-        await apDungNguoiDungChoTrang(nhanvien, context);
-      }
-    });
-
-    // AuthModule tạo form đồng bộ; tăng semantic cho Chrome Password Manager.
-    enhanceLoginFormForChrome();
-    [50, 150, 350, 700].forEach((ms) => setTimeout(enhanceLoginFormForChrome, ms));
-
-    // Passkey của AuthModule có fallback CS1 khi cs trống, nên chặn nếu chưa chọn.
+  // Ép ô Cơ sở về trạng thái trống sau khi AuthModule dựng form.
+  // Chỉ giữ trống cho đến khi CHÍNH người dùng thay đổi dropdown.
+  (() => {
     const csSelect = document.getElementById('login-cs');
     const errorEl = document.getElementById('login-error');
     const passkeyBtn = document.getElementById('btn-login-passkey');
-    if (passkeyBtn && csSelect) {
+    if (!csSelect) return;
+
+    let userSelectedBranch = false;
+    csSelect.value = '';
+
+    csSelect.addEventListener('change', () => {
+      userSelectedBranch = !!String(csSelect.value || '').trim();
+    });
+
+    const keepBlankUntilUserChooses = () => {
+      if (!userSelectedBranch && csSelect.value) csSelect.value = '';
+    };
+
+    // AuthModule còn một số thao tác async sau khi dựng form.
+    // Giữ dropdown trống trong giai đoạn khởi tạo.
+    [0, 30, 80, 150, 300, 600, 1200].forEach((ms) => {
+      setTimeout(keepBlankUntilUserChooses, ms);
+    });
+
+    // Passkey của AuthModule có fallback về CS1 khi cơ sở trống.
+    // Chặn riêng trên hai trang này nếu người dùng chưa chọn cơ sở.
+    if (passkeyBtn) {
       passkeyBtn.addEventListener('click', (event) => {
         if (String(csSelect.value || '').trim()) return;
+
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
+
         if (errorEl) {
           errorEl.style.color = 'red';
           errorEl.textContent = 'Vui lòng chọn cơ sở trước khi đăng nhập!';
@@ -1972,8 +1847,5 @@ function attachEvents() {
         csSelect.focus();
       }, true);
     }
-  }
-
-  void khoiTaoDangNhapTheoSession();
-
+  })();
 })();
