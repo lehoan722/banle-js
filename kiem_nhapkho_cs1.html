@@ -373,6 +373,48 @@
     <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
     <link rel="stylesheet" href="kiem_nhapmobile.css">
 
+
+    <style>
+        /* =========================================================
+           THOÁT PM LUÔN HIỆN TRÊN ĐIỆN THOẠI DỌC
+           Nút gốc vẫn nằm trong footer; nút này độc lập với footer
+           thu gọn để người dùng máy chung luôn có thể đăng xuất.
+           ========================================================= */
+        #btn-logout-mobile {
+            display: none;
+        }
+
+        @media (max-width: 480px) and (orientation: portrait) {
+            #btn-logout-mobile {
+                display: block !important;
+                position: fixed !important;
+                right: 10px !important;
+                bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+                z-index: 2147483000 !important;
+
+                min-width: 96px !important;
+                height: 42px !important;
+                padding: 8px 12px !important;
+
+                border: 2px solid #ffffff !important;
+                border-radius: 22px !important;
+                background: #b00020 !important;
+                color: #ffffff !important;
+                font-size: 14px !important;
+                font-weight: 700 !important;
+                line-height: 1 !important;
+
+                box-shadow: 0 3px 12px rgba(0,0,0,.35) !important;
+                cursor: pointer !important;
+                opacity: .96 !important;
+            }
+
+            #btn-logout-mobile:active {
+                transform: scale(.96);
+            }
+        }
+    </style>
+
 </head>
 
 <body class="popupnhanh">
@@ -1881,6 +1923,32 @@
                         );
                     }
                 });
+            });
+        });
+    </script>
+
+
+    <button id="btn-logout-mobile" type="button" aria-label="Thoát phần mềm">🚪 THOÁT PM</button>
+
+
+    <script>
+        // Nút THOÁT PM nổi trên điện thoại dọc.
+        // Gọi lại đúng nút logout chính để dùng chung toàn bộ nghiệp vụ AuthModule.
+        document.addEventListener("DOMContentLoaded", function () {
+            const mobileLogout = document.getElementById("btn-logout-mobile");
+            const mainLogout = document.getElementById("btn-logout");
+
+            if (!mobileLogout || !mainLogout) return;
+
+            mobileLogout.addEventListener("click", function () {
+                if (mobileLogout.disabled) return;
+
+                // Nút chính được bind sau khi AuthModule đăng nhập thành công.
+                // click() sẽ đi đúng luồng signOut + clear storage hiện tại.
+                mainLogout.click();
+
+                mobileLogout.disabled = true;
+                mobileLogout.textContent = "Đang thoát...";
             });
         });
     </script>
