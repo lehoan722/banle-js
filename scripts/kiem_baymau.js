@@ -1848,4 +1848,45 @@ function attachEvents() {
       }, true);
     }
   })();
+  // ============================================================
+  // CHROME PASSWORD MANAGER
+  // Giúp Chrome nhận diện đúng cặp username/password để tự điền.
+  // Không lưu mật khẩu bằng JavaScript/localStorage.
+  // Cơ sở vẫn bắt buộc người dùng tự chọn.
+  // ============================================================
+  (() => {
+    function enhanceLoginFormForChrome() {
+      const form = document.getElementById('form-login-dungchung');
+      const user = document.getElementById('login-manv');
+      const pass = document.getElementById('login-password-nv');
+      const cs = document.getElementById('login-cs');
+
+      if (!form || !user || !pass || !cs) return false;
+
+      // Chrome/Google Password Manager dựa nhiều vào name + autocomplete.
+      form.setAttribute('autocomplete', 'on');
+
+      user.setAttribute('name', 'username');
+      user.setAttribute('autocomplete', 'username');
+      user.setAttribute('autocapitalize', 'none');
+      user.setAttribute('spellcheck', 'false');
+
+      pass.setAttribute('name', 'password');
+      pass.setAttribute('autocomplete', 'current-password');
+
+      // Không cho Chrome hiểu "cơ sở" là một phần của danh tính đăng nhập.
+      cs.setAttribute('name', 'branch');
+      cs.setAttribute('autocomplete', 'off');
+
+      return true;
+    }
+
+    // AuthModule dựng form đồng bộ, nhưng gọi thêm vài nhịp để ổn định trên Chrome mobile.
+    if (!enhanceLoginFormForChrome()) {
+      [0, 50, 150, 350, 700].forEach((ms) => {
+        setTimeout(enhanceLoginFormForChrome, ms);
+      });
+    }
+  })();
+
 })();
