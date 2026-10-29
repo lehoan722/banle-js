@@ -1475,6 +1475,14 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
         return false;
     }
 
+    // V3: popup size đã bị MenuComponent trì hoãn trong lúc xác nhận ảnh.
+    // Chỉ sau khi người dùng bấm ĐÚNG SẢN PHẨM mới focus #size và mở popup size.
+    try {
+        xnas?.moPopupSizeSauXacNhan?.();
+    } catch (err) {
+        console.warn("[hoadon] Không mở được popup size sau xác nhận ảnh:", err);
+    }
+
     // [NEW giữ nguyên] Chuẩn hoá form từ spData
     const giaEl = document.getElementById("gia");
     const kmEl = document.getElementById("khuyenmai");
