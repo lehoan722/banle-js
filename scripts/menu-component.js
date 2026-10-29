@@ -775,10 +775,18 @@
           }
         };
 
-        // Từ #masp nhấn Enter -> focus #size + mở dropdown
+        // Từ #masp nhấn Enter -> focus #size + mở dropdown.
+        // V3: nếu trang đang dùng cổng xác nhận ảnh thì trì hoãn hành động này
+        // cho tới SAU khi người dùng bấm ĐÚNG SẢN PHẨM.
         if (masp) {
           masp.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
+              const deferByPhotoGate = !!window.XacNhanAnhSP?.nenTriHoanPopupSize?.();
+              if (deferByPhotoGate) {
+                // Không prevent/stop: để hoadon.js vẫn nhận Enter và xử lý mã bình thường.
+                return;
+              }
+
               e.preventDefault();
 
               // Desktop: giữ cơ chế cũ để blur đóng popup ổn định
@@ -791,6 +799,18 @@
             }
           });
         }
+
+        // Hook công khai cho xacnhananhsp: dùng CHÍNH instance dropdown toàn cục hiện tại,
+        // không tạo thêm popup/dropdown thứ hai.
+        global.openCurrentMenuSizeDropdown = function () {
+          if (!__sizeInput || !__sizeDD) return false;
+          if (isDesktopWide()) {
+            __sizeInput.focus();
+            __sizeInput.select();
+          }
+          __sizeDD.openFor(__sizeInput);
+          return true;
+        };
 
         // Focus/Click vào #size -> mở dropdown
         __sizeInput.addEventListener('focus', () => {
