@@ -1440,6 +1440,41 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
         return false;
     }
 
+    // ===== HOOK MỀM: XÁC NHẬN ẢNH SẢN PHẨM (chỉ khi trang đã nạp xacnhananhsp.js) =====
+    // Không import cứng module mới ở đây để các trang khác dùng chung hoadon.js vẫn chạy nguyên vẹn.
+    // Nếu window.XacNhanAnhSP không tồn tại, coi như đã xác nhận và tiếp tục đúng luồng cũ.
+    let daXacNhanAnh = true;
+    const xnas = window.XacNhanAnhSP;
+    if (xnas && typeof xnas.xacNhanAnhSanPham === "function") {
+        const giaXacNhanNguon = isNhapMode() ? (spData.gianhap || 0) : (spData.giale || 0);
+        const giaXacNhanInt = Math.round(parseMoneyInt(giaXacNhanNguon));
+        try {
+            daXacNhanAnh = await xnas.xacNhanAnhSanPham({
+                masp: maspVal,
+                tensp: spData.tensp || "",
+                gia: giaXacNhanInt
+            });
+        } catch (err) {
+            // Fail-open có chủ đích: lỗi riêng của tính năng mới không được làm chết luồng bán hàng cũ.
+            console.error("[hoadon] Lỗi hook xacnhananhsp, tiếp tục luồng cũ:", err);
+            daXacNhanAnh = true;
+        }
+    }
+
+    if (!daXacNhanAnh) {
+        // Enter hoặc nút SAI SP: không thay đổi hóa đơn, quay lại ô mã để quét lại.
+        const maspInput = document.getElementById("masp");
+        const sizeInput = document.getElementById("size");
+        if (sizeInput) sizeInput.value = "";
+        if (maspInput) {
+            setTimeout(() => {
+                maspInput.focus();
+                maspInput.select();
+            }, 0);
+        }
+        return false;
+    }
+
     // [NEW giữ nguyên] Chuẩn hoá form từ spData
     const giaEl = document.getElementById("gia");
     const kmEl = document.getElementById("khuyenmai");
