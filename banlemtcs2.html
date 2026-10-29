@@ -1168,6 +1168,8 @@
     </script>
 
     <script src="/scripts/stockQuickPopup.js?v=101"></script>
+    <!-- V2: chi 4 trang ban hang nay chu dong nap cong xac nhan anh; main.js khong thay doi. -->
+    <script src="/scripts/xacnhananhsp.js?v=105"></script>
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
@@ -1634,6 +1636,7 @@
 
                 // 🔴 THÊM 3 DÒNG NÀY
                 localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
+                window.XacNhanAnhSP?.refreshAdminUI?.();
                 localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
                 localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
 
@@ -1771,7 +1774,7 @@
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
 
 
-    <script src="/scripts/menu-component.js?v=9"></script>
+    <script src="/scripts/menu-component.js?v=10"></script>
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
