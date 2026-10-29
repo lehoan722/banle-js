@@ -1,4 +1,4 @@
-// HOAN TUYET - XAC NHAN ANH SAN PHAM V2
+// HOAN TUYET - XAC NHAN ANH SAN PHAM V3
 // Script độc lập đăng ký window.XacNhanAnhSP; hoadon.js chỉ gọi qua hook mềm nếu script này tồn tại.
 // Áp dụng: banlemtcs1, banlemtcs2, bannvcs1, bannvcs2.
 
@@ -98,6 +98,10 @@ function injectStyle() {
       vertical-align:middle;
     }
     #xacnhananhsp-admin-wrap input{width:auto!important; height:auto!important; margin:0}
+    /* Khi đang xác nhận ảnh, StockQuick phải luôn nằm trên overlay xác nhận. */
+    body.xnas-verify-active .sq-stock-popup{z-index:200000!important}
+    body.xnas-verify-active .sq-image-fullscreen{z-index:200010!important}
+    body.xnas-verify-active .sq-backdrop{z-index:199990!important}
     @media (max-width:800px){
       #xacnhananhsp-info{max-width:88vw; min-width:280px; bottom:10vh}
       .xnas-btn{min-width:175px; height:52px; font-size:17px}
@@ -188,6 +192,7 @@ function finish(result) {
   const overlay = document.getElementById("xacnhananhsp-overlay");
   overlay?.classList.remove("xnas-open");
   overlay?.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("xnas-verify-active");
   resolve(!!result);
 }
 
@@ -256,12 +261,33 @@ async function xacNhanAnhSanPham({ masp, tensp = "", gia = 0 } = {}) {
 
   dungBtn.classList.toggle("xnas-odd", getInvoiceParity() === "odd");
 
+  document.body.classList.add("xnas-verify-active");
   overlay.classList.add("xnas-open");
   overlay.setAttribute("aria-hidden", "false");
 
   return await new Promise((resolve) => {
     currentResolve = resolve;
   });
+}
+
+// MenuComponent hỏi hàm này khi người dùng Enter ở #masp.
+// Nếu đang bật kiểm ảnh thì KHÔNG được focus/mở popup size trước; chờ xác nhận ĐÚNG SP xong mới mở.
+function nenTriHoanPopupSize() {
+  return laTrangApDungXacNhanAnhSP() && !coDuocBoQuaXacNhanAnhSP();
+}
+
+function moPopupSizeSauXacNhan() {
+  const sizeEl = document.getElementById("size");
+  if (!sizeEl) return;
+  try {
+    sizeEl.focus();
+    sizeEl.select?.();
+    if (typeof window.openCurrentMenuSizeDropdown === "function") {
+      window.openCurrentMenuSizeDropdown();
+    }
+  } catch (err) {
+    console.warn("[xacnhananhsp] Không mở được popup size sau xác nhận:", err);
+  }
 }
 
 // Đăng ký hook toàn cục. hoadon.js KHÔNG import file này; chỉ gọi nếu hook tồn tại.
@@ -271,7 +297,9 @@ window.XacNhanAnhSP = Object.freeze({
   refreshAdminUI: injectAdminBypass,
   laTrangApDung: laTrangApDungXacNhanAnhSP,
   laAdmin: laAdminXacNhanAnhSP,
-  coDuocBoQua: coDuocBoQuaXacNhanAnhSP
+  coDuocBoQua: coDuocBoQuaXacNhanAnhSP,
+  nenTriHoanPopupSize,
+  moPopupSizeSauXacNhan
 });
 
 function bootXacNhanAnhSP() {
