@@ -1520,7 +1520,7 @@
     </script>
 
     <script type="module">
-        import { autoSuggestAndOpenCcn } from "./scripts/chuyenkhoAutoEngine.js";
+        import { autoSuggestAndOpenCcn } from "./scripts/chuyenkhoAutoEngine.js?v=2.0";
 
         function layDanhSachMaspTuBangNhapTam() {
             if (typeof window.capNhatBangKetQuaTuDOM === "function") {
@@ -1570,7 +1570,8 @@
                 const rs = await autoSuggestAndOpenCcn({
                     masps,
                     pageKind: "CS1",
-                    note
+                    note,
+                    source: "NHAPTAM"
                 });
 
                 if (!rs.ok) {
