@@ -805,6 +805,16 @@ async function saveNewCCNByModern(ctx, prep) {
   alert("✅ Đã lưu hóa đơn CCN (cả gốc và đối ứng)!");
   printInvoice(hoadonGoc, chitietGoc);
   await resetAfterSave();
+
+  // QUAN TRỌNG: trả trạng thái thành công cho trang gọi.
+  // Trước đây hàm kết thúc bằng undefined nên các trang CCN không thể biết
+  // việc lưu đã hoàn tất để khóa/đóng tab khi dữ liệu đến từ nhập tạm.
+  return {
+    ok: true,
+    action: "new",
+    sohd: meta.sohd,
+    sohd_doi_ung: meta.sohdDoiUng
+  };
 }
 
 async function deleteOldCcnPair(meta) {
@@ -1096,6 +1106,13 @@ async function saveEditCCNByModern(ctx, prep) {
   alert("✅ Đã sửa hóa đơn CCN (cả gốc và đối ứng)!");
   printInvoice(hoadonGoc, chitietGoc);
   await resetAfterSave();
+
+  return {
+    ok: true,
+    action: "edit",
+    sohd: meta.sohd,
+    sohd_doi_ung: meta.sohdDoiUng
+  };
 }
 
 
