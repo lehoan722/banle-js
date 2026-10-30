@@ -1809,6 +1809,24 @@ async function saveKhoToCatalog() {
   }
 }
 
+function attachEvents() {
+  $('scan-masp').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
+  $('scan-masp').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleScan(); }
+  });
+  $('current-location').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); focusScan(); }
+  });
+
+  $('btn-save').addEventListener('click', saveSession);
+  $('btn-load-session').addEventListener('click', showLoadSessions);
+  $('btn-load-stock-location').addEventListener('click', loadDisplayLocations);
+  ['all', 'correct', 'wrong', 'missing'].forEach((filter) => {
+    const btn = $(`btn-filter-location-${filter}`);
+    if (btn) btn.addEventListener('click', () => applyLocationCompareFilter(filter));
+  });
+  const btnCopyLocationFilter = $('btn-copy-location-filter');
+  if (btnCopyLocationFilter) btnCopyLocationFilter.addEventListener('click', copyVisibleLocationCompareTable);
   $('btn-multi-location').addEventListener('click', showMultiLocations);
   $('btn-run-unshown').addEventListener('click', runUnshown);
   $('group-picker').addEventListener('change', appendSelectedGroup);
