@@ -1692,6 +1692,15 @@
                     return;
                 }
 
+                // Ghi nhớ nguồn nhập tạm trong chính tab CCN này.
+                // sessionStorage tồn tại đến khi tab đóng, kể cả payload localStorage đã bị xóa.
+                const fromNhapTam = !!(pf.from_nhaptam || String(pf.source || '').toUpperCase() === 'NHAPTAM');
+                if (fromNhapTam) {
+                    window.__CCN_FROM_NHAPTAM__ = true;
+                    sessionStorage.setItem('ccn_from_nhaptam', '1');
+                    sessionStorage.setItem('ccn_lock_after_save', pf.lock_after_save === false ? '0' : '1');
+                }
+
                 const ghichuEl = document.getElementById("ghichu");
                 if (ghichuEl && pf.note) {
                     ghichuEl.value = String(pf.note || "").trim();
@@ -1935,6 +1944,50 @@
             );
         }
 
+        function isCcnFromNhapTam() {
+            return window.__CCN_FROM_NHAPTAM__ === true ||
+                sessionStorage.getItem('ccn_from_nhaptam') === '1';
+        }
+
+        function lockCcnPageAfterNhapTamSave() {
+            if (!isCcnFromNhapTam()) return;
+
+            // Khóa ngay mọi trường nhập và nút thao tác để dù window.close bị trình duyệt chặn
+            // thì nhân viên cũng không thể tiếp tục nhập nhầm dữ liệu mới vào phiếu vừa lưu.
+            document.querySelectorAll('input, select, textarea, button').forEach(el => {
+                try { el.disabled = true; } catch (_) {}
+            });
+
+            let overlay = document.getElementById('ccnNhapTamSavedLock');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'ccnNhapTamSavedLock';
+                overlay.style.cssText = `
+                    position:fixed; inset:0; z-index:2147483646;
+                    background:rgba(0,0,0,.62); display:flex;
+                    align-items:center; justify-content:center; padding:20px;
+                    font-family:Arial,sans-serif;
+                `;
+                overlay.innerHTML = `
+                    <div style="max-width:560px;background:#fff;border-radius:14px;padding:24px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.35)">
+                        <div style="font-size:22px;font-weight:800;color:#166534;margin-bottom:10px">✅ Đã lưu phiếu chuyển chi nhánh</div>
+                        <div style="font-size:16px;line-height:1.5;color:#333">
+                            Phiếu này được nạp từ <b>nhập tạm</b> và đã lưu xong.<br>
+                            Trang đã bị khóa để tránh nhập nhầm dữ liệu tiếp theo.
+                        </div>
+                        <div style="margin-top:12px;color:#666">Hệ thống đang thử đóng tab này tự động...</div>
+                    </div>`;
+                document.body.appendChild(overlay);
+            }
+
+            sessionStorage.setItem('ccn_saved_from_nhaptam', '1');
+
+            // Tab này được mở bằng window.open từ trang nhập tạm nên thông thường có thể tự đóng.
+            setTimeout(() => {
+                try { window.close(); } catch (_) {}
+            }, 350);
+        }
+
         document.getElementById('btn-luu').onclick = async function () {
             if (window.dangLuu) return;
 
@@ -1952,6 +2005,7 @@
 
                 if (result?.ok) {
                     await window.DatHangChuyenKho?.afterCcnSaved?.(result);
+                    lockCcnPageAfterNhapTamSave();
                 } else {
                     console.warn("saveBanLe111 không trả về ok=true:", result);
                 }
@@ -1960,8 +2014,13 @@
                 alert("❌ Lỗi lưu: " + (e?.message || e));
             } finally {
                 window.dangLuu = false;
-                this.disabled = false;
-                this.innerText = "💾 Lưu";
+                if (sessionStorage.getItem('ccn_saved_from_nhaptam') === '1') {
+                    this.disabled = true;
+                    this.innerText = "✅ Đã lưu";
+                } else {
+                    this.disabled = false;
+                    this.innerText = "💾 Lưu";
+                }
             }
         };
     </script>
