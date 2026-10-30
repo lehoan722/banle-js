@@ -2003,6 +2003,8 @@
 
                 const result = await saveBanLe111("BTN-LUU-CCN");
 
+                console.log('[CCN][NHAPTAM] Kết quả save:', result, 'fromNhapTam=', isCcnFromNhapTam());
+
                 if (result?.ok) {
                     await window.DatHangChuyenKho?.afterCcnSaved?.(result);
                     lockCcnPageAfterNhapTamSave();
