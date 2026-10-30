@@ -1070,6 +1070,29 @@ async function loadDisplayLocations() {
   }
 }
 
+async function enrichMultiRowsWithCatalogPosition(rows) {
+  let results = Array.isArray(rows) ? rows.map(r => ({ ...r })) : [];
+  if (!results.length) return results;
+
+  const field = currentCoSo === 'cs2' ? 'vitrikho2' : 'vitrikho1';
+  const map = new Map();
+  const masps = Array.from(new Set(results.map(x => normalizeMasp(x.masp)).filter(Boolean)));
+
+  for (let i = 0; i < masps.length; i += 400) {
+    const { data, error } = await supabase
+      .from('dmhanghoa')
+      .select(`masp,${field}`)
+      .in('masp', masps.slice(i, i + 400));
+    if (error) throw error;
+    (data || []).forEach(r => map.set(normalizeMasp(r.masp), normalizeText(r[field])));
+  }
+
+  return results.map(r => ({
+    ...r,
+    vitri_chuan: map.get(normalizeMasp(r.masp)) || normalizeText(r.vitri_chuan)
+  }));
+}
+
 async function showMultiLocations() {
   if (!requireSaved()) return;
   const grouped = new Map();
@@ -1089,26 +1112,11 @@ async function showMultiLocations() {
     .sort((a, b) => b.count - a.count || a.masp.localeCompare(b.masp, 'vi'));
 
   try {
-    if (results.length) {
-      const field = currentCoSo === 'cs2' ? 'vitrikho2' : 'vitrikho1';
-      const map = new Map();
-      const masps = results.map(x => x.masp);
-      for (let i = 0; i < masps.length; i += 400) {
-        const { data, error } = await supabase.from('dmhanghoa').select(`masp,${field}`).in('masp', masps.slice(i, i + 400));
-        if (error) throw error;
-        (data || []).forEach(r => map.set(normalizeMasp(r.masp), normalizeText(r[field])));
-      }
-      results = results.map(r => {
-        // Luôn hiển thị vị trí kho chuẩn đã lưu trong danh mục hàng hóa,
-        // kể cả vị trí chuẩn đó KHÔNG nằm trong các vị trí vừa kiểm của phiên.
-        // Trước đây code chỉ điền khi vị trí chuẩn duy nhất trùng với một vị trí hiện có,
-        // nên các trường hợp lệch vị trí bị để trống và gây hiểu nhầm là chưa có vị trí chuẩn.
-        const catalogRaw = map.get(r.masp) || '';
-        return { ...r, vitri_chuan: catalogRaw };
-      });
-    }
+    // Dùng chung đúng một cách lấy vị trí chuẩn từ danh mục cho cả nút
+    // "Xếp nhiều vị trí kho" và kết quả sau khi "Lưu vị trí kho".
+    results = await enrichMultiRowsWithCatalogPosition(results);
   } catch (err) {
-    console.warn('Không lấy được vị trí mẫu hiện tại để gợi ý:', err);
+    console.warn('Không lấy được vị trí chuẩn hiện tại từ danh mục:', err);
   }
 
   showMultiLocationTable(results, { source: 'NHIEU_VI_TRI_KHO', phien_id: currentSessionId });
@@ -1702,68 +1710,105 @@ async function toggleTaskComplete() {
 
 async function saveKhoToCatalog() {
   if (!isAdmin || !requireSaved()) return;
-  if (!confirm('Hệ thống chỉ cập nhật các mã có đúng 1 vị trí kho. Mã có nhiều vị trí sẽ không được cập nhật và sẽ được đưa ra danh sách xử lý riêng. Tiếp tục?')) return;
+
+  // Bước 1: nhắc nguyên tắc xử lý.
+  if (!confirm(
+    'Hệ thống chỉ cập nhật các mã có đúng 1 vị trí kho. ' +
+    'Mã có nhiều vị trí sẽ không được cập nhật và sẽ được đưa ra danh sách xử lý riêng. Tiếp tục?'
+  )) return;
+
   try {
-    const { data, error } = await supabase.rpc('kvt_admin_save_vitrikho', { p_phien_id: currentSessionId });
-    if (error) throw error;
+    // Bước 2: chỉ tính trước, CHƯA ghi dữ liệu.
+    const { data: preview, error: previewError } = await supabase.rpc(
+      'kvt_admin_preview_save_vitrikho',
+      { p_phien_id: currentSessionId }
+    );
+    if (previewError) throw previewError;
 
-    const updated = Number(data?.updated_count || 0);
-    const unchanged = Number(data?.unchanged_count || 0);
-    const notFound = Number(data?.not_found_count || 0);
-    const singleCount = Number(data?.single_location_count ?? (updated + unchanged + notFound));
-    const scannedCount = Number(data?.scanned_product_count ?? 0);
-    const conflicts = Array.isArray(data?.conflicts) ? data.conflicts : [];
-    const skippedMulti = Number(data?.skipped_multi_count ?? conflicts.length);
+    const rowCount = Number(preview?.scanned_row_count || 0);
+    const productCount = Number(preview?.scanned_product_count || 0);
+    const singleCount = Number(preview?.single_location_count || 0);
+    const willUpdate = Number(preview?.will_update_count || 0);
+    const unchanged = Number(preview?.unchanged_count || 0);
+    const notFound = Number(preview?.not_found_count || 0);
+    const multiCount = Number(preview?.skipped_multi_count || 0);
 
-    if (conflicts.length) {
-      showMultiLocationTable(
-        conflicts.map((x) => ({
-          masp: x.masp,
-          vitri_hien_co: (x.positions || []).join(', '),
-          vitri_chuan: ''
-        })),
-        { source: 'NHIEU_VI_TRI_KHO', phien_id: currentSessionId }
-      );
-    }
-
-    if (scannedCount === 0) {
+    if (rowCount === 0 || productCount === 0) {
       setMessage('Phiên này không có dữ liệu chi tiết để cập nhật vị trí kho. Hãy kiểm tra lại phiên nguồn hoặc lưu lại phiên trước khi thực hiện.', 'warn');
       return;
     }
 
+    const previewText = [
+      'KẾT QUẢ DỰ KIẾN TRƯỚC KHI CẬP NHẬT',
+      '',
+      `• Dữ liệu sẽ xử lý: ${rowCount} dòng / ${productCount} mã sản phẩm`,
+      `• Mã có đúng 1 vị trí: ${singleCount} mã`,
+      `• Sẽ cập nhật vị trí mới: ${willUpdate} mã`,
+      `• Đã đúng sẵn, không cần ghi lại: ${unchanged} mã`,
+      `• Nhiều vị trí, chưa cập nhật: ${multiCount} mã`,
+      ...(notFound ? [`• Không còn trong danh mục: ${notFound} mã`] : []),
+      '',
+      'Nhấn OK để thực hiện cập nhật thật.',
+      'Nhấn Hủy để quay lại mà không thay đổi dữ liệu.'
+    ].join('\n');
+
+    // Bước 3: người dùng xác nhận lần cuối sau khi đã thấy số liệu cụ thể.
+    if (!confirm(previewText)) {
+      setMessage(
+        `Đã hủy cập nhật. Dữ liệu dự kiến: ${rowCount} dòng / ${productCount} mã · ${willUpdate} mã sẽ cập nhật · ${unchanged} mã đã đúng · ${multiCount} mã nhiều vị trí.`,
+        'warn'
+      );
+      return;
+    }
+
+    // Bước 4: ghi thật.
+    const { data, error } = await supabase.rpc('kvt_admin_save_vitrikho', { p_phien_id: currentSessionId });
+    if (error) throw error;
+
+    const finalRowCount = Number(data?.scanned_row_count ?? rowCount);
+    const finalProductCount = Number(data?.scanned_product_count ?? productCount);
+    const updated = Number(data?.updated_count || 0);
+    const finalUnchanged = Number(data?.unchanged_count || 0);
+    const finalNotFound = Number(data?.not_found_count || 0);
+    const finalSingleCount = Number(data?.single_location_count ?? (updated + finalUnchanged + finalNotFound));
+    const conflicts = Array.isArray(data?.conflicts) ? data.conflicts : [];
+    const skippedMulti = Number(data?.skipped_multi_count ?? conflicts.length);
+
+    if (conflicts.length) {
+      let conflictRows = conflicts.map((x) => ({
+        masp: x.masp,
+        vitri_hien_co: (x.positions || []).join(', '),
+        vitri_chuan: normalizeText(x.vitri_chuan)
+      }));
+
+      try {
+        // Nạp luôn vị trí chuẩn giống nút "Xếp nhiều vị trí kho".
+        conflictRows = await enrichMultiRowsWithCatalogPosition(conflictRows);
+      } catch (catalogErr) {
+        console.warn('Không nạp được vị trí chuẩn cho danh sách nhiều vị trí:', catalogErr);
+      }
+
+      showMultiLocationTable(
+        conflictRows,
+        { source: 'NHIEU_VI_TRI_KHO', phien_id: currentSessionId }
+      );
+    }
+
     const parts = [
-      `Đã kiểm tra ${scannedCount} mã`,
+      `Đã xử lý ${finalRowCount} dòng / ${finalProductCount} mã sản phẩm`,
+      `${finalSingleCount} mã một vị trí`,
       `cập nhật ${updated} mã`,
-      `${unchanged} mã đã đúng sẵn`
+      `${finalUnchanged} mã đã đúng sẵn`
     ];
     if (skippedMulti) parts.push(`${skippedMulti} mã nhiều vị trí chưa cập nhật`);
-    if (notFound) parts.push(`${notFound} mã không còn trong danh mục`);
-    if (singleCount === 0 && skippedMulti > 0) parts.push('không có mã một vị trí để cập nhật');
+    if (finalNotFound) parts.push(`${finalNotFound} mã không còn trong danh mục`);
 
-    setMessage(parts.join(' · ') + '.', skippedMulti || notFound ? 'warn' : 'ok');
+    setMessage(parts.join(' · ') + '.', skippedMulti || finalNotFound ? 'warn' : 'ok');
   } catch (err) {
     setMessage(`Không lưu được vị trí kho: ${err.message || err}`, 'err');
   }
 }
 
-function attachEvents() {
-  $('scan-masp').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
-  $('scan-masp').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); handleScan(); }
-  });
-  $('current-location').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); focusScan(); }
-  });
-
-  $('btn-save').addEventListener('click', saveSession);
-  $('btn-load-session').addEventListener('click', showLoadSessions);
-  $('btn-load-stock-location').addEventListener('click', loadDisplayLocations);
-  ['all', 'correct', 'wrong', 'missing'].forEach((filter) => {
-    const btn = $(`btn-filter-location-${filter}`);
-    if (btn) btn.addEventListener('click', () => applyLocationCompareFilter(filter));
-  });
-  const btnCopyLocationFilter = $('btn-copy-location-filter');
-  if (btnCopyLocationFilter) btnCopyLocationFilter.addEventListener('click', copyVisibleLocationCompareTable);
   $('btn-multi-location').addEventListener('click', showMultiLocations);
   $('btn-run-unshown').addEventListener('click', runUnshown);
   $('group-picker').addEventListener('change', appendSelectedGroup);
