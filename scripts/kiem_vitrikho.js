@@ -1,4 +1,7 @@
-// Kiểm vị trí kho v1.3 - bổ sung lọc đối chiếu vị trí kho chuẩn
+// Kiểm vị trí kho V1.7 - bản đầy đủ 30/10/2026
+// - Sửa lưu vị trí kho cho cả phiên thường và phiên ghép (phối hợp SQL V1.7)
+// - Thêm hướng dẫn sử dụng dạng tooltip cho toàn bộ nút chức năng
+// - Thông báo chi tiết số mã cập nhật / đã đúng / nhiều vị trí / không tìm thấy
 import { supabase, startSessionKeeper } from './supabaseClient.js';
 import {
   khoiTaoDangNhapDungChung,
@@ -50,6 +53,93 @@ let autoSavePending = false;
 const $ = (id) => document.getElementById(id);
 const normalizeMasp = (v) => String(v || '').trim().toUpperCase();
 const normalizeText = (v) => String(v || '').trim();
+
+
+// ============================================================
+// V1.7 - HƯỚNG DẪN NHANH CHO CÁC NÚT CHỨC NĂNG
+// Hover chuột hoặc focus bằng bàn phím để xem giải thích.
+// Dùng JS để không phải nhân bản nội dung hướng dẫn trong HTML.
+// ============================================================
+const COMMAND_HELP = {
+  'btn-toggle-commands': 'Mở hoặc thu gọn khu vực các chức năng của trang kiểm vị trí kho.',
+  'btn-save': 'Lưu ngay phiên kiểm hiện tại xuống hệ thống. Các dòng đã quét và vị trí kho đang có trên bảng sẽ được lưu để có thể mở lại sau.',
+  'btn-load-session': 'Mở danh sách các phiên kiểm đã lưu của đúng cơ sở đang đăng nhập để xem hoặc tiếp tục làm việc.',
+  'btn-load-stock-location': 'Đối chiếu các mã đang kiểm với vị trí kho chuẩn hiện có trong danh mục hàng hóa, giúp phát hiện mã đang đặt sai vị trí.',
+  'btn-multi-location': 'Tìm các mã sản phẩm xuất hiện ở từ 2 vị trí kho khác nhau trở lên trong phiên hiện tại. Các mã này cần chọn một vị trí chuẩn trước khi cập nhật danh mục.',
+  'btn-toggle-check': 'Tìm những hàng có phát sinh trong khoảng ngày đã chọn nhưng chưa xuất hiện trong phiên kiểm hiện tại; tồn kho dùng tồn sau kiểm.',
+  'btn-compare': 'So sánh phiên hiện tại với một phiên đã được đặt làm phiên chuẩn để tìm các mã còn thiếu và các mã xuất hiện ở nhiều vị trí.',
+  'btn-delete-rows': 'Xóa các dòng đang được chọn khỏi bảng quét hiện tại. Sau đó cần lưu phiên để ghi nhận thay đổi.',
+  'btn-new-session': 'Kết thúc ngữ cảnh phiên đang mở trên màn hình và bắt đầu một phiên kiểm mới.',
+  'btn-back-main': 'Thoát khỏi bảng kết quả/phiếu công việc đang xem và quay lại bảng quét chính của phiên.',
+  'btn-merge': 'Dành cho Admin: ghép nhiều phiên kiểm cùng cơ sở thành một phiên tổng hợp để phân tích, so sánh và xử lý chung. Dữ liệu phiên nguồn không bị sao chép hoặc xóa.',
+  'btn-set-standard': 'Dành cho Admin: đánh dấu phiên hiện tại làm phiên chuẩn để dùng làm mốc so sánh với các phiên kiểm sau.',
+  'btn-delete-session': 'Dành cho Admin: xóa phiên kiểm đã chọn. Hãy kiểm tra kỹ trước khi xóa vì dữ liệu chi tiết của phiên cũng bị xóa theo.',
+  'btn-save-baymau': 'Dành cho Admin: cập nhật vị trí kho vào danh mục hàng hóa. Chỉ mã có đúng 1 vị trí duy nhất được xử lý; mã nhiều vị trí được giữ lại để chọn vị trí chuẩn.',
+  'btn-save-task': 'Dành cho Admin: lưu danh sách kết quả đang hiển thị thành một phiếu giao việc để nhân viên xử lý và tích hoàn thành.',
+  'btn-open-tasks': 'Mở danh sách các phiếu công việc vị trí kho của cơ sở hiện tại để theo dõi hoặc tiếp tục xử lý.',
+  'btn-task-complete': 'Dành cho Admin: đánh dấu phiếu công việc đang mở là hoàn tất hoặc mở lại phiếu đã hoàn tất.'
+};
+
+function initCommandHelpTooltips() {
+  if (document.getElementById('kvt-help-tooltip')) return;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    #kvt-help-tooltip {
+      position: fixed;
+      z-index: 2147483647;
+      display: none;
+      max-width: min(420px, calc(100vw - 24px));
+      padding: 10px 12px;
+      border-radius: 9px;
+      background: rgba(25, 31, 40, .97);
+      color: #fff;
+      font-size: 14px;
+      line-height: 1.42;
+      font-weight: 500;
+      box-shadow: 0 8px 28px rgba(0,0,0,.25);
+      pointer-events: none;
+      white-space: normal;
+    }
+    #command-panel button[data-kvt-help] { cursor: help; }
+  `;
+  document.head.appendChild(style);
+
+  const tip = document.createElement('div');
+  tip.id = 'kvt-help-tooltip';
+  tip.setAttribute('role', 'tooltip');
+  document.body.appendChild(tip);
+
+  const hide = () => { tip.style.display = 'none'; };
+  const show = (el) => {
+    const text = el?.dataset?.kvtHelp;
+    if (!text) return;
+    tip.textContent = text;
+    tip.style.display = 'block';
+    const r = el.getBoundingClientRect();
+    const margin = 10;
+    let left = r.left + r.width / 2 - tip.offsetWidth / 2;
+    left = Math.max(margin, Math.min(left, window.innerWidth - tip.offsetWidth - margin));
+    let top = r.bottom + 8;
+    if (top + tip.offsetHeight > window.innerHeight - margin) top = r.top - tip.offsetHeight - 8;
+    tip.style.left = `${left}px`;
+    tip.style.top = `${Math.max(margin, top)}px`;
+  };
+
+  Object.entries(COMMAND_HELP).forEach(([id, text]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.dataset.kvtHelp = text;
+    el.title = text; // fallback nếu JS tooltip bị chặn
+    el.setAttribute('aria-describedby', 'kvt-help-tooltip');
+    el.addEventListener('mouseenter', () => show(el));
+    el.addEventListener('mouseleave', hide);
+    el.addEventListener('focus', () => show(el));
+    el.addEventListener('blur', hide);
+  });
+  window.addEventListener('scroll', hide, true);
+  window.addEventListener('resize', hide);
+}
 
 let locationCatalog = [];
 async function loadLocationCatalog() {
@@ -1612,19 +1702,47 @@ async function toggleTaskComplete() {
 
 async function saveKhoToCatalog() {
   if (!isAdmin || !requireSaved()) return;
-  if (!confirm('Hệ thống chỉ lưu các mã có đúng một vị trí vị trí kho. Các mã nhiều vị trí sẽ không được lưu. Tiếp tục?')) return;
+  if (!confirm('Hệ thống chỉ cập nhật các mã có đúng 1 vị trí kho. Mã có nhiều vị trí sẽ không được cập nhật và sẽ được đưa ra danh sách xử lý riêng. Tiếp tục?')) return;
   try {
     const { data, error } = await supabase.rpc('kvt_admin_save_vitrikho', { p_phien_id: currentSessionId });
     if (error) throw error;
-    const conflicts = data?.conflicts || [];
+
+    const updated = Number(data?.updated_count || 0);
+    const unchanged = Number(data?.unchanged_count || 0);
+    const notFound = Number(data?.not_found_count || 0);
+    const singleCount = Number(data?.single_location_count ?? (updated + unchanged + notFound));
+    const scannedCount = Number(data?.scanned_product_count ?? 0);
+    const conflicts = Array.isArray(data?.conflicts) ? data.conflicts : [];
+    const skippedMulti = Number(data?.skipped_multi_count ?? conflicts.length);
+
     if (conflicts.length) {
-      showMultiLocationTable(conflicts.map((x) => ({ masp: x.masp, vitri_hien_co: (x.positions || []).join(', '), vitri_chuan: '' })), { source: 'NHIEU_VI_TRI_KHO', phien_id: currentSessionId });
-      setMessage(`Đã lưu ${data.updated_count || 0} mã có một vị trí. Còn ${conflicts.length} mã nhiều vị trí chưa được lưu.`, 'warn');
-    } else {
-      setMessage(`Đã lưu vị trí vị trí kho vào danh mục cho ${data.updated_count || 0} mã.`, 'ok');
+      showMultiLocationTable(
+        conflicts.map((x) => ({
+          masp: x.masp,
+          vitri_hien_co: (x.positions || []).join(', '),
+          vitri_chuan: ''
+        })),
+        { source: 'NHIEU_VI_TRI_KHO', phien_id: currentSessionId }
+      );
     }
+
+    if (scannedCount === 0) {
+      setMessage('Phiên này không có dữ liệu chi tiết để cập nhật vị trí kho. Hãy kiểm tra lại phiên nguồn hoặc lưu lại phiên trước khi thực hiện.', 'warn');
+      return;
+    }
+
+    const parts = [
+      `Đã kiểm tra ${scannedCount} mã`,
+      `cập nhật ${updated} mã`,
+      `${unchanged} mã đã đúng sẵn`
+    ];
+    if (skippedMulti) parts.push(`${skippedMulti} mã nhiều vị trí chưa cập nhật`);
+    if (notFound) parts.push(`${notFound} mã không còn trong danh mục`);
+    if (singleCount === 0 && skippedMulti > 0) parts.push('không có mã một vị trí để cập nhật');
+
+    setMessage(parts.join(' · ') + '.', skippedMulti || notFound ? 'warn' : 'ok');
   } catch (err) {
-    setMessage(`Không lưu được vị trí vị trí kho: ${err.message || err}`, 'err');
+    setMessage(`Không lưu được vị trí kho: ${err.message || err}`, 'err');
   }
 }
 
@@ -1707,6 +1825,7 @@ function attachEvents() {
   try { setupBeepUnlockOnce(document); } catch (_) { }
   initTable();
   attachEvents();
+  initCommandHelpTooltips();
   const today = new Date().toISOString().slice(0, 10);
   $('date-to').value = today;
 
