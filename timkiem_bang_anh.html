@@ -3,72 +3,108 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Tìm sản phẩm bằng ảnh</title>
+<title>SigLIP đối chứng độc lập</title>
 <style>
-:root{--bg:#f4f6f8;--card:#fff;--ink:#101827;--muted:#6b7280;--accent:#111827;--ok:#e9f9ef;--line:#e5e7eb}
-*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-.wrap{max-width:1100px;margin:auto;padding:18px}.hero,.card{background:var(--card);border-radius:22px;padding:20px;margin-bottom:16px;box-shadow:0 6px 24px rgba(0,0,0,.06)}
-h1{font-size:28px;margin:0 0 6px}.muted{color:var(--muted)} .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
-button,input{font:inherit}.tab,.btn{border:0;border-radius:14px;padding:14px;font-weight:750;cursor:pointer}.tab{background:#e5e7eb}.tab.active,.btn.primary{background:var(--accent);color:white}
-.panel{display:none}.panel.active{display:block}.row{display:flex;gap:10px;flex-wrap:wrap}.grow{flex:1;min-width:220px}
-input[type=text]{width:100%;padding:14px 16px;border:1px solid var(--line);border-radius:14px}
-.preview{max-width:360px;width:100%;border-radius:18px;display:none;margin:14px auto 0}
-.status{padding:12px 14px;border-radius:14px;background:#f3f4f6;margin-top:12px}.status.ok{background:var(--ok)}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.item{background:white;border-radius:16px;overflow:hidden;border:1px solid var(--line)}
-.item img{width:100%;aspect-ratio:1/1.18;object-fit:cover;background:#eee}.meta{padding:10px}.code{font-weight:800}.score{color:var(--muted);font-size:13px;margin-top:4px}
-@media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}h1{font-size:24px}.tabs{grid-template-columns:1fr}.wrap{padding:10px}.hero,.card{border-radius:18px;padding:15px}}
+:root{
+  --bg:#f4f6f8;--card:#fff;--ink:#111827;--muted:#667085;--line:#dfe5eb;
+  --blue:#0b78d1;--blue2:#e9f3ff;--dark:#111827;--ok:#eaf8ef;--okink:#17663b;
+  --bad:#fff0f0;--badink:#b42318;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:1100px;margin:auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 3px 14px rgba(0,0,0,.05)}
+.hero h1{margin:0 0 5px;font-size:27px;line-height:1.15}.sub{color:var(--muted);line-height:1.45}
+.badge{display:inline-flex;align-items:center;gap:6px;margin-top:9px;padding:7px 10px;border-radius:999px;background:#eef2f6;color:#455468;font-size:13px;font-weight:800}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.filebtn,.btn{border:0;border-radius:13px;min-height:54px;padding:11px 14px;font-weight:900;font-size:16px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer}
+.camera{background:var(--dark);color:#fff}.library{background:var(--blue2);color:var(--blue);border:1px solid #c6def5}
+.preview{display:none;width:100%;max-height:52vh;object-fit:contain;background:#f1f3f5;border-radius:14px;margin-top:10px}
+.runrow{display:grid;grid-template-columns:1fr auto;gap:9px;margin-top:10px}
+.searchbtn{background:var(--blue);color:#fff}.searchbtn:disabled{opacity:.55}
+select{border:1px solid var(--line);border-radius:12px;padding:0 12px;background:#fff;font-weight:800;min-width:104px}
+.status{margin-top:10px;padding:10px 12px;border-radius:11px;background:#f2f4f7;color:#475467;font-size:14px;line-height:1.4}
+.status.ok{background:var(--ok);color:var(--okink)} .status.err{background:var(--bad);color:var(--badink)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.metric{background:#f7f9fb;border:1px solid #edf0f3;border-radius:12px;padding:10px}.metric b{display:block;font-size:19px}.metric span{font-size:12px;color:var(--muted)}
+.resulthead{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:10px}.resulthead h2{margin:0}.resultinfo{color:var(--muted);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.item{position:relative;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff}
+.item img{width:100%;aspect-ratio:1/1.16;object-fit:contain;background:#fff;display:block;cursor:zoom-in}
+.rank{position:absolute;top:5px;left:5px;background:#111827df;color:#fff;border-radius:999px;min-width:25px;height:25px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
+.meta{padding:8px}.code{font-weight:900;color:#05e;font-size:15px;overflow-wrap:anywhere}.score{color:var(--muted);font-size:13px;margin-top:3px}
+.lightbox{display:none;position:fixed;inset:0;z-index:99999;background:#000e;align-items:center;justify-content:center;padding:14px}.lightbox.show{display:flex}.lightbox img{max-width:96vw;max-height:92vh;object-fit:contain}.close{position:fixed;right:12px;top:calc(12px + env(safe-area-inset-top));border:0;border-radius:10px;padding:10px 14px;font-weight:900}
+.note{font-size:13px;color:#667085;line-height:1.45}
+@media(max-width:720px){
+  .wrap{padding:8px}.card{border-radius:15px;padding:11px;margin-bottom:8px}
+  .hero h1{font-size:22px}.actions{grid-template-columns:1fr 1fr}.filebtn{font-size:16px;min-height:58px}
+  .preview{max-height:43vh}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+  .meta{padding:6px}.code{font-size:16px}.metrics{grid-template-columns:1fr 1fr 1fr;gap:5px}.metric{padding:8px}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <section class="hero">
-    <h1>🔎 Tìm sản phẩm bằng ảnh</h1>
-    <div class="muted">Camera/chọn ảnh chạy SigLIP ngay trên điện thoại. Supabase chỉ nhận vector để tìm sản phẩm gần nhất.</div>
-    <div class="tabs">
-      <button class="tab active" data-tab="camera">📷 Chụp / chọn ảnh</button>
-      <button class="tab" data-tab="masp">🏷️ Nhập mã SP</button>
-      <button class="tab" data-tab="status">⚙️ Trạng thái</button>
-    </div>
-  </section>
-
-  <section class="card panel active" id="panel-camera">
-    <div class="row">
-      <label class="btn primary grow" style="text-align:center">
-        📷 CHỤP / CHỌN ẢNH
-        <input id="fileInput" type="file" accept="image/*" capture="environment" hidden>
-      </label>
-      <button class="btn grow" id="searchImageBtn">TÌM SẢN PHẨM GIỐNG NHẤT</button>
-    </div>
-    <img id="preview" class="preview">
-    <div id="imgStatus" class="status">Chưa chọn ảnh.</div>
-  </section>
-
-  <section class="card panel" id="panel-masp">
-    <div class="row">
-      <input class="grow" id="maspInput" type="text" placeholder="Ví dụ: 1382-AP.KEM">
-      <button class="btn primary" id="searchMaspBtn">TÌM TƯƠNG TỰ</button>
-    </div>
-    <div id="maspStatus" class="status">Nhập mã sản phẩm đã có vector.</div>
-  </section>
-
-  <section class="card panel" id="panel-status">
-    <div id="modelStatus" class="status">Model chưa nạp.</div>
-    <button class="btn primary" id="loadModelBtn" style="margin-top:10px">NẠP SIGLIP NGAY</button>
-    <div id="dbStatus" class="status">Chưa kiểm tra Supabase.</div>
+  <section class="card hero">
+    <h1>🔬 SigLIP đối chứng độc lập</h1>
+    <div class="sub">Trang này chỉ dùng SigLIP + pgvector để đo độ giống ảnh. Không tồn kho, không nhóm hàng, không size, không mô tả, không learning từ bán hàng.</div>
+    <div class="badge">PURE VISUAL SEARCH · BASELINE</div>
   </section>
 
   <section class="card">
-    <div class="row" style="align-items:center;justify-content:space-between">
-      <h2 style="margin:0">Kết quả</h2>
-      <label class="muted">Top
-        <select id="topK">
-          <option>10</option><option>20</option><option selected>40</option>
-        </select>
+    <div class="actions">
+      <label class="filebtn camera">📷 CHỤP ẢNH
+        <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
+      </label>
+      <label class="filebtn library">🖼 THƯ VIỆN ẢNH
+        <input id="libraryInput" type="file" accept="image/*" hidden>
       </label>
     </div>
-    <div id="resultInfo" class="muted" style="margin:8px 0 14px">Chưa có kết quả.</div>
-    <div class="grid" id="results"></div>
+
+    <img id="preview" class="preview" alt="Ảnh nguồn">
+
+    <div class="runrow">
+      <button id="searchBtn" class="filebtn searchbtn">TÌM ẢNH GIỐNG NHẤT</button>
+      <select id="topK" aria-label="Số kết quả">
+        <option value="10">Top 10</option>
+        <option value="20">Top 20</option>
+        <option value="40" selected>Top 40</option>
+        <option value="80">Top 80</option>
+        <option value="100">Top 100</option>
+      </select>
+    </div>
+
+    <div id="status" class="status">Chưa chọn ảnh.</div>
+
+    <div class="metrics">
+      <div class="metric"><b id="modelLoad">—</b><span>Nạp model</span></div>
+      <div class="metric"><b id="inferMs">—</b><span>Inference</span></div>
+      <div class="metric"><b id="totalMs">—</b><span>Tổng thời gian</span></div>
+    </div>
   </section>
+
+  <section class="card">
+    <div class="resulthead">
+      <div>
+        <h2>Kết quả thuần SigLIP</h2>
+        <div id="resultInfo" class="resultinfo">Chưa có kết quả.</div>
+      </div>
+    </div>
+    <div id="results" class="grid"></div>
+  </section>
+
+  <section class="card">
+    <div class="note">
+      <b>Mục đích:</b> đây là trang đối chứng. Kết quả ở đây phải phản ánh đúng độ giống hình ảnh từ SigLIP. 
+      Khi so với trang Hybrid trong Tìm kiếm nhanh, mọi cải thiện hoặc suy giảm do nhóm/tồn/size/business rule sẽ nhìn thấy rõ.
+    </div>
+    <div id="dbStatus" class="status">Đang kiểm tra kho vector…</div>
+  </section>
+</div>
+
+<div id="lightbox" class="lightbox" aria-hidden="true">
+  <button id="lightboxClose" class="close">Đóng</button>
+  <img id="lightboxImg" alt="">
 </div>
 
 <script src="./config.js"></script>
@@ -81,115 +117,106 @@ const supabase = createClient(C.supabaseUrl, C.supabaseAnonKey);
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-let processor=null, model=null, selectedFile=null;
+let processor=null, model=null, selectedFile=null, previewUrl="";
+let loadMs=null;
 
-const $=s=>document.querySelector(s);
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active'); $('#panel-'+b.dataset.tab).classList.add('active');
-});
+const $=id=>document.getElementById(id);
+function setStatus(msg,type=""){const el=$("status");el.textContent=msg;el.className='status '+type}
+function l2(a){let s=0;for(const x of a)s+=Number(x)*Number(x);const n=Math.sqrt(s)||1;return Array.from(a,x=>Number(x)/n)}
+function vecLit(v){return '['+v.map(x=>Number(x).toPrecision(9)).join(',')+']'}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
-function setStatus(el,msg,ok=false){el.textContent=msg; el.className='status'+(ok?' ok':'');}
-
-async function loadModel(){
-  if(model && processor) return;
+async function ensureModel(){
+  if(model&&processor)return;
   const t=performance.now();
-  setStatus($('#modelStatus'),'Đang nạp SigLIP q8...');
-  processor = await AutoProcessor.from_pretrained(C.modelId);
-  model = await SiglipVisionModel.from_pretrained(C.modelId,{dtype:C.dtype, device:'wasm'});
-  setStatus($('#modelStatus'),`✅ SigLIP đã nạp trong ${((performance.now()-t)/1000).toFixed(1)}s.`,true);
+  setStatus('Đang nạp SigLIP q8 trên thiết bị…');
+  processor=await AutoProcessor.from_pretrained(C.modelId);
+  model=await SiglipVisionModel.from_pretrained(C.modelId,{dtype:C.dtype,device:'wasm'});
+  loadMs=Math.round(performance.now()-t);
+  $("modelLoad").textContent=(loadMs/1000).toFixed(1)+'s';
+  setStatus('SigLIP đã sẵn sàng.','ok');
 }
-
-function l2Normalize(a){
-  let s=0; for(const x of a)s+=x*x;
-  const n=Math.sqrt(s)||1; return Array.from(a,x=>x/n);
-}
-function pgVectorLiteral(v){return '['+v.map(x=>Number(x).toPrecision(9)).join(',')+']';}
-
 async function imageToVector(file){
-  await loadModel();
+  await ensureModel();
   const url=URL.createObjectURL(file);
-  const raw=await RawImage.fromURL(url);
-  const inputs=await processor(raw);
-  const t=performance.now();
-  const out=await model(inputs);
-  const tensor=out.pooler_output;
-  const v=l2Normalize(Array.from(tensor.data));
-  URL.revokeObjectURL(url);
-  return {v,ms:performance.now()-t};
-}
-
-async function rpcVector(v,k){
-  const {data,error}=await supabase.rpc('tim_san_pham_tuong_tu_vector',{
-    p_vector:pgVectorLiteral(v),
-    p_so_luong:k,
-    p_phien_ban_vector:C.vectorVersion
-  });
-  if(error) throw error; return data||[];
-}
-async function rpcMasp(masp,k){
-  const {data,error}=await supabase.rpc('tim_san_pham_tuong_tu_masp',{
-    p_masp:masp.trim(),
-    p_so_luong:k,
-    p_phien_ban_vector:C.vectorVersion
-  });
-  if(error) throw error; return data||[];
-}
-function render(rows,extra=''){
-  $('#results').innerHTML='';
-  $('#resultInfo').textContent=`${rows.length} kết quả. ${extra}`;
-  for(const r of rows){
-    const div=document.createElement('div'); div.className='item';
-    const pct=(Number(r.diem_giong)*100).toFixed(1);
-    div.innerHTML=`<img loading="lazy" src="${r.duong_dan_anh}" alt="">
-      <div class="meta"><div class="code">${r.masp}</div>
-      <div class="score">Giống ảnh: ${pct}%</div></div>`;
-    $('#results').appendChild(div);
-  }
-}
-
-$('#fileInput').onchange=e=>{
-  selectedFile=e.target.files?.[0]||null;
-  if(!selectedFile)return;
-  $('#preview').src=URL.createObjectURL(selectedFile);
-  $('#preview').style.display='block';
-  setStatus($('#imgStatus'),`Đã chọn: ${selectedFile.name}`);
-};
-
-$('#searchImageBtn').onclick=async()=>{
-  if(!selectedFile){setStatus($('#imgStatus'),'Hãy chụp hoặc chọn ảnh trước.');return;}
   try{
-    setStatus($('#imgStatus'),'Đang tạo vector ngay trên điện thoại...');
-    const total=performance.now();
-    const {v,ms}=await imageToVector(selectedFile);
-    setStatus($('#imgStatus'),`✅ Vector 768 chiều tạo trong ${Math.round(ms)} ms. Đang hỏi Supabase...`,true);
-    const rows=await rpcVector(v,Number($('#topK').value));
-    render(rows,`Tổng thời gian ${(performance.now()-total).toFixed(0)} ms.`);
-  }catch(e){setStatus($('#imgStatus'),'❌ '+(e?.message||e));}
-};
-
-$('#searchMaspBtn').onclick=async()=>{
-  const masp=$('#maspInput').value.trim();
-  if(!masp)return;
-  try{
-    setStatus($('#maspStatus'),'Đang tìm...');
+    const raw=await RawImage.fromURL(url);
+    const inputs=await processor(raw);
     const t=performance.now();
-    const rows=await rpcMasp(masp,Number($('#topK').value));
-    render(rows,`RPC ${(performance.now()-t).toFixed(0)} ms.`);
-    setStatus($('#maspStatus'),`✅ ${masp}: ${rows.length} kết quả.`,true);
-  }catch(e){setStatus($('#maspStatus'),'❌ '+(e?.message||e));}
+    const out=await model(inputs);
+    const ms=Math.round(performance.now()-t);
+    return {vector:l2(Array.from(out.pooler_output.data)),ms};
+  }finally{URL.revokeObjectURL(url)}
+}
+async function searchVector(vector,k){
+  const {data,error}=await supabase.rpc('tim_san_pham_tuong_tu_vector',{
+    p_vector:vecLit(vector),
+    p_so_luong:k,
+    p_phien_ban_vector:C.vectorVersion
+  });
+  if(error)throw error;
+  return data||[];
+}
+function chooseFile(file){
+  if(!file)return;
+  selectedFile=file;
+  if(previewUrl)URL.revokeObjectURL(previewUrl);
+  previewUrl=URL.createObjectURL(file);
+  $("preview").src=previewUrl;$("preview").style.display='block';
+  $("results").innerHTML='';$("resultInfo").textContent='Chưa tìm.';
+  setStatus('Ảnh đã sẵn sàng. Bấm TÌM ẢNH GIỐNG NHẤT.','ok');
+}
+function showLightbox(src){
+  $("lightboxImg").src=src;$("lightbox").classList.add('show');$("lightbox").setAttribute('aria-hidden','false');
+}
+function hideLightbox(){
+  $("lightbox").classList.remove('show');$("lightbox").setAttribute('aria-hidden','true');$("lightboxImg").removeAttribute('src');
+}
+function render(rows,total){
+  const box=$("results");box.innerHTML='';
+  $("resultInfo").textContent=`${rows.length} kết quả · tổng ${Math.round(total)} ms · không lọc business rule`;
+  rows.forEach((r,i)=>{
+    const pct=(Number(r.diem_giong||0)*100).toFixed(1);
+    const item=document.createElement('div');item.className='item';
+    item.innerHTML=`<div class="rank">${i+1}</div>
+      <img loading="lazy" decoding="async" src="${esc(r.duong_dan_anh||'')}" alt="${esc(r.masp)}">
+      <div class="meta"><div class="code">${esc(r.masp)}</div><div class="score">Giống ảnh: ${pct}%</div></div>`;
+    item.querySelector('img').onclick=()=>showLightbox(r.duong_dan_anh||'');
+    box.appendChild(item);
+  });
+}
+$("cameraInput").onchange=e=>{chooseFile(e.target.files?.[0]||null);e.target.value=''};
+$("libraryInput").onchange=e=>{chooseFile(e.target.files?.[0]||null);e.target.value=''};
+$("searchBtn").onclick=async()=>{
+  if(!selectedFile){setStatus('Hãy chụp hoặc chọn ảnh trước.','err');return}
+  const btn=$("searchBtn");btn.disabled=true;const t0=performance.now();
+  try{
+    setStatus('Đang tạo vector ngay trên thiết bị…');
+    const {vector,ms}=await imageToVector(selectedFile);
+    $("inferMs").textContent=ms+' ms';
+    setStatus(`Vector 768 chiều trong ${ms} ms. Đang tìm pgvector…`);
+    const rows=await searchVector(vector,Number($("topK").value||40));
+    const total=performance.now()-t0;
+    $("totalMs").textContent=Math.round(total)+' ms';
+    render(rows,total);
+    setStatus(`Hoàn tất ${rows.length} kết quả. Đây là baseline thuần SigLIP.`,'ok');
+  }catch(e){console.error(e);setStatus('Lỗi: '+(e?.message||e),'err')}
+  finally{btn.disabled=false}
 };
-
-$('#loadModelBtn').onclick=()=>loadModel().catch(e=>setStatus($('#modelStatus'),'❌ '+e.message));
+$("lightboxClose").onclick=hideLightbox;
+$("lightbox").onclick=e=>{if(e.target===$("lightbox"))hideLightbox()};
 
 (async()=>{
   try{
     const {data,error}=await supabase.rpc('thong_ke_chi_muc_anh_san_pham');
-    if(error) throw error;
+    if(error)throw error;
     const x=data?.[0];
-    setStatus($('#dbStatus'),x?`✅ Supabase: ${x.tong_anh} ảnh / ${x.tong_masp} mã SP.`:'✅ Supabase kết nối được.',true);
-  }catch(e){setStatus($('#dbStatus'),'❌ Supabase: '+e.message);}
+    $("dbStatus").textContent=x?`✅ Kho vector: ${x.tong_anh} ảnh / ${x.tong_masp} mã SP. Model: ${C.vectorVersion}`:'✅ Kết nối Supabase.';
+    $("dbStatus").className='status ok';
+  }catch(e){
+    $("dbStatus").textContent='❌ Không kiểm tra được kho vector: '+e.message;
+    $("dbStatus").className='status err';
+  }
 })();
 </script>
 </body>
