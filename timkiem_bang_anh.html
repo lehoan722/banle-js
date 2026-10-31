@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tìm sản phẩm bằng ảnh</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#101827;--muted:#6b7280;--accent:#111827;--ok:#e9f9ef;--line:#e5e7eb}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:1100px;margin:auto;padding:18px}.hero,.card{background:var(--card);border-radius:22px;padding:20px;margin-bottom:16px;box-shadow:0 6px 24px rgba(0,0,0,.06)}
+h1{font-size:28px;margin:0 0 6px}.muted{color:var(--muted)} .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+button,input{font:inherit}.tab,.btn{border:0;border-radius:14px;padding:14px;font-weight:750;cursor:pointer}.tab{background:#e5e7eb}.tab.active,.btn.primary{background:var(--accent);color:white}
+.panel{display:none}.panel.active{display:block}.row{display:flex;gap:10px;flex-wrap:wrap}.grow{flex:1;min-width:220px}
+input[type=text]{width:100%;padding:14px 16px;border:1px solid var(--line);border-radius:14px}
+.preview{max-width:360px;width:100%;border-radius:18px;display:none;margin:14px auto 0}
+.status{padding:12px 14px;border-radius:14px;background:#f3f4f6;margin-top:12px}.status.ok{background:var(--ok)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.item{background:white;border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+.item img{width:100%;aspect-ratio:1/1.18;object-fit:cover;background:#eee}.meta{padding:10px}.code{font-weight:800}.score{color:var(--muted);font-size:13px;margin-top:4px}
+@media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}h1{font-size:24px}.tabs{grid-template-columns:1fr}.wrap{padding:10px}.hero,.card{border-radius:18px;padding:15px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <h1>🔎 Tìm sản phẩm bằng ảnh</h1>
+    <div class="muted">Camera/chọn ảnh chạy SigLIP ngay trên điện thoại. Supabase chỉ nhận vector để tìm sản phẩm gần nhất.</div>
+    <div class="tabs">
+      <button class="tab active" data-tab="camera">📷 Chụp / chọn ảnh</button>
+      <button class="tab" data-tab="masp">🏷️ Nhập mã SP</button>
+      <button class="tab" data-tab="status">⚙️ Trạng thái</button>
+    </div>
+  </section>
+
+  <section class="card panel active" id="panel-camera">
+    <div class="row">
+      <label class="btn primary grow" style="text-align:center">
+        📷 CHỤP / CHỌN ẢNH
+        <input id="fileInput" type="file" accept="image/*" capture="environment" hidden>
+      </label>
+      <button class="btn grow" id="searchImageBtn">TÌM SẢN PHẨM GIỐNG NHẤT</button>
+    </div>
+    <img id="preview" class="preview">
+    <div id="imgStatus" class="status">Chưa chọn ảnh.</div>
+  </section>
+
+  <section class="card panel" id="panel-masp">
+    <div class="row">
+      <input class="grow" id="maspInput" type="text" placeholder="Ví dụ: 1382-AP.KEM">
+      <button class="btn primary" id="searchMaspBtn">TÌM TƯƠNG TỰ</button>
+    </div>
+    <div id="maspStatus" class="status">Nhập mã sản phẩm đã có vector.</div>
+  </section>
+
+  <section class="card panel" id="panel-status">
+    <div id="modelStatus" class="status">Model chưa nạp.</div>
+    <button class="btn primary" id="loadModelBtn" style="margin-top:10px">NẠP SIGLIP NGAY</button>
+    <div id="dbStatus" class="status">Chưa kiểm tra Supabase.</div>
+  </section>
+
+  <section class="card">
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <h2 style="margin:0">Kết quả</h2>
+      <label class="muted">Top
+        <select id="topK">
+          <option>10</option><option>20</option><option selected>40</option>
+        </select>
+      </label>
+    </div>
+    <div id="resultInfo" class="muted" style="margin:8px 0 14px">Chưa có kết quả.</div>
+    <div class="grid" id="results"></div>
+  </section>
+</div>
+
+<script src="./config.js"></script>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { AutoProcessor, SiglipVisionModel, RawImage, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+
+const C = window.HOANTUYET_AI_CONFIG;
+const supabase = createClient(C.supabaseUrl, C.supabaseAnonKey);
+env.allowLocalModels = false;
+env.useBrowserCache = true;
+
+let processor=null, model=null, selectedFile=null;
+
+const $=s=>document.querySelector(s);
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); $('#panel-'+b.dataset.tab).classList.add('active');
+});
+
+function setStatus(el,msg,ok=false){el.textContent=msg; el.className='status'+(ok?' ok':'');}
+
+async function loadModel(){
+  if(model && processor) return;
+  const t=performance.now();
+  setStatus($('#modelStatus'),'Đang nạp SigLIP q8...');
+  processor = await AutoProcessor.from_pretrained(C.modelId);
+  model = await SiglipVisionModel.from_pretrained(C.modelId,{dtype:C.dtype, device:'wasm'});
+  setStatus($('#modelStatus'),`✅ SigLIP đã nạp trong ${((performance.now()-t)/1000).toFixed(1)}s.`,true);
+}
+
+function l2Normalize(a){
+  let s=0; for(const x of a)s+=x*x;
+  const n=Math.sqrt(s)||1; return Array.from(a,x=>x/n);
+}
+function pgVectorLiteral(v){return '['+v.map(x=>Number(x).toPrecision(9)).join(',')+']';}
+
+async function imageToVector(file){
+  await loadModel();
+  const url=URL.createObjectURL(file);
+  const raw=await RawImage.fromURL(url);
+  const inputs=await processor(raw);
+  const t=performance.now();
+  const out=await model(inputs);
+  const tensor=out.pooler_output;
+  const v=l2Normalize(Array.from(tensor.data));
+  URL.revokeObjectURL(url);
+  return {v,ms:performance.now()-t};
+}
+
+async function rpcVector(v,k){
+  const {data,error}=await supabase.rpc('tim_san_pham_tuong_tu_vector',{
+    p_vector:pgVectorLiteral(v),
+    p_so_luong:k,
+    p_phien_ban_vector:C.vectorVersion
+  });
+  if(error) throw error; return data||[];
+}
+async function rpcMasp(masp,k){
+  const {data,error}=await supabase.rpc('tim_san_pham_tuong_tu_masp',{
+    p_masp:masp.trim(),
+    p_so_luong:k,
+    p_phien_ban_vector:C.vectorVersion
+  });
+  if(error) throw error; return data||[];
+}
+function render(rows,extra=''){
+  $('#results').innerHTML='';
+  $('#resultInfo').textContent=`${rows.length} kết quả. ${extra}`;
+  for(const r of rows){
+    const div=document.createElement('div'); div.className='item';
+    const pct=(Number(r.diem_giong)*100).toFixed(1);
+    div.innerHTML=`<img loading="lazy" src="${r.duong_dan_anh}" alt="">
+      <div class="meta"><div class="code">${r.masp}</div>
+      <div class="score">Giống ảnh: ${pct}%</div></div>`;
+    $('#results').appendChild(div);
+  }
+}
+
+$('#fileInput').onchange=e=>{
+  selectedFile=e.target.files?.[0]||null;
+  if(!selectedFile)return;
+  $('#preview').src=URL.createObjectURL(selectedFile);
+  $('#preview').style.display='block';
+  setStatus($('#imgStatus'),`Đã chọn: ${selectedFile.name}`);
+};
+
+$('#searchImageBtn').onclick=async()=>{
+  if(!selectedFile){setStatus($('#imgStatus'),'Hãy chụp hoặc chọn ảnh trước.');return;}
+  try{
+    setStatus($('#imgStatus'),'Đang tạo vector ngay trên điện thoại...');
+    const total=performance.now();
+    const {v,ms}=await imageToVector(selectedFile);
+    setStatus($('#imgStatus'),`✅ Vector 768 chiều tạo trong ${Math.round(ms)} ms. Đang hỏi Supabase...`,true);
+    const rows=await rpcVector(v,Number($('#topK').value));
+    render(rows,`Tổng thời gian ${(performance.now()-total).toFixed(0)} ms.`);
+  }catch(e){setStatus($('#imgStatus'),'❌ '+(e?.message||e));}
+};
+
+$('#searchMaspBtn').onclick=async()=>{
+  const masp=$('#maspInput').value.trim();
+  if(!masp)return;
+  try{
+    setStatus($('#maspStatus'),'Đang tìm...');
+    const t=performance.now();
+    const rows=await rpcMasp(masp,Number($('#topK').value));
+    render(rows,`RPC ${(performance.now()-t).toFixed(0)} ms.`);
+    setStatus($('#maspStatus'),`✅ ${masp}: ${rows.length} kết quả.`,true);
+  }catch(e){setStatus($('#maspStatus'),'❌ '+(e?.message||e));}
+};
+
+$('#loadModelBtn').onclick=()=>loadModel().catch(e=>setStatus($('#modelStatus'),'❌ '+e.message));
+
+(async()=>{
+  try{
+    const {data,error}=await supabase.rpc('thong_ke_chi_muc_anh_san_pham');
+    if(error) throw error;
+    const x=data?.[0];
+    setStatus($('#dbStatus'),x?`✅ Supabase: ${x.tong_anh} ảnh / ${x.tong_masp} mã SP.`:'✅ Supabase kết nối được.',true);
+  }catch(e){setStatus($('#dbStatus'),'❌ Supabase: '+e.message);}
+})();
+</script>
+</body>
+</html>
