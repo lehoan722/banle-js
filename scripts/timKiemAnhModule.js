@@ -6,12 +6,11 @@
 
 import { getSupabaseClient } from "./authModule.js";
 
-const BUILD="VISUAL-HYBRID-2.7.1";
+const BUILD="VISUAL-HYBRID-2.6.0";
 const MODEL_ID="Xenova/siglip-base-patch16-224";
 const DTYPE="q8";
 const VECTOR_VERSION="python-fp32-v1";
-const DISCOVERY_K=150;
-const EXPAND_STEPS=[150,300,450];
+const CANDIDATE_K=150;
 const DEFAULT_TOP_K=24;
 const SIZE_LIST=["38","39","40","41","42","43","44","45","46"];
 const MAIN_GROUPS={
@@ -142,9 +141,9 @@ function textBoost(meta,desc){
   return Math.min(score,0.15);
 }
 
-async function vectorCandidates(vector,limit=DISCOVERY_K){
+async function vectorCandidates(vector){
   const {data,error}=await supabase.rpc("tim_san_pham_tuong_tu_vector",{
-    p_vector:vecLit(vector),p_so_luong:limit,p_phien_ban_vector:VECTOR_VERSION
+    p_vector:vecLit(vector),p_so_luong:CANDIDATE_K,p_phien_ban_vector:VECTOR_VERSION
   });
   if(error)throw error;
   const seen=new Set(),out=[];
@@ -153,59 +152,14 @@ async function vectorCandidates(vector,limit=DISCOVERY_K){
   }
   return out;
 }
-async function vectorCandidatesInGroups(vector,groups,limit=600){
-  // Giữ lại để tương thích/debug, nhưng V2.7.1 KHÔNG dùng trong ranking chính.
-  const cleaned=(groups||[]).map(norm).filter(Boolean);
-  const {data,error}=await supabase.rpc("tim_san_pham_tuong_tu_vector_loc_nhom",{
-    p_vector:vecLit(vector),p_nhomhang:cleaned.length?cleaned:null,p_so_luong:limit,p_phien_ban_vector:VECTOR_VERSION
-  });
-  if(error)throw error;
-  return data||[];
-}
-
-// V2.7.1: giữ "mặt cắt similarity toàn kho" như V2.6.
-// Chỉ mở rộng dần 150 -> 300 -> 450 nếu sau khi lọc nhóm + tồn vẫn thiếu kết quả.
-// Không tìm 600 mã trong toàn bộ nhóm vì sẽ làm loãng độ giống ảnh.
-async function adaptiveGlobalCandidates(vector, groupFilter, desc, targetCount){
-  let last = null;
-  for(const limit of EXPAND_STEPS){
-    const cands = await vectorCandidates(vector, limit);
-    const metaMap = await fetchMetadata(cands.map(x=>x.masp));
-
-    // Lọc nhóm trước khi gọi tồn để giảm tải.
-    const groupCands = cands.filter(r=>{
-      const meta = metaMap.get(norm(r.masp));
-      if(!meta) return false;
-      const g = norm(meta.nhomhang), main = mainForGroup(g);
-      if(groupFilter.main && main !== groupFilter.main) return false;
-      if(groupFilter.group && g !== norm(groupFilter.group)) return false;
-      return true;
-    });
-
-    const masps = groupCands.map(x=>norm(x.masp));
-    const [baseMap,checkMap] = await Promise.all([
-      fetchBaseStock(masps),
-      fetchCheckBulk(masps)
-    ]);
-    const ranked = rankCandidates(cands,metaMap,baseMap,checkMap,groupFilter,desc);
-
-    last = {limit,cands,metaMap,ranked};
-    if(ranked.good.length >= targetCount) return last;
-  }
-  return last;
-}
 async function fetchMetadata(masps){
-  const uniq=[...new Set((masps||[]).map(norm).filter(Boolean))];
-  const out=[];
-  for(let i=0;i<uniq.length;i+=150){
-    const chunk=uniq.slice(i,i+150);
-    const {data,error}=await supabase.from("dmhanghoa")
-      .select("masp,nhomhang,form,mausac,giale,vitrikho1,vitrikho2,treomaucs1,treomaucs2")
-      .in("masp",chunk);
-    if(error)throw error;
-    out.push(...(data||[]));
-  }
-  return new Map(out.map(x=>[norm(x.masp),x]));
+  if(!masps.length)return new Map();
+  // Chỉ dùng các cột đã có trong timKiemNhanh/StockQuick hiện tại.
+  const {data,error}=await supabase.from("dmhanghoa")
+    .select("masp,nhomhang,form,mausac,giale,vitrikho1,vitrikho2,treomaucs1,treomaucs2")
+    .in("masp",masps);
+  if(error)throw error;
+  return new Map((data||[]).map(x=>[norm(x.masp),x]));
 }
 function sizeKey(v){const raw=String(v??"").replace(/^size\s+/i,"").trim();const m=raw.match(/\d{1,2}/);return m?m[0]:raw}
 
@@ -353,63 +307,33 @@ async function logLearning({vector,groupFilter,desc,candidates,chosen=null}){
   }catch(e){console.debug("[VisualHybrid] learning log skip",e)}
 }
 
-async function confirmGroupFeedback(kind="correct"){
-  if(!currentQueryVector){setStatus("Hãy tìm một ảnh trước khi dạy AI.","err");return}
-  let main="",group="",source="manual_confirm";
-  if(kind==="correct"){
-    main=autoSuggestedMain;group=autoSuggestedSub;source="auto_confirm";
-    if(!main){setStatus("AI chưa đủ tự tin để xác định nhóm. Hãy chọn nhóm thủ công.","err");return}
-  }else{
-    if(currentMain==="AUTO"){setStatus("Hãy chọn nhóm đúng ở ô Nhóm, rồi bấm ‘Dạy AI nhóm đang chọn’.","err");return}
-    main=currentMain;group=currentSub;source="manual_correct";
-  }
-  try{
-    const {error}=await supabase.rpc("xac_nhan_nhom_tim_kiem_anh",{
-      p_query_vector:vecLit(currentQueryVector),p_main_group:main||null,p_nhomhang:group||null,
-      p_masp_chon:null,p_manv:employee()||null,p_nguon_xac_nhan:source
-    });
-    if(error)throw error;
-    setStatus(kind==="correct"?"✅ Đã ghi nhận AI nhận đúng nhóm.":"✅ Đã dạy AI nhóm mới. Đang tìm lại theo nhóm vừa sửa…","ok");
-    if(kind!=="correct"&&currentFile)setTimeout(()=>runSearch(),120);
-  }catch(e){setStatus("Không lưu được phản hồi nhóm: "+(e?.message||e),"err")}
-}
-function openImageLightbox(src,caption=""){
-  const lb=$("visualLightbox"),img=$("visualLightboxImg"),cap=$("visualLightboxCaption");
-  if(!lb||!img)return;img.src=src;cap.textContent=caption;lb.classList.add("show");
-}
-function closeImageLightbox(){const lb=$("visualLightbox");if(lb)lb.classList.remove("show")}
-function resultCard(r,i,suspect=false){
-  const pct=(Number(r.diem_giong||0)*100).toFixed(1);
-  const size=String($("visualSize")?.value||"");
-  const raw=size?Number(r.__sizeQty||0):Number(r.__stock?.totalRaw||0);
-  const positive=size?Math.max(0,Number(r.__sizeQty||0)):Number(r.__stock?.totalPositive||0);
-  const stockText=size?`Size ${size}: ${suspect?raw:positive}`:`Tồn sau kiểm: ${suspect?raw:positive}`;
-  return `<div class="vs-result ${suspect?"suspect":""}">
-    <div class="vs-rank">${i+1}</div>
-    <button type="button" class="vs-image-btn" data-src="${esc(r.duong_dan_anh||"")}" data-caption="${esc(r.masp)}"><img loading="lazy" decoding="async" src="${esc(r.duong_dan_anh||"")}" alt="${esc(r.masp)}"></button>
-    <div class="vs-body"><button type="button" class="vs-code-link" data-masp="${esc(r.masp)}">${esc(r.masp)}</button>
-    <div class="vs-score">Giống ${pct}% · ${esc(groupLabel(r.nhomhang)||r.nhomhang||"")}</div>
-    <div class="vs-stock ${suspect?"bad":""}">${esc(stockText)}</div></div>
-  </div>`;
-}
-function bindResultActions(container){
-  container.querySelectorAll(".vs-image-btn").forEach(b=>b.onclick=()=>openImageLightbox(b.dataset.src,b.dataset.caption));
-  container.querySelectorAll(".vs-code-link").forEach(b=>b.onclick=()=>chooseProduct(b.dataset.masp));
-}
 function renderRows(rows,suspects=[]){
   const limit=Number($("visualTopK")?.value||DEFAULT_TOP_K),show=rows.slice(0,limit);
   const box=$("visualResults"),info=$("visualResultInfo");
   info.textContent=`${show.length} sản phẩm còn bán được · đã lọc theo tồn sau kiểm${currentMain!=="AUTO"?" + nhóm chọn":autoSuggestedMain?" + nhóm tự động":""}.`;
-  box.innerHTML=show.map((r,i)=>resultCard(r,i,false)).join("");
-  bindResultActions(box);
+  box.innerHTML=show.map((r,i)=>{
+    const pct=(Number(r.diem_giong||0)*100).toFixed(1);
+    const stock=r.__stock?.totalPositive||0;
+    const size=String($("visualSize")?.value||"");
+    const stockText=size?`Size ${size}: ${Math.max(0,Number(r.__sizeQty||0))}`:`Tồn+: ${stock}`;
+    return `<button type="button" class="vs-result" data-masp="${esc(r.masp)}">
+      <div class="vs-rank">${i+1}</div>
+      <img loading="lazy" decoding="async" src="${esc(r.duong_dan_anh||"")}" alt="${esc(r.masp)}">
+      <div class="vs-body"><div class="vs-code">${esc(r.masp)}</div>
+      <div class="vs-score">Giống ${pct}% · ${esc(groupLabel(r.nhomhang)||r.nhomhang||"")}</div>
+      <div class="vs-stock">${esc(stockText)}</div></div>
+    </button>`;
+  }).join("");
+  box.querySelectorAll(".vs-result").forEach(b=>b.onclick=()=>chooseProduct(b.dataset.masp));
 
   const sb=$("visualSuspectBox"),sl=$("visualSuspectList");
   if(suspects.length){
     sb.style.display="block";
-    sl.innerHTML=suspects.slice(0,Math.max(12,limit)).map((r,i)=>resultCard(r,i,true)).join("");
-    bindResultActions(sl);
+    sl.innerHTML=suspects.slice(0,8).map(r=>`<button type="button" data-masp="${esc(r.masp)}">${esc(r.masp)} · ${(Number(r.diem_giong||0)*100).toFixed(1)}%</button>`).join("");
+    sl.querySelectorAll("button").forEach(b=>b.onclick=()=>chooseProduct(b.dataset.masp));
   }else sb.style.display="none";
 }
+
 async function runSearch(){
   if(!currentFile){setStatus("Hãy chụp hoặc chọn ảnh trước.","err");return}
   if(!["cs1","cs2"].includes(branch())){setStatus("Chưa xác định cơ sở CS1/CS2.","err");return}
@@ -417,16 +341,17 @@ async function runSearch(){
   try{
     await loadGroups();
     setStatus("Đang đọc ảnh…");
-    const {vector,ms}=await fileVector(currentFile);currentQueryVector=vector;
+    const {vector,ms}=await fileVector(currentFile); currentQueryVector=vector;
+    setStatus(`Vector ${ms} ms · đang lấy ${CANDIDATE_K} ứng viên…`);
+    const cands=await vectorCandidates(vector); currentCandidates=cands;
+    const masps=cands.map(x=>x.masp);
+    const metaMap=await fetchMetadata(masps);currentMetaByMasp=metaMap;
 
-    // Bước 1: lấy 150 gần nhất toàn kho để nhận biết nhóm.
-    setStatus(`Vector ${ms} ms · đang nhận biết nhóm từ ${DISCOVERY_K} ảnh gần nhất…`);
-    const discovery=await vectorCandidates(vector,DISCOVERY_K);
-    const discoveryMeta=await fetchMetadata(discovery.map(x=>x.masp));
     const desc=parseDescription();
-    const visualSug=weightedGroupSuggestion(discovery,discoveryMeta);
+    const visualSug=weightedGroupSuggestion(cands,metaMap);
     const learned=await learnedGroupSuggestion(vector);
 
+    // Learned label wins only when reasonably confident; otherwise visual-neighbor vote.
     let autoMain="",autoSub="";
     if(learned&&Number(learned.do_tin_cay||0)>=0.55){
       autoMain=String(learned.main_group||"");autoSub=String(learned.nhomhang||"");
@@ -438,29 +363,26 @@ async function runSearch(){
     autoSuggestedMain=autoMain;autoSuggestedSub=autoSub;updateAutoHint();
 
     const gf=effectiveGroup({main:autoMain,group:autoSub},desc);
-    const target=Math.max(Number($("visualTopK")?.value||DEFAULT_TOP_K),12);
+    // Filter metadata by group before stock calls to shrink workload.
+    const groupMasps=cands.filter(r=>{
+      const meta=metaMap.get(norm(r.masp));if(!meta)return false;
+      const g=norm(meta.nhomhang),main=mainForGroup(g);
+      if(gf.main&&main!==gf.main)return false;
+      if(gf.group&&g!==norm(gf.group))return false;
+      return true;
+    }).map(x=>x.masp);
 
-    // V2.7.1: KHÔNG query 600 mã riêng trong nhóm.
-    // Giữ ranking similarity toàn kho; mở rộng dần nếu lọc xong chưa đủ hàng bán được.
-    setStatus(`Nhóm ${gf.main?MAIN_GROUPS[gf.main]?.label:"chưa khóa"}${gf.group?` → ${groupLabel(gf.group)}`:""} · đang lọc theo độ giống + tồn…`);
-    const result=await adaptiveGlobalCandidates(vector,gf,desc,target);
-    if(!result) throw new Error("Không lấy được ứng viên.");
-
-    currentCandidates=result.cands;
-    currentMetaByMasp=result.metaMap;
-    renderRows(result.ranked.good,result.ranked.suspect);
-    await logLearning({vector,groupFilter:gf,desc,candidates:result.ranked.good});
-
-    const topSim=result.ranked.good?.[0]?.diem_giong;
-    const simText=Number.isFinite(Number(topSim))?` · Top ${(Number(topSim)*100).toFixed(1)}%`:"";
-    setStatus(
-      `Hoàn tất: dùng Top ${result.limit} toàn kho → ${result.ranked.good.length} mã còn bán được, ${result.ranked.suspect.length} mã tồn nghi ngờ${simText} · ${((performance.now()-t0)/1000).toFixed(1)} giây.`,
-      "ok"
-    );
+    setStatus(`Nhóm ${gf.main?MAIN_GROUPS[gf.main]?.label:"chưa khóa"} · đang kiểm tồn ${groupMasps.length} mã…`);
+    const [baseMap,checkMap]=await Promise.all([fetchBaseStock(groupMasps),fetchCheckBulk(groupMasps)]);
+    const ranked=rankCandidates(cands,metaMap,baseMap,checkMap,gf,desc);
+    renderRows(ranked.good,ranked.suspect);
+    await logLearning({vector,groupFilter:gf,desc,candidates:ranked.good});
+    setStatus(`Hoàn tất ${ranked.good.length} mã còn bán được trong ${((performance.now()-t0)/1000).toFixed(1)} giây.`,"ok");
   }catch(e){
     console.error(e);setStatus("Lỗi Hybrid Search: "+(e?.message||e),"err");
   }finally{btn.disabled=false}
 }
+
 async function chooseProduct(masp){
   const meta=currentMetaByMasp.get(norm(masp));
   if(currentQueryVector){
@@ -506,9 +428,9 @@ function inject(){
   .vs-preview{display:none;width:100%;max-height:40vh;object-fit:contain;border-radius:12px;margin-top:8px;background:#f3f4f6}.vs-filters{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.vs-filters select,.vs-desc{width:100%;height:44px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:0 9px;font-size:15px}.vs-desc{margin-top:7px}
   .vs-auto{font-size:12px;color:#536273;background:#f6f8fa;border-radius:8px;padding:7px;margin-top:7px;line-height:1.35}.vs-runrow{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:8px}.vs-run{border:0;border-radius:11px;background:#0878d1;color:#fff;min-height:48px;font-size:16px;font-weight:900;padding:8px 14px}.vs-top{border:1px solid #cbd5e1;border-radius:11px;background:#fff;font-weight:800}
   .vs-status{margin-top:8px;padding:8px 10px;border-radius:9px;background:#f0f2f4;color:#394554;font-size:13px}.vs-status.ok{background:#e9f9ef;color:#126238}.vs-status.err{background:#fff0f0;color:#b42318}
-  .vs-info{font-size:13px;color:#64748b;margin-bottom:7px}.vs-results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.vs-result{position:relative;border:1px solid #d9e0e7;background:#fff;border-radius:11px;overflow:hidden;text-align:left}.vs-result.suspect{border-color:#ef9a9a;background:#fffafa}.vs-image-btn{display:block;width:100%;border:0;padding:0;background:#fff;cursor:zoom-in}.vs-result img{display:block;width:100%;aspect-ratio:1/1.16;object-fit:contain}.vs-code-link{border:0;background:none;padding:0;color:#0000ff;font-size:15px;font-weight:900;text-align:left;cursor:pointer;text-decoration:underline;text-underline-offset:2px}.vs-body{padding:6px}.vs-score{font-size:12px;color:#64748b}.vs-stock{font-size:13px;color:#08783c;font-weight:800;margin-top:2px}.vs-stock.bad{color:#d11a2a}.vs-group-feedback{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px}.vs-group-feedback button{border:1px solid #cbd5e1;border-radius:9px;padding:7px 9px;background:#fff;font-weight:800}.vs-group-feedback .good{background:#e9f9ef;color:#126238;border-color:#b7e5c7}.vs-group-feedback .teach{background:#fff7e8;color:#8a5200;border-color:#f0d39b}.vs-lightbox{display:none;position:fixed;inset:0;z-index:65000;background:#000e;align-items:center;justify-content:center;padding:12px}.vs-lightbox.show{display:flex}.vs-lightbox img{max-width:96vw;max-height:88vh;object-fit:contain}.vs-lightbox-close{position:absolute;right:14px;top:calc(12px + env(safe-area-inset-top));border:0;border-radius:999px;width:44px;height:44px;background:#fff;color:#111;font-size:24px;font-weight:900}.vs-lightbox-caption{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));text-align:center;color:#fff;font-size:18px;font-weight:900}.vs-rank{position:absolute;top:4px;left:4px;background:#111827dd;color:#fff;border-radius:999px;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900}
-  .vs-suspect{display:none;margin-top:10px;border-top:1px dashed #ef9a9a;padding-top:8px}.vs-suspect summary{color:#b42318;font-weight:900;cursor:pointer}.vs-suspect-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:7px}
-  @media(max-width:620px){.vs-results,.vs-suspect-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.vs-shell{padding-left:5px;padding-right:5px}.vs-card{padding:8px}.vs-title{font-size:18px}.vs-filters{grid-template-columns:1fr 1fr}.vs-code{font-size:16px}.vs-preview{max-height:36vh}}
+  .vs-info{font-size:13px;color:#64748b;margin-bottom:7px}.vs-results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.vs-result{position:relative;border:1px solid #d9e0e7;background:#fff;border-radius:11px;overflow:hidden;padding:0;text-align:left}.vs-result img{width:100%;aspect-ratio:1/1.16;object-fit:contain}.vs-body{padding:6px}.vs-code{font-size:15px;color:#0000ff;font-weight:900;overflow-wrap:anywhere}.vs-score{font-size:12px;color:#64748b}.vs-stock{font-size:13px;color:#08783c;font-weight:800;margin-top:2px}.vs-rank{position:absolute;top:4px;left:4px;background:#111827dd;color:#fff;border-radius:999px;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900}
+  .vs-suspect{display:none;margin-top:10px;border-top:1px dashed #ef9a9a;padding-top:8px}.vs-suspect summary{color:#b42318;font-weight:900;cursor:pointer}.vs-suspect-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.vs-suspect-list button{border:1px solid #f1b4b4;background:#fff5f5;color:#8b1e1e;border-radius:8px;padding:7px}
+  @media(max-width:620px){.vs-results{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.vs-shell{padding-left:5px;padding-right:5px}.vs-card{padding:8px}.vs-title{font-size:18px}.vs-filters{grid-template-columns:1fr 1fr}.vs-code{font-size:16px}.vs-preview{max-height:36vh}}
   `;document.head.appendChild(st);
 
   const q=document.querySelector(".quickbar");if(q&&!$("btnVisualSearch")){const b=document.createElement("button");b.id="btnVisualSearch";b.type="button";b.className="visual-search-entry";b.textContent="✨ TÌM BẰNG HÌNH ẢNH";q.insertAdjacentElement("afterend",b)}
@@ -529,7 +451,6 @@ function inject(){
       </div>
       <input id="visualDescription" class="vs-desc" type="text" placeholder="Mô tả thêm: polo kẻ ngang, quần bò rách, áo khoác xám…">
       <div id="visualAutoGroupHint" class="vs-auto">AI sẽ dự đoán nhóm từ ảnh và dữ liệu đã học.</div>
-      <div class="vs-group-feedback"><span style="font-size:12px;color:#64748b">Phản hồi nhóm:</span><button id="visualConfirmGroup" class="good" type="button">✓ Đúng nhóm</button><button id="visualTeachGroup" class="teach" type="button">🧠 Dạy AI nhóm đang chọn</button></div>
       <div class="vs-runrow"><button id="visualSearchRun" class="vs-run">TÌM SẢN PHẨM</button><select id="visualTopK" class="vs-top"><option>12</option><option selected>24</option><option>40</option></select></div>
       <div id="visualSearchStatus" class="vs-status">Chụp/chọn ảnh. Nhóm mặc định là Tự động.</div>
     </div>
@@ -539,18 +460,13 @@ function inject(){
     </div>
   </div>`;
   document.body.appendChild(m);
-  const lb=document.createElement("div");lb.id="visualLightbox";lb.className="vs-lightbox";lb.innerHTML=`<button id="visualLightboxClose" class="vs-lightbox-close" type="button">×</button><img id="visualLightboxImg" alt="Ảnh sản phẩm"><div id="visualLightboxCaption" class="vs-lightbox-caption"></div>`;document.body.appendChild(lb);
 
-  $("btnVisualSearch")?.addEventListener("click",openModal);$("visualClose").onclick=closeModal;
-  $("visualConfirmGroup").onclick=()=>confirmGroupFeedback("correct");
-  $("visualTeachGroup").onclick=()=>confirmGroupFeedback("teach");
-  $("visualLightboxClose").onclick=closeImageLightbox;lb.addEventListener("click",e=>{if(e.target===lb)closeImageLightbox()});
+  $("btnVisualSearch").onclick=openModal;$("visualClose").onclick=closeModal;
   $("visualCameraInput").onchange=e=>{selectFile(e.target.files?.[0]);e.target.value=""};
   $("visualLibraryInput").onchange=e=>{selectFile(e.target.files?.[0]);e.target.value=""};
   $("visualSearchRun").onclick=runSearch;
   $("visualMainGroup").onchange=e=>{currentMain=e.target.value;currentSub="";renderGroupSelectors()};
   $("visualSubGroup").onchange=e=>{currentSub=e.target.value;updateAutoHint()};
 }
-function boot(){inject();if(window.VISUAL_SEARCH_STANDALONE)setTimeout(openModal,30)}
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",inject,{once:true});else inject();
 export {openModal as openVisualSearch};
