@@ -1,4 +1,4 @@
-// HOAN TUYET - XAC NHAN ANH SAN PHAM V3
+// HOAN TUYET - XAC NHAN ANH SAN PHAM V4
 // Script độc lập đăng ký window.XacNhanAnhSP; hoadon.js chỉ gọi qua hook mềm nếu script này tồn tại.
 // Áp dụng: banlemtcs1, banlemtcs2, bannvcs1, bannvcs2.
 
@@ -44,13 +44,6 @@ function formatMoney(value) {
   return `${Math.round(n).toLocaleString("vi-VN")} đ`;
 }
 
-function getInvoiceParity() {
-  const raw = String(document.getElementById("sohd")?.value || "").trim();
-  const m = raw.match(/(\d+)\D*$/);
-  if (!m) return "even";
-  return (parseInt(m[1], 10) % 2 === 0) ? "even" : "odd";
-}
-
 function injectStyle() {
   if (document.getElementById("xacnhananhsp-style")) return;
   const style = document.createElement("style");
@@ -89,8 +82,8 @@ function injectStyle() {
       border:0; border-radius:11px; font-size:20px; font-weight:800;
       cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.35);
     }
-    #xacnhananhsp-dung{left:24px; background:#13a855; color:#fff; transition:left .12s ease}
-    #xacnhananhsp-dung.xnas-odd{left:262px}
+    /* Nút ĐÚNG SP luôn cố định góc trái, không còn nhảy theo số hóa đơn. */
+    #xacnhananhsp-dung{left:24px; background:#13a855; color:#fff}
     #xacnhananhsp-sai{right:24px; background:#e9eef3; color:#111827}
     #xacnhananhsp-admin-wrap{
       display:inline-flex; align-items:center; gap:5px; margin-left:8px;
@@ -106,7 +99,6 @@ function injectStyle() {
       #xacnhananhsp-info{max-width:88vw; min-width:280px; bottom:10vh}
       .xnas-btn{min-width:175px; height:52px; font-size:17px}
       #xacnhananhsp-dung{left:12px}
-      #xacnhananhsp-dung.xnas-odd{left:200px}
       #xacnhananhsp-sai{right:12px}
     }
   `;
@@ -243,7 +235,6 @@ async function xacNhanAnhSanPham({ masp, tensp = "", gia = 0 } = {}) {
   const maspEl = document.getElementById("xacnhananhsp-masp");
   const tenEl = document.getElementById("xacnhananhsp-ten");
   const giaEl = document.getElementById("xacnhananhsp-gia");
-  const dungBtn = document.getElementById("xacnhananhsp-dung");
 
   maspEl.textContent = code || "(không có mã)";
   tenEl.textContent = String(tensp || "").trim();
@@ -258,8 +249,6 @@ async function xacNhanAnhSanPham({ masp, tensp = "", gia = 0 } = {}) {
     img.src = fallbackUrl;
   };
   img.src = imageUrl;
-
-  dungBtn.classList.toggle("xnas-odd", getInvoiceParity() === "odd");
 
   document.body.classList.add("xnas-verify-active");
   overlay.classList.add("xnas-open");
