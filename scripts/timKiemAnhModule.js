@@ -6,12 +6,12 @@
 
 import { getSupabaseClient } from "./authModule.js";
 
-const BUILD="VISUAL-HYBRID-2.7.0";
+const BUILD="VISUAL-HYBRID-2.7.1";
 const MODEL_ID="Xenova/siglip-base-patch16-224";
 const DTYPE="q8";
 const VECTOR_VERSION="python-fp32-v1";
-const DISCOVERY_K=120;
-const GROUP_CANDIDATE_K=600;
+const DISCOVERY_K=150;
+const EXPAND_STEPS=[150,300,450];
 const DEFAULT_TOP_K=24;
 const SIZE_LIST=["38","39","40","41","42","43","44","45","46"];
 const MAIN_GROUPS={
@@ -153,13 +153,46 @@ async function vectorCandidates(vector,limit=DISCOVERY_K){
   }
   return out;
 }
-async function vectorCandidatesInGroups(vector,groups,limit=GROUP_CANDIDATE_K){
+async function vectorCandidatesInGroups(vector,groups,limit=600){
+  // Giữ lại để tương thích/debug, nhưng V2.7.1 KHÔNG dùng trong ranking chính.
   const cleaned=(groups||[]).map(norm).filter(Boolean);
   const {data,error}=await supabase.rpc("tim_san_pham_tuong_tu_vector_loc_nhom",{
     p_vector:vecLit(vector),p_nhomhang:cleaned.length?cleaned:null,p_so_luong:limit,p_phien_ban_vector:VECTOR_VERSION
   });
   if(error)throw error;
   return data||[];
+}
+
+// V2.7.1: giữ "mặt cắt similarity toàn kho" như V2.6.
+// Chỉ mở rộng dần 150 -> 300 -> 450 nếu sau khi lọc nhóm + tồn vẫn thiếu kết quả.
+// Không tìm 600 mã trong toàn bộ nhóm vì sẽ làm loãng độ giống ảnh.
+async function adaptiveGlobalCandidates(vector, groupFilter, desc, targetCount){
+  let last = null;
+  for(const limit of EXPAND_STEPS){
+    const cands = await vectorCandidates(vector, limit);
+    const metaMap = await fetchMetadata(cands.map(x=>x.masp));
+
+    // Lọc nhóm trước khi gọi tồn để giảm tải.
+    const groupCands = cands.filter(r=>{
+      const meta = metaMap.get(norm(r.masp));
+      if(!meta) return false;
+      const g = norm(meta.nhomhang), main = mainForGroup(g);
+      if(groupFilter.main && main !== groupFilter.main) return false;
+      if(groupFilter.group && g !== norm(groupFilter.group)) return false;
+      return true;
+    });
+
+    const masps = groupCands.map(x=>norm(x.masp));
+    const [baseMap,checkMap] = await Promise.all([
+      fetchBaseStock(masps),
+      fetchCheckBulk(masps)
+    ]);
+    const ranked = rankCandidates(cands,metaMap,baseMap,checkMap,groupFilter,desc);
+
+    last = {limit,cands,metaMap,ranked};
+    if(ranked.good.length >= targetCount) return last;
+  }
+  return last;
 }
 async function fetchMetadata(masps){
   const uniq=[...new Set((masps||[]).map(norm).filter(Boolean))];
@@ -386,8 +419,8 @@ async function runSearch(){
     setStatus("Đang đọc ảnh…");
     const {vector,ms}=await fileVector(currentFile);currentQueryVector=vector;
 
-    // Lượt 1 nhỏ: chỉ để nhận biết nhóm.
-    setStatus(`Vector ${ms} ms · đang nhận biết nhóm…`);
+    // Bước 1: lấy 150 gần nhất toàn kho để nhận biết nhóm.
+    setStatus(`Vector ${ms} ms · đang nhận biết nhóm từ ${DISCOVERY_K} ảnh gần nhất…`);
     const discovery=await vectorCandidates(vector,DISCOVERY_K);
     const discoveryMeta=await fetchMetadata(discovery.map(x=>x.masp));
     const desc=parseDescription();
@@ -403,25 +436,30 @@ async function runSearch(){
     }
     if(desc.inferredMain){autoMain=desc.inferredMain;autoSub=desc.inferredGroup}
     autoSuggestedMain=autoMain;autoSuggestedSub=autoSub;updateAutoHint();
+
     const gf=effectiveGroup({main:autoMain,group:autoSub},desc);
+    const target=Math.max(Number($("visualTopK")?.value||DEFAULT_TOP_K),12);
 
-    // Lượt 2: sau khi biết nhóm, tìm trực tiếp TRONG nhóm đó. Không còn kéo nhiều nhóm sai rồi loại.
-    let groups=[];
-    if(gf.group)groups=[norm(gf.group)];
-    else if(gf.main)groups=[...(MAIN_GROUPS[gf.main]?.groups||[])];
-    setStatus(`Nhóm ${gf.main?MAIN_GROUPS[gf.main]?.label:"chưa khóa"}${gf.group?` → ${groupLabel(gf.group)}`:""} · đang lấy ứng viên đúng nhóm…`);
-    const cands=groups.length?await vectorCandidatesInGroups(vector,groups,GROUP_CANDIDATE_K):await vectorCandidates(vector,GROUP_CANDIDATE_K);
-    currentCandidates=cands;
-    const metaMap=await fetchMetadata(cands.map(x=>x.masp));currentMetaByMasp=metaMap;
+    // V2.7.1: KHÔNG query 600 mã riêng trong nhóm.
+    // Giữ ranking similarity toàn kho; mở rộng dần nếu lọc xong chưa đủ hàng bán được.
+    setStatus(`Nhóm ${gf.main?MAIN_GROUPS[gf.main]?.label:"chưa khóa"}${gf.group?` → ${groupLabel(gf.group)}`:""} · đang lọc theo độ giống + tồn…`);
+    const result=await adaptiveGlobalCandidates(vector,gf,desc,target);
+    if(!result) throw new Error("Không lấy được ứng viên.");
 
-    setStatus(`Đã có ${cands.length} ứng viên đúng nhóm · đang kiểm tồn sau kiểm…`);
-    const masps=cands.map(x=>norm(x.masp));
-    const [baseMap,checkMap]=await Promise.all([fetchBaseStock(masps),fetchCheckBulk(masps)]);
-    const ranked=rankCandidates(cands,metaMap,baseMap,checkMap,gf,desc);
-    renderRows(ranked.good,ranked.suspect);
-    await logLearning({vector,groupFilter:gf,desc,candidates:ranked.good});
-    setStatus(`Hoàn tất: ${ranked.good.length} mã còn bán được, ${ranked.suspect.length} mã tồn nghi ngờ · ${((performance.now()-t0)/1000).toFixed(1)} giây.`,"ok");
-  }catch(e){console.error(e);setStatus("Lỗi Hybrid Search: "+(e?.message||e),"err")}finally{btn.disabled=false}
+    currentCandidates=result.cands;
+    currentMetaByMasp=result.metaMap;
+    renderRows(result.ranked.good,result.ranked.suspect);
+    await logLearning({vector,groupFilter:gf,desc,candidates:result.ranked.good});
+
+    const topSim=result.ranked.good?.[0]?.diem_giong;
+    const simText=Number.isFinite(Number(topSim))?` · Top ${(Number(topSim)*100).toFixed(1)}%`:"";
+    setStatus(
+      `Hoàn tất: dùng Top ${result.limit} toàn kho → ${result.ranked.good.length} mã còn bán được, ${result.ranked.suspect.length} mã tồn nghi ngờ${simText} · ${((performance.now()-t0)/1000).toFixed(1)} giây.`,
+      "ok"
+    );
+  }catch(e){
+    console.error(e);setStatus("Lỗi Hybrid Search: "+(e?.message||e),"err");
+  }finally{btn.disabled=false}
 }
 async function chooseProduct(masp){
   const meta=currentMetaByMasp.get(norm(masp));
