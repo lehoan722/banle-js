@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>SigLIP Mobile Browser POC</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111827;background:#f3f4f6}
+    *{box-sizing:border-box} body{margin:0}.wrap{max-width:760px;margin:0 auto;padding:16px}
+    .card{background:white;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+    h1{font-size:22px;margin:0 0 8px} h2{font-size:17px;margin:0 0 10px}.muted{color:#6b7280;font-size:13px;line-height:1.45}
+    button,.btn{appearance:none;border:0;border-radius:12px;background:#111827;color:#fff;padding:13px 15px;font-weight:700;font-size:15px;display:inline-block;text-align:center;cursor:pointer}
+    button.secondary,.btn.secondary{background:#e5e7eb;color:#111827}.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:140px}
+    input[type=file]{display:none} img{width:100%;max-height:360px;object-fit:contain;border-radius:12px;background:#f9fafb}
+    .status{padding:12px;border-radius:12px;background:#eef2ff;white-space:pre-wrap;font-size:14px;line-height:1.45}.ok{background:#ecfdf5}.err{background:#fef2f2;color:#991b1b}
+    pre{max-height:240px;overflow:auto;background:#0b1020;color:#d1fae5;padding:12px;border-radius:12px;font-size:11px;white-space:pre-wrap;word-break:break-all}
+    .metric{font-weight:800;font-size:20px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mini{padding:12px;border-radius:12px;background:#f9fafb}.mini b{display:block;font-size:12px;color:#6b7280;margin-bottom:4px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>🧠 SigLIP chạy ngay trên điện thoại — POC V0.1</h1>
+    <div class="muted">Chỉ kiểm tra một việc: Chrome/điện thoại có tự biến ảnh thành vector 768 chiều bằng SigLIP ONNX hay không. Không Supabase, không VPS, không gửi ảnh lên server của shop.</div>
+  </div>
+
+  <div class="card">
+    <h2>1. Nạp model</h2>
+    <div class="grid">
+      <div class="mini"><b>Model</b><span>siglip-base-patch16-224</span></div>
+      <div class="mini"><b>Chế độ</b><span>q8 + WASM</span></div>
+    </div>
+    <p class="muted">Lần đầu trình duyệt cần tải model ONNX khoảng ~100 MB. Các lần sau trình duyệt thường dùng cache nên nhanh hơn.</p>
+    <button id="loadBtn">TẢI / NẠP SIGLIP</button>
+    <div id="loadStatus" class="status" style="margin-top:12px">Chưa nạp model.</div>
+  </div>
+
+  <div class="card">
+    <h2>2. Chụp hoặc chọn ảnh</h2>
+    <div class="row">
+      <label class="btn" for="cameraInput">📷 CHỤP ẢNH</label>
+      <label class="btn secondary" for="fileInput">🖼 CHỌN ẢNH</label>
+    </div>
+    <input id="cameraInput" type="file" accept="image/*" capture="environment" />
+    <input id="fileInput" type="file" accept="image/*" />
+    <div id="previewWrap" style="display:none;margin-top:14px"><img id="preview" alt="Ảnh thử" /></div>
+    <button id="embedBtn" style="width:100%;margin-top:12px" disabled>TẠO VECTOR TRÊN ĐIỆN THOẠI</button>
+  </div>
+
+  <div class="card">
+    <h2>3. Kết quả</h2>
+    <div class="grid">
+      <div class="mini"><b>Số chiều vector</b><span id="dims" class="metric">—</span></div>
+      <div class="mini"><b>Thời gian inference</b><span id="time" class="metric">—</span></div>
+    </div>
+    <div id="runStatus" class="status" style="margin-top:12px">Chưa xử lý ảnh.</div>
+    <div class="row" style="margin-top:12px">
+      <button id="downloadBtn" class="secondary" disabled>⬇️ TẢI VECTOR JSON</button>
+      <button id="copyBtn" class="secondary" disabled>📋 COPY 20 SỐ ĐẦU</button>
+    </div>
+    <pre id="vectorOut">Vector sẽ hiện ở đây…</pre>
+  </div>
+
+  <div class="card">
+    <h2>Tiêu chí đạt</h2>
+    <div class="muted">Nếu điện thoại nạp được model, tạo được vector <b>768 chiều</b>, và lần thứ hai nhanh/chạy ổn định thì POC bước 1 đạt. Sau đó mới làm bước 2: dùng cùng một ảnh so vector Browser với vector Python SigLIP hiện tại và kiểm tra Top-K.</div>
+  </div>
+</div>
+
+<script type="module">
+  import { AutoProcessor, SiglipVisionModel, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm';
+
+  const MODEL_ID = 'Xenova/siglip-base-patch16-224';
+  let processor = null;
+  let model = null;
+  let selectedFile = null;
+  let lastVector = null;
+
+  const $ = (id) => document.getElementById(id);
+  const loadBtn = $('loadBtn');
+  const embedBtn = $('embedBtn');
+  const loadStatus = $('loadStatus');
+  const runStatus = $('runStatus');
+  const preview = $('preview');
+  const previewWrap = $('previewWrap');
+  const dims = $('dims');
+  const time = $('time');
+  const vectorOut = $('vectorOut');
+  const downloadBtn = $('downloadBtn');
+  const copyBtn = $('copyBtn');
+
+  function setStatus(el, msg, kind='') {
+    el.className = 'status' + (kind ? ' ' + kind : '');
+    el.textContent = msg;
+  }
+
+  async function loadModel() {
+    loadBtn.disabled = true;
+    setStatus(loadStatus, 'Đang tải processor và model ONNX q8…\nLần đầu có thể lâu vì phải tải khoảng ~100 MB.');
+    const t0 = performance.now();
+    try {
+      processor = await AutoProcessor.from_pretrained(MODEL_ID);
+      model = await SiglipVisionModel.from_pretrained(MODEL_ID, {
+        dtype: 'q8',
+        device: 'wasm'
+      });
+      const sec = ((performance.now() - t0) / 1000).toFixed(1);
+      setStatus(loadStatus, `✅ Đã nạp SigLIP trên trình duyệt. Thời gian nạp: ${sec}s\nThiết bị: ${navigator.userAgent}`, 'ok');
+      embedBtn.disabled = !selectedFile;
+      loadBtn.textContent = '✅ SIGLIP ĐÃ NẠP';
+    } catch (err) {
+      console.error(err);
+      setStatus(loadStatus, '❌ Không nạp được model:\n' + (err?.stack || err?.message || String(err)), 'err');
+      loadBtn.disabled = false;
+    }
+  }
+
+  function chooseFile(file) {
+    if (!file) return;
+    selectedFile = file;
+    preview.src = URL.createObjectURL(file);
+    previewWrap.style.display = 'block';
+    embedBtn.disabled = !model;
+    setStatus(runStatus, `Đã chọn: ${file.name || 'ảnh camera'} (${Math.round(file.size/1024)} KB).`);
+  }
+
+  $('cameraInput').addEventListener('change', e => chooseFile(e.target.files?.[0]));
+  $('fileInput').addEventListener('change', e => chooseFile(e.target.files?.[0]));
+  loadBtn.addEventListener('click', loadModel);
+
+  embedBtn.addEventListener('click', async () => {
+    if (!model || !processor || !selectedFile) return;
+    embedBtn.disabled = true;
+    setStatus(runStatus, 'Đang đọc ảnh → resize/normalize → chạy SigLIP ONNX trên thiết bị…');
+    try {
+      const image = await RawImage.read(selectedFile);
+      const inputs = await processor(image);
+      const t0 = performance.now();
+      const output = await model(inputs);
+      const raw = Array.from(output.pooler_output.data, Number);
+
+      // Giống bản Python V1.1: normalize L2 trước khi so cosine.
+      let norm = 0;
+      for (const v of raw) norm += v * v;
+      norm = Math.sqrt(norm) || 1;
+      const vec = raw.map(v => v / norm);
+      const ms = performance.now() - t0;
+
+      lastVector = vec;
+      dims.textContent = String(vec.length);
+      time.textContent = ms < 1000 ? `${ms.toFixed(0)} ms` : `${(ms/1000).toFixed(2)} s`;
+      vectorOut.textContent = JSON.stringify(vec.slice(0, 40), null, 2) + `\n\n… tổng cộng ${vec.length} số`;
+      setStatus(runStatus, `✅ Thành công. Vector L2-normalized có ${vec.length} chiều.\nNorm sau chuẩn hóa: ${Math.sqrt(vec.reduce((s,v)=>s+v*v,0)).toFixed(6)}`, 'ok');
+      downloadBtn.disabled = false;
+      copyBtn.disabled = false;
+    } catch (err) {
+      console.error(err);
+      setStatus(runStatus, '❌ Lỗi tạo vector:\n' + (err?.stack || err?.message || String(err)), 'err');
+    } finally {
+      embedBtn.disabled = false;
+    }
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!lastVector) return;
+    const payload = {
+      model: MODEL_ID,
+      dtype: 'q8',
+      device: 'wasm',
+      normalized: true,
+      dimensions: lastVector.length,
+      vector: lastVector
+    };
+    const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'siglip_mobile_vector.json';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    if (!lastVector) return;
+    await navigator.clipboard.writeText(lastVector.slice(0,20).map(x=>x.toFixed(8)).join(', '));
+    copyBtn.textContent = '✅ ĐÃ COPY';
+    setTimeout(()=>copyBtn.textContent='📋 COPY 20 SỐ ĐẦU', 1200);
+  });
+</script>
+</body>
+</html>
