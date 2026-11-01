@@ -1440,11 +1440,24 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
         return false;
     }
 
-    // ===== HOOK MỀM: XÁC NHẬN ẢNH SẢN PHẨM (chỉ khi trang đã nạp xacnhananhsp.js) =====
-    // Không import cứng module mới ở đây để các trang khác dùng chung hoadon.js vẫn chạy nguyên vẹn.
-    // Nếu window.XacNhanAnhSP không tồn tại, coi như đã xác nhận và tiếp tục đúng luồng cũ.
-    let daXacNhanAnh = true;
+    // ===== V5: CỔNG XÁC NHẬN ẢNH BẮT BUỘC TRÊN 4 TRANG BÁN =====
+    // Với tính năng kiểm soát, tuyệt đối KHÔNG fail-open. Nếu module chưa sẵn sàng hoặc lỗi,
+    // phải chặn dòng hàng thay vì âm thầm cho bán tiếp. Các trang khác vẫn giữ luồng cũ.
+    const pageNowRaw = (location.pathname.split("/").pop() || "").toLowerCase().trim();
+    const pageNow = pageNowRaw.endsWith(".html") ? pageNowRaw : `${pageNowRaw}.html`;
+    const photoGateRequired = new Set([
+        "banlemtcs1.html", "banlemtcs2.html", "bannvcs1.html", "bannvcs2.html"
+    ]).has(pageNow);
+
+    let daXacNhanAnh = !photoGateRequired;
     const xnas = window.XacNhanAnhSP;
+
+    if (photoGateRequired && (!xnas || typeof xnas.xacNhanAnhSanPham !== "function")) {
+        console.error("[hoadon] XacNhanAnhSP chưa sẵn sàng - CHẶN bán để tránh bỏ kiểm ảnh.");
+        alert("⚠️ Chức năng xác nhận ảnh chưa sẵn sàng. Hệ thống đã chặn thêm sản phẩm để tránh bán nhầm. Vui lòng tải lại trang (Ctrl+F5) rồi thử lại.");
+        return false;
+    }
+
     if (xnas && typeof xnas.xacNhanAnhSanPham === "function") {
         const giaXacNhanNguon = isNhapMode() ? (spData.gianhap || 0) : (spData.giale || 0);
         const giaXacNhanInt = Math.round(parseMoneyInt(giaXacNhanNguon));
@@ -1455,9 +1468,13 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
                 gia: giaXacNhanInt
             });
         } catch (err) {
-            // Fail-open có chủ đích: lỗi riêng của tính năng mới không được làm chết luồng bán hàng cũ.
-            console.error("[hoadon] Lỗi hook xacnhananhsp, tiếp tục luồng cũ:", err);
-            daXacNhanAnh = true;
+            console.error("[hoadon] Lỗi xacnhananhsp - CHẶN bán:", err);
+            if (photoGateRequired) {
+                alert("⚠️ Có lỗi ở bước xác nhận ảnh. Sản phẩm chưa được thêm vào hóa đơn. Vui lòng quét lại.");
+                daXacNhanAnh = false;
+            } else {
+                daXacNhanAnh = true;
+            }
         }
     }
 
