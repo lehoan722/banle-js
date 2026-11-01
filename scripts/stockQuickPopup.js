@@ -60,7 +60,7 @@
     stockQuickDhkhanLoadPromise = (async () => {
       try {
         // datHangChuyenKhoKhan.js là ES module nên dùng dynamic import từ file StockQuick dạng script thường.
-        const mod = await import("/scripts/datHangChuyenKhoKhan.js?v=7");
+        const mod = await import("/scripts/datHangChuyenKhoKhan.js?v=8");
 
         // Có thể một trang cũ đã init module trong lúc dynamic import đang chạy.
         if (window.DatHangChuyenKhoKhan?.openFromStockQuick) return true;
