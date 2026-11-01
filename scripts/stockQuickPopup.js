@@ -3621,19 +3621,20 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
           params.set("cs", coso);
         }
 
-        // Nếu StockQuick đang mở ngay trên timkiemnhanh.html thì dùng chính trang hiện tại,
-        // không sinh thêm tab. Trang khác vẫn giữ hành vi mở tab mới như trước.
+        // Nếu StockQuick đang mở ngay trên Tìm kiếm nhanh (ưu tiên V2) thì dùng chính trang hiện tại,
+        // không sinh thêm tab. Từ các trang khác luôn mở Tìm kiếm nhanh V2 mới.
         const pathNow = String(window.location.pathname || "").toLowerCase();
-        const isCurrentTimKiemNhanh = /\/timkiemnhanh\.html$/.test(pathNow);
+        const isCurrentTimKiemNhanhV2 = /\/timkiemnhanh_v2\.html$/.test(pathNow);
+        const isCurrentTimKiemNhanhCu = /\/timkiemnhanh\.html$/.test(pathNow);
+        const canReuseCurrentQuickSearch =
+          (isCurrentTimKiemNhanhV2 || isCurrentTimKiemNhanhCu) &&
+          typeof window.TimKiemNhanh?.openFromStockQuick === "function";
 
-        if (
-          isCurrentTimKiemNhanh &&
-          typeof window.TimKiemNhanh?.openFromStockQuick === "function"
-        ) {
+        if (canReuseCurrentQuickSearch) {
           hideAllPopups();
           await window.TimKiemNhanh.openFromStockQuick(masp, size);
         } else {
-          const url = `${window.location.origin}/timkiemnhanh.html?${params.toString()}`;
+          const url = `${window.location.origin}/timkiemnhanh_v2.html?${params.toString()}`;
           const child = window.open(url, "_blank");
           if (!child) {
             console.warn("[StockQuickPopup] Trình duyệt chặn mở Tìm kiếm nhanh");
