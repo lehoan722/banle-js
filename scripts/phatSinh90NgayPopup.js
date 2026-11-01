@@ -248,16 +248,34 @@ async function loadData(masp) {
   return data || {};
 }
 
-// V20261101: cùng RPC gốc, p_so_ngay=0 nghĩa là toàn bộ vòng đời.
-// 90 ngày vẫn đi qua rpc_nhapbu2_kiemtra_nguon_v1 để giữ tương thích tuyệt đối.
-async function loadAllHistory(masp) {
-  const { data, error } = await supabase.rpc("rpc_nhapbu2_phatsinh90_v1", {
-    p_masp: String(masp || "").trim().toUpperCase(),
-    p_ngay: todayVN(),
-    p_so_ngay: 0
-  });
-  if (error) throw error;
-  return normalizeArray(data);
+// V20261101-PAGE: toàn bộ vòng đời được tải theo từng lô nhỏ để tránh
+// Supabase/Postgres statement_timeout ở các mã có lịch sử rất dài.
+// 90 ngày vẫn đi qua rpc_nhapbu2_kiemtra_nguon_v1, không thay đổi.
+async function loadAllHistory(masp, onProgress) {
+  const PAGE_SIZE = 24;
+  const MAX_PAGES = 300; // chốt an toàn: tối đa 7.200 ngày phát sinh
+  const code = String(masp || "").trim().toUpperCase();
+  const all = [];
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const offset = page * PAGE_SIZE;
+    const { data, error } = await supabase.rpc("rpc_nhapbu2_phatsinh_page_v1", {
+      p_masp: code,
+      p_ngay: todayVN(),
+      p_so_ngay: 0,
+      p_offset: offset,
+      p_limit: PAGE_SIZE
+    });
+    if (error) throw error;
+
+    const rows = normalizeArray(data);
+    if (rows.length) all.push(...rows);
+    try { onProgress?.(all.slice(), rows.length < PAGE_SIZE); } catch (_) {}
+
+    if (rows.length < PAGE_SIZE) return all;
+  }
+
+  throw new Error("Lịch sử quá dài, đã vượt giới hạn tải an toàn.");
 }
 
 async function open(maspRaw) {
@@ -339,7 +357,12 @@ async function open(maspRaw) {
     if (sub) sub.textContent = target === "all" ? "Đang tải toàn bộ vòng đời..." : "Đang tải 90 ngày...";
     try {
       if (target === "all") {
-        if (!historyAll) historyAll = await loadAllHistory(masp);
+        if (!historyAll) {
+          historyAll = await loadAllHistory(masp, (rows, done) => {
+            render(rows, "all");
+            if (!done && sub) sub.textContent = `Đang tải toàn bộ vòng đời... đã nạp ${rows.length} dòng`;
+          });
+        }
         render(historyAll, "all");
       } else {
         if (!history90) {
@@ -375,7 +398,10 @@ async function open(maspRaw) {
   document.addEventListener("keydown", onKey);
 
   try {
-    historyAll = await loadAllHistory(masp);
+    historyAll = await loadAllHistory(masp, (rows, done) => {
+      render(rows, "all");
+      if (!done && sub) sub.textContent = `Đang tải toàn bộ vòng đời... đã nạp ${rows.length} dòng`;
+    });
     render(historyAll, "all");
   } catch (err) {
     console.error("[PhatSinh90NgayPopup] Lỗi tải dữ liệu toàn bộ:", err);
