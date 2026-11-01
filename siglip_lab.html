@@ -14,7 +14,7 @@
 <section class="card"><div id="resultInfo" class="sub" style="margin-bottom:8px">Chưa có kết quả.</div><div id="results" class="grid"></div></section>
 <section class="card"><div class="note"><b>Cách đọc kết quả:</b> nếu Image→Image tốt nhưng Text→Image rất yếu, chưa được kết luận SigLIP không hiểu chữ. Kho vector hiện tại được tạo từ <code>SiglipVisionModel.pooler_output</code>, trong khi similarity image-text chuẩn của full SigLIP dùng embedding đã projection. Khi đó bước kế tiếp là tạo một <b>cross-modal index riêng</b>, không đụng V2.5 production.</div><div id="dbStatus" class="status">Đang kiểm tra Supabase…</div></section>
 </div><div id="lightbox" class="lightbox"><button id="lightboxClose" class="close">Đóng</button><img id="lightboxImg"></div>
-<script src="./config.js"></script>
+<script src="./siglip_lab_config.js"></script>
 <script type="module">
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
 import {AutoTokenizer,SiglipTextModel,AutoProcessor,SiglipVisionModel,RawImage,env} from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
