@@ -248,6 +248,18 @@ async function loadData(masp) {
   return data || {};
 }
 
+// V20261101: cùng RPC gốc, p_so_ngay=0 nghĩa là toàn bộ vòng đời.
+// 90 ngày vẫn đi qua rpc_nhapbu2_kiemtra_nguon_v1 để giữ tương thích tuyệt đối.
+async function loadAllHistory(masp) {
+  const { data, error } = await supabase.rpc("rpc_nhapbu2_phatsinh90_v1", {
+    p_masp: String(masp || "").trim().toUpperCase(),
+    p_ngay: todayVN(),
+    p_so_ngay: 0
+  });
+  if (error) throw error;
+  return normalizeArray(data);
+}
+
 async function open(maspRaw) {
   const masp = String(maspRaw || "").trim().toUpperCase();
   if (!masp) return;
@@ -266,6 +278,7 @@ async function open(maspRaw) {
         </div>
         <div class="ps90-tools">
           <button class="ps90-btn ps90-ledger" type="button">Sổ chi tiết tồn</button>
+          <button class="ps90-btn ps90-all" type="button">Xem toàn bộ</button>
           <button class="ps90-btn primary ps90-close" type="button">Đóng</button>
         </div>
       </div>
@@ -275,34 +288,27 @@ async function open(maspRaw) {
   document.body.appendChild(overlay);
 
   const card = overlay.querySelector(".ps90-card");
+  const title = overlay.querySelector(".ps90-title");
   const sub = overlay.querySelector(".ps90-sub");
   const wrap = overlay.querySelector(".ps90-wrap");
+  const btnAll = overlay.querySelector(".ps90-all");
+  let mode = "90";
+  let history90 = null;
+  let historyAll = null;
+  let loading = false;
 
-  overlay.querySelector(".ps90-close")?.addEventListener("click", () => overlay.remove());
-  overlay.querySelector(".ps90-ledger")?.addEventListener("click", () => openStockLedger(masp));
-  overlay.addEventListener("click", e => {
-    if (e.target === overlay) overlay.remove();
-  });
-  card?.addEventListener("click", e => e.stopPropagation());
-
-  const onKey = e => {
-    if (e.key === "Escape") {
-      overlay.remove();
-      document.removeEventListener("keydown", onKey);
-    }
-  };
-  document.addEventListener("keydown", onKey);
-
-  try {
-    const payload = await loadData(masp);
-    const history = getHistory(payload);
+  function render(history, nextMode) {
+    mode = nextMode;
+    const isAll = mode === "all";
+    if (title) title.textContent = `${isAll ? "PHÁT SINH TOÀN BỘ" : "PHÁT SINH 90 NGÀY"} · ${masp}`;
+    if (btnAll) btnAll.textContent = isAll ? "Xem 90 ngày" : "Xem toàn bộ";
 
     if (sub) sub.textContent = history.length
-      ? `${history.length} dòng phát sinh · đến ${vnDate(todayVN())}`
-      : `Không có phát sinh 90 ngày`;
+      ? `${history.length} dòng phát sinh${isAll ? " toàn bộ vòng đời" : ""} · đến ${vnDate(todayVN())}`
+      : (isAll ? "Không có phát sinh trong toàn bộ vòng đời" : "Không có phát sinh 90 ngày");
 
     if (!history.length) {
-      wrap.innerHTML = `<div class="ps90-empty">Không có dữ liệu Phát sinh 90 ngày cho mã ${esc(masp)}.</div>`;
+      wrap.innerHTML = `<div class="ps90-empty">Không có dữ liệu ${isAll ? "Phát sinh toàn bộ" : "Phát sinh 90 ngày"} cho mã ${esc(masp)}.</div>`;
       return;
     }
 
@@ -322,6 +328,52 @@ async function open(maspRaw) {
         </thead>
         <tbody>${buildRows(history)}</tbody>
       </table>`;
+    try { wrap.scrollTop = 0; wrap.scrollLeft = 0; } catch (_) {}
+  }
+
+  async function switchMode() {
+    if (loading) return;
+    const target = mode === "90" ? "all" : "90";
+    loading = true;
+    if (btnAll) btnAll.disabled = true;
+    if (sub) sub.textContent = target === "all" ? "Đang tải toàn bộ vòng đời..." : "Đang trở lại 90 ngày...";
+    try {
+      if (target === "all") {
+        if (!historyAll) historyAll = await loadAllHistory(masp);
+        render(historyAll, "all");
+      } else {
+        render(history90 || [], "90");
+      }
+    } catch (err) {
+      console.error("[PhatSinh90NgayPopup] Lỗi chuyển chế độ:", err);
+      if (sub) sub.textContent = "Lỗi tải dữ liệu";
+      wrap.innerHTML = `<div class="ps90-error">Không tải được ${target === "all" ? "toàn bộ vòng đời" : "90 ngày"}: ${esc(err?.message || err)}</div>`;
+    } finally {
+      loading = false;
+      if (btnAll) btnAll.disabled = false;
+    }
+  }
+
+  overlay.querySelector(".ps90-close")?.addEventListener("click", () => overlay.remove());
+  overlay.querySelector(".ps90-ledger")?.addEventListener("click", () => openStockLedger(masp));
+  btnAll?.addEventListener("click", switchMode);
+  overlay.addEventListener("click", e => {
+    if (e.target === overlay) overlay.remove();
+  });
+  card?.addEventListener("click", e => e.stopPropagation());
+
+  const onKey = e => {
+    if (e.key === "Escape") {
+      overlay.remove();
+      document.removeEventListener("keydown", onKey);
+    }
+  };
+  document.addEventListener("keydown", onKey);
+
+  try {
+    const payload = await loadData(masp);
+    history90 = getHistory(payload);
+    render(history90, "90");
   } catch (err) {
     console.error("[PhatSinh90NgayPopup] Lỗi tải dữ liệu:", err);
     if (sub) sub.textContent = "Lỗi tải dữ liệu";
