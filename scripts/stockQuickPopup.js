@@ -1,4 +1,4 @@
-// HOAN TUYET - STOCK QUICK PHAT SINH 90 NGAY V1
+// HOAN TUYET - STOCK QUICK PHAT SINH 90 NGAY / TOAN BO V2
 // HOAN TUYET - STOCK QUICK ADMIN DISCOUNT OVERRIDE 0-LOCK V1
 // HOAN TUYET - STOCK QUICK BUSINESS DATE FIX V2
 // HOAN TUYET - STOCK QUICK CANONICAL SIZE FIX V1
@@ -484,8 +484,9 @@
     background: #eef2f7;
   }
 
-  /* Dòng size bấm 1 lần để mở sản phẩm cùng nhóm */
-  .sq-stock-popup tr.sq-open-similar-row td {
+  /* V20261101: Chỉ ô SIZE bấm để chuyển mã + size sang Tìm kiếm nhanh.
+     Các cột tồn/nhập/bán cùng dòng không còn là vùng click. */
+  .sq-stock-popup tr.sq-open-similar-row td:first-child {
     cursor: pointer;
     transition: background-color .12s ease;
     -webkit-tap-highlight-color: rgba(37,99,235,0.18);
@@ -493,11 +494,11 @@
     touch-action: manipulation;
   }
 
-  .sq-stock-popup tr.sq-open-similar-row:hover td {
+  .sq-stock-popup tr.sq-open-similar-row td:first-child:hover {
     background: #eef2f7;
   }
 
-  .sq-stock-popup tr.sq-open-similar-row.sq-row-press td {
+  .sq-stock-popup tr.sq-open-similar-row.sq-row-press td:first-child {
     background: #dbeafe;
   }
 
@@ -1218,7 +1219,7 @@ data-color-masp="${targetMasp}"
     try {
       if (!window.PhatSinh90NgayPopup?.open) {
         if (!phatSinh90NgayLoadPromise) {
-          phatSinh90NgayLoadPromise = import("/scripts/phatSinh90NgayPopup.js?v=1")
+          phatSinh90NgayLoadPromise = import("/scripts/phatSinh90NgayPopup.js?v=2")
             .catch((err) => {
               phatSinh90NgayLoadPromise = null;
               throw err;
@@ -3564,8 +3565,19 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
     function findClickableRow(target) {
       if (!target) return null;
-      const tr = target.closest("tr.sq-open-similar-row");
+
+      // V20261101: chỉ click trong cột SIZE mới được mở Tìm kiếm nhanh.
+      // GGx nằm trong cùng ô size nhưng có hành động riêng, không được kích hoạt luồng này.
+      if (target.closest?.(".sq-discount-size-count")) return null;
+
+      const td = target.closest?.("td");
+      if (!td || !tbody.contains(td)) return null;
+
+      const tr = td.closest("tr.sq-open-similar-row");
       if (!tr || !tbody.contains(tr)) return null;
+
+      // Cột size luôn là ô đầu tiên của dòng StockQuick.
+      if (td !== tr.cells?.[0]) return null;
       return tr;
     }
 
@@ -3609,13 +3621,26 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
           params.set("cs", coso);
         }
 
-        const url = `${window.location.origin}/timkiemnhanh.html?${params.toString()}`;
-        const child = window.open(url, "_blank");
-        if (!child) {
-          console.warn("[StockQuickPopup] Trình duyệt chặn mở Tìm kiếm nhanh");
-          alert("Trình duyệt đang chặn mở trang Tìm kiếm nhanh. Hãy cho phép mở tab mới rồi thử lại.");
+        // Nếu StockQuick đang mở ngay trên timkiemnhanh.html thì dùng chính trang hiện tại,
+        // không sinh thêm tab. Trang khác vẫn giữ hành vi mở tab mới như trước.
+        const pathNow = String(window.location.pathname || "").toLowerCase();
+        const isCurrentTimKiemNhanh = /\/timkiemnhanh\.html$/.test(pathNow);
+
+        if (
+          isCurrentTimKiemNhanh &&
+          typeof window.TimKiemNhanh?.openFromStockQuick === "function"
+        ) {
+          hideAllPopups();
+          await window.TimKiemNhanh.openFromStockQuick(masp, size);
         } else {
-          try { child.focus(); } catch (_) { }
+          const url = `${window.location.origin}/timkiemnhanh.html?${params.toString()}`;
+          const child = window.open(url, "_blank");
+          if (!child) {
+            console.warn("[StockQuickPopup] Trình duyệt chặn mở Tìm kiếm nhanh");
+            alert("Trình duyệt đang chặn mở trang Tìm kiếm nhanh. Hãy cho phép mở tab mới rồi thử lại.");
+          } else {
+            try { child.focus(); } catch (_) { }
+          }
         }
       } catch (err) {
         console.warn("[StockQuickPopup] Lỗi mở Tìm kiếm nhanh:", err);
