@@ -25,6 +25,11 @@ const ACTIVE_STATUS = "moi";
 const VALID_STATUSES = ["moi", "da_chuyen", "het", "huy"];
 const SIZE_OPTIONS = ["0", "38", "39", "40", "41", "42", "43", "44", "45", "46"];
 
+// Lớp hiển thị riêng cho popup Đặt hàng khẩn.
+// Phải cao hơn overlay xác nhận ảnh (90000) và StockQuick khi xác nhận ảnh (200000+).
+const URGENT_CREATE_Z = 300100;
+const URGENT_CONFIRM_Z = 300200;
+
 function norm(v) { return String(v ?? "").trim(); }
 function normMasp(v) { return norm(v).toUpperCase(); }
 function normSize(v) {
@@ -883,7 +888,7 @@ function confirmUrgentDirection({ masp, direction, totalQty }) {
     document.getElementById("dhkhan-confirm-direction")?.remove();
     const overlay = document.createElement("div");
     overlay.id = "dhkhan-confirm-direction";
-    overlay.style.cssText = "position:fixed;inset:0;z-index:10120;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;padding:14px;";
+    overlay.style.cssText = `position:fixed;inset:0;z-index:${URGENT_CONFIRM_Z};background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;padding:14px;`;
     overlay.innerHTML = `
       <div style="width:min(430px,94vw);background:#fff;border:2px solid #d00000;border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.35);padding:16px;text-align:center;">
         <div style="font-weight:900;font-size:19px;color:#9b0000;margin-bottom:12px;">XÁC NHẬN ĐẶT HÀNG KHẨN</div>
@@ -929,7 +934,7 @@ function showManualCreate(options={}) {
 
   const box = document.createElement("div");
   box.id = "dhkhan-create-box";
-  box.style.cssText = `position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:10090;background:#fff;border:2px solid #d00000;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.32);padding:12px;width:760px;max-width:98vw;overflow:auto;`;
+  box.style.cssText = `position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:${URGENT_CREATE_Z};background:#fff;border:2px solid #d00000;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.32);padding:12px;width:760px;max-width:98vw;overflow:auto;`;
   box.innerHTML = `
     <div id="dhkhan-create-drag" class="dhkhan-drag-handle" style="font-weight:900;color:#111;font-size:18px;margin:-4px -4px 10px;padding:5px 4px;">🚨 ĐẶT HÀNG KHẨN CẤP</div>
     <div class="dhkhan-grid">
