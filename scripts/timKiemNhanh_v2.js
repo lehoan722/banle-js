@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=32";
 
-window.TIM_KIEM_NHANH_BUILD = "2.4.0-FAST-ADMIN-FIRST-SIZE0";
-console.log("[TimKiemNhanh V2] BUILD 2.4.0-FAST-ADMIN-FIRST-SIZE0");
+window.TIM_KIEM_NHANH_BUILD = "1.2.24-ADMIN-OVERRIDE";
+console.log("[TimKiemNhanh] BUILD 1.2.24-ADMIN-OVERRIDE");
 
 const supabase = getSupabaseClient();
 
@@ -57,7 +57,7 @@ const SIZE_CONVERSION={
 const IMAGE_BASE="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 const PENDING_KEY="sales_copilot_pending_v1";
 const ACK_KEY="sales_copilot_ack_v1";
-const CART_KEY="tim_kiem_nhanh_selected_v2";
+const CART_KEY="tim_kiem_nhanh_selected_v1";
 const MAIN_GROUPS={
   AO_HE:{label:"Áo hè",defaultGroup:"AP",groups:["AP","SM","3LO","BOC"]},
   QUAN:{label:"Quần",defaultGroup:"QB",groups:["QB","QT","QV","NGO","QNI"]},
@@ -78,10 +78,10 @@ function refreshAuthState(){
   state.tennv=String(localStorage.getItem("tennv")||"").trim();
   state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
   const info=$("nvInfo");
-  if(info)info.textContent=`V2 FAST · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+  if(info)info.textContent=`V1.2.24 · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
 }
 
-const AFTER_CHECK_CACHE=new Map(); // V2: giữ tương thích, luồng chính không dùng N+1
+const AFTER_CHECK_CACHE=new Map();
 let pendingMissingSize="";
 const $=id=>document.getElementById(id);
 const norm=v=>String(v??"").trim().toUpperCase();
@@ -336,23 +336,6 @@ function params(offset){return{
   p_keyword:null,p_source_masp:state.sourceMasp||null,p_offset:offset,p_limit:40,p_den_ngay:businessDate()
 }}
 
-function paramsV2(offset=0,limit=40,mode=state.mode){return{
-  p_diadiem:state.diadiem,
-  p_nhomhang:state.group,
-  p_size:state.size||"",
-  p_form:state.form||null,
-  p_mausac:state.color||null,
-  p_mode:mode,
-  p_reference_price:Number(state.referencePrice||0),
-  p_source_masp:state.sourceMasp||null,
-  p_offset:Math.max(0,Number(offset||0)),
-  p_limit:Math.max(1,Number(limit||40))
-}}
-
-function normalizeFastRows(rows){
-  return (rows||[]).map(x=>({...x,__size0_fallback:!!x.is_size0_fallback}));
-}
-
 function normalizeSizeKey(value){
   const raw=String(value??"").replace(/^size\s+/i,"").trim();
   const m=raw.match(/\d{1,2}/);return m?m[0]:raw;
@@ -406,75 +389,166 @@ async function enrichProductsAfterCheck(rows){
 }
 
 
-async function fetchDiscountPageV24(offset=0,limit=40){
-  const {data,error}=await supabase.rpc("timkiemnhanh_giamgia_v24",{
-    p_diadiem:state.diadiem,
-    p_nhomhang:state.group,
-    p_size:state.size,
-    p_offset:Math.max(0,Number(offset||0)),
-    p_limit:Math.max(1,Number(limit||40)),
-    p_den_ngay:businessDate()
+async function fetchUnifiedDiscountRows(){
+  // Chế độ Giảm giá phải quét toàn bộ ứng viên của NHÓM,
+  // KHÔNG được để RPC loại sớm theo giam_gia_pct hoặc tồn size máy.
+  // Sau khi có tập ứng viên:
+  //   1) ghép ADMIN + RULE
+  //   2) lọc effective discount > 0
+  //   3) lấy tồn sau kiểm
+  //   4) đúng size trước, size 0 fallback sau.
+  const all=[];
+  let offset=0;
+  let total=0;
+  let guard=0;
+
+  do{
+    const p={
+      ...params(offset),
+      p_mode:"discount_scan",
+      p_sizes:[state.size,SIZE_FALLBACK_ZERO],
+      p_offset:offset,
+      p_limit:40
+    };
+
+    const {data,error}=await supabase.rpc("sales_copilot_tim_san_pham_v1111",p);
+    if(error)throw error;
+
+    const raw=(data||[]).map(x=>({...x}));
+    if(!raw.length)break;
+
+    total=Number(raw[0]?.total_count||total||0);
+    all.push(...raw);
+
+    offset+=raw.length;
+    guard++;
+  }while(offset<total && guard<80);
+
+  const dedupMap=new Map();
+  all.forEach(x=>{
+    const k=norm(x?.masp);
+    if(k&&!dedupMap.has(k))dedupMap.set(k,x);
   });
-  if(error)throw error;
-  return normalizeFastRows(data||[]);
+  const raw=[...dedupMap.values()];
+  if(!raw.length)return[];
+
+  // Ghép luật xả theo batch để tránh giới hạn payload/rpc quá lớn.
+  const xaMap=new Map();
+  const CHUNK=300;
+
+  for(let i=0;i<raw.length;i+=CHUNK){
+    const chunk=raw.slice(i,i+CHUNK);
+    const part=await getXaHangSuggestions({
+      supabase,
+      masps:chunk.map(x=>x.masp),
+      denNgay:businessDate()
+    }).catch(err=>{
+      console.warn("[TimKiemNhanh] Không đọc được rule giảm tự động:",err);
+      return new Map();
+    });
+
+    part.forEach((v,k)=>xaMap.set(k,v));
+  }
+
+  const merged=attachXaHangSuggestions(raw,xaMap)
+    .filter(sp=>Number(sp.giam_gia_hieu_luc||0)>0);
+
+  // Chỉ đọc tồn sau kiểm cho hàng thực sự có giảm hiệu lực.
+  const checked=await enrichProductsAfterCheck(merged);
+  const {exact,zeroOnly}=splitExactAndSizeZero(checked);
+
+  const sortDiscount=(a,b)=>{
+    const d=Number(b.giam_gia_hieu_luc||0)-Number(a.giam_gia_hieu_luc||0);
+    if(d)return d;
+
+    const ar=Number(a.giam_gia_rule_pct||0);
+    const br=Number(b.giam_gia_rule_pct||0);
+    if(br!==ar)return br-ar;
+
+    return String(a.masp||"").localeCompare(String(b.masp||""),"vi",{numeric:true});
+  };
+
+  exact.sort(sortDiscount);
+  zeroOnly.sort(sortDiscount);
+
+  return [...exact,...zeroOnly];
 }
 
 async function search(reset=true){
   if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",5000);return}
   if(!state.group||!state.size||state.loading)return;
   const off=reset?0:state.offset;
+
+  // Quan trọng: tìm mới không xóa bảng cũ trước khi RPC thành công.
+  // Chỉ khi đã nhận/xử lý được bộ kết quả mới mới thay bảng đang xem.
   setLoading(true,reset);
   try{
     if(state.mode==="discount"){
-      // V2.4: server xet TOAN BO ma con ban duoc theo size chon -> +1 -> -1 -> size 0.
-      // ADMIN override RULE; trong tung nhom size, ADMIN xep truoc RULE; sau do moi phan trang 40 dong.
-      const rows=await fetchDiscountPageV24(off,40);
-      const nextTotal=Number(rows[0]?.total_count||0);
+      // Luôn dựng lại danh sách thống nhất ADMIN + RULE.
+      // Không phân trang theo RPC discount cũ vì nó chỉ biết dmhanghoa.giam_gia_pct.
+      const rows=await fetchUnifiedDiscountRows();
+      state.products=rows;
+      state.offset=rows.length;
+      state.total=rows.length;
 
-      if(reset){
-        state.products=rows;
-        state.offset=rows.length;
-        state.total=nextTotal;
-      }else{
-        const existing=new Set(state.products.map(x=>norm(x.masp)));
-        const appendRows=rows.filter(x=>!existing.has(norm(x.masp)));
-        state.products=state.products.concat(appendRows);
-        state.offset=off+rows.length;
-        state.total=nextTotal||state.total;
-      }
-
-      renderProducts({reset,rows});
-      $("resultCount").textContent=`${state.products.length}/${state.total||state.products.length}`;
+      renderProducts({reset:true,rows});
+      $("resultCount").textContent=`${rows.length}/${rows.length}`;
       $("btnMore").style.display="none";
       return;
     }
 
-    // V2: 1 RPC duy nhất đã xử lý tồn hiện tại + chênh lệch kiểm + size 0 fallback.
-    const {data,error}=await supabase.rpc("timkiemnhanh_search_v2",paramsV2(off,40,state.mode));
-    if(error)throw error;
-    const raw=normalizeFastRows(data||[]);
-    const nextTotal=Number(raw[0]?.total_count||0);
+    const pExact=params(off);
+    const pZero={...params(off),p_sizes:[SIZE_FALLBACK_ZERO]};
 
-    // Luật xả chạy 1 batch trên chính 40 dòng đã trả về; không có N+1 tồn kho.
-    const xaMap=raw.length?await getXaHangSuggestions({
+    const [resExact,resZero]=await Promise.all([
+      supabase.rpc("sales_copilot_tim_san_pham_v1111",pExact),
+      supabase.rpc("sales_copilot_tim_san_pham_v1111",pZero)
+    ]);
+    if(resExact.error)throw resExact.error;
+    if(resZero.error)throw resZero.error;
+
+    const rawExact=(resExact.data||[]).map(x=>({...x}));
+    const rawZero=(resZero.data||[]).map(x=>({...x}));
+
+    const rawMap=new Map();
+    rawExact.forEach(x=>rawMap.set(norm(x.masp),x));
+    rawZero.forEach(x=>{if(!rawMap.has(norm(x.masp)))rawMap.set(norm(x.masp),x)});
+    const raw=[...rawMap.values()];
+
+    const nextTotal=
+      Number(rawExact[0]?.total_count||0)
+      + Number(rawZero[0]?.total_count||0);
+
+    // Data-driven xả hàng:
+    // gọi rule engine cho MỌI nhóm hàng.
+    // Chạy song song với bước bổ sung tồn sau kiểm để không làm chậm luồng tìm kiếm.
+    const xaPromise=getXaHangSuggestions({
       supabase,
       masps:raw.map(x=>x.masp),
       denNgay:businessDate()
     }).catch(err=>{
-      console.warn("[TimKiemNhanh V2] Module gợi ý xả hàng lỗi, bỏ qua:",err);
+      console.warn("[TimKiemNhanh] Module goi y xa hang loi, bo qua:",err);
       return new Map();
-    }):new Map();
-    const rows=attachXaHangSuggestions(raw,xaMap);
+    });
+
+    const [checked,xaMap]=await Promise.all([
+      enrichProductsAfterCheck(raw),
+      xaPromise
+    ]);
+
+    const checkedWithXa=attachXaHangSuggestions(checked,xaMap);
+    const {exact,zeroOnly}=splitExactAndSizeZero(checkedWithXa);
+    const rows=[...exact,...zeroOnly];
 
     if(reset){
       state.products=rows;
-      state.offset=raw.length;
+      state.offset=Math.max(rawExact.length,rawZero.length);
       state.total=nextTotal;
     }else{
       const existing=new Set(state.products.map(x=>norm(x.masp)));
       const appendRows=rows.filter(x=>!existing.has(norm(x.masp)));
       state.products=state.products.concat(appendRows);
-      state.offset=off+raw.length;
+      state.offset=off+Math.max(rawExact.length,rawZero.length);
       state.total=nextTotal||state.total;
     }
 
@@ -483,7 +557,7 @@ async function search(reset=true){
     $("btnMore").style.display="none";
   }catch(e){
     console.error(e);
-    toast("Lỗi tìm sản phẩm V2: "+(e.message||e),5000);
+    toast("Lỗi tìm sản phẩm: "+(e.message||e),5000);
   }finally{
     setLoading(false,reset);
     requestAnimationFrame(maybeAutoLoadMore);
@@ -501,19 +575,14 @@ function productCardHtml(sp,orderNo=0,totalNo=0){
   const formSizes=compactFormSizes(sp);
   const orderText=orderNo>0?`${orderNo}/${totalNo||orderNo}`:"";
   const rulePct=Number(sp.goi_y_xa_pct||0);
-  const adminPct=Number(sp.giam_gia_admin_pct ?? sp.giam_gia_pct ?? 0);
-  const effectivePct=adminPct>0 ? adminPct : Number(sp.giam_gia_hieu_luc||rulePct||0);
+  const effectivePct=Number(sp.giam_gia_hieu_luc||sp.giam_gia_pct||rulePct||0);
   const orderXaText=effectivePct?`${orderText} ${effectivePct}`:orderText;
   const xaTitle=effectivePct
     ? `Giảm hiệu lực ${effectivePct}% · nguồn ${esc(sp.giam_gia_nguon||"ADMIN")} · luật ${esc(sp.goi_y_xa_detail?.rule_code||"")}`
     : "";
   const xaClass=effectivePct?" discount-active":"";
   const strongClass=effectivePct>=50?" discount-strong":"";
-  const isDiscountView=state.mode==="discount"&&effectivePct>0;
-  const discountBadge=isDiscountView?`<div class="search-discount-badge">${effectivePct}%</div>`:(effectivePct>=50?`<div class="search-discount-badge">${effectivePct}%</div>`:"");
-  const matchedSize=String(sp.matched_size||"").trim();
-  const sizeBadge=isDiscountView&&matchedSize?`<div class="search-size-badge">${esc(matchedSize)}</div>`:"";
-  const badge=`${sizeBadge}${discountBadge}`;
+  const badge=effectivePct>=50?`<div class="search-discount-badge">${effectivePct}%</div>`:"";
   const size0Tag=sp.__size0_fallback
     ? `<div class="size0-fallback-tag">Không quản lý size · Tồn size 0: ${stockForAny(sp,SIZE_FALLBACK_ZERO)}</div>`
     : "";
@@ -530,12 +599,7 @@ function bindProductCards(cards){
 function renderProducts({reset=true,rows=[]}={}){
   const box=$("productList");
   if(reset){
-    if(!state.products.length){
-      const msg=state.mode==="discount"
-        ?"Không có sản phẩm giảm giá còn bán được ở size đã chọn, ±1 size hoặc size 0 tại cơ sở này."
-        :"Không có sản phẩm còn đúng size tại cơ sở này theo tồn sau kiểm.";
-      box.innerHTML=`<div class="empty" style="grid-column:1/-1">${esc(msg)}</div>`;return
-    }
+    if(!state.products.length){box.innerHTML='<div class="empty" style="grid-column:1/-1">Không có sản phẩm còn đúng size tại cơ sở này theo tồn sau kiểm.</div>';return}
     box.innerHTML=state.products.map((sp,i)=>productCardHtml(sp,i+1,state.total||state.products.length)).join("");
     bindProductCards(Array.from(box.querySelectorAll(".product")));
     return;
@@ -836,58 +900,69 @@ async function processIncomingMaspFromUrl(maspRaw=""){
 async function processCode(raw,options={}){
   const code=norm(raw);if(!code||state.loading)return;
   if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",6000);return}
+  // Đọc mã nguồn là thao tác xem nhanh: không làm mờ/xóa bảng kết quả hiện tại.
   setLoading(true,false);
   try{
-    // V2: 1 RPC trả cả thông tin hàng + tồn sau kiểm tất cả size.
-    const {data,error}=await supabase.rpc("timkiemnhanh_lay_san_pham_v2",{
-      p_masp:code,
-      p_diadiem:state.diadiem
-    });
-    if(error)throw error;
-    const sp=(data||[])[0];
-    if(!sp){toast("Mã sản phẩm không tồn tại.");return}
+    const {data,error}=await supabase.rpc("sales_copilot_lay_san_pham_theo_ma_v1111",{p_masp:code,p_den_ngay:businessDate()});
+    if(error)throw error;const sp=(data||[])[0];if(!sp){toast("Mã sản phẩm không tồn tại.");return}
 
     $("codeInput").value=sp.masp;$("suggestBox").style.display="none";
-    state.sourceMasp=sp.masp;
-    state.sourceProduct={...sp};
-    state.group=String(sp.nhomhang||"").trim();
-    state.mainGroup=mainKeyForGroup(state.group);
-    state.form=formNorm(sp.form);
-    state.color=String(sp.mausac||"").trim();
-    state.referencePrice=Number(sp.giale||0);
-    state.size=SIZE_LIST.includes(String(options.preselectedSize||""))?String(options.preselectedSize):"";
-    state.sourceStockAfterCheck=sp.ton_sizes||{};
-    state.sourceProduct.ton_sizes=state.sourceStockAfterCheck;
-    state.sizeGuideOpen=!(options.autoSearch&&state.size);
-
-    $("formSelect").value=state.form||"";
-    $("colorSelect").value=state.color||"";
-    $("refPrice").value=state.referencePrice||"";
+    state.sourceMasp=sp.masp;state.sourceProduct={...sp};state.group=String(sp.nhomhang||"").trim();state.mainGroup=mainKeyForGroup(state.group);
+    state.form=formNorm(sp.form);state.color=String(sp.mausac||"").trim();state.referencePrice=Number(sp.giale||0);state.size=SIZE_LIST.includes(String(options.preselectedSize||""))?String(options.preselectedSize):"";
+    state.sourceStockAfterCheck=null;state.sizeGuideOpen=false;
+    $("formSelect").value=state.form||"";$("colorSelect").value=state.color||"";$("refPrice").value=state.referencePrice||"";
     renderSourceLocation();renderGroups();renderSizes();
 
+    const stock=await fetchAfterCheckStockForMasp(sp.masp,{force:true});
+    state.sourceStockAfterCheck=stock;state.sourceProduct.ton_sizes=stock;state.sizeGuideOpen=!(options.autoSearch&&state.size);renderSizes();
     if(options.autoSearch&&state.size){
       hideSizeWarning();
+      // processCode đang giữ loading=true; nhả khóa trước khi gọi search().
       setLoading(false);
       await search(true);
     }else{
       const any=SIZE_LIST.some(s=>sourceQty(s)>0);
-      if(any)showSizeWarning("Chọn size để tìm sản phẩm phù hợp");
-      else showSizeWarning(`Mã này hiện không còn size tồn tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm. Bạn vẫn có thể chọn size cần tìm.`);
+      if(any){
+        showSizeWarning("Chọn size để tìm sản phẩm phù hợp");
+      }else{
+        showSizeWarning(`Mã này hiện không còn size tồn tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm. Bạn vẫn có thể chọn size cần tìm.`);
+      }
     }
-
+    // Tự mở StockQuickPopup khi luồng gọi yêu cầu (Enter hoặc camera quét mã).
     if(options.openStockQuick===true){
       try{window.StockQuick?.showFor($("codeInput"),sp.masp)}
-      catch(stockErr){console.warn("[TimKiemNhanh V2] Không mở được StockQuickPopup:",stockErr)}
+      catch(stockErr){console.warn("[TimKiemNhanh] Không mở được StockQuickPopup:",stockErr)}
     }
     playSuccessBeep();$("codeInput").blur();
-  }catch(e){
-    console.error(e);toast("Không lấy được mã sản phẩm V2: "+(e.message||e),5000)
-  }finally{setLoading(false)}
+  }catch(e){console.error(e);toast("Không lấy được mã sản phẩm: "+(e.message||e),5000)}finally{setLoading(false)}
 }
 
 function clearSourceForManualFilter(){
   state.sourceMasp="";state.sourceProduct=null;state.sourceStockAfterCheck=null;state.sizeGuideOpen=false;hideSizeWarning();renderSourceLocation();
 }
+
+// V20261101 - cổng gọi nội bộ cho StockQuick khi đang ở chính timkiemnhanh.html.
+// Dùng lại processCode hiện có nên không tạo một luồng tìm kiếm thứ hai.
+async function openFromStockQuick(maspRaw,sizeRaw=""){
+  const masp=norm(maspRaw);
+  if(!masp)return false;
+
+  const size=String(sizeRaw||"").replace(/^size\s+/i,"").trim();
+  const validSize=SIZE_LIST.includes(size)?size:"";
+
+  const input=$("codeInput");
+  if(input)input.value=masp;
+
+  await processCode(masp,{
+    preselectedSize:validSize,
+    autoSearch:!!validSize
+  });
+  return true;
+}
+
+window.TimKiemNhanh=Object.assign(window.TimKiemNhanh||{},{
+  openFromStockQuick
+});
 
 function bind(){
   setupBeepUnlockOnce(document);
