@@ -1219,7 +1219,7 @@ data-color-masp="${targetMasp}"
     try {
       if (!window.PhatSinh90NgayPopup?.open) {
         if (!phatSinh90NgayLoadPromise) {
-          phatSinh90NgayLoadPromise = import("/scripts/phatSinh90NgayPopup.js?v=2")
+          phatSinh90NgayLoadPromise = import("/scripts/phatSinh90NgayPopup.js?v=3")
             .catch((err) => {
               phatSinh90NgayLoadPromise = null;
               throw err;
