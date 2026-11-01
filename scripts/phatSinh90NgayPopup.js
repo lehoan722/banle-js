@@ -173,7 +173,7 @@ function ensureStyle() {
   st.id = "ps90-style";
   st.textContent = `
     .ps90-backdrop{
-      position:fixed; inset:0; z-index:120000;
+      position:fixed; inset:0; z-index:300200;
       background:rgba(15,23,42,.48);
       display:flex; align-items:center; justify-content:center;
       padding:12px;
