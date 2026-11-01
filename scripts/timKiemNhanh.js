@@ -941,6 +941,29 @@ function clearSourceForManualFilter(){
   state.sourceMasp="";state.sourceProduct=null;state.sourceStockAfterCheck=null;state.sizeGuideOpen=false;hideSizeWarning();renderSourceLocation();
 }
 
+// V20261101 - cổng gọi nội bộ cho StockQuick khi đang ở chính timkiemnhanh.html.
+// Dùng lại processCode hiện có nên không tạo một luồng tìm kiếm thứ hai.
+async function openFromStockQuick(maspRaw,sizeRaw=""){
+  const masp=norm(maspRaw);
+  if(!masp)return false;
+
+  const size=String(sizeRaw||"").replace(/^size\s+/i,"").trim();
+  const validSize=SIZE_LIST.includes(size)?size:"";
+
+  const input=$("codeInput");
+  if(input)input.value=masp;
+
+  await processCode(masp,{
+    preselectedSize:validSize,
+    autoSearch:!!validSize
+  });
+  return true;
+}
+
+window.TimKiemNhanh=Object.assign(window.TimKiemNhanh||{},{
+  openFromStockQuick
+});
+
 function bind(){
   setupBeepUnlockOnce(document);
   $("btnNew").onclick=resetToInitialState;
