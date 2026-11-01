@@ -1,8 +1,9 @@
-// HOAN TUYET - XAC NHAN ANH SAN PHAM V4
+// HOAN TUYET - XAC NHAN ANH SAN PHAM V5 - FAIL CLOSED / BYPASS KHONG LUU
+(() => {
+'use strict';
 // Script độc lập đăng ký window.XacNhanAnhSP; hoadon.js chỉ gọi qua hook mềm nếu script này tồn tại.
 // Áp dụng: banlemtcs1, banlemtcs2, bannvcs1, bannvcs2.
 
-const STORAGE_KEY = "xacnhananhsp_boqua";
 const IMAGE_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham";
 const ALLOWED_PAGES = new Set([
   "banlemtcs1.html",
@@ -16,7 +17,10 @@ let currentMasp = "";
 let initialized = false;
 
 function currentPage() {
-  return (location.pathname.split("/").pop() || "").toLowerCase();
+  const raw = (location.pathname.split("/").pop() || "").toLowerCase().trim();
+  // Hỗ trợ cả URL có .html và route không có .html.
+  if (!raw) return "";
+  return raw.endsWith(".html") ? raw : `${raw}.html`;
 }
 
 function laTrangApDungXacNhanAnhSP() {
@@ -33,10 +37,12 @@ function laAdminXacNhanAnhSP() {
 }
 
 function coDuocBoQuaXacNhanAnhSP() {
-  // Bắt buộc đủ 3 điều kiện: đúng trang + là admin + admin đã bật bỏ qua.
+  // V5: checkbox trên màn hình là nguồn sự thật duy nhất.
+  // KHÔNG lưu localStorage để tránh trạng thái "bỏ kiểm" còn sót từ hôm trước/tab khác.
+  const cb = document.getElementById("xacnhananhsp-boqua");
   return laTrangApDungXacNhanAnhSP()
     && laAdminXacNhanAnhSP()
-    && truthy(localStorage.getItem(STORAGE_KEY));
+    && cb?.checked === true;
 }
 
 function formatMoney(value) {
@@ -189,8 +195,13 @@ function finish(result) {
 }
 
 function injectAdminBypass() {
-  if (!laTrangApDungXacNhanAnhSP() || !laAdminXacNhanAnhSP()) return;
-  if (document.getElementById("xacnhananhsp-admin-wrap")) return;
+  if (!laTrangApDungXacNhanAnhSP()) return;
+  const old = document.getElementById("xacnhananhsp-admin-wrap");
+  if (!laAdminXacNhanAnhSP()) {
+    old?.remove();
+    return;
+  }
+  if (old) return;
 
   const tongsl = document.getElementById("tongsl");
   if (!tongsl) return;
@@ -204,10 +215,8 @@ function injectAdminBypass() {
   label.insertAdjacentElement("afterend", wrap);
 
   const cb = wrap.querySelector("#xacnhananhsp-boqua");
-  cb.checked = truthy(localStorage.getItem(STORAGE_KEY));
-  cb.addEventListener("change", () => {
-    localStorage.setItem(STORAGE_KEY, cb.checked ? "true" : "false");
-  });
+  // Mỗi lần nạp trang luôn mặc định BẮT BUỘC kiểm ảnh. Admin muốn bỏ qua phải tích lại.
+  cb.checked = false;
 }
 
 function khoiTaoXacNhanAnhSP() {
@@ -301,3 +310,4 @@ if (document.readyState === "loading") {
 } else {
   setTimeout(bootXacNhanAnhSP, 0);
 }
+})();
