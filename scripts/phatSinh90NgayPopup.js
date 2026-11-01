@@ -173,7 +173,7 @@ function ensureStyle() {
   st.id = "ps90-style";
   st.textContent = `
     .ps90-backdrop{
-      position:fixed; inset:0; z-index:300200;
+      position:fixed; inset:0; z-index:320200;
       background:rgba(15,23,42,.48);
       display:flex; align-items:center; justify-content:center;
       padding:12px;
@@ -273,12 +273,12 @@ async function open(maspRaw) {
     <div class="ps90-card" role="dialog" aria-modal="true">
       <div class="ps90-head">
         <div>
-          <div class="ps90-title">PHÁT SINH 90 NGÀY · ${esc(masp)}</div>
+          <div class="ps90-title">PHÁT SINH TOÀN BỘ · ${esc(masp)}</div>
           <div class="ps90-sub">Đang tải dữ liệu...</div>
         </div>
         <div class="ps90-tools">
           <button class="ps90-btn ps90-ledger" type="button">Sổ chi tiết tồn</button>
-          <button class="ps90-btn ps90-all" type="button">Xem toàn bộ</button>
+          <button class="ps90-btn ps90-all" type="button">Xem 90 ngày</button>
           <button class="ps90-btn primary ps90-close" type="button">Đóng</button>
         </div>
       </div>
@@ -292,7 +292,7 @@ async function open(maspRaw) {
   const sub = overlay.querySelector(".ps90-sub");
   const wrap = overlay.querySelector(".ps90-wrap");
   const btnAll = overlay.querySelector(".ps90-all");
-  let mode = "90";
+  let mode = "all";
   let history90 = null;
   let historyAll = null;
   let loading = false;
@@ -336,13 +336,17 @@ async function open(maspRaw) {
     const target = mode === "90" ? "all" : "90";
     loading = true;
     if (btnAll) btnAll.disabled = true;
-    if (sub) sub.textContent = target === "all" ? "Đang tải toàn bộ vòng đời..." : "Đang trở lại 90 ngày...";
+    if (sub) sub.textContent = target === "all" ? "Đang tải toàn bộ vòng đời..." : "Đang tải 90 ngày...";
     try {
       if (target === "all") {
         if (!historyAll) historyAll = await loadAllHistory(masp);
         render(historyAll, "all");
       } else {
-        render(history90 || [], "90");
+        if (!history90) {
+          const payload = await loadData(masp);
+          history90 = getHistory(payload);
+        }
+        render(history90, "90");
       }
     } catch (err) {
       console.error("[PhatSinh90NgayPopup] Lỗi chuyển chế độ:", err);
@@ -371,13 +375,12 @@ async function open(maspRaw) {
   document.addEventListener("keydown", onKey);
 
   try {
-    const payload = await loadData(masp);
-    history90 = getHistory(payload);
-    render(history90, "90");
+    historyAll = await loadAllHistory(masp);
+    render(historyAll, "all");
   } catch (err) {
-    console.error("[PhatSinh90NgayPopup] Lỗi tải dữ liệu:", err);
+    console.error("[PhatSinh90NgayPopup] Lỗi tải dữ liệu toàn bộ:", err);
     if (sub) sub.textContent = "Lỗi tải dữ liệu";
-    wrap.innerHTML = `<div class="ps90-error">Không tải được Phát sinh 90 ngày: ${esc(err?.message || err)}</div>`;
+    wrap.innerHTML = `<div class="ps90-error">Không tải được Phát sinh toàn bộ: ${esc(err?.message || err)}</div>`;
   }
 }
 
