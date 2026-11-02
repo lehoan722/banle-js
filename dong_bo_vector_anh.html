@@ -1,183 +1,35 @@
--- VECTOR SYNC V2 HYBRID - HOAN TUYET
--- Muc tieu:
--- 1) Ghi nhan nguon vector (web q8 hay Windows python fp32)
--- 2) Admin co the liet ke anh moi/thay doi trong bucket anhsanpham
--- 3) Admin co the upsert vector tao tren browser ma khong lo service_role key
--- Khong xoa du lieu cu.
-
-begin;
-
-alter table public.chi_muc_anh_san_pham
-  add column if not exists nguon_vector text;
-
--- Cac vector python-fp32-v1 da co truoc day duoc tao boi Windows indexer.
-update public.chi_muc_anh_san_pham
-set nguon_vector = 'windows_python_fp32'
-where phien_ban_vector = 'python-fp32-v1'
-  and (nguon_vector is null or btrim(nguon_vector) = '');
-
-create index if not exists idx_chi_muc_anh_nguon_vector
-  on public.chi_muc_anh_san_pham(phien_ban_vector, nguon_vector);
-
--- Liet ke anh can browser index.
--- Chi admin moi goi duoc.
-create or replace function public.admin_vector_anh_can_dong_bo(
-  p_limit integer default 50,
-  p_bucket text default 'anhsanpham',
-  p_phien_ban text default 'python-fp32-v1'
-)
-returns table(
-  ten_anh text,
-  storage_updated_at timestamptz,
-  trang_thai_vector text,
-  nguon_vector text
-)
-language sql
-security definer
-set search_path = public, storage
-as $$
-  select
-    o.name::text as ten_anh,
-    o.updated_at as storage_updated_at,
-    case
-      when c.ten_anh is null then 'MOI'
-      when c.storage_updated_at is distinct from o.updated_at then 'ANH_DA_THAY_DOI'
-      when coalesce(c.nguon_vector,'') = 'web_transformers_q8' then 'DA_CO_WEB_Q8'
-      else 'KHAC'
-    end as trang_thai_vector,
-    c.nguon_vector
-  from storage.objects o
-  left join public.chi_muc_anh_san_pham c
-    on c.ten_anh = o.name
-   and c.phien_ban_vector = p_phien_ban
-  where public.is_admin()
-    and o.bucket_id = p_bucket
-    and lower(o.name) ~ '\.(jpg|jpeg|png|webp|jfif)$'
-    and (
-      c.ten_anh is null
-      or c.storage_updated_at is distinct from o.updated_at
-    )
-  order by o.updated_at asc nulls last, o.name asc
-  limit greatest(1, least(coalesce(p_limit,50), 200));
-$$;
-
-revoke all on function public.admin_vector_anh_can_dong_bo(integer,text,text) from public;
-grant execute on function public.admin_vector_anh_can_dong_bo(integer,text,text) to authenticated;
-
--- Thong ke nhanh de Admin biet con bao nhieu anh can index.
-create or replace function public.admin_vector_thong_ke(
-  p_bucket text default 'anhsanpham',
-  p_phien_ban text default 'python-fp32-v1'
-)
-returns table(
-  tong_anh_bucket bigint,
-  da_co_vector bigint,
-  can_dong_bo bigint,
-  vector_web_q8 bigint,
-  vector_windows_fp32 bigint
-)
-language sql
-security definer
-set search_path = public, storage
-as $$
-  with imgs as (
-    select o.name, o.updated_at
-    from storage.objects o
-    where o.bucket_id = p_bucket
-      and lower(o.name) ~ '\.(jpg|jpeg|png|webp|jfif)$'
-  ), joined as (
-    select i.name, i.updated_at,
-           c.ten_anh, c.storage_updated_at, c.nguon_vector
-    from imgs i
-    left join public.chi_muc_anh_san_pham c
-      on c.ten_anh=i.name and c.phien_ban_vector=p_phien_ban
-  )
-  select
-    count(*)::bigint,
-    count(*) filter (where ten_anh is not null)::bigint,
-    count(*) filter (where ten_anh is null or storage_updated_at is distinct from updated_at)::bigint,
-    count(*) filter (where nguon_vector='web_transformers_q8')::bigint,
-    count(*) filter (where nguon_vector='windows_python_fp32')::bigint
-  from joined
-  where public.is_admin();
-$$;
-
-revoke all on function public.admin_vector_thong_ke(text,text) from public;
-grant execute on function public.admin_vector_thong_ke(text,text) to authenticated;
-
--- Upsert vector browser. Cung phien_ban de he thong tim kiem hien tai thay ngay.
--- Windows indexer V2 se thay the bang fp32 sau.
-create or replace function public.admin_vector_upsert_web(
-  p_ten_anh text,
-  p_vector vector(768),
-  p_storage_updated_at timestamptz,
-  p_hash_anh text default null,
-  p_bucket text default 'anhsanpham',
-  p_phien_ban text default 'python-fp32-v1'
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_stem text;
-  v_masp text;
-  v_url text;
-begin
-  if not public.is_admin() then
-    raise exception 'ADMIN_REQUIRED' using errcode='42501';
-  end if;
-
-  if p_ten_anh is null or btrim(p_ten_anh)='' then
-    raise exception 'TEN_ANH_RONG';
-  end if;
-
-  v_stem := regexp_replace(p_ten_anh, '\.[^.]+$', '', 'i');
-  v_stem := regexp_replace(v_stem, '(__|_)[0-9]+$', '');
-  v_masp := btrim(v_stem);
-  v_url := current_setting('app.settings.supabase_url', true);
-
-  -- Neu project khong co app.settings.supabase_url, frontend da co URL va cot URL co the tu tao ben duoi.
-  -- Tao URL tu ten bucket dua tren duong dan hien co neu co the; neu khong, giu URL cu neu update.
-  insert into public.chi_muc_anh_san_pham(
-    masp, ten_anh, vector_siglip, model_vector, phien_ban_vector,
-    storage_updated_at, hash_anh, la_anh_chinh, trang_thai,
-    nguon_vector, ngay_cap_nhat
-  ) values (
-    v_masp,
-    p_ten_anh,
-    p_vector,
-    'Xenova/siglip-base-patch16-224',
-    p_phien_ban,
-    p_storage_updated_at,
-    p_hash_anh,
-    not (regexp_replace(p_ten_anh, '\.[^.]+$', '', 'i') ~ '(__|_)[0-9]+$'),
-    'hoat_dong',
-    'web_transformers_q8',
-    now()
-  )
-  on conflict (ten_anh, phien_ban_vector) do update set
-    masp=excluded.masp,
-    vector_siglip=excluded.vector_siglip,
-    model_vector=excluded.model_vector,
-    storage_updated_at=excluded.storage_updated_at,
-    hash_anh=excluded.hash_anh,
-    la_anh_chinh=excluded.la_anh_chinh,
-    trang_thai='hoat_dong',
-    nguon_vector='web_transformers_q8',
-    ngay_cap_nhat=now();
-
-  return jsonb_build_object(
-    'ok', true,
-    'ten_anh', p_ten_anh,
-    'masp', v_masp,
-    'nguon_vector', 'web_transformers_q8'
-  );
-end;
-$$;
-
-revoke all on function public.admin_vector_upsert_web(text,vector,timestamptz,text,text,text) from public;
-grant execute on function public.admin_vector_upsert_web(text,vector,timestamptz,text,text,text) to authenticated;
-
-commit;
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Đồng bộ vector ảnh · Admin</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#111827;--muted:#667085;--blue:#0b78d1;--dark:#111827;--ok:#eaf8ef;--warn:#fff7e8;--bad:#fff0f0;--line:#d7dee7}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}.wrap{max-width:980px;margin:auto;padding:12px}.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}h1{font-size:25px;margin:0}.sub{color:var(--muted);margin-top:4px;line-height:1.45}.top{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}.btn{border:0;border-radius:11px;min-height:46px;padding:10px 15px;font-weight:900;font-size:15px;cursor:pointer}.primary{background:var(--blue);color:#fff}.dark{background:var(--dark);color:#fff}.light{background:#eaf2fb;color:#075f9f}.danger{background:#fee2e2;color:#991b1b}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.stat{background:#f7f9fb;border-radius:12px;padding:11px}.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}select{min-height:46px;border:1px solid #cbd5e1;border-radius:10px;padding:0 10px;background:#fff;font-size:15px}.status{padding:10px 12px;border-radius:10px;background:#f3f4f6;margin-top:8px;line-height:1.45}.ok{background:var(--ok);color:#17663b}.warn{background:var(--warn);color:#8a5b00}.err{background:var(--bad);color:#b42318}.progress{height:12px;border-radius:999px;background:#e5e7eb;overflow:hidden;margin-top:10px}.bar{height:100%;width:0;background:#111827;transition:width .2s}.list{margin-top:10px;border-top:1px solid #e5e7eb}.item{display:grid;grid-template-columns:52px 1fr auto;gap:9px;align-items:center;padding:8px 0;border-bottom:1px solid #eef2f6}.thumb{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#eee}.name{font-weight:800;word-break:break-all}.small{font-size:12px;color:var(--muted)}.badge{padding:4px 7px;border-radius:999px;background:#eaf2fb;color:#075f9f;font-size:11px;font-weight:800}.log{max-height:260px;overflow:auto;background:#07111f;color:#d7f7df;border-radius:12px;padding:10px;font:12px/1.45 ui-monospace,monospace;white-space:pre-wrap}.hidden{display:none}@media(max-width:720px){.wrap{padding:7px}.card{padding:10px}.stats{grid-template-columns:repeat(2,1fr)}.top{display:block}.top .btn{margin-top:8px}.item{grid-template-columns:44px 1fr}.item .badge{grid-column:2}.thumb{width:44px;height:44px}}
+</style></head><body><div class="wrap">
+<section class="card"><div class="top"><div><h1>🧠 Đồng bộ vector ảnh mới</h1><div class="sub">Admin · SigLIP chạy ngay trên trình duyệt. Dùng cho số lượng nhỏ. Vector web được dùng tìm kiếm ngay; Windows FP32 có thể chuẩn hóa lại sau.</div><div id="who" class="small"></div></div><button id="logout" class="btn light">Thoát</button></div></section>
+<section class="card"><div class="stats"><div class="stat"><b id="sBucket">–</b><span>Ảnh bucket</span></div><div class="stat"><b id="sVector">–</b><span>Đã có vector</span></div><div class="stat"><b id="sNeed">–</b><span>Cần đồng bộ</span></div><div class="stat"><b id="sWeb">–</b><span>Web q8</span></div><div class="stat"><b id="sWin">–</b><span>Windows FP32</span></div></div></section>
+<section class="card"><div class="row"><select id="limit"><option>10</option><option selected>20</option><option>50</option><option>100</option></select><button id="check" class="btn light">↻ KIỂM TRA ẢNH MỚI</button><button id="loadModel" class="btn dark">NẠP SIGLIP</button><button id="run" class="btn primary">MÃ HÓA ẢNH ĐANG LIỆT KÊ</button></div><div id="status" class="status">Đang khởi tạo đăng nhập…</div><div class="progress"><div id="bar" class="bar"></div></div></section>
+<section class="card"><div class="sub"><b>Danh sách cần xử lý</b> · Chỉ ảnh chưa có vector hoặc ảnh đã thay đổi.</div><div id="list" class="list"></div></section>
+<section class="card"><div class="sub"><b>Nhật ký</b></div><div id="log" class="log">Chưa chạy.</div></section>
+</div>
+<script type="module">
+import { getSupabaseClient, khoiTaoDangNhapDungChung, getCurrentUserInfo, dangXuatDungChung } from './scripts/authModule.js';
+import { AutoProcessor, SiglipVisionModel, RawImage, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+const supabase=getSupabaseClient(); env.allowLocalModels=false; env.useBrowserCache=true;
+const MODEL='Xenova/siglip-base-patch16-224', VERSION='python-fp32-v1', BUCKET='anhsanpham';
+let processor=null,model=null,queue=[],running=false;
+const $=id=>document.getElementById(id); const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function status(t,cls=''){ $('status').textContent=t; $('status').className='status '+cls }
+function log(t){ const x=$('log'); if(x.textContent==='Chưa chạy.')x.textContent=''; x.textContent+=`[${new Date().toLocaleTimeString()}] ${t}\n`; x.scrollTop=x.scrollHeight }
+function l2(a){let s=0;for(const x of a)s+=Number(x)*Number(x);const n=Math.sqrt(s)||1;return Array.from(a,x=>Number(x)/n)}
+function vecLit(v){return '['+Array.from(v,x=>Number(x).toPrecision(9)).join(',')+']'}
+function publicUrl(name){return `${location.origin.includes('hoantuyet.vn')?'https://rddjrmbyftlcvrgzlyby.supabase.co':window.__SUPABASE_URL__||'https://rddjrmbyftlcvrgzlyby.supabase.co'}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(name).replace(/%2F/g,'/')}`}
+async function sha256(buf){const h=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+async function ensureModel(){if(model&&processor)return;status('Đang nạp SigLIP q8…','warn');const t=performance.now();processor=await AutoProcessor.from_pretrained(MODEL);model=await SiglipVisionModel.from_pretrained(MODEL,{dtype:'q8',device:'wasm'});log(`Đã nạp model trong ${((performance.now()-t)/1000).toFixed(1)}s`);status('SigLIP đã sẵn sàng.','ok')}
+async function vectorFromBlob(blob){const u=URL.createObjectURL(blob);try{const raw=await RawImage.fromURL(u);const inputs=await processor(raw);const out=await model(inputs);return l2(Array.from(out.pooler_output.data))}finally{URL.revokeObjectURL(u)}}
+async function stats(){const {data,error}=await supabase.rpc('admin_vector_thong_ke',{p_bucket:BUCKET,p_phien_ban:VERSION});if(error)throw error;const x=Array.isArray(data)?data[0]:data; $('sBucket').textContent=x?.tong_anh_bucket??0;$('sVector').textContent=x?.da_co_vector??0;$('sNeed').textContent=x?.can_dong_bo??0;$('sWeb').textContent=x?.vector_web_q8??0;$('sWin').textContent=x?.vector_windows_fp32??0}
+async function check(){status('Đang kiểm tra bucket…','warn');await stats();const lim=Number($('limit').value||20);const {data,error}=await supabase.rpc('admin_vector_anh_can_dong_bo',{p_limit:lim,p_bucket:BUCKET,p_phien_ban:VERSION});if(error)throw error;queue=data||[];render();status(queue.length?`Có ${queue.length} ảnh trong danh sách xử lý hiện tại.`:'Không có ảnh mới/thay đổi.','ok')}
+function render(){const box=$('list');box.innerHTML='';for(const r of queue){const u=publicUrl(r.ten_anh);const d=document.createElement('div');d.className='item';d.innerHTML=`<img class="thumb" loading="lazy" src="${esc(u)}"><div><div class="name">${esc(r.ten_anh)}</div><div class="small">${esc(r.storage_updated_at||'')}</div></div><div class="badge">${esc(r.trang_thai_vector||'')}</div>`;box.appendChild(d)}}
+async function processOne(r){const u=publicUrl(r.ten_anh);const resp=await fetch(u,{cache:'no-store'});if(!resp.ok)throw new Error(`HTTP ${resp.status}`);const buf=await resp.arrayBuffer();const hash=await sha256(buf);const vec=await vectorFromBlob(new Blob([buf]));const {error}=await supabase.rpc('admin_vector_upsert_web',{p_ten_anh:r.ten_anh,p_vector:vecLit(vec),p_storage_updated_at:r.storage_updated_at,p_hash_anh:hash,p_bucket:BUCKET,p_phien_ban:VERSION});if(error)throw error}
+async function run(){if(running)return;if(!queue.length){status('Không có ảnh trong danh sách. Hãy bấm KIỂM TRA trước.','warn');return}running=true;$('run').disabled=true;let ok=0,err=0;try{await ensureModel();for(let i=0;i<queue.length;i++){const r=queue[i];status(`Đang xử lý ${i+1}/${queue.length}: ${r.ten_anh}`,'warn');try{await processOne(r);ok++;log(`OK ${r.ten_anh}`)}catch(e){err++;log(`LỖI ${r.ten_anh}: ${e.message||e}`)}$('bar').style.width=`${Math.round((i+1)*100/queue.length)}%`}status(`Hoàn tất: ${ok} OK, ${err} lỗi.` ,err?'warn':'ok');await stats();await check()}finally{running=false;$('run').disabled=false}}
+$('check').onclick=()=>check().catch(e=>{console.error(e);status('Lỗi kiểm tra: '+(e.message||e),'err')});$('loadModel').onclick=()=>ensureModel().catch(e=>{console.error(e);status('Lỗi model: '+(e.message||e),'err')});$('run').onclick=()=>run().catch(e=>{console.error(e);status('Lỗi: '+(e.message||e),'err')});$('logout').onclick=()=>dangXuatDungChung();
+(async()=>{try{await khoiTaoDangNhapDungChung();const u=await getCurrentUserInfo();if(!u?.is_admin){status('Trang này chỉ dành cho Admin.','err');$('run').disabled=true;$('check').disabled=true;return}$('who').textContent=`ADMIN · ${u?.tennv||u?.manv||''}`;await check()}catch(e){console.error(e);status('Lỗi đăng nhập/khởi tạo: '+(e.message||e),'err')}})();
+</script></body></html>
