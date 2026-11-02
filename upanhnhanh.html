@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>Up ảnh nhanh – MÃ SP → chụp → lưu + vector</title>
+  <title>Up ảnh nhanh – MÃ SP → chụp → lưu + vector V1.1</title>
   <meta name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="viewport"
@@ -401,9 +401,9 @@
         <div class="attr-group">
           <div class="attr-label">Form <span style="color:red">*</span></div>
           <div class="attr-options">
-            <button type="button" class="attr-btn form-btn" data-value="SLIM">BÓ</button>
-            <button type="button" class="attr-btn form-btn" data-value="REGULAR">VỪA</button>
-            <button type="button" class="attr-btn form-btn" data-value="WIDE">RỘNG</button>
+            <button type="button" class="attr-btn form-btn" data-value="BO">BÓ</button>
+            <button type="button" class="attr-btn form-btn" data-value="VUA">VỪA</button>
+            <button type="button" class="attr-btn form-btn" data-value="RONG">RỘNG</button>
           </div>
         </div>
 
@@ -1151,15 +1151,6 @@
           if ((!current.co_gian || String(current.co_gian).trim() === '') && selectedCoGian) {
             updateData.co_gian = selectedCoGian;
           }
-
-          if (Object.keys(updateData).length) {
-            const { error: updateError } = await supabase
-              .from('dmhanghoa')
-              .update(updateData)
-              .eq('masp', masp);
-
-            if (updateError) throw updateError;
-          }
         }
 
         imageKeySet.add(key);
@@ -1191,15 +1182,37 @@
           );
         }
 
+        // Cập nhật thông số SAU vector hóa và không để lỗi metadata chặn vector.
+        let metaOk = true;
+        let metaErrorMessage = '';
+        if (Object.keys(updateData).length) {
+          const { error: updateError } = await supabase
+            .from('dmhanghoa')
+            .update(updateData)
+            .eq('masp', masp);
+
+          if (updateError) {
+            metaOk = false;
+            metaErrorMessage = updateError.message || 'Không cập nhật được thông số sản phẩm';
+            console.error('Update dmhanghoa metadata error:', updateError);
+          }
+        }
+
         pendingFile = null;
         resetAttrButtons();
 
-        if (vectorOk) {
+        if (vectorOk && metaOk) {
           setStatus('✅ Lưu ảnh + thông số + vector thành công', 'ok');
           toast('✔ Ảnh + vector hoàn tất');
-        } else {
-          setStatus('⚠️ Ảnh đã lưu thành công, nhưng vector chưa xong. Có thể bấm "Thử tạo vector lại".', 'warn');
+        } else if (vectorOk && !metaOk) {
+          setStatus('⚠️ Ảnh + vector đã thành công, nhưng thông số chưa lưu: ' + metaErrorMessage, 'warn');
+          toast('Ảnh + vector OK · thông số lỗi');
+        } else if (!vectorOk && metaOk) {
+          setStatus('⚠️ Ảnh và thông số đã lưu, nhưng vector chưa xong. Có thể bấm "Thử tạo vector lại".', 'warn');
           toast('Ảnh đã lưu · vector chưa xong');
+        } else {
+          setStatus('⚠️ Ảnh đã lưu. Vector và thông số còn lỗi; hãy thử lại vector và kiểm tra thông số.', 'warn');
+          toast('Ảnh đã lưu · cần xử lý tiếp');
         }
       } catch (err) {
         console.error('Save image/attrs error:', err);
