@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Đồng bộ vector ảnh · Admin</title>
+<title>Đồng bộ vector ảnh mới · Admin V2.0.1</title>
 <style>
-:root{--bg:#f4f6f8;--card:#fff;--ink:#111827;--muted:#667085;--blue:#0b78d1;--dark:#111827;--ok:#eaf8ef;--warn:#fff7e8;--bad:#fff0f0;--line:#d7dee7}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}.wrap{max-width:980px;margin:auto;padding:12px}.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}h1{font-size:25px;margin:0}.sub{color:var(--muted);margin-top:4px;line-height:1.45}.top{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}.btn{border:0;border-radius:11px;min-height:46px;padding:10px 15px;font-weight:900;font-size:15px;cursor:pointer}.primary{background:var(--blue);color:#fff}.dark{background:var(--dark);color:#fff}.light{background:#eaf2fb;color:#075f9f}.danger{background:#fee2e2;color:#991b1b}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.stat{background:#f7f9fb;border-radius:12px;padding:11px}.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}select{min-height:46px;border:1px solid #cbd5e1;border-radius:10px;padding:0 10px;background:#fff;font-size:15px}.status{padding:10px 12px;border-radius:10px;background:#f3f4f6;margin-top:8px;line-height:1.45}.ok{background:var(--ok);color:#17663b}.warn{background:var(--warn);color:#8a5b00}.err{background:var(--bad);color:#b42318}.progress{height:12px;border-radius:999px;background:#e5e7eb;overflow:hidden;margin-top:10px}.bar{height:100%;width:0;background:#111827;transition:width .2s}.list{margin-top:10px;border-top:1px solid #e5e7eb}.item{display:grid;grid-template-columns:52px 1fr auto;gap:9px;align-items:center;padding:8px 0;border-bottom:1px solid #eef2f6}.thumb{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#eee}.name{font-weight:800;word-break:break-all}.small{font-size:12px;color:var(--muted)}.badge{padding:4px 7px;border-radius:999px;background:#eaf2fb;color:#075f9f;font-size:11px;font-weight:800}.log{max-height:260px;overflow:auto;background:#07111f;color:#d7f7df;border-radius:12px;padding:10px;font:12px/1.45 ui-monospace,monospace;white-space:pre-wrap}.hidden{display:none}@media(max-width:720px){.wrap{padding:7px}.card{padding:10px}.stats{grid-template-columns:repeat(2,1fr)}.top{display:block}.top .btn{margin-top:8px}.item{grid-template-columns:44px 1fr}.item .badge{grid-column:2}.thumb{width:44px;height:44px}}
+:root{--bg:#f4f6f8;--card:#fff;--ink:#111827;--muted:#667085;--blue:#0b78d1;--dark:#111827;--ok:#eaf8ef;--warn:#fff7e8;--bad:#fff0f0;--line:#d7dee7}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}.wrap{max-width:980px;margin:auto;padding:12px}.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}h1{font-size:25px;margin:0}.sub{color:var(--muted);margin-top:4px;line-height:1.45}.top{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}.btn{border:0;border-radius:11px;min-height:46px;padding:10px 15px;font-weight:900;font-size:15px;cursor:pointer}.primary{background:var(--blue);color:#fff}.dark{background:var(--dark);color:#fff}.light{background:#eaf2fb;color:#075f9f}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.stat{background:#f7f9fb;border-radius:12px;padding:11px}.stat b{display:block;font-size:24px}.stat span{font-size:12px;color:var(--muted)}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}select{min-height:46px;border:1px solid #cbd5e1;border-radius:10px;padding:0 10px;background:#fff;font-size:15px}.status{padding:10px 12px;border-radius:10px;background:#f3f4f6;margin-top:8px;line-height:1.45}.ok{background:var(--ok);color:#17663b}.warn{background:var(--warn);color:#8a5b00}.err{background:var(--bad);color:#b42318}.progress{height:12px;border-radius:999px;background:#e5e7eb;overflow:hidden;margin-top:10px}.bar{height:100%;width:0;background:#111827;transition:width .2s}.list{margin-top:10px;border-top:1px solid #e5e7eb}.item{display:grid;grid-template-columns:52px 1fr auto;gap:9px;align-items:center;padding:8px 0;border-bottom:1px solid #eef2f6}.thumb{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#eee}.name{font-weight:800;word-break:break-all}.small{font-size:12px;color:var(--muted)}.badge{padding:4px 7px;border-radius:999px;background:#eaf2fb;color:#075f9f;font-size:11px;font-weight:800}.log{max-height:260px;overflow:auto;background:#07111f;color:#d7f7df;border-radius:12px;padding:10px;font:12px/1.45 ui-monospace,monospace;white-space:pre-wrap}@media(max-width:720px){.wrap{padding:7px}.card{padding:10px}.stats{grid-template-columns:repeat(2,1fr)}.top{display:block}.top .btn{margin-top:8px}.item{grid-template-columns:44px 1fr}.item .badge{grid-column:2}.thumb{width:44px;height:44px}}
 </style></head><body><div class="wrap">
-<section class="card"><div class="top"><div><h1>🧠 Đồng bộ vector ảnh mới</h1><div class="sub">Admin · SigLIP chạy ngay trên trình duyệt. Dùng cho số lượng nhỏ. Vector web được dùng tìm kiếm ngay; Windows FP32 có thể chuẩn hóa lại sau.</div><div id="who" class="small"></div></div><button id="logout" class="btn light">Thoát</button></div></section>
-<section class="card"><div class="stats"><div class="stat"><b id="sBucket">–</b><span>Ảnh bucket</span></div><div class="stat"><b id="sVector">–</b><span>Đã có vector</span></div><div class="stat"><b id="sNeed">–</b><span>Cần đồng bộ</span></div><div class="stat"><b id="sWeb">–</b><span>Web q8</span></div><div class="stat"><b id="sWin">–</b><span>Windows FP32</span></div></div></section>
+<section class="card"><div class="top"><div><h1>🧠 Đồng bộ vector ảnh mới · V2.0.1</h1><div class="sub">Admin · Web chỉ xử lý <b>ảnh chưa có vector</b>. Ảnh cũ bị thay nội dung để Windows indexer xử lý bằng timestamp/hash cho an toàn.</div><div id="who" class="small"></div></div><button id="logout" class="btn light">Thoát</button></div></section>
+<section class="card"><div class="stats"><div class="stat"><b id="sBucket">–</b><span>Ảnh bucket (Storage API)</span></div><div class="stat"><b id="sVector">–</b><span>Vector hiện có</span></div><div class="stat"><b id="sNeed">–</b><span>Ảnh chưa có vector</span></div><div class="stat"><b id="sWeb">–</b><span>Web q8</span></div><div class="stat"><b id="sWin">–</b><span>Windows FP32</span></div></div></section>
 <section class="card"><div class="row"><select id="limit"><option>10</option><option selected>20</option><option>50</option><option>100</option></select><button id="check" class="btn light">↻ KIỂM TRA ẢNH MỚI</button><button id="loadModel" class="btn dark">NẠP SIGLIP</button><button id="run" class="btn primary">MÃ HÓA ẢNH ĐANG LIỆT KÊ</button></div><div id="status" class="status">Đang khởi tạo đăng nhập…</div><div class="progress"><div id="bar" class="bar"></div></div></section>
-<section class="card"><div class="sub"><b>Danh sách cần xử lý</b> · Chỉ ảnh chưa có vector hoặc ảnh đã thay đổi.</div><div id="list" class="list"></div></section>
+<section class="card"><div class="sub"><b>Danh sách cần xử lý</b> · Chỉ ảnh chưa có vector ở phiên bản <code>python-fp32-v1</code>.</div><div id="list" class="list"></div></section>
 <section class="card"><div class="sub"><b>Nhật ký</b></div><div id="log" class="log">Chưa chạy.</div></section>
 </div>
 <script type="module">
@@ -15,21 +15,90 @@ import { getSupabaseClient, khoiTaoDangNhapDungChung, getCurrentUserInfo, dangXu
 import { AutoProcessor, SiglipVisionModel, RawImage, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
 const supabase=getSupabaseClient(); env.allowLocalModels=false; env.useBrowserCache=true;
 const MODEL='Xenova/siglip-base-patch16-224', VERSION='python-fp32-v1', BUCKET='anhsanpham';
-let processor=null,model=null,queue=[],running=false;
+const IMG_EXT=/\.(jpg|jpeg|png|webp|jfif)$/i;
+let processor=null,model=null,queue=[],running=false,lastBucket=[];
 const $=id=>document.getElementById(id); const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function status(t,cls=''){ $('status').textContent=t; $('status').className='status '+cls }
 function log(t){ const x=$('log'); if(x.textContent==='Chưa chạy.')x.textContent=''; x.textContent+=`[${new Date().toLocaleTimeString()}] ${t}\n`; x.scrollTop=x.scrollHeight }
 function l2(a){let s=0;for(const x of a)s+=Number(x)*Number(x);const n=Math.sqrt(s)||1;return Array.from(a,x=>Number(x)/n)}
 function vecLit(v){return '['+Array.from(v,x=>Number(x).toPrecision(9)).join(',')+']'}
-function publicUrl(name){return `${location.origin.includes('hoantuyet.vn')?'https://rddjrmbyftlcvrgzlyby.supabase.co':window.__SUPABASE_URL__||'https://rddjrmbyftlcvrgzlyby.supabase.co'}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(name).replace(/%2F/g,'/')}`}
+function publicUrl(name){const {data}=supabase.storage.from(BUCKET).getPublicUrl(name);return data?.publicUrl||''}
 async function sha256(buf){const h=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
 async function ensureModel(){if(model&&processor)return;status('Đang nạp SigLIP q8…','warn');const t=performance.now();processor=await AutoProcessor.from_pretrained(MODEL);model=await SiglipVisionModel.from_pretrained(MODEL,{dtype:'q8',device:'wasm'});log(`Đã nạp model trong ${((performance.now()-t)/1000).toFixed(1)}s`);status('SigLIP đã sẵn sàng.','ok')}
 async function vectorFromBlob(blob){const u=URL.createObjectURL(blob);try{const raw=await RawImage.fromURL(u);const inputs=await processor(raw);const out=await model(inputs);return l2(Array.from(out.pooler_output.data))}finally{URL.revokeObjectURL(u)}}
-async function stats(){const {data,error}=await supabase.rpc('admin_vector_thong_ke',{p_bucket:BUCKET,p_phien_ban:VERSION});if(error)throw error;const x=Array.isArray(data)?data[0]:data; $('sBucket').textContent=x?.tong_anh_bucket??0;$('sVector').textContent=x?.da_co_vector??0;$('sNeed').textContent=x?.can_dong_bo??0;$('sWeb').textContent=x?.vector_web_q8??0;$('sWin').textContent=x?.vector_windows_fp32??0}
-async function check(){status('Đang kiểm tra bucket…','warn');await stats();const lim=Number($('limit').value||20);const {data,error}=await supabase.rpc('admin_vector_anh_can_dong_bo',{p_limit:lim,p_bucket:BUCKET,p_phien_ban:VERSION});if(error)throw error;queue=data||[];render();status(queue.length?`Có ${queue.length} ảnh trong danh sách xử lý hiện tại.`:'Không có ảnh mới/thay đổi.','ok')}
-function render(){const box=$('list');box.innerHTML='';for(const r of queue){const u=publicUrl(r.ten_anh);const d=document.createElement('div');d.className='item';d.innerHTML=`<img class="thumb" loading="lazy" src="${esc(u)}"><div><div class="name">${esc(r.ten_anh)}</div><div class="small">${esc(r.storage_updated_at||'')}</div></div><div class="badge">${esc(r.trang_thai_vector||'')}</div>`;box.appendChild(d)}}
-async function processOne(r){const u=publicUrl(r.ten_anh);const resp=await fetch(u,{cache:'no-store'});if(!resp.ok)throw new Error(`HTTP ${resp.status}`);const buf=await resp.arrayBuffer();const hash=await sha256(buf);const vec=await vectorFromBlob(new Blob([buf]));const {error}=await supabase.rpc('admin_vector_upsert_web',{p_ten_anh:r.ten_anh,p_vector:vecLit(vec),p_storage_updated_at:r.storage_updated_at,p_hash_anh:hash,p_bucket:BUCKET,p_phien_ban:VERSION});if(error)throw error}
-async function run(){if(running)return;if(!queue.length){status('Không có ảnh trong danh sách. Hãy bấm KIỂM TRA trước.','warn');return}running=true;$('run').disabled=true;let ok=0,err=0;try{await ensureModel();for(let i=0;i<queue.length;i++){const r=queue[i];status(`Đang xử lý ${i+1}/${queue.length}: ${r.ten_anh}`,'warn');try{await processOne(r);ok++;log(`OK ${r.ten_anh}`)}catch(e){err++;log(`LỖI ${r.ten_anh}: ${e.message||e}`)}$('bar').style.width=`${Math.round((i+1)*100/queue.length)}%`}status(`Hoàn tất: ${ok} OK, ${err} lỗi.` ,err?'warn':'ok');await stats();await check()}finally{running=false;$('run').disabled=false}}
-$('check').onclick=()=>check().catch(e=>{console.error(e);status('Lỗi kiểm tra: '+(e.message||e),'err')});$('loadModel').onclick=()=>ensureModel().catch(e=>{console.error(e);status('Lỗi model: '+(e.message||e),'err')});$('run').onclick=()=>run().catch(e=>{console.error(e);status('Lỗi: '+(e.message||e),'err')});$('logout').onclick=()=>dangXuatDungChung();
+
+async function listAllBucket(){
+  const out=[]; let offset=0; const page=1000;
+  while(true){
+    const {data,error}=await supabase.storage.from(BUCKET).list('',{limit:page,offset,sortBy:{column:'name',order:'asc'}});
+    if(error)throw error;
+    const rows=(data||[]).filter(x=>x?.name && IMG_EXT.test(x.name));
+    out.push(...rows);
+    if((data||[]).length<page)break;
+    offset+=page;
+  }
+  return out;
+}
+async function missingNames(files){
+  const missing=new Set();
+  const names=files.map(x=>x.name);
+  const chunk=500;
+  for(let i=0;i<names.length;i+=chunk){
+    const part=names.slice(i,i+chunk);
+    const {data,error}=await supabase.rpc('admin_vector_anh_chua_co',{p_ten_anh:part,p_phien_ban:VERSION});
+    if(error)throw error;
+    for(const r of data||[])missing.add(r.ten_anh);
+  }
+  return missing;
+}
+async function sourceStats(){
+  const {data,error}=await supabase.rpc('admin_vector_nguon_thong_ke',{p_phien_ban:VERSION});
+  if(error)throw error;
+  return Array.isArray(data)?data[0]:data;
+}
+async function check(){
+  status('Đang đọc bucket bằng Storage API giống Windows…','warn'); $('bar').style.width='0%';
+  const files=await listAllBucket(); lastBucket=files;
+  const [missing,src]=await Promise.all([missingNames(files),sourceStats()]);
+  const lim=Number($('limit').value||20);
+  queue=files.filter(x=>missing.has(x.name)).slice(0,lim).map(x=>({
+    ten_anh:x.name,
+    storage_updated_at:x.updated_at||x.created_at||null,
+    trang_thai_vector:'MOI'
+  }));
+  $('sBucket').textContent=files.length;
+  $('sVector').textContent=src?.tong_vector??(files.length-missing.size);
+  $('sNeed').textContent=missing.size;
+  $('sWeb').textContent=src?.vector_web_q8??0;
+  $('sWin').textContent=src?.vector_windows_fp32??0;
+  render();
+  status(missing.size?`Có ${missing.size} ảnh chưa có vector. Đang liệt kê ${queue.length} ảnh đầu tiên.`:'Tất cả ảnh mà Storage API nhìn thấy đều đã có vector.','ok');
+  log(`Storage API: ${files.length} ảnh · thiếu vector: ${missing.size} · vector table: ${src?.tong_vector??'?'}`);
+}
+function render(){const box=$('list');box.innerHTML='';for(const r of queue){const u=publicUrl(r.ten_anh);const d=document.createElement('div');d.className='item';d.innerHTML=`<img class="thumb" loading="lazy" src="${esc(u)}"><div><div class="name">${esc(r.ten_anh)}</div><div class="small">${esc(r.storage_updated_at||'')}</div></div><div class="badge">MỚI</div>`;box.appendChild(d)}}
+async function processOne(r){
+  const u=publicUrl(r.ten_anh); if(!u)throw new Error('Không tạo được public URL');
+  const resp=await fetch(u,{cache:'no-store'}); if(!resp.ok)throw new Error(`Tải ảnh HTTP ${resp.status}`);
+  const buf=await resp.arrayBuffer(); const hash=await sha256(buf); const vec=await vectorFromBlob(new Blob([buf]));
+  const {data,error}=await supabase.rpc('admin_vector_upsert_web',{
+    p_ten_anh:r.ten_anh,
+    p_duong_dan_anh:u,
+    p_vector:vecLit(vec),
+    p_storage_updated_at:r.storage_updated_at,
+    p_hash_anh:hash,
+    p_phien_ban:VERSION
+  });
+  if(error)throw new Error(`${error.message}${error.details?' · '+error.details:''}${error.hint?' · '+error.hint:''}`);
+  return data;
+}
+async function run(){
+  if(running)return;if(!queue.length){status('Không có ảnh trong danh sách. Hãy bấm KIỂM TRA trước.','warn');return}
+  running=true;$('run').disabled=true;let ok=0,err=0;
+  try{await ensureModel();for(let i=0;i<queue.length;i++){const r=queue[i];status(`Đang xử lý ${i+1}/${queue.length}: ${r.ten_anh}`,'warn');try{await processOne(r);ok++;log(`OK ${r.ten_anh}`)}catch(e){err++;log(`LỖI ${r.ten_anh}: ${e.message||e}`)}$('bar').style.width=`${Math.round((i+1)*100/queue.length)}%`}status(`Hoàn tất: ${ok} OK, ${err} lỗi.`,err?'warn':'ok');await check()}finally{running=false;$('run').disabled=false}
+}
+$('check').onclick=()=>check().catch(e=>{console.error(e);status('Lỗi kiểm tra: '+(e.message||e),'err')});
+$('loadModel').onclick=()=>ensureModel().catch(e=>{console.error(e);status('Lỗi model: '+(e.message||e),'err')});
+$('run').onclick=()=>run().catch(e=>{console.error(e);status('Lỗi: '+(e.message||e),'err')});
+$('logout').onclick=()=>dangXuatDungChung();
 (async()=>{try{await khoiTaoDangNhapDungChung();const u=await getCurrentUserInfo();if(!u?.is_admin){status('Trang này chỉ dành cho Admin.','err');$('run').disabled=true;$('check').disabled=true;return}$('who').textContent=`ADMIN · ${u?.tennv||u?.manv||''}`;await check()}catch(e){console.error(e);status('Lỗi đăng nhập/khởi tạo: '+(e.message||e),'err')}})();
 </script></body></html>
