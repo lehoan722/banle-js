@@ -1,0 +1,183 @@
+-- VECTOR SYNC V2 HYBRID - HOAN TUYET
+-- Muc tieu:
+-- 1) Ghi nhan nguon vector (web q8 hay Windows python fp32)
+-- 2) Admin co the liet ke anh moi/thay doi trong bucket anhsanpham
+-- 3) Admin co the upsert vector tao tren browser ma khong lo service_role key
+-- Khong xoa du lieu cu.
+
+begin;
+
+alter table public.chi_muc_anh_san_pham
+  add column if not exists nguon_vector text;
+
+-- Cac vector python-fp32-v1 da co truoc day duoc tao boi Windows indexer.
+update public.chi_muc_anh_san_pham
+set nguon_vector = 'windows_python_fp32'
+where phien_ban_vector = 'python-fp32-v1'
+  and (nguon_vector is null or btrim(nguon_vector) = '');
+
+create index if not exists idx_chi_muc_anh_nguon_vector
+  on public.chi_muc_anh_san_pham(phien_ban_vector, nguon_vector);
+
+-- Liet ke anh can browser index.
+-- Chi admin moi goi duoc.
+create or replace function public.admin_vector_anh_can_dong_bo(
+  p_limit integer default 50,
+  p_bucket text default 'anhsanpham',
+  p_phien_ban text default 'python-fp32-v1'
+)
+returns table(
+  ten_anh text,
+  storage_updated_at timestamptz,
+  trang_thai_vector text,
+  nguon_vector text
+)
+language sql
+security definer
+set search_path = public, storage
+as $$
+  select
+    o.name::text as ten_anh,
+    o.updated_at as storage_updated_at,
+    case
+      when c.ten_anh is null then 'MOI'
+      when c.storage_updated_at is distinct from o.updated_at then 'ANH_DA_THAY_DOI'
+      when coalesce(c.nguon_vector,'') = 'web_transformers_q8' then 'DA_CO_WEB_Q8'
+      else 'KHAC'
+    end as trang_thai_vector,
+    c.nguon_vector
+  from storage.objects o
+  left join public.chi_muc_anh_san_pham c
+    on c.ten_anh = o.name
+   and c.phien_ban_vector = p_phien_ban
+  where public.is_admin()
+    and o.bucket_id = p_bucket
+    and lower(o.name) ~ '\.(jpg|jpeg|png|webp|jfif)$'
+    and (
+      c.ten_anh is null
+      or c.storage_updated_at is distinct from o.updated_at
+    )
+  order by o.updated_at asc nulls last, o.name asc
+  limit greatest(1, least(coalesce(p_limit,50), 200));
+$$;
+
+revoke all on function public.admin_vector_anh_can_dong_bo(integer,text,text) from public;
+grant execute on function public.admin_vector_anh_can_dong_bo(integer,text,text) to authenticated;
+
+-- Thong ke nhanh de Admin biet con bao nhieu anh can index.
+create or replace function public.admin_vector_thong_ke(
+  p_bucket text default 'anhsanpham',
+  p_phien_ban text default 'python-fp32-v1'
+)
+returns table(
+  tong_anh_bucket bigint,
+  da_co_vector bigint,
+  can_dong_bo bigint,
+  vector_web_q8 bigint,
+  vector_windows_fp32 bigint
+)
+language sql
+security definer
+set search_path = public, storage
+as $$
+  with imgs as (
+    select o.name, o.updated_at
+    from storage.objects o
+    where o.bucket_id = p_bucket
+      and lower(o.name) ~ '\.(jpg|jpeg|png|webp|jfif)$'
+  ), joined as (
+    select i.name, i.updated_at,
+           c.ten_anh, c.storage_updated_at, c.nguon_vector
+    from imgs i
+    left join public.chi_muc_anh_san_pham c
+      on c.ten_anh=i.name and c.phien_ban_vector=p_phien_ban
+  )
+  select
+    count(*)::bigint,
+    count(*) filter (where ten_anh is not null)::bigint,
+    count(*) filter (where ten_anh is null or storage_updated_at is distinct from updated_at)::bigint,
+    count(*) filter (where nguon_vector='web_transformers_q8')::bigint,
+    count(*) filter (where nguon_vector='windows_python_fp32')::bigint
+  from joined
+  where public.is_admin();
+$$;
+
+revoke all on function public.admin_vector_thong_ke(text,text) from public;
+grant execute on function public.admin_vector_thong_ke(text,text) to authenticated;
+
+-- Upsert vector browser. Cung phien_ban de he thong tim kiem hien tai thay ngay.
+-- Windows indexer V2 se thay the bang fp32 sau.
+create or replace function public.admin_vector_upsert_web(
+  p_ten_anh text,
+  p_vector vector(768),
+  p_storage_updated_at timestamptz,
+  p_hash_anh text default null,
+  p_bucket text default 'anhsanpham',
+  p_phien_ban text default 'python-fp32-v1'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_stem text;
+  v_masp text;
+  v_url text;
+begin
+  if not public.is_admin() then
+    raise exception 'ADMIN_REQUIRED' using errcode='42501';
+  end if;
+
+  if p_ten_anh is null or btrim(p_ten_anh)='' then
+    raise exception 'TEN_ANH_RONG';
+  end if;
+
+  v_stem := regexp_replace(p_ten_anh, '\.[^.]+$', '', 'i');
+  v_stem := regexp_replace(v_stem, '(__|_)[0-9]+$', '');
+  v_masp := btrim(v_stem);
+  v_url := current_setting('app.settings.supabase_url', true);
+
+  -- Neu project khong co app.settings.supabase_url, frontend da co URL va cot URL co the tu tao ben duoi.
+  -- Tao URL tu ten bucket dua tren duong dan hien co neu co the; neu khong, giu URL cu neu update.
+  insert into public.chi_muc_anh_san_pham(
+    masp, ten_anh, vector_siglip, model_vector, phien_ban_vector,
+    storage_updated_at, hash_anh, la_anh_chinh, trang_thai,
+    nguon_vector, ngay_cap_nhat
+  ) values (
+    v_masp,
+    p_ten_anh,
+    p_vector,
+    'Xenova/siglip-base-patch16-224',
+    p_phien_ban,
+    p_storage_updated_at,
+    p_hash_anh,
+    not (regexp_replace(p_ten_anh, '\.[^.]+$', '', 'i') ~ '(__|_)[0-9]+$'),
+    'hoat_dong',
+    'web_transformers_q8',
+    now()
+  )
+  on conflict (ten_anh, phien_ban_vector) do update set
+    masp=excluded.masp,
+    vector_siglip=excluded.vector_siglip,
+    model_vector=excluded.model_vector,
+    storage_updated_at=excluded.storage_updated_at,
+    hash_anh=excluded.hash_anh,
+    la_anh_chinh=excluded.la_anh_chinh,
+    trang_thai='hoat_dong',
+    nguon_vector='web_transformers_q8',
+    ngay_cap_nhat=now();
+
+  return jsonb_build_object(
+    'ok', true,
+    'ten_anh', p_ten_anh,
+    'masp', v_masp,
+    'nguon_vector', 'web_transformers_q8'
+  );
+end;
+$$;
+
+revoke all on function public.admin_vector_upsert_web(text,vector,timestamptz,text,text,text) from public;
+grant execute on function public.admin_vector_upsert_web(text,vector,timestamptz,text,text,text) to authenticated;
+
+commit;
