@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>Up ảnh nhanh – MÃ SP → chụp → lưu</title>
+  <title>Up ảnh nhanh – MÃ SP → chụp → lưu + vector</title>
   <meta name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="viewport"
@@ -334,6 +334,46 @@
       border-color: #e5e5e5;
       font-weight: 700;
     }
+
+    /* === VECTOR SIGLIP SAU KHI UP ANH === */
+    .vector-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-height: 34px;
+      padding: 8px 10px;
+      margin-top: 4px;
+      border-radius: 10px;
+      background: #f3f4f6;
+      color: #4b5563;
+      font-size: 13px;
+    }
+
+    .vector-box.ok {
+      background: #ecfdf3;
+      color: #166534;
+    }
+
+    .vector-box.warn {
+      background: #fff7ed;
+      color: #9a3412;
+    }
+
+    .vector-box.busy {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    #btnRetryVector {
+      border: 1px solid #fdba74;
+      background: #fff;
+      color: #9a3412;
+      padding: 7px 10px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 700;
+    }
   </style>
 </head>
 
@@ -346,6 +386,8 @@
     <div class="wrap">
 
       <div class="status" id="status"></div>
+      <div class="vector-box" id="vectorStatus">Vector: đang chuẩn bị SigLIP…</div>
+      <button id="btnRetryVector" type="button" style="display:none;">↻ Thử tạo vector lại</button>
 
       <div class="bb-row1">
         <input id="masp" inputmode="latin" autocomplete="off" placeholder="Nhập MÃ SP rồi Enter…"
@@ -426,10 +468,177 @@
   <!-- Script logic (đã sửa để dùng authModule) -->
   <script type="module">
     import { khoiTaoDangNhapDungChung } from './scripts/authModule.js';
+    import { AutoProcessor, SiglipVisionModel, RawImage, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
 
     /******** CẤU HÌNH ********/
     const STORAGE_BUCKET = window.STORAGE_BUCKET || 'anhsanpham';
     const PATH_PREFIX = window.PATH_PREFIX || '';
+
+
+    /******** SIGLIP VECTOR TRÊN TRÌNH DUYỆT ********/
+    const SIGLIP_MODEL = 'Xenova/siglip-base-patch16-224';
+    const VECTOR_VERSION = 'python-fp32-v1';
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
+
+    let siglipProcessor = null;
+    let siglipModel = null;
+    let siglipLoadingPromise = null;
+    let lastVectorRetry = null;
+
+    function setVectorStatus(msg, kind = '') {
+      const el = document.getElementById('vectorStatus');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.className = 'vector-box ' + (kind || '');
+    }
+
+    function l2Normalize(arr) {
+      let sum = 0;
+      for (const x of arr) sum += Number(x) * Number(x);
+      const norm = Math.sqrt(sum) || 1;
+      return Array.from(arr, x => Number(x) / norm);
+    }
+
+    function vectorLiteral(vec) {
+      return '[' + Array.from(vec, x => Number(x).toPrecision(9)).join(',') + ']';
+    }
+
+    async function sha256Blob(blob) {
+      const buf = await blob.arrayBuffer();
+      const digest = await crypto.subtle.digest('SHA-256', buf);
+      return [...new Uint8Array(digest)]
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    async function ensureSigLip() {
+      if (siglipProcessor && siglipModel) return true;
+      if (siglipLoadingPromise) return siglipLoadingPromise;
+
+      siglipLoadingPromise = (async () => {
+        const started = performance.now();
+        setVectorStatus('Vector: đang nạp SigLIP nền…', 'busy');
+        siglipProcessor = await AutoProcessor.from_pretrained(SIGLIP_MODEL);
+        siglipModel = await SiglipVisionModel.from_pretrained(SIGLIP_MODEL, {
+          dtype: 'q8',
+          device: 'wasm'
+        });
+        const sec = ((performance.now() - started) / 1000).toFixed(1);
+        setVectorStatus(`Vector: ✅ SigLIP sẵn sàng (${sec}s)`, 'ok');
+        return true;
+      })();
+
+      try {
+        return await siglipLoadingPromise;
+      } catch (e) {
+        siglipLoadingPromise = null;
+        siglipProcessor = null;
+        siglipModel = null;
+        setVectorStatus('Vector: ⚠️ chưa nạp được SigLIP. Ảnh vẫn có thể lưu.', 'warn');
+        throw e;
+      }
+    }
+
+    async function vectorFromBlob(blob) {
+      await ensureSigLip();
+      const url = URL.createObjectURL(blob);
+      try {
+        const raw = await RawImage.fromURL(url);
+        const inputs = await siglipProcessor(raw);
+        const out = await siglipModel(inputs);
+        return l2Normalize(Array.from(out.pooler_output.data));
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    function publicUrlRaw(fileName) {
+      const { data } = supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(PATH_PREFIX + fileName);
+      return data?.publicUrl || '';
+    }
+
+    async function getUploadedObjectUpdatedAt(fileName) {
+      try {
+        const { data, error } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .list(PATH_PREFIX, {
+            limit: 20,
+            offset: 0,
+            search: fileName,
+            sortBy: { column: 'name', order: 'asc' }
+          });
+        if (error) throw error;
+        const found = (data || []).find(x => x?.name === fileName);
+        return found?.updated_at || found?.created_at || new Date().toISOString();
+      } catch {
+        return new Date().toISOString();
+      }
+    }
+
+    async function saveVectorForUploadedImage({ blob, masp, key }) {
+      const baseMasp = sanitizeBaseName(stripSizeSuffix(masp));
+      if (!blob || !baseMasp || !key) throw new Error('Thiếu dữ liệu để tạo vector.');
+
+      setVectorStatus('Vector: ⏳ đang phân tích ảnh bằng SigLIP…', 'busy');
+
+      const [vec, hash, updatedAt] = await Promise.all([
+        vectorFromBlob(blob),
+        sha256Blob(blob),
+        getUploadedObjectUpdatedAt(key)
+      ]);
+
+      if (!Array.isArray(vec) || vec.length !== 768) {
+        throw new Error(`Vector không đúng 768 chiều (${vec?.length || 0}).`);
+      }
+
+      setVectorStatus('Vector: ⏳ đã tạo 768 chiều, đang ghi Supabase…', 'busy');
+
+      const { data, error } = await supabase.rpc('upanh_vector_upsert_v1', {
+        p_masp: baseMasp,
+        p_ten_anh: key,
+        p_duong_dan_anh: publicUrlRaw(key),
+        p_vector: vectorLiteral(vec),
+        p_storage_updated_at: updatedAt,
+        p_hash_anh: hash,
+        p_manv: window.__UPANH_MANV__ || ''
+      });
+
+      if (error) {
+        throw new Error(
+          error.message +
+          (error.details ? ' · ' + error.details : '') +
+          (error.hint ? ' · ' + error.hint : '')
+        );
+      }
+
+      lastVectorRetry = null;
+      const retryBtn = document.getElementById('btnRetryVector');
+      if (retryBtn) retryBtn.style.display = 'none';
+      setVectorStatus('Vector: ✅ đã ghi vào kho tìm kiếm', 'ok');
+      return data;
+    }
+
+    async function retryLastVector() {
+      if (!lastVectorRetry) {
+        setVectorStatus('Vector: không có ảnh nào đang chờ thử lại.', 'warn');
+        return;
+      }
+      const btn = document.getElementById('btnRetryVector');
+      if (btn) btn.disabled = true;
+      try {
+        await saveVectorForUploadedImage(lastVectorRetry);
+        setStatus('Ảnh đã lưu trước đó; vector đã tạo bổ sung thành công.', 'ok');
+        toast('✔ Vector đã hoàn tất');
+      } catch (e) {
+        console.error('Retry vector error:', e);
+        setVectorStatus('Vector: ⚠️ vẫn chưa tạo được: ' + (e.message || e), 'warn');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
 
     // Tự mở camera sau khi CHẮC CHẮN chưa có ảnh
     const AUTO_OPEN_CAMERA = true;      // giữ nguyên (tự mở sau khi kiểm tra xong)
@@ -460,7 +669,7 @@
     let selectedCoGian = '';
     let productIsGiayDep = false;
     let productHasForm = false;
-    let btnSaveAll, btnNew;
+    let btnSaveAll, btnNew, btnRetryVector;
     let maspInput, btnCheck, btnRetake, statusEl, cameraInp, galleryInp, thumb, thumbImg, thumbMeta, maspSuggestDiv, toastEl;
     let sourcePickerEl, spCameraBtn, spGalleryBtn, spCancelBtn;
     let isClickingAttrButton = false;
@@ -958,13 +1167,40 @@
         saveCache();
         updateGlobalNames();
 
-        pendingFile = null;
+        // Ảnh + thông số đã lưu thành công. Tiếp tục tạo vector từ CHÍNH blob đã upload.
         productHasForm = !!(current?.form || selectedForm);
-
-        setStatus('Lưu ảnh và thông số thành công', 'ok');
-        toast('✔ Đã lưu');
         updateThumb(masp);
+
+        setStatus('Ảnh đã lưu. Đang tạo vector tìm kiếm…', 'ok');
+
+        let vectorOk = false;
+        try {
+          await saveVectorForUploadedImage({ blob, masp, key });
+          vectorOk = true;
+        } catch (vectorErr) {
+          console.error('Vectorize after upload error:', vectorErr);
+
+          // Không làm mất ảnh đã upload. Giữ blob trong RAM để người dùng thử lại ngay.
+          lastVectorRetry = { blob, masp, key };
+          if (btnRetryVector) btnRetryVector.style.display = 'inline-block';
+
+          setVectorStatus(
+            'Vector: ⚠️ ảnh đã lưu nhưng chưa tạo được vector: ' +
+            (vectorErr.message || 'Không rõ lỗi'),
+            'warn'
+          );
+        }
+
+        pendingFile = null;
         resetAttrButtons();
+
+        if (vectorOk) {
+          setStatus('✅ Lưu ảnh + thông số + vector thành công', 'ok');
+          toast('✔ Ảnh + vector hoàn tất');
+        } else {
+          setStatus('⚠️ Ảnh đã lưu thành công, nhưng vector chưa xong. Có thể bấm "Thử tạo vector lại".', 'warn');
+          toast('Ảnh đã lưu · vector chưa xong');
+        }
       } catch (err) {
         console.error('Save image/attrs error:', err);
         setStatus('Lưu KHÔNG thành công: ' + (err.message || 'Không rõ lỗi'), 'warn');
@@ -1109,6 +1345,17 @@
 
     function resetPageState() {
       pendingFile = null;
+      lastVectorRetry = null;
+      if (btnRetryVector) {
+        btnRetryVector.style.display = 'none';
+        btnRetryVector.disabled = false;
+      }
+      setVectorStatus(
+        siglipModel && siglipProcessor
+          ? 'Vector: ✅ SigLIP sẵn sàng'
+          : 'Vector: đang chuẩn bị SigLIP…',
+        siglipModel && siglipProcessor ? 'ok' : ''
+      );
       productHasForm = false;
       productIsGiayDep = false;
       setAttrAreaDisabled(false);
@@ -1183,6 +1430,7 @@
       maspInput = $('#masp');
       btnSaveAll = $('#btnSaveAll');
       btnNew = $('#btnNew');
+      btnRetryVector = $('#btnRetryVector');
       btnRetake = $('#btnRetake');
       statusEl = $('#status');
       cameraInp = $('#camera');
@@ -1271,6 +1519,7 @@
       });
 
       btnSaveAll.addEventListener('click', saveImageAndAttrs);
+      btnRetryVector?.addEventListener('click', retryLastVector);
       btnNew.addEventListener('click', () => {
         resetPageState();
       });
@@ -1290,6 +1539,14 @@
       updateGlobalNames();
       focusSelect();
       refreshKeysFromBucket().catch(console.warn);
+
+      // Nạp SigLIP ở nền sau login để khi bấm Lưu gần như chỉ còn thời gian inference.
+      setTimeout(() => {
+        ensureSigLip().catch(err => {
+          console.warn('Preload SigLIP không thành công:', err);
+          // Không chặn chức năng up ảnh; có thể thử lại ở lần Lưu hoặc nút retry.
+        });
+      }, 500);
     }
 
     // === GỌI MODULE ĐĂNG NHẬP DÙNG CHUNG ===
