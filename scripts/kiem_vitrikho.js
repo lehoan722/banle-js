@@ -1,7 +1,7 @@
-// Kiểm vị trí kho V1.7 - bản đầy đủ 30/10/2026
-// - Sửa lưu vị trí kho cho cả phiên thường và phiên ghép (phối hợp SQL V1.7)
-// - Thêm hướng dẫn sử dụng dạng tooltip cho toàn bộ nút chức năng
-// - Thông báo chi tiết số mã cập nhật / đã đúng / nhiều vị trí / không tìm thấy
+// Kiểm vị trí kho V1.8 - 03/11/2026
+// - Giữ nguyên toàn bộ V1.7, không thay đổi database/RPC
+// - Thêm chế độ "Kiểm thêm kho": mã đã có -> chỉ tra vị trí + dòng; mã mới -> bắt buộc chọn vị trí rồi mới thêm
+// - Dòng phát sinh trong lượt Kiểm thêm kho hiện tại được tô đỏ để dễ nhận biết
 import { supabase, startSessionKeeper } from './supabaseClient.js';
 import {
   khoiTaoDangNhapDungChung,
@@ -44,6 +44,15 @@ let currentDisplayLocationFilter = 'all';
 let taskRealtimeChannel = null;
 let suppressTaskChange = false;
 
+// ============================================================
+// V1.8 - KIỂM THÊM KHO (chỉ trạng thái phía trình duyệt, không đổi DB)
+// ============================================================
+let extraStockMode = false;
+let extraStockBaselineReady = false;
+let extraStockBaselineMasps = new Set();
+let extraStockAddedMasps = new Set();
+let pendingExtraStock = null; // { masp, scanned, size, stripped }
+
 // Autosave: mọi thay đổi của phiên quét được ghi xuống server ngay,
 // để reload/thoát trang không làm mất phần dữ liệu đã kiểm.
 let autoSaveTimer = null;
@@ -64,6 +73,7 @@ const COMMAND_HELP = {
   'btn-toggle-commands': 'Mở hoặc thu gọn khu vực các chức năng của trang kiểm vị trí kho.',
   'btn-save': 'Lưu ngay phiên kiểm hiện tại xuống hệ thống. Các dòng đã quét và vị trí kho đang có trên bảng sẽ được lưu để có thể mở lại sau.',
   'btn-load-session': 'Mở danh sách các phiên kiểm đã lưu của đúng cơ sở đang đăng nhập để xem hoặc tiếp tục làm việc.',
+  'btn-extra-stock': 'Bật chế độ Kiểm thêm kho. Mã đã có trong phiên chỉ hiện vị trí và số dòng để xếp đúng chỗ; mã chưa có mới yêu cầu chọn vị trí rồi thêm vào phiên.',
   'btn-load-stock-location': 'Đối chiếu các mã đang kiểm với vị trí kho chuẩn hiện có trong danh mục hàng hóa, giúp phát hiện mã đang đặt sai vị trí.',
   'btn-multi-location': 'Tìm các mã sản phẩm xuất hiện ở từ 2 vị trí kho khác nhau trở lên trong phiên hiện tại. Các mã này cần chọn một vị trí chuẩn trước khi cập nhật danh mục.',
   'btn-toggle-check': 'Tìm những hàng có phát sinh trong khoảng ngày đã chọn nhưng chưa xuất hiện trong phiên kiểm hiện tại; tồn kho dùng tồn sau kiểm.',
@@ -287,10 +297,22 @@ function scanRowsForSave() {
 
 function buildCellsRenderer(row, col) {
   const props = {};
-  if (tableMode === 'scan' && row === 0) {
+  if (tableMode === 'scan') {
     props.renderer = function (...args) {
       Handsontable.renderers.TextRenderer.apply(this, args);
-      args[1].style.background = '#fff5bf';
+      const rowData = args[0].getSourceDataAtRow(args[2]) || {};
+      const masp = normalizeMasp(rowData.masp);
+
+      // V1.8: các mã được bổ sung trong lượt "Kiểm thêm kho" hiện tại
+      // luôn tô đỏ, kể cả sau khi chúng bị đẩy xuống bởi các mã mới hơn.
+      if (extraStockAddedMasps.has(masp)) {
+        args[1].style.background = '#fecaca';
+        args[1].style.color = '#991b1b';
+        args[1].style.fontWeight = '700';
+      } else if (args[2] === 0) {
+        // Giữ cách hiển thị cũ: dòng mới nhất ở đầu bảng có nền vàng nhạt.
+        args[1].style.background = '#fff5bf';
+      }
     };
   }
   if (tableMode === 'unshown' && col === 1) {
@@ -816,7 +838,178 @@ async function validateMasp(masp) {
   return !!(await findExactCatalogMasp(masp));
 }
 
+function resetExtraStockTracking() {
+  extraStockBaselineReady = false;
+  extraStockBaselineMasps = new Set();
+  extraStockAddedMasps = new Set();
+  pendingExtraStock = null;
+}
+
+function ensureExtraStockBaseline() {
+  if (extraStockBaselineReady) return;
+  extraStockBaselineMasps = new Set(scanRowsForSave().map((r) => normalizeMasp(r.masp)).filter(Boolean));
+  extraStockBaselineReady = true;
+}
+
+function extraStockLineNumber(sourceRowIndex) {
+  if (!hot || sourceRowIndex < 0) return sourceRowIndex + 1;
+  try {
+    const visualRow = typeof hot.toVisualRow === 'function' ? hot.toVisualRow(sourceRowIndex) : sourceRowIndex;
+    return Number.isInteger(visualRow) && visualRow >= 0 ? visualRow + 1 : sourceRowIndex + 1;
+  } catch (_) {
+    return sourceRowIndex + 1;
+  }
+}
+
+function updateExtraStockButton() {
+  const btn = $('btn-extra-stock');
+  if (!btn) return;
+  btn.textContent = `Kiểm thêm kho: ${extraStockMode ? 'BẬT' : 'TẮT'}`;
+  btn.classList.toggle('btn-extra-active', extraStockMode);
+  btn.setAttribute('aria-pressed', extraStockMode ? 'true' : 'false');
+}
+
+function setExtraStockMode(enabled) {
+  extraStockMode = !!enabled;
+  pendingExtraStock = null;
+  updateExtraStockButton();
+
+  if (extraStockMode) {
+    ensureExtraStockBaseline();
+    $('current-location').value = '';
+    $('scan-masp').placeholder = 'Quét mã để tra vị trí / thêm kho';
+    $('current-location').placeholder = 'Vị trí đã có sẽ hiện ở đây; mã mới thì chọn vị trí';
+    setMessage('Đã bật Kiểm thêm kho: quét mã đã có để xem vị trí; mã mới sẽ yêu cầu chọn vị trí.', 'ok');
+    focusScan(true);
+  } else {
+    $('current-location').value = '';
+    $('scan-masp').placeholder = 'Quét mã sản phẩm';
+    $('current-location').placeholder = 'Chọn vị trí kho';
+    setMessage('Đã tắt Kiểm thêm kho. Trang trở lại cách quét vị trí kho thông thường.', 'ok');
+    focusScan(true);
+  }
+}
+
+async function handleExtraStockScan() {
+  if (tableMode !== 'scan') showScanTable(scanRowsForSave());
+  ensureExtraStockBaseline();
+
+  if (pendingExtraStock) {
+    setMessage(`Mã ${pendingExtraStock.masp} chưa có trong phiên. Hãy chọn vị trí kho và nhấn Enter trước khi quét mã khác.`, 'warn');
+    $('current-location').focus();
+    return;
+  }
+
+  const scannedMasp = normalizeMasp($('scan-masp').value);
+  if (!scannedMasp) return;
+
+  $('scan-masp').disabled = true;
+  let focusTarget = 'scan';
+  try {
+    const resolved = await resolveScannedMasp(scannedMasp);
+    if (!resolved.ok) {
+      setMessage(`Mã ${scannedMasp} không tồn tại trong danh mục hàng hóa.`, 'err');
+      void playTripleAlertBeep();
+      return;
+    }
+
+    const masp = resolved.masp;
+    const rows = scanRowsForSave();
+    const rowIndex = rows.findIndex((r) => normalizeMasp(r.masp) === masp);
+
+    if (rowIndex >= 0) {
+      const found = rows[rowIndex];
+      $('current-location').value = normalizeText(found.vitri_kho_kiem);
+
+      const isCurrent = extraStockAddedMasps.has(masp);
+      const wasBaseline = extraStockBaselineMasps.has(masp);
+      const sourceText = isCurrent ? 'phiên kiểm này' : (wasBaseline ? 'phiên kiểm trước' : 'phiên kiểm trước');
+      const lineNo = extraStockLineNumber(rowIndex);
+      setMessage(
+        `Sản phẩm ${masp} thuộc ${sourceText} · dòng số ${lineNo} · vị trí ${found.vitri_kho_kiem}. Hãy xếp hàng vào đúng vị trí này.`,
+        'ok'
+      );
+      try { playSuccessBeep(); } catch (_) { }
+
+      // Không thêm dòng, không đổi thứ tự bảng. Giữ mã vừa quét và bôi đen toàn bộ
+      // để lần quét tiếp theo ghi đè ngay vào ô mã sản phẩm.
+      focusTarget = 'scan-select';
+      return;
+    }
+
+    // Mã hoàn toàn mới trong phiên: chưa được phép ghi ngay.
+    // Chuyển sang ô vị trí; chỉ khi người dùng Enter vị trí mới thêm dòng.
+    pendingExtraStock = resolved;
+    $('current-location').value = '';
+    setMessage(`Mã ${masp} chưa có trong phiên kiểm. Hãy chọn vị trí kho rồi nhấn Enter để thêm.`, 'warn');
+    focusTarget = 'location';
+  } catch (err) {
+    console.error(err);
+    setMessage(`Không kiểm tra được mã sản phẩm: ${err.message || err}`, 'err');
+    void playTripleAlertBeep();
+  } finally {
+    $('scan-masp').disabled = false;
+    setTimeout(() => {
+      if (focusTarget === 'location') $('current-location').focus();
+      else focusScan(focusTarget === 'scan-select');
+    }, 0);
+  }
+}
+
+async function commitPendingExtraStock() {
+  if (!extraStockMode || !pendingExtraStock) return false;
+
+  const vitri = normalizeText($('current-location').value);
+  if (!vitri) {
+    setMessage(`Mã ${pendingExtraStock.masp} chưa có trong phiên. Bạn phải chọn vị trí kho trước khi lưu.`, 'warn');
+    $('current-location').focus();
+    return true;
+  }
+
+  const pending = pendingExtraStock;
+  const masp = pending.masp;
+  const rows = scanRowsForSave();
+
+  // Chặn trùng lần nữa để an toàn nếu bảng vừa thay đổi trong lúc đang chọn vị trí.
+  const existingIndex = rows.findIndex((r) => normalizeMasp(r.masp) === masp);
+  if (existingIndex >= 0) {
+    const found = rows[existingIndex];
+    pendingExtraStock = null;
+    $('current-location').value = found.vitri_kho_kiem;
+    setMessage(`Sản phẩm ${masp} đã có trong phiên kiểm · dòng số ${extraStockLineNumber(existingIndex)} · vị trí ${found.vitri_kho_kiem}. Không thêm dòng mới.`, 'warn');
+    focusScan(true);
+    return true;
+  }
+
+  rows.unshift({ id: null, masp, vitri_kho_kiem: vitri });
+  extraStockAddedMasps.add(masp);
+  pendingExtraStock = null;
+  showScanTable(rows);
+  setDirty(true);
+
+  const saved = await autoSaveSession();
+  if (!saved) {
+    setMessage(`Đã thêm ${masp} tại ${vitri} trên bảng nhưng chưa tự động lưu được. Hãy bấm Lưu ngay.`, 'err');
+    void playTripleAlertBeep();
+  } else {
+    setMessage(
+      pending.stripped
+        ? `Đã nhận ${pending.scanned} là ${masp}, size ${pending.size}; thêm tại ${vitri}. Đây là dòng mới của phiên kiểm này.`
+        : `Đã thêm ${masp} tại ${vitri}. Đây là dòng mới của phiên kiểm này.`,
+      'ok'
+    );
+    try { playSuccessBeep(); } catch (_) { }
+  }
+
+  $('scan-masp').value = '';
+  $('current-location').value = '';
+  hot.scrollViewportTo(0, 0);
+  setTimeout(() => focusScan(), 0);
+  return true;
+}
+
 async function handleScan() {
+  if (extraStockMode) return handleExtraStockScan();
   if (tableMode !== 'scan') showScanTable(scanRowsForSave());
 
   const vitri = normalizeText($('current-location').value);
@@ -975,6 +1168,7 @@ async function loadSession(id) {
     currentSessionCode = payload.maphien;
     currentAreaName = normalizeText(payload.khu_vuc);
     currentIsStandard = !!payload.is_standard;
+    resetExtraStockTracking();
     $('area-name').value = currentAreaName;
     const rows = (payload.rows || []).map((r) => ({
       id: r.id || null,
@@ -982,6 +1176,7 @@ async function loadSession(id) {
       vitri_kho_kiem: normalizeText(r.vitri_kho_kiem)
     }));
     showScanTable(rows);
+    if (extraStockMode) ensureExtraStockBaseline();
     lastSavedRowsJson = JSON.stringify(scanRowsForSave());
     setDirty(false);
     updateHeader();
@@ -1287,9 +1482,11 @@ function newSession() {
   currentSessionCode = '';
   currentAreaName = '';
   currentIsStandard = false;
+  resetExtraStockTracking();
   $('area-name').value = '';
   lastSavedRowsJson = '[]';
   showScanTable([]);
+  if (extraStockMode) ensureExtraStockBaseline();
   setDirty(true);
   updateHeader();
   setMessage('Đã tạo phiên mới trên màn hình. Hãy quét dữ liệu rồi bấm Lưu dữ liệu.', 'ok');
@@ -1815,8 +2012,15 @@ function attachEvents() {
     if (e.key === 'Enter') { e.preventDefault(); handleScan(); }
   });
   $('current-location').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); focusScan(); }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (extraStockMode && pendingExtraStock) void commitPendingExtraStock();
+      else focusScan();
+    }
   });
+
+  const extraStockBtn = $('btn-extra-stock');
+  if (extraStockBtn) extraStockBtn.addEventListener('click', () => setExtraStockMode(!extraStockMode));
 
   $('btn-save').addEventListener('click', saveSession);
   $('btn-load-session').addEventListener('click', showLoadSessions);
@@ -1938,7 +2142,7 @@ function attachEvents() {
       updateHeader();
       setDirty(true);
       await loadFilterOptions();
-      setTimeout(() => $('current-location').focus(), 80);
+      setTimeout(() => extraStockMode ? focusScan(true) : $('current-location').focus(), 80);
     }
   });
 
