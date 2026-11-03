@@ -894,14 +894,26 @@ async function handleExtraStockScan() {
   if (tableMode !== 'scan') showScanTable(scanRowsForSave());
   ensureExtraStockBaseline();
 
-  if (pendingExtraStock) {
-    setMessage(`Mã ${pendingExtraStock.masp} chưa có trong phiên. Hãy chọn vị trí kho và nhấn Enter trước khi quét mã khác.`, 'warn');
-    $('current-location').focus();
-    return;
-  }
-
   const scannedMasp = normalizeMasp($('scan-masp').value);
   if (!scannedMasp) return;
+
+  // Nếu đang có một mã mới chờ chọn vị trí nhưng người dùng chủ động quét/nhập
+  // một mã sản phẩm KHÁC, hủy mã đang chờ và xử lý ngay mã mới.
+  // Nhờ vậy chế độ Kiểm thêm kho không bị "kẹt" ở một mã chưa chọn vị trí.
+  if (pendingExtraStock) {
+    const pendingScanned = normalizeMasp(pendingExtraStock.scanned || pendingExtraStock.masp);
+    const pendingMasp = normalizeMasp(pendingExtraStock.masp);
+    if (scannedMasp !== pendingScanned && scannedMasp !== pendingMasp) {
+      const cancelledMasp = pendingExtraStock.masp;
+      pendingExtraStock = null;
+      $('current-location').value = '';
+      setMessage(`Đã bỏ qua mã ${cancelledMasp} chưa chọn vị trí. Đang xử lý mã ${scannedMasp}.`, 'warn');
+    } else {
+      setMessage(`Mã ${pendingExtraStock.masp} chưa có trong phiên. Hãy chọn vị trí kho, hoặc quét một mã sản phẩm khác để bỏ qua mã này.`, 'warn');
+      $('current-location').focus();
+      return;
+    }
+  }
 
   $('scan-masp').disabled = true;
   let focusTarget = 'scan';
@@ -2008,6 +2020,13 @@ async function saveKhoToCatalog() {
 
 function attachEvents() {
   $('scan-masp').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
+  $('scan-masp').addEventListener('focus', (e) => {
+    // Khi đang chờ vị trí mà người dùng quay lại ô mã, chọn toàn bộ mã cũ
+    // để lần quét kế tiếp ghi đè ngay thay vì nối vào cuối chuỗi cũ.
+    if (extraStockMode && pendingExtraStock) {
+      setTimeout(() => e.target.select(), 0);
+    }
+  });
   $('scan-masp').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); handleScan(); }
   });
