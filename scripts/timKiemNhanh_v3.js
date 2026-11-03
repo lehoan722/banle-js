@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=32";
 
-window.TIM_KIEM_NHANH_BUILD = "3.0.0-AI-CANDIDATE-PIPELINE";
-console.log("[TimKiemNhanh V3] BUILD 3.0.0-AI-CANDIDATE-PIPELINE");
+window.TIM_KIEM_NHANH_BUILD = "3.1.0-HYBRID-ANCHOR";
+console.log("[TimKiemNhanh V3] BUILD 3.1.0-HYBRID-ANCHOR");
 
 const supabase = getSupabaseClient();
 
@@ -70,7 +70,7 @@ const state={
   tennv:String(localStorage.getItem("tennv")||"").trim(),
   diadiem:String(localStorage.getItem("diadiem")||"").trim().toLowerCase(),
   groups:[],colors:[],mainGroup:"",group:"",form:"",color:"",size:"",mode:"similar",referencePrice:0,
-  sourceMasp:"",sourceProduct:null,sourceStockAfterCheck:null,sizeGuideOpen:false,products:[],offset:0,total:0,loading:false,selected:[],scanner:null,searchType:"manual",aiCandidates:[],aiQuery:"",aiSearchId:null,imageSearchId:null
+  sourceMasp:"",sourceProduct:null,sourceStockAfterCheck:null,sizeGuideOpen:false,products:[],offset:0,total:0,loading:false,selected:[],scanner:null,searchType:"manual",aiCandidates:[],aiQuery:"",aiSearchId:null,imageSearchId:null,aiLoaiKey:"",aiLoaiLabel:""
 };
 
 function refreshAuthState(){
@@ -165,7 +165,7 @@ function aiCandidateScore(masp){
   const key=norm(masp);const row=state.aiCandidates.find(x=>norm(x.masp)===key);return Number(row?.score||row?.diem_giong||0)||0;
 }
 function clearAiContext(){
-  state.searchType="manual";state.aiCandidates=[];state.aiQuery="";state.aiSearchId=null;state.imageSearchId=null;
+  state.searchType="manual";state.aiCandidates=[];state.aiQuery="";state.aiSearchId=null;state.imageSearchId=null;state.aiLoaiKey="";state.aiLoaiLabel="";
 }
 async function logDictionaryEventV3(type,masp,rank=null){
   if(state.searchType!=="text_ai"||!state.aiSearchId)return;
@@ -174,6 +174,10 @@ async function logDictionaryEventV3(type,masp,rank=null){
 async function logImagePickV3(masp){
   if(state.searchType!=="image_ai"||!state.imageSearchId)return;
   try{await supabase.rpc("cap_nhat_nhat_ky_tim_kiem_anh_chon",{p_id:state.imageSearchId,p_masp_chon:norm(masp)})}catch(e){console.debug("[TKN V3] image pick",e)}
+}
+async function learnHybridAnchorV31(masp,event="chon"){
+  if(state.searchType!=="text_ai"||!state.aiLoaiKey)return;
+  try{await window.TimKiemTextAiV3?.learnAnchor?.({loaiKey:state.aiLoaiKey,masp:norm(masp),event})}catch(e){console.debug("[TKN V3.1] anchor learn",e)}
 }
 function showSizeWarning(text="Chọn size để tìm sản phẩm phù hợp"){
   const el=$("sizeWarning");
@@ -661,7 +665,7 @@ function addSelected(masp,size){
   const sp=state.products.find(x=>norm(x.masp)===norm(masp))||state.sourceProduct;if(!sp)return;
   if(state.selected.some(x=>norm(x.masp)===norm(masp)&&String(x.size)===String(size))){toast("Mã + size này đã có trong Sản phẩm đã chọn.");scrollSelectedIntoView();return}
   state.selected=[...state.selected,{id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,masp:sp.masp,size:String(size),soluong:1,giale:sp.giale,form:sp.form,mausac:sp.mausac,treomaucs1:sp.treomaucs1,treomaucs2:sp.treomaucs2,vitrikho1:sp.vitrikho1,vitrikho2:sp.vitrikho2,ton_sizes:sp.ton_sizes||{}}];
-  saveSelected();renderSelected();logDictionaryEventV3("chon",sp.masp);logImagePickV3(sp.masp);toast(`Đã chọn ${sp.masp} / ${size}`);scrollSelectedIntoView();
+  saveSelected();renderSelected();logDictionaryEventV3("chon",sp.masp);logImagePickV3(sp.masp);learnHybridAnchorV31(sp.masp,"chon");toast(`Đã chọn ${sp.masp} / ${size}`);scrollSelectedIntoView();
 }
 function jumpToElement(el,block="start"){
   if(!el)return;
@@ -831,6 +835,7 @@ async function pushOneToSale(id){
     return;
   }
   logDictionaryEventV3("sang_ban",row.masp);
+  learnHybridAnchorV31(row.masp,"sang_ban");
   toast(`Đã đưa ${row.masp} / ${row.size} sang trang bán mới.`);
 }
 
@@ -958,7 +963,7 @@ async function handleUnifiedInput(raw){
   return await ai.searchText(text);
 }
 
-async function searchByCandidatesV3({source="text_ai",query="",candidates=[],size="",searchId=null,imageSearchId=null}={}){
+async function searchByCandidatesV3({source="text_ai",query="",candidates=[],size="",searchId=null,imageSearchId=null,loaiKey="",loaiLabel=""}={}){
   const seen=new Set();
   const clean=[];
   for(const [i,x] of (candidates||[]).entries()){
@@ -967,7 +972,7 @@ async function searchByCandidatesV3({source="text_ai",query="",candidates=[],siz
   }
   if(!clean.length){clearResults("AI không tạo được ứng viên sản phẩm.");return[]}
   state.searchType=source==="image_ai"?"image_ai":"text_ai";
-  state.aiCandidates=clean;state.aiQuery=String(query||"");state.aiSearchId=searchId||null;state.imageSearchId=imageSearchId||null;
+  state.aiCandidates=clean;state.aiQuery=String(query||"");state.aiSearchId=searchId||null;state.imageSearchId=imageSearchId||null;state.aiLoaiKey=String(loaiKey||"");state.aiLoaiLabel=String(loaiLabel||"");
   state.sourceMasp="";state.sourceProduct=null;state.sourceStockAfterCheck=null;state.sizeGuideOpen=false;
   state.group="";state.mainGroup="";state.form="";state.color="";state.mode="similar";state.referencePrice=0;
   state.size=SIZE_LIST.includes(String(size||""))?String(size):"";
@@ -977,8 +982,8 @@ async function searchByCandidatesV3({source="text_ai",query="",candidates=[],siz
   if(rows?.length)jumpToElement($("resultsSection"),"start");
   return rows||[];
 }
-function setAiLearningMetaV3({searchId=null,imageSearchId=null}={}){if(searchId!==undefined)state.aiSearchId=searchId;if(imageSearchId!==undefined)state.imageSearchId=imageSearchId}
-function getAiResultSnapshotV3(){return {searchType:state.searchType,rows:state.products.slice(),total:state.total,candidates:state.aiCandidates.slice(),size:state.size,diadiem:state.diadiem}}
+function setAiLearningMetaV3({searchId=null,imageSearchId=null,loaiKey=undefined,loaiLabel=undefined}={}){if(searchId!==undefined)state.aiSearchId=searchId;if(imageSearchId!==undefined)state.imageSearchId=imageSearchId;if(loaiKey!==undefined)state.aiLoaiKey=String(loaiKey||"");if(loaiLabel!==undefined)state.aiLoaiLabel=String(loaiLabel||"")}
+function getAiResultSnapshotV3(){return {searchType:state.searchType,rows:state.products.slice(),total:state.total,candidates:state.aiCandidates.slice(),size:state.size,diadiem:state.diadiem,loaiKey:state.aiLoaiKey,loaiLabel:state.aiLoaiLabel}}
 
 window.TimKiemNhanhV3=Object.assign(window.TimKiemNhanhV3||{}, {searchByCandidates:searchByCandidatesV3,setAiLearningMeta:setAiLearningMetaV3,getAiResultSnapshot:getAiResultSnapshotV3,handleUnifiedInput});
 
