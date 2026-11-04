@@ -182,6 +182,137 @@ function patchAlertWithBeep() {
     vitriDangTai: new Set()
   };
 
+  // KNK CCN GUARD v1: chỉ phiếu đã mở lại từ DB mới được chuyển thừa/thiếu.
+  // Không dùng hd_state=da_nap làm bằng chứng đã lưu.
+  const ccnGuard = {
+    sohdDaMo: "",
+    snapshot: "",
+    dangTai: false,
+    token: 0,
+    markerByMasp: {}
+  };
+
+  function knkDuLieuFingerprint() {
+    const state = getState();
+    const canon = (map) => Object.values(map || {})
+      .map(r => [normalizeMasp(r?.masp), normalizeSize(r?.size || "0"), normalizeNumber(r?.sl)])
+      .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+    return JSON.stringify({
+      nhap: canon(state.nhap), xuat: canon(state.xuat),
+      nguon: [...(state.dsHoaDonNguon || [])].sort(),
+      ngay: String(byId("ngay")?.value || ""),
+      nhanvien: String(byId("tennv")?.value || "")
+    });
+  }
+
+  function knkDangXemPhieuDaLuu() {
+    return !!ccnGuard.sohdDaMo && !ccnGuard.dangTai &&
+      String(byId("sohd")?.value || "").trim() === ccnGuard.sohdDaMo &&
+      knkDuLieuFingerprint() === ccnGuard.snapshot;
+  }
+
+  function knkPhanLoaiMarker(text) {
+    const value = String(text || "").trim().toLowerCase();
+    if (!value) return "";
+    // Chỉ nhận chiều được ghi rõ; marker không rõ chiều thì khóa phòng ngừa tạo trùng.
+    const has12 = /(?:ccn\s*1\s*v\s*2|1\s*v\s*2|1\s*[-→>]\s*2)/i.test(value);
+    const has21 = /(?:ccn\s*2\s*v\s*1|2\s*v\s*1|2\s*[-→>]\s*1)/i.test(value);
+    if (has12 && !has21) return "1v2";
+    if (has21 && !has12) return "2v1";
+    return "khong_ro";
+  }
+
+  function knkCoHangChuaXuLy(dir) {
+    const d = String(dir || "").toLowerCase();
+    const list = getItemsForTransferByDir(d);
+    if (!list?.length) return false;
+    for (const item of list) {
+      const masp = normalizeMasp(item.masp);
+      const marker = knkPhanLoaiMarker(ccnGuard.markerByMasp[masp]);
+      // Chưa có marker -> còn cần xử lý. Marker không rõ -> khóa an toàn.
+      if (marker === "khong_ro") return false;
+      if (marker !== d) return true;
+    }
+    return false;
+  }
+
+  function knkHienThiNutCCN() {
+    const daMo = knkDangXemPhieuDaLuu();
+    for (const dir of ["1v2", "2v1"]) {
+      const btn = byId(dir === "1v2" ? "btnTaoPhieuCCN1V2" : "btnTaoPhieuCCN2V1");
+      if (!btn) continue;
+      const hien = daMo && knkCoHangChuaXuLy(dir) &&
+        !Object.values(ccnGuard.markerByMasp).some(v => knkPhanLoaiMarker(v) === "khong_ro");
+      btn.hidden = !hien;
+      btn.style.display = hien ? "" : "none";
+    }
+  }
+
+  function knkKhoaCCN() {
+    ++ccnGuard.token;
+    ccnGuard.sohdDaMo = "";
+    ccnGuard.snapshot = "";
+    ccnGuard.dangTai = false;
+    ccnGuard.markerByMasp = {};
+    knkHienThiNutCCN();
+  }
+
+  async function knkDongBoDaXuLyCCN() {
+    if (!ccnGuard.sohdDaMo || !window.supabase) {
+      knkHienThiNutCCN();
+      return false;
+    }
+    const token = ++ccnGuard.token;
+    const sohd = ccnGuard.sohdDaMo;
+    ccnGuard.dangTai = true;
+    knkHienThiNutCCN();
+    try {
+      const { data, error } = await window.supabase
+        .from("kiem_nhap_kho_chi_tiet_hoa_don")
+        .select("masp_key,masp_nhap,masp_xuat,taohdccn")
+        .eq("so_hd_kiemnhap", sohd);
+      if (token !== ccnGuard.token || sohd !== ccnGuard.sohdDaMo) return false;
+      if (error) throw error;
+      const markers = {};
+      (data || []).forEach(row => {
+        const masp = normalizeMasp(row.masp_key || row.masp_nhap || row.masp_xuat);
+        if (masp) markers[masp] = String(row.taohdccn || "").trim();
+      });
+      ccnGuard.markerByMasp = markers;
+      getState().taoHdCcnByMasp = {...markers};
+      ccnGuard.dangTai = false;
+      knkHienThiNutCCN();
+      return true;
+    } catch (err) {
+      if (token === ccnGuard.token) {
+        console.warn("[KNK CCN] Không xác minh được trạng thái CCN:", err);
+        ccnGuard.dangTai = true; // Không rõ trạng thái -> ẩn nút, không cho tạo trùng.
+        knkHienThiNutCCN();
+      }
+      return false;
+    }
+  }
+
+  async function knkKiemTraDuocChuyen(dir) {
+    // Đồng bộ cả nội dung ô nhập trực tiếp trước khi đối chiếu snapshot.
+    docLaiNhapTuBangHTML();
+    if (!knkDangXemPhieuDaLuu()) {
+      knkHienThiNutCCN();
+      alert("Chỉ được chuyển Thừa/Thiếu khi mở lại phiếu kiểm nhập đã lưu và chưa chỉnh sửa.");
+      return false;
+    }
+    if (!(await knkDongBoDaXuLyCCN())) {
+      alert("Chưa kiểm tra được trạng thái phiếu CCN đã xử lý. Vui lòng thử lại.");
+      return false;
+    }
+    if (!knkDangXemPhieuDaLuu() || !knkCoHangChuaXuLy(dir)) {
+      knkHienThiNutCCN();
+      alert("Không có hàng chênh lệch chưa xử lý cho chiều chuyển này.");
+      return false;
+    }
+    return true;
+  }
+
   let dangChonSizeTrongPopup = false;
 
   // =========================
@@ -2050,6 +2181,7 @@ function patchAlertWithBeep() {
   // RESET PHIẾU
   // =========================
   async function resetPhieu() {
+    knkKhoaCCN();
     const oldState = getState();
 
     window.kiemNhapState = {
@@ -2944,7 +3076,8 @@ function patchAlertWithBeep() {
     return [];
   }
 
-  function moTrangChuyenChiNhanhTheoTrangThai(trangThai) {
+  async function moTrangChuyenChiNhanhTheoTrangThai(trangThai) {
+    if (!(await knkKiemTraDuocChuyen(getTransferDirectionByTrangThai(trangThai)))) return;
     docLaiNhapTuBangHTML();
     kiemTraPhieu();
 
@@ -3017,7 +3150,8 @@ function patchAlertWithBeep() {
     return "";
   }
 
-  function moTrangChuyenChiNhanhTheoDir(dir) {
+  async function moTrangChuyenChiNhanhTheoDir(dir) {
+    if (!(await knkKiemTraDuocChuyen(dir))) return;
     docLaiNhapTuBangHTML();
     kiemTraPhieu();
 
@@ -4413,9 +4547,24 @@ function patchAlertWithBeep() {
     }
 
     bindRowSelection();
+    // Nếu phiếu cũ bị sửa thủ công, ẩn ngay nút để tránh chuyển dữ liệu chưa lưu.
+    const bang = document.querySelector("#bangketqua");
+    if (bang && !bang.dataset.ccnGuardBound) {
+      bang.dataset.ccnGuardBound = "1";
+      bang.addEventListener("input", () => {
+        setTimeout(() => {
+          docLaiNhapTuBangHTML();
+          knkHienThiNutCCN();
+        }, 0);
+      });
+    }
+    window.addEventListener("focus", () => {
+      if (ccnGuard.sohdDaMo) void knkDongBoDaXuLyCCN();
+    });
   }
 
   async function moLaiPhieuKiemNhapCu(soHdKiemNhap) {
+    knkKhoaCCN();
     if (!window.supabase) {
       alert("Không tìm thấy kết nối Supabase.");
       return;
@@ -4467,6 +4616,7 @@ function patchAlertWithBeep() {
       .map(x => String(x || "").trim())
       .filter(Boolean);
     state.dsHoaDonNguonInfo = [];
+    state.taoHdCcnByMasp = {};
 
     byId("sohd").value = phieuTong.so_hd_kiemnhap || "";
     byId("ngay").value = phieuTong.ngay_kiem || "";
@@ -4541,6 +4691,10 @@ function patchAlertWithBeep() {
 
     renderBangKetQua();
     kiemTraPhieu();
+    // Chỉ sau khi đọc thành công từ Supabase mới cho xem xét các nút CCN.
+    ccnGuard.sohdDaMo = sohd;
+    ccnGuard.snapshot = knkDuLieuFingerprint();
+    await knkDongBoDaXuLyCCN();
   }
 
   // =========================
