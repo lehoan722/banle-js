@@ -14,6 +14,7 @@
   let frame = 0;
   let image = null;
   let lastApprovedAt = 0;
+  let allowNoImageConfirm = false;
   const shieldIds = ['top', 'bottom', 'left', 'right'];
 
   function isAdmin() {
@@ -96,7 +97,7 @@
     const onImage = e.target === image;
     if (onImage && e.type === 'click') {
       blocked(e);
-      if (ready && image.complete && image.naturalWidth > 0 && imageMatchesCode()) finish(true);
+      if (ready && image.complete && image.naturalWidth > 0 && (allowNoImageConfirm || imageMatchesCode())) finish(true);
       return;
     }
     // Permit no other action; the backdrop remains visible on clicks outside the image.
@@ -153,6 +154,7 @@
     resolver = null;
     activeCode = '';
     ready = false;
+    allowNoImageConfirm = false;
     image = null;
     if (ok) lastApprovedAt = Date.now();
     document.getElementById('xna-banle-mask')?.classList.remove('xna-show');
@@ -172,6 +174,7 @@
     image = photo;
     activeCode = code;
     ready = false;
+    allowNoImageConfirm = false;
     const notice = document.getElementById('xna-banle-notice');
     notice.classList.remove('xna-error');
     notice.textContent = 'KIỂM TRA VÀ KÍCH VÀO ẢNH SẢN PHẨM NẾU ĐÚNG';
@@ -186,18 +189,23 @@
     image.onerror = () => {
       if (!resolver || activeCode !== code) return;
       ready = false;
+      allowNoImageConfirm = true;
       notice.classList.add('xna-error');
-      notice.textContent = `ẢNH ${code} KHÔNG TẢI ĐƯỢC — KHÔNG THỂ XÁC NHẬN. TẢI LẠI TRANG HOẶC NHỜ QUẢN TRỊ KIỂM TRA ẢNH.`;
-      // Preserve the app's ordinary fallback appearance.
+      notice.textContent = `SẢN PHẨM ${code} KHÔNG CÓ ẢNH. YÊU CẦU KIỂM TRA KỸ MÃ SẢN PHẨM VÀ GIÁ SẢN PHẨM, SAU ĐÓ KÍCH VÀO KHU VỰC ẢNH ĐỂ XÁC NHẬN.`;
+      // Preserve the app's ordinary fallback appearance and still allow manual confirmation on the no-image area.
       image.onerror = null;
+      image.onload = () => {
+        if (!resolver || activeCode !== code) return;
+        ready = image.naturalWidth > 0;
+      };
       image.src = `${BASE}/NO-IMAGE.JPG`;
     };
     image.onload = () => {
       if (!resolver || activeCode !== code) return;
-      ready = imageMatchesCode() && image.naturalWidth > 0;
+      ready = image.naturalWidth > 0 && (allowNoImageConfirm || imageMatchesCode());
     };
     if (image.getAttribute('src') !== expected) image.src = expected;
-    else ready = image.complete && image.naturalWidth > 0 && imageMatchesCode();
+    else ready = image.complete && image.naturalWidth > 0 && (allowNoImageConfirm || imageMatchesCode());
     updateGeometry();
     return gate;
   }
