@@ -1,4 +1,4 @@
-// HOAN TUYET - XAC NHAN ANH BAN LE V1 (CS1/CS2)
+// HOAN TUYET - XAC NHAN ANH BAN LE V3 (CS1/CS2)
 // Chi thay module popup cu tai hai trang ban le; giao dien va hoadon.js khong doi.
 (() => {
   'use strict';
@@ -15,6 +15,7 @@
   let image = null;
   let lastApprovedAt = 0;
   let allowNoImageConfirm = false;
+  let scanSerial = 0;
   const shieldIds = ['top', 'bottom', 'left', 'right'];
 
   function isAdmin() {
@@ -94,10 +95,29 @@
           e.target === document.querySelector('.banle-right .product-image')) blocked(e);
       return;
     }
+    // The mask covers the barcode field. Clicking its position must cancel
+    // the pending confirmation and focus the barcode field for a NEW scan.
+    // No other location can cancel or confirm.
+    const codeInput = document.getElementById('masp');
+    if (e.type === 'pointerdown' || e.type === 'mousedown' || e.type === 'touchstart') {
+      const r = codeInput?.getBoundingClientRect();
+      const point = e.touches?.[0] || e;
+      if (r && Number.isFinite(point.clientX) && point.clientX >= r.left &&
+          point.clientX <= r.right && point.clientY >= r.top && point.clientY <= r.bottom) {
+        blocked(e);
+        finish(false);
+        // hoadon.js also selects it on rejection; avoid clearing the typed code.
+        setTimeout(() => { codeInput.focus(); codeInput.select?.(); }, 0);
+        return;
+      }
+    }
     const onImage = e.target === image;
     if (onImage && e.type === 'click') {
       blocked(e);
-      if (ready && image.complete && image.naturalWidth > 0 && (allowNoImageConfirm || imageMatchesCode())) finish(true);
+      // Each scan has its own independent probe. For no-image scans the
+      // placeholder area is explicitly allowed, even if the fallback is cached.
+      if (ready && (allowNoImageConfirm ||
+          (image.complete && image.naturalWidth > 0 && imageMatchesCode()))) finish(true);
       return;
     }
     // Permit no other action; the backdrop remains visible on clicks outside the image.
@@ -155,6 +175,7 @@
     activeCode = '';
     ready = false;
     allowNoImageConfirm = false;
+    scanSerial++;
     image = null;
     if (ok) lastApprovedAt = Date.now();
     document.getElementById('xna-banle-mask')?.classList.remove('xna-show');
@@ -184,28 +205,42 @@
     mask.classList.add('xna-show');
     mask.setAttribute('aria-hidden','false');
 
-    // Ensure screen image is the NEW code, never an old image from prior scan.
+    // IMPORTANT: validate with an independent Image on EVERY scan, including
+    // repeated scans of a missing product. The live <img> may already display
+    // cached NO-IMAGE.JPG, so relying on its onerror/onload can deadlock.
+    const serial = ++scanSerial;
     const expected = `${BASE}/${code}.JPG`;
-    image.onerror = () => {
-      if (!resolver || activeCode !== code) return;
-      ready = false;
+    const placeholder = `${BASE}/NO-IMAGE.JPG`;
+    const current = () => Boolean(resolver && serial === scanSerial && activeCode === code);
+    const showMissing = () => {
+      if (!current()) return;
       allowNoImageConfirm = true;
+      ready = true; // allow click inside the no-image area even if placeholder fails
       notice.classList.add('xna-error');
-      notice.textContent = `SẢN PHẨM ${code} KHÔNG CÓ ẢNH. YÊU CẦU KIỂM TRA KỸ MÃ SẢN PHẨM VÀ GIÁ SẢN PHẨM, SAU ĐÓ KÍCH VÀO KHU VỰC ẢNH ĐỂ XÁC NHẬN.`;
-      // Preserve the app's ordinary fallback appearance and still allow manual confirmation on the no-image area.
+      notice.textContent = `SẢN PHẨM ${code} KHÔNG CÓ ẢNH. YÊU CẦU KIỂM TRA MÃ SẢN PHẨM VÀ GIÁ SẢN PHẨM, SAU ĐÓ KÍCH VÀO VÙNG ẢNH ĐỂ XÁC NHẬN.`;
+      // Only the current scan may update this image. Detach old handlers so
+      // late fallback events from a prior scan cannot modify this state.
+      image.onload = null;
       image.onerror = null;
+      if (image.getAttribute('src') !== placeholder) image.src = placeholder;
+    };
+    // Suppress any inherited handlers while the probe determines the state.
+    image.onload = null;
+    image.onerror = null;
+    const probe = new Image();
+    probe.onload = () => {
+      if (!current()) return;
+      if (!probe.naturalWidth) { showMissing(); return; }
+      allowNoImageConfirm = false;
+      image.onerror = () => { if (current()) showMissing(); };
       image.onload = () => {
-        if (!resolver || activeCode !== code) return;
-        ready = image.naturalWidth > 0;
+        if (current()) ready = imageMatchesCode() && image.naturalWidth > 0;
       };
-      image.src = `${BASE}/NO-IMAGE.JPG`;
+      if (image.getAttribute('src') !== expected) image.src = expected;
+      ready = image.complete && image.naturalWidth > 0 && imageMatchesCode();
     };
-    image.onload = () => {
-      if (!resolver || activeCode !== code) return;
-      ready = image.naturalWidth > 0 && (allowNoImageConfirm || imageMatchesCode());
-    };
-    if (image.getAttribute('src') !== expected) image.src = expected;
-    else ready = image.complete && image.naturalWidth > 0 && (allowNoImageConfirm || imageMatchesCode());
+    probe.onerror = showMissing;
+    probe.src = expected;
     updateGeometry();
     return gate;
   }
