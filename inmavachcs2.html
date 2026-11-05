@@ -479,6 +479,7 @@
                             <option value="quanao">Tem quần áo</option>
                             <option value="tem_giamgia">Tem giảm giá</option>
                             <option value="tem_mavach">Tem mã vạch</option>
+                            <option value="tem_mau">In size TOMY 108 (40 tem)</option>
                             <option value="insize_tomy114">In size </option>
                         </select>
                     </label>
@@ -1067,10 +1068,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Chuẩn bị danh sách tem cần in (theo tick, số lượng)
                 temsAll = [];
                 selected.forEach(row => {
-                    if (row.tick) {
-                        for (let i = 0; i < row.sl; i++) {
-                            temsAll.push(row);
-                        }
+                    if (!row.tick) return;
+                    // Giấy TOMY 108 in SIZE: bỏ qua size trống hoặc 0.
+                    if (loaiTem === 'tem_mau') {
+                        const sizeText = String(row.size ?? '').trim();
+                        if (!sizeText || sizeText === '0') return;
+                    }
+                    const soLuong = Math.max(0, Math.floor(Number(row.sl) || 0));
+                    for (let i = 0; i < soLuong; i++) {
+                        temsAll.push(row);
                     }
                 });
 
@@ -1138,7 +1144,35 @@ document.addEventListener("DOMContentLoaded", function () {
                     else html += `
                     
 
-                    ${loaiTem === "tem_mavach" ? `
+                    ${loaiTem === "tem_mau" ? `
+<!-- Tem SIZE TOMY 108: giữ đúng lưới 5 cột x 8 hàng của CS2 -->
+<div class="tem tem-size-tomy108"
+     data-size="${String(t.size ?? '').trim()}"
+     style="
+        width:35mm;
+        height:19mm;
+        box-sizing:border-box;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        text-align:center;
+        margin:0;
+        padding:0;
+        border:0;
+        overflow:hidden;
+     ">
+    <span style="
+        font-family:Arial,sans-serif;
+        font-size:18pt;
+        font-weight:700;
+        line-height:1;
+        text-transform:uppercase;
+        white-space:nowrap;
+        color:#000;
+        display:block;
+    ">${String(t.size ?? '').trim()}</span>
+</div>
+` : loaiTem === "tem_mavach" ? `
 <div class="tem"
      data-masp="${t.masp}"
      data-size="${(t.size ?? '').toString().trim()}"
@@ -1551,7 +1585,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                const ok = kiemTraGiaLeTruocKhiIn();
+                const ok = (loaiTem === 'tem_mau') ? true : kiemTraGiaLeTruocKhiIn();
                 if (!ok) {
                     return;
                 }
@@ -1637,7 +1671,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                const okGia = kiemTraGiaLeTruocKhiIn();
+                const okGia = (loaiTem === 'tem_mau') ? true : kiemTraGiaLeTruocKhiIn();
                 if (!okGia) return;
 
                 const ok = await renderAllPagesForPrint();
