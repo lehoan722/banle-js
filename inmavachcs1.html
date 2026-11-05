@@ -534,7 +534,7 @@
                             <option value="quanao">Tem quần áo</option>
                             <option value="tem_giamgia">Tem giảm giá</option>
                             <option value="tem_mavach">Tem mã vạch</option>
-                            <option value="tem_mau">Tem mẫu</option>
+                            <option value="tem_mau">In size TOMY 108 (40 tem)</option>
                             <option value="insize_tomy114">In size </option>
                         </select>
                     </label>
@@ -1124,10 +1124,15 @@
                 // Chuẩn bị danh sách tem cần in (theo tick, số lượng)
                 temsAll = [];
                 selected.forEach(row => {
-                    if (row.tick) {
-                        for (let i = 0; i < row.sl; i++) {
-                            temsAll.push(row);
-                        }
+                    if (!row.tick) return;
+                    // In size TOMY 108: chỉ in size đã nhập, bỏ qua size rỗng hoặc 0.
+                    if (loaiTem === 'tem_mau') {
+                        const sizeText = String(row.size ?? '').trim();
+                        if (!sizeText || sizeText === '0') return;
+                    }
+                    const soLuong = Math.max(0, Math.floor(Number(row.sl) || 0));
+                    for (let i = 0; i < soLuong; i++) {
+                        temsAll.push(row);
                     }
                 });
 
@@ -1196,67 +1201,32 @@
                     
 
                     ${loaiTem === "tem_mau" ? `
-<div class="tem"
-     data-masp="${t.masp}"
-     data-size="${(t.size ?? '').toString().trim()}"
+<!-- In SIZE trên giấy TOMY 108: 5 cột x 8 hàng, 40 ô/trang. -->
+<div class="tem tem-size-tomy108"
+     data-size="${String(t.size ?? '').trim()}"
      style="
-        width:${TEM_WIDTH_MM}mm;
-        height:${TEM_HEIGHT_MM}mm;
+        width:35mm;
+        height:19mm;
         box-sizing:border-box;
-        overflow:hidden;
-        border:0;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        text-align:center;
         margin:0;
         padding:0;
+        border:0;
+        overflow:hidden;
      ">
-    <div style="
-        display:grid;
-        grid-template-columns:50% 50%;
-        width:100%;
-        height:100%;
-        box-sizing:border-box;
-        align-items:center;
-    ">
-        <div style="
-            width:100%;
-            height:100%;
-            box-sizing:border-box;
-            display:flex;
-            align-items:flex-start;
-            justify-content:flex-start;
-            padding:1.2mm 0.8mm 0.6mm 1mm;
-            overflow:hidden;
-        ">
-            <div style="
-                font-family:Arial, sans-serif;
-                font-size:14pt;
-                font-weight:400;
-                line-height:1.02;
-                color:#000;
-                white-space:normal;
-                overflow:hidden;
-                word-break:break-word;
-                overflow-wrap:anywhere;
-                text-align:left;
-            ">
-                ${t.masp}
-            </div>
-        </div>
-
-        <div class="qr-col" style="
-    width:100%;
-    height:100%;
-    box-sizing:border-box;
-    display:flex;
-    align-items:flex-start;
-    justify-content:flex-start;
-    margin:0;
-    padding:0;
-    padding-left:0.2mm;
-    padding-top:0.2mm;
-">
-    <canvas class="qr" style="width:14mm; height:14mm;"></canvas>
-</div>
-    </div>
+    <span style="
+        font-family:Arial,sans-serif;
+        font-size:18pt;
+        font-weight:700;
+        line-height:1;
+        text-transform:uppercase;
+        white-space:nowrap;
+        color:#000;
+        display:block;
+    ">${String(t.size ?? '').trim()}</span>
 </div>
 ` : loaiTem === "tem_mavach" ? `
 <div class="tem"
