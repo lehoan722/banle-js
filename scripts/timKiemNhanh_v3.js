@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=32";
 
-window.TIM_KIEM_NHANH_BUILD = "3.1.0-HYBRID-ANCHOR";
-console.log("[TimKiemNhanh V3] BUILD 3.1.0-HYBRID-ANCHOR");
+window.TIM_KIEM_NHANH_BUILD = "3.2.1-MODE-ISOLATION";
+console.log("[TimKiemNhanh V3] BUILD 3.2.1-MODE-ISOLATION");
 
 const supabase = getSupabaseClient();
 
@@ -164,8 +164,43 @@ function canSearchCurrentContext(){return isAiSearch()?state.aiCandidates.length
 function aiCandidateScore(masp){
   const key=norm(masp);const row=state.aiCandidates.find(x=>norm(x.masp)===key);return Number(row?.score||row?.diem_giong||0)||0;
 }
+// V3.2.1: Chế độ tìm kiếm phải tách biệt. Không để bộ ứng viên AI
+// tiếp tục điều khiển bộ lọc phần mềm sau khi người dùng xóa ô tìm kiếm.
+let searchGeneration=0;
+let manualContextBeforeAi=null;
+function snapshotManualContext(){
+  return Object.fromEntries(["mainGroup","group","form","color","size","mode","referencePrice","sourceMasp","sourceProduct","sourceStockAfterCheck","sizeGuideOpen"].map(k=>[k,state[k]]));
+}
 function clearAiContext(){
+  searchGeneration++;
   state.searchType="manual";state.aiCandidates=[];state.aiQuery="";state.aiSearchId=null;state.imageSearchId=null;state.aiLoaiKey="";state.aiLoaiLabel="";
+}
+function restoreManualFromAi({runSearch=true}={}){
+  // Xóa toàn bộ AI ngay cả khi thao tác AI đang xử lý bất đồng bộ.
+  const previous=manualContextBeforeAi;
+  clearAiContext();
+  manualContextBeforeAi=null;
+  setLoading(false);
+  if(previous){Object.assign(state,previous);}
+  $("formSelect").value=state.form||"";
+  $("colorSelect").value=state.color||"";
+  $("refPrice").value=state.referencePrice||"";
+  renderSourceLocation();renderGroups();renderSizes();renderModes();
+  clearResults(state.group&&state.size?"Đang tải tìm kiếm phần mềm…":"Chọn nhóm hàng và size để tìm bằng phần mềm.");
+  if(runSearch&&state.group&&state.size)void search(true);
+}
+function switchToManualFilters(){
+  if(isAiSearch()||manualContextBeforeAi){
+    clearAiContext();manualContextBeforeAi=null;setLoading(false);
+    // Chọn bộ lọc thủ công là yêu cầu tách khỏi câu lệnh AI.
+    if($("codeInput"))$("codeInput").value="";
+  }
+}
+function isMaspLikeInput(text){
+  const value=String(text||"").trim();
+  // Mã máy quét thường là một chuỗi liền có số; văn bản mô tả có dấu cách
+  // hoặc thuần từ ngữ (polo, dep...) phải vào Text AI.
+  return /^[A-Za-z0-9_-]+$/.test(value)&&/\d/.test(value);
 }
 async function logDictionaryEventV3(type,masp,rank=null){
   if(state.searchType!=="text_ai"||!state.aiSearchId)return;
@@ -307,6 +342,7 @@ function renderGroups(){
   }).join("");
 
   main.querySelectorAll(".main-group").forEach(b=>b.onclick=async()=>{
+    switchToManualFilters();
     const key=b.dataset.main;
     state.mainGroup=key;
 
@@ -335,6 +371,7 @@ function renderSubgroups(forceOpen=false){
   box.innerHTML=rows.map(g=>`<button type="button" class="subgroup ${norm(g.manhom)===norm(state.group)?"on":""}" data-group="${esc(g.manhom)}">${esc(g.ten_hien_thi||g.manhom)}</button>`).join("");
   box.classList.toggle("show",forceOpen);
   box.querySelectorAll(".subgroup").forEach(b=>b.onclick=async()=>{
+    switchToManualFilters();
     state.group=b.dataset.group;
     clearSourceForManualFilter();
     renderGroups();
@@ -461,11 +498,14 @@ async function fetchAiCandidatePageV3(offset=0,limit=40){
 async function searchAiCandidates(reset=true){
   if(!validBranch()||!state.aiCandidates.length||state.loading)return;
   const off=reset?0:state.offset;
+  const generation=searchGeneration;
   setLoading(true,reset);
   try{
     const raw=await fetchAiCandidatePageV3(off,40);
+    if(generation!==searchGeneration||!isAiSearch())return [];
     const nextTotal=Number(raw[0]?.total_count||0);
     const xaMap=raw.length?await getXaHangSuggestions({supabase,masps:raw.map(x=>x.masp),denNgay:businessDate()}).catch(()=>new Map()):new Map();
+    if(generation!==searchGeneration||!isAiSearch())return [];
     const rows=attachXaHangSuggestions(raw,xaMap);
     if(reset){state.products=rows;state.offset=raw.length;state.total=nextTotal;}
     else{
@@ -478,7 +518,7 @@ async function searchAiCandidates(reset=true){
     $("btnMore").style.display="none";
     return rows;
   }catch(e){console.error(e);toast("Lỗi lọc kết quả AI V3: "+(e.message||e),6000);return[]}
-  finally{setLoading(false,reset);requestAnimationFrame(maybeAutoLoadMore)}
+  finally{if(generation===searchGeneration){setLoading(false,reset);requestAnimationFrame(maybeAutoLoadMore)}}
 }
 
 async function search(reset=true){
@@ -486,12 +526,14 @@ async function search(reset=true){
   if(isAiSearch())return await searchAiCandidates(reset);
   if(!state.group||!state.size||state.loading)return;
   const off=reset?0:state.offset;
+  const generation=searchGeneration;
   setLoading(true,reset);
   try{
     if(state.mode==="discount"){
       // V2.4: server xet TOAN BO ma con ban duoc theo size chon -> +1 -> -1 -> size 0.
       // ADMIN override RULE; trong tung nhom size, ADMIN xep truoc RULE; sau do moi phan trang 40 dong.
       const rows=await fetchDiscountPageV24(off,40);
+      if(generation!==searchGeneration||isAiSearch())return;
       const nextTotal=Number(rows[0]?.total_count||0);
 
       if(reset){
@@ -515,6 +557,7 @@ async function search(reset=true){
     // V2: 1 RPC duy nhất đã xử lý tồn hiện tại + chênh lệch kiểm + size 0 fallback.
     const {data,error}=await supabase.rpc("timkiemnhanh_search_v2",paramsV2(off,40,state.mode));
     if(error)throw error;
+    if(generation!==searchGeneration||isAiSearch())return;
     const raw=normalizeFastRows(data||[]);
     const nextTotal=Number(raw[0]?.total_count||0);
 
@@ -527,6 +570,7 @@ async function search(reset=true){
       console.warn("[TimKiemNhanh V3] Module gợi ý xả hàng lỗi, bỏ qua:",err);
       return new Map();
     }):new Map();
+    if(generation!==searchGeneration||isAiSearch())return;
     const rows=attachXaHangSuggestions(raw,xaMap);
 
     if(reset){
@@ -690,7 +734,7 @@ function resetToInitialState(){
   $("suggestBox").style.display="none";
   $("codeInput").value="";
   state.mainGroup="";state.group="";state.form="";state.color="";state.size="";
-  clearAiContext();
+  clearAiContext();manualContextBeforeAi=null;
   state.mode="similar";state.referencePrice=0;state.sourceMasp="";state.sourceProduct=null;state.sourceStockAfterCheck=null;state.sizeGuideOpen=false;
   state.products=[];state.offset=0;state.total=0;state.loading=false;
   state.selected=[];saveSelected();
@@ -913,7 +957,7 @@ async function processCode(raw,options={}){
     const sp=(data||[])[0];
     if(!sp){if(!options.silentNotFound)toast("Mã sản phẩm không tồn tại.");return false}
 
-    clearAiContext();
+    clearAiContext();manualContextBeforeAi=null;
     $("codeInput").value=sp.masp;$("suggestBox").style.display="none";
     state.sourceMasp=sp.masp;
     state.sourceProduct={...sp};
@@ -954,8 +998,21 @@ async function processCode(raw,options={}){
 }
 
 async function handleUnifiedInput(raw){
-  const text=String(raw||"").trim();if(!text||state.loading)return false;
+  const text=String(raw||"").trim();
+  if(!text){restoreManualFromAi();return true;}
+  if(state.loading)return false;
   $("suggestBox").style.display="none";
+  // MASP (kể cả mã không tồn tại) KHÔNG bao giờ bị chuyển nhầm sang AI.
+  if(isMaspLikeInput(text)){
+    if(isAiSearch()||manualContextBeforeAi)restoreManualFromAi({runSearch:false});
+    const found=await processCode(text,{openStockQuick:true,silentNotFound:true});
+    if(!found){
+      toast("Không tìm thấy mã sản phẩm. Đã trở về tìm kiếm phần mềm.",4500);
+      if(state.group&&state.size)void search(true);
+    }
+    return found;
+  }
+  // Cho phép mã chữ thuần được kiểm tra chính xác; nếu không tồn tại thì là câu mô tả AI.
   const exact=await processCode(text,{openStockQuick:true,silentNotFound:true});
   if(exact)return true;
   const ai=window.TimKiemTextAiV3;
@@ -971,6 +1028,12 @@ async function searchByCandidatesV3({source="text_ai",query="",candidates=[],siz
     clean.push({masp,score:Number(x?.score??x?.diem_giong??0)||0,rank:Number(x?.rank||i+1)});
   }
   if(!clean.length){clearResults("AI không tạo được ứng viên sản phẩm.");return[]}
+  if(source!=="image_ai"&&String($("codeInput")?.value||"").trim()!==String(query||"").trim()){
+    // Người dùng đã xóa/thay câu tìm kiếm trong lúc model tính toán.
+    return [];
+  }
+  if(!isAiSearch()&&!manualContextBeforeAi)manualContextBeforeAi=snapshotManualContext();
+  searchGeneration++; // vô hiệu hóa RPC cũ trước khi vào phiên AI mới
   state.searchType=source==="image_ai"?"image_ai":"text_ai";
   state.aiCandidates=clean;state.aiQuery=String(query||"");state.aiSearchId=searchId||null;state.imageSearchId=imageSearchId||null;state.aiLoaiKey=String(loaiKey||"");state.aiLoaiLabel=String(loaiLabel||"");
   state.sourceMasp="";state.sourceProduct=null;state.sourceStockAfterCheck=null;state.sizeGuideOpen=false;
@@ -1056,7 +1119,21 @@ function bind(){
     }
   };
   const codeInput=$("codeInput");
-  codeInput.addEventListener("input",e=>{clearTimeout(suggestTimer);suggestTimer=setTimeout(()=>loadSuggestions(e.target.value),150)});
+  codeInput.addEventListener("input",e=>{
+    clearTimeout(suggestTimer);
+    const value=String(e.target.value||"").trim();
+    if(!value){
+      $("suggestBox").style.display="none";
+      restoreManualFromAi();
+      return;
+    }
+    if(isAiSearch()&&value!==state.aiQuery){
+      // Không cho kết quả/ứng viên AI của câu cũ lọt sang câu mới.
+      clearAiContext();setLoading(false);
+      clearResults("Nhấn Enter để tìm theo nội dung mới.");
+    }
+    suggestTimer=setTimeout(()=>loadSuggestions(value),150);
+  });
 
   // Chạm/focus vào ô mã sản phẩm: bôi đen toàn bộ để nhập/quét mã mới nhanh hơn.
   const selectAllCode=()=>setTimeout(()=>{try{codeInput.select()}catch{}},0);
@@ -1077,9 +1154,9 @@ function bind(){
     if(e.key==="Enter"||e.key===" "){e.preventDefault();e.currentTarget.click()}
   };
   document.addEventListener("click",e=>{if(!e.target.closest(".codebox"))$("suggestBox").style.display="none"});
-  $("formSelect").onchange=async e=>{state.form=e.target.value;clearSourceForManualFilter();renderSizes();if(canSearchCurrentContext())await search(true)};
-  $("colorSelect").onchange=async e=>{state.color=e.target.value;clearSourceForManualFilter();renderSizes();if(canSearchCurrentContext())await search(true)};
-  document.querySelectorAll(".mode").forEach(b=>b.onclick=async()=>{state.mode=b.dataset.mode;renderModes();if(canSearchCurrentContext())await search(true)});
+  $("formSelect").onchange=async e=>{if(!$("codeInput").value.trim())switchToManualFilters();state.form=e.target.value;clearSourceForManualFilter();renderSizes();if(canSearchCurrentContext())await search(true)};
+  $("colorSelect").onchange=async e=>{if(!$("codeInput").value.trim())switchToManualFilters();state.color=e.target.value;clearSourceForManualFilter();renderSizes();if(canSearchCurrentContext())await search(true)};
+  document.querySelectorAll(".mode").forEach(b=>b.onclick=async()=>{if(!$("codeInput").value.trim())switchToManualFilters();state.mode=b.dataset.mode;renderModes();if(canSearchCurrentContext())await search(true)});
   $("refPrice").onchange=async e=>{state.referencePrice=Number(e.target.value||0);if(canSearchCurrentContext())await search(true)};
   $("btnScan").onclick=async()=>{$("scanOverlay").classList.add("show");await state.scanner.startScan()};
   $("btnCloseScan").onclick=()=>{state.scanner.stopScan();$("scanOverlay").classList.remove("show")};
