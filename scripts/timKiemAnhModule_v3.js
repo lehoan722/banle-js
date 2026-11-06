@@ -3,7 +3,7 @@
 // Dùng RPC V3.2A để lọc tồn sau kiểm; không ghi kết quả vào trạng thái tìm kiếm chính.
 import { getSupabaseClient } from "./authModule.js";
 
-const BUILD="VISUAL-V3.2.3-INDEPENDENT-FILTERS";
+const BUILD="VISUAL-V3.2.4-STOCKQUICK-FIX";
 const MODEL_ID="Xenova/siglip-base-patch16-224";
 const DTYPE="q8",VECTOR_VERSION="python-fp32-v1",CANDIDATE_TOP=800;
 const supabase=getSupabaseClient();
@@ -170,7 +170,10 @@ function injectStyles(){
   st.textContent=`
 .visual-search-entry{width:100%;margin-top:7px;border:0;border-radius:10px;padding:10px 12px;background:linear-gradient(135deg,#172033,#075f9f);color:white;font-size:16px;font-weight:900;min-height:44px}
 .vs-modal{display:none;position:fixed;inset:0;z-index:60000;background:#f4f6f8;color:#111827;overflow:auto;-webkit-overflow-scrolling:touch}
-.vs-modal.show{display:block}.vs-open{overflow:hidden}.vs-shell{max-width:960px;margin:0 auto;padding:0 6px calc(24px + env(safe-area-inset-bottom))}
+.vs-modal.show{display:block}.vs-open{overflow:hidden}
+/* StockQuickPopup dung z-index 9999; modal anh 60000. Nang RIENG popup khi dang mo cua so anh. */
+body.vs-open #sq-stock-host .sq-stock-popup{z-index:70010!important}
+body.vs-open .sq-image-fullscreen{z-index:70020!important}.vs-shell{max-width:960px;margin:0 auto;padding:0 6px calc(24px + env(safe-area-inset-bottom))}
 .vs-head{position:sticky;top:0;z-index:3;background:rgba(244,246,248,.96);display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 5px 10px;border-bottom:1px solid #dde3ea}
 .vs-title{font-size:19px;font-weight:900;flex:1}.vs-close{border:0;border-radius:10px;background:#e7ebef;padding:9px 13px;font-weight:900}
 .vs-card{background:white;border:1px solid #dce3e9;border-radius:13px;padding:9px 7px;margin-top:8px}
