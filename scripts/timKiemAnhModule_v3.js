@@ -3,13 +3,17 @@
 // Dùng RPC V3.2A để lọc tồn sau kiểm; không ghi kết quả vào trạng thái tìm kiếm chính.
 import { getSupabaseClient } from "./authModule.js";
 
-const BUILD="VISUAL-V3.2.2-ISOLATED";
+const BUILD="VISUAL-V3.2.3-INDEPENDENT-FILTERS";
 const MODEL_ID="Xenova/siglip-base-patch16-224";
 const DTYPE="q8",VECTOR_VERSION="python-fp32-v1",CANDIDATE_TOP=800;
 const supabase=getSupabaseClient();
 let hf=null,processor=null,model=null,loadPromise=null;
 let currentFile=null,currentObjectUrl="",currentVector=null,currentCandidates=null;
-let searchToken=0,working=false,results=[];
+let searchToken=0,working=false,results=[],rerunAfterWorking=false;
+const SIZE_OPTIONS=["38","39","40","41","42","43","44","45","46","0"];
+// Bộ lọc độc lập: không lấy size/nhóm đang chọn trên trang chính.
+let imageGroup="",imageSize="";
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const $=id=>document.getElementById(id);
 const norm=x=>String(x??"").trim().toUpperCase();
 function branch(){return String(sessionStorage.getItem("diadiem")||localStorage.getItem("diadiem")||"").trim().toLowerCase()}
@@ -64,38 +68,60 @@ async function logImage({vector,inferenceMs,totalMs,candidates}){
     });
   }catch(err){console.debug("[V3 image] log not available",err)}
 }
-// Thực hiện lọc tồn theo từng đợt ứng viên đã sắp bởi độ giống ảnh.
-// RPC V3.2A trả tối đa 200 bản ghi/lượt và có xếp hạng nhập/bán riêng;
-// ở cửa sổ ẢNH, sắp trở lại theo rank giống ảnh sau mỗi đợt.
-async function stockFilteredCandidates(candidates,wanted,token){
+// Dữ liệu card: theo vector giống ảnh. Không bắt buộc có tồn khi chưa chọn size.
+// RPC chỉ trả mã còn hàng; MASP còn lại được bổ sung metadata dmhanghoa để
+// hiển thị đúng Top 12/24/40/100 giống V2 và KHÔNG cho chọn size hết hàng.
+async function visualCandidates(candidates,wanted,token){
   if(!["cs1","cs2"].includes(branch()))throw new Error("Chưa xác định cơ sở CS1/CS2.");
-  const collected=[],seen=new Set();
-  const batchSize=120;
-  for(let i=0;i<candidates.length&&collected.length<wanted;i+=batchSize){
+  const out=[],seen=new Set(),batchSize=120;
+  for(let i=0;i<candidates.length&&out.length<wanted;i+=batchSize){
     if(token!==searchToken)return [];
-    const batch=candidates.slice(i,i+batchSize);
-    status(`Đang kiểm tra tồn sau kiểm: ${Math.min(i+batchSize,candidates.length)}/${candidates.length} mã…`);
-    const {data,error}=await supabase.rpc("timkiemnhanh_ai_candidates_v3",{
-      p_diadiem:branch(),p_candidates:batch,p_size:"",p_nhomhang:null,p_form:null,
-      p_mausac:null,p_mode:"similar",p_reference_price:0,p_offset:0,p_limit:200
-    });
-    if(error)throw error;
+    const batch=candidates.slice(i,i+batchSize),codes=batch.map(x=>x.masp);
+    status(`Đang lấy thông tin ảnh: ${Math.min(i+batchSize,candidates.length)}/${candidates.length} mã…`);
+    // Metadata không đòi hỏi có tồn; đây là điểm khác V3.2.2.
+    const [catalog,stock]=await Promise.all([
+      supabase.from("dmhanghoa").select("masp,tensp,giale,nhomhang,chungloai,mausac,form,rong_ong,co_gian,active,giam_gia_pct,treomaucs1,treomaucs2,vitrikho1,vitrikho2").in("masp",codes),
+      supabase.rpc("timkiemnhanh_ai_candidates_v3",{
+        p_diadiem:branch(),p_candidates:batch,p_size:"",p_nhomhang:null,p_form:null,
+        p_mausac:null,p_mode:"similar",p_reference_price:0,p_offset:0,p_limit:200
+      })
+    ]);
+    if(stock.error)throw stock.error;
     if(token!==searchToken)return [];
-    for(const row of data||[]){
-      const key=norm(row.masp);
-      if(!key||seen.has(key))continue;
-      seen.add(key);collected.push({...row,__size0_fallback:!!row.is_size0_fallback});
+    // Nếu quyền catalog bị hạn chế: vẫn hiển thị mã còn hàng từ RPC.
+    if(catalog.error)console.warn("[V3 image] Không đọc được dmhanghoa",catalog.error);
+    const catalogByCode=new Map((catalog.data||[]).map(x=>[norm(x.masp),x]));
+    const stockByCode=new Map((stock.data||[]).map(x=>[norm(x.masp),x]));
+    for(const candidate of batch){
+      const code=norm(candidate.masp);
+      if(seen.has(code))continue;
+      const detail=catalogByCode.get(code),stockRow=stockByCode.get(code);
+      if(!detail&&!stockRow)continue;
+      if(detail?.active===false)continue;
+      const group=norm(detail?.nhomhang||stockRow?.nhomhang);
+      if(imageGroup&&group!==norm(imageGroup))continue;
+      const item={...(detail||{}),...(stockRow||{}),masp:code,
+        ai_rank:candidate.rank,ai_score:candidate.score,
+        ton_sizes:stockRow?.ton_sizes||{},matched_sizes:stockRow?.matched_sizes||[],
+        __size0_fallback:!!stockRow?.is_size0_fallback};
+      if(imageSize){
+        const stock=Number(item.ton_sizes?.[imageSize]?.[branch()==="cs2"?"ton_cs2":"ton_cs1"]||0);
+        const stock0=Number(item.ton_sizes?.["0"]?.[branch()==="cs2"?"ton_cs2":"ton_cs1"]||0);
+        if(stock<=0&&stock0<=0)continue;
+        if(stock<=0&&stock0>0)item.__size0_fallback=true;
+      }
+      seen.add(code);out.push(item);
+      if(out.length>=wanted)break;
     }
   }
-  collected.sort((a,b)=>Number(a.ai_rank||1e9)-Number(b.ai_rank||1e9)||Number(b.ai_score||0)-Number(a.ai_score||0));
-  return collected.slice(0,wanted);
+  return out.slice(0,wanted);
 }
 function render(rows){
   results=rows||[];
   const info=$("visualResultInfo"),list=$("visualResults");
   if(!list)return;
   if(!rows.length){list.innerHTML="";if(info)info.textContent="Không tìm thấy sản phẩm tương tự còn tồn tại cơ sở này.";return}
-  if(info)info.textContent=`${rows.length} sản phẩm tương tự, xếp theo độ giống ảnh · chọn size ngay tại đây`;
+  if(info)info.textContent=`${rows.length} ảnh tương tự · ${imageGroup||"Tất cả nhóm"} · ${imageSize?"Size "+imageSize:"Tất cả size"} · chọn sản phẩm trực tiếp tại đây`;
   const api=window.TimKiemNhanhV3;
   if(!api?.renderVisualCards)throw new Error("Mã Tìm kiếm nhanh V3 chưa cập nhật. Hãy tải lại trang.");
   api.renderVisualCards(list,rows);
@@ -112,7 +138,7 @@ function selectFile(file){
   status("Ảnh đã sẵn sàng. Chọn số lượng và bấm TÌM SẢN PHẨM.","ok");
 }
 async function runSearch(){
-  if(working)return;
+  if(working){rerunAfterWorking=true;return;}
   if(!currentFile){status("Hãy chụp hoặc chọn ảnh trước.","err");return}
   const token=++searchToken,btn=$("visualSearchRun"),count=Number($("visualTopK")?.value||24),start=performance.now();
   working=true;if(btn)btn.disabled=true;
@@ -129,12 +155,12 @@ async function runSearch(){
     }
     $("visualResults").innerHTML="";
     $("visualResultInfo").textContent="";
-    const rows=await stockFilteredCandidates(currentCandidates||[],count,token);
+    const rows=await visualCandidates(currentCandidates||[],count,token);
     if(token!==searchToken)return;
     render(rows);
-    status(`Hoàn tất: ${rows.length}/${count} ảnh tương tự có hàng tại ${branch().toUpperCase()} · ${(performance.now()-start)/1000|0} giây.`,"ok");
+    status(`Hoàn tất: ${rows.length}/${count} ảnh tương tự · ${(performance.now()-start)/1000|0} giây. ${!imageSize?"Chưa lọc size.":"Đã lọc size "+imageSize}.`,"ok");
   }catch(e){console.error("[V3 image]",e);status("Lỗi tìm bằng ảnh: "+(e?.message||String(e)),"err")}
-  finally{working=false;if(btn)btn.disabled=false}
+  finally{working=false;if(btn)btn.disabled=false;if(rerunAfterWorking){rerunAfterWorking=false;void runSearch()}}
 }
 function openModal(){const modal=$("visualSearchModal");if(!modal)return;modal.classList.add("show");modal.setAttribute("aria-hidden","false");document.body.classList.add("vs-open")}
 function closeModal(){const modal=$("visualSearchModal");modal?.classList.remove("show");modal?.setAttribute("aria-hidden","true");document.body.classList.remove("vs-open")}
@@ -151,7 +177,7 @@ function injectStyles(){
 .vs-source-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.vs-file-btn{display:flex;align-items:center;justify-content:center;min-height:51px;border-radius:10px;font-size:15px;font-weight:900;text-align:center}
 .vs-camera{background:#111827;color:#fff}.vs-library{background:#e8f2ff;color:#075f9f;border:1px solid #bad9f5}.vs-preview{display:none;width:100%;max-height:40vh;object-fit:contain;background:#f3f4f6;border-radius:10px;margin-top:8px}
 .vs-run-row{display:grid;grid-template-columns:1fr 120px;gap:7px;margin-top:8px}.vs-run{border:0;border-radius:10px;background:#0878d1;color:white;font-weight:900;min-height:48px;padding:8px;font-size:16px}.vs-run:disabled{opacity:.5}.vs-topk{border:1px solid #cbd5e1;border-radius:10px;background:white;padding:0 6px;font-weight:800;min-width:0}
-.vs-status{margin-top:8px;border-radius:8px;padding:8px 9px;background:#f0f2f4;color:#394554;font-size:13px}.vs-status.ok{background:#e9f9ef;color:#126238}.vs-status.err{background:#fff0f0;color:#b42318}
+.vs-filter-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.vs-filter-select{width:100%;min-width:0;padding:9px 7px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;font-size:15px;font-weight:750}.vs-filter-hint{font-size:12px;color:#64748b;margin-top:5px}.vs-status{margin-top:8px;border-radius:8px;padding:8px 9px;background:#f0f2f4;color:#394554;font-size:13px}.vs-status.ok{background:#e9f9ef;color:#126238}.vs-status.err{background:#fff0f0;color:#b42318}
 .vs-result-info{font-size:13px;color:#64748b;padding:3px 2px 8px}.vs-results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
 .vs-match-card{position:relative;min-width:0}.vs-match-rank{position:absolute;left:4px;top:5px;z-index:2;min-width:25px;height:25px;padding:0 5px;border-radius:20px;background:#14213dde;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;pointer-events:none}
 .vs-match-score{font-size:12px;color:#64748b;background:#fff;padding:3px 5px}.vs-results .product{height:auto}.vs-results .product-image-wrap{height:210px}
@@ -172,6 +198,10 @@ function injectUi(){
       <label class="vs-file-btn vs-camera">📷 CHỤP ẢNH<input id="visualCameraInput" type="file" accept="image/*" capture="environment" hidden></label>
       <label class="vs-file-btn vs-library">🖼 THƯ VIỆN<input id="visualLibraryInput" type="file" accept="image/*" hidden></label>
     </div><img id="visualSearchPreview" class="vs-preview" alt="Ảnh mẫu">
+    <div class="vs-filter-row">
+      <select id="visualGroupFilter" class="vs-filter-select" aria-label="Lọc nhóm hàng chỉ cho tìm ảnh"><option value="">Tất cả nhóm (không lọc)</option></select>
+      <select id="visualSizeFilter" class="vs-filter-select" aria-label="Lọc size chỉ cho tìm ảnh"><option value="">Tất cả size (không lọc)</option></select>
+    </div><div class="vs-filter-hint">Mặc định tìm ảnh giống V2; nhóm và size chỉ áp dụng khi bạn tự chọn ở đây.</div>
     <div class="vs-run-row"><button type="button" id="visualSearchRun" class="vs-run">TÌM SẢN PHẨM</button>
       <select id="visualTopK" class="vs-topk" aria-label="Số ảnh tương tự"><option value="12">12 ảnh</option><option value="24" selected>24 ảnh</option><option value="40">40 ảnh</option><option value="100">100 ảnh</option></select>
     </div><div id="visualSearchStatus" class="vs-status">Chọn ảnh mẫu, chọn số lượng, rồi tìm. Kết quả chỉ hiển thị trong cửa sổ này.</div></div>
@@ -183,7 +213,23 @@ function injectUi(){
   $("visualCameraInput")?.addEventListener("change",e=>{selectFile(e.target.files?.[0]);e.target.value=""});
   $("visualLibraryInput")?.addEventListener("change",e=>{selectFile(e.target.files?.[0]);e.target.value=""});
   $("visualSearchRun")?.addEventListener("click",runSearch);
-  $("visualTopK")?.addEventListener("change",()=>{if(currentCandidates&&!working)void runSearch()});
+  const sz=$("visualSizeFilter");
+  if(sz)sz.innerHTML='<option value="">Tất cả size (không lọc)</option>'+SIZE_OPTIONS.map(v=>`<option value="${v}">Size ${v}</option>`).join("");
+  const groupSelect=$("visualGroupFilter");
+  if(groupSelect){
+    supabase.from("cauhinh_nhom_tu_van").select("manhom,ten_hien_thi").eq("active",true).order("thu_tu")
+      .then(({data,error})=>{
+        if(error){console.warn("[V3 image] Danh sách nhóm",error);return;}
+        if(!groupSelect.isConnected)return;
+        const current=groupSelect.value;
+        groupSelect.innerHTML='<option value="">Tất cả nhóm (không lọc)</option>'+
+          (data||[]).map(g=>`<option value="${esc(g.manhom)}">${esc(g.ten_hien_thi||g.manhom)}</option>`).join("");
+        groupSelect.value=current;
+      });
+  }
+  groupSelect?.addEventListener("change",()=>{imageGroup=groupSelect.value||"";searchToken++;if(currentCandidates)void runSearch();});
+  sz?.addEventListener("change",()=>{imageSize=sz.value||"";searchToken++;if(currentCandidates)void runSearch();});
+  $("visualTopK")?.addEventListener("change",()=>{if(currentCandidates)void runSearch()});
 }
 function init(){injectUi();console.log("[TimKiemAnhModule V3]",BUILD)}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
