@@ -1068,7 +1068,7 @@ function renderVisualCardsV322(container,rows){
       const pick=card.querySelector(".pick");
       if(pick){pick.disabled=true;pick.textContent="Hết hàng tại cơ sở";pick.style.background="#9ca3af";}
     }
-    card.querySelector(".stock-link")?.addEventListener("click",e=>window.StockQuick?.showFor(e.currentTarget,sp.masp));
+    card.querySelector(".stock-link")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();try{Promise.resolve(window.StockQuick?.showFor(e.currentTarget,sp.masp)).catch(err=>console.error("[V3.2.4 StockQuick]",err))}catch(err){console.error("[V3.2.4 StockQuick]",err)}});
     card.querySelector(".product-image")?.addEventListener("click",e=>{
       e.preventDefault();e.stopPropagation();
       const modal=document.getElementById("visualSearchModal");
