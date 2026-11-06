@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=32";
 
-window.TIM_KIEM_NHANH_BUILD = "3.2.1-MODE-ISOLATION";
-console.log("[TimKiemNhanh V3] BUILD 3.2.1-MODE-ISOLATION");
+window.TIM_KIEM_NHANH_BUILD = "3.2.3-VISUAL-INDEPENDENT";
+console.log("[TimKiemNhanh V3] BUILD 3.2.3-VISUAL-INDEPENDENT");
 
 const supabase = getSupabaseClient();
 
@@ -1061,6 +1061,13 @@ function renderVisualCardsV322(container,rows){
   }).join("");
   (rows||[]).forEach((sp,i)=>{
     const card=container.children[i];if(!card)return;
+    // Mặc định tìm ảnh như V2: có thể thấy ảnh đã hết hàng.
+    // Tuyệt đối không cho đẩy mã hết hàng vào danh sách đã chọn.
+    const anyStock=Object.values(sp.ton_sizes||{}).some(q=>Number(state.diadiem==="cs2"?q?.ton_cs2:q?.ton_cs1)>0);
+    if(!anyStock){
+      const pick=card.querySelector(".pick");
+      if(pick){pick.disabled=true;pick.textContent="Hết hàng tại cơ sở";pick.style.background="#9ca3af";}
+    }
     card.querySelector(".stock-link")?.addEventListener("click",e=>window.StockQuick?.showFor(e.currentTarget,sp.masp));
     card.querySelector(".product-image")?.addEventListener("click",e=>{
       e.preventDefault();e.stopPropagation();
