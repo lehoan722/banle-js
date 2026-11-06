@@ -705,11 +705,11 @@ function initPageJump(){
   updatePageJumpButton();
 }
 
-function addSelected(masp,size){
-  const sp=state.products.find(x=>norm(x.masp)===norm(masp))||state.sourceProduct;if(!sp)return;
-  if(state.selected.some(x=>norm(x.masp)===norm(masp)&&String(x.size)===String(size))){toast("Mã + size này đã có trong Sản phẩm đã chọn.");scrollSelectedIntoView();return}
+function addSelected(masp,size,{product=null,stayInModal=false}={}){
+  const sp=product||state.products.find(x=>norm(x.masp)===norm(masp))||state.sourceProduct;if(!sp)return;
+  if(state.selected.some(x=>norm(x.masp)===norm(masp)&&String(x.size)===String(size))){toast("Mã + size này đã có trong Sản phẩm đã chọn.");if(!stayInModal)scrollSelectedIntoView();return}
   state.selected=[...state.selected,{id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,masp:sp.masp,size:String(size),soluong:1,giale:sp.giale,form:sp.form,mausac:sp.mausac,treomaucs1:sp.treomaucs1,treomaucs2:sp.treomaucs2,vitrikho1:sp.vitrikho1,vitrikho2:sp.vitrikho2,ton_sizes:sp.ton_sizes||{}}];
-  saveSelected();renderSelected();logDictionaryEventV3("chon",sp.masp);logImagePickV3(sp.masp);learnHybridAnchorV31(sp.masp,"chon");toast(`Đã chọn ${sp.masp} / ${size}`);scrollSelectedIntoView();
+  saveSelected();renderSelected();logDictionaryEventV3("chon",sp.masp);logImagePickV3(sp.masp);learnHybridAnchorV31(sp.masp,"chon");toast(`Đã chọn ${sp.masp} / ${size}`);if(!stayInModal)scrollSelectedIntoView();
 }
 function jumpToElement(el,block="start"){
   if(!el)return;
@@ -1049,6 +1049,39 @@ function setAiLearningMetaV3({searchId=null,imageSearchId=null,loaiKey=undefined
 function getAiResultSnapshotV3(){return {searchType:state.searchType,rows:state.products.slice(),total:state.total,candidates:state.aiCandidates.slice(),size:state.size,diadiem:state.diadiem,loaiKey:state.aiLoaiKey,loaiLabel:state.aiLoaiLabel}}
 
 window.TimKiemNhanhV3=Object.assign(window.TimKiemNhanhV3||{}, {searchByCandidates:searchByCandidatesV3,setAiLearningMeta:setAiLearningMetaV3,getAiResultSnapshot:getAiResultSnapshotV3,handleUnifiedInput});
+// V3.2.2: Cổng chỉ phục vụ cửa sổ tìm bằng ảnh, không thay đổi state tìm kiếm chính.
+// Dùng lại nguyên thẻ kết quả và hàm chọn của Tìm kiếm nhanh V3.
+function renderVisualCardsV322(container,rows){
+  if(!container)return;
+  container.innerHTML=(rows||[]).map((sp,i)=>{
+    const code=norm(sp.masp);
+    const score=Number(sp.ai_score||0);
+    const pct=Number.isFinite(score)?(score*100).toFixed(1):"";
+    return `<div class="vs-match-card"><div class="vs-match-rank">${i+1}</div>${productCardHtml(sp,i+1,rows.length)}<div class="vs-match-score">Giống ${pct}%</div></div>`;
+  }).join("");
+  (rows||[]).forEach((sp,i)=>{
+    const card=container.children[i];if(!card)return;
+    card.querySelector(".stock-link")?.addEventListener("click",e=>window.StockQuick?.showFor(e.currentTarget,sp.masp));
+    card.querySelector(".product-image")?.addEventListener("click",e=>{
+      e.preventDefault();e.stopPropagation();
+      const modal=document.getElementById("visualSearchModal");
+      // Giữ cửa sổ ảnh; xem ảnh phóng to phải nổi lên phía trên nó.
+      const overlay=document.getElementById("imageOverlay");
+      if(overlay)overlay.style.zIndex="65000";
+      openImage(e.currentTarget.src,sp.masp);
+    });
+    card.querySelector(".pick")?.addEventListener("click",()=>card.querySelector(".pick-sizes")?.classList.toggle("show"));
+    card.querySelectorAll(".pick-size").forEach(b=>b.addEventListener("click",()=>{
+      if(!b.disabled){
+        addSelected(sp.masp,b.dataset.size,{product:sp,stayInModal:true});
+        const status=document.getElementById("visualSearchStatus");
+        if(status){status.textContent=`Đã gửi ${sp.masp} / size ${b.dataset.size} vào khu vực Sản phẩm đã chọn. Bạn có thể chọn thêm ngay tại đây.`;status.className="vs-status ok";}
+      }
+    }));
+  });
+}
+window.TimKiemNhanhV3=Object.assign(window.TimKiemNhanhV3||{}, {renderVisualCards:renderVisualCardsV322});
+
 
 function clearSourceForManualFilter(){
   state.sourceMasp="";state.sourceProduct=null;state.sourceStockAfterCheck=null;state.sizeGuideOpen=false;hideSizeWarning();renderSourceLocation();
