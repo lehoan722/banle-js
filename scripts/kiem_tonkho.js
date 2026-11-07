@@ -58,7 +58,10 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
         // cache vị trí kho / bày mẫu theo mã
         vitriCache: new Map(),
-        vitriDangTai: new Set()
+        vitriDangTai: new Set(),
+
+        // Khi mở từ StockQuick: lưu snapshot tồn sau kiểm làm mốc chỉ-tăng.
+        stockQuickAddOnly: null
     };
 
     let dangChonSizeTrongPopup = false;
@@ -2056,7 +2059,10 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
             // cache vị trí kho / bày mẫu theo mã
             vitriCache: new Map(),
-            vitriDangTai: new Set()
+            vitriDangTai: new Set(),
+
+            // reset phiếu sẽ thoát chế độ kiểm bổ sung từ StockQuick
+            stockQuickAddOnly: null
         };
 
         dangChonSizeTrongPopup = false;
@@ -3650,6 +3656,75 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
         });
     }
 
+    // =========================
+    // STOCKQUICK -> KIỂM TỒN BỔ SUNG (CHỈ TĂNG VỚI NHÂN VIÊN)
+    // Vẫn dùng nguyên phiếu kiem_ton_kho / ct_kiem_ton_kho hiện tại.
+    // =========================
+    function getIsAdminLocalKiemTon() {
+        try {
+            return (
+                String(sessionStorage.getItem("is_admin") || "").toLowerCase() === "true" ||
+                String(localStorage.getItem("is_admin") || "").toLowerCase() === "true"
+            );
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function getStockQuickCurrentQtyMap() {
+        const map = new Map();
+        const tongMap = getMapNhapTong();
+        Object.values(tongMap || {}).forEach(row => {
+            const size = normalizeSize(row?.size);
+            if (!size) return;
+            map.set(size, normalizeNumber(row?.sl || 0));
+        });
+        return map;
+    }
+
+    function formatStockQuickReductionList(reductions) {
+        return (reductions || [])
+            .map(x => `- Size ${x.size}: ${x.baseline} -> ${x.current}`)
+            .join("\n");
+    }
+
+    function validateStockQuickAddOnlyBeforeSave() {
+        const state = getState();
+        const ctx = state?.stockQuickAddOnly;
+        if (!ctx?.active || !(ctx.baseline instanceof Map)) return true;
+
+        const currentMap = getStockQuickCurrentQtyMap();
+        const reductions = [];
+
+        ctx.baseline.forEach((baselineQty, size) => {
+            const base = normalizeNumber(baselineQty || 0);
+            const cur = normalizeNumber(currentMap.get(size) || 0);
+            if (cur < base) {
+                reductions.push({ size, baseline: base, current: cur });
+            }
+        });
+
+        if (!reductions.length) return true;
+
+        const detail = formatStockQuickReductionList(reductions);
+        if (!getIsAdminLocalKiemTon()) {
+            phatAmThanhLoi();
+            alert(
+                "CHẾ ĐỘ KIỂM BỔ SUNG TỪ STOCKQUICK CHỈ CHO PHÉP TĂNG TỒN.\n\n" +
+                "Các size đang bị giảm so với tồn sau kiểm khi mở trang:\n" +
+                detail +
+                "\n\nNhân viên không được lưu dữ liệu giảm. Nếu thực tế cần giảm tồn, hãy báo quản lý/admin hoặc thực hiện kiểm tồn đầy đủ."
+            );
+            return false;
+        }
+
+        return confirm(
+            "ADMIN: Dữ liệu mới đang GIẢM tồn so với mốc StockQuick ban đầu:\n\n" +
+            detail +
+            "\n\nBạn có chắc muốn tiếp tục lưu phiếu kiểm tồn với dữ liệu giảm này không?"
+        );
+    }
+
     async function luuPhieuKiemTonKho() {
         try {
 
@@ -3699,6 +3774,12 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
             if (!state.nhap || Object.keys(state.nhap).length === 0) {
                 alert("Chưa có dữ liệu kiểm để lưu.");
+                return;
+            }
+
+            // Nếu mở từ StockQuick: nhân viên chỉ được giữ nguyên hoặc tăng từng size.
+            // Admin được giảm nhưng phải xác nhận rõ ràng.
+            if (!validateStockQuickAddOnlyBeforeSave()) {
                 return;
             }
 
@@ -4325,43 +4406,174 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
     // INIT
     // =========================
 
-    function getMaspTuStockQuickUrl() {
+    function getStockQuickUrlContext() {
         try {
             const params = new URLSearchParams(window.location.search);
-            return normalizeMasp(params.get("masp") || "");
+            const masp = normalizeMasp(params.get("masp") || "");
+            const from = String(params.get("from") || params.get("source") || "")
+                .trim().toLowerCase();
+            return {
+                masp,
+                active: !!masp && from === "stockquick"
+            };
         } catch (e) {
-            return "";
+            return { masp: "", active: false };
         }
+    }
+
+    function getMaspTuStockQuickUrl() {
+        return getStockQuickUrlContext().masp;
+    }
+
+    async function waitForSupabaseKiemTon(maxWaitMs = 7000) {
+        const started = Date.now();
+        while (Date.now() - started < maxWaitMs) {
+            if (window.supabase && typeof window.supabase.rpc === "function") {
+                return window.supabase;
+            }
+            await new Promise(r => setTimeout(r, 120));
+        }
+        return window.supabase || null;
+    }
+
+    function removeStockQuickParamsFromUrl() {
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("masp");
+            url.searchParams.delete("from");
+            url.searchParams.delete("source");
+            history.replaceState(null, "", url.pathname + (url.search || "") + (url.hash || ""));
+        } catch (e) { }
+    }
+
+    function renderStockQuickModeNotice(masp) {
+        let el = document.getElementById("ktkStockQuickModeNotice");
+        if (!el) {
+            el = document.createElement("div");
+            el.id = "ktkStockQuickModeNotice";
+            el.style.cssText = `
+                position:fixed; top:6px; left:50%; transform:translateX(-50%);
+                z-index:25000; background:#fff4cc; color:#7a4300;
+                border:1px solid #e5a100; border-radius:10px;
+                padding:7px 12px; font:700 14px Arial,sans-serif;
+                box-shadow:0 3px 12px rgba(0,0,0,.18); max-width:92vw;
+                text-align:center; pointer-events:none;
+            `;
+            document.body.appendChild(el);
+        }
+        el.textContent = getIsAdminLocalKiemTon()
+            ? `StockQuick • ${masp} • ADMIN: được tăng/giảm (giảm sẽ hỏi xác nhận)`
+            : `StockQuick • ${masp} • KIỂM BỔ SUNG: chỉ được tăng tồn`;
+    }
+
+    async function khoiTaoKiemBoSungTuStockQuick() {
+        const ctxUrl = getStockQuickUrlContext();
+        if (!ctxUrl.active) return false;
+
+        const masp = ctxUrl.masp;
+        const client = await waitForSupabaseKiemTon();
+        if (!client) {
+            alert("Không kết nối được Supabase để nạp tồn sau kiểm từ StockQuick.");
+            return false;
+        }
+
+        if (!(await baoLoiNeuMaspKhongCoTrongDanhMuc(masp))) {
+            return false;
+        }
+
+        const ngayDen = String(byId("ngay")?.value || "").trim();
+        const [tonRes, kiemRes] = await Promise.all([
+            client.rpc("xntnhanh", {
+                p_masps: [masp],
+                p_den_ngay: ngayDen || new Date().toISOString().slice(0, 10),
+                p_tonghop_size: false
+            }),
+            client.rpc("rpc_stockquick_kiemton", { p_masp: masp })
+        ]);
+
+        if (tonRes?.error) {
+            console.error("[KTK][StockQuick] xntnhanh error:", tonRes.error);
+            alert("Không lấy được tồn máy để khởi tạo kiểm bổ sung.");
+            return false;
+        }
+        if (kiemRes?.error) {
+            console.error("[KTK][StockQuick] rpc_stockquick_kiemton error:", kiemRes.error);
+            alert("Không lấy được dữ liệu kiểm tồn hiện hành từ StockQuick.");
+            return false;
+        }
+
+        const tonMay = new Map();
+        (Array.isArray(tonRes?.data) ? tonRes.data : []).forEach(row => {
+            const size = normalizeSize(row?.size);
+            if (!isValidSize(size) || size === "0") return;
+            const sl = normalizeNumber(CFG.branch === "cs2" ? row?.ton_cs2 : row?.ton_cs1);
+            tonMay.set(size, (tonMay.get(size) || 0) + sl);
+        });
+
+        const lechObj = kiemRes?.data?.[CFG.branch]?.lech || {};
+        const baseline = new Map();
+        ["38","39","40","41","42","43","44","45","46"].forEach(size => {
+            const baseMachine = normalizeNumber(tonMay.get(size) || 0);
+            const lech = normalizeNumber(lechObj?.[size] || 0);
+            // Khớp đúng StockQuick: tồn sau kiểm không âm.
+            const afterCheck = Math.max(0, baseMachine + lech);
+            if (afterCheck > 0) baseline.set(size, afterCheck);
+        });
+
+        const state = getState();
+        state.nhap = {};
+        state.bayMau = {};
+        state.ketQua = {};
+        state.nhapOrder = [masp];
+        state.selectedMasp = masp;
+
+        baseline.forEach((sl, size) => {
+            state.nhap[makeKey(masp, size)] = { masp, size, sl };
+        });
+
+        state.stockQuickAddOnly = {
+            active: true,
+            masp,
+            branch: CFG.branch,
+            baseline,
+            openedAt: new Date().toISOString()
+        };
+
+        const maspEl = byId("masp");
+        const sizeEl = byId("size");
+        const slEl = byId("soluong");
+        const ghichuEl = byId("ghichu_top");
+        if (maspEl) maspEl.value = masp;
+        if (sizeEl) sizeEl.value = "";
+        if (slEl) slEl.value = "1";
+        if (ghichuEl) {
+            ghichuEl.value = `Kiểm bổ sung từ StockQuick - kế thừa tồn sau kiểm, ${getIsAdminLocalKiemTon() ? "admin có quyền giảm" : "nhân viên chỉ tăng"}`;
+        }
+
+        renderBangKetQua();
+        capNhatThongKeDauTrang();
+
+        // Nạp TỒN MÁY và chạy đối chiếu bằng chính luồng cũ để màn hình sẵn sàng ngay.
+        await napTonMayVaKiemTra();
+
+        renderStockQuickModeNotice(masp);
+        removeStockQuickParamsFromUrl();
+
+        setTimeout(() => {
+            if (sizeEl) {
+                sizeEl.focus();
+                try { sizeEl.select(); } catch (e) { }
+            }
+        }, 120);
+
+        return true;
     }
 
     function apDungMaspTuStockQuickUrl() {
         const masp = getMaspTuStockQuickUrl();
         if (!masp) return;
-
         const maspEl = byId("masp");
-        const sizeEl = byId("size");
-        const slEl = byId("soluong");
-
-        if (maspEl) {
-            maspEl.value = masp;
-        }
-
-        if (slEl && !normalizeNumber(slEl.value)) {
-            slEl.value = "1";
-        }
-
-        if (sizeEl) {
-            sizeEl.value = "";
-        }
-
-        setTimeout(() => {
-            if (maspEl) {
-                maspEl.focus();
-                try {
-                    maspEl.select();
-                } catch (e) { }
-            }
-        }, 200);
+        if (maspEl) maspEl.value = masp;
     }
 
     async function init() {
@@ -4382,10 +4594,13 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
 
         await resetPhieu();
 
-        apDungMaspTuStockQuickUrl();
+        const stockQuickReady = await khoiTaoKiemBoSungTuStockQuick();
 
-        if (!getMaspTuStockQuickUrl()) {
-            focusNhapMasp(true);
+        if (!stockQuickReady) {
+            apDungMaspTuStockQuickUrl();
+            if (!getMaspTuStockQuickUrl()) {
+                focusNhapMasp(true);
+            }
         }
 
         console.log("[nhapkiemkho] init OK", CFG);
