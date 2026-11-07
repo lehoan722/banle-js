@@ -2652,8 +2652,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       "https://app.hoantuyet.vn/" +
       page +
       "?masp=" +
-      encodeURIComponent(masp) +
-      "&from=stockquick";
+      encodeURIComponent(masp);
 
     window.open(url, "_blank");
   }
