@@ -3650,6 +3650,82 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
         });
     }
 
+    // KTK 2026-11-07: nhân viên chỉ được lưu khi tổng kiểm theo MÃ >= tổng tồn máy.
+    // Tính theo mã; các size được bù trừ với nhau; số lượng kiểm = kho + bày mẫu.
+    function ktkSoSanhTongKiemTheoMasp() {
+        const state = getState();
+        const tongKiem = new Map();
+        const tongMay = new Map();
+        const addRows = (obj, map) => {
+            Object.values(obj || {}).forEach(row => {
+                const masp = normalizeMasp(row?.masp);
+                if (!masp) return;
+                map.set(masp, (map.get(masp) || 0) + normalizeNumber(row?.sl ?? 0));
+            });
+        };
+
+        // Không cộng hai lần khi mã có cả kho và bày mẫu.
+        addRows(state.nhap, tongKiem);
+        addRows(state.bayMau, tongKiem);
+        addRows(state.xuat, tongMay);
+
+        const dsMasp = new Set([...tongKiem.keys(), ...tongMay.keys()]);
+        const giam = [];
+        dsMasp.forEach(masp => {
+            const slKiem = tongKiem.get(masp) || 0;
+            const slMay = tongMay.get(masp) || 0;
+            if (slKiem < slMay - 0.000001) {
+                giam.push({ masp, slMay, slKiem, thieu: slMay - slKiem });
+            }
+        });
+        return giam.sort((a, b) => b.thieu - a.thieu);
+    }
+
+    // Quyền admin chỉ tin kết quả RPC của Supabase, KHÔNG tin localStorage/is_admin phía trình duyệt.
+    // Nếu lỗi quyền, xem là nhân viên để không mở khóa việc lưu giảm tồn.
+    async function ktkXacMinhAdminTuSupabase() {
+        try {
+            const { data, error } = await window.supabase.rpc("is_admin");
+            if (error) {
+                console.warn("[KTK] Không xác minh được quyền admin; áp dụng quyền nhân viên.", error);
+                return false;
+            }
+            return data === true;
+        } catch (err) {
+            console.warn("[KTK] Lỗi xác minh admin; áp dụng quyền nhân viên.", err);
+            return false;
+        }
+    }
+
+    async function ktkKiemTraQuyenLuuGiamTon() {
+        const dsGiam = ktkSoSanhTongKiemTheoMasp();
+        if (!dsGiam.length) return true;
+
+        const chiTiet = dsGiam.slice(0, 12).map(x =>
+            `${x.masp}: tồn máy ${x.slMay}, kiểm ${x.slKiem}, giảm ${x.thieu}`
+        ).join("\n");
+        const phanConLai = dsGiam.length > 12 ? `\n...và ${dsGiam.length - 12} mã khác` : "";
+        const isAdmin = await ktkXacMinhAdminTuSupabase();
+
+        if (!isAdmin) {
+            phatAmThanhLoi();
+            alert(
+                "KHÔNG ĐƯỢC LƯU PHIẾU KIỂM TỒN!\n\n" +
+                "Nhân viên chỉ được lưu khi tổng số lượng sau kiểm của TỪNG MÃ " +
+                "bằng hoặc lớn hơn tổng tồn máy trước kiểm.\n\n" +
+                chiTiet + phanConLai +
+                "\n\nVui lòng kiểm tra lại hoặc BÁO QUẢN LÝ để xử lý."
+            );
+            return false;
+        }
+
+        return confirm(
+            "XÁC NHẬN ADMIN: PHIẾU CÓ TỒN SAU KIỂM GIẢM!\n\n" +
+            chiTiet + phanConLai +
+            "\n\nBạn có chắc chắn muốn tiếp tục lưu phiếu kiểm tồn này?"
+        );
+    }
+
     async function luuPhieuKiemTonKho() {
         try {
 
@@ -3714,6 +3790,9 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
                 alert("Chưa có dữ liệu tồn máy. Hãy bấm KIỂM TRA lại.");
                 return;
             }
+
+            // Chặn lưu trước khi cấp số phiếu, chụp ảnh hay ghi bất cứ dòng nào vào DB.
+            if (!(await ktkKiemTraQuyenLuuGiamTon())) return;
 
             try {
                 so_phieu = await damBaoSoPhieuChuaTonTaiTruocKhiLuu(so_phieu);
