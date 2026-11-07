@@ -539,31 +539,56 @@
         const left = r.left;
 
         if (isDesktopWide()) {
-          // Desktop: mở lớn từ vị trí ô SIZE, phủ phần màn hình còn lại
-          const pad = 12; // chừa biên
-          const w = Math.max(420, window.innerWidth - left - pad - 20);
-          const h = Math.max(260, window.innerHeight - top - pad);
+          // HOANTUYET: trên 4 trang bán có cột ảnh bên phải,
+          // popup size neo sát mép trái và DỪNG TRƯỚC cột ảnh.
+          // Chỉ sửa cách định vị; không đụng mã/size, QR, giá hay thao tác chọn.
+          const pad = 8;
+          const panelAnh = document.querySelector('.banle-right')
+            || document.querySelector('.main > .sidebar');
+          const panelRect = panelAnh?.getBoundingClientRect();
+          const coCotAnhBenPhai = !!panelRect
+            && panelRect.width > 0
+            && panelRect.left > 500
+            && panelRect.left < window.innerWidth - 40;
+
+          // Các trang khác giữ cách đặt popup cũ, tránh thay đổi ngoài ý muốn.
+          const leftPopup = coCotAnhBenPhai ? pad : left;
+          const widthToImage = coCotAnhBenPhai ? panelRect.left - pad - leftPopup : 0;
+          const w = coCotAnhBenPhai
+            ? Math.max(260, Math.min(widthToImage, window.innerWidth - 2 * pad))
+            : Math.max(420, window.innerWidth - left - 12 - 20);
+          const h = Math.max(260, window.innerHeight - top - 12);
 
           Object.assign(this.root.style, {
             top: `${top}px`,
-            left: `${left}px`,
+            left: `${leftPopup}px`,
             width: `${w}px`,
             height: `${h}px`,
+            boxSizing: 'border-box', // không để padding/border tràn qua vùng ảnh
             maxWidth: 'none',
             maxHeight: 'none',
             overflow: 'auto',
             display: 'block'
           });
 
-          this.root.style.zIndex = '999999';      // chắc chắn nổi trên mọi lớp
-          this.root.style.pointerEvents = 'auto';  // đảm bảo nhận click
+          this.root.style.zIndex = '999999';
+          this.root.style.pointerEvents = 'auto';
 
-          // Nếu lỡ vượt mép phải (do thanh cuộn, scale…), đẩy trái lại 1 chút
+          // Trường hợp màn hình máy tính hẹp hơn: vẫn nhìn đủ thẻ size
+          // bằng cách tự đổi số cột, không ép popup lấn vào khu vực ảnh.
+          if (coCotAnhBenPhai) {
+            const soCot = w >= 1050 ? 4 : (w >= 740 ? 3 : 2);
+            this.topGrid.style.gridTemplateColumns = `repeat(${soCot}, minmax(0, 1fr))`;
+            this.bottomRow.style.gridTemplateColumns = `repeat(${soCot}, minmax(0, 1fr))`;
+          } else {
+            this.topGrid.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))';
+            this.bottomRow.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))';
+          }
 
-          let leftPx = parseFloat(this.root.style.left);
-          if (leftPx + w > window.innerWidth - pad) {
-            leftPx = Math.max(pad, window.innerWidth - pad - w);
-            this.root.style.left = `${leftPx}px`;
+          // Giữ popup trong màn hình, kể cả khi zoom hoặc bảng đổi chiều rộng.
+          const maxRight = coCotAnhBenPhai ? panelRect.left - pad : window.innerWidth - pad;
+          if (leftPopup + w > maxRight) {
+            this.root.style.width = `${Math.max(260, maxRight - leftPopup)}px`;
           }
 
           // Desktop: hiện lại QR trong list nếu trước đó đã bị ẩn ở mobile
