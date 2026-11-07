@@ -3,7 +3,7 @@
 // và colgroup/biến --sizeW để cột Mã rộng gấp 3 lần các cột size.
 export const popupNgang = (() => {
   let styleEl, wrap, tableEl, overlay, saveBtn, closeBtn;
-  let currentSizes = [0, 38, 39, 40, 41, 42, 43, 44, 45];
+  let currentSizes = [0, 38, 39, 40, 41, 42, 43, 44, 45, 46];
 
   // Xác định base URL của file hiện tại để import() đúng thư mục
   const MODULE_BASE = (() => {
@@ -139,6 +139,7 @@ export const popupNgang = (() => {
     [43, '43/3X/56'],
     [44, '44'],
     [45, '45'],
+    [46, '46'],
   ]);
 
   function renderTableEditable(wideRows, sizes = currentSizes) {
@@ -196,7 +197,7 @@ export const popupNgang = (() => {
       td0.title = r.tenhang || '';
       tr.appendChild(td0);
 
-      // (2) Tổng SL theo dòng: chỉ cộng 38→45 (bỏ size 0)
+      // (2) Tổng SL theo dòng: chỉ cộng các size 38→46 (bỏ size 0)
       let rowTotal = 0;
 
       sizes.forEach((s, colIdx) => {
@@ -305,7 +306,7 @@ export const popupNgang = (() => {
       trf.appendChild(td);
     });
 
-    // Grand total: chỉ tính 38→45 (bỏ size 0)
+    // Grand total: chỉ tính 38→46 (bỏ size 0)
     const tfT = document.createElement('td');
     tfT.className = 'pn-total-cell';
     tfT.dataset.role = 'grand-total';
