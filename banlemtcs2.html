@@ -5,7 +5,15 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>BAN LE cs2</title>
+    <title>BAN LE cs1</title>
+
+    <link rel="manifest" href="/manifest-banlecs1.json?v=app1">
+    <meta name="theme-color" content="#0078d7">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Bán lẻ CS1">
 
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -71,8 +79,10 @@
         }
 
         #masp {
-            width: 250px;
+            width: 100%;
             background: cyan;
+            padding-right: 38px !important;
+            box-sizing: border-box;
         }
 
         #soluong {
@@ -644,7 +654,7 @@
 
     <script>
         (function () {
-            const PAGE_DIADIEM = "cs2";
+            const PAGE_DIADIEM = "cs1";
 
             function forceBanLeDiaDiem() {
                 window.diadiem = PAGE_DIADIEM;
@@ -693,7 +703,6 @@
             document.addEventListener("visibilitychange", forceBanLeDiaDiem);
         })();
     </script>
-
 
     <style>
         .menu-bar {
@@ -1168,9 +1177,8 @@
     </script>
 
     <script src="/scripts/stockQuickPopup.js?v=101"></script>
-    <!-- V2: chi 4 trang ban hang nay chu dong nap cong xac nhan anh; main.js khong thay doi. -->
-    <script src="/scripts/xacnhananh_banle.js?v=3"></script>
 
+    <!-- Nút kính lúp trong ô Mã SP: mở StockQuickPopup theo mã đang nhập -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const maspEl = document.getElementById("masp");
@@ -1224,6 +1232,7 @@
             });
         });
     </script>
+
 
     <script type="module">
         import { mountKhachHangSuggest } from "./scripts/dmkhachhang_diem.js";
@@ -1359,9 +1368,9 @@
 
         window.resetQLMK = resetQLMK;
 
-        // Trang banlemtcs2 luôn cố định bán tại cơ sở 2
+        // Trang banlemtcs1 luôn cố định bán tại cơ sở 1
         function layPrefixBanLeTheoTrang() {
-            return "bancs2_";
+            return "bancs1_";
         }
 
         async function napDanhSachQLMK() {
@@ -1604,23 +1613,23 @@
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT cs2
+        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
         khoiTaoDangNhapDungChung({
-            macDinhDiaDiem: "cs2",          // cố định cơ sở 1
+            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
-            loginApiPath: "/api/login-cs2", // API backend mới
+            loginApiPath: "/api/login-cs1", // API backend mới
 
             // Hàm được gọi khi đăng nhập thành công
             onLoginSuccess: async (nhanvien, ctx = {}) => {
-                const diadiem = "cs2";
+                const diadiem = "cs1";
                 const session = ctx.session;
 
-                localStorage.setItem("diadiem", "cs2");
-                sessionStorage.setItem("diadiem", "cs2");
+                localStorage.setItem("diadiem", "cs1");
+                sessionStorage.setItem("diadiem", "cs1");
 
                 const diadiemInput = document.getElementById("diadiem");
                 if (diadiemInput) {
-                    diadiemInput.value = "cs2";
+                    diadiemInput.value = "cs1";
                     diadiemInput.readOnly = true;
                     diadiemInput.disabled = false;
                 }
@@ -1636,20 +1645,19 @@
 
                 // 🔴 THÊM 3 DÒNG NÀY
                 localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
-                window.XacNhanAnhSP?.refreshAdminUI?.();
                 localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
                 localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
 
                 // 2. Cho các script khác trên trang dùng
-                window.diadiem = "cs2";
-                window.DIADIEM = "cs2";
+                window.diadiem = "cs1";
+                window.DIADIEM = "cs1";
                 window.dangLuu = false;
 
-                localStorage.setItem("diadiem", "cs2");
+                localStorage.setItem("diadiem", "cs1");
 
                 const diadiemInput2 = document.getElementById("diadiem");
                 if (diadiemInput2) {
-                    diadiemInput2.value = "cs2";
+                    diadiemInput2.value = "cs1";
                 }
 
                 // 3. Cập nhật lên giao diện bán hàng
@@ -1671,7 +1679,7 @@
 
                 // 5. Import và khởi tạo logic chính của trang (giống code cũ)
                 try {
-                    const module = await import("./scripts/main.js?v=102");
+                    const module = await import("./scripts/main.js?v=101");
                     if (typeof module.khoiTaoUngDung === "function") {
                         module.khoiTaoUngDung();
                     }
@@ -1774,11 +1782,11 @@
     <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
 
 
-    <script src="/scripts/menu-component.js?v=10"></script>
+    <script src="/scripts/menu-component.js?v=9"></script>
 
     <script>
         // Lấy bối cảnh sẵn có từ trang bán lẻ
-        const cs = "cs2";
+        const cs = "cs1";
         const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
 
         // Bạn đã cung cấp:
@@ -1991,7 +1999,6 @@
                     source: window.__xacNhanSuaBaoMat_OK ? "EDIT-CONFIRM" : "BTN-LUU",
                     diadiem: window.__BANLE_PAGE_DIADIEM
                 });
-
                 if (result?.ok) {
                     window.__xacNhanSuaBaoMat_OK = false;
                 } else {
@@ -2093,8 +2100,8 @@
 
             if (!sohdEl) return;
 
-            // Trang cs2 nên diadiem cố định = cs2 (đúng mục tiêu của bạn)
-            const DIADIEM = "cs2";
+            // Trang CS1 nên diadiem cố định = cs1 (đúng mục tiêu của bạn)
+            const DIADIEM = "cs1";
 
             const getMoney = (el) => {
                 const raw = String(el?.value || "0");
@@ -2514,14 +2521,14 @@
                 });
             });
 
-            // Lấy cơ sở động theo input #diadiem (cs2). File bạn đang là cs2 nên sẽ ra cs2.  co so
-            const cs = "cs2";
-            const page = "inmavachcs2.html";
+            // Lấy cơ sở động theo input #diadiem (cs1). File bạn đang là cs1 nên sẽ ra cs1.  co so
+            const cs = "cs1";
+            const page = "inmavachcs1.html";
 
             const payload = { source: "banle", cs, items };
             const json = JSON.stringify(payload);
 
-            // base64url (giống nhapmoimtcs2)
+            // base64url (giống nhapmoimtcs1)
             let b64 = btoa(unescape(encodeURIComponent(json)))
                 .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
@@ -3023,7 +3030,7 @@ ${window.HT_ZALO.getGroupUrl()}`,
         if ("serviceWorker" in navigator) {
             window.addEventListener("load", () => {
                 navigator.serviceWorker.register("/sw.js")
-                    .then(() => console.log("Service Worker registered for banlemtcs2"))
+                    .then(() => console.log("Service Worker registered for banlemtcs1"))
                     .catch(err => console.error("SW error:", err));
             });
         }
