@@ -604,6 +604,31 @@ function addSelected(masp,size){
   state.selected=[...state.selected,{id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,masp:sp.masp,size:String(size),soluong:1,giale:sp.giale,form:sp.form,mausac:sp.mausac,treomaucs1:sp.treomaucs1,treomaucs2:sp.treomaucs2,vitrikho1:sp.vitrikho1,vitrikho2:sp.vitrikho2,ton_sizes:sp.ton_sizes||{}}];
   saveSelected();renderSelected();toast(`Đã chọn ${sp.masp} / ${size}`);scrollSelectedIntoView();
 }
+// V2 GOC - cau noi giao dien tim anh: KHONG thay doi tim kiem, filter hay state.products.
+// Chi cho phep them mot san pham da duoc lay thong tin bang RPC V2 hien co.
+window.TimKiemNhanhV2ImageBridge = {
+  getBranch: () => state.diadiem,
+  addProduct(sp, size) {
+    const masp=norm(sp?.masp), s=String(size ?? "");
+    if(!masp || !validBranch() || !s) return {ok:false,message:"Thiếu mã, size hoặc cơ sở"};
+    const qty=Number((state.diadiem==="cs2" ? sp?.ton_sizes?.[s]?.ton_cs2 : sp?.ton_sizes?.[s]?.ton_cs1) || 0);
+    if(qty<=0) return {ok:false,message:`Mã ${masp} không còn tồn size ${s} tại ${state.diadiem.toUpperCase()}`};
+    if(state.selected.some(x=>norm(x.masp)===masp && String(x.size)===s)){
+      return {ok:false,message:`${masp} / ${s} đã có trong Sản phẩm đã chọn`};
+    }
+    state.selected.push({
+      id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+      masp, size:s, soluong:1, giale:sp.giale, form:sp.form, mausac:sp.mausac,
+      treomaucs1:sp.treomaucs1, treomaucs2:sp.treomaucs2,
+      vitrikho1:sp.vitrikho1, vitrikho2:sp.vitrikho2,
+      ton_sizes:sp.ton_sizes || {}
+    });
+    saveSelected(); renderSelected(); toast(`Đã chọn ${masp} / ${s}`);
+    // Khong scroll trang chinh trong khi cua so tim anh dang mo.
+    return {ok:true};
+  }
+};
+
 function jumpToElement(el,block="start"){
   if(!el)return;
   const root=document.documentElement;
