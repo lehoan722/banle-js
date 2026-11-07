@@ -772,8 +772,12 @@ function applyTuVanToCurrentForm(tuVan) {
     const giaEl = document.getElementById("gia");
     const slEl = document.getElementById("soluong");
 
-    if (makhEl && tuVan.makh) makhEl.value = tuVan.makh;
-    if (tenEl && (tuVan.tenkh || tuVan.khachhang)) tenEl.value = tuVan.tenkh || tuVan.khachhang || "";
+    // Ma khach nguon KL: khong ghi de ma va ten khach hien tai.
+    const maKhachTuVan = String(tuVan.makh || "").trim();
+    if (maKhachTuVan && maKhachTuVan.toUpperCase() !== "KL") {
+        if (makhEl) makhEl.value = tuVan.makh;
+        if (tenEl && (tuVan.tenkh || tuVan.khachhang)) tenEl.value = tuVan.tenkh || tuVan.khachhang || "";
+    }
 
     if (kmEl && Number.isFinite(Number(tuVan.km))) {
         kmEl.value = formatMoneyVN(tuVan.km);
@@ -1399,7 +1403,7 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
                             sizeInput.value = sizeGoiY.size;
 
                             // gán khách
-                            if (sizeGoiY.makh) {
+                            if (String(sizeGoiY.makh || "").trim() && String(sizeGoiY.makh).trim().toUpperCase() !== "KL") {
                                 document.getElementById("makh").value = sizeGoiY.makh;
                                 document.getElementById("khachhang").value = sizeGoiY.tenkh || "";
                             }
