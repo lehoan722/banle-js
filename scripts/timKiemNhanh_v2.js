@@ -115,7 +115,7 @@ function availableSizes(sp){return SIZE_LIST.filter(s=>stockFor(sp,s)>0)}
 function compactFormSizes(sp){
   const form=formLabel(sp?.form)||"-";
   const sizes=availableSizes(sp);
-  return `${form} . ${sizes.join(" ")||"-"}`;
+  return `${form} . ${sizes.map(sz=>`${sz}(${stockFor(sp,sz)})`).join(" ")||"-"}`;
 }
 function locationParts(sp){
   if(!sp)return {kho:"",mau:""};
@@ -517,7 +517,7 @@ function productCardHtml(sp,orderNo=0,totalNo=0){
   const size0Tag=sp.__size0_fallback
     ? `<div class="size0-fallback-tag">Không quản lý size · Tồn size 0: ${stockForAny(sp,SIZE_FALLBACK_ZERO)}</div>`
     : "";
-  return `<article class="product${xaClass}${strongClass}" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">${badge}</div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div>${size0Tag}<div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${sp.__size0_fallback ? `<button type="button" class="pick-size has" data-add="${esc(sp.masp)}" data-size="0">Size 0</button>` : SIZE_LIST.map(s=>`<button type="button" class="pick-size ${stockFor(sp,s)>0?"has":"no"}" data-add="${esc(sp.masp)}" data-size="${s}" ${stockFor(sp,s)>0?"":"disabled"}>${s}</button>`).join("")}</div></div></article>`;
+  return `<article class="product${xaClass}${strongClass}" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">${badge}</div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div>${size0Tag}<div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${sp.__size0_fallback ? `<button type="button" class="pick-size has" data-add="${esc(sp.masp)}" data-size="0">Size 0</button>` : SIZE_LIST.filter(s=>stockFor(sp,s)>0).map(s=>`<button type="button" class="pick-size has" data-add="${esc(sp.masp)}" data-size="${s}">${s} (${stockFor(sp,s)})</button>`).join("")}</div></div></article>`;
 }
 function bindProductCards(cards){
   cards.forEach(card=>{
