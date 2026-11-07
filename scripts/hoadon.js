@@ -772,14 +772,8 @@ function applyTuVanToCurrentForm(tuVan) {
     const giaEl = document.getElementById("gia");
     const slEl = document.getElementById("soluong");
 
-    // Neu o ma khach dang trong: nhan ca KL. Neu da co ma: KL khong duoc ghi de.
-    // Ma khach that van duoc gan nhu co che cu.
-    const maKhachTuVan = String(tuVan.makh || "").trim();
-    const maKhachDangCo = String(makhEl?.value || "").trim();
-    if (maKhachTuVan && (maKhachTuVan.toUpperCase() !== "KL" || !maKhachDangCo)) {
-        if (makhEl) makhEl.value = tuVan.makh;
-        if (tenEl && (tuVan.tenkh || tuVan.khachhang)) tenEl.value = tuVan.tenkh || tuVan.khachhang || "";
-    }
+    if (makhEl && tuVan.makh) makhEl.value = tuVan.makh;
+    if (tenEl && (tuVan.tenkh || tuVan.khachhang)) tenEl.value = tuVan.tenkh || tuVan.khachhang || "";
 
     if (kmEl && Number.isFinite(Number(tuVan.km))) {
         kmEl.value = formatMoneyVN(tuVan.km);
@@ -1405,12 +1399,9 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
                             sizeInput.value = sizeGoiY.size;
 
                             // gán khách
-                            const maKhachGoiY = String(sizeGoiY.makh || "").trim();
-                            const oMaKhach = document.getElementById("makh");
-                            if (maKhachGoiY && (maKhachGoiY.toUpperCase() !== "KL" || !String(oMaKhach?.value || "").trim())) {
-                                if (oMaKhach) oMaKhach.value = sizeGoiY.makh;
-                                const oTenKhach = document.getElementById("khachhang");
-                                if (oTenKhach) oTenKhach.value = sizeGoiY.tenkh || "";
+                            if (sizeGoiY.makh) {
+                                document.getElementById("makh").value = sizeGoiY.makh;
+                                document.getElementById("khachhang").value = sizeGoiY.tenkh || "";
                             }
                             sizeInput.focus();
                             sizeInput.select?.();
@@ -1447,66 +1438,6 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
             setTimeout(() => { maspInput.focus(); maspInput.select(); }, 600);
         }
         return false;
-    }
-
-    // ===== V5: CỔNG XÁC NHẬN ẢNH BẮT BUỘC TRÊN 4 TRANG BÁN =====
-    // Với tính năng kiểm soát, tuyệt đối KHÔNG fail-open. Nếu module chưa sẵn sàng hoặc lỗi,
-    // phải chặn dòng hàng thay vì âm thầm cho bán tiếp. Các trang khác vẫn giữ luồng cũ.
-    const pageNowRaw = (location.pathname.split("/").pop() || "").toLowerCase().trim();
-    const pageNow = pageNowRaw.endsWith(".html") ? pageNowRaw : `${pageNowRaw}.html`;
-    const photoGateRequired = new Set([
-        "banlemtcs1.html", "banlemtcs2.html", "bannvcs1.html", "bannvcs2.html"
-    ]).has(pageNow);
-
-    let daXacNhanAnh = !photoGateRequired;
-    const xnas = window.XacNhanAnhSP;
-
-    if (photoGateRequired && (!xnas || typeof xnas.xacNhanAnhSanPham !== "function")) {
-        console.error("[hoadon] XacNhanAnhSP chưa sẵn sàng - CHẶN bán để tránh bỏ kiểm ảnh.");
-        alert("⚠️ Chức năng xác nhận ảnh chưa sẵn sàng. Hệ thống đã chặn thêm sản phẩm để tránh bán nhầm. Vui lòng tải lại trang (Ctrl+F5) rồi thử lại.");
-        return false;
-    }
-
-    if (xnas && typeof xnas.xacNhanAnhSanPham === "function") {
-        const giaXacNhanNguon = isNhapMode() ? (spData.gianhap || 0) : (spData.giale || 0);
-        const giaXacNhanInt = Math.round(parseMoneyInt(giaXacNhanNguon));
-        try {
-            daXacNhanAnh = await xnas.xacNhanAnhSanPham({
-                masp: maspVal,
-                tensp: spData.tensp || "",
-                gia: giaXacNhanInt
-            });
-        } catch (err) {
-            console.error("[hoadon] Lỗi xacnhananhsp - CHẶN bán:", err);
-            if (photoGateRequired) {
-                alert("⚠️ Có lỗi ở bước xác nhận ảnh. Sản phẩm chưa được thêm vào hóa đơn. Vui lòng quét lại.");
-                daXacNhanAnh = false;
-            } else {
-                daXacNhanAnh = true;
-            }
-        }
-    }
-
-    if (!daXacNhanAnh) {
-        // Enter hoặc nút SAI SP: không thay đổi hóa đơn, quay lại ô mã để quét lại.
-        const maspInput = document.getElementById("masp");
-        const sizeInput = document.getElementById("size");
-        if (sizeInput) sizeInput.value = "";
-        if (maspInput) {
-            setTimeout(() => {
-                maspInput.focus();
-                maspInput.select();
-            }, 0);
-        }
-        return false;
-    }
-
-    // V3: popup size đã bị MenuComponent trì hoãn trong lúc xác nhận ảnh.
-    // Chỉ sau khi người dùng bấm ĐÚNG SẢN PHẨM mới focus #size và mở popup size.
-    try {
-        xnas?.moPopupSizeSauXacNhan?.();
-    } catch (err) {
-        console.warn("[hoadon] Không mở được popup size sau xác nhận ảnh:", err);
     }
 
     // [NEW giữ nguyên] Chuẩn hoá form từ spData
