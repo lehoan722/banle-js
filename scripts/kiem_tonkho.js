@@ -3681,18 +3681,38 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
         return giam.sort((a, b) => b.thieu - a.thieu);
     }
 
-    // Quyền admin chỉ tin kết quả RPC của Supabase, KHÔNG tin localStorage/is_admin phía trình duyệt.
-    // Nếu lỗi quyền, xem là nhân viên để không mở khóa việc lưu giảm tồn.
+    // QUAN TRONG: Mot so dang nhap NHAN VIEN dung Supabase session chung cua cua hang.
+    // RPC is_admin() chi nhin Supabase session, khong nhat thiet la vai tro nguoi
+    // dang su dung giao dien. Tuyet doi khong mo khoa giam ton chi tu RPC.
+    // Chi admin dang nhap qua quy trinh admin (auth_kind=admin) MOI duoc xet
+    // quyen, va van phai duoc Supabase xac minh. Moi truong hop khac fail-closed.
     async function ktkXacMinhAdminTuSupabase() {
+        const authKind = String(localStorage.getItem("auth_kind") || "").trim().toLowerCase();
+        const localAdmin = String(localStorage.getItem("is_admin") || "").trim().toLowerCase();
+        const currentManv = String(localStorage.getItem("manv") || "").trim().toUpperCase();
+
+        // Flag local CHI DUOC DUNG DE HAN CHE, khong bao gio duoc tu no cap quyen.
+        if (authKind !== "admin" || localAdmin !== "true") {
+            console.info("[KTK] Kiem tra giam ton: quyen NHAN VIEN / chua xac thuc admin", {
+                authKind, currentManv
+            });
+            return false;
+        }
+
         try {
-            const { data, error } = await window.supabase.rpc("is_admin");
-            if (error) {
-                console.warn("[KTK] Không xác minh được quyền admin; áp dụng quyền nhân viên.", error);
+            const { data: authData, error: authError } = await window.supabase.auth.getUser();
+            if (authError || !authData?.user?.id) {
+                console.warn("[KTK] Khong co Supabase user admin hop le", authError);
                 return false;
             }
-            return data === true;
+            const { data, error } = await window.supabase.rpc("is_admin");
+            if (error || data !== true) {
+                console.warn("[KTK] RPC khong xac nhan admin", error);
+                return false;
+            }
+            return true;
         } catch (err) {
-            console.warn("[KTK] Lỗi xác minh admin; áp dụng quyền nhân viên.", err);
+            console.warn("[KTK] Loi xac minh admin; ap dung quyen nhan vien", err);
             return false;
         }
     }
