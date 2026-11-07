@@ -6,7 +6,7 @@
 
 import { getSupabaseClient } from "./authModule.js";
 
-const BUILD = "VISUAL-SEARCH-V2-ORIGINAL-INFO-1.1";
+const BUILD = "VISUAL-SEARCH-V2-ORIGINAL-INFO-PRELOAD-1.2";
 const MODEL_ID = "Xenova/siglip-base-patch16-224";
 const DTYPE = "q8";
 const VECTOR_VERSION = "python-fp32-v1";
@@ -19,6 +19,7 @@ const supabase = getSupabaseClient();
 let hf = null;
 let processor = null;
 let model = null;
+let modelLoadPromise = null;
 let currentFile = null;
 let currentObjectUrl = "";
 let currentSearchId = null;
@@ -61,23 +62,38 @@ function pgVectorLiteral(v){
 
 async function ensureModel(){
   if(model && processor) return;
-  const start = performance.now();
-  setStatus("Đang nạp AI tìm ảnh lần đầu trên thiết bị…");
-  if(!hf){
-    hf = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1");
-    try{
-      hf.env.allowLocalModels = false;
-      hf.env.useBrowserCache = true;
-    }catch{}
+  // Một promise duy nhất cho cả preload và lượt Tìm: tránh tải SigLIP hai lần.
+  if(modelLoadPromise) return modelLoadPromise;
+  modelLoadPromise=(async()=>{
+    const start=performance.now();
+    setStatus("Đang chuẩn bị AI ảnh trên thiết bị…");
+    if(!hf){
+      hf=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1");
+      try{hf.env.allowLocalModels=false;hf.env.useBrowserCache=true;}catch{}
+    }
+    const {AutoProcessor,SiglipVisionModel}=hf;
+    const nextProcessor=await AutoProcessor.from_pretrained(MODEL_ID);
+    const nextModel=await SiglipVisionModel.from_pretrained(MODEL_ID,{dtype:DTYPE,device:"wasm"});
+    // Chỉ đánh dấu đã sẵn sàng sau khi cả hai thành phần tải thành công.
+    processor=nextProcessor;
+    model=nextModel;
+    setStatus(`AI ảnh đã sẵn sàng (${((performance.now()-start)/1000).toFixed(1)}s).`,"ok");
+  })();
+  try{await modelLoadPromise}
+  catch(e){
+    // Cho phép mở lại hoặc bấm Tìm để tải lại nếu mạng chập chờn.
+    model=null;processor=null;
+    setStatus("Không thể chuẩn bị AI ảnh. Bấm Tìm để thử lại.","err");
+    throw e;
+  }finally{
+    modelLoadPromise=null;
   }
-  const { AutoProcessor, SiglipVisionModel } = hf;
-  processor = await AutoProcessor.from_pretrained(MODEL_ID);
-  model = await SiglipVisionModel.from_pretrained(MODEL_ID, {
-    dtype: DTYPE,
-    device: "wasm"
-  });
-  const sec = ((performance.now() - start) / 1000).toFixed(1);
-  setStatus(`AI ảnh đã sẵn sàng (${sec}s lần nạp này).`, "ok");
+}
+
+function preloadModelOnOpen(){
+  // Không chặn việc mở cửa sổ, chụp ảnh hoặc thao tác trang V2 chính.
+  if(model && processor){setStatus("AI ảnh đã sẵn sàng.","ok");return;}
+  void ensureModel().catch(e=>console.warn("[TimKiemAnhModule] Preload SigLIP chưa thành công:",e));
 }
 
 async function fileToVector(file){
@@ -176,7 +192,7 @@ function selectFile(file){
   img.style.display="block";
   $("visualResults").innerHTML="";
   $("visualResultInfo").textContent="";
-  setStatus("Ảnh đã sẵn sàng. Bấm “Tìm sản phẩm”.","ok");
+  setStatus(model && processor ? "Ảnh và AI đã sẵn sàng. Bấm “Tìm sản phẩm”." : "Ảnh đã sẵn sàng. AI đang được chuẩn bị nếu cần.","ok");
 }
 
 function formDisplay(v){
@@ -366,6 +382,7 @@ function openModal(){
     modal.setAttribute("aria-hidden","false");
     document.body.classList.add("vs-open");
     updateVisualJump();
+    preloadModelOnOpen();
   }finally{opening=false}
 }
 function closeModal(){
@@ -483,7 +500,7 @@ function injectUi(){
             <option value="40">Top 40</option>
           </select>
         </div>
-        <div id="visualSearchStatus" class="vs-status">Chụp hoặc chọn một ảnh. AI chỉ nạp khi bạn bắt đầu tìm.</div>
+        <div id="visualSearchStatus" class="vs-status">Chụp hoặc chọn một ảnh. AI sẽ tự chuẩn bị khi mở cửa sổ.</div>
       </div>
 
       <div class="vs-card">
