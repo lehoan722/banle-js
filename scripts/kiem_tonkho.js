@@ -3667,7 +3667,17 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
         // Không cộng hai lần khi mã có cả kho và bày mẫu.
         addRows(state.nhap, tongKiem);
         addRows(state.bayMau, tongKiem);
-        addRows(state.xuat, tongMay);
+
+        // Tồn máy có thể chứa size âm do các sai lệch chưa cân đối.
+        // Quy định nhân viên: so với TỔNG TỒN DƯƠNG của từng mã,
+        // không để size âm triệt tiêu hàng đang có tồn dương.
+        // Ví dụ: -4, -4, 3, 1, 2 => mốc kiểm = 6 (không phải -2).
+        Object.values(state.xuat || {}).forEach(row => {
+            const masp = normalizeMasp(row?.masp);
+            if (!masp) return;
+            const sl = normalizeNumber(row?.sl ?? 0);
+            if (sl > 0) tongMay.set(masp, (tongMay.get(masp) || 0) + sl);
+        });
 
         const dsMasp = new Set([...tongKiem.keys(), ...tongMay.keys()]);
         const giam = [];
@@ -3722,7 +3732,7 @@ import { initAutocompleteRealtimeMasp } from "./autocompleteSPRealtime.js";
         if (!dsGiam.length) return true;
 
         const chiTiet = dsGiam.slice(0, 12).map(x =>
-            `${x.masp}: tồn máy ${x.slMay}, kiểm ${x.slKiem}, giảm ${x.thieu}`
+            `${x.masp}: tồn dương trước kiểm ${x.slMay}, kiểm ${x.slKiem}, thiếu ${x.thieu}`
         ).join("\n");
         const phanConLai = dsGiam.length > 12 ? `\n...và ${dsGiam.length - 12} mã khác` : "";
         const isAdmin = await ktkXacMinhAdminTuSupabase();
