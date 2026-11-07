@@ -772,9 +772,11 @@ function applyTuVanToCurrentForm(tuVan) {
     const giaEl = document.getElementById("gia");
     const slEl = document.getElementById("soluong");
 
-    // Ma khach nguon KL: khong ghi de ma va ten khach hien tai.
+    // Neu o ma khach dang trong: nhan ca KL. Neu da co ma: KL khong duoc ghi de.
+    // Ma khach that van duoc gan nhu co che cu.
     const maKhachTuVan = String(tuVan.makh || "").trim();
-    if (maKhachTuVan && maKhachTuVan.toUpperCase() !== "KL") {
+    const maKhachDangCo = String(makhEl?.value || "").trim();
+    if (maKhachTuVan && (maKhachTuVan.toUpperCase() !== "KL" || !maKhachDangCo)) {
         if (makhEl) makhEl.value = tuVan.makh;
         if (tenEl && (tuVan.tenkh || tuVan.khachhang)) tenEl.value = tuVan.tenkh || tuVan.khachhang || "";
     }
@@ -1403,9 +1405,12 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
                             sizeInput.value = sizeGoiY.size;
 
                             // gán khách
-                            if (String(sizeGoiY.makh || "").trim() && String(sizeGoiY.makh).trim().toUpperCase() !== "KL") {
-                                document.getElementById("makh").value = sizeGoiY.makh;
-                                document.getElementById("khachhang").value = sizeGoiY.tenkh || "";
+                            const maKhachGoiY = String(sizeGoiY.makh || "").trim();
+                            const oMaKhach = document.getElementById("makh");
+                            if (maKhachGoiY && (maKhachGoiY.toUpperCase() !== "KL" || !String(oMaKhach?.value || "").trim())) {
+                                if (oMaKhach) oMaKhach.value = sizeGoiY.makh;
+                                const oTenKhach = document.getElementById("khachhang");
+                                if (oTenKhach) oTenKhach.value = sizeGoiY.tenkh || "";
                             }
                             sizeInput.focus();
                             sizeInput.select?.();
