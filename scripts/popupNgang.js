@@ -137,9 +137,9 @@ export const popupNgang = (() => {
     [41, '41/XL/52'],
     [42, '42/2X/54'],
     [43, '43/3X/56'],
-    [44, '44'],
-    [45, '45'],
-    [46, '46'],
+    [44, '44/4X/58'],
+    [45, '45/5X/60'],
+    [46, '46/6X'],
   ]);
 
   function renderTableEditable(wideRows, sizes = currentSizes) {
