@@ -182,14 +182,12 @@ function patchAlertWithBeep() {
     vitriDangTai: new Set()
   };
 
-  // KNK CCN GUARD v1: chỉ phiếu đã mở lại từ DB mới được chuyển thừa/thiếu.
-  // Không dùng hd_state=da_nap làm bằng chứng đã lưu.
+  // KNK CCN GUARD v2 (07/11/2026): đối chiếu các hóa đơn CCN THỰC ĐÃ LƯU,
+  // tách riêng từng chiều / từng mã / từng size, không phụ thuộc một ô taohdccn.
+  // Chỉ dùng dữ liệu đang đọc được từ DB; lỗi xác minh => khóa nút.
   const ccnGuard = {
-    sohdDaMo: "",
-    snapshot: "",
-    dangTai: false,
-    token: 0,
-    markerByMasp: {}
+    sohdDaMo: "", snapshot: "", dangTai: false, token: 0,
+    markerByMasp: {}, processed: { "1v2": {}, "2v1": {} }
   };
 
   function knkDuLieuFingerprint() {
@@ -211,29 +209,25 @@ function patchAlertWithBeep() {
       knkDuLieuFingerprint() === ccnGuard.snapshot;
   }
 
-  function knkPhanLoaiMarker(text) {
-    const value = String(text || "").trim().toLowerCase();
-    if (!value) return "";
-    // Chỉ nhận chiều được ghi rõ; marker không rõ chiều thì khóa phòng ngừa tạo trùng.
-    const has12 = /(?:ccn\s*1\s*v\s*2|1\s*v\s*2|1\s*[-→>]\s*2)/i.test(value);
-    const has21 = /(?:ccn\s*2\s*v\s*1|2\s*v\s*1|2\s*[-→>]\s*1)/i.test(value);
-    if (has12 && !has21) return "1v2";
-    if (has21 && !has12) return "2v1";
-    return "khong_ro";
+  // Lấy số lượng đã chuyển trong các HĐ gốc xcncs1/xcncs2 thực sự tồn tại.
+  function knkHangConCanChuyen(dir) {
+    const all = getItemsForTransferByDir(dir);
+    const used = ccnGuard.processed[dir] || {};
+    return (all || []).map(group => {
+      const masp = normalizeMasp(group.masp);
+      return {
+        masp,
+        items: (group.items || []).map(it => {
+          const size = normalizeSize(it.size || "0");
+          const remaining = Math.max(0, normalizeNumber(it.sl) - Number(used[`${masp}\u0001${size}`] || 0));
+          return { size, sl: remaining };
+        }).filter(it => it.sl > 0)
+      };
+    }).filter(group => group.masp && group.items.length);
   }
 
   function knkCoHangChuaXuLy(dir) {
-    const d = String(dir || "").toLowerCase();
-    const list = getItemsForTransferByDir(d);
-    if (!list?.length) return false;
-    for (const item of list) {
-      const masp = normalizeMasp(item.masp);
-      const marker = knkPhanLoaiMarker(ccnGuard.markerByMasp[masp]);
-      // Chưa có marker -> còn cần xử lý. Marker không rõ -> khóa an toàn.
-      if (marker === "khong_ro") return false;
-      if (marker !== d) return true;
-    }
-    return false;
+    return knkHangConCanChuyen(dir).length > 0;
   }
 
   function knkHienThiNutCCN() {
@@ -241,8 +235,7 @@ function patchAlertWithBeep() {
     for (const dir of ["1v2", "2v1"]) {
       const btn = byId(dir === "1v2" ? "btnTaoPhieuCCN1V2" : "btnTaoPhieuCCN2V1");
       if (!btn) continue;
-      const hien = daMo && knkCoHangChuaXuLy(dir) &&
-        !Object.values(ccnGuard.markerByMasp).some(v => knkPhanLoaiMarker(v) === "khong_ro");
+      const hien = daMo && knkCoHangChuaXuLy(dir);
       btn.hidden = !hien;
       btn.style.display = hien ? "" : "none";
     }
@@ -254,6 +247,7 @@ function patchAlertWithBeep() {
     ccnGuard.snapshot = "";
     ccnGuard.dangTai = false;
     ccnGuard.markerByMasp = {};
+    ccnGuard.processed = { "1v2": {}, "2v1": {} };
     knkHienThiNutCCN();
   }
 
@@ -267,26 +261,83 @@ function patchAlertWithBeep() {
     ccnGuard.dangTai = true;
     knkHienThiNutCCN();
     try {
-      const { data, error } = await window.supabase
+      const { data: kiemRows, error: kiemErr } = await window.supabase
         .from("kiem_nhap_kho_chi_tiet_hoa_don")
         .select("masp_key,masp_nhap,masp_xuat,taohdccn")
         .eq("so_hd_kiemnhap", sohd);
-      if (token !== ccnGuard.token || sohd !== ccnGuard.sohdDaMo) return false;
-      if (error) throw error;
+      if (kiemErr) throw kiemErr;
       const markers = {};
-      (data || []).forEach(row => {
+      (kiemRows || []).forEach(row => {
         const masp = normalizeMasp(row.masp_key || row.masp_nhap || row.masp_xuat);
-        if (masp) markers[masp] = String(row.taohdccn || "").trim();
+        if (masp) {
+          const marker = String(row.taohdccn || "").trim();
+          if (marker || !markers[masp]) markers[masp] = marker;
+        }
       });
+
+      // Chỉ lấy HĐ xuất gốc: tránh đếm hai lần hóa đơn nhập đối ứng.
+      const { data: headers, error: headerErr } = await window.supabase
+        .from("hoadon_banle")
+        .select("sohd,loaihd,ghichu")
+        .in("loaihd", ["xcncs1", "xcncs2"])
+        .ilike("ghichu", `%${sohd}%`)
+        .limit(1000);
+      if (headerErr) throw headerErr;
+      if ((headers || []).length >= 1000) throw new Error("Vượt giới hạn xác minh CCN");
+      const target = sohd.toLowerCase();
+      const matches = (headers || []).filter(h => {
+        const note = String(h.ghichu || "").toLowerCase();
+        const at = note.indexOf(target);
+        if (at < 0) return false;
+        const next = note.charAt(at + target.length);
+        return !/[a-z0-9_]/.test(next); // tránh trùng prefix số phiếu
+      });
+      const actual = { "1v2": {}, "2v1": {} };
+      for (let i = 0; i < matches.length; i += 75) {
+        const batch = matches.slice(i, i + 75);
+        const { data: details, error: detailErr } = await window.supabase
+          .from("ct_hoadon_banle")
+          .select("sohd,masp,size,soluong")
+          .in("sohd", batch.map(h => h.sohd))
+          .limit(10000);
+        if (detailErr) throw detailErr;
+        if ((details || []).length >= 10000) throw new Error("Quá nhiều chi tiết CCN để xác minh an toàn");
+        const bySohd = Object.fromEntries(batch.map(h => [h.sohd, h.loaihd === "xcncs1" ? "1v2" : "2v1"]));
+        for (const d of (details || [])) {
+          const dir = bySohd[d.sohd];
+          if (!dir) continue;
+          const masp = normalizeMasp(d.masp);
+          const size = normalizeSize(d.size || "0");
+          const sl = normalizeNumber(d.soluong);
+          if (!masp || sl <= 0) continue;
+          const key = `${masp}\u0001${size}`;
+          actual[dir][key] = (actual[dir][key] || 0) + sl;
+        }
+      }
+
+      // Nếu taohdccn có chứng từ nhưng không thấy được HĐ gốc tương ứng,
+      // TUYỆT ĐỐI KHÔNG đoán chiều (tránh chuyển trùng vì thiếu quyền đọc dữ liệu).
+      for (const [masp, marker] of Object.entries(markers)) {
+        if (!marker) continue;
+        const referenced = [...marker.matchAll(/\b(xcncs[12]_[a-z0-9_]+)\b/gi)]
+          .map(m => m[1].toLowerCase());
+        if (!referenced.length) throw new Error(`Marker CCN không xác định: ${masp}`);
+        const found = new Set(matches.map(h => String(h.sohd).toLowerCase()));
+        if (referenced.some(ref => !found.has(ref))) {
+          throw new Error(`Chưa xác minh được HĐ CCN của ${masp}: ${marker}`);
+        }
+      }
+      if (token !== ccnGuard.token || sohd !== ccnGuard.sohdDaMo) return false;
       ccnGuard.markerByMasp = markers;
-      getState().taoHdCcnByMasp = {...markers};
+      ccnGuard.processed = actual;
+      getState().taoHdCcnByMasp = { ...markers };
       ccnGuard.dangTai = false;
       knkHienThiNutCCN();
       return true;
     } catch (err) {
       if (token === ccnGuard.token) {
         console.warn("[KNK CCN] Không xác minh được trạng thái CCN:", err);
-        ccnGuard.dangTai = true; // Không rõ trạng thái -> ẩn nút, không cho tạo trùng.
+        ccnGuard.dangTai = true;
         knkHienThiNutCCN();
       }
       return false;
@@ -294,7 +345,6 @@ function patchAlertWithBeep() {
   }
 
   async function knkKiemTraDuocChuyen(dir) {
-    // Đồng bộ cả nội dung ô nhập trực tiếp trước khi đối chiếu snapshot.
     docLaiNhapTuBangHTML();
     if (!knkDangXemPhieuDaLuu()) {
       knkHienThiNutCCN();
@@ -3083,7 +3133,7 @@ function patchAlertWithBeep() {
 
     const dir = getTransferDirectionByTrangThai(trangThai);
     const url = getTransferPageUrlByDir(dir);
-    const items = getItemsForTransferByDir(dir);
+    const items = knkHangConCanChuyen(dir);
     const state = getState();
 
     if (!dir || !url) {
@@ -3157,7 +3207,7 @@ function patchAlertWithBeep() {
 
     const d = String(dir || "").trim().toLowerCase();
     const url = getTransferPageUrlByDir(d);
-    const items = getItemsForTransferByDir(d);
+    const items = knkHangConCanChuyen(d);
     const state = getState();
     const trangThaiCanLay = getTrangThaiCanLayTheoDir(d);
 
