@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hoàn Tuyết · Thử kết nối Chainway R5 (độc lập)</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#f4f7fb;color:#172437}
+*{box-sizing:border-box}body{max-width:900px;margin:0 auto;padding:18px 14px 80px}h1{font-size:23px;margin:0 0 5px}h2{font-size:17px;margin:0 0 10px}.muted{color:#607188}.panel{background:white;border:1px solid #dce5ef;border-radius:14px;padding:16px;margin:13px 0}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.metric{background:#f0f5fb;border-radius:10px;padding:12px}.metric b{font-size:22px}.metric small{display:block;color:#607188}button{background:#173b70;border:0;color:white;border-radius:9px;padding:11px 14px;font-size:14px;cursor:pointer;margin:3px 4px 3px 0}button:disabled{background:#a7b5c8;cursor:not-allowed}.secondary{background:#52667e}.danger{background:#b14444}#log{height:175px;overflow:auto;background:#101d2c;color:#c7e4c8;padding:12px;border-radius:9px;white-space:pre-wrap;font:12px/1.5 ui-monospace,monospace}#status{font-weight:700}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:8px 7px;text-align:left;border-bottom:1px solid #e7edf4}th{background:#f6f9fc}code{word-break:break-all}.note{border-left:3px solid #e6ad37;padding-left:10px}.ok{color:#16714d}.warn{color:#ac6718}
+</style></head>
+<body>
+<h1>Kiểm tra Chainway R5 · Hoàn Tuyết (V3)</h1>
+<div class="muted">Bản kiểm tra Web Bluetooth và mô phỏng tải · không đăng nhập Supabase · không thay đổi hóa đơn hay tồn kho</div>
+<div class="panel">
+  <h2>1. Kết nối Bluetooth</h2>
+  <p>Trạng thái: <span id="status">Chưa kết nối</span></p>
+  <button id="connect">Kết nối R5</button><button id="disconnect" class="secondary" disabled>Ngắt kết nối</button>
+  <p class="muted">Khi hiện danh sách thiết bị, chọn R5 (có thể có tên <code>Nordic_UART_CW</code>). Trên Windows dùng Chrome/Edge có BLE; trên iPhone thử bằng Bluefy và HTTPS. Không dùng Chrome/Safari iPhone thông thường.</p>
+</div>
+<div class="panel">
+  <h2>2. Thử quét EPC (chỉ đọc, không ghi tem)</h2>
+  <button id="start" disabled>Bắt đầu đọc liên tục</button><button id="stop" class="danger" disabled>Dừng đọc</button><button id="clear" class="secondary">Xóa kết quả</button>
+  <div class="grid" style="margin-top:10px">
+    <div class="metric"><b id="unique">0</b><small>EPC duy nhất</small></div>
+    <div class="metric"><b id="readcount">0</b><small>Lượt đọc nhận được</small></div>
+    <div class="metric"><b id="frames">0</b><small>Khung BLE hợp lệ</small></div>
+  </div>
+  <p class="muted">Từng EPC có thể xuất hiện nhiều lần; phần mềm tự lọc trùng. Giữ thiết bị đang ở gần tem khi quét.</p>
+  <div class="table-wrap"><table><thead><tr><th>STT</th><th>EPC</th><th>Số lượt</th><th>Cập nhật</th></tr></thead><tbody id="rows"><tr><td colspan="4" class="muted">Chưa nhận EPC.</td></tr></tbody></table></div>
+  <button id="csv" class="secondary">Tải CSV (Windows)</button>
+  <button id="sharecsv" class="secondary">Chia sẻ CSV (iPhone)</button>
+  <button id="copycsv" class="secondary">Sao chép CSV</button>
+  <button id="previewcsv" class="secondary">Xem / chọn CSV</button>
+  <div id="csvpreviewbox" style="display:none;margin-top:12px"><p class="muted">Nếu Bluefy không tải hay chia sẻ file được, nhấn giữ trong ô bên dưới, chọn tất cả rồi sao chép.</p><textarea id="csvpreview" readonly rows="8" style="width:100%;font:12px ui-monospace,monospace;padding:10px;border:1px solid #b0bfd0;border-radius:8px"></textarea></div>
+</div>
+<div class="panel">
+  <h2>3. Chẩn đoán</h2>
+  <button id="selftest" class="secondary">Tự kiểm tra bộ giải mã (không cần R5)</button>
+  <p class="muted">Nếu R5 kết nối nhưng không đọc được EPC, sao chép các dòng nhật ký để phân tích. Bản này chỉ sử dụng lệnh START/STOP/POLL, không dùng WRITE, LOCK hoặc KILL.</p>
+  <div id="log" aria-live="polite"></div>
+</div>
+<div class="panel">
+  <h2>4. Mô phỏng nhiều tem (không cần R5)</h2>
+  <p class="muted">Bài thử kiểm tra tốc độ xử lý khung dữ liệu, tách EPC, lọc lượt quét trùng và hiển thị trên Windows/iPhone. Dùng dữ liệu <b>tự tạo</b>, không có tín hiệu từ máy thật và không lưu vào Supabase.</p>
+  <button id="mock500" class="secondary">Mô phỏng 500 tem × 3 lượt</button>
+  <button id="mock3000" class="secondary">Mô phỏng 3.000 tem × 3 lượt</button>
+  <p id="mockstatus" class="muted">Chưa chạy bài thử mô phỏng.</p>
+</div>
+<div class="panel"><h2>Giới hạn</h2><p class="note">Đây là <b>bản thử kỹ thuật</b> xây dựng từ mã nguồn SDK iOS Chainway do chủ cửa hàng cung cấp. Chưa kiểm chứng trên máy R5 thật/firmware thực tế. Không sử dụng để quyết định tồn kho hay hóa đơn. Các phiên bản firmware có thể yêu cầu điều chỉnh cách giải mã hoặc chế độ đọc.</p></div>
+<script>
+'use strict';
+const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const WRITE='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const NOTIFY='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+const $=(id)=>document.getElementById(id);
+let device=null, writeChar=null, notifyChar=null, pollTimer=null, scanning=false, busyPoll=false, rxBuffer=[], frameCount=0, readCount=0, mockActive=false;
+const epcs=new Map();
+function log(s){let t=new Date().toLocaleTimeString('vi-VN');let d=$('log');d.textContent=`[${t}] ${s}\n`+d.textContent.slice(0,18000)}
+function status(s){$('status').textContent=s}
+function ui(){const connected=!!(device?.gatt?.connected && writeChar && notifyChar);$('connect').disabled=connected;$('disconnect').disabled=!connected;$('start').disabled=!connected||scanning;$('stop').disabled=!connected||!scanning;$('unique').textContent=epcs.size.toLocaleString('vi-VN');$('readcount').textContent=readCount.toLocaleString('vi-VN');$('frames').textContent=frameCount.toLocaleString('vi-VN')}
+function hex(bytes){return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('').toUpperCase()}
+function pkt(cmd, data=[]){let len=data.length+8;let b=[0xA5,0x5A,len>>8,len&255,cmd,...data];let xor=0;for(let i=2;i<b.length;i++)xor^=b[i];return new Uint8Array([...b,xor,0x0D,0x0A])}
+let writeQueue=Promise.resolve();
+function send(cmd,data=[]){const bytes=pkt(cmd,data);writeQueue=writeQueue.catch(()=>{}).then(async()=>{if(!writeChar||!device?.gatt?.connected)throw Error('Mất kết nối');if(writeChar.writeValueWithoutResponse)await writeChar.writeValueWithoutResponse(bytes);else await writeChar.writeValue(bytes)});return writeQueue}
+function addEpc(epc){if(!epc||epc.length<4)return;readCount++;const now=new Date().toLocaleTimeString('vi-VN');if(epcs.has(epc)){let r=epcs.get(epc);r.count++;r.when=now}else{epcs.set(epc,{count:1,when:now})}if(mockActive){if(readCount%100===0)ui()}else if(readCount%10===0||epcs.size<10)render();else ui()}
+function render(){const tbody=$('rows');tbody.replaceChildren();let arr=Array.from(epcs.entries()).reverse().slice(0,300);if(!arr.length){let tr=document.createElement('tr');let td=document.createElement('td');td.colSpan=4;td.textContent='Chưa nhận EPC.';tr.append(td);tbody.append(tr)}else arr.forEach(([epc,r],idx)=>{let tr=document.createElement('tr');for(let x of [epcs.size-idx,epc,r.count,r.when]){let td=document.createElement('td');td.textContent=x;tr.append(td)}tbody.append(tr)});ui()}
+function parseInventory(payload){if(payload.length<5)return;const count=payload[2];let pos=3;for(let i=0;i<count;i++){if(pos>=payload.length)break;const size=payload[pos++];if(size<3||pos+size>payload.length){log('Bản tin E1 có độ dài thẻ khác dự kiến; payload='+hex(payload));break}const tag=payload.slice(pos,pos+size);pos+=size;const epcBytes=((tag[0]>>3)&0x1f)*2;const epc=(epcBytes>0&&tag.length>=2+epcBytes)?tag.slice(2,2+epcBytes):tag;if(epc.length){addEpc(hex(epc))}}}
+function onFrame(cmd,payload){frameCount++;if(cmd===0xE1)parseInventory(payload);else if(cmd===0xE6)log('Nhận sự kiện nút trên R5 (E6)');else if(cmd===0x8C||cmd===0x83)log('Thiết bị phản hồi lệnh 0x'+cmd.toString(16));else if(frameCount<20)log('Phản hồi 0x'+cmd.toString(16)+' data='+hex(payload.slice(0,40)));ui()}
+function feed(bytes){rxBuffer.push(...bytes);let iterations=0;while(rxBuffer.length>=8&&iterations++<500){if(rxBuffer[0]!==0xA5||rxBuffer[1]!==0x5A){rxBuffer.shift();continue}const len=(rxBuffer[2]<<8)|rxBuffer[3];if(len<8||len>2048){log('Khung sai độ dài '+len);rxBuffer.shift();continue}if(rxBuffer.length<len)break;const frame=rxBuffer.slice(0,len);if(frame[len-2]!==0x0D||frame[len-1]!==0x0A){rxBuffer.shift();continue}let sum=0;for(let i=2;i<len-3;i++)sum^=frame[i];if(sum!==frame[len-3]){log('Sai checksum (0x'+frame[4].toString(16)+')');rxBuffer.shift();continue}rxBuffer.splice(0,len);onFrame(frame[4],frame.slice(5,-3))}if(rxBuffer.length>4096){rxBuffer=[];log('Đã xóa bộ đệm vì vượt giới hạn')}}
+function notifyHandler(e){let v=e.target.value;feed(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))}
+function onDisconnect(){stopPolling();writeChar=null;notifyChar=null;status('R5 đã ngắt kết nối');log('Bluetooth bị ngắt');ui()}
+function stopPolling(){scanning=false;busyPoll=false;if(pollTimer){clearInterval(pollTimer);pollTimer=null}ui()}
+async function connect(){if(!navigator.bluetooth){status('Trình duyệt không hỗ trợ Web Bluetooth');log('Hãy dùng Chrome/Edge trên Windows hoặc Bluefy trên iPhone');return}try{status('Đang chọn thiết bị…');device=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SERVICE]});if(!device)throw Error('Không nhận được thiết bị từ hộp thoại chọn');device.addEventListener('gattserverdisconnected',onDisconnect);const gatt=await device.gatt.connect();const service=await gatt.getPrimaryService(SERVICE);writeChar=await service.getCharacteristic(WRITE);notifyChar=await service.getCharacteristic(NOTIFY);notifyChar.addEventListener('characteristicvaluechanged',notifyHandler);await notifyChar.startNotifications();status('Đã kết nối '+(device.name||'R5'));log('Kết nối thành công: '+(device.name||'(không có tên)'));ui()}catch(e){const en=e?.name||'BluetoothError';const em=e?.message||String(e??'Trình duyệt không cung cấp mô tả lỗi');status('Kết nối thất bại: '+em);log('ERROR: '+en+' '+em);try{device?.gatt?.disconnect()}catch(_){ }writeChar=null;notifyChar=null;ui()}}
+async function start(){try{if(scanning)return;scanning=true;await send(0x82,[0,0]);log('Đã gửi START (82). Bắt đầu POLL (E0).');pollTimer=setInterval(async()=>{if(!scanning||busyPoll)return;busyPoll=true;try{await send(0xE0)}catch(e){log('Poll lỗi: '+e.message);stopPolling()}finally{busyPoll=false}},100);ui()}catch(e){stopPolling();log('Lỗi START: '+e.message)}}
+async function stop(){stopPolling();try{await send(0x8C);log('Đã gửi STOP (8C).')}catch(e){log('Lỗi STOP: '+e.message)}}
+function clear(){epcs.clear();readCount=0;frameCount=0;rxBuffer=[];render();log('Xóa danh sách EPC')}
+function exportCsv(){const lines=['epc,so_lan_doc,lan_cuoi',...Array.from(epcs,([epc,r])=>`${epc},${r.count},${r.when}`)];let blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download='r5_epc_thu_nghiem.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000)}
+function makeCsvText(){
+ const lines=['epc,so_lan_doc,lan_cuoi',...Array.from(epcs,([epc,r])=>`${epc},${r.count},${r.when}`)];
+ return '\ufeff'+lines.join('\r\n');
+}
+function showCsvPreview(){
+ const box=$('csvpreviewbox');const area=$('csvpreview');
+ box.style.display='block';area.value=makeCsvText();
+ area.focus();area.select();
+ log('Hiển thị toàn bộ '+epcs.size+' mã EPC dưới dạng CSV để sao chép thủ công.');
+}
+async function shareCsv(){
+ if(!epcs.size){log('Chưa có dữ liệu EPC để chia sẻ');return;}
+ const f=new File([makeCsvText()],'r5_epc_thu_nghiem.csv',{type:'text/csv;charset=utf-8'});
+ try{
+   if(typeof navigator.share==='function' && (typeof navigator.canShare!=='function'||navigator.canShare({files:[f]}))){
+     await navigator.share({files:[f],title:'R5 Hoàn Tuyết - CSV EPC'});
+     log('Đã mở trình chia sẻ CSV của hệ điều hành');return;
+   }
+   log('Trình duyệt chưa hỗ trợ chia sẻ file CSV. Mở bản văn bản để sao chép.');
+ }catch(err){log('Không chia sẻ CSV: '+(err?.message||String(err)))}
+ showCsvPreview();
+}
+async function copyCsv(){
+ if(!epcs.size){log('Chưa có dữ liệu EPC để sao chép');return;}
+ try{
+   if(!navigator.clipboard?.writeText)throw new Error('Clipboard API không khả dụng');
+   await navigator.clipboard.writeText(makeCsvText());
+   log('Đã sao chép '+epcs.size+' mã EPC dưới dạng CSV');
+ }catch(e){log('Trình duyệt chưa cho tự sao chép: '+(e?.message||String(e))+'. Chọn và sao chép thủ công.');showCsvPreview()}
+}
+function selftest(){const epc=Uint8Array.from([0xE2,0x80,0x68,0x94,0,0,0,1,2,3,4,5]);const rec=[0x30,0x00,...epc,0xFF,0xE4];const body=[0,1,1,rec.length,...rec];const frame=pkt(0xE1,body);const before=readCount;const halves=[frame.slice(0,7),frame.slice(7)];halves.forEach(feed);if(readCount===before+1){log('SELF-TEST OK: giải mã EPC '+hex(epc))}else{log('SELF-TEST FAILED: bộ giải mã không lấy được EPC')}}
+// Chỉ mô phỏng dữ liệu nội bộ; không truy cập Bluetooth hoặc Supabase.
+function mockEpc(index){return 'E2806894'+index.toString(16).toUpperCase().padStart(16,'0')}
+function mockRecord(epc){const bytes=[];for(let j=0;j<epc.length;j+=2)bytes.push(parseInt(epc.slice(j,j+2),16));return [0x30,0x00,...bytes,0xFF,0xE4]}
+function mockPacket(epc){const rec=mockRecord(epc);return pkt(0xE1,[0,1,1,rec.length,...rec])}
+function mockRun(n){
+ if(mockActive){log('Đang có bài mô phỏng khác');return}
+ if(scanning){log('Hãy dừng quét R5 trước khi mô phỏng');return}
+ clear();mockActive=true;let index=0;const total=n*3;const began=performance.now();
+ $('mock500').disabled=true;$('mock3000').disabled=true;
+ $('mockstatus').textContent='Đang chạy mô phỏng '+n.toLocaleString('vi-VN')+' EPC × 3 lượt…';
+ function chunk(){let run=0;
+   while(index<total && run<90){const id=(index*37)%n+1;feed(mockPacket(mockEpc(id)));index++;run++}
+   render();$('mockstatus').textContent='Đã xử lý '+index.toLocaleString('vi-VN')+'/'+total.toLocaleString('vi-VN')+' lượt; '+epcs.size.toLocaleString('vi-VN')+' EPC duy nhất.';
+   if(index<total){setTimeout(chunk,12);return}
+   mockActive=false;const seconds=((performance.now()-began)/1000).toFixed(2);
+   $('mockstatus').textContent='HOÀN THÀNH: '+epcs.size.toLocaleString('vi-VN')+' EPC / '+readCount.toLocaleString('vi-VN')+' lượt / '+frameCount.toLocaleString('vi-VN')+' khung / '+seconds+' giây (dữ liệu giả lập).';
+   log('MOCK OK: '+epcs.size+' EPC, '+readCount+' lần đọc, '+frameCount+' khung; '+seconds+'s. KHÔNG phải kết quả quét R5 thật.');
+   $('mock500').disabled=false;$('mock3000').disabled=false;
+ }
+ setTimeout(chunk,0)
+}
+$('mock500').addEventListener('click',()=>mockRun(500));
+$('mock3000').addEventListener('click',()=>mockRun(3000));
+$('connect').addEventListener('click',connect);$('disconnect').addEventListener('click',()=>{stopPolling();device?.gatt?.disconnect()});$('start').addEventListener('click',start);$('stop').addEventListener('click',stop);$('clear').addEventListener('click',clear);$('csv').addEventListener('click',exportCsv);$('sharecsv').addEventListener('click',shareCsv);$('copycsv').addEventListener('click',copyCsv);$('previewcsv').addEventListener('click',showCsvPreview);$('selftest').addEventListener('click',selftest);
+log('Trang sẵn sàng. Bluetooth API: '+(navigator.bluetooth?'Có':'Không')+' | HTTPS/secure context: '+(isSecureContext?'Có':'Không'));ui();
+</script>
+</body>
+</html>
