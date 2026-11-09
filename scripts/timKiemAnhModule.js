@@ -6,11 +6,13 @@
 
 import { getSupabaseClient } from "./authModule.js";
 
-const BUILD = "VISUAL-SEARCH-V2-ORIGINAL-INFO-PRELOAD-1.2";
+const BUILD = "VISUAL-SEARCH-V2-MULTI-MASP-1.3";
 const MODEL_ID = "Xenova/siglip-base-patch16-224";
 const DTYPE = "q8";
 const VECTOR_VERSION = "python-fp32-v1";
 const DEFAULT_TOP_K = 24;
+const MAX_MANUAL_CODES = 500;
+const IMAGE_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
 
 console.log("[TimKiemAnhModule]", BUILD);
 
@@ -24,6 +26,7 @@ let currentFile = null;
 let currentObjectUrl = "";
 let currentSearchId = null;
 let currentResults = [];
+let resultMode = "image";
 let opening = false;
 let resultGeneration = 0;
 const detailCache = new Map();
@@ -175,6 +178,7 @@ function clearPreview(){
   const info=$("visualResultInfo");
   if(info) info.textContent="";
   currentResults=[];
+  resultMode="image";
   resultGeneration++;
   currentSearchId=null;
 }
@@ -210,7 +214,7 @@ function getSizeStocks(sp){
   })).sort((a,b)=>Number(a.size)-Number(b.size));
 }
 function detailsMarkup(sp,masp){
-  if(!sp) return `<div class="vs-detail-unavailable">Chưa lấy được thông tin sản phẩm; ảnh vẫn giữ nguyên kết quả.</div>`;
+  if(!sp) return `<div class="vs-detail-unavailable">Không có thông tin trong danh mục (hoặc không truy cập được mã này). Không thể chọn.</div>`;
   const cs2=selectedBranch()==="cs2";
   const kho=(cs2?sp.vitrikho2:sp.vitrikho1)||"-";
   const mau=(cs2?sp.treomaucs2:sp.treomaucs1)||"-";
@@ -229,7 +233,8 @@ function detailsMarkup(sp,masp){
       ? available.map(x=>`<button type="button" data-vs-size="${esc(x.size)}" data-vs-add="${esc(masp)}">${esc(x.size)} (${x.qty})</button>`).join("")
       : '<span class="vs-no-stock">Không có size còn tồn để chọn</span>'}</div>`;
 }
-function renderResults(rows){
+function renderResults(rows, mode="image"){
+  resultMode=mode;
   currentResults=rows || [];
   const box=$("visualResults");
   const info=$("visualResultInfo");
@@ -238,10 +243,13 @@ function renderResults(rows){
     box.innerHTML="";
     return;
   }
-  info.textContent=`${rows.length} sản phẩm gần nhất · bấm ảnh để phóng to · bấm MASP mở StockQuick`;
+  info.textContent=mode==="manual"
+    ? `${rows.length} mã theo thứ tự đã nhập · bấm ảnh xem lớn · bấm MASP mở StockQuick`
+    : `${rows.length} sản phẩm gần nhất · bấm ảnh để phóng to · bấm MASP mở StockQuick`;
   // Bao ton tuyet doi danh sach va thu tu do RPC tim anh V2 tra ve.
   box.innerHTML=rows.map((r,i)=>{
     const pct=(Number(r.diem_giong||0)*100).toFixed(1);
+    const score=mode==="manual" ? "" : `<div class="vs-score">Giống ${pct}%</div>`;
     return `<article class="vs-result" data-vs-masp="${esc(r.masp)}">
       <div class="vs-image-wrap"><div class="vs-rank">${i+1}</div>
       <button type="button" class="vs-image-button" data-vs-zoom="${i}" aria-label="Xem ảnh lớn ${esc(r.masp)}">
@@ -249,7 +257,7 @@ function renderResults(rows){
       </button></div>
       <div class="vs-result-body">
         <button type="button" class="vs-code" data-vs-stock="${esc(r.masp)}">${esc(r.masp)}</button>
-        <div class="vs-score">Giống ${pct}%</div>
+        ${score}
         <div class="vs-detail" data-vs-detail="${esc(r.masp)}"><span class="vs-detail-loading">Đang lấy thông tin…</span></div>
       </div>
     </article>`;
@@ -271,7 +279,7 @@ async function loadOneDetail(masp){
 }
 async function enrichVisibleResults(rows,gen){
   let cursor=0, failed=0;
-  const count=Math.min(4,rows.length);
+  const count=Math.min(5,rows.length);
   async function worker(){
     while(cursor<rows.length){
       const i=cursor++,masp=norm(rows[i].masp);
@@ -285,7 +293,7 @@ async function enrichVisibleResults(rows,gen){
   }
   await Promise.all(Array.from({length:count},()=>worker()));
   if(gen===resultGeneration && failed){
-    setStatus(`Đã tìm ${rows.length} ảnh. Có ${failed} mã chưa đọc được thông tin phụ; thứ tự ảnh không thay đổi.`,"ok");
+    setStatus(`Có ${failed} mã chưa lấy được thông tin phụ. Thứ tự danh sách không thay đổi.`,"err");
   }
 }
 function showImageLarge(index){
@@ -366,10 +374,52 @@ async function runSearch(){
     if(gen===resultGeneration)setStatus(`Hoàn tất ${rows.length} ảnh. Thông tin bổ sung không ảnh hưởng số lượng và thứ tự ảnh.`,"ok");
   }catch(e){
     console.error("[TimKiemAnhModule]",e);
-    setStatus("Lỗi tìm bằng ảnh: "+(e?.message||e),"err");
+    if(gen===resultGeneration)setStatus("Lỗi tìm bằng ảnh: "+(e?.message||e),"err");
   }finally{
     if(btn) btn.disabled=false;
   }
+}
+
+
+// Chế độ nhập danh sách MASP: không dùng vector/AI, không tác động tìm kiếm V2 chính.
+// Chỉ đọc thông tin của từng mã từ RPC V2 có sẵn; giữ nguyên thứ tự người dùng nhập.
+async function runManualCodeList(){
+  const input=$("visualMaspList");
+  const raw=String(input?.value||"");
+  const entries=raw.split(/\r?\n/).map(norm).filter(Boolean);
+  if(!entries.length){setStatus("Hãy nhập mã sản phẩm, mỗi dòng một mã.","err");input?.focus();return;}
+  const codes=[...new Set(entries)];
+  if(codes.length>MAX_MANUAL_CODES){
+    setStatus(`Tối đa ${MAX_MANUAL_CODES} mã mỗi lượt để tránh quá tải điện thoại. Bạn có ${codes.length} mã. Hãy chia thành các lượt.`,"err");
+    return;
+  }
+  const branch=selectedBranch();
+  if(!["cs1","cs2"].includes(branch)){
+    setStatus("Chưa xác định cơ sở CS1/CS2. Vui lòng đăng nhập cơ sở trước.","err");return;
+  }
+  const gen=++resultGeneration;
+  const button=$("visualMaspRun");
+  if(button)button.disabled=true;
+  currentSearchId=null; // Không ghi nhật ký tìm vector cho danh sách MASP.
+  const rows=codes.map(masp=>({masp,duong_dan_anh:`${IMAGE_BASE}${encodeURIComponent(masp)}.JPG`,diem_giong:null}));
+  renderResults(rows,"manual");
+  updateVisualJump();
+  setStatus(`Đã hiển thị ${codes.length} mã (loại ${entries.length-codes.length} mã trùng). Đang bổ sung thông tin sản phẩm…`,"ok");
+  try{
+    await enrichVisibleResults(rows,gen);
+    if(gen===resultGeneration){
+      const notFound=[];
+      for(const masp of codes){
+        const key=branch+"|"+masp;
+        try { if(!(await detailCache.get(key)))notFound.push(masp); }
+        catch { notFound.push(masp); }
+      }
+      setStatus(`Hoàn tất ${codes.length} mã theo thứ tự nhập.`+(notFound.length?` ${notFound.length} mã không có thông tin/không đọc được: ${notFound.slice(0,15).join(", ")}${notFound.length>15?"…":""}.`:""),notFound.length?"err":"ok");
+    }
+  }catch(e){
+    console.error("[V2 ảnh] Danh sách MASP",e);
+    if(gen===resultGeneration)setStatus("Lỗi đọc danh sách mã: "+(e?.message||e),"err");
+  }finally{if(button)button.disabled=false;}
 }
 
 function openModal(){
@@ -417,7 +467,11 @@ function injectStyles(){
     .vs-preview{display:none;width:100%;max-height:52vh;object-fit:contain;background:#f3f4f6;border-radius:14px;margin-top:10px}
     .vs-run-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}
     .vs-run{border:0;border-radius:12px;background:#0878d1;color:#fff;font-weight:900;min-height:50px;padding:10px 14px;font-size:17px}
-    .vs-run:disabled{opacity:.55}.vs-topk{border:1px solid #cbd5e1;border-radius:12px;background:#fff;padding:0 10px;font-weight:800}
+    .vs-manual-title{font-size:15px;font-weight:800;color:#123d63;margin-bottom:7px}
+    .vs-manual-input{width:100%;box-sizing:border-box;min-height:112px;resize:vertical;border:1px solid #b8cce0;border-radius:10px;padding:10px;font-size:16px;line-height:1.45;background:#fff;color:#111827}
+    .vs-manual-run{margin-top:8px;width:100%;min-height:44px;border:0;border-radius:10px;background:#137a51;color:#fff;font-size:15px;font-weight:900}
+    .vs-manual-help{font-size:12px;color:#64748b;margin-top:6px}
+    .vs-run:disabled,.vs-manual-run:disabled{opacity:.55}.vs-topk{border:1px solid #cbd5e1;border-radius:12px;background:#fff;padding:0 10px;font-weight:800}
     .vs-status{margin-top:9px;border-radius:10px;padding:9px 11px;background:#f0f2f4;color:#394554;font-size:14px;line-height:1.35}
     .vs-status.ok{background:#e9f9ef;color:#126238}.vs-status.err{background:#fff0f0;color:#b42318}
     .vs-result-info{font-size:13px;color:#64748b;margin:4px 0 9px}
@@ -504,6 +558,13 @@ function injectUi(){
       </div>
 
       <div class="vs-card">
+        <div class="vs-manual-title">📋 Hiển thị ảnh theo danh sách mã sản phẩm</div>
+        <textarea id="visualMaspList" class="vs-manual-input" rows="4" spellcheck="false" autocapitalize="characters" placeholder="25051-AP.TRANG&#10;25051-AP.DEN&#10;8641-SMSH"></textarea>
+        <button id="visualMaspRun" class="vs-manual-run" type="button">HIỂN THỊ THEO DANH SÁCH MÃ</button>
+        <div class="vs-manual-help">Mỗi dòng một MASP, tối đa 500 mã. Giữ thứ tự nhập; không dùng AI, không lọc tồn hoặc nhóm. Tồn theo size chỉ để xem và chọn.</div>
+      </div>
+
+      <div class="vs-card">
         <div id="visualResultInfo" class="vs-result-info"></div>
         <div id="visualResults" class="vs-results"></div>
       </div>
@@ -532,6 +593,7 @@ function injectUi(){
     e.target.value="";
   });
   $("visualSearchRun")?.addEventListener("click",runSearch);
+  $("visualMaspRun")?.addEventListener("click",runManualCodeList);
 }
 
 function init(){
