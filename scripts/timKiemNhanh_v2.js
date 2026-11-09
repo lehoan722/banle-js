@@ -1,1113 +1,607 @@
-import { getSupabaseClient, khoiTaoDangNhapDungChung, dangXuatDungChung } from "./authModule.js";
-import { setupScanner } from "./scanner.js";
-import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
-import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
-import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=32";
+// ============================================================
+// HOAN TUYET - TIM KIEM BANG ANH MODULE V1.0
+// Tich hop vao timkiemnhanh_v2 ma KHONG sua loi logic tim kiem cu.
+// Browser: SigLIP ONNX q8 -> vector 768 -> Supabase pgvector RPC.
+// ============================================================
 
-window.TIM_KIEM_NHANH_BUILD = "2.4.0-FAST-ADMIN-FIRST-SIZE0";
-console.log("[TimKiemNhanh V2] BUILD 2.4.0-FAST-ADMIN-FIRST-SIZE0");
+import { getSupabaseClient } from "./authModule.js";
+
+const BUILD = "VISUAL-SEARCH-V2-MULTI-MASP-1.3";
+const MODEL_ID = "Xenova/siglip-base-patch16-224";
+const DTYPE = "q8";
+const VECTOR_VERSION = "python-fp32-v1";
+const DEFAULT_TOP_K = 24;
+const MAX_MANUAL_CODES = 500;
+const IMAGE_BASE = "https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
+
+console.log("[TimKiemAnhModule]", BUILD);
 
 const supabase = getSupabaseClient();
 
-const SIZE_LIST=["38","39","40","41","42","43","44","45","46"];
+let hf = null;
+let processor = null;
+let model = null;
+let modelLoadPromise = null;
+let currentFile = null;
+let currentObjectUrl = "";
+let currentSearchId = null;
+let currentResults = [];
+let resultMode = "image";
+let opening = false;
+let resultGeneration = 0;
+const detailCache = new Map();
 
-const SIZE_FALLBACK_ZERO="0";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[c]));
+const norm = (v) => String(v ?? "").trim().toUpperCase();
 
-function stockForAny(sp,size){
-  const x=sp?.ton_sizes?.[String(size)]||{};
-  return Number(state.diadiem==="cs2"?x.ton_cs2:x.ton_cs1)||0;
+function getBranch(){
+  return String(
+    sessionStorage.getItem("diadiem") ||
+    localStorage.getItem("diadiem") ||
+    ""
+  ).trim().toLowerCase();
+}
+function getEmployee(){
+  return String(localStorage.getItem("manv") || "").trim();
+}
+function setStatus(text, type=""){
+  const el = $("visualSearchStatus");
+  if(!el) return;
+  el.textContent = text;
+  el.className = `vs-status ${type}`.trim();
+}
+function l2Normalize(arr){
+  let sum = 0;
+  for(const x of arr) sum += Number(x) * Number(x);
+  const n = Math.sqrt(sum) || 1;
+  return Array.from(arr, x => Number(x) / n);
+}
+function pgVectorLiteral(v){
+  return "[" + v.map(x => Number(x).toPrecision(9)).join(",") + "]";
 }
 
-function splitExactAndSizeZero(rows){
-  const exact=[];
-  const zeroOnly=[];
-  const seen=new Set();
-
-  for(const sp of (rows||[])){
-    const key=norm(sp?.masp);
-    if(!key||seen.has(key))continue;
-
-    if(state.size && stockForAny(sp,state.size)>0){
-      exact.push(sp);
-      seen.add(key);
-      continue;
+async function ensureModel(){
+  if(model && processor) return;
+  // Một promise duy nhất cho cả preload và lượt Tìm: tránh tải SigLIP hai lần.
+  if(modelLoadPromise) return modelLoadPromise;
+  modelLoadPromise=(async()=>{
+    const start=performance.now();
+    setStatus("Đang chuẩn bị AI ảnh trên thiết bị…");
+    if(!hf){
+      hf=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1");
+      try{hf.env.allowLocalModels=false;hf.env.useBrowserCache=true;}catch{}
     }
-
-    if(stockForAny(sp,SIZE_FALLBACK_ZERO)>0){
-      sp.__size0_fallback=true;
-      zeroOnly.push(sp);
-      seen.add(key);
-    }
+    const {AutoProcessor,SiglipVisionModel}=hf;
+    const nextProcessor=await AutoProcessor.from_pretrained(MODEL_ID);
+    const nextModel=await SiglipVisionModel.from_pretrained(MODEL_ID,{dtype:DTYPE,device:"wasm"});
+    // Chỉ đánh dấu đã sẵn sàng sau khi cả hai thành phần tải thành công.
+    processor=nextProcessor;
+    model=nextModel;
+    setStatus(`AI ảnh đã sẵn sàng (${((performance.now()-start)/1000).toFixed(1)}s).`,"ok");
+  })();
+  try{await modelLoadPromise}
+  catch(e){
+    // Cho phép mở lại hoặc bấm Tìm để tải lại nếu mạng chập chờn.
+    model=null;processor=null;
+    setStatus("Không thể chuẩn bị AI ảnh. Bấm Tìm để thử lại.","err");
+    throw e;
+  }finally{
+    modelLoadPromise=null;
   }
-
-  return {exact,zeroOnly,all:[...exact,...zeroOnly]};
 }
 
-const SIZE_CONVERSION={
-  "38":["38","2","S","46","240","165"],
-  "39":["39","3","M","48","245","170"],
-  "40":["40","4","L","50","250","175"],
-  "41":["41","5","XL","52","255","180"],
-  "42":["42","6","2XL","54","260","185"],
-  "43":["43","7","3XL","56","265","190"],
-  "44":["44","8","4XL","58","270","195"],
-  "45":["45","9","5XL","60","275","200"],
-  "46":["46","10","6XL","62","280","205"]
-};
-const IMAGE_BASE="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/";
-const PENDING_KEY="sales_copilot_pending_v1";
-const ACK_KEY="sales_copilot_ack_v1";
-const CART_KEY="tim_kiem_nhanh_selected_v2";
-const MAIN_GROUPS={
-  AO_HE:{label:"Áo hè",defaultGroup:"AP",groups:["AP","SM","3LO","BOC"]},
-  QUAN:{label:"Quần",defaultGroup:"QB",groups:["QB","QT","QV","NGO","QNI"]},
-  AO_RET:{label:"Áo rét",defaultGroup:"AOKHOAC",groups:["AOKHOAC","TD","SO","LEN","AODA","BOD"]},
-  GIAY_DEP:{label:"Giày dép",defaultGroup:"GIAYTHOITRANG",groups:["DEP","GIAYDA","GIAYSUC","GIAYTHOITRANG"]}
-};
-
-const state={
-  manv:String(localStorage.getItem("manv")||"").trim(),
-  tennv:String(localStorage.getItem("tennv")||"").trim(),
-  diadiem:String(localStorage.getItem("diadiem")||"").trim().toLowerCase(),
-  groups:[],colors:[],mainGroup:"",group:"",form:"",color:"",size:"",mode:"similar",referencePrice:0,
-  sourceMasp:"",sourceProduct:null,sourceStockAfterCheck:null,sizeGuideOpen:false,products:[],offset:0,total:0,loading:false,selected:[],scanner:null
-};
-
-function refreshAuthState(){
-  state.manv=String(localStorage.getItem("manv")||"").trim();
-  state.tennv=String(localStorage.getItem("tennv")||"").trim();
-  state.diadiem=String(localStorage.getItem("diadiem")||"").trim().toLowerCase();
-  const info=$("nvInfo");
-  if(info)info.textContent=`V2 FAST · ${state.tennv||state.manv||"Chưa đăng nhập"} · ${validBranch()?state.diadiem.toUpperCase():"CHƯA CÓ CS"}`;
+function preloadModelOnOpen(){
+  // Không chặn việc mở cửa sổ, chụp ảnh hoặc thao tác trang V2 chính.
+  if(model && processor){setStatus("AI ảnh đã sẵn sàng.","ok");return;}
+  void ensureModel().catch(e=>console.warn("[TimKiemAnhModule] Preload SigLIP chưa thành công:",e));
 }
 
-const AFTER_CHECK_CACHE=new Map(); // V2: giữ tương thích, luồng chính không dùng N+1
-let pendingMissingSize="";
-const $=id=>document.getElementById(id);
-const norm=v=>String(v??"").trim().toUpperCase();
-const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const money=n=>Number(n||0).toLocaleString("vi-VN");
-const validBranch=()=>["cs1","cs2"].includes(state.diadiem);
-function sourceQty(size){
-  const row=state.sourceStockAfterCheck?.[String(size)]||{};
-  return Number(state.diadiem==="cs2"?row.ton_cs2:row.ton_cs1)||0;
-}
-
-function businessDate(){
+async function fileToVector(file){
+  await ensureModel();
+  const { RawImage } = hf;
+  const url = URL.createObjectURL(file);
   try{
-    const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
-    const map=Object.fromEntries(parts.map(x=>[x.type,x.value]));
-    return `${map.year}-${map.month}-${map.day}`;
-  }catch{return new Date().toISOString().slice(0,10)}
+    const raw = await RawImage.fromURL(url);
+    const inputs = await processor(raw);
+    const t = performance.now();
+    const out = await model(inputs);
+    const tensor = out.pooler_output;
+    return {
+      vector: l2Normalize(Array.from(tensor.data)),
+      inferenceMs: Math.round(performance.now() - t)
+    };
+  }finally{
+    URL.revokeObjectURL(url);
+  }
 }
-function formNorm(v){const x=norm(v).replace(/\s+/g,"_");if(["RONG","RỘNG","FORM_RONG"].includes(x))return"RONG";if(["VUA","VỪA","FORM_VUA"].includes(x))return"VUA";if(["BO","BÓ","OM","ÔM","FORM_BO"].includes(x))return"BO";return x}
-function formLabel(v){return({RONG:"Rộng",VUA:"Vừa",BO:"Bó"})[formNorm(v)]||String(v||"")}
-function toast(msg,ms=2300){const el=$("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__tknToast);window.__tknToast=setTimeout(()=>el.style.display="none",ms)}
-function setLoading(v,visual=true){
-  state.loading=!!v;
-  if(visual)document.body.classList.toggle("loading",!!v);
-  else if(!v)document.body.classList.remove("loading");
-  const auto=$("autoLoadStatus");
-  if(auto)auto.classList.toggle("show",!!v&&!visual);
+
+async function searchVector(vector, topK=DEFAULT_TOP_K){
+  const { data, error } = await supabase.rpc("tim_san_pham_tuong_tu_vector", {
+    p_vector: pgVectorLiteral(vector),
+    p_so_luong: topK,
+    p_phien_ban_vector: VECTOR_VERSION
+  });
+  if(error) throw error;
+  return data || [];
 }
-function stockFor(sp,size){const x=sp?.ton_sizes?.[String(size)]||{};return Number(state.diadiem==="cs2"?x.ton_cs2:x.ton_cs1)||0}
-function availableSizes(sp){return SIZE_LIST.filter(s=>stockFor(sp,s)>0)}
-function compactFormSizes(sp){
-  const form=formLabel(sp?.form)||"-";
-  const sizes=availableSizes(sp);
-  return `${form} . ${sizes.map(sz=>`${sz}(${stockFor(sp,sz)})`).join(" ")||"-"}`;
+
+async function tryLogSearch({vector, inferenceMs, totalMs, rows}){
+  currentSearchId = null;
+  try{
+    const payload = {
+      p_query_vector: pgVectorLiteral(vector),
+      p_diadiem: getBranch() || null,
+      p_manv: getEmployee() || null,
+      p_inference_ms: inferenceMs || null,
+      p_total_ms: totalMs || null,
+      p_top_results: (rows || []).slice(0, 40).map((r,i)=>({
+        rank:i+1,
+        masp:r.masp,
+        diem_giong:Number(r.diem_giong||0)
+      }))
+    };
+    const {data,error}=await supabase.rpc("ghi_nhat_ky_tim_kiem_anh",payload);
+    if(!error){
+      if(Array.isArray(data)) currentSearchId = data?.[0]?.id || data?.[0] || null;
+      else currentSearchId = data?.id || data || null;
+    }
+  }catch(e){
+    console.debug("[TimKiemAnhModule] Nhật ký chưa bật/không ghi được:",e);
+  }
 }
-function locationParts(sp){
-  if(!sp)return {kho:"",mau:""};
-  const isCs2=state.diadiem==="cs2";
-  return {
-    kho:String((isCs2?sp.vitrikho2:sp.vitrikho1)||"").trim(),
-    mau:String((isCs2?sp.treomaucs2:sp.treomaucs1)||"").trim()
-  };
+
+async function tryLogPick(masp){
+  if(!currentSearchId) return;
+  try{
+    await supabase.rpc("cap_nhat_nhat_ky_tim_kiem_anh_chon",{
+      p_id: currentSearchId,
+      p_masp_chon: norm(masp)
+    });
+  }catch(e){
+    console.debug("[TimKiemAnhModule] Không cập nhật được lựa chọn:",e);
+  }
 }
-function locationText(sp){
-  const {kho,mau}=locationParts(sp);
-  const parts=[];
-  if(kho)parts.push(`Kho: ${kho}`);
-  if(mau)parts.push(`Mẫu: ${mau}`);
-  return parts.join(", ");
+
+function clearPreview(){
+  if(currentObjectUrl){
+    try{URL.revokeObjectURL(currentObjectUrl)}catch{}
+  }
+  currentObjectUrl="";
+  currentFile=null;
+  const img=$("visualSearchPreview");
+  if(img){img.removeAttribute("src");img.style.display="none";}
+  const box=$("visualResults");
+  if(box) box.innerHTML="";
+  const info=$("visualResultInfo");
+  if(info) info.textContent="";
+  currentResults=[];
+  resultMode="image";
+  resultGeneration++;
+  currentSearchId=null;
 }
-function renderSourceLocation(){
-  const el=$("sourceLocation");
-  if(!el)return;
-  if(!state.sourceMasp){
-    el.textContent="";
-    el.classList.remove("show");
-    el.removeAttribute("data-stock");
+
+function selectFile(file){
+  if(!file) return;
+  currentFile=file;
+  resultGeneration++;
+  if(currentObjectUrl){
+    try{URL.revokeObjectURL(currentObjectUrl)}catch{}
+  }
+  currentObjectUrl=URL.createObjectURL(file);
+  const img=$("visualSearchPreview");
+  img.src=currentObjectUrl;
+  img.style.display="block";
+  $("visualResults").innerHTML="";
+  $("visualResultInfo").textContent="";
+  setStatus(model && processor ? "Ảnh và AI đã sẵn sàng. Bấm “Tìm sản phẩm”." : "Ảnh đã sẵn sàng. AI đang được chuẩn bị nếu cần.","ok");
+}
+
+function formDisplay(v){
+  const raw=String(v||"").trim();
+  const names={RONG:"Rộng",VUA:"Vừa",BO:"Bó",RỘNG:"Rộng",VỪA:"Vừa",BÓ:"Bó"};
+  return names[raw.toUpperCase()] || raw || "-";
+}
+function selectedBranch(){
+  return window.TimKiemNhanhV2ImageBridge?.getBranch?.() || getBranch();
+}
+function getSizeStocks(sp){
+  const cs2=selectedBranch()==="cs2";
+  return Object.entries(sp?.ton_sizes || {}).map(([s,v])=>({
+    size:String(s), qty:Number(cs2?v?.ton_cs2:v?.ton_cs1)||0
+  })).sort((a,b)=>Number(a.size)-Number(b.size));
+}
+function detailsMarkup(sp,masp){
+  if(!sp) return `<div class="vs-detail-unavailable">Không có thông tin trong danh mục (hoặc không truy cập được mã này). Không thể chọn.</div>`;
+  const cs2=selectedBranch()==="cs2";
+  const kho=(cs2?sp.vitrikho2:sp.vitrikho1)||"-";
+  const mau=(cs2?sp.treomaucs2:sp.treomaucs1)||"-";
+  const stocks=getSizeStocks(sp);
+  const available=stocks.filter(x=>x.qty>0);
+  const formSizes=`${formDisplay(sp.form)} · ${available.map(x=>x.size).join(" ")||"-"}`;
+  const bySize=stocks.length ? stocks.map(x=>`${x.size}: ${x.qty}`).join(" · ") : "Chưa có thông tin";
+  const price=Number(sp.giale||0).toLocaleString("vi-VN");
+  return `<div class="vs-form-sizes">${esc(formSizes)}</div>
+    <div class="vs-size-stock">Tồn theo size: ${esc(bySize)}</div>
+    <div class="vs-warehouse">KHO: ${esc(kho)}</div>
+    <div class="vs-sample">Mẫu: ${esc(mau)}</div>
+    <div class="vs-price">${price} đ</div>
+    <button type="button" class="vs-pick" data-vs-pick="${esc(masp)}">Chọn</button>
+    <div class="vs-size-picker" data-vs-picker="${esc(masp)}">${available.length
+      ? available.map(x=>`<button type="button" data-vs-size="${esc(x.size)}" data-vs-add="${esc(masp)}">${esc(x.size)} (${x.qty})</button>`).join("")
+      : '<span class="vs-no-stock">Không có size còn tồn để chọn</span>'}</div>`;
+}
+function renderResults(rows, mode="image"){
+  resultMode=mode;
+  currentResults=rows || [];
+  const box=$("visualResults");
+  const info=$("visualResultInfo");
+  if(!rows?.length){
+    info.textContent="Không tìm thấy kết quả.";
+    box.innerHTML="";
     return;
   }
-  const {kho,mau}=locationParts(state.sourceProduct);
-  el.innerHTML=`<span class="source-kho">KHO: ${esc((kho||"-").toUpperCase())}</span>   <span class="source-mau">MẪU: ${esc((mau||"-").toUpperCase())}</span>`;
-  el.dataset.stock=state.sourceMasp;
-  el.classList.add("show");
-}
-function mainKeyForGroup(code){for(const [k,cfg] of Object.entries(MAIN_GROUPS))if(cfg.groups.some(x=>norm(x)===norm(code)))return k;return""}
-function groupRow(code){return state.groups.find(x=>norm(x.manhom)===norm(code))||null}
-function groupDisplayName(code){const row=groupRow(code);return String(row?.ten_hien_thi||row?.manhom||code||"").trim()}
-function saveSelected(){localStorage.setItem(CART_KEY,JSON.stringify(state.selected))}
-function loadSelected(){try{const x=JSON.parse(localStorage.getItem(CART_KEY)||"[]");state.selected=Array.isArray(x)?x:[]}catch{state.selected=[]}}
-
-function clearResults(message=""){
-  state.products=[];state.offset=0;state.total=0;
-  $("resultCount").textContent="";
-  $("btnMore").style.display="none";
-  $("productList").innerHTML=message?`<div class="empty initial-empty" style="grid-column:1/-1">${esc(message)}</div>`:"";
-}
-function showSizeWarning(text="Chọn size để tìm sản phẩm phù hợp"){
-  const el=$("sizeWarning");
-  el.textContent=text;
-  el.classList.add("show");
-}
-function hideSizeWarning(){$("sizeWarning").classList.remove("show")}
-
-async function loadConfig(){
-  const [g,c]=await Promise.all([
-    supabase.from("cauhinh_nhom_tu_van").select("*").eq("active",true).order("thu_tu"),
-    supabase.from("dmmausac").select("mamau,tenmau").order("tenmau")
-  ]);
-  if(g.error)throw g.error;
-  if(c.error)throw c.error;
-  state.groups=g.data||[];state.colors=c.data||[];
-  $("colorSelect").innerHTML='<option value="">Màu</option>'+state.colors.map(x=>`<option value="${esc(x.mamau)}">${esc(x.tenmau)}</option>`).join("");
-}
-
-function renderSizes(){
-  const hasSource=!!state.sourceMasp;
-  const hasStock=!!state.sourceStockAfterCheck;
-  const box=$("sizeRow");
-
-  // Sau khi quét/Enter mã: bung bảng quy đổi 9 cột x 6 dòng để nhân viên chọn đúng size.
-  if(state.sizeGuideOpen&&hasSource&&hasStock&&!state.size){
-    box.classList.add("guide-open");
-    box.innerHTML=SIZE_LIST.map(s=>{
-      const qty=sourceQty(s);
-      const vals=SIZE_CONVERSION[s]||[s,"-","-","-","-","-"];
-      return `<button type="button" class="size-guide-col ${qty>0?"has":"no"}" data-size="${s}" title="Tồn sau kiểm ${state.diadiem.toUpperCase()}: ${qty}">${vals.map((v,i)=>`<span class="size-guide-cell">${esc(i===0&&qty>0?`${v}.${qty}`:v)}</span>`).join("")}</button>`;
-    }).join("");
-    box.querySelectorAll(".size-guide-col").forEach(b=>b.onclick=()=>selectSizeFromUi(b.dataset.size,true));
-    return;
-  }
-
-  box.classList.remove("guide-open");
-  box.innerHTML=SIZE_LIST.map(s=>{
-    const qty=hasStock?sourceQty(s):0;
-    const cls=["size"];
-    if(state.size===s)cls.push("on");
-    if(hasSource&&hasStock)cls.push(qty>0?"has":"no");
-    return `<button type="button" class="${cls.join(" ")}" data-size="${s}" title="${hasSource&&hasStock?`Tồn sau kiểm ${state.diadiem.toUpperCase()}: ${qty}`:""}">${s}</button>`;
+  info.textContent=mode==="manual"
+    ? `${rows.length} mã theo thứ tự đã nhập · bấm ảnh xem lớn · bấm MASP mở StockQuick`
+    : `${rows.length} sản phẩm gần nhất · bấm ảnh để phóng to · bấm MASP mở StockQuick`;
+  // Bao ton tuyet doi danh sach va thu tu do RPC tim anh V2 tra ve.
+  box.innerHTML=rows.map((r,i)=>{
+    const pct=(Number(r.diem_giong||0)*100).toFixed(1);
+    const score=mode==="manual" ? "" : `<div class="vs-score">Giống ${pct}%</div>`;
+    return `<article class="vs-result" data-vs-masp="${esc(r.masp)}">
+      <div class="vs-image-wrap"><div class="vs-rank">${i+1}</div>
+      <button type="button" class="vs-image-button" data-vs-zoom="${i}" aria-label="Xem ảnh lớn ${esc(r.masp)}">
+        <img loading="lazy" decoding="async" src="${esc(r.duong_dan_anh||"")}" alt="${esc(r.masp)}">
+      </button></div>
+      <div class="vs-result-body">
+        <button type="button" class="vs-code" data-vs-stock="${esc(r.masp)}">${esc(r.masp)}</button>
+        ${score}
+        <div class="vs-detail" data-vs-detail="${esc(r.masp)}"><span class="vs-detail-loading">Đang lấy thông tin…</span></div>
+      </div>
+    </article>`;
   }).join("");
-  box.querySelectorAll(".size").forEach(b=>b.onclick=()=>selectSizeFromUi(b.dataset.size,false));
+}
+async function loadOneDetail(masp){
+  const branch=selectedBranch();
+  const key=branch+"|"+norm(masp);
+  if(detailCache.has(key))return detailCache.get(key);
+  const task=(async()=>{
+    const {data,error}=await supabase.rpc("timkiemnhanh_lay_san_pham_v2",{
+      p_masp:norm(masp), p_diadiem:branch
+    });
+    if(error) throw error;
+    return (Array.isArray(data)?data:[])?.[0] || null;
+  })();
+  detailCache.set(key,task);
+  try{return await task}catch(e){detailCache.delete(key);throw e;}
+}
+async function enrichVisibleResults(rows,gen){
+  let cursor=0, failed=0;
+  const count=Math.min(5,rows.length);
+  async function worker(){
+    while(cursor<rows.length){
+      const i=cursor++,masp=norm(rows[i].masp);
+      let sp=null;
+      try{sp=await loadOneDetail(masp)}catch(e){failed++;console.warn("[V2 ảnh] Không đọc được thông tin:",masp,e)}
+      if(gen!==resultGeneration)return;
+      const details=Array.from($("visualResults")?.querySelectorAll("[data-vs-detail]")||[])
+        .filter(el=>norm(el.dataset.vsDetail)===masp);
+      for(const detail of details)detail.innerHTML=detailsMarkup(sp,masp);
+    }
+  }
+  await Promise.all(Array.from({length:count},()=>worker()));
+  if(gen===resultGeneration && failed){
+    setStatus(`Có ${failed} mã chưa lấy được thông tin phụ. Thứ tự danh sách không thay đổi.`,"err");
+  }
+}
+function showImageLarge(index){
+  const row=currentResults[Number(index)];
+  if(!row)return;
+  const overlay=$("visualImageZoom"),img=$("visualImageZoomImg");
+  if(!overlay||!img)return;
+  img.src=String(row.duong_dan_anh||"");img.alt=norm(row.masp);
+  overlay.classList.add("show");
+}
+function closeImageLarge(){
+  $("visualImageZoom")?.classList.remove("show");
+  const img=$("visualImageZoomImg");if(img)img.removeAttribute("src");
+}
+function showStockPopup(btn,masp){
+  if(!window.StockQuick?.showFor){setStatus("StockQuick chưa sẵn sàng, hãy thử tải lại trang.","err");return;}
+  try{window.StockQuick.showFor(btn,norm(masp));}
+  catch(e){console.warn("[V2 ảnh] StockQuick",e);setStatus("Không mở được StockQuick: "+(e.message||e),"err");}
+}
+function pickImageProduct(masp,size){
+  const bridge=window.TimKiemNhanhV2ImageBridge;
+  const spPromise=detailCache.get(selectedBranch()+"|"+norm(masp));
+  if(!bridge||!spPromise){setStatus("Chưa có thông tin mã để chọn.","err");return;}
+  Promise.resolve(spPromise).then(sp=>{
+    const result=bridge.addProduct(sp,size);
+    if(!result?.ok)setStatus(result?.message||"Không thể chọn mã.","err");
+    else setStatus(`Đã thêm ${norm(masp)} / ${size} vào Sản phẩm đã chọn V2.`,"ok");
+  }).catch(e=>setStatus("Không thể chọn mã: "+e.message,"err"));
+}
+function handleResultClick(e){
+  const zoom=e.target.closest("[data-vs-zoom]");
+  if(zoom){showImageLarge(zoom.dataset.vsZoom);return;}
+  const stock=e.target.closest("[data-vs-stock]");
+  if(stock){showStockPopup(stock,stock.dataset.vsStock);return;}
+  const pick=e.target.closest("[data-vs-pick]");
+  if(pick){
+    const panel=pick.closest(".vs-detail")?.querySelector(".vs-size-picker");
+    panel?.classList.toggle("show");return;
+  }
+  const add=e.target.closest("[data-vs-add]");
+  if(add){pickImageProduct(add.dataset.vsAdd,add.dataset.vsSize);return;}
+}
+function updateVisualJump(){
+  const btn=$("visualSearchJump"),modal=$("visualSearchModal");
+  if(!btn||!modal)return;
+  const atTop=modal.scrollTop<=90;
+  btn.textContent=atTop?"↓":"↑";
+  btn.title=atTop?"Xuống cuối danh sách ảnh":"Lên đầu cửa sổ ảnh";
+  btn.setAttribute("aria-label",btn.title);
+}
+function jumpVisualEdge(){
+  const modal=$("visualSearchModal");if(!modal)return;
+  modal.scrollTo({top:modal.scrollTop<=90?modal.scrollHeight:0,behavior:"auto"});
+  updateVisualJump();
 }
 
-async function selectSizeFromUi(selected,fromGuide=false){
-  selected=String(selected||"");
-  if(!SIZE_LIST.includes(selected))return;
-
-  // Trong bảng quy đổi: chạm cột là xác nhận luôn. Ở hàng gọn: bấm lại size đang chọn thì bỏ chọn như trước.
-  state.size=fromGuide?selected:(state.size===selected?"":selected);
-  state.sizeGuideOpen=false;
-  renderSizes();
-
-  if(!state.size){
-    if(state.sourceMasp)showSizeWarning();
+async function runSearch(){
+  if(!currentFile){
+    setStatus("Hãy chụp ảnh hoặc chọn ảnh từ thư viện trước.","err");
     return;
   }
-
-  // Mã vừa quét/nhập là sản phẩm đầu tiên khách đang quan tâm.
-  if(state.sourceMasp&&state.sourceProduct){
-    addSelected(state.sourceMasp,state.size);
+  const btn=$("visualSearchRun");
+  const gen=++resultGeneration;
+  if(btn) btn.disabled=true;
+  const totalStart=performance.now();
+  try{
+    setStatus("Đang nhìn ảnh trên thiết bị…");
+    const {vector,inferenceMs}=await fileToVector(currentFile);
+    setStatus(`Đã tạo vector trong ${inferenceMs} ms. Đang tìm trong kho…`);
+    const rows=await searchVector(vector,Number($("visualTopK")?.value||DEFAULT_TOP_K));
+    const totalMs=Math.round(performance.now()-totalStart);
+    if(gen!==resultGeneration)return;
+    renderResults(rows);
+    updateVisualJump();
+    setStatus(`Hoàn tất ${rows.length} ảnh trong ${(totalMs/1000).toFixed(1)} giây. Đang bổ sung thông tin bên dưới ảnh…`,"ok");
+    // Chỉ bổ sung thuộc tính hiển thị, không làm đổi topK, thứ tự, điểm ảnh.
+    await Promise.all([enrichVisibleResults(rows,gen),tryLogSearch({vector,inferenceMs,totalMs,rows})]);
+    if(gen===resultGeneration)setStatus(`Hoàn tất ${rows.length} ảnh. Thông tin bổ sung không ảnh hưởng số lượng và thứ tự ảnh.`,"ok");
+  }catch(e){
+    console.error("[TimKiemAnhModule]",e);
+    if(gen===resultGeneration)setStatus("Lỗi tìm bằng ảnh: "+(e?.message||e),"err");
+  }finally{
+    if(btn) btn.disabled=false;
   }
+}
 
-  if(state.sourceMasp&&state.sourceStockAfterCheck&&sourceQty(state.size)<=0){
-    showMissingSizePrompt(state.size);
+
+// Chế độ nhập danh sách MASP: không dùng vector/AI, không tác động tìm kiếm V2 chính.
+// Chỉ đọc thông tin của từng mã từ RPC V2 có sẵn; giữ nguyên thứ tự người dùng nhập.
+async function runManualCodeList(){
+  const input=$("visualMaspList");
+  const raw=String(input?.value||"");
+  const entries=raw.split(/\r?\n/).map(norm).filter(Boolean);
+  if(!entries.length){setStatus("Hãy nhập mã sản phẩm, mỗi dòng một mã.","err");input?.focus();return;}
+  const codes=[...new Set(entries)];
+  if(codes.length>MAX_MANUAL_CODES){
+    setStatus(`Tối đa ${MAX_MANUAL_CODES} mã mỗi lượt để tránh quá tải điện thoại. Bạn có ${codes.length} mã. Hãy chia thành các lượt.`,"err");
     return;
   }
-  hideSizeWarning();
-  if(state.group)await search(true);
+  const branch=selectedBranch();
+  if(!["cs1","cs2"].includes(branch)){
+    setStatus("Chưa xác định cơ sở CS1/CS2. Vui lòng đăng nhập cơ sở trước.","err");return;
+  }
+  const gen=++resultGeneration;
+  const button=$("visualMaspRun");
+  if(button)button.disabled=true;
+  currentSearchId=null; // Không ghi nhật ký tìm vector cho danh sách MASP.
+  const rows=codes.map(masp=>({masp,duong_dan_anh:`${IMAGE_BASE}${encodeURIComponent(masp)}.JPG`,diem_giong:null}));
+  renderResults(rows,"manual");
+  updateVisualJump();
+  setStatus(`Đã hiển thị ${codes.length} mã (loại ${entries.length-codes.length} mã trùng). Đang bổ sung thông tin sản phẩm…`,"ok");
+  try{
+    await enrichVisibleResults(rows,gen);
+    if(gen===resultGeneration){
+      const notFound=[];
+      for(const masp of codes){
+        const key=branch+"|"+masp;
+        try { if(!(await detailCache.get(key)))notFound.push(masp); }
+        catch { notFound.push(masp); }
+      }
+      setStatus(`Hoàn tất ${codes.length} mã theo thứ tự nhập.`+(notFound.length?` ${notFound.length} mã không có thông tin/không đọc được: ${notFound.slice(0,15).join(", ")}${notFound.length>15?"…":""}.`:""),notFound.length?"err":"ok");
+    }
+  }catch(e){
+    console.error("[V2 ảnh] Danh sách MASP",e);
+    if(gen===resultGeneration)setStatus("Lỗi đọc danh sách mã: "+(e?.message||e),"err");
+  }finally{if(button)button.disabled=false;}
 }
 
-function showMissingSizePrompt(size){
-  pendingMissingSize=String(size||"");
-  const qty=sourceQty(pendingMissingSize);
-  const text=$("stockCheckText");
-  if(text)text.textContent=`Mã ${state.sourceMasp} hiện không còn tồn size ${pendingMissingSize} tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm (tồn ${qty}). Bạn có muốn kiểm kho cho sản phẩm này không?`;
-  const modal=$("stockCheckModal");
-  modal?.classList.add("show");
-  modal?.setAttribute("aria-hidden","false");
+function openModal(){
+  if(opening)return;
+  opening=true;
+  try{
+    const modal=$("visualSearchModal");
+    if(!modal)return;
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden","false");
+    document.body.classList.add("vs-open");
+    updateVisualJump();
+    preloadModelOnOpen();
+  }finally{opening=false}
 }
-function closeMissingSizePrompt(){
-  const modal=$("stockCheckModal");
+function closeModal(){
+  closeImageLarge();
+  const modal=$("visualSearchModal");
   modal?.classList.remove("show");
   modal?.setAttribute("aria-hidden","true");
+  document.body.classList.remove("vs-open");
 }
-function openStockCheckPage(maspRaw){
-  const masp=norm(maspRaw);
-  if(!masp||!validBranch())return;
-  const page=state.diadiem==="cs2"?"kiem_tonkho_cs2.html":"kiem_tonkho_cs1.html";
-  const child=window.open(`${location.origin}/${page}`,"_blank");
-  if(!child){toast("Trình duyệt đang chặn mở trang kiểm kho.",5000);return}
-  let attempts=0;
-  const timer=setInterval(()=>{
-    attempts++;
-    try{
-      if(child.closed){clearInterval(timer);return}
-      const doc=child.document;
-      const input=doc?.getElementById("masp");
-      if(input&&doc.readyState==="complete"){
-        clearInterval(timer);
-        setTimeout(()=>{
-          try{
-            input.value=masp;
-            input.dispatchEvent(new child.Event("input",{bubbles:true}));
-            input.dispatchEvent(new child.Event("change",{bubbles:true}));
-            input.focus();
-            input.dispatchEvent(new child.KeyboardEvent("keydown",{key:"Enter",code:"Enter",bubbles:true,cancelable:true}));
-          }catch(e){console.warn("[TimKiemNhanh] Không đẩy được mã sang kiểm kho",e)}
-        },500);
-      }
-    }catch(e){
-      // Cùng domain app.hoantuyet.vn thì sẽ truy cập được sau khi trang tải xong.
+
+function injectStyles(){
+  if($("visualSearchStyle"))return;
+  const style=document.createElement("style");
+  style.id="visualSearchStyle";
+  style.textContent=`
+    .visual-search-entry{
+      width:100%;margin-top:7px;border:0;border-radius:10px;padding:10px 12px;
+      background:linear-gradient(135deg,#172033,#075f9f);color:#fff;font-weight:900;font-size:16px;
+      min-height:44px;box-shadow:0 2px 7px #0002;
     }
-    if(attempts>=60){clearInterval(timer);toast("Đã mở trang kiểm kho nhưng chưa tự điền được mã. Hãy nhập mã thủ công.",5000)}
-  },250);
+    .visual-search-entry:active{transform:scale(.99)}
+    .vs-modal{display:none;position:fixed;inset:0;z-index:60000;background:#f4f6f8;color:#111827;overflow:auto;-webkit-overflow-scrolling:touch}
+    .vs-modal.show{display:block}.vs-open{overflow:hidden}
+    .vs-shell{max-width:960px;margin:0 auto;min-height:100%;padding:0 10px calc(22px + env(safe-area-inset-bottom))}
+    .vs-head{position:sticky;top:0;z-index:3;background:rgba(244,246,248,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+      display:flex;align-items:center;gap:8px;padding:calc(9px + env(safe-area-inset-top)) 0 9px;border-bottom:1px solid #dde3ea}
+    .vs-title{font-size:20px;font-weight:900;flex:1}.vs-close{border:0;border-radius:10px;background:#e7ebef;padding:9px 13px;font-weight:900}
+    .vs-card{background:#fff;border:1px solid #dce3e9;border-radius:16px;padding:12px;margin-top:10px;box-shadow:0 2px 10px #0000000d}
+    .vs-source-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .vs-file-btn{display:flex;align-items:center;justify-content:center;min-height:54px;border-radius:12px;font-size:16px;font-weight:900;text-align:center}
+    .vs-camera{background:#111827;color:#fff}.vs-library{background:#e8f2ff;color:#075f9f;border:1px solid #bad9f5}
+    .vs-preview{display:none;width:100%;max-height:52vh;object-fit:contain;background:#f3f4f6;border-radius:14px;margin-top:10px}
+    .vs-run-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}
+    .vs-run{border:0;border-radius:12px;background:#0878d1;color:#fff;font-weight:900;min-height:50px;padding:10px 14px;font-size:17px}
+    .vs-manual-title{font-size:15px;font-weight:800;color:#123d63;margin-bottom:7px}
+    .vs-manual-input{width:100%;box-sizing:border-box;min-height:112px;resize:vertical;border:1px solid #b8cce0;border-radius:10px;padding:10px;font-size:16px;line-height:1.45;background:#fff;color:#111827}
+    .vs-manual-run{margin-top:8px;width:100%;min-height:44px;border:0;border-radius:10px;background:#137a51;color:#fff;font-size:15px;font-weight:900}
+    .vs-manual-help{font-size:12px;color:#64748b;margin-top:6px}
+    .vs-run:disabled,.vs-manual-run:disabled{opacity:.55}.vs-topk{border:1px solid #cbd5e1;border-radius:12px;background:#fff;padding:0 10px;font-weight:800}
+    .vs-status{margin-top:9px;border-radius:10px;padding:9px 11px;background:#f0f2f4;color:#394554;font-size:14px;line-height:1.35}
+    .vs-status.ok{background:#e9f9ef;color:#126238}.vs-status.err{background:#fff0f0;color:#b42318}
+    .vs-result-info{font-size:13px;color:#64748b;margin:4px 0 9px}
+    .vs-results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+    .vs-result{position:relative;border:1px solid #d9e0e7;background:#fff;border-radius:12px;overflow:hidden;padding:0;text-align:left;color:#111827;min-width:0}
+    .vs-image-wrap{position:relative}.vs-image-button{display:block;width:100%;padding:0;border:0;background:#fff;cursor:zoom-in}
+    .vs-result img{display:block;width:100%;aspect-ratio:1/1.18;object-fit:contain;background:#fff}
+    .vs-result-body{padding:7px}.vs-code{display:block;border:0;background:none;padding:0;font-size:15px;color:#075f9f;text-decoration:underline;text-align:left;font-weight:900;overflow-wrap:anywhere;cursor:pointer}.vs-score{font-size:13px;color:#64748b;margin-top:2px}
+    .vs-detail{margin-top:5px;line-height:1.25}.vs-detail-loading,.vs-detail-unavailable{color:#64748b;font-size:12px}
+    .vs-form-sizes,.vs-size-stock{font-size:13px;color:#334155;margin:3px 0;overflow-wrap:anywhere}
+    .vs-warehouse{font-size:14px;color:#0b3f78;font-weight:900;overflow-wrap:anywhere}
+    .vs-sample{font-size:14px;color:#7c3aed;overflow-wrap:anywhere}
+    .vs-price{font-size:15px;color:#d92d20;font-weight:900;margin:3px 0}
+    .vs-pick{width:100%;border:0;border-radius:7px;background:#0878d1;color:white;font-weight:900;padding:8px 2px}
+    .vs-size-picker{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin-top:4px}
+    .vs-size-picker.show{display:grid}.vs-size-picker button{background:#eaf6ff;border:1px solid #bfcbd6;border-radius:5px;padding:5px 1px;font-weight:700;min-width:0}
+    .vs-no-stock{grid-column:1/-1;color:#b42318;font-size:12px}
+    .vs-open .sq-stock-popup{z-index:80000!important}
+    .vs-image-zoom{display:none;position:fixed;inset:0;z-index:90000;background:rgba(0,0,0,.93);align-items:center;justify-content:center;padding:40px 8px 18px;cursor:zoom-out}
+    .vs-image-zoom.show{display:flex}.vs-image-zoom img{max-width:100%;max-height:90vh;object-fit:contain}
+    .vs-image-zoom-close{position:absolute;right:12px;top:calc(8px + env(safe-area-inset-top));border:0;background:white;border-radius:9px;padding:9px;font-weight:900}
+    .vs-jump{position:fixed;z-index:60005;left:12px;bottom:calc(18px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;border:2px solid white;background:#1464aa;color:#fff;font-size:28px;font-weight:900;box-shadow:0 4px 14px #0004;cursor:pointer}
+    .vs-rank{position:absolute;left:5px;top:5px;z-index:1;min-width:25px;height:25px;border-radius:999px;background:rgba(17,24,39,.88);color:#fff;
+      display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
+    @media(max-width:620px){
+      .vs-shell{padding-left:7px;padding-right:7px}.vs-title{font-size:18px}.vs-card{padding:9px;border-radius:14px}
+      .vs-source-actions{grid-template-columns:1fr 1fr}.vs-file-btn{min-height:58px;font-size:16px}
+      .vs-results{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+      .vs-result-body{padding:6px}.vs-code{font-size:16px}.vs-score{font-size:13px}
+      .vs-preview{max-height:46vh}.vs-run{font-size:16px}
+    }
+  `;
+  document.head.appendChild(style);
 }
 
-function renderGroups(){
-  const main=$("mainGroups");
-  main.innerHTML=Object.entries(MAIN_GROUPS).map(([k,c])=>{
-    const active=k===state.mainGroup;
-    const subText=active&&state.group?groupDisplayName(state.group):"";
-    return `<button type="button" class="main-group ${active?"on":""}" data-main="${k}">${esc(c.label)}${subText?`<small>${esc(subText)}</small>`:""}</button>`;
-  }).join("");
+function injectUi(){
+  if($("visualSearchModal")) return;
 
-  main.querySelectorAll(".main-group").forEach(b=>b.onclick=async()=>{
-    const key=b.dataset.main;
-    state.mainGroup=key;
+  injectStyles();
 
-    // KHONG tu dong chon nhom nho mac dinh nua.
-    // Khi nguoi dung chon mot nhom lon, dat group ve rong va cho ho
-    // chon cu the nhom nho ben duoi roi moi tim.
-    state.group="";
+  // Nút được chèn ngay dưới quickbar hiện tại, không thay cấu trúc scanner/barcode.
+  const quickbar=document.querySelector(".quickbar");
+  if(quickbar){
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.id="btnVisualSearch";
+    btn.className="visual-search-entry";
+    btn.textContent="✨ TÌM BẰNG HÌNH ẢNH";
+    quickbar.insertAdjacentElement("afterend",btn);
+  }
 
-    clearSourceForManualFilter();
-    renderGroups();
-    renderSubgroups(true);
-    renderSizes();
+  const modal=document.createElement("div");
+  modal.id="visualSearchModal";
+  modal.className="vs-modal";
+  modal.setAttribute("aria-hidden","true");
+  modal.innerHTML=`
+    <div class="vs-shell">
+      <div class="vs-head">
+        <div class="vs-title">✨ Tìm sản phẩm bằng hình ảnh</div>
+        <button type="button" class="vs-close" id="visualSearchClose">Đóng</button>
+      </div>
 
-    // Xoa ket qua cu de tranh hieu nham la da tim theo nhom lon moi.
-    clearResults("Chọn một nhóm nhỏ để bắt đầu tìm kiếm.");
+      <div class="vs-card">
+        <div class="vs-source-actions">
+          <label class="vs-file-btn vs-camera">📷 CHỤP ẢNH
+            <input id="visualCameraInput" type="file" accept="image/*" capture="environment" hidden>
+          </label>
+          <label class="vs-file-btn vs-library">🖼 THƯ VIỆN
+            <input id="visualLibraryInput" type="file" accept="image/*" hidden>
+          </label>
+        </div>
+
+        <img id="visualSearchPreview" class="vs-preview" alt="Ảnh đang tìm">
+
+        <div class="vs-run-row">
+          <button type="button" id="visualSearchRun" class="vs-run">TÌM SẢN PHẨM</button>
+          <select id="visualTopK" class="vs-topk" aria-label="Số kết quả">
+            <option value="12">Top 12</option>
+            <option value="24" selected>Top 24</option>
+            <option value="40">Top 40</option>
+          </select>
+        </div>
+        <div id="visualSearchStatus" class="vs-status">Chụp hoặc chọn một ảnh. AI sẽ tự chuẩn bị khi mở cửa sổ.</div>
+      </div>
+
+      <div class="vs-card">
+        <div class="vs-manual-title">📋 Hiển thị ảnh theo danh sách mã sản phẩm</div>
+        <textarea id="visualMaspList" class="vs-manual-input" rows="4" spellcheck="false" autocapitalize="characters" placeholder="25051-AP.TRANG&#10;25051-AP.DEN&#10;8641-SMSH"></textarea>
+        <button id="visualMaspRun" class="vs-manual-run" type="button">HIỂN THỊ THEO DANH SÁCH MÃ</button>
+        <div class="vs-manual-help">Mỗi dòng một MASP, tối đa 500 mã. Giữ thứ tự nhập; không dùng AI, không lọc tồn hoặc nhóm. Tồn theo size chỉ để xem và chọn.</div>
+      </div>
+
+      <div class="vs-card">
+        <div id="visualResultInfo" class="vs-result-info"></div>
+        <div id="visualResults" class="vs-results"></div>
+      </div>
+    </div>
+    <button type="button" id="visualSearchJump" class="vs-jump" title="Xuống cuối danh sách ảnh">↓</button>
+  `;
+  document.body.appendChild(modal);
+  const zoom=document.createElement("div");
+  zoom.id="visualImageZoom";
+  zoom.className="vs-image-zoom";
+  zoom.innerHTML='<button type="button" class="vs-image-zoom-close" aria-label="Đóng ảnh lớn">Đóng ✕</button><img id="visualImageZoomImg" alt="Ảnh lớn">';
+  document.body.appendChild(zoom);
+  zoom.addEventListener("click",closeImageLarge);
+  $("visualResults").addEventListener("click",handleResultClick);
+  $("visualSearchJump")?.addEventListener("click",jumpVisualEdge);
+  modal.addEventListener("scroll",updateVisualJump,{passive:true});
+
+  $("btnVisualSearch")?.addEventListener("click",openModal);
+  $("visualSearchClose")?.addEventListener("click",closeModal);
+  $("visualCameraInput")?.addEventListener("change",e=>{
+    selectFile(e.target.files?.[0]||null);
+    e.target.value="";
   });
-  renderSubgroups(false);
-}
-
-function renderSubgroups(forceOpen=false){
-  const box=$("subGroups"),cfg=MAIN_GROUPS[state.mainGroup];
-  if(!cfg){box.innerHTML="";box.classList.remove("show");return}
-  const rows=state.groups.filter(g=>cfg.groups.some(x=>norm(x)===norm(g.manhom)));
-  const known=new Set(rows.map(x=>norm(x.manhom)));
-  if(state.group&&cfg.groups.some(x=>norm(x)===norm(state.group))&&!known.has(norm(state.group))){rows.unshift({manhom:state.group,ten_hien_thi:state.group})}
-  box.innerHTML=rows.map(g=>`<button type="button" class="subgroup ${norm(g.manhom)===norm(state.group)?"on":""}" data-group="${esc(g.manhom)}">${esc(g.ten_hien_thi||g.manhom)}</button>`).join("");
-  box.classList.toggle("show",forceOpen);
-  box.querySelectorAll(".subgroup").forEach(b=>b.onclick=async()=>{
-    state.group=b.dataset.group;
-    clearSourceForManualFilter();
-    renderGroups();
-    box.classList.remove("show");
-    renderSizes();
-
-    // Chi den day moi duoc chay tim kiem theo nhom nho cu the.
-    if(state.size)await search(true);
+  $("visualLibraryInput")?.addEventListener("change",e=>{
+    selectFile(e.target.files?.[0]||null);
+    e.target.value="";
   });
+  $("visualSearchRun")?.addEventListener("click",runSearch);
+  $("visualMaspRun")?.addEventListener("click",runManualCodeList);
 }
 
-function renderModes(){
-  document.querySelectorAll(".mode").forEach(b=>b.classList.toggle("on",b.dataset.mode===state.mode));
-  $("refPriceBox").classList.toggle("show",["cheaper","premium"].includes(state.mode));
+function init(){
+  injectUi();
+  console.log("[TimKiemAnhModule] ready");
 }
 
-function params(offset){return{
-  p_diadiem:state.diadiem,p_nhomhang:state.group,p_sizes:state.size?[state.size]:[],
-  p_form:state.form||null,p_mausac:state.color||null,p_mode:state.mode,p_reference_price:Number(state.referencePrice||0),
-  p_keyword:null,p_source_masp:state.sourceMasp||null,p_offset:offset,p_limit:40,p_den_ngay:businessDate()
-}}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init,{once:true});
+else init();
 
-function paramsV2(offset=0,limit=40,mode=state.mode){return{
-  p_diadiem:state.diadiem,
-  p_nhomhang:state.group,
-  p_size:state.size||"",
-  p_form:state.form||null,
-  p_mausac:state.color||null,
-  p_mode:mode,
-  p_reference_price:Number(state.referencePrice||0),
-  p_source_masp:state.sourceMasp||null,
-  p_offset:Math.max(0,Number(offset||0)),
-  p_limit:Math.max(1,Number(limit||40))
-}}
-
-function normalizeFastRows(rows){
-  return (rows||[]).map(x=>({...x,__size0_fallback:!!x.is_size0_fallback}));
-}
-
-function normalizeSizeKey(value){
-  const raw=String(value??"").replace(/^size\s+/i,"").trim();
-  const m=raw.match(/\d{1,2}/);return m?m[0]:raw;
-}
-
-async function fetchAfterCheckStockForMasp(maspRaw,{force=false}={}){
-  const masp=norm(maspRaw);if(!masp)return{};
-  const denNgay=businessDate();const key=`${masp}|${denNgay}`;
-  if(!force&&AFTER_CHECK_CACHE.has(key))return await AFTER_CHECK_CACHE.get(key);
-
-  const promise=(async()=>{
-    const [stockRes,checkRes]=await Promise.all([
-      supabase.rpc("xntnhanh",{p_masps:[masp],p_den_ngay:denNgay,p_tonghop_size:false}),
-      supabase.rpc("rpc_stockquick_kiemton",{p_masp:masp})
-    ]);
-    if(stockRes?.error)throw stockRes.error;
-    if(checkRes?.error)console.warn("[TimKiemNhanh] Không đọc được chênh lệch kiểm",masp,checkRes.error);
-
-    const base={};
-    (Array.isArray(stockRes?.data)?stockRes.data:[]).forEach(row=>{
-      const s=normalizeSizeKey(row.size);if(!s)return;
-      base[s]={ton_cs1:Number(row.ton_cs1||0),ton_cs2:Number(row.ton_cs2||0)};
-    });
-    const check=checkRes?.data||{};const out={};
-    [...SIZE_LIST,SIZE_FALLBACK_ZERO].forEach(s=>{
-      const b=base[s]||{ton_cs1:0,ton_cs2:0};
-      const lech1=Number(check?.cs1?.lech?.[s]||0);const lech2=Number(check?.cs2?.lech?.[s]||0);
-      out[s]={
-        ton_cs1:Math.max(0,Number(b.ton_cs1||0)+lech1),
-        ton_cs2:Math.max(0,Number(b.ton_cs2||0)+lech2)
-      };
-    });
-    return out;
-  })();
-
-  AFTER_CHECK_CACHE.set(key,promise);
-  try{const result=await promise;AFTER_CHECK_CACHE.set(key,result);return result}catch(e){AFTER_CHECK_CACHE.delete(key);throw e}
-}
-
-async function enrichProductsAfterCheck(rows){
-  const result=(rows||[]).map(x=>({...x}));
-  let cursor=0;const concurrency=Math.min(6,result.length);
-  async function worker(){
-    while(cursor<result.length){
-      const i=cursor++;const sp=result[i];
-      try{sp.ton_sizes=await fetchAfterCheckStockForMasp(sp.masp)}catch(e){console.warn("[TimKiemNhanh] Lỗi tồn sau kiểm",sp.masp,e)}
-    }
-  }
-  await Promise.all(Array.from({length:concurrency},()=>worker()));
-  return result;
-}
-
-
-async function fetchDiscountPageV24(offset=0,limit=40){
-  const {data,error}=await supabase.rpc("timkiemnhanh_giamgia_v24",{
-    p_diadiem:state.diadiem,
-    p_nhomhang:state.group,
-    p_size:state.size,
-    p_offset:Math.max(0,Number(offset||0)),
-    p_limit:Math.max(1,Number(limit||40)),
-    p_den_ngay:businessDate()
-  });
-  if(error)throw error;
-  return normalizeFastRows(data||[]);
-}
-
-async function search(reset=true){
-  if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",5000);return}
-  if(!state.group||!state.size||state.loading)return;
-  const off=reset?0:state.offset;
-  setLoading(true,reset);
-  try{
-    if(state.mode==="discount"){
-      // V2.4: server xet TOAN BO ma con ban duoc theo size chon -> +1 -> -1 -> size 0.
-      // ADMIN override RULE; trong tung nhom size, ADMIN xep truoc RULE; sau do moi phan trang 40 dong.
-      const rows=await fetchDiscountPageV24(off,40);
-      const nextTotal=Number(rows[0]?.total_count||0);
-
-      if(reset){
-        state.products=rows;
-        state.offset=rows.length;
-        state.total=nextTotal;
-      }else{
-        const existing=new Set(state.products.map(x=>norm(x.masp)));
-        const appendRows=rows.filter(x=>!existing.has(norm(x.masp)));
-        state.products=state.products.concat(appendRows);
-        state.offset=off+rows.length;
-        state.total=nextTotal||state.total;
-      }
-
-      renderProducts({reset,rows});
-      $("resultCount").textContent=`${state.products.length}/${state.total||state.products.length}`;
-      $("btnMore").style.display="none";
-      return;
-    }
-
-    // V2: 1 RPC duy nhất đã xử lý tồn hiện tại + chênh lệch kiểm + size 0 fallback.
-    const {data,error}=await supabase.rpc("timkiemnhanh_search_v2",paramsV2(off,40,state.mode));
-    if(error)throw error;
-    const raw=normalizeFastRows(data||[]);
-    const nextTotal=Number(raw[0]?.total_count||0);
-
-    // Luật xả chạy 1 batch trên chính 40 dòng đã trả về; không có N+1 tồn kho.
-    const xaMap=raw.length?await getXaHangSuggestions({
-      supabase,
-      masps:raw.map(x=>x.masp),
-      denNgay:businessDate()
-    }).catch(err=>{
-      console.warn("[TimKiemNhanh V2] Module gợi ý xả hàng lỗi, bỏ qua:",err);
-      return new Map();
-    }):new Map();
-    const rows=attachXaHangSuggestions(raw,xaMap);
-
-    if(reset){
-      state.products=rows;
-      state.offset=raw.length;
-      state.total=nextTotal;
-    }else{
-      const existing=new Set(state.products.map(x=>norm(x.masp)));
-      const appendRows=rows.filter(x=>!existing.has(norm(x.masp)));
-      state.products=state.products.concat(appendRows);
-      state.offset=off+raw.length;
-      state.total=nextTotal||state.total;
-    }
-
-    renderProducts({reset,rows});
-    $("resultCount").textContent=`${state.products.length}/${state.total||state.products.length}`;
-    $("btnMore").style.display="none";
-  }catch(e){
-    console.error(e);
-    toast("Lỗi tìm sản phẩm V2: "+(e.message||e),5000);
-  }finally{
-    setLoading(false,reset);
-    requestAnimationFrame(maybeAutoLoadMore);
-  }
-}
-function openImage(src,alt=""){
-  const overlay=$("imageOverlay"),img=$("imageOverlayImg");
-  img.src=src;img.alt=alt;overlay.classList.add("show");document.body.classList.add("image-open");
-}
-function closeImage(){$("imageOverlay").classList.remove("show");$("imageOverlayImg").src="";document.body.classList.remove("image-open")}
-
-function productCardHtml(sp,orderNo=0,totalNo=0){
-  const img=`${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
-  const {kho,mau}=locationParts(sp);
-  const formSizes=compactFormSizes(sp);
-  const orderText=orderNo>0?`${orderNo}/${totalNo||orderNo}`:"";
-  const rulePct=Number(sp.goi_y_xa_pct||0);
-  const adminPct=Number(sp.giam_gia_admin_pct ?? sp.giam_gia_pct ?? 0);
-  const effectivePct=adminPct>0 ? adminPct : Number(sp.giam_gia_hieu_luc||rulePct||0);
-  const orderXaText=effectivePct?`${orderText} ${effectivePct}`:orderText;
-  const xaTitle=effectivePct
-    ? `Giảm hiệu lực ${effectivePct}% · nguồn ${esc(sp.giam_gia_nguon||"ADMIN")} · luật ${esc(sp.goi_y_xa_detail?.rule_code||"")}`
-    : "";
-  const xaClass=effectivePct?" discount-active":"";
-  const strongClass=effectivePct>=50?" discount-strong":"";
-  const isDiscountView=state.mode==="discount"&&effectivePct>0;
-  const discountBadge=isDiscountView?`<div class="search-discount-badge">${effectivePct}%</div>`:(effectivePct>=50?`<div class="search-discount-badge">${effectivePct}%</div>`:"");
-  const matchedSize=String(sp.matched_size||"").trim();
-  const sizeBadge=isDiscountView&&matchedSize?`<div class="search-size-badge">${esc(matchedSize)}</div>`:"";
-  const badge=`${sizeBadge}${discountBadge}`;
-  const size0Tag=sp.__size0_fallback
-    ? `<div class="size0-fallback-tag">Không quản lý size · Tồn size 0: ${stockForAny(sp,SIZE_FALLBACK_ZERO)}</div>`
-    : "";
-  return `<article class="product${xaClass}${strongClass}" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">${badge}</div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div>${size0Tag}<div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${sp.__size0_fallback ? `<button type="button" class="pick-size has" data-add="${esc(sp.masp)}" data-size="0">Size 0</button>` : SIZE_LIST.filter(s=>stockFor(sp,s)>0).map(s=>`<button type="button" class="pick-size has" data-add="${esc(sp.masp)}" data-size="${s}">${s} (${stockFor(sp,s)})</button>`).join("")}</div></div></article>`;
-}
-function bindProductCards(cards){
-  cards.forEach(card=>{
-    card.querySelectorAll(".stock-link").forEach(b=>b.onclick=e=>window.StockQuick?.showFor(e.currentTarget,b.dataset.stock));
-    card.querySelectorAll(".product-image").forEach(img=>img.onclick=e=>{e.preventDefault();e.stopPropagation();openImage(img.src,img.alt)});
-    card.querySelectorAll(".pick").forEach(b=>b.onclick=()=>{const el=card.querySelector(`[data-sizes="${CSS.escape(b.dataset.pick)}"]`);el?.classList.toggle("show")});
-    card.querySelectorAll(".pick-size").forEach(b=>b.onclick=()=>{if(!b.disabled)addSelected(b.dataset.add,b.dataset.size)});
-  });
-}
-function renderProducts({reset=true,rows=[]}={}){
-  const box=$("productList");
-  if(reset){
-    if(!state.products.length){
-      const msg=state.mode==="discount"
-        ?"Không có sản phẩm giảm giá còn bán được ở size đã chọn, ±1 size hoặc size 0 tại cơ sở này."
-        :"Không có sản phẩm còn đúng size tại cơ sở này theo tồn sau kiểm.";
-      box.innerHTML=`<div class="empty" style="grid-column:1/-1">${esc(msg)}</div>`;return
-    }
-    box.innerHTML=state.products.map((sp,i)=>productCardHtml(sp,i+1,state.total||state.products.length)).join("");
-    bindProductCards(Array.from(box.querySelectorAll(".product")));
-    return;
-  }
-  if(!rows.length)return;
-  box.querySelector(".empty")?.remove();
-  const holder=document.createElement("div");
-  const startNo=Math.max(0,state.products.length-rows.length);
-  holder.innerHTML=rows.map((sp,i)=>productCardHtml(sp,startNo+i+1,state.total||state.products.length)).join("");
-  const cards=Array.from(holder.children);
-  cards.forEach(card=>box.appendChild(card));
-  bindProductCards(cards);
-}
-
-let autoLoadObserver=null;
-function maybeAutoLoadMore(){
-  if(state.loading||!state.group||!state.size||state.offset>=state.total)return;
-  const sentinel=$("loadMoreSentinel");if(!sentinel)return;
-  const rect=sentinel.getBoundingClientRect();
-  if(rect.top<=window.innerHeight+1200)search(false);
-}
-function initAutoLoad(){
-  const sentinel=$("loadMoreSentinel");if(!sentinel)return;
-  if("IntersectionObserver" in window){
-    autoLoadObserver?.disconnect?.();
-    autoLoadObserver=new IntersectionObserver(entries=>{
-      if(entries.some(x=>x.isIntersecting))maybeAutoLoadMore();
-    },{root:null,rootMargin:"1200px 0px",threshold:0});
-    autoLoadObserver.observe(sentinel);
-  }else{
-    window.addEventListener("scroll",maybeAutoLoadMore,{passive:true});
-  }
-}
-let pageJumpTicking=false;
-function isNearPageTop(){
-  return (window.scrollY||document.documentElement.scrollTop||0) <= 80;
-}
-function updatePageJumpButton(){
-  const btn=$("pageJumpBtn");if(!btn)return;
-  const goBottom=isNearPageTop();
-  btn.textContent=goBottom?"↓":"↑";
-  btn.title=goBottom?"Cuối trang":"Đầu trang";
-  btn.setAttribute("aria-label",goBottom?"Đi đến cuối trang":"Trở về đầu trang");
-}
-function jumpPageEdge(){
-  const goBottom=isNearPageTop();
-  const root=document.documentElement;
-  const prev=root.style.scrollBehavior;root.style.scrollBehavior="auto";
-  if(goBottom){window.scrollTo({top:Math.max(document.body.scrollHeight,document.documentElement.scrollHeight),behavior:"auto"});}
-  else{window.scrollTo({top:0,behavior:"auto"});}
-  requestAnimationFrame(()=>{root.style.scrollBehavior=prev;updatePageJumpButton();});
-}
-function initPageJump(){
-  const btn=$("pageJumpBtn");if(!btn)return;
-  btn.addEventListener("click",jumpPageEdge);
-  window.addEventListener("scroll",()=>{
-    if(pageJumpTicking)return;pageJumpTicking=true;
-    requestAnimationFrame(()=>{pageJumpTicking=false;updatePageJumpButton();});
-  },{passive:true});
-  updatePageJumpButton();
-}
-
-function addSelected(masp,size){
-  const sp=state.products.find(x=>norm(x.masp)===norm(masp))||state.sourceProduct;if(!sp)return;
-  if(state.selected.some(x=>norm(x.masp)===norm(masp)&&String(x.size)===String(size))){toast("Mã + size này đã có trong Sản phẩm đã chọn.");scrollSelectedIntoView();return}
-  state.selected=[...state.selected,{id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,masp:sp.masp,size:String(size),soluong:1,giale:sp.giale,form:sp.form,mausac:sp.mausac,treomaucs1:sp.treomaucs1,treomaucs2:sp.treomaucs2,vitrikho1:sp.vitrikho1,vitrikho2:sp.vitrikho2,ton_sizes:sp.ton_sizes||{}}];
-  saveSelected();renderSelected();toast(`Đã chọn ${sp.masp} / ${size}`);scrollSelectedIntoView();
-}
-// V2 GOC - cau noi giao dien tim anh: KHONG thay doi tim kiem, filter hay state.products.
-// Chi cho phep them mot san pham da duoc lay thong tin bang RPC V2 hien co.
-window.TimKiemNhanhV2ImageBridge = {
-  getBranch: () => state.diadiem,
-  addProduct(sp, size) {
-    const masp=norm(sp?.masp), s=String(size ?? "");
-    if(!masp || !validBranch() || !s) return {ok:false,message:"Thiếu mã, size hoặc cơ sở"};
-    const qty=Number((state.diadiem==="cs2" ? sp?.ton_sizes?.[s]?.ton_cs2 : sp?.ton_sizes?.[s]?.ton_cs1) || 0);
-    if(qty<=0) return {ok:false,message:`Mã ${masp} không còn tồn size ${s} tại ${state.diadiem.toUpperCase()}`};
-    if(state.selected.some(x=>norm(x.masp)===masp && String(x.size)===s)){
-      return {ok:false,message:`${masp} / ${s} đã có trong Sản phẩm đã chọn`};
-    }
-    state.selected.push({
-      id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
-      masp, size:s, soluong:1, giale:sp.giale, form:sp.form, mausac:sp.mausac,
-      treomaucs1:sp.treomaucs1, treomaucs2:sp.treomaucs2,
-      vitrikho1:sp.vitrikho1, vitrikho2:sp.vitrikho2,
-      ton_sizes:sp.ton_sizes || {}
-    });
-    saveSelected(); renderSelected(); toast(`Đã chọn ${masp} / ${s}`);
-    // Khong scroll trang chinh trong khi cua so tim anh dang mo.
-    return {ok:true};
-  }
-};
-
-function jumpToElement(el,block="start"){
-  if(!el)return;
-  const root=document.documentElement;
-  const prev=root.style.scrollBehavior;
-  root.style.scrollBehavior="auto";
-  el.scrollIntoView({behavior:"auto",block});
-  requestAnimationFrame(()=>{root.style.scrollBehavior=prev});
-}
-function scrollSelectedIntoView(){setTimeout(()=>jumpToElement($("selectedSection"),"start"),0)}
-function scrollToProduct(masp){
-  const card=$("productList").querySelector(`[data-card="${CSS.escape(String(masp))}"]`);
-  if(!card){toast("Sản phẩm này không còn trong danh sách kết quả hiện tại.",3800);return}
-  jumpToElement(card,"center");
-  card.classList.add("product-focus");setTimeout(()=>card.classList.remove("product-focus"),1600);
-}
-
-function resetToInitialState(){
-  closeMissingSizePrompt();
-  try{state.scanner?.stopScan?.()}catch{}
-  $("scanOverlay")?.classList.remove("show");
-  $("suggestBox").style.display="none";
-  $("codeInput").value="";
-  state.mainGroup="";state.group="";state.form="";state.color="";state.size="";
-  state.mode="similar";state.referencePrice=0;state.sourceMasp="";state.sourceProduct=null;state.sourceStockAfterCheck=null;state.sizeGuideOpen=false;
-  state.products=[];state.offset=0;state.total=0;state.loading=false;
-  state.selected=[];saveSelected();
-  $("formSelect").value="";$("colorSelect").value="";$("refPrice").value="";
-  hideSizeWarning();renderSourceLocation();renderSelected();renderSizes();renderGroups();renderModes();
-  clearResults("Quét mã hoặc nhập mã sản phẩm rồi nhấn Enter để bắt đầu.");
-  jumpToElement($("selectedSection"),"start");
-  setTimeout(()=>$("codeInput")?.focus(),0);
-  toast("Đã tạo lượt tìm kiếm mới.");
-}
-
-async function researchSelected(id){
-  const row=state.selected.find(x=>String(x.id)===String(id));
-  if(!row)return;
-  await processCode(row.masp,{preselectedSize:String(row.size||""),autoSearch:true});
-  jumpToElement(document.querySelector("main.wrap > section.card:not(#selectedSection)"),"start");
-}
-
-function renderSelected(){
-  const box=$("selectedList");$("selectedCount").textContent=`${state.selected.length} sản phẩm`;
-  if(!state.selected.length){box.innerHTML='<div class="empty selected-empty">Chưa chọn sản phẩm.</div>';return}
-  box.innerHTML=state.selected.map(r=>{
-    const {kho,mau}=locationParts(r);
-    const formSizes=compactFormSizes(r);
-    return `<div class="selected-item"><div class="sel-line"><button type="button" class="sel-code" data-sel-stock="${esc(r.masp)}">${esc(r.masp)}</button><span class="sel-size">Size ${esc(r.size)}</span></div><div class="selected-info-line"><span class="selected-kho">Kho: ${esc(kho||"-")}</span><span class="selected-mau">Mẫu: ${esc(mau||"-")}</span><span class="selected-formstock">${esc(formSizes)}</span></div><div class="sel-actions"><button type="button" class="continue" data-continue="${esc(r.masp)}">Tìm tiếp</button><button type="button" class="research" data-research="${esc(r.id)}">Tìm lại</button><button type="button" class="remove" data-remove="${esc(r.id)}">Bỏ</button><button type="button" class="sale" data-sale="${esc(r.id)}">Sang bán</button></div></div>`
-  }).join("");
-  box.querySelectorAll("[data-sel-stock]").forEach(b=>b.onclick=e=>window.StockQuick?.showFor(e.currentTarget,b.dataset.selStock));
-  box.querySelectorAll("[data-research]").forEach(b=>b.onclick=()=>researchSelected(b.dataset.research));
-  box.querySelectorAll("[data-continue]").forEach(b=>b.onclick=()=>scrollToProduct(b.dataset.continue));
-  box.querySelectorAll("[data-remove]").forEach(b=>b.onclick=()=>{state.selected=state.selected.filter(x=>String(x.id)!==String(b.dataset.remove));saveSelected();renderSelected()});
-  box.querySelectorAll("[data-sale]").forEach(b=>b.onclick=()=>pushOneToSale(b.dataset.sale));
-}
-
-function saleBridgeName(){return `BAN_NV_HOAN_TUYET_${state.diadiem.toUpperCase()}`}
-function saleBridgeChannelName(){return `sales_copilot_bridge_v2_${state.diadiem}`}
-function waitAck(id,timeout=20000){
-  return new Promise(resolve=>{
-    let finished=false;
-    let channel=null;
-    const finish=value=>{
-      if(finished)return;finished=true;
-      clearInterval(timer);clearTimeout(timeoutTimer);
-      window.removeEventListener("storage",onStorage);
-      try{channel?.close()}catch{}
-      resolve(value);
-    };
-    const check=value=>{
-      try{
-        const ack=typeof value==="string"?JSON.parse(value):value;
-        if(ack?.id===id)finish(ack);
-      }catch{}
-    };
-    const onStorage=event=>{if(event.key===ACK_KEY&&event.newValue)check(event.newValue)};
-    window.addEventListener("storage",onStorage);
-    try{
-      channel=new BroadcastChannel(saleBridgeChannelName());
-      channel.onmessage=event=>{if(event?.data?.type==="ACK")check(event.data.ack)};
-    }catch{}
-    const timer=setInterval(()=>check(localStorage.getItem(ACK_KEY)),200);
-    const timeoutTimer=setTimeout(()=>finish(null),timeout);
-    check(localStorage.getItem(ACK_KEY));
-  });
-}
-function saleTransferStorageKeys(id){
-  const safe=String(id||"").replace(/[^A-Za-z0-9_-]/g,"_");
-  return {
-    pending:`sales_copilot_pending_v2_${safe}`,
-    ack:`sales_copilot_ack_v2_${safe}`
-  };
-}
-
-function waitAckIsolated(id,ackKey,timeout=30000){
-  return new Promise(resolve=>{
-    let finished=false;
-    const finish=value=>{
-      if(finished)return;
-      finished=true;
-      clearInterval(timer);
-      clearTimeout(timeoutTimer);
-      window.removeEventListener("storage",onStorage);
-      resolve(value);
-    };
-    const check=value=>{
-      try{
-        const ack=typeof value==="string"?JSON.parse(value):value;
-        if(ack?.id===id)finish(ack);
-      }catch{}
-    };
-    const onStorage=event=>{if(event.key===ackKey&&event.newValue)check(event.newValue)};
-    window.addEventListener("storage",onStorage);
-    const timer=setInterval(()=>check(localStorage.getItem(ackKey)),200);
-    const timeoutTimer=setTimeout(()=>finish(null),timeout);
-    check(localStorage.getItem(ackKey));
-  });
-}
-
-async function pushOneToSale(id){
-  const row=state.selected.find(x=>String(x.id)===String(id));if(!row)return;
-  if(!validBranch()){toast("Không xác định được cơ sở bán.",5000);return}
-
-  // V1.2.14: mỗi lần Sang bán là một phiên chuyển riêng, chỉ tab bán MỚI được nhận.
-  const payloadId=`TKN_${Date.now()}_${Math.random().toString(36).slice(2,8)}_${row.masp}_${row.size}`;
-  const keys=saleTransferStorageKeys(payloadId);
-  const payload={
-    id:payloadId,
-    transfer_id:payloadId,
-    created_at:new Date().toISOString(),
-    phien_id:null,
-    diadiem:state.diadiem,
-    makh:null,
-    tenkh:null,
-    items:[{masp:row.masp,size:row.size,soluong:Number(row.soluong||1)}]
-  };
-
-  try{
-    localStorage.removeItem(keys.ack);
-    localStorage.setItem(keys.pending,JSON.stringify(payload));
-  }catch(e){
-    console.error("[TimKiemNhanh] Không tạo được phiên Sang bán:",e);
-    toast("Không chuẩn bị được dữ liệu Sang bán.",5000);
-    return;
-  }
-
-  // Gắn transfer_id vào URL + _blank: không tái sử dụng bất kỳ tab bán đang mở nào.
-  const page=state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html";
-  const saleUrl=`${page}?copilot_tx=${encodeURIComponent(payloadId)}`;
-  const saleWindow=window.open(saleUrl,"_blank");
-  if(!saleWindow){
-    localStorage.removeItem(keys.pending);
-    toast("Trình duyệt đang chặn mở trang bán mới. Hãy cho phép pop-up cho app.hoantuyet.vn.",7000);
-    return;
-  }
-  try{saleWindow.focus()}catch{}
-
-  const ackPromise=waitAckIsolated(payloadId,keys.ack,30000);
-  toast(`Đã mở trang bán mới cho ${row.masp} / ${row.size}. Đang chờ nhận dữ liệu...`,4500);
-  const ack=await ackPromise;
-  try{localStorage.removeItem(keys.ack)}catch{}
-
-  if(!ack){
-    toast("Trang bán mới chưa xác nhận dữ liệu. Hãy kiểm tra tab vừa mở.",7000);
-    return;
-  }
-  toast(`Đã đưa ${row.masp} / ${row.size} sang trang bán mới.`);
-}
-
-let suggestTimer=null;
-async function loadSuggestions(text){
-  const q=String(text||"").trim();if(!q){$("suggestBox").style.display="none";return}
-  const {data,error}=await supabase.rpc("sales_copilot_goi_y_ma_v1111",{p_text:q,p_limit:12});if(error)return;
-  const box=$("suggestBox");box.innerHTML=(data||[]).map(x=>`<button type="button" data-code="${esc(x.masp)}"><b>${esc(x.masp)}</b><small>${esc(x.tensp||"")}</small></button>`).join("");box.style.display=(data||[]).length?"block":"none";
-  box.querySelectorAll("button").forEach(b=>b.onclick=()=>processCode(b.dataset.code));
-}
-
-function getIncomingMaspFromUrl(){
-  try{
-    return norm(new URLSearchParams(window.location.search).get("masp")||"");
-  }catch{
-    return "";
-  }
-}
-
-function getIncomingSizeFromUrl(){
-  try{
-    const raw=new URLSearchParams(window.location.search).get("size")||"";
-    return String(raw).replace(/^size\s+/i,"").trim();
-  }catch{
-    return "";
-  }
-}
-
-function removeIncomingProductParamsFromUrl(){
-  try{
-    const url=new URL(window.location.href);
-    const hadMasp=url.searchParams.has("masp");
-    const hadSize=url.searchParams.has("size");
-    if(!hadMasp&&!hadSize)return;
-    url.searchParams.delete("masp");
-    url.searchParams.delete("size");
-    const next=url.pathname+(url.searchParams.toString()?`?${url.searchParams.toString()}`:"")+url.hash;
-    window.history.replaceState({},document.title,next);
-  }catch(e){
-    console.warn("[TimKiemNhanh] Không xóa được MASP/SIZE khỏi URL:",e);
-  }
-}
-
-async function processIncomingMaspFromUrl(maspRaw=""){
-  const masp=norm(maspRaw||getIncomingMaspFromUrl());
-  if(!masp)return false;
-
-  const incomingSize=getIncomingSizeFromUrl();
-  const validIncomingSize=SIZE_LIST.includes(incomingSize)?incomingSize:"";
-
-  const input=$("codeInput");
-  if(input)input.value=masp;
-
-  // Xóa masp/size khỏi thanh địa chỉ sau khi đã đọc; giữ lại cs để phiên cơ sở vẫn rõ ràng.
-  removeIncomingProductParamsFromUrl();
-
-  await processCode(masp,{
-    preselectedSize:validIncomingSize,
-    autoSearch:!!validIncomingSize
-  });
-  return true;
-}
-
-async function processCode(raw,options={}){
-  const code=norm(raw);if(!code||state.loading)return;
-  if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",6000);return}
-  setLoading(true,false);
-  try{
-    // V2: 1 RPC trả cả thông tin hàng + tồn sau kiểm tất cả size.
-    const {data,error}=await supabase.rpc("timkiemnhanh_lay_san_pham_v2",{
-      p_masp:code,
-      p_diadiem:state.diadiem
-    });
-    if(error)throw error;
-    const sp=(data||[])[0];
-    if(!sp){toast("Mã sản phẩm không tồn tại.");return}
-
-    $("codeInput").value=sp.masp;$("suggestBox").style.display="none";
-    state.sourceMasp=sp.masp;
-    state.sourceProduct={...sp};
-    state.group=String(sp.nhomhang||"").trim();
-    state.mainGroup=mainKeyForGroup(state.group);
-    state.form=formNorm(sp.form);
-    state.color=String(sp.mausac||"").trim();
-    state.referencePrice=Number(sp.giale||0);
-    state.size=SIZE_LIST.includes(String(options.preselectedSize||""))?String(options.preselectedSize):"";
-    state.sourceStockAfterCheck=sp.ton_sizes||{};
-    state.sourceProduct.ton_sizes=state.sourceStockAfterCheck;
-    state.sizeGuideOpen=!(options.autoSearch&&state.size);
-
-    $("formSelect").value=state.form||"";
-    $("colorSelect").value=state.color||"";
-    $("refPrice").value=state.referencePrice||"";
-    renderSourceLocation();renderGroups();renderSizes();
-
-    if(options.autoSearch&&state.size){
-      hideSizeWarning();
-      setLoading(false);
-      await search(true);
-    }else{
-      const any=SIZE_LIST.some(s=>sourceQty(s)>0);
-      if(any)showSizeWarning("Chọn size để tìm sản phẩm phù hợp");
-      else showSizeWarning(`Mã này hiện không còn size tồn tại ${state.diadiem.toUpperCase()} theo tồn sau kiểm. Bạn vẫn có thể chọn size cần tìm.`);
-    }
-
-    if(options.openStockQuick===true){
-      try{window.StockQuick?.showFor($("codeInput"),sp.masp)}
-      catch(stockErr){console.warn("[TimKiemNhanh V2] Không mở được StockQuickPopup:",stockErr)}
-    }
-    playSuccessBeep();$("codeInput").blur();
-  }catch(e){
-    console.error(e);toast("Không lấy được mã sản phẩm V2: "+(e.message||e),5000)
-  }finally{setLoading(false)}
-}
-
-function clearSourceForManualFilter(){
-  state.sourceMasp="";state.sourceProduct=null;state.sourceStockAfterCheck=null;state.sizeGuideOpen=false;hideSizeWarning();renderSourceLocation();
-}
-
-// V20261101 - cổng gọi nội bộ cho StockQuick trên Tìm kiếm nhanh V2.
-// Dùng lại processCode hiện có của V2, nên giữ nguyên toàn bộ logic tìm kiếm + tìm kiếm bằng ảnh.
-async function openFromStockQuick(maspRaw,sizeRaw=""){
-  const masp=norm(maspRaw);
-  if(!masp)return false;
-
-  const size=String(sizeRaw||"").replace(/^size\s+/i,"").trim();
-  const validSize=SIZE_LIST.includes(size)?size:"";
-
-  const input=$("codeInput");
-  if(input)input.value=masp;
-
-  await processCode(masp,{
-    preselectedSize:validSize,
-    autoSearch:!!validSize
-  });
-  return true;
-}
-
-window.TimKiemNhanh=Object.assign(window.TimKiemNhanh||{},{
-  openFromStockQuick
-});
-
-function bind(){
-  setupBeepUnlockOnce(document);
-  $("btnNew").onclick=resetToInitialState;
-  $("btnLogout").onclick=async()=>{
-    const branch=validBranch()?state.diadiem.toUpperCase():"cơ sở hiện tại";
-    if(!window.confirm(`Bạn có chắc muốn đăng xuất khỏi ${branch}?\n\nSau khi đăng xuất, bạn có thể chọn lại CS1 hoặc CS2 để đăng nhập.`))return;
-    const btn=$("btnLogout");
-    if(btn){btn.disabled=true;btn.textContent="Đang đổi…";}
-    try{
-      // Đăng xuất session hiện tại nhưng KHÔNG reload ngay.
-      // Sau đó chủ động xóa địa điểm để form đăng nhập bắt buộc người dùng chọn lại CS1/CS2.
-      // Làm như vậy cũng tránh ?cs=... trên URL tự ghi lại cơ sở cũ khi reload.
-      await dangXuatDungChung({
-        loginContainerId:"login-container",
-        appContainerId:"app-container",
-        clearDraft:false,
-        reloadPage:false
-      });
-
-      try{localStorage.removeItem("diadiem");}catch{}
-      try{sessionStorage.removeItem("diadiem");}catch{}
-      try{window.diadiem="";}catch{}
-      state.diadiem="";
-
-      // Xóa trắng riêng ô Cơ sở; vẫn giữ mã nhân viên/identifier để đăng nhập lại nhanh.
-      const csSelect=document.getElementById("login-cs");
-      if(csSelect)csSelect.value="";
-
-      // Bảo đảm form đăng nhập đang hiện và con trỏ ở ô chọn cơ sở.
-      const login=document.getElementById("login-container");
-      const app=document.getElementById("app-container");
-      if(app)app.style.display="none";
-      if(login)login.style.display="flex";
-      try{csSelect?.focus();}catch{}
-    }catch(e){
-      console.error("[TimKiemNhanh] Đăng xuất lỗi:",e);
-      if(btn){btn.disabled=false;btn.textContent="Đăng xuất";}
-      toast("Không đăng xuất được. Hãy thử lại.",5000);
-    }
-  };
-  const codeInput=$("codeInput");
-  codeInput.addEventListener("input",e=>{clearTimeout(suggestTimer);suggestTimer=setTimeout(()=>loadSuggestions(e.target.value),150)});
-
-  // Chạm/focus vào ô mã sản phẩm: bôi đen toàn bộ để nhập/quét mã mới nhanh hơn.
-  const selectAllCode=()=>setTimeout(()=>{try{codeInput.select()}catch{}},0);
-  codeInput.addEventListener("focus",selectAllCode);
-  codeInput.addEventListener("click",selectAllCode);
-
-  // Enter = nạp thông tin mã + tự mở StockQuickPopup của đúng mã đó.
-  codeInput.addEventListener("keydown",e=>{
-    if(e.key!=="Enter")return;
-    e.preventDefault();
-    processCode(e.currentTarget.value,{openStockQuick:true});
-  });
-  $("sourceLocation").onclick=e=>{
-    const masp=state.sourceMasp||norm($("codeInput")?.value);
-    if(masp)window.StockQuick?.showFor(e.currentTarget,masp);
-  };
-  $("sourceLocation").onkeydown=e=>{
-    if(e.key==="Enter"||e.key===" "){e.preventDefault();e.currentTarget.click()}
-  };
-  document.addEventListener("click",e=>{if(!e.target.closest(".codebox"))$("suggestBox").style.display="none"});
-  $("formSelect").onchange=async e=>{state.form=e.target.value;clearSourceForManualFilter();renderSizes();if(state.group&&state.size)await search(true)};
-  $("colorSelect").onchange=async e=>{state.color=e.target.value;clearSourceForManualFilter();renderSizes();if(state.group&&state.size)await search(true)};
-  document.querySelectorAll(".mode").forEach(b=>b.onclick=async()=>{state.mode=b.dataset.mode;renderModes();if(state.group&&state.size)await search(true)});
-  $("refPrice").onchange=async e=>{state.referencePrice=Number(e.target.value||0);if(state.group&&state.size)await search(true)};
-  $("btnScan").onclick=async()=>{$("scanOverlay").classList.add("show");await state.scanner.startScan()};
-  $("btnCloseScan").onclick=()=>{state.scanner.stopScan();$("scanOverlay").classList.remove("show")};
-  $("flashBtn").onclick=()=>state.scanner.toggleTorch();
-  $("pickImage").onchange=e=>state.scanner.decodeFromFile(e.target.files?.[0]);
-  $("btnStockCheckLater").onclick=async()=>{
-    closeMissingSizePrompt();
-    hideSizeWarning();
-    if(state.group&&state.size)await search(true);
-  };
-  $("btnStockCheckYes").onclick=()=>{
-    closeMissingSizePrompt();
-    openStockCheckPage(state.sourceMasp);
-  };
-  $("stockCheckModal").addEventListener("click",e=>{if(e.target===$("stockCheckModal"))closeMissingSizePrompt()});
-  $("imageOverlay").onclick=closeImage;
-  initAutoLoad();
-  initPageJump();
-}
-
-async function initScanner(){
-  state.scanner=setupScanner({videoEl:$("scanVideo"),selectEl:$("cameraSelect"),statusEl:$("scanStatus"),onResult:async text=>{state.scanner.stopScan();$("scanOverlay").classList.remove("show");await processCode(text,{openStockQuick:true})}})
-}
-
-let appStarted=false;
-async function startApp(){
-  if(appStarted)return;
-  appStarted=true;
-  refreshAuthState();
-
-  // Nhận MASP từ StockQuick thật sớm để mã xuất hiện ngay trên ô nhập.
-  const incomingMasp=getIncomingMaspFromUrl();
-  const input=$("codeInput");
-  if(incomingMasp&&input)input.value=incomingMasp;
-
-  loadSelected();renderSourceLocation();renderSelected();renderSizes();renderModes();clearResults("Quét mã hoặc nhập mã sản phẩm rồi nhấn Enter để bắt đầu.");
-  try{
-    if(!validBranch())throw new Error("Không xác định được CS1/CS2 từ phiên đăng nhập.");
-    await loadConfig();
-    renderGroups();
-    bind();
-
-    // Xử lý MASP trước scanner/bày mẫu để module phụ không thể chặn luồng này.
-    const openedFromStockQuick=await processIncomingMaspFromUrl(incomingMasp);
-
-    try{await initScanner();}
-    catch(scannerErr){console.warn("[TimKiemNhanh] Scanner lỗi nhưng không chặn tìm kiếm:",scannerErr);}
-
-    try{
-      initYeuCauBayMau({supabase,diadiem:state.diadiem,manvDangNhap:state.manv});
-    }catch(bayMauErr){
-      console.warn("[TimKiemNhanh] Yêu cầu bày mẫu lỗi nhưng không chặn tìm kiếm:",bayMauErr);
-    }
-
-    if(!openedFromStockQuick)setTimeout(()=>$('codeInput')?.focus(),50);
-  }catch(e){
-    appStarted=false;
-    console.error(e);
-    toast("Không khởi tạo được Tìm kiếm nhanh: "+(e.message||e),7000);
-  }
-}
-
-// Xác định cơ sở khi mở Tìm kiếm nhanh.
-// Thứ tự ưu tiên: URL (?cs=cs1/cs2) -> sessionStorage -> localStorage -> để trống cho người dùng chọn.
-function getInitialBranch(){
-  let fromUrl="";
-  try{
-    const qs=new URLSearchParams(location.search);
-    fromUrl=String(qs.get("cs")||qs.get("diadiem")||"").trim().toLowerCase();
-  }catch{}
-
-  if(["cs1","cs2"].includes(fromUrl)){
-    // authModule hiện dùng localStorage để auto-hydrate; đồng bộ ngay để session sẵn cũng vào đúng cơ sở.
-    try{sessionStorage.setItem("diadiem",fromUrl)}catch{}
-    try{localStorage.setItem("diadiem",fromUrl)}catch{}
-    return fromUrl;
-  }
-
-  let fromSession="";
-  try{fromSession=String(sessionStorage.getItem("diadiem")||"").trim().toLowerCase()}catch{}
-  if(["cs1","cs2"].includes(fromSession))return fromSession;
-
-  let fromLocal="";
-  try{fromLocal=String(localStorage.getItem("diadiem")||"").trim().toLowerCase()}catch{}
-  if(["cs1","cs2"].includes(fromLocal))return fromLocal;
-
-  return "";
-}
-
-const initialBranch=getInitialBranch();
-
-khoiTaoDangNhapDungChung({
-  loginContainerId:"login-container",
-  appContainerId:"app-container",
-  macDinhDiaDiem:initialBranch,
-  tuDongKhoaCoSo:false,
-  onLoginSuccess:async(_nhanvien,context)=>{
-    // Nếu người dùng chọn lại CS trên form đăng nhập, bảo đảm tab Tìm kiếm nhanh ghi nhận đúng CS đó.
-    const cs=String(context?.diadiem||localStorage.getItem("diadiem")||initialBranch||"").trim().toLowerCase();
-    if(["cs1","cs2"].includes(cs)){
-      try{sessionStorage.setItem("diadiem",cs)}catch{}
-      try{localStorage.setItem("diadiem",cs)}catch{}
-    }
-
-    refreshAuthState();
-    await startApp();
-    return true;
-  }
-});
+export { openModal as openVisualSearch };
