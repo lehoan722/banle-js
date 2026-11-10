@@ -444,7 +444,7 @@
                         </div>
 
                         <div class="form-row">
-                            <label><input type="checkbox" id="quanlykichcoCheckbox" /> Quản lý kích cỡ</label>
+                            <label><input type="checkbox" id="quanlykichcoCheckbox" checked /> Quản lý kích cỡ</label>
                         </div>
 
 
@@ -1910,12 +1910,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     document.getElementById('nhaccInput').value = data.nhacc || '';
                     document.getElementById('nhomhangInput').value = data.nhomhang || '';
                     document.getElementById('chungloaiInput').value = data.chungloai || '';
-                    document.getElementById('quanlykichcoCheckbox').checked = data.quanlykichco === true;
-                    // [ADD] Khi load form sửa, cũng xét lại theo Giá lẻ đang có
-                    syncQuanLyKichCoByGiaLe();
+                    // Giữ đúng cờ kích cỡ đã lưu; không ép lại theo giá chỉ vì mở form sửa.
+                    napQuanLyKichCoTuDuLieu(data.quanlykichco === true);
                     document.getElementById('addProductForm').style.border = '1.5px solid #1aa111';
                 } else {
-                    // Mã mới không tồn tại -> chuyển sang chế độ THÊM MỚI
+                    // Mã mới không tồn tại -> chuyển sang chế độ THÊM MỚI.
+                    // Nếu vừa ở chế độ sửa mã cũ, không để trạng thái size cũ rơi sang mã mới.
+                    if (isEditMode) datLaiQuanLyKichCoChoMaMoi();
                     isEditMode = false;
                     originalGiaNhap = null;
                     originalGiaLe = null;
@@ -1955,12 +1956,55 @@ document.addEventListener("DOMContentLoaded", function () {
                 isEditMode = false;
                 originalGiaNhap = null;
                 originalGiaLe = null;
-                // NEW: đồng bộ lại QLKC theo giá lẻ đang được “giữ lại”
-                syncQuanLyKichCoByGiaLe();
+                // Lượt nhập mới: luôn tích sẵn, mọi lựa chọn thủ công trước đó hết hiệu lực.
+                datLaiQuanLyKichCoChoMaMoi();
 
                 selectedColorOrder = parseColorsFromInput(document.getElementById('mausacInput').value || '');
                 updateMauSacPreview();
                 syncPopupChecksFromInput();
+            }
+
+
+            // ====== BẢO VỆ MÃ SẢN PHẨM - CS1/CS2 (10/11/2026) ======
+            // Chỉ cho phép ASCII A-Z, 0-9, dấu '-' và một dấu '.' ngăn cách màu.
+            // Không âm thầm bỏ dấu/khoảng trắng: người dùng phải sửa mã sai.
+            const MA_SP_ASCII_RX = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?:\.[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)?$/;
+            const MA_MAU_ASCII_RX = /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
+
+            function thongBaoMaSai(message, focusId) {
+                const msgEl = document.getElementById('addProductMessage');
+                msgEl.style.color = 'red';
+                msgEl.textContent = '❌ ' + message;
+                alert('❌ KHÔNG ĐƯỢC LƯU SẢN PHẨM!\n\n' + message +
+                      '\n\nChỉ được dùng A-Z, a-z, 0-9, dấu - và một dấu . phân cách mã màu.');
+                const input = document.getElementById(focusId);
+                input?.focus();
+                input?.select?.();
+                return false;
+            }
+
+            function kiemTraMaSanPhamTruocKhiLuu() {
+                const rawMasp = document.getElementById('maspInput').value;
+                if (!MA_SP_ASCII_RX.test(rawMasp)) {
+                    return thongBaoMaSai('Mã sản phẩm có khoảng trắng, dấu tiếng Việt, ký tự đặc biệt hoặc cấu trúc mã không hợp lệ: "' + rawMasp + '".', 'maspInput');
+                }
+                const rawColor = document.getElementById('mausacInput').value;
+                for (const rawToken of rawColor.split(',')) {
+                    const token = rawToken.trim(); // Dấu cách giữa các mã màu (sau dấu phẩy) không thuộc MASP.
+                    if (token && !MA_MAU_ASCII_RX.test(token)) {
+                        return thongBaoMaSai('Mã màu không hợp lệ: "' + token + '". Không được có dấu cách trong mã màu, chữ có dấu hay ký tự lạ.', 'mausacInput');
+                    }
+                }
+                return true;
+            }
+
+            function kiemTraMaSauKhiGhepMau(records) {
+                for (const row of records) {
+                    if (!MA_SP_ASCII_RX.test(row.masp)) {
+                        return thongBaoMaSai('Mã sản phẩm sau khi ghép màu không hợp lệ: "' + row.masp + '".', 'mausacInput');
+                    }
+                }
+                return true;
             }
 
             // ==== Validate các trường bắt buộc ====
@@ -2108,6 +2152,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
+                // Chặn cả mã gốc và mã màu trước khi tạo/cập nhật bất kỳ bản ghi nào.
+                if (!kiemTraMaSanPhamTruocKhiLuu()) return;
+
                 syncQuanLyKichCoByGiaLe();
 
                 const gianhapVal = document.getElementById('gianhapInput').value.replace(/\./g, '');
@@ -2184,6 +2231,9 @@ Bạn chưa nhập màu sắc.
                         return;
                     }
                 }
+
+                // Chặn mã cuối cùng (sau ghép MASP.MAU) trước mọi lệnh ghi Supabase.
+                if (!kiemTraMaSauKhiGhepMau(records)) return;
 
                 let bulkPriceDecision = { proceed: true, siblings: [] };
 
@@ -2472,8 +2522,7 @@ Bạn chưa nhập màu sắc.
             function normalizeColorToken(str) {
                 return (str || '')
                     .trim()
-                    .toUpperCase()
-                    .replace(/\s+/g, '');
+                    .toUpperCase(); // Giữ nguyên khoảng trắng bên trong để bước kiểm tra mã chặn khi Lưu.
             }
 
             function parseColorsFromInput(value) {
@@ -2752,63 +2801,67 @@ Bạn chưa nhập màu sắc.
                 });
             });
 
-            // [ADD] Helper khóa/mở khóa checkbox "Quản lý kích cỡ"
+            // ====== QUẢN LÝ KÍCH CỠ: ĐỀ XUẤT THEO GIÁ, ƯU TIÊN TÍCH TAY (10/11/2026) ======
             const qlkcCheckbox = document.getElementById('quanlykichcoCheckbox');
-            const qlkcLabel = qlkcCheckbox?.parentElement; // <label> bao checkbox
+            let qlkcDaChonBangTay = false;
+            let qlkcGiaLeDaXuLy = null;
 
-            function lockQuanLyKichCo() {
+            function docGiaLeDeDeXuatSize() {
+                const raw = String(gialeInput?.value || '').replace(/\./g, '').replace(/[^0-9]/g, '');
+                return raw ? Number(raw) : null;
+            }
+
+            // Được gọi khi bắt đầu trang / Thêm mới / sau LƯU THÀNH CÔNG.
+            // Không tự bật/tắt dựa vào mức giá được giữ sẵn, cho đến khi nhập giá hoặc Lưu.
+            function datLaiQuanLyKichCoChoMaMoi() {
                 if (!qlkcCheckbox) return;
+                qlkcDaChonBangTay = false;
+                qlkcGiaLeDaXuLy = null;
                 qlkcCheckbox.checked = true;
-                qlkcCheckbox.disabled = false; // vẫn cho nhìn thấy và giữ trạng thái
-                qlkcCheckbox.title = 'Tự bật do Giá lẻ ≥ ' + GIALE_LOCK_THRESHOLD.toLocaleString('vi-VN');
-                qlkcLabel?.classList.add('locked');
-            }
-
-            function unlockQuanLyKichCoKeepUserChoice() {
-                if (!qlkcCheckbox) return;
                 qlkcCheckbox.disabled = false;
-                // QUAN TRỌNG: không bỏ tick nữa
-                qlkcCheckbox.title = '';
-                qlkcLabel?.classList.remove('locked');
+                qlkcCheckbox.title = 'Mặc định có quản lý size. Khi nhập giá, hệ thống đề xuất theo ngưỡng 150.000đ; có thể tích/bỏ tích thủ công.';
             }
 
-            // [ADD] Đồng bộ trạng thái checkbox dựa trên Giá lẻ hiện tại
+            // Khi sửa: giữ nguyên cờ đã lưu ở Supabase, kể cả nếu giá >= 150.000đ.
+            function napQuanLyKichCoTuDuLieu(daQuanLy) {
+                if (!qlkcCheckbox) return;
+                qlkcDaChonBangTay = false;
+                qlkcGiaLeDaXuLy = docGiaLeDeDeXuatSize();
+                qlkcCheckbox.checked = !!daQuanLy;
+                qlkcCheckbox.disabled = false;
+                qlkcCheckbox.title = 'Trạng thái đã lưu. Chỉ tự đề xuất lại khi giá thay đổi; có thể chọn thủ công.';
+            }
+
             function syncQuanLyKichCoByGiaLe() {
-                if (!gialeInput || !qlkcCheckbox) return;
-
-                const raw = (gialeInput.value || '').toString().replace(/\./g, '').replace(/[^0-9]/g, '');
-                const val = Number(raw || 0);
-
-                if (val >= GIALE_LOCK_THRESHOLD) {
-                    // Từ 150.000 trở lên: tự bật quản lý kích cỡ
-                    lockQuanLyKichCo();
-                } else {
-                    // Dưới 150.000: không tự bật, nhưng nếu người dùng đã tích tay thì giữ nguyên
-                    unlockQuanLyKichCoKeepUserChoice();
-                }
+                if (!qlkcCheckbox || qlkcDaChonBangTay) return;
+                const val = docGiaLeDeDeXuatSize();
+                if (val === null || val === qlkcGiaLeDaXuLy) return;
+                qlkcCheckbox.checked = val >= GIALE_LOCK_THRESHOLD;
+                qlkcGiaLeDaXuLy = val;
+                qlkcCheckbox.title = 'Đã tự đề xuất theo giá; có thể thay đổi bằng tay và lưu nguyên trạng.';
             }
 
-            // [ADD] Admin override: ALT + click vào vùng label để mở khóa thủ công
-            if (qlkcLabel) {
-                qlkcLabel.addEventListener('click', (e) => {
-                    if (e.altKey && qlkcCheckbox?.disabled) {
-                        e.preventDefault(); // ngăn thao tác mặc định trên label
-                        qlkcCheckbox.disabled = false;
-                        qlkcCheckbox.title = 'Đã mở khóa thủ công (admin override)';
-                    }
-                });
-            }
+            // Mọi thao tác tích hoặc bỏ tích của nhân viên được ưu tiên tới hết lượt Lưu.
+            qlkcCheckbox?.addEventListener('change', () => {
+                qlkcDaChonBangTay = true;
+                qlkcCheckbox.title = 'Đã chọn thủ công; hệ thống không tự thay đổi trước khi lưu.';
+            });
+
+            // Gõ trực tiếp giá lẻ: đề xuất ngay, không cần đợi mất focus.
+            gialeInput?.addEventListener('input', syncQuanLyKichCoByGiaLe);
+
+            // Ban đầu không chạy theo giá (vì chưa nhập). Luôn tích sẵn.
+            datLaiQuanLyKichCoChoMaMoi();
 
             // Tự động tính giá lẻ khi nhập xong giá nhập
             gianhapInput.addEventListener('change', function () {
                 const val = parseFloat(this.value);
                 if (!isNaN(val) && val > 0) {
                     gialeInput.value = Math.round(val * 1.5);
+                    syncQuanLyKichCoByGiaLe();
                 }
             });
-            // [ADD]
-            syncQuanLyKichCoByGiaLe();
-
+            // Giá lẻ sẽ được tự đề xuất khi người dùng nhập hoặc sửa, không ép ở lúc mở trang.
 
             const formOrder = [
                 'maspInput',
