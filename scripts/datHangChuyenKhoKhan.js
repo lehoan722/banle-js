@@ -8,7 +8,7 @@
 // - StockQuick luôn cho đặt khẩn; gợi ý (nếu có) chỉ dùng để điền sẵn lưới size
 
 import { calcSuggestionsFromPayload } from "./services/luatChuyenKho.js";
-import {loadUrgentTabulator,createUrgentTable,destroyUrgentTables,copyUrgentVisible} from "./datHangKhanTabulator.js";
+import {loadUrgentTabulator,createUrgentTable,destroyUrgentTables,copyUrgentVisible,hasUrgentTables,updateUrgentTables,clearUrgentFilters} from "./datHangKhanTabulator.js";
 
 let ctx = null;
 let realtimeChannel = null;
@@ -24,6 +24,7 @@ const TABLE = "dat_hang_chuyen_kho_khan";
 const HISTORY_LIMIT = 200; // Lich su mac dinh, loc tren du lieu da tai
 let tabulatorAvailable = false;
 let nextHandoffExpiry = 0;
+let urgentRefreshSeq = 0;
 const selectedMoveIds=new Set();
 const selectedDeleteIds=new Set();
 const ACTIVE_STATUS = "moi";
@@ -810,7 +811,7 @@ function bindPanelEvents(box) {
   }));
 }
 
-async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
+async function renderPanel(rows,{forceOpen=false,flash=false,refreshSeq=null}={}) {
   ensureStyles();
   const coso=getCurrentCoso();
   if(!coso) return;
@@ -826,13 +827,30 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
   if(panelMode==="hidden") panelMode = forceOpen ? "expanded" : "collapsed";
 
   const isAdmin = await isAdminUser();
+  if(refreshSeq!==null && refreshSeq!==urgentRefreshSeq)return;
   const canMove=rows.filter(r=>norm(r.tu_coso).toLowerCase()===coso);
   const onlyView=rows.filter(r=>norm(r.tu_coso).toLowerCase()!==coso);
   const canMoveNew=canMove.filter(r=>["moi","dang_chuyen"].includes(norm(r.trang_thai).toLowerCase())).length;
   const onlyViewNew=onlyView.filter(r=>["moi","dang_chuyen"].includes(norm(r.trang_thai).toLowerCase())).length;
 
+  // Realtime / đổi trạng thái: GIỮ NGUYÊN panel và hai bảng đang thao tác.
+  // Không tháo bảng ra khỏi DOM vì sẽ làm điện thoại nhảy lên đầu,
+  // mất dropdown đang mở và mất các ô lọc.
+  const existingPanel=document.getElementById('dhkhan-panel');
+  if(existingPanel && tabulatorAvailable && hasUrgentTables()) {
+    const ok=await updateUrgentTables(canMove.map(enrichedRow),onlyView.map(enrichedRow));
+    if(ok) {
+      existingPanel.dataset.fullTitleHtml=`🚨 ĐẶT HÀNG KHẨN CẤP | Cần chuyển: ${canMoveNew} | Theo dõi: ${onlyViewNew}`;
+      const title=existingPanel.querySelector('#dhkhan-header-title');
+      if(title) title.textContent=existingPanel.dataset.fullTitleHtml;
+      // Không nháy popup khi đồng bộ Realtime: tránh phân tâm trên điện thoại.
+      if(forceOpen && panelMode!=='expanded'){panelMode='expanded';applyPanelMode();}
+      return;
+    }
+  }
+
   destroyUrgentTables();
-  document.getElementById("dhkhan-panel")?.remove();
+  existingPanel?.remove();
 
   const box=document.createElement("div");
   box.id="dhkhan-panel";
@@ -882,16 +900,17 @@ async function renderPanel(rows,{forceOpen=false,flash=false}={}) {
     createUrgentTable(box.querySelector('#dhkhan-grid-canmove'),canMove.map(enrichedRow),'canmove',callbacks);
     createUrgentTable(box.querySelector('#dhkhan-grid-onlyview'),onlyView.map(enrichedRow),'onlyview',callbacks);
     box.querySelector('#dhkhan-copy')?.addEventListener('click',()=>copyUrgentVisible('canmove'));
-    box.querySelector('#dhkhan-reset-filter')?.addEventListener('click',()=>{destroyUrgentTables();refreshPanel({forceOpen:true});});
+    box.querySelector('#dhkhan-reset-filter')?.addEventListener('click',()=>clearUrgentFilters());
   }
   applyPanelMode();
 
-  if(flash){
-    box.classList.add("dhkhan-flash");
-    setTimeout(()=>box.classList.remove("dhkhan-flash"),2200);
-  }
 }
-async function refreshPanel(options={}) { const rows=await fetchOrders(); await renderPanel(rows,options); }
+async function refreshPanel(options={}) {
+  const refreshSeq=++urgentRefreshSeq;
+  const rows=await fetchOrders();
+  if(refreshSeq!==urgentRefreshSeq)return;
+  await renderPanel(rows,{...options,refreshSeq});
+}
 
 function sanitizeQtyInput(input) {
   const cleaned=String(input.value||"").replace(/[^0-9]/g,"").replace(/^0+(?=\d)/,"");
