@@ -1,4 +1,4 @@
-/* HOAN TUYET - Admin toggle employee revenue attribution, only for NEW unsaved invoices.
+/* HOAN TUYET - Admin toggle employee revenue attribution, for NEW invoices and existing invoices opened for viewing/editing.
  * Deliberately independent of hoadon.js, bangketqua.js and secure save RPC.
  * Does NOT modify money, quantity, employee name or consultation links.
  */
@@ -22,10 +22,18 @@
   `;
   document.head.appendChild(style);
 
-  function isNewInvoice() {
-    const state = String(document.getElementById('hd_state')?.value || 'moi').toLowerCase();
-    return state === 'moi' && window.HD_CTX?.mode !== 'EDIT' &&
-      window.dangSuaHoaDon !== true && window.choPhepSua !== true;
+  // Permit the existing viewing/editing workflow; never change saved rows directly.
+  // In 'xem' the existing Save button will request Admin edit confirmation.
+  function invoiceContext() {
+    const state = String(document.getElementById('hd_state')?.value || '')
+      .trim().toLowerCase();
+    const editing = state === 'sua' || window.HD_CTX?.mode === 'EDIT' ||
+      window.dangSuaHoaDon === true || window.choPhepSua === true;
+    const viewing = ['xem', 'chua xem', 'chưa xem', 'chuaxem'].includes(state);
+    const fresh = state === 'moi' && !editing;
+    const sohd = String(document.getElementById('sohd')?.value || '').trim();
+    // Do not allow an old-invoice operation with no invoice identifier.
+    return { allowed: fresh || ((viewing || editing) && !!sohd), isOld: !fresh, sohd, state };
   }
   function hasAdminHint() {
     return String(localStorage.getItem('is_admin') || '').toLowerCase() === 'true';
@@ -45,8 +53,9 @@
     if (!tr.dataset.entryKey) return;  // Pasted DOM rows not backed by line model.
     event.stopPropagation();
     if (busy) return;
-    if (!isNewInvoice()) {
-      alert('Chỉ được đổi mã nhân viên bán trên hóa đơn MỚI, chưa lưu.');
+    const context = invoiceContext();
+    if (!context.allowed) {
+      alert('Hãy mở hóa đơn mới hoặc tải hóa đơn cũ hợp lệ trước khi đổi mã NV bán.');
       return;
     }
     const entryKey = tr.dataset.entryKey;
@@ -70,13 +79,19 @@
       if (!window.supabase?.rpc) throw Error('Không thể xác thực quyền Admin với Supabase.');
       const { data: isAdmin, error } = await window.supabase.rpc('is_admin');
       if (error || isAdmin !== true) throw Error('Tài khoản không có quyền Admin hoặc không xác thực được quyền.');
-      if (!isNewInvoice() || window.bangKetQua?.[entryKey] !== item ||
+      const liveContext = invoiceContext();
+      if (!liveContext.allowed || liveContext.isOld !== context.isOld ||
+          liveContext.sohd !== context.sohd ||
+          window.bangKetQua?.[entryKey] !== item ||
           String(item.manv_bans[idx] || '').trim().toUpperCase() !== oldCode) {
         throw Error('Hóa đơn hoặc dòng hàng đã thay đổi, vui lòng thao tác lại.');
       }
-      const message = oldCode.endsWith(SUFFIX)
+      const saveNotice = context.isOld
+        ? '\n\nHóa đơn cũ: phải bấm LƯU SỬA và xác thực sửa hóa đơn để thay đổi có hiệu lực.'
+        : '\n\nHóa đơn mới: phải bấm LƯU để thay đổi có hiệu lực.';
+      const message = (oldCode.endsWith(SUFFIX)
         ? `Khôi phục doanh thu nhân viên: ${oldCode} → ${nextCode}?`
-        : `Không tính doanh thu cho ${oldCode} trên dòng này?\nMã lưu thành: ${nextCode}`;
+        : `Không tính doanh thu cho ${oldCode} trên dòng này?\nMã lưu thành: ${nextCode}`) + saveNotice;
       if (!confirm(message)) return;
       // Single source of truth used by secure payload generator, F3 and renderer.
       item.manv_bans[idx] = nextCode;
@@ -88,7 +103,10 @@
         liveRow.dataset.manvBan = nextCode;
         if (liveRow.cells[8]) liveRow.cells[8].textContent = nextCode;
       }
-      alert(`Đã đổi mã NV bán thành ${nextCode}.\nChưa lưu hóa đơn; hãy kiểm tra cột NV bán trước khi bấm Lưu.`);
+      alert(`Đã đổi mã NV bán thành ${nextCode} trên giao diện.\n` +
+        (context.isOld
+          ? 'Chưa cập nhật dữ liệu gốc. Bấm LƯU và hoàn tất xác thực sửa hóa đơn.'
+          : 'Chưa lưu hóa đơn. Hãy kiểm tra cột NV bán trước khi bấm LƯU.'));
     } catch (e) {
       alert(`Không thực hiện được: ${e?.message || e}`);
     } finally { busy = false; }
