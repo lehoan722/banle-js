@@ -115,11 +115,11 @@
   }
 
   async function refreshAdmin() {
-    if(authPending)return;
+    if(authPending || !window.supabase?.rpc) return;
     authPending=true;
     let ok=false;
     try{if(window.supabase?.rpc){const {data,error}=await window.supabase.rpc('is_admin');ok=!error&&data===true;}}catch(_){}
-    adminVerified=ok;adminArea.style.display=ok?'inline-flex':'none';
+    adminVerified=ok;adminArea.style.display=ok?'flex':'none';
     if(!ok)toggle.checked=true;
     authPending=false;
   }
@@ -167,6 +167,24 @@
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAdmin();});
   // Hiển thị checkbox ngay nếu đã có gợi ý admin từ phiên đăng nhập; sau đó xác thực lại bằng RPC.
   const adminHint = String(localStorage.getItem('is_admin') || '').toLowerCase() === 'true';
-  adminArea.style.display = adminHint ? 'inline-flex' : 'none';
+  adminArea.style.display = adminHint ? 'flex' : 'none';
   toggle.checked=true;syncInvoice();countAndPaint();refreshAdmin();
+  // Trong trường hợp đăng nhập sau khi trang tải, theo dõi gợi ý quyền trong ít giây đầu.
+  let lastAdminHint = adminHint;
+  let initChecks = 0;
+  let attemptedAfterClientReady = !!window.supabase?.rpc;
+  const initTimer = setInterval(() => {
+    if (++initChecks > 30) { clearInterval(initTimer); return; }
+    let hint = false;
+    try { hint = localStorage.getItem('is_admin') === 'true'; } catch (_) {}
+    if (hint !== lastAdminHint) {
+      lastAdminHint = hint;
+      if (!hint) { adminVerified = false; adminArea.style.display = 'none'; toggle.checked = true; }
+      else if (!adminVerified) adminArea.style.display = 'flex';
+      refreshAdmin();
+    } else if (!attemptedAfterClientReady && window.supabase?.rpc) {
+      attemptedAfterClientReady = true;
+      refreshAdmin();
+    }
+  }, 500);
 })();
