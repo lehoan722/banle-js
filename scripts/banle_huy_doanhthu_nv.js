@@ -43,6 +43,31 @@
   window.addEventListener('storage', updateHint);
   const original = (s) => s.endsWith(SUFFIX) ? s.slice(0, -SUFFIX.length) : s;
 
+  // Khi tải hóa đơn cũ, bảng HTML có thể đã hiển thị trong khi
+  // window.bangKetQua chưa được đồng bộ (đặc biệt trạng thái "xem").
+  // Chỉ dựng lại nguồn từ DOM khi thực sự không tìm được dòng gốc.
+  function findSourceRow(tr) {
+    const entryKey = String(tr.dataset.entryKey || '');
+    const idx = Number(tr.dataset.lineIndex);
+    if (!entryKey || !Number.isInteger(idx) || idx < 0) return null;
+    const find = () => {
+      const item = window.bangKetQua?.[entryKey];
+      return item && Array.isArray(item.manv_bans) && idx < item.manv_bans.length
+        ? { entryKey, idx, item } : null;
+    };
+    let found = find();
+    if (found) return found;
+    // Dùng hàm đồng bộ DOM -> line model sẵn có ở bangketqua.js.
+    // Hàm này bảo toàn manv_ban, thông tin tư vấn, giá và KM từ data-*.
+    if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+      window.capNhatBangKetQuaTuDOM();
+      // Giữ biến module hoadon.js và biến window cùng nguồn dữ liệu.
+      window.hoadonSyncFromWindow?.();
+      found = find();
+    }
+    return found;
+  }
+
   let busy = false;
   table.addEventListener('click', async (event) => {
     const td = event.target.closest('td');
@@ -61,18 +86,13 @@
     const entryKey = tr.dataset.entryKey;
     const idx = Number(tr.dataset.lineIndex);
     if (!Number.isInteger(idx) || idx < 0) return;
-    const model = window.bangKetQua;
-    const item = model?.[entryKey];
-    if (!item || !Array.isArray(item.manv_bans)) {
-      alert('Không tìm thấy dòng dữ liệu nguồn. Không thay đổi gì.');
-      return;
-    }
-    const oldCode = String(item.manv_bans[idx] || '').trim().toUpperCase();
-    if (!oldCode) {
+    const displayedCode = String(tr.dataset.manvBan || tr.cells[8]?.textContent || '').trim().toUpperCase();
+    if (!displayedCode) {
       alert('Dòng chưa có mã nhân viên bán nên không thể HỦY/khôi phục.');
       return;
     }
-    const nextCode = oldCode.endsWith(SUFFIX) ? original(oldCode) : `${oldCode}${SUFFIX}`;
+    const nextCode = displayedCode.endsWith(SUFFIX)
+      ? original(displayedCode) : `${displayedCode}${SUFFIX}`;
     if (!nextCode) return;
     busy = true;
     try {
@@ -80,29 +100,31 @@
       const { data: isAdmin, error } = await window.supabase.rpc('is_admin');
       if (error || isAdmin !== true) throw Error('Tài khoản không có quyền Admin hoặc không xác thực được quyền.');
       const liveContext = invoiceContext();
+      const liveRow = [...table.querySelectorAll('tbody tr')].find(r =>
+        r.dataset.entryKey === entryKey && Number(r.dataset.lineIndex) === idx);
       if (!liveContext.allowed || liveContext.isOld !== context.isOld ||
-          liveContext.sohd !== context.sohd ||
-          window.bangKetQua?.[entryKey] !== item ||
-          String(item.manv_bans[idx] || '').trim().toUpperCase() !== oldCode) {
+          liveContext.sohd !== context.sohd || !liveRow ||
+          String(liveRow.dataset.manvBan || liveRow.cells[8]?.textContent || '').trim().toUpperCase() !== displayedCode) {
         throw Error('Hóa đơn hoặc dòng hàng đã thay đổi, vui lòng thao tác lại.');
+      }
+      const source = findSourceRow(liveRow);
+      if (!source ||
+          String(source.item.manv_bans[source.idx] || '').trim().toUpperCase() !== displayedCode) {
+        throw Error('Không đồng bộ được dòng dữ liệu nguồn. Hãy tải lại hóa đơn rồi thử lại.');
       }
       const saveNotice = context.isOld
         ? '\n\nHóa đơn cũ: phải bấm LƯU SỬA và xác thực sửa hóa đơn để thay đổi có hiệu lực.'
         : '\n\nHóa đơn mới: phải bấm LƯU để thay đổi có hiệu lực.';
-      const message = (oldCode.endsWith(SUFFIX)
-        ? `Khôi phục doanh thu nhân viên: ${oldCode} → ${nextCode}?`
-        : `Không tính doanh thu cho ${oldCode} trên dòng này?\nMã lưu thành: ${nextCode}`) + saveNotice;
+      const message = (displayedCode.endsWith(SUFFIX)
+        ? `Khôi phục doanh thu nhân viên: ${displayedCode} → ${nextCode}?`
+        : `Không tính doanh thu cho ${displayedCode} trên dòng này?\nMã lưu thành: ${nextCode}`) + saveNotice;
       if (!confirm(message)) return;
       // Single source of truth used by secure payload generator, F3 and renderer.
-      item.manv_bans[idx] = nextCode;
+      source.item.manv_bans[source.idx] = nextCode;
       // Preserve tennv_bans, tu_van references, price, amount, discount, quantity.
       // If view is still the same row, update DOM dataset for F3/DOM reconstruction.
-      const liveRow = [...table.querySelectorAll('tbody tr')].find(r =>
-        r.dataset.entryKey === entryKey && Number(r.dataset.lineIndex) === idx);
-      if (liveRow) {
-        liveRow.dataset.manvBan = nextCode;
-        if (liveRow.cells[8]) liveRow.cells[8].textContent = nextCode;
-      }
+      liveRow.dataset.manvBan = nextCode;
+      if (liveRow.cells[8]) liveRow.cells[8].textContent = nextCode;
       alert(`Đã đổi mã NV bán thành ${nextCode} trên giao diện.\n` +
         (context.isOld
           ? 'Chưa cập nhật dữ liệu gốc. Bấm LƯU và hoàn tất xác thực sửa hóa đơn.'
