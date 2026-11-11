@@ -125,10 +125,6 @@
       // If view is still the same row, update DOM dataset for F3/DOM reconstruction.
       liveRow.dataset.manvBan = nextCode;
       if (liveRow.cells[8]) liveRow.cells[8].textContent = nextCode;
-      alert(`Đã đổi mã NV bán thành ${nextCode} trên giao diện.\n` +
-        (context.isOld
-          ? 'Chưa cập nhật dữ liệu gốc. Bấm LƯU và hoàn tất xác thực sửa hóa đơn.'
-          : 'Chưa lưu hóa đơn. Hãy kiểm tra cột NV bán trước khi bấm LƯU.'));
     } catch (e) {
       alert(`Không thực hiện được: ${e?.message || e}`);
     } finally { busy = false; }
