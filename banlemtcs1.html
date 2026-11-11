@@ -279,6 +279,65 @@
             width: 100%;
         }
 
+        /* Cùng một hàng: Mặt hàng - Tổng SL - XN ảnh; ghi đè quy tắc label 32%. */
+        #ht-summary-image-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 7px;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0 0 6px;
+        }
+        #thongtin #ht-summary-image-row > label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex: 0 0 auto;
+            width: auto;
+            min-width: 0;
+            padding: 0;
+            margin: 0;
+            white-space: nowrap;
+            font-size: 12px;
+        }
+        #thongtin #ht-summary-image-row #mathang,
+        #thongtin #ht-summary-image-row #tongsl {
+            width: 43px !important;
+            min-width: 0;
+            height: 28px;
+            padding: 3px;
+            margin: 0;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        #ht-check-image-admin-area {
+            display: none;
+            align-items: center;
+            flex: 0 0 auto;
+            min-width: 0;
+            white-space: nowrap;
+        }
+        #thongtin #ht-check-image-admin-area > label {
+            display: inline-flex;
+            align-items: center;
+            width: auto;
+            padding: 0;
+            margin: 0;
+            gap: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        #ht-check-image-required {
+            width: 17px !important;
+            height: 17px !important;
+            flex: 0 0 17px;
+            padding: 0 !important;
+            margin: 0 !important;
+            cursor: pointer;
+        }
+
         .sidebar {
             width: 360px;
             border-left: 1px solid #ccc;
@@ -952,14 +1011,26 @@
 
                             <label>Chiết khấu <input id="chietkhau" /></label>
                             <label>Tổng KM <input id="tongkm" readonly /></label>
-                            <label>Mặt hàng <input id="mathang" readonly /></label>
-                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;">
-                                <label style="margin:0;display:flex;align-items:center;gap:6px;white-space:nowrap;">Tổng SL <input id="tongsl" readonly style="width:120px;" /></label>
-                                <!-- Photo confirmation: NV luôn bắt buộc; chỉ Admin mới nhìn thấy và được tắt -->
-                                <div id="ht-check-image-admin-area" style="display:none;align-items:center;gap:5px;font-size:12px;white-space:nowrap;">
-                                    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;">XN ảnh <input id="ht-check-image-required" type="checkbox" checked style="width:18px;height:18px;" /></label>
+                            <!-- Ba mục nằm cùng một hàng; không dùng width:32% của .tab-pane label -->
+                            <div id="ht-summary-image-row">
+                                <label for="mathang">Mặt hàng <input id="mathang" readonly /></label>
+                                <label for="tongsl">Tổng SL <input id="tongsl" readonly /></label>
+                                <!-- Nhân viên: luôn phải xác nhận ảnh, không hiện ô tùy chọn. -->
+                                <div id="ht-check-image-admin-area">
+                                    <label for="ht-check-image-required">XN ảnh <input id="ht-check-image-required" type="checkbox" checked /></label>
                                 </div>
                             </div>
+                            <!-- Chạy ngay khi HTML được phân tích, không đợi JS cuối trang / tải dữ liệu. -->
+                            <script>
+                                (() => {
+                                    const area = document.getElementById('ht-check-image-admin-area');
+                                    try {
+                                        if (localStorage.getItem('is_admin') === 'true') {
+                                            area.style.display = 'flex';
+                                        }
+                                    } catch (_) {}
+                                })();
+                            </script>
 
                             <div id="popupTimKH"
                                 style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
@@ -3070,7 +3141,7 @@ ${window.HT_ZALO.getGroupUrl()}`,
 
     <!-- Admin: toggle NV_BAN <-> NV_BAN_HUY for unsaved invoices only -->
     <script src="scripts/banle_huy_doanhthu_nv.js?v=20261111_fix2"></script>
-    <script src="scripts/banle_xacnhan_anh_truoc_luu.js?v=20261111_v1"></script>
+    <script src="scripts/banle_xacnhan_anh_truoc_luu.js?v=20261111_inline_v3"></script>
 </body>
 
 </html>
