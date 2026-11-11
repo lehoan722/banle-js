@@ -492,7 +492,7 @@ function getSaleBusinessDate() {
     const raw = String(document.getElementById("ngay")?.value || "").trim();
     if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
     const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (m) return `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
+    if (m) return `${m[3]}-${String(m[2]).padStart(2, "0")}-${String(m[1]).padStart(2, "0")}`;
     return null;
 }
 
@@ -655,15 +655,15 @@ function focusAndSelectKhuyenMaiReliable(kmEl) {
         try {
             kmEl.focus({ preventScroll: true });
         } catch (_) {
-            try { kmEl.focus(); } catch (_) {}
+            try { kmEl.focus(); } catch (_) { }
         }
 
-        try { kmEl.select(); } catch (_) {}
+        try { kmEl.select(); } catch (_) { }
 
         try {
             const len = String(kmEl.value || "").length;
             kmEl.setSelectionRange(0, len);
-        } catch (_) {}
+        } catch (_) { }
     };
 
     // Lần đầu chạy NGAY trong event Enter của SIZE để giữ user gesture trên iOS.
@@ -699,7 +699,7 @@ function armKmXaBeforeAdd(masp, size, opts = {}) {
 
     focusAndSelectKhuyenMaiReliable(kmEl);
 
-    try { window.soundWaitSize?.(); } catch (_) {}
+    try { window.soundWaitSize?.(); } catch (_) { }
     return true;
 }
 
@@ -760,6 +760,63 @@ function currentEmployeeLineMeta(ctx, usedClearance) {
     };
 }
 
+
+/**
+ * Đồng bộ khách hàng từ hóa đơn nhân viên.
+ * Ưu tiên khách thật đã có trên hóa đơn bán cơ sở.
+ * Không thay đổi các nghiệp vụ hóa đơn khác.
+ */
+function dongBoKhachHangUuTienKhachThat(tuVan) {
+    if (!tuVan) return false;
+
+    const makhEl = document.getElementById("makh");
+    const tenEl = document.getElementById("khachhang");
+
+    if (!makhEl) return false;
+
+    const maHienTai = String(makhEl.value || "")
+        .trim().toUpperCase();
+
+    const maTuVan = String(tuVan.makh || "")
+        .trim().toUpperCase();
+
+    const laKhachThat = ma =>
+        ma !== "" && ma !== "KL";
+
+    // Không có mã khách từ hóa đơn nhân viên:
+    // tuyệt đối không ghi đè dữ liệu hiện tại.
+    if (!maTuVan) return false;
+
+    // Đã có khách thật trên hóa đơn cơ sở:
+    // giữ nguyên cả mã khách và tên khách.
+    if (laKhachThat(maHienTai)) return false;
+
+    // Nếu hóa đơn cơ sở đang là KL hoặc trống
+    // thì nhận khách thật từ hóa đơn nhân viên.
+    if (laKhachThat(maTuVan)) {
+        makhEl.value = maTuVan;
+
+        if (tenEl) {
+            tenEl.value = String(
+                tuVan.tenkh || tuVan.khachhang || ""
+            ).trim();
+        }
+
+        return true;
+    }
+
+    // Khách lẻ không được ghi đè tên khách thật.
+    // Nếu mã hiện tại trống thì có thể nhận KL.
+    if (!maHienTai && maTuVan === "KL") {
+        makhEl.value = "KL";
+        return true;
+    }
+
+    return false;
+}
+
+
+
 function applyTuVanToCurrentForm(tuVan) {
     if (!tuVan) return;
 
@@ -772,8 +829,10 @@ function applyTuVanToCurrentForm(tuVan) {
     const giaEl = document.getElementById("gia");
     const slEl = document.getElementById("soluong");
 
-    if (makhEl && tuVan.makh) makhEl.value = tuVan.makh;
-    if (tenEl && (tuVan.tenkh || tuVan.khachhang)) tenEl.value = tuVan.tenkh || tuVan.khachhang || "";
+
+    // Ưu tiên khách thật, không để KL ghi đè.
+    dongBoKhachHangUuTienKhachThat(tuVan);
+
 
     if (kmEl && Number.isFinite(Number(tuVan.km))) {
         kmEl.value = formatMoneyVN(tuVan.km);
@@ -1398,13 +1457,13 @@ async function xuLyMaSanPham(quanlysizetheogia, maspVal, size45, nhapNhanh, opti
                             // Gán size gợi ý + bôi đen để nhấn Enter là xong
                             sizeInput.value = sizeGoiY.size;
 
-                            // gán khách
-                            if (sizeGoiY.makh) {
-                                document.getElementById("makh").value = sizeGoiY.makh;
-                                document.getElementById("khachhang").value = sizeGoiY.tenkh || "";
-                            }
+
+                            // Gán khách theo quy tắc ưu tiên khách thật.
+                            dongBoKhachHangUuTienKhachThat(sizeGoiY);
+
                             sizeInput.focus();
                             sizeInput.select?.();
+
                         })
                         .catch((err) => {
                             console.error("Gợi ý size từ hóa đơn nhân viên lỗi:", err);
