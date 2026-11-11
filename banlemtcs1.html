@@ -953,12 +953,13 @@
                             <label>Chiết khấu <input id="chietkhau" /></label>
                             <label>Tổng KM <input id="tongkm" readonly /></label>
                             <label>Mặt hàng <input id="mathang" readonly /></label>
-                            <label>Tổng SL <input id="tongsl" readonly /></label>
-                            <!-- Photo confirmation: staff always required; Admin may disable after server check -->
-                            <div id="ht-check-image-admin-area" style="display:none;align-items:center;gap:5px;font-size:12px;white-space:nowrap;">
-                                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">Xác nhận ảnh <input id="ht-check-image-required" type="checkbox" checked style="width:18px;height:18px;" /></label>
+                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;">
+                                <label style="margin:0;display:flex;align-items:center;gap:6px;white-space:nowrap;">Tổng SL <input id="tongsl" readonly style="width:120px;" /></label>
+                                <!-- Photo confirmation: NV luôn bắt buộc; chỉ Admin mới nhìn thấy và được tắt -->
+                                <div id="ht-check-image-admin-area" style="display:none;align-items:center;gap:5px;font-size:12px;white-space:nowrap;">
+                                    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;">Xác nhận ảnh <input id="ht-check-image-required" type="checkbox" checked style="width:18px;height:18px;" /></label>
+                                </div>
                             </div>
-                            <span id="ht-check-image-progress" style="font-size:12px;font-weight:bold;white-space:nowrap;">Ảnh: 0/0</span>
 
                             <div id="popupTimKH"
                                 style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
