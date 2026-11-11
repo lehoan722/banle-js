@@ -27,11 +27,16 @@
     #bangketqua tbody tr.ht-img-ok>td:nth-child(8){box-shadow:inset 0 -3px #16803c}
     #bangketqua tbody tr.ht-img-ok>td:nth-child(8)::after{content:' ✓';color:#12813a;font-weight:800}
     #bangketqua tbody tr.ht-img-missing>td:nth-child(8){box-shadow:inset 0 -3px #db8a17}
-    #ht-img-overlay{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.77);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}
-    #ht-img-dialog{background:white;color:#111;border-radius:12px;padding:12px;max-width:min(620px,95vw);max-height:95vh;width:100%;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
-    #ht-img-clickarea{border:3px solid #12813a;background:#f7f8f9;min-height:220px;max-height:65vh;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:auto;border-radius:8px;font-weight:700}
-    #ht-img-clickarea img{max-height:55vh;max-width:100%;object-fit:contain}
-    #ht-img-dialog button{cursor:pointer;padding:9px;font-size:15px}
+    /* Giao diện xác nhận chiếm toàn bộ viewport để quan sát rõ qua camera giám sát. */
+    #ht-img-overlay{position:fixed;inset:0;z-index:2147483000;background:#111;display:flex;align-items:stretch;justify-content:stretch;padding:0;box-sizing:border-box}
+    #ht-img-dialog{background:#101010;color:white;border-radius:0;padding:8px 12px;max-width:none;max-height:none;width:100vw;height:100vh;height:100dvh;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;overflow:hidden}
+    #ht-img-title{font-size:clamp(18px,2vw,30px);font-weight:800;line-height:1.2;text-align:center;flex:0 0 auto;white-space:normal}
+    #ht-img-clickarea{border:3px solid #16a34a;background:#242424;min-height:0;max-height:none;flex:1 1 auto;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;border-radius:4px;font-weight:700;box-sizing:border-box}
+    #ht-img-clickarea img{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain}
+    #ht-img-clickarea div{font-size:clamp(26px,5vw,68px);text-align:center}
+    #ht-img-hint{color:#ffdddd;font-size:clamp(13px,1.4vw,19px);text-align:center;flex:0 0 auto}
+    #ht-img-dialog button{cursor:pointer;padding:10px;font-size:clamp(15px,1.5vw,20px);font-weight:700;flex:0 0 auto;min-height:44px}
+    @media(max-height:550px){#ht-img-dialog{padding:4px 8px;gap:3px}#ht-img-dialog button{min-height:36px;padding:4px}}
   `;
   document.head.appendChild(style);
 
@@ -85,10 +90,10 @@
     const token = popupToken;
     const overlay = document.createElement('div'); overlay.id='ht-img-overlay';
     const dialog = document.createElement('div'); dialog.id='ht-img-dialog';
-    const title = document.createElement('div'); title.style.cssText='font-size:17px;font-weight:700'; title.textContent=`Kiểm tra ảnh: ${masp} | size ${sz}`;
+    const title = document.createElement('div'); title.id='ht-img-title'; title.textContent=`Kiểm tra ảnh: ${masp} | size ${sz}`;
     const clickArea = document.createElement('div'); clickArea.id='ht-img-clickarea'; clickArea.setAttribute('role','button'); clickArea.tabIndex=0;
     const status = document.createElement('div'); status.textContent='Đang tải ảnh...'; clickArea.appendChild(status);
-    const hint=document.createElement('div');hint.style.cssText='color:#b42318;font-size:14px;text-align:center';hint.textContent='Chỉ bấm vào ẢNH / NO IMAGE khi đúng sản phẩm. Ảnh sai: đóng cửa sổ và sửa dòng.';
+    const hint=document.createElement('div');hint.id='ht-img-hint';hint.textContent='Chỉ bấm vào ẢNH / NO IMAGE khi đúng sản phẩm. Ảnh sai: đóng cửa sổ và sửa dòng.';
     const close=document.createElement('button');close.type='button';close.textContent='Ảnh không đúng – Đóng để sửa';
     close.addEventListener('click', () => {
       // Anh bi xac nhan sai: thu hoi ca dau tick xanh da co truoc do cua dung dong.
@@ -98,7 +103,7 @@
     });
     dialog.append(title,clickArea,hint,close);overlay.appendChild(dialog);document.body.appendChild(overlay);popup=overlay;
     let ready=false;
-    const showMissing=()=>{if(token!==popupToken)return;ready=true;clickArea.replaceChildren();const no=document.createElement('div');no.textContent='NO IMAGE';no.style.cssText='color:#c40000;font-size:38px;text-align:center';clickArea.append(no);};
+    const showMissing=()=>{if(token!==popupToken)return;ready=true;clickArea.replaceChildren();const no=document.createElement('div');no.textContent='NO IMAGE';no.style.cssText='color:#ff5656;font-weight:800;text-align:center';clickArea.append(no);};
     const img=new Image();
     img.onload=()=>{if(token!==popupToken)return;ready=true;clickArea.replaceChildren(img);};
     img.onerror=showMissing;
@@ -151,19 +156,10 @@
   lastRows=new Set(rows());
   observer.observe(tbody,{childList:true,subtree:true});
 
-  // Hoa don cu dang XEM / SUA: khong bat buoc kiem tra anh.
-  // Chi hoa don MOI moi bat buoc xac nhan tung dong truoc khi luu.
-  function isOldInvoiceViewOrEdit() {
-    const state = String(document.querySelector('#hd_state')?.value || '').trim().toLowerCase();
-    return state === 'xem' || state === 'sua';
-  }
-
   // Chặn ngay trong capturing phase trước mọi onclick + F2 (F2 gọi .click()).
   // Module lưu gốc hoàn toàn không thay đổi.
   save.addEventListener('click',e=>{
     syncInvoice();
-    // Không chặn lưu/sửa hóa đơn cũ, kể cả chưa từng kiểm tra ảnh.
-    if (isOldInvoiceViewOrEdit()) return;
     if(!adminVerified)toggle.checked=false;
     if(adminVerified&&toggle.checked)return;
     const {yes,total,first}=countAndPaint();
