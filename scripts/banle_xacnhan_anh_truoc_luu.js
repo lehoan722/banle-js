@@ -151,10 +151,19 @@
   lastRows=new Set(rows());
   observer.observe(tbody,{childList:true,subtree:true});
 
+  // Hoa don cu dang XEM / SUA: khong bat buoc kiem tra anh.
+  // Chi hoa don MOI moi bat buoc xac nhan tung dong truoc khi luu.
+  function isOldInvoiceViewOrEdit() {
+    const state = String(document.querySelector('#hd_state')?.value || '').trim().toLowerCase();
+    return state === 'xem' || state === 'sua';
+  }
+
   // Chặn ngay trong capturing phase trước mọi onclick + F2 (F2 gọi .click()).
   // Module lưu gốc hoàn toàn không thay đổi.
   save.addEventListener('click',e=>{
     syncInvoice();
+    // Không chặn lưu/sửa hóa đơn cũ, kể cả chưa từng kiểm tra ảnh.
+    if (isOldInvoiceViewOrEdit()) return;
     if(!adminVerified)toggle.checked=false;
     if(adminVerified&&toggle.checked)return;
     const {yes,total,first}=countAndPaint();
