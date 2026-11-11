@@ -1254,11 +1254,19 @@
         });
     </script>
 
+    <!-- Layer xac nhan anh BAN NHAN VIEN: khong can checkbox, than thien dien thoai -->
+    <script src="scripts/bannv_xacnhan_anh_truoc_luu.js?v=20261111nv1"></script>
+
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
         // ✅ Lưu xong chỉ báo thành công, không hỏi/in/xem hóa đơn nữa
         async function luuHoaDonNVKhongIn(context) {
+            // Chan truoc KHI goi dich vu luu: ca nut Luu va phim F2.
+            if (!window.BANNV_PHOTO_GUARD?.checkBeforeSave?.()) {
+                if (!window.BANNV_PHOTO_GUARD) alert('Module xac nhan anh chua tai. Vui long tai lai trang.');
+                return { ok:false, code:'PHOTO_NOT_CONFIRMED' };
+            }
             const oldConfirm = window.confirm;
             const oldPrint = window.print;
             const oldOpen = window.open;
