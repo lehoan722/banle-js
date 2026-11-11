@@ -35,7 +35,7 @@ export function createUrgentTable(element,rows,section,{isAdmin,currentCoso,stat
   const canMove=section==='canmove';
   const inputFilter={headerFilter:'input',headerFilterPlaceholder:'Tìm...',headerFilterFunc:'like',headerFilterLiveFilterDelay:250};
   const textColumn=(title,field,width=105,extra={})=>({title,field,width,headerSort:true,...inputFilter,...extra});
-  const checkboxCol=(title,type,ids)=>({title,field:`${type}_ui`,width:60,hozAlign:'center',headerSort:false,
+  const checkboxCol=(title,type,ids)=>({title,field:`${type}_ui`,width:34,minWidth:32,hozAlign:'center',headerSort:false,
     formatter:cell=>{ const r=cell.getRow().getData();const ch=document.createElement('input');ch.type='checkbox';
       ch.className=type==='delete'?'dhkhan-delete-check':'dhkhan-move';ch.dataset.id=r.id;ch.checked=ids.has(Number(r.id));
       ch.disabled=type==='delete'?!isAdmin:!(canMove&&effectiveStatus(r)==='moi');
@@ -44,27 +44,27 @@ export function createUrgentTable(element,rows,section,{isAdmin,currentCoso,stat
     }});
   const columns=[
     checkboxCol('Xóa','delete',deleteIds),checkboxCol('Chuyển','move',moveIds),
-    textColumn('Mã sản phẩm','masp',185,{frozen:true,formatter:cell=>`<span style="color:#9b1c1c;font-weight:800;text-decoration:underline;cursor:pointer">${escapeHtml(cell.getValue())}</span>`,cellClick:(e,cell)=>onProduct(cell.getRow().getData())}),
-    {title:'SL',field:'soluong',width:65,hozAlign:'center',headerFilter:'input'},
-    textColumn('Size','size',74),textColumn('Hướng','huong_chuyen',85),
-    textColumn('NV đặt','manv_dat',110),
-    textColumn('Giờ đặt','gio_dat_hienthi',132),
-    textColumn('NV thực hiện','manv_thuc_hien',122),
-    textColumn('Giờ thực hiện','gio_thuc_hien_hienthi',132),
-    textColumn('Giao ca bởi','giao_ca_by',110),
-    textColumn('Giờ giao ca','gio_giao_ca_hienthi',130),
-    textColumn('Ghi chú','ghichu_dat',190,{editor:canMove?'input':false,cellEdited:cell=>onNote(cell.getRow().getData(),String(cell.getValue()||''))}),
-    {title:'Trạng thái',field:'trang_thai_hienthi',width:138,
+    textColumn('Mã sản phẩm','masp',180,{frozen:true,formatter:cell=>`<span style="color:#9b1c1c;font-weight:800;text-decoration:underline;cursor:pointer">${escapeHtml(cell.getValue())}</span>`,cellClick:(e,cell)=>onProduct(cell.getRow().getData())}),
+    {title:'SL',field:'soluong',width:52,hozAlign:'center',headerFilter:'input'},
+    textColumn('Size','size',58),textColumn('Hướng','huong_chuyen',64),
+    textColumn('NV đặt','manv_dat',88),
+    textColumn('Giờ đặt','gio_dat_hienthi',95),
+    textColumn('NV thực hiện','manv_thuc_hien',104),
+    textColumn('Giờ thực hiện','gio_thuc_hien_hienthi',95),
+    textColumn('Giao ca bởi','giao_ca_by',86),
+    textColumn('Giờ giao ca','gio_giao_ca_hienthi',93),
+    textColumn('Ghi chú','ghichu_dat',160,{editor:canMove?'input':false,cellEdited:cell=>onNote(cell.getRow().getData(),String(cell.getValue()||''))}),
+    {title:'Trạng thái',field:'trang_thai_hienthi',width:150,minWidth:142,
       headerFilter:'list',headerFilterParams:{values:{'':'Tất cả','moi':'Mới','giao_ca':'Giao ca','da_chuyen':'Đã chuyển','het':'Hết','huy':'Hủy'},clearable:true},
       formatter:cell=>{const r=cell.getRow().getData();const select=document.createElement('select');select.className='dhkhan-status-select';select.dataset.id=r.id;
-        select.style.cssText='width:100%;font-size:12px;';select.disabled=!canMove;
+        select.style.cssText='width:100%;min-width:0;font-size:12px;box-sizing:border-box;';select.disabled=!canMove;
         const real=effectiveStatus(r);select.innerHTML=statusOptions(real);
         select.addEventListener('click',e=>e.stopPropagation());
         select.addEventListener('change',()=>onStatus(r,select.value,select,section));return select;
       }}
   ];
   const table=new window.Tabulator(element,{
-    index:'id',data:rows,layout:'fitDataStretch',height:'min(62vh,650px)',
+    index:'id',data:rows,layout:'fitColumns',height:'min(62vh,650px)',
     columns,placeholder:'Không có dữ liệu',pagination:true,paginationSize:50,
     movableColumns:true,resizableColumns:true,
     selectableRows:true,selectableRange:true,clipboard:"copy",clipboardCopyRowRange:'active',
@@ -85,4 +85,53 @@ export function copyUrgentVisible(section) {
   const table=instances.get(section);
   if(!table) return false;
   table.copyToClipboard('active');return true;
+}
+
+// Cập nhật dữ liệu TRÊN bảng đang mở: không hủy popup, bộ lọc,
+// vị trí cuộn, trang hiện tại hay ô trạng thái đang được chọn.
+export function hasUrgentTables() {
+  return instances.has('canmove') && instances.has('onlyview');
+}
+export async function updateUrgentTables(canMove,onlyView) {
+  if(!hasUrgentTables()) return false;
+  for(const [section, incoming] of [['canmove',canMove],['onlyview',onlyView]]) {
+    const table=instances.get(section);
+    if(!table) return false;
+    const nextIds=new Set(incoming.map(r=>String(r.id)));
+    const oldRows=table.getData();
+    const sameIds=oldRows.length===incoming.length && oldRows.every(r=>nextIds.has(String(r.id)));
+    const holder=table.element;
+    const scrollHolder=holder?.querySelector('.tabulator-tableholder');
+    const left=scrollHolder?.scrollLeft ?? 0;
+    const top=scrollHolder?.scrollTop ?? 0;
+    const active=document.activeElement;
+    const activeFilter=active?.closest?.('.tabulator-header-filter');
+    const activeField=activeFilter?.closest?.('.tabulator-col')?.getAttribute('tabulator-field')||null;
+    const caret=active?.selectionStart;
+    try {
+      if(sameIds) await table.updateData(incoming);
+      else await table.replaceData(incoming);
+    } catch(e) {
+      console.warn('[DHKhan] Cập nhật Tabulator tại chỗ lỗi:',e);
+      return false;
+    }
+    if(scrollHolder){ scrollHolder.scrollLeft=left;scrollHolder.scrollTop=top; }
+    // Nếu nhân viên đang nhập từ khóa lọc, giữ con trỏ ở chính ô đó.
+    if(activeField && active?.isConnected){
+      try {active.focus({preventScroll:true}); if(Number.isInteger(caret))active.setSelectionRange(caret,caret);}catch(_){}
+    }
+  }
+  return true;
+}
+
+// Xóa GIÁ TRỊ của mọi ô lọc đang nhập, không phá bảng.
+export function clearUrgentFilters() {
+  tableStates.clear();
+  for (const table of instances.values()) {
+    try {
+      table.clearHeaderFilter();
+      table.clearFilter();
+      table.clearSort();
+    } catch(e) {console.warn('[DHKhan] Xóa bộ lọc lỗi:',e);}
+  }
 }
