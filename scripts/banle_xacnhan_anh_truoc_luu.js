@@ -10,8 +10,7 @@
   const save = document.querySelector('#btn-luu');
   const toggle = document.querySelector('#ht-check-image-required');
   const adminArea = document.querySelector('#ht-check-image-admin-area');
-  const progress = document.querySelector('#ht-check-image-progress');
-  if (!table || !tbody || !save || !toggle || !adminArea || !progress) return;
+  if (!table || !tbody || !save || !toggle || !adminArea) return;
 
   const BASE = 'https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
   const approvals = new Map();
@@ -72,8 +71,6 @@
     const rr = rows();
     let yes = 0;
     rr.forEach(tr=>{const done=isApproved(tr); if(done)yes++; tr.classList.toggle('ht-img-ok',done); tr.classList.toggle('ht-img-missing',!done); tr.cells[7].title=done?'Ảnh đã xác nhận':'Nhấn Thành tiền để kiểm tra ảnh';});
-    progress.textContent = `Ảnh: ${yes}/${rr.length}`;
-    progress.style.color = yes===rr.length ? '#12813a' : '#b42318';
     return {yes,total:rr.length,first:rr.find(tr=>!isApproved(tr))};
   }
 
@@ -122,7 +119,7 @@
     authPending=true;
     let ok=false;
     try{if(window.supabase?.rpc){const {data,error}=await window.supabase.rpc('is_admin');ok=!error&&data===true;}}catch(_){}
-    adminVerified=ok;adminArea.style.display=ok?'flex':'none';
+    adminVerified=ok;adminArea.style.display=ok?'inline-flex':'none';
     if(!ok)toggle.checked=true;
     authPending=false;
   }
@@ -168,6 +165,8 @@
   window.addEventListener('focus',refreshAdmin);
   window.addEventListener('storage',refreshAdmin);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAdmin();});
-  // Initial only: admin control hidden until verified on server.
-  adminArea.style.display='none';toggle.checked=true;syncInvoice();countAndPaint();refreshAdmin();
+  // Hiển thị checkbox ngay nếu đã có gợi ý admin từ phiên đăng nhập; sau đó xác thực lại bằng RPC.
+  const adminHint = String(localStorage.getItem('is_admin') || '').toLowerCase() === 'true';
+  adminArea.style.display = adminHint ? 'inline-flex' : 'none';
+  toggle.checked=true;syncInvoice();countAndPaint();refreshAdmin();
 })();
