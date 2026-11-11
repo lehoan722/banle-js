@@ -1,6 +1,6 @@
 /* HOANTUYET - Layer kiem tra anh tung dong truoc khi luu hoa don CS1/CS2.
  * Chi thao tac UI; khong sua hoadon.js, bangketqua.js, Supabase/RPC.
- * NV: bat buoc, an checkbox. Admin (xac thuc RPC is_admin): co the tat.
+ * NV: bat buoc, an checkbox. Admin: tich "Bo XN anh" moi bo qua; mac dinh khong tich.
  */
 (() => {
   'use strict';
@@ -47,7 +47,7 @@
     invoiceIdentity = now;
     approvals.clear();
     lastRows = new Set();
-    toggle.checked = true; // moi hoa don phai bat lai mac dinh
+    toggle.checked = false; // Hoa don moi: mac dinh BAT BUOC xac nhan anh (o BO XN khong tich)
     closePopup();
   }
 
@@ -90,7 +90,12 @@
     const status = document.createElement('div'); status.textContent='Đang tải ảnh...'; clickArea.appendChild(status);
     const hint=document.createElement('div');hint.style.cssText='color:#b42318;font-size:14px;text-align:center';hint.textContent='Chỉ bấm vào ẢNH / NO IMAGE khi đúng sản phẩm. Ảnh sai: đóng cửa sổ và sửa dòng.';
     const close=document.createElement('button');close.type='button';close.textContent='Ảnh không đúng – Đóng để sửa';
-    close.addEventListener('click',closePopup);
+    close.addEventListener('click', () => {
+      // Anh bi xac nhan sai: thu hoi ca dau tick xanh da co truoc do cua dung dong.
+      approvals.delete(key);
+      closePopup();
+      countAndPaint();
+    });
     dialog.append(title,clickArea,hint,close);overlay.appendChild(dialog);document.body.appendChild(overlay);popup=overlay;
     let ready=false;
     const showMissing=()=>{if(token!==popupToken)return;ready=true;clickArea.replaceChildren();const no=document.createElement('div');no.textContent='NO IMAGE';no.style.cssText='color:#c40000;font-size:38px;text-align:center';clickArea.append(no);};
@@ -120,10 +125,10 @@
     let ok=false;
     try{if(window.supabase?.rpc){const {data,error}=await window.supabase.rpc('is_admin');ok=!error&&data===true;}}catch(_){}
     adminVerified=ok;adminArea.style.display=ok?'flex':'none';
-    if(!ok)toggle.checked=true;
+    if(!ok)toggle.checked=false;
     authPending=false;
   }
-  toggle.addEventListener('change',()=>{if(!adminVerified){toggle.checked=true;alert('Chỉ Admin mới được tắt xác nhận ảnh.');}});
+  toggle.addEventListener('change',()=>{if(!adminVerified){toggle.checked=false;alert('Chỉ Admin mới được bỏ xác nhận ảnh.');}});
   tbody.addEventListener('click',e=>{
     const td=e.target.closest('td');
     if(!td||td.cellIndex!==7)return;
@@ -150,8 +155,8 @@
   // Module lưu gốc hoàn toàn không thay đổi.
   save.addEventListener('click',e=>{
     syncInvoice();
-    if(!adminVerified)toggle.checked=true;
-    if(adminVerified&&!toggle.checked)return;
+    if(!adminVerified)toggle.checked=false;
+    if(adminVerified&&toggle.checked)return;
     const {yes,total,first}=countAndPaint();
     if(total===0)return; // Luồng lưu cũ tự xử lý hóa đơn rỗng.
     if(yes===total)return;
@@ -168,7 +173,7 @@
   // Hiển thị checkbox ngay nếu đã có gợi ý admin từ phiên đăng nhập; sau đó xác thực lại bằng RPC.
   const adminHint = String(localStorage.getItem('is_admin') || '').toLowerCase() === 'true';
   adminArea.style.display = adminHint ? 'flex' : 'none';
-  toggle.checked=true;syncInvoice();countAndPaint();refreshAdmin();
+  toggle.checked=false;syncInvoice();countAndPaint();refreshAdmin();
   // Trong trường hợp đăng nhập sau khi trang tải, theo dõi gợi ý quyền trong ít giây đầu.
   let lastAdminHint = adminHint;
   let initChecks = 0;
@@ -179,7 +184,7 @@
     try { hint = localStorage.getItem('is_admin') === 'true'; } catch (_) {}
     if (hint !== lastAdminHint) {
       lastAdminHint = hint;
-      if (!hint) { adminVerified = false; adminArea.style.display = 'none'; toggle.checked = true; }
+      if (!hint) { adminVerified = false; adminArea.style.display = 'none'; toggle.checked = false; }
       else if (!adminVerified) adminArea.style.display = 'flex';
       refreshAdmin();
     } else if (!attemptedAfterClientReady && window.supabase?.rpc) {
