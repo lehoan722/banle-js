@@ -51,8 +51,6 @@ export function createUrgentTable(element,rows,section,{isAdmin,currentCoso,stat
     textColumn('Giờ đặt','gio_dat_hienthi',95),
     textColumn('NV thực hiện','manv_thuc_hien',104),
     textColumn('Giờ thực hiện','gio_thuc_hien_hienthi',95),
-    textColumn('Giao ca bởi','giao_ca_by',86),
-    textColumn('Giờ giao ca','gio_giao_ca_hienthi',93),
     textColumn('Ghi chú','ghichu_dat',160,{editor:canMove?'input':false,cellEdited:cell=>onNote(cell.getRow().getData(),String(cell.getValue()||''))}),
     {title:'Trạng thái',field:'trang_thai_hienthi',width:150,minWidth:142,
       headerFilter:'list',headerFilterParams:{values:{'':'Tất cả','moi':'Mới','giao_ca':'Giao ca','da_chuyen':'Đã chuyển','het':'Hết','huy':'Hủy'},clearable:true},
