@@ -1,9 +1,21 @@
 // HOANTUYET ONLINE V1 - doc lap, su dung AuthModule hien co.
 // Dung cung sessionStorage va Supabase client voi login.html; tranh vong lap dang nhap.
-import {onlineSB as sb,onlineVerify,onlineLoginUrl,onlineLogout} from './online_identity_v11.js';
+import {getSupabaseClient,logoutAndClear} from './authModulemoi.js';
+const sb=getSupabaseClient();
 const $=id=>document.getElementById(id);
 const IMG_BASE='https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
 let items=[], cartId=null, shareToken=null, busy=false;
+
+async function onlineAPI(action,args={}){
+ const {data:{session}}=await sb.auth.getSession();
+ const headers={'Content-Type':'application/json'};
+ if(session?.access_token)headers.Authorization='Bearer '+session.access_token;
+ const res=await fetch('/api/online/session',{method:'POST',headers,credentials:'same-origin',body:JSON.stringify({action,args})});
+ const body=await res.json().catch(()=>({}));
+ if(!res.ok)throw new Error(body.error||`Lỗi server ${res.status}`);
+ return body.data;
+}
+
 const fmt=n=>Number(n||0).toLocaleString('vi-VN')+' đ';
 
 // Popup anh lon dung chung cho anh san pham trong gio.
@@ -109,16 +121,15 @@ $('bulkAdd').onclick=()=>run(async()=>{
 $('clear').onclick=()=>{if(items.length&&!confirm('Xóa danh sách đang soạn trên màn hình? Giỏ đã lưu vẫn còn.'))return;items=[];cartId=null;shareToken=null;$('url').value='';render();};
 async function save(){
   if(!items.length)throw new Error('Giỏ chưa có sản phẩm.');
-  const {data,error}=await sb.rpc('online_v1_luu_gio',{
+  const data=await onlineAPI('cart_save',{
     p_id:cartId,p_tieu_de:$('title').value,p_kenh:$('channel').value,
     p_diadiem:$('branch').value,p_items:getJsonItems()
-  });if(error)throw new Error(error.message);
+  });
   cartId=data;shareToken=null;$('url').value='';say('Đã lưu giỏ thành công.');await loadHistory();
 }
 $('save').onclick=()=>run(save);
 $('share').onclick=()=>run(async()=>{
-  await save();const {data,error}=await sb.rpc('online_v1_chia_se',{p_id:cartId});
-  if(error)throw new Error(error.message);
+  await save();const data=await onlineAPI('cart_share',{id:cartId});
   shareToken=data;
   $('url').value=new URL('/hoantuyet_gio_tuvan.html?t='+encodeURIComponent(shareToken),location.origin).href;
   say('Đã tạo link 7 ngày. Copy link gửi Messenger/Zalo.');await loadHistory();
@@ -126,8 +137,8 @@ $('share').onclick=()=>run(async()=>{
 $('revoke').onclick=()=>run(async()=>{
   if(!cartId)throw new Error('Chưa mở giỏ đã lưu.');
   if(!confirm('Thu hồi link đang chia sẻ của giỏ này?'))return;
-  const {data,error}=await sb.rpc('online_v1_thu_hoi',{p_id:cartId});
-  if(error||!data)throw new Error(error?.message||'Không thu hồi được.');
+  const data=await onlineAPI('cart_revoke',{id:cartId});
+  if(!data)throw new Error('Không thu hồi được.');
   $('url').value='';shareToken=null;say('Đã thu hồi link.');await loadHistory();
 });
 async function copyText(s){if(!s){say('Chưa có nội dung để sao chép.',true);return;}
@@ -137,8 +148,7 @@ $('copy').onclick=()=>run(()=>copyText('Shop Hoàn Tuyết xin gửi các mẫu 
   items.map((x,i)=>`${i+1}. ${x.tensp||x.masp} | ${x.masp} | ${fmt(x.giale)}${x.size?' | Size '+x.size:''}`).join('\n')+
   ($('url').value?'\nAlbum: '+$('url').value:'')+'\nGiá và size sẽ được xác nhận lại khi đặt mua.'));
 async function loadHistory(){
-  const {data,error}=await sb.from('online_gio_anh').select('id,tieu_de,kenh,trang_thai,created_at,share_token,share_expires_at').order('updated_at',{ascending:false}).limit(100);
-  if(error)throw new Error(error.message);
+  const data=await onlineAPI('cart_list');
   const body=$('history');body.replaceChildren();
   for(const x of data||[]){const tr=document.createElement('tr');
     for(const txt of [new Date(x.created_at).toLocaleString('vi-VN'),x.tieu_de,x.kenh,x.trang_thai]){
@@ -149,8 +159,8 @@ async function loadHistory(){
   }
 }
 async function openCart(x){
-  const {data,error}=await sb.from('online_gio_anh_ct').select('masp,tensp,size,gia_bao,ghichu').eq('gio_id',x.id).order('stt');
-  if(error)throw new Error(error.message);
+  const detail=await onlineAPI('cart_detail',{id:x.id});
+  const data=detail.items;
   cartId=x.id;shareToken=x.share_token;$('title').value=x.tieu_de;$('channel').value=x.kenh;
   items=(data||[]).map(p=>({...p,giale:p.gia_bao,ton_sizes:{}}));
   $('url').value=(shareToken&&new Date(x.share_expires_at)>new Date())?
@@ -161,15 +171,15 @@ $('reload').onclick=()=>run(loadHistory);
 async function start(){
   try{
     // Cung bo nho phien voi trang login (authModulemoi.js); dung getSession de tranh duoc session tu tab khac.
-    const user=await onlineVerify();
-    if(!user){location.replace(onlineLoginUrl());return;}
-    $('online-account').textContent=user.email||user.id.slice(0,8);
-    $('logout-online').onclick=async()=>{await onlineLogout();location.replace(onlineLoginUrl())};
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token){location.replace('/login.html?redirect='+encodeURIComponent(location.pathname));return;}
+    const user=await onlineAPI('identity');
+    $('online-account').textContent=user.manv||user.name||'NV';
+    $('logout-online').onclick=async()=>{await logoutAndClear();location.replace('/login.html?redirect='+encodeURIComponent(location.pathname))};
     $('branch').value='cs1';
     $('loading').hidden=true;$('app').hidden=false;await loadHistory();
     const target=new URLSearchParams(location.search).get('gio');
-    if(target){const {data,error}=await sb.from('online_gio_anh').select('id,tieu_de,kenh,diadiem,trang_thai,created_at,updated_at,share_token,share_expires_at').eq('id',target).maybeSingle();
-      if(error||!data)throw new Error('Không tìm thấy giỏ cần sửa hoặc không thuộc quyền sở hữu của tài khoản Online này.');
+    if(target){const data=await onlineAPI('cart_detail',{id:target});
       $('branch').value=data.diadiem||'cs1';await openCart(data);
     }
   }catch(e){$('loading').textContent='Không thể mở Online V1: '+(e.message||e);console.error(e);}
