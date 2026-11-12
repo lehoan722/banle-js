@@ -1,0 +1,44 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Giỏ tư vấn - Hoàn Tuyết</title><style>body{font-family:Arial,sans-serif;margin:0;color:#1e293b;background:#f3f5f7}header{background:#153f6c;color:#fff;padding:20px;text-align:center}main{max-width:1080px;margin:auto;padding:15px}h1{font-size:21px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:15px}.card{padding:12px;background:white;border-radius:12px;box-shadow:0 2px 7px #ddd}.card img{width:100%;height:300px;object-fit:contain}.price{font-size:19px;color:#a21b28;font-weight:bold}.desc{color:#526277}#status{font-weight:bold;text-align:center;margin:35px}
+.card img{cursor:zoom-in}
+body.album-modal-open{overflow:hidden}
+#album-image-viewer[hidden]{display:none!important}
+#album-image-viewer{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px}
+#album-image-viewer img{max-width:96vw;max-height:calc(100dvh - 105px);height:auto;width:auto;object-fit:contain}
+.album-image-top{width:100%;display:flex;align-items:center;justify-content:space-between;color:white;font-size:17px;font-weight:bold;gap:10px}
+#album-image-close{border:0;border-radius:8px;background:#fff;color:#111;font-size:18px;padding:12px;cursor:pointer}
+</style></head><body><header><h2>SHOP HOÀN TUYẾT</h2><div>Album sản phẩm được nhân viên gửi tư vấn</div></header><main><h1 id="title"></h1><p class="desc">Giá trong album là giá khi nhân viên tạo giỏ; vui lòng xác nhận lại giá, size và tình trạng hàng trước khi mua.</p><p id="status">Đang tải album…</p><div class="grid" id="items"></div></main>
+<div id="album-image-viewer" role="dialog" aria-modal="true" aria-label="Xem ảnh lớn" hidden>
+  <div class="album-image-top"><span id="album-image-caption"></span><button id="album-image-close" type="button">✕ Đóng</button></div>
+  <img id="album-image-full" alt="Ảnh sản phẩm lớn" />
+</div>
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+// Public anon key, khong phai service_role. Chinh duong dan/anon key dang dung trong AuthModule.
+const sb=createClient('https://rddjrmbyftlcvrgzlyby.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkZGpybWJ5ZnRsY3ZyZ3pseWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3NjU4MDQsImV4cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+const viewer=document.getElementById('album-image-viewer');
+const fullImg=document.getElementById('album-image-full');
+function closeLargeImage(){viewer.hidden=true;fullImg.removeAttribute('src');document.body.classList.remove('album-modal-open');}
+document.getElementById('album-image-close').addEventListener('click',closeLargeImage);
+viewer.addEventListener('click',e=>{if(e.target===viewer)closeLargeImage();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!viewer.hidden)closeLargeImage();});
+function showLargeImage(src,title){fullImg.src=src;fullImg.alt=title;document.getElementById('album-image-caption').textContent=title;viewer.hidden=false;document.body.classList.add('album-modal-open');document.getElementById('album-image-close').focus();}
+const status=document.getElementById('status');const id=new URLSearchParams(location.search).get('t');
+if(!id||!/^[a-f0-9-]{36}$/i.test(id)){status.textContent='Link không hợp lệ.';}else{
+  const {data,error}=await sb.rpc('online_v1_xem_gio',{p_token:id});
+  if(error||!data){status.textContent='Album không tồn tại, đã bị thu hồi hoặc đã hết hạn.';}else{
+    status.hidden=true;document.getElementById('title').textContent=data.tieu_de||'Giỏ tư vấn';
+    for(const p of (data.items||[])){
+      const card=document.createElement('article');card.className='card';
+      const img=document.createElement('img');img.loading='lazy';img.alt=p.tensp||p.masp;
+      img.src='https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/'+encodeURIComponent(p.masp)+'.JPG';
+      img.title='Bấm để xem ảnh lớn';img.addEventListener('click',()=>showLargeImage(img.currentSrc||img.src,p.masp+' · '+(p.tensp||''))); 
+      img.onerror=()=>{img.style.display='none';const note=document.createElement('p');note.textContent='Sản phẩm chưa có ảnh';card.prepend(note);};
+      const h=document.createElement('h3');h.textContent=p.tensp||p.masp;
+      const code=document.createElement('div');code.className='desc';code.textContent='Mã: '+p.masp+(p.size?' · Size: '+p.size:'');
+      const price=document.createElement('p');price.className='price';price.textContent=Number(p.gia_bao||0).toLocaleString('vi-VN')+' đ';
+      const note=document.createElement('p');note.className='desc';note.textContent=p.ghichu||'';
+      card.append(img,h,code,price,note);document.getElementById('items').append(card);
+    }
+  }
+}
+</script></body></html>
