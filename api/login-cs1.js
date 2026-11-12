@@ -342,6 +342,18 @@ async function xuLyQuanTriDangNhap(req, res, supabaseAdmin, body) {
   return res.status(400).json({ ok: false, error: "Hanh dong quan tri khong hop le" });
 }
 
+
+// ONLINE CRM SSO: them cookie danh tinh da xac thuc, KHONG thay doi token Warehouse.
+// Secret doc lap, khong su dung service role key lam secret.
+function issueOnlineCookie(res, employee, diadiem) {
+  const secret = process.env.ONLINE_CRM_SESSION_SECRET;
+  if (!secret || secret.length < 32) return; // fail closed: khong phat token neu thieu cau hinh
+  const now = Math.floor(Date.now() / 1000);
+  const payload = Buffer.from(JSON.stringify({v:1,manv:String(employee.manv).toUpperCase(),cs:diadiem,iat:now,exp:now+8*3600})).toString('base64url');
+  const sig = crypto.createHmac('sha256',secret).update(payload).digest('base64url');
+  res.setHeader('Set-Cookie',`ht_online_sso=${payload}.${sig}; HttpOnly; Secure; SameSite=Strict; Path=/api/online; Max-Age=28800`);
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
@@ -620,6 +632,9 @@ export default async function handler(req, res) {
       ma_yeucau,
       batdau_ms,
     });
+
+    // Sau khi kiem tra mat khau + trang thai + gioi han dang nhap thanh cong:
+    issueOnlineCookie(res, nv, diadiem);
 
     return res.status(200).json({
       ok: true,
