@@ -1,5 +1,5 @@
 // HOANTUYET ONLINE V1.1 - CRM khach can tu van; KHONG tac dong Sales Copilot / hoa don.
-import {onlineSB as sb,onlineVerify,onlineLoginUrl,onlineLogout} from './online_identity_v11.js';
+import {getSupabaseClient,getCurrentUserInfo,logoutAndClear} from './authModulemoi.js';
 const $=id=>document.getElementById(id);
 const state={rows:[],carts:[],staff:[],current:null,table:null,admin:false,uid:null};
 const channels={facebook:'Facebook',zalo:'Zalo',zalo_oa:'Zalo OA',instagram:'Instagram',dien_thoai:'Điện thoại',khac:'Khác'};
@@ -9,7 +9,16 @@ const fmtDate=s=>s?new Date(s).toLocaleString('vi-VN',{dateStyle:'short',timeSty
 const asLocal=s=>{if(!s)return '';const d=new Date(s);const two=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${two(d.getMonth()+1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`};
 function msg(text,error=false){$('message').textContent=text;$('message').className='status '+(error?'error':'ok')}
 function setPending(v){for(const id of ['save','reload'])$(id).disabled=v}
-async function rpc(name,args){const {data,error}=await sb.rpc(name,args);if(error)throw new Error(error.message);return data}
+async function rpc(name,args){
+  const sb=getSupabaseClient();
+  const {data:{session}}=await sb.auth.getSession();
+  const headers={'Content-Type':'application/json'};
+  if(session?.access_token)headers.Authorization='Bearer '+session.access_token;
+  const res=await fetch('/api/online/session',{method:'POST',headers,credentials:'same-origin',body:JSON.stringify({action:name,args:args||{}})});
+  const json=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(json.error||`Lỗi máy chủ ${res.status}`);
+  return json.data;
+}
 async function loadOptions(){
  state.carts=await rpc('online_v11_cart_choices');const cart=$('gio');cart.replaceChildren(new Option('Chưa gắn giỏ',''));
  for(const c of state.carts)cart.add(new Option(`${c.title} · ${(c.created_at||'').slice(0,16).replace('T',' ')} · ${c.item_count??'?'} SP · #${c.id.slice(0,8)} (${c.status})`,c.id));
@@ -108,13 +117,16 @@ async function copyVisible(){let data=state.table?state.table.getRows('active').
  try{await navigator.clipboard.writeText([cols.join('\t'),...lines].join('\n'));msg(`Đã copy ${data.length} dòng đang lọc.`)}catch(e){msg('Không thể copy: '+e.message,true)}
 }
 async function start(){try{
- const user=await onlineVerify();if(!user){location.replace(onlineLoginUrl());return;}state.uid=user.id;
+ const sb=getSupabaseClient();
+ const {data:{session}}=await sb.auth.getSession();
+ if(!session?.access_token){location.replace('/login.html?redirect='+encodeURIComponent(location.pathname));return;}
+ const user=await rpc('identity');state.uid=user.id;
  if(await rpc('online_v1_staff_ok')!==true)throw new Error('Tài khoản chưa được cấp quyền nhân viên hoặc Admin.');
  state.admin=await rpc('online_v11_admin_ok');await loadOptions();state.rows=await rpc('online_v11_list');
  $('loader').hidden=true;$('app').hidden=false;stats();if(await ensureTabulator())createTable();else{showFallback();msg('CDN Tabulator chưa tải được. Trang sử dụng bảng dự phòng; hãy kiểm tra mạng.',true)};
  $('crm-form').addEventListener('submit',save);$('reset').onclick=reset;$('open-cart').onclick=previewCart;$('edit-cart').onclick=editCart;$('public-cart').onclick=viewPublic;$('open-chat').onclick=openChat;
  $('reload').onclick=async()=>{setPending(true);try{await loadOptions();await reload();msg('Đã đồng bộ dữ liệu.')}catch(e){msg(e.message,true)}finally{setPending(false)}};
  $('search').addEventListener('input',paint);$('clearfilters').onclick=clearFilters;$('copyrows').onclick=copyVisible;
- $('online-account').textContent=user.email||user.id.slice(0,8);$('logout-online').onclick=async()=>{await onlineLogout();location.replace(onlineLoginUrl())};msg(`Đã xác thực Online cá nhân · ${state.admin?'Admin':'Nhân viên'}.`);
+ $('online-account').textContent=user.manv||user.name||'NV';$('logout-online').onclick=async()=>{await logoutAndClear();location.replace('/login.html?redirect='+encodeURIComponent(location.pathname))};msg(`Đã xác thực Online cá nhân · ${state.admin?'Admin':'Nhân viên'}.`);
  }catch(e){console.error(e);$('loader').textContent='Không thể mở Online CRM: '+(e.message||e);$('loader').classList.add('error')}}
 start();
