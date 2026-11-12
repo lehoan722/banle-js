@@ -72,9 +72,12 @@ async function list(client, u) {
     let q = client.from('online_crm_tuvan').select('*').order('updated_at', { ascending: false }).limit(1000);
     if (!u.admin) q = q.or(`created_by_uid.eq.${u.uid},phu_trach_uid.eq.${u.uid}`);
     const data = await rows(q); const ids = [...new Set(data.map(r => r.phu_trach_uid).filter(Boolean))]; const gids = [...new Set(data.map(r => r.gio_id).filter(Boolean))];
-    const n = ids.length ? await rows(client.from('dmnhanvien').select('user_id,manv,tennv').in('user_id', ids)) : [];
-    const a = ids.length ? await rows(client.from('admin_users').select('user_id,manv,tenadmin').in('user_id', ids)) : [];
-    const g = gids.length ? await rows(client.from('online_gio_anh').select('id,tieu_de,share_token,share_expires_at').in('id', gids)) : [];
+    // Cac truy van doc lap: thuc hien dong thoi, khong thay doi phan quyen.
+    const [n, a, g] = await Promise.all([
+        ids.length ? rows(client.from('dmnhanvien').select('user_id,manv,tennv').in('user_id', ids)) : Promise.resolve([]),
+        ids.length ? rows(client.from('admin_users').select('user_id,manv,tenadmin').in('user_id', ids)) : Promise.resolve([]),
+        gids.length ? rows(client.from('online_gio_anh').select('id,tieu_de,share_token,share_expires_at').in('id', gids)) : Promise.resolve([])
+    ]);
     const labels = new Map([...a, ...n].map(x => [x.user_id, x])); const carts = new Map(g.map(x => [x.id, x]));
     return data.map(x => ({ ...x, phu_trach: labels.get(x.phu_trach_uid)?.manv || '', ten_phu_trach: labels.get(x.phu_trach_uid)?.tennv || labels.get(x.phu_trach_uid)?.tenadmin || '', ten_gio: carts.get(x.gio_id)?.tieu_de || '', gio_token: carts.get(x.gio_id)?.share_token || null, gio_expires_at: carts.get(x.gio_id)?.share_expires_at || null }));
 }
@@ -82,7 +85,10 @@ async function choices(client, u) {
     // Chỉ lấy giỏ sở hữu theo UID đã xác minh. Giỏ Warehouse cũ không tự chuyển chủ.
     const g = await rows(client.from('online_gio_anh').select('id,tieu_de,trang_thai,created_at,updated_at').eq('owner_uid', u.uid).order('updated_at', { ascending: false }).limit(100));
     const ids = g.map(x => x.id); const c = ids.length ? await rows(client.from('online_gio_anh_ct').select('gio_id').in('gio_id', ids)) : [];
-    return g.map(x => ({ id: x.id, title: x.tieu_de, status: x.trang_thai, created_at: x.created_at, item_count: c.filter(y => y.gio_id === x.id).length }));
+    // O(n) thay vi loc lai toan bo chi tiet cho tung gio.
+    const counts = new Map();
+    for (const row of c) counts.set(row.gio_id, (counts.get(row.gio_id) || 0) + 1);
+    return g.map(x => ({ id: x.id, title: x.tieu_de, status: x.trang_thai, created_at: x.created_at, item_count: counts.get(x.id) || 0 }));
 }
 async function save(client, u, b) {
     const old = uuid(b.p_id) ? await access(client, b.p_id, u) : null;
