@@ -20,9 +20,13 @@ async function rpc(name,args){
   return json.data;
 }
 async function loadOptions(){
- state.carts=await rpc('online_v11_cart_choices');const cart=$('gio');cart.replaceChildren(new Option('Chưa gắn giỏ',''));
+ const [carts,staff]=await Promise.all([
+   rpc('online_v11_cart_choices'),
+   state.admin ? rpc('online_v11_staff_choices') : Promise.resolve([])
+ ]);
+ state.carts=carts;const cart=$('gio');cart.replaceChildren(new Option('Chưa gắn giỏ',''));
  for(const c of state.carts)cart.add(new Option(`${c.title} · ${(c.created_at||'').slice(0,16).replace('T',' ')} · ${c.item_count??'?'} SP · #${c.id.slice(0,8)} (${c.status})`,c.id));
- if(state.admin){state.staff=await rpc('online_v11_staff_choices');const target=$('phutrach');target.replaceChildren(new Option('Tôi (Admin)',''));
+ if(state.admin){state.staff=staff;const target=$('phutrach');target.replaceChildren(new Option('Tôi (Admin)',''));
   for(const p of state.staff)target.add(new Option(`${p.manv} – ${p.tennv||''}`,p.uid));
  }else{$('phutrach').disabled=true;$('phutrach').title='Chỉ Admin được phân công';}
 }
@@ -94,7 +98,7 @@ function showFallback(){const dest=$('fallback');dest.hidden=false;dest.replaceC
 async function ensureTabulator(){if(window.Tabulator)return true;return new Promise(resolve=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tabulator-tables@6.6.1/dist/js/tabulator.min.js';s.onload=()=>resolve(!!window.Tabulator);s.onerror=()=>resolve(false);document.head.append(s);})}
 const filterText={headerFilter:'input',headerFilterPlaceholder:'Tìm...',headerFilterFunc:'like',headerFilterLiveFilterDelay:250};
 function createTable(){const columns=[
- {title:'Ngày tạo',field:'created_at',width:140,formatter:cell=>fmtDate(cell.getValue()),sorter:'datetime'},
+ {title:'Ngày tạo',field:'created_at',width:140,formatter:cell=>fmtDate(cell.getValue()),sorter:'string'},
  {title:'Khách',field:'ten_khach',width:165,...filterText},
  {title:'Kênh',field:'kenh',width:110,formatter:cell=>channels[cell.getValue()]||'',headerFilter:'list',headerFilterParams:{values:{'':'Tất cả',...channels},clearable:true}},
  {title:'Liên hệ',field:'lien_he',width:135,...filterText},
@@ -120,12 +124,12 @@ async function start(){try{
  const sb=getSupabaseClient();
  const {data:{session}}=await sb.auth.getSession();
  if(!session?.access_token){location.replace('/login.html?redirect='+encodeURIComponent(location.pathname));return;}
- const user=await rpc('identity');state.uid=user.id;
- if(await rpc('online_v1_staff_ok')!==true)throw new Error('Tài khoản chưa được cấp quyền nhân viên hoặc Admin.');
- state.admin=await rpc('online_v11_admin_ok');await loadOptions();state.rows=await rpc('online_v11_list');
+ // API identity da kiem tra quyen tren server; tranh goi lai 2 API phan quyen.
+ const user=await rpc('identity');state.uid=user.id;state.admin=Boolean(user.admin);
+ const [_,rows]=await Promise.all([loadOptions(),rpc('online_v11_list')]);state.rows=rows;
  $('loader').hidden=true;$('app').hidden=false;stats();if(await ensureTabulator())createTable();else{showFallback();msg('CDN Tabulator chưa tải được. Trang sử dụng bảng dự phòng; hãy kiểm tra mạng.',true)};
  $('crm-form').addEventListener('submit',save);$('reset').onclick=reset;$('open-cart').onclick=previewCart;$('edit-cart').onclick=editCart;$('public-cart').onclick=viewPublic;$('open-chat').onclick=openChat;
- $('reload').onclick=async()=>{setPending(true);try{await loadOptions();await reload();msg('Đã đồng bộ dữ liệu.')}catch(e){msg(e.message,true)}finally{setPending(false)}};
+ $('reload').onclick=async()=>{setPending(true);try{const [_,rows]=await Promise.all([loadOptions(),rpc('online_v11_list')]);state.rows=rows;paint();msg('Đã đồng bộ dữ liệu.')}catch(e){msg(e.message,true)}finally{setPending(false)}};
  $('search').addEventListener('input',paint);$('clearfilters').onclick=clearFilters;$('copyrows').onclick=copyVisible;
  $('online-account').textContent=user.manv||user.name||'NV';$('logout-online').onclick=async()=>{await logoutAndClear();location.replace('/login.html?redirect='+encodeURIComponent(location.pathname))};msg(`Đã xác thực Online cá nhân · ${state.admin?'Admin':'Nhân viên'}.`);
  }catch(e){console.error(e);$('loader').textContent='Không thể mở Online CRM: '+(e.message||e);$('loader').classList.add('error')}}
