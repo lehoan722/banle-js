@@ -10,7 +10,7 @@ body.online-modal-open{overflow:hidden}
 #online-image-viewer img{max-width:96vw;max-height:calc(100dvh - 105px);width:auto;height:auto;object-fit:contain}
 .online-image-top{width:100%;display:flex;align-items:center;justify-content:space-between;color:white;gap:16px;font-size:16px;font-weight:bold}
 .online-image-top button{flex:0 0 auto;background:#fff;color:#222;font-size:20px;min-width:48px;min-height:46px}
-</style></head><body><header><strong>HOANTUYET ONLINE V1</strong><div>Giỏ ảnh tư vấn đa kênh · Facebook / Zalo</div></header><main>
+</style></head><body><header><strong>HOANTUYET ONLINE V1</strong><div>Giỏ ảnh tư vấn đa kênh · Facebook / Zalo</div></header><div style="padding:6px 14px;background:#e6eff8;text-align:right;font:12px Arial">Tài khoản Online: <span id="online-account"></span> <button id="logout-online" type="button" style="margin-left:12px">Thoát Online</button> <a href="/hoantuyet_online_crm_v11.html" style="margin-left:12px">CRM V1.1</a></div><main>
 <div id="loading" class="panel">Đang kiểm tra phiên đăng nhập và quyền nhân viên…</div>
 <div id="app" hidden>
 <section class="panel"><div class="line"><label>Tiêu đề giỏ <input id="title" maxlength="150" value="Giỏ tư vấn sản phẩm"/></label><label>Kênh <select id="channel"><option value="facebook">Facebook</option><option value="zalo">Zalo</option><option value="khac">Khác</option></select></label><label>Cơ sở tham khảo <select id="branch"><option value="cs1">CS1</option><option value="cs2">CS2</option></select></label></div><p class="notice">Tồn chỉ để nhân viên tham khảo, giỏ ảnh không giữ hàng hay trừ tồn. Giá gửi khách do máy chủ lấy từ danh mục khi lưu giỏ.</p></section>
@@ -23,4 +23,4 @@ body.online-modal-open{overflow:hidden}
   <div class="online-image-top"><span id="online-image-caption"></span><button id="online-image-close" type="button" aria-label="Đóng ảnh">✕ Đóng</button></div>
   <img id="online-image-full" alt="Ảnh sản phẩm lớn" />
 </div>
-<script type="module" src="./scripts/online_v1.js?v=20261112b_auth_datalist_zoom"></script></body></html>
+<script type="module" src="./scripts/online_v1.js?v=20261112_FIX1"></script></body></html>
