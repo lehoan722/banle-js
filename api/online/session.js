@@ -1,3 +1,4 @@
+import { cleanText, redactPII, summarizeProducts, makeTemplate, askGemini } from '../../lib/online_ai_helpers.js';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
 const URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -141,6 +142,75 @@ async function cartAction(client, u, action, id) {
     const updated = await rows(client.from('online_gio_anh').update({ share_token: null, share_expires_at: null, trang_thai: 'thu_hoi', updated_at: new Date().toISOString() }).eq('id', cid).select('id')); return updated.length > 0;
 }
 
+
+// V1.2: Moi hanh dong AI chay qua API SSO hien co, khong lo API key ra trinh duyet.
+async function assistantGenerate(client,u,b,withAI=false){
+ const q=cleanText(b.question,1500); if(q.length<3)throw err('Nhap cau hoi tu 3 ky tu tro len');
+ const crmId=uuid(b.crm_id),cartId=uuid(b.cart_id);
+ if(b.crm_id&&!crmId)throw err('Ma phien CRM khong hop le');
+ if(b.cart_id&&!cartId)throw err('Ma gio khong hop le');
+ let crm=null;
+ if(crmId)crm=await access(client,crmId,u);
+ if(cartId&&crm&&crm.gio_id!==cartId)throw err('Gio khong khop phien CRM',403);
+ let items=[];
+ if(cartId){const p=await preview(client,u,{p_gio_id:cartId,p_phien_id:crmId});items=p.items||[];}
+ const products=summarizeProducts(items);
+ const template=makeTemplate(q,products);
+ let ai=null,knowledge=[];
+ if(withAI){
+   // Han che chi phi moi nhan vien: toi da 30 lan AI/ngay va 5 lan/5 phut.
+   const sinceDay=new Date(Date.now()-24*3600*1000).toISOString();
+   const sinceFive=new Date(Date.now()-5*60*1000).toISOString();
+   const counts=await Promise.all([
+     client.from('online_ai_tuvan_history').select('id',{count:'exact',head:true}).eq('owner_uid',u.uid).not('ai_model','is',null).gte('created_at',sinceDay),
+     client.from('online_ai_tuvan_history').select('id',{count:'exact',head:true}).eq('owner_uid',u.uid).not('ai_model','is',null).gte('created_at',sinceFive)
+   ]);
+   if(counts.some(x=>x.error))throw err('Khong kiem tra duoc han muc AI',500);
+   if((counts[0].count||0)>=30||(counts[1].count||0)>=5)throw err('Da den han muc AI (30/ngay hoac 5/5 phut). Hay dung Tra loi nhanh.',429);
+   const known=await rows(client.from('online_ai_tuvan_history').select('final_answer,intent').eq('approved_for_knowledge',true).eq('intent',template.intent).order('approved_at',{ascending:false}).limit(3));
+   knowledge=known.map(x=>cleanText(x.final_answer,280)).filter(Boolean);
+   ai=await askGemini({question:q,products,template:template.answer,knowledge});
+ }
+ // Luu cau hoi da an du lieu lien he va ket qua, khong luu cac tuyen hoi thoai goc.
+ const record={owner_uid:u.uid,crm_id:crmId,cart_id:cartId,question_redacted:redactPII(q),product_context:products,intent:template.intent,template_answer:template.answer,ai_answer:ai?.answer||null,ai_model:ai?.model||null,ai_usage:ai?.usage||null,final_answer:ai?.answer||template.answer};
+ const {data,error}=await client.from('online_ai_tuvan_history').insert(record).select('id,created_at').single();
+ if(error)throw err('Khong luu duoc lich su AI: '+error.message,500);
+ return {id:data.id,created_at:data.created_at,template:template.answer,ai:ai?.answer||null,model:ai?.model||null,usage:ai?.usage||null,intent:template.intent,has_verified_stock:false};
+}
+async function assistantHistory(client,u,b){
+ const cid=uuid(b.crm_id);if(b.crm_id&&!cid)throw err('Ma phien khong hop le');
+ if(cid)await access(client,cid,u);
+ let query=client.from('online_ai_tuvan_history').select('id,created_at,question_redacted,intent,template_answer,ai_answer,ai_model,ai_usage,final_answer,feedback,approved_for_knowledge,owner_uid,crm_id').order('created_at',{ascending:false}).limit(40);
+ if(cid)query=query.eq('crm_id',cid);
+ // Chi nguoi tao xem lich su; admin xem lich su cua phien minh da duoc cap quyen neu co CRM id.
+ if(!u.admin||!cid)query=query.eq('owner_uid',u.uid);
+ return await rows(query);
+}
+async function assistantFeedback(client,u,b){
+ const id=uuid(b.id);if(!id)throw err('Ma lich su khong hop le');
+ const existing=await rows(client.from('online_ai_tuvan_history').select('id,owner_uid,crm_id,template_answer,ai_answer').eq('id',id).maybeSingle());
+ if(!existing)throw err('Khong tim thay lich su',404);
+ if(existing.owner_uid!==u.uid){if(!u.admin||!existing.crm_id)throw err('Khong co quyen sua',403);await access(client,existing.crm_id,u);}
+ const fb=cleanText(b.feedback,30);
+ if(!['tot','can_sua','khong_dung'].includes(fb))throw err('Danh gia khong hop le');
+ const answer=cleanText(b.final_answer,2000);
+ if(answer.length<5)throw err('Noi dung sau sua qua ngan');
+ const patch={feedback:fb,final_answer:answer,approved_for_knowledge:false,approved_by_uid:null,approved_at:null};
+ const updated=await rows(client.from('online_ai_tuvan_history').update(patch).eq('id',id).select('id'));
+ if(!updated.length)throw err('Khong ghi duoc danh gia',500);
+ return true;
+}
+async function assistantApprove(client,u,b){
+ if(!u.admin)throw err('Chi Admin duoc duyet tri thuc',403);
+ const id=uuid(b.id);if(!id)throw err('Ma lich su khong hop le');
+ const record=await rows(client.from('online_ai_tuvan_history').select('id,feedback,final_answer').eq('id',id).maybeSingle());
+ if(!record)throw err('Khong tim thay lich su',404);
+ if(b.approve===true&&(record.feedback!=='tot'||!record.final_answer))throw err('Chi duyet cau tra loi da danh gia tot');
+ const approved=b.approve===true;
+ const changed=await rows(client.from('online_ai_tuvan_history').update({approved_for_knowledge:approved,approved_by_uid:approved?u.uid:null,approved_at:approved?new Date().toISOString():null}).eq('id',id).select('id'));
+ return changed.length>0;
+}
+
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -163,6 +233,11 @@ export default async function handler(req, res) {
             case 'cart_save': data = await cartSave(client, u, req.body.args || {}); break;
             case 'cart_share': data = await cartAction(client, u, 'share', req.body.args?.id); break;
             case 'cart_revoke': data = await cartAction(client, u, 'revoke', req.body.args?.id); break;
+            case 'assist_template': data = await assistantGenerate(client,u,req.body.args||{},false); break;
+            case 'assist_ai': data = await assistantGenerate(client,u,req.body.args||{},true); break;
+            case 'assist_history': data = await assistantHistory(client,u,req.body.args||{}); break;
+            case 'assist_feedback': data = await assistantFeedback(client,u,req.body.args||{}); break;
+            case 'assist_approve': data = await assistantApprove(client,u,req.body.args||{}); break;
             default: throw err('Action khong duoc cho phep', 400);
         }
         return res.status(200).json({ data });
