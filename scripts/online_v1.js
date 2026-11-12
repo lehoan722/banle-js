@@ -1,7 +1,6 @@
 // HOANTUYET ONLINE V1 - doc lap, su dung AuthModule hien co.
 // Dung cung sessionStorage va Supabase client voi login.html; tranh vong lap dang nhap.
-import {getSupabaseClient,getCurrentUserInfo} from './authModulemoi.js';
-const sb=getSupabaseClient();
+import {onlineSB as sb,onlineVerify,onlineLoginUrl,onlineLogout} from './online_identity_v11.js';
 const $=id=>document.getElementById(id);
 const IMG_BASE='https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
 let items=[], cartId=null, shareToken=null, busy=false;
@@ -162,19 +161,17 @@ $('reload').onclick=()=>run(loadHistory);
 async function start(){
   try{
     // Cung bo nho phien voi trang login (authModulemoi.js); dung getSession de tranh duoc session tu tab khac.
-    const {data:{session},error:sessionError}=await sb.auth.getSession();
-    if(sessionError||!session?.user){
-      location.replace('/login.html?redirect='+encodeURIComponent(location.pathname+location.search));return;
-    }
-    const {data:{user},error}=await sb.auth.getUser();
-    if(error||!user){
-      // Session co nhung getUser that bai: hien loi, khong vong lap redirect.
-      throw new Error('Phiên đăng nhập không hợp lệ hoặc hết hạn. Vui lòng đăng xuất và đăng nhập lại.');
-    }
-    const check=await sb.rpc('online_v1_staff_ok');
-    if(check.error||check.data!==true)throw new Error('Tài khoản chưa được xác minh là nhân viên hoặc Admin đang hoạt động.');
-    const me=getCurrentUserInfo();$('branch').value=me.diadiem==='cs2'?'cs2':'cs1';
+    const user=await onlineVerify();
+    if(!user){location.replace(onlineLoginUrl());return;}
+    $('online-account').textContent=user.email||user.id.slice(0,8);
+    $('logout-online').onclick=async()=>{await onlineLogout();location.replace(onlineLoginUrl())};
+    $('branch').value='cs1';
     $('loading').hidden=true;$('app').hidden=false;await loadHistory();
+    const target=new URLSearchParams(location.search).get('gio');
+    if(target){const {data,error}=await sb.from('online_gio_anh').select('id,tieu_de,kenh,diadiem,trang_thai,created_at,updated_at,share_token,share_expires_at').eq('id',target).maybeSingle();
+      if(error||!data)throw new Error('Không tìm thấy giỏ cần sửa hoặc không thuộc quyền sở hữu của tài khoản Online này.');
+      $('branch').value=data.diadiem||'cs1';await openCart(data);
+    }
   }catch(e){$('loading').textContent='Không thể mở Online V1: '+(e.message||e);console.error(e);}
 }
 start();
