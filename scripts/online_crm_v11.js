@@ -1,3 +1,4 @@
+import { initOnlineAssistant } from './online_ai_v12.js';
 // HOANTUYET ONLINE V1.1 - CRM khach can tu van; KHONG tac dong Sales Copilot / hoa don.
 import {getSupabaseClient,getCurrentUserInfo,logoutAndClear} from './authModulemoi.js';
 const $=id=>document.getElementById(id);
@@ -40,7 +41,7 @@ function extract(){
 async function save(event){event.preventDefault();setPending(true);try{
  const id=await rpc('online_v11_save',extract());state.current=id;msg('Đã lưu phiên tư vấn.');await reload();
  }catch(e){console.error(e);msg(e.message,true)}finally{setPending(false)}}
-function reset(){state.current=null;$('crm-form').reset();$('form-title').textContent='1. Tạo phiên tư vấn';$('gio').value='';$('phutrach').value='';msg('Đang tạo phiên mới.');}
+function reset(){state.current=null;$('crm-form').reset();$('form-title').textContent='1. Tạo phiên tư vấn';$('gio').value='';$('phutrach').value='';msg('Đang tạo phiên mới.');document.dispatchEvent(new CustomEvent('ht-online-crm-changed'));}
 function edit(row){state.current=row.id;$('form-title').textContent='1. Sửa phiên tư vấn – '+row.ten_khach;
  $('ten').value=row.ten_khach||'';$('lienhe').value=row.lien_he||'';$('linkchat').value=row.duong_dan_chat||'';
  $('kenh').value=row.kenh;$('trangthai').value=row.trang_thai;$('nhucau').value=row.nhu_cau||'';
@@ -48,7 +49,7 @@ function edit(row){state.current=row.id;$('form-title').textContent='1. Sửa ph
  if(row.gio_id&&!Array.from($('gio').options).some(o=>o.value===row.gio_id))$('gio').add(new Option((row.ten_gio||'Giỏ nhân viên khác')+' · #'+row.gio_id.slice(0,8)+' (chỉ xem)',row.gio_id));
  $('gio').value=row.gio_id||'';
  if(state.admin){if(row.phu_trach_uid&&!Array.from($('phutrach').options).some(o=>o.value===row.phu_trach_uid))$('phutrach').add(new Option(row.phu_trach||'Tài khoản hiện tại',row.phu_trach_uid));$('phutrach').value=row.phu_trach_uid||'';}
- msg('Đang chỉnh sửa phiên đã chọn.');window.scrollTo({top:0,behavior:'smooth'});
+ document.dispatchEvent(new CustomEvent('ht-online-crm-changed'));msg('Đang chỉnh sửa phiên đã chọn.');window.scrollTo({top:0,behavior:'smooth'});
 }
 async function previewCart(){
  const id=$('gio').value;
@@ -131,6 +132,7 @@ async function start(){try{
  $('crm-form').addEventListener('submit',save);$('reset').onclick=reset;$('open-cart').onclick=previewCart;$('edit-cart').onclick=editCart;$('public-cart').onclick=viewPublic;$('open-chat').onclick=openChat;
  $('reload').onclick=async()=>{setPending(true);try{const [_,rows]=await Promise.all([loadOptions(),rpc('online_v11_list')]);state.rows=rows;paint();msg('Đã đồng bộ dữ liệu.')}catch(e){msg(e.message,true)}finally{setPending(false)}};
  $('search').addEventListener('input',paint);$('clearfilters').onclick=clearFilters;$('copyrows').onclick=copyVisible;
+ initOnlineAssistant({rpc,getSession:()=>state.current,getCart:()=>$('gio').value,isAdmin:()=>state.admin});
  $('online-account').textContent=user.manv||user.name||'NV';$('logout-online').onclick=async()=>{await logoutAndClear();location.replace('/login.html?redirect='+encodeURIComponent(location.pathname))};msg(`Đã xác thực Online cá nhân · ${state.admin?'Admin':'Nhân viên'}.`);
  }catch(e){console.error(e);$('loader').textContent='Không thể mở Online CRM: '+(e.message||e);$('loader').classList.add('error')}}
 start();
