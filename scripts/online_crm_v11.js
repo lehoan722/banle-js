@@ -1,6 +1,6 @@
 // HOANTUYET ONLINE V1.1 - CRM khach can tu van; KHONG tac dong Sales Copilot / hoa don.
-import {getSupabaseClient,getCurrentUserInfo} from './authModulemoi.js';
-const sb=getSupabaseClient(), $=id=>document.getElementById(id);
+import {onlineSB as sb,onlineVerify,onlineLoginUrl,onlineLogout} from './online_identity_v11.js';
+const $=id=>document.getElementById(id);
 const state={rows:[],carts:[],staff:[],current:null,table:null,admin:false,uid:null};
 const channels={facebook:'Facebook',zalo:'Zalo',zalo_oa:'Zalo OA',instagram:'Instagram',dien_thoai:'Điện thoại',khac:'Khác'};
 const statuses={moi:'Mới hỏi',dang_tu_van:'Đang tư vấn',da_gui_mau:'Đã gửi mẫu',cho_khach:'Chờ khách',da_chot:'Đã chốt',khong_chot:'Không chốt'};
@@ -12,7 +12,7 @@ function setPending(v){for(const id of ['save','reload'])$(id).disabled=v}
 async function rpc(name,args){const {data,error}=await sb.rpc(name,args);if(error)throw new Error(error.message);return data}
 async function loadOptions(){
  state.carts=await rpc('online_v11_cart_choices');const cart=$('gio');cart.replaceChildren(new Option('Chưa gắn giỏ',''));
- for(const c of state.carts)cart.add(new Option(`${c.title} (${c.status})`,c.id));
+ for(const c of state.carts)cart.add(new Option(`${c.title} · ${(c.created_at||'').slice(0,16).replace('T',' ')} · ${c.item_count??'?'} SP · #${c.id.slice(0,8)} (${c.status})`,c.id));
  if(state.admin){state.staff=await rpc('online_v11_staff_choices');const target=$('phutrach');target.replaceChildren(new Option('Tôi (Admin)',''));
   for(const p of state.staff)target.add(new Option(`${p.manv} – ${p.tennv||''}`,p.uid));
  }else{$('phutrach').disabled=true;$('phutrach').title='Chỉ Admin được phân công';}
@@ -32,16 +32,40 @@ function edit(row){state.current=row.id;$('form-title').textContent='1. Sửa ph
  $('ten').value=row.ten_khach||'';$('lienhe').value=row.lien_he||'';$('linkchat').value=row.duong_dan_chat||'';
  $('kenh').value=row.kenh;$('trangthai').value=row.trang_thai;$('nhucau').value=row.nhu_cau||'';
  $('ghichu').value=row.ghi_chu||'';$('ngayhen').value=asLocal(row.ngay_hen);
- if(row.gio_id&&!Array.from($('gio').options).some(o=>o.value===row.gio_id))$('gio').add(new Option((row.ten_gio||'Giỏ nhân viên khác')+' (chỉ xem)',row.gio_id));
+ if(row.gio_id&&!Array.from($('gio').options).some(o=>o.value===row.gio_id))$('gio').add(new Option((row.ten_gio||'Giỏ nhân viên khác')+' · #'+row.gio_id.slice(0,8)+' (chỉ xem)',row.gio_id));
  $('gio').value=row.gio_id||'';
  if(state.admin){if(row.phu_trach_uid&&!Array.from($('phutrach').options).some(o=>o.value===row.phu_trach_uid))$('phutrach').add(new Option(row.phu_trach||'Tài khoản hiện tại',row.phu_trach_uid));$('phutrach').value=row.phu_trach_uid||'';}
  msg('Đang chỉnh sửa phiên đã chọn.');window.scrollTo({top:0,behavior:'smooth'});
 }
-function openCart(){const id=$('gio').value;const row=state.rows.find(x=>x.id===state.current);const token=row?.gio_id===id?row?.gio_token:null;
- if(token&&row?.gio_expires_at&&new Date(row.gio_expires_at)>new Date()){
-  window.open('/hoantuyet_gio_tuvan.html?t='+encodeURIComponent(token),'_blank','noopener');return;
- }
- window.open('/hoantuyet_online_v1.html','_blank','noopener');msg('Giỏ chưa có link chia sẻ còn hiệu lực; đã mở trang Giỏ ảnh V1.0.');
+async function previewCart(){
+ const id=$('gio').value;
+ if(!id){msg('Chưa chọn giỏ ảnh.',true);return;}
+ try{
+  // Một giỏ chưa được lưu vào phiên vẫn xem được nếu là giỏ do chính mình tạo.
+  const data=await rpc('online_v11_cart_preview',{p_gio_id:id,p_phien_id:state.current});
+  if(!data)throw new Error('Không có quyền xem giỏ hoặc giỏ đã bị xóa.');
+  const panel=$('cart-preview'),items=$('preview-items');items.replaceChildren();
+  $('preview-title').textContent=data.title||'Giỏ ảnh tư vấn';
+  for(const p of data.items||[]){
+    const card=document.createElement('article');card.className='preview-card';
+    const img=document.createElement('img');img.src='https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/'+encodeURIComponent(p.masp)+'.JPG';img.alt=p.masp;img.onerror=()=>img.style.display='none';
+    img.onclick=()=>{window.open(img.src,'_blank','noopener')};
+    const info=document.createElement('div');info.textContent=`${p.tensp||p.masp} | ${p.masp} | Size ${p.size||'chưa chọn'} | ${Number(p.gia_bao||0).toLocaleString('vi-VN')}đ${p.ghichu?' | '+p.ghichu:''}`;
+    card.append(img,info);items.append(card);
+  }
+  panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'start'});
+ }catch(e){msg('Không mở được giỏ: '+e.message,true)}
+}
+function editCart(){
+ const id=$('gio').value;if(!id){msg('Chọn giỏ trước.',true);return;}
+ // Sửa giỏ chỉ được phép khi tài khoản Online hiện tại sở hữu giỏ. V1.0 kiểm tra RLS lần nữa.
+ if(!state.carts.some(c=>c.id===id)){msg('Giỏ này thuộc tài khoản khác: chỉ xem trong CRM, không có quyền sửa.',true);return;}
+ location.href='/hoantuyet_online_v1.html?gio='+encodeURIComponent(id)+'&back='+encodeURIComponent('/hoantuyet_online_crm_v11.html');
+}
+function viewPublic(){
+ const id=$('gio').value;const row=state.rows.find(x=>x.id===state.current);
+ if(row?.gio_id!==id||!row.gio_token||!row.gio_expires_at||new Date(row.gio_expires_at)<=new Date()){msg('Giỏ chưa có link chia sẻ hợp lệ. Hãy mở V1.0 để tạo link, rồi tải lại CRM.',true);return;}
+ window.open('/hoantuyet_gio_tuvan.html?t='+encodeURIComponent(row.gio_token),'_blank','noopener');
 }
 function openChat(){const link=$('linkchat').value.trim();if(!/^https:\/\/\S+$/i.test(link)){msg('Chưa có link hội thoại hợp lệ.',true);return;}window.open(link,'_blank','noopener,noreferrer')}
 function getSearchRows(){const needle=$('search').value.toLocaleLowerCase('vi').trim();return state.rows.filter(r=>Object.values(r).some(v=>typeof v==='string'&&v.toLocaleLowerCase('vi').includes(needle)))}
@@ -84,14 +108,13 @@ async function copyVisible(){let data=state.table?state.table.getRows('active').
  try{await navigator.clipboard.writeText([cols.join('\t'),...lines].join('\n'));msg(`Đã copy ${data.length} dòng đang lọc.`)}catch(e){msg('Không thể copy: '+e.message,true)}
 }
 async function start(){try{
- const {data:{session},error}=await sb.auth.getSession();if(error||!session?.user){location.replace('/login.html?redirect='+encodeURIComponent(location.pathname+location.search));return}
- const {data:{user},error:ue}=await sb.auth.getUser();if(ue||!user)throw new Error('Phiên đăng nhập không hợp lệ. Hãy đăng nhập lại.');state.uid=user.id;
+ const user=await onlineVerify();if(!user){location.replace(onlineLoginUrl());return;}state.uid=user.id;
  if(await rpc('online_v1_staff_ok')!==true)throw new Error('Tài khoản chưa được cấp quyền nhân viên hoặc Admin.');
  state.admin=await rpc('online_v11_admin_ok');await loadOptions();state.rows=await rpc('online_v11_list');
  $('loader').hidden=true;$('app').hidden=false;stats();if(await ensureTabulator())createTable();else{showFallback();msg('CDN Tabulator chưa tải được. Trang sử dụng bảng dự phòng; hãy kiểm tra mạng.',true)};
- $('crm-form').addEventListener('submit',save);$('reset').onclick=reset;$('open-cart').onclick=openCart;$('open-chat').onclick=openChat;
+ $('crm-form').addEventListener('submit',save);$('reset').onclick=reset;$('open-cart').onclick=previewCart;$('edit-cart').onclick=editCart;$('public-cart').onclick=viewPublic;$('open-chat').onclick=openChat;
  $('reload').onclick=async()=>{setPending(true);try{await loadOptions();await reload();msg('Đã đồng bộ dữ liệu.')}catch(e){msg(e.message,true)}finally{setPending(false)}};
  $('search').addEventListener('input',paint);$('clearfilters').onclick=clearFilters;$('copyrows').onclick=copyVisible;
- const profile=getCurrentUserInfo();msg(`Sẵn sàng. ${profile.manv||'Tài khoản'} · ${state.admin?'Admin':'Nhân viên'}.`);
+ $('online-account').textContent=user.email||user.id.slice(0,8);$('logout-online').onclick=async()=>{await onlineLogout();location.replace(onlineLoginUrl())};msg(`Đã xác thực Online cá nhân · ${state.admin?'Admin':'Nhân viên'}.`);
  }catch(e){console.error(e);$('loader').textContent='Không thể mở Online CRM: '+(e.message||e);$('loader').classList.add('error')}}
 start();
