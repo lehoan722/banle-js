@@ -119,17 +119,17 @@ $('bulkAdd').onclick=()=>run(async()=>{
   say(`Đã thêm ${ok} mã.`+(errors.length?'\nKhông thêm: '+errors.join(' | '):''),errors.length>0);
 });
 $('clear').onclick=()=>{if(items.length&&!confirm('Xóa danh sách đang soạn trên màn hình? Giỏ đã lưu vẫn còn.'))return;items=[];cartId=null;shareToken=null;$('url').value='';render();};
-async function save(){
+async function save({refresh=true}={}){
   if(!items.length)throw new Error('Giỏ chưa có sản phẩm.');
   const data=await onlineAPI('cart_save',{
     p_id:cartId,p_tieu_de:$('title').value,p_kenh:$('channel').value,
     p_diadiem:$('branch').value,p_items:getJsonItems()
   });
-  cartId=data;shareToken=null;$('url').value='';say('Đã lưu giỏ thành công.');await loadHistory();
+  cartId=data;shareToken=null;$('url').value='';say('Đã lưu giỏ thành công.');if(refresh)await loadHistory();
 }
 $('save').onclick=()=>run(save);
 $('share').onclick=()=>run(async()=>{
-  await save();const data=await onlineAPI('cart_share',{id:cartId});
+  await save({refresh:false});const data=await onlineAPI('cart_share',{id:cartId});
   shareToken=data;
   $('url').value=new URL('/hoantuyet_gio_tuvan.html?t='+encodeURIComponent(shareToken),location.origin).href;
   say('Đã tạo link 7 ngày. Copy link gửi Messenger/Zalo.');await loadHistory();
@@ -159,7 +159,8 @@ async function loadHistory(){
   }
 }
 async function openCart(x){
-  const detail=await onlineAPI('cart_detail',{id:x.id});
+  // Neu chi tiet da duoc tai tu URL ?gio thi khong goi API lan thu hai.
+  const detail=Array.isArray(x.items)?x:await onlineAPI('cart_detail',{id:x.id});
   const data=detail.items;
   cartId=x.id;shareToken=x.share_token;$('title').value=x.tieu_de;$('channel').value=x.kenh;
   items=(data||[]).map(p=>({...p,giale:p.gia_bao,ton_sizes:{}}));
