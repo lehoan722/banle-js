@@ -1,10 +1,64 @@
 // HOANTUYET ONLINE V1 - doc lap, su dung AuthModule hien co.
-import {getSupabaseClient,getCurrentUserInfo} from './authModule.js';
+// Dung cung sessionStorage va Supabase client voi login.html; tranh vong lap dang nhap.
+import {getSupabaseClient,getCurrentUserInfo} from './authModulemoi.js';
 const sb=getSupabaseClient();
 const $=id=>document.getElementById(id);
 const IMG_BASE='https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham/';
 let items=[], cartId=null, shareToken=null, busy=false;
 const fmt=n=>Number(n||0).toLocaleString('vi-VN')+' đ';
+
+// Popup anh lon dung chung cho anh san pham trong gio.
+function openImage(src, alt='Ảnh sản phẩm') {
+  const box=$('online-image-viewer');
+  const img=$('online-image-full');
+  const title=$('online-image-caption');
+  img.src=src; img.alt=alt;
+  title.textContent=alt;
+  box.hidden=false;
+  document.body.classList.add('online-modal-open');
+  $('online-image-close').focus();
+}
+function closeImage(){
+  const box=$('online-image-viewer');
+  box.hidden=true;
+  $('online-image-full').removeAttribute('src');
+  document.body.classList.remove('online-modal-open');
+}
+$('online-image-close').addEventListener('click',closeImage);
+$('online-image-viewer').addEventListener('click',e=>{if(e.target.id==='online-image-viewer')closeImage();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('online-image-viewer').hidden)closeImage();});
+
+// Goi y ma hang va ten hang tu dmhanghoa, chi lay it dong va khong doc gia nhap.
+let suggestTimer=null, suggestVersion=0;
+const suggestionInput=$('masp'), suggestionList=$('online-product-suggestions');
+suggestionInput.addEventListener('input',()=>{
+  clearTimeout(suggestTimer);
+  const query=suggestionInput.value.trim();
+  const version=++suggestVersion;
+  suggestionList.replaceChildren();
+  if(query.length<2)return;
+  suggestTimer=setTimeout(async()=>{
+    try{
+      // Escape ky tu wildcard cua LIKE de giam ket qua khong mong muon.
+      const pattern='%'+query.replace(/[\\%_]/g,ch=>'\\'+ch)+'%';
+      const base=()=>sb.from('dmhanghoa').select('masp,tensp').eq('active',true).limit(12);
+      const [codes,names]=await Promise.all([
+        base().ilike('masp',pattern),base().ilike('tensp',pattern)
+      ]);
+      if(version!==suggestVersion)return;
+      if(codes.error&&names.error)throw codes.error;
+      const seen=new Set();
+      for(const p of [...(codes.data||[]),...(names.data||[])]){
+        const code=String(p.masp||'').trim();
+        if(!code||seen.has(code))continue;
+        seen.add(code);
+        const opt=document.createElement('option');
+        opt.value=code;opt.label=String(p.tensp||'');suggestionList.append(opt);
+        if(seen.size>=20)break;
+      }
+    }catch(err){console.warn('[Online V1] Goi y ma hang:',err.message||err);}
+  },280);
+});
 function say(msg,isError=false){$('status').textContent=msg;$('status').className='status '+(isError?'bad':'ok');}
 function setBusy(v){busy=v;for(const id of ['lookup','bulkAdd','save','share','revoke'])$(id).disabled=v;}
 function imageUrl(masp){return IMG_BASE+encodeURIComponent(masp)+'.JPG';}
@@ -15,6 +69,8 @@ function render(){
     const card=document.createElement('article');card.className='item';
     const im=document.createElement('img');im.alt=p.masp;im.src=imageUrl(p.masp);im.loading='lazy';
     im.onerror=()=>{im.style.display='none';};
+    im.classList.add('online-zoomable');im.title='Bấm để xem ảnh lớn';
+    im.addEventListener('click',()=>openImage(im.currentSrc||im.src,`${p.masp} · ${p.tensp||''}`));
     const name=document.createElement('div');name.className='meta';
     name.textContent=`${p.masp} · ${p.tensp||''}\nGiá niêm yết: ${fmt(p.giale)}`;
     const stock=document.createElement('div');stock.className='meta';
@@ -105,7 +161,16 @@ async function openCart(x){
 $('reload').onclick=()=>run(loadHistory);
 async function start(){
   try{
-    const {data:{user},error}=await sb.auth.getUser();if(error||!user){location.replace('/login.html?redirect='+encodeURIComponent(location.pathname));return;}
+    // Cung bo nho phien voi trang login (authModulemoi.js); dung getSession de tranh duoc session tu tab khac.
+    const {data:{session},error:sessionError}=await sb.auth.getSession();
+    if(sessionError||!session?.user){
+      location.replace('/login.html?redirect='+encodeURIComponent(location.pathname+location.search));return;
+    }
+    const {data:{user},error}=await sb.auth.getUser();
+    if(error||!user){
+      // Session co nhung getUser that bai: hien loi, khong vong lap redirect.
+      throw new Error('Phiên đăng nhập không hợp lệ hoặc hết hạn. Vui lòng đăng xuất và đăng nhập lại.');
+    }
     const check=await sb.rpc('online_v1_staff_ok');
     if(check.error||check.data!==true)throw new Error('Tài khoản chưa được xác minh là nhân viên hoặc Admin đang hoạt động.');
     const me=getCurrentUserInfo();$('branch').value=me.diadiem==='cs2'?'cs2':'cs1';
