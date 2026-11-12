@@ -38,7 +38,7 @@ function assertOrigin(req) {
     if (!origin) return false;
 
     try {
-        const url = new URL(origin);
+        const url = new globalThis.URL(origin);
 
         // Không chấp nhận đường dẫn hoặc thông tin bất thường.
         if (url.username || url.password) return false;
