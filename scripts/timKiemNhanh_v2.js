@@ -844,6 +844,9 @@ async function processIncomingMaspFromUrl(maspRaw=""){
 
   const incomingSize=getIncomingSizeFromUrl();
   const validIncomingSize=SIZE_LIST.includes(incomingSize)?incomingSize:"";
+  // Chi mo StockQuick tu dong khi Online CRM yeu cau ro stockquick=1.
+  // Luong truy cap V2 thong thuong hoan toan giu nguyen.
+  const openQuickFromOnline = new URLSearchParams(window.location.search).get("stockquick")==="1";
 
   const input=$("codeInput");
   if(input)input.value=masp;
@@ -853,7 +856,8 @@ async function processIncomingMaspFromUrl(maspRaw=""){
 
   await processCode(masp,{
     preselectedSize:validIncomingSize,
-    autoSearch:!!validIncomingSize
+    autoSearch:!!validIncomingSize,
+    openStockQuick:openQuickFromOnline
   });
   return true;
 }

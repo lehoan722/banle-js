@@ -1,4 +1,4 @@
-import { initOnlineAssistant } from './online_ai_v12.js';
+import { initOnlineAssistant } from './online_ai_v12.js?v=20261113_V131';
 // HOANTUYET ONLINE V1.1 - CRM khach can tu van; KHONG tac dong Sales Copilot / hoa don.
 import {getSupabaseClient,getCurrentUserInfo,logoutAndClear} from './authModulemoi.js';
 const $=id=>document.getElementById(id);
