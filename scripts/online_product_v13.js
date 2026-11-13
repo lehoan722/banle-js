@@ -9,6 +9,39 @@ export function initProductSearch({rpc,getQuestion,getCart}){
  const sorted=(a,b)=>Number(a)-Number(b);
  function sizeLine(p,branch){return Object.entries(p.ton_sizes||{}).filter(([k,v])=>stock(v['ton_'+branch])>0).sort(([a],[b])=>sorted(a,b)).map(([k,v])=>`${k}(${stock(v['ton_'+branch])})`).join(' ')||'Không có tồn';}
  function zoom(url){let overlay=document.getElementById('v13-zoom');if(!overlay){overlay=document.createElement('div');overlay.id='v13-zoom';overlay.className='v13-zoom';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Xem ảnh lớn');overlay.innerHTML='<button type="button" class="v13-zoom-close" aria-label="Đóng ảnh">✕ Đóng</button><img alt="Ảnh sản phẩm lớn">';document.body.append(overlay);overlay.addEventListener('click',e=>{if(e.target!==overlay.querySelector('img'))overlay.hidden=true;});document.addEventListener('keydown',e=>{if(e.key==='Escape')overlay.hidden=true})}overlay.querySelector('img').src=url;overlay.hidden=false;}
+ // V1.3.3: tải và sử dụng trực tiếp StockQuickPopup gốc của toàn bộ dự án.
+ // Không sao chép logic StockQuick, không đụng tới tìm kiếm nhanh hoặc bán lẻ.
+ let sharedStockLoader = null;
+ function loadSharedStockQuick(){
+  if (typeof window.StockQuick?.showFor === 'function') return Promise.resolve();
+  if (sharedStockLoader) return sharedStockLoader;
+  sharedStockLoader = new Promise((resolve,reject)=>{
+   const script=document.createElement('script');
+   script.src='/scripts/stockQuickPopup.js';
+   script.dataset.onlineStockQuick='shared';
+   script.onload=()=>typeof window.StockQuick?.showFor==='function'?resolve():reject(new Error('Module StockQuick gốc chưa khởi tạo'));
+   script.onerror=()=>reject(new Error('Không tải được /scripts/stockQuickPopup.js'));
+   document.head.appendChild(script);
+  }).catch(e=>{sharedStockLoader=null;throw e});
+  return sharedStockLoader;
+ }
+ async function openSharedStockQuick(p){
+  const sb=window.supabase;
+  // Popup gốc lấy dữ liệu qua RLS của Supabase: phải có phiên thực.
+  if (!sb?.auth || typeof sb.rpc!=='function') throw new Error('Supabase client chưa sẵn sàng');
+  const {data,error}=await sb.auth.getSession();
+  if (error || !data?.session?.access_token) throw new Error('Chưa có phiên Supabase hợp lệ');
+  await loadSharedStockQuick();
+  await window.StockQuick.showFor(document.body, String(p.masp||'').trim().toUpperCase());
+ }
+ async function openStockPreferred(p){
+  try{await openSharedStockQuick(p)}
+  catch(e){
+   console.warn('[HOANTUYET ONLINE] StockQuick gốc chưa mở được, dùng xem nhanh dự phòng:', e);
+   openStock(p);
+   info('StockQuick gốc chưa khả dụng: '+e.message+'. Đang hiển thị bản xem nhanh.',true);
+  }
+ }
  function openStock(p){
   // CRM dùng cookie phiên Online; không có Supabase Auth của trang bán lẻ.
   // Mở popup StockQuick dạng XEM NHANH NGAY TRONG CRM bằng dữ liệu tồn sau kiểm
@@ -41,7 +74,7 @@ export function initProductSearch({rpc,getQuestion,getCart}){
   for(const p of last){
    const card=document.createElement('article');card.className='v13-card';
    const photo=document.createElement('img');photo.src=img(p.masp);photo.alt=p.masp;photo.loading='lazy';photo.title='Nhấn xem ảnh lớn';photo.onclick=()=>zoom(photo.src);photo.onerror=()=>{photo.alt='Không có ảnh';photo.style.display='none'};
-   const code=document.createElement('button');code.type='button';code.className='v13-code';code.textContent=p.masp;code.title='Mở xem nhanh sản phẩm ngay trên CRM';code.onclick=()=>openStock(p);
+   const code=document.createElement('button');code.type='button';code.className='v13-code';code.textContent=p.masp;code.title='Mở StockQuickPopup gốc dùng chung';code.onclick=()=>{void openStockPreferred(p)};
    const title=document.createElement('div');title.className='v13-product-name';title.textContent=[p.ten,p.form].filter(Boolean).join(' · ');
    const price=document.createElement('div');price.className='v13-price';price.textContent=money(p.gia_ban);
    const cs1=document.createElement('div');cs1.className='v13-cs v13-cs1';cs1.textContent='CS1: '+sizeLine(p,'cs1');
