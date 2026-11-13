@@ -22,6 +22,11 @@
 .v13-zoom[hidden]{display:none!important}.v13-zoom{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;padding:50px 3px 8px}
 .v13-zoom img{max-width:100%;max-height:100%;object-fit:contain}.v13-zoom-close{position:absolute;top:5px;right:7px;background:#fff!important;color:#111!important;z-index:1}
 @media(max-width:540px){#v13-products{gap:4px}.v13-card{padding:4px}.v13-card img{height:220px}.v13-cs{font-size:14px}}
+/* V1.3.2: Online CRM StockQuick xem nhanh, không phụ thuộc phiên V2 */
+.v13-stock-overlay[hidden]{display:none!important}.v13-stock-overlay{position:fixed;inset:0;background:rgba(0,0,0,.63);z-index:99990;display:flex;justify-content:center;align-items:center;padding:12px}
+.v13-stock-dialog{position:relative;background:#fff;border-radius:13px;max-width:540px;width:100%;max-height:95dvh;overflow-y:auto;padding:16px;color:#17324f;box-shadow:0 14px 48px #0005}
+.v13-stock-close{position:absolute;right:7px;top:7px;background:#e8edf4;color:#222}.v13-stock-body{display:flex;flex-direction:column;gap:9px}.v13-stock-body h2{max-width:calc(100% - 55px);overflow-wrap:anywhere;margin:0}.v13-stock-body p{margin:2px 0}.v13-stock-body img{height:min(48dvh,390px);width:100%;object-fit:contain;background:#f4f7fa;cursor:zoom-in}.v13-requested-size{font-weight:bold;color:#0b618d}
+
 </style></head><body>
 <header><div><strong>HOANTUYET ONLINE V1.1</strong><div style="font-size:13px">Trung tâm khách đang cần tư vấn · Facebook / Zalo</div></div><div class="toplinks"><a href="./hoantuyet_online_v1.html" target="_blank" rel="noopener">Mở giỏ ảnh V1.0</a><span id="online-account" style="font-size:12px"></span><button id="logout-online" type="button" class="secondary" style="padding:8px 11px">Thoát Online</button></div></header>
 <main><div id="loader" class="panel">Đang kiểm tra quyền nhân viên và tải danh sách tư vấn…</div><div id="app" hidden>
@@ -47,4 +52,4 @@
 <p class="ai-subnote">Chỉ câu đã đánh giá Tốt và được Admin duyệt mới tham gia kho tri thức. Câu gửi qua Gemini được ẩn số điện thoại/email/link và không gửi giá nhập.</p>
 <h3 style="font-size:15px;margin:14px 0 8px">Lịch sử tư vấn AI gần đây</h3><div id="ai-history" class="ai-history"></div></section>
 <section class="panel"><h2>2. Danh sách khách cần tư vấn</h2><div class="bar"><input id="search" placeholder="Tìm nhanh khách, mã giỏ, nhu cầu..." aria-label="Tìm toàn bảng"><button id="reload" class="secondary">Tải lại</button><button id="clearfilters" class="secondary">Xóa bộ lọc</button><button id="copyrows" class="secondary">Copy dòng đang lọc</button></div><div id="stats" class="stats"></div><p class="hint">Nhập vào ô lọc dưới tiêu đề từng cột; cột Trạng thái có danh sách lọc. Bấm Sửa trên một dòng để mở hồ sơ. Danh sách tối đa 1.000 phiên mới nhất trong phạm vi quyền.</p><div id="crm-table"></div><div id="fallback" hidden></div></section>
-</div></main><script type="module" src="./scripts/online_crm_v11.js?v=20261113_ONLINE_V131"></script></body></html>
+</div></main><script type="module" src="./scripts/online_crm_v11.js?v=20261113_ONLINE_V132"></script></body></html>
