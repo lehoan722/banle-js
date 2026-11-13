@@ -1,3 +1,4 @@
+import {searchOnlineProducts, answerWithVerifiedProducts} from '../../lib/online_product_search.js';
 import { cleanText, redactPII, summarizeProducts, makeTemplate, askGemini } from '../../lib/online_ai_helpers.js';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
@@ -154,8 +155,9 @@ async function assistantGenerate(client,u,b,withAI=false){
  if(cartId&&crm&&crm.gio_id!==cartId)throw err('Gio khong khop phien CRM',403);
  let items=[];
  if(cartId){const p=await preview(client,u,{p_gio_id:cartId,p_phien_id:crmId});items=p.items||[];}
- const products=summarizeProducts(items);
- const template=makeTemplate(q,products);
+ const found=await searchOnlineProducts(client,q);
+ const products=found.items.length?found.items:summarizeProducts(items);
+ const template=found.need.category?{...makeTemplate(q,products),answer:answerWithVerifiedProducts(q,found.items)}:makeTemplate(q,products);
  let ai=null,knowledge=[];
  if(withAI){
    // Han che chi phi moi nhan vien: toi da 30 lan AI/ngay va 5 lan/5 phut.
@@ -175,7 +177,7 @@ async function assistantGenerate(client,u,b,withAI=false){
  const record={owner_uid:u.uid,crm_id:crmId,cart_id:cartId,question_redacted:redactPII(q),product_context:products,intent:template.intent,template_answer:template.answer,ai_answer:ai?.answer||null,ai_model:ai?.model||null,ai_usage:ai?.usage||null,final_answer:ai?.answer||template.answer};
  const {data,error}=await client.from('online_ai_tuvan_history').insert(record).select('id,created_at').single();
  if(error)throw err('Khong luu duoc lich su AI: '+error.message,500);
- return {id:data.id,created_at:data.created_at,template:template.answer,ai:ai?.answer||null,model:ai?.model||null,usage:ai?.usage||null,intent:template.intent,has_verified_stock:false};
+ return {id:data.id,created_at:data.created_at,template:template.answer,ai:ai?.answer||null,model:ai?.model||null,usage:ai?.usage||null,intent:template.intent,has_verified_stock:found.verified&&found.items.length>0,products:found.items,search_message:found.message};
 }
 async function assistantHistory(client,u,b){
  const cid=uuid(b.crm_id);if(b.crm_id&&!cid)throw err('Ma phien khong hop le');
@@ -233,6 +235,7 @@ export default async function handler(req, res) {
             case 'cart_save': data = await cartSave(client, u, req.body.args || {}); break;
             case 'cart_share': data = await cartAction(client, u, 'share', req.body.args?.id); break;
             case 'cart_revoke': data = await cartAction(client, u, 'revoke', req.body.args?.id); break;
+            case 'online_v13_product_search': data = await searchOnlineProducts(client,text(req.body.args?.question,500)); break;
             case 'assist_template': data = await assistantGenerate(client,u,req.body.args||{},false); break;
             case 'assist_ai': data = await assistantGenerate(client,u,req.body.args||{},true); break;
             case 'assist_history': data = await assistantHistory(client,u,req.body.args||{}); break;
