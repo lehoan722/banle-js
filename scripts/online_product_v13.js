@@ -10,19 +10,38 @@ export function initProductSearch({rpc,getQuestion,getCart}){
  function sizeLine(p,branch){return Object.entries(p.ton_sizes||{}).filter(([k,v])=>stock(v['ton_'+branch])>0).sort(([a],[b])=>sorted(a,b)).map(([k,v])=>`${k}(${stock(v['ton_'+branch])})`).join(' ')||'Không có tồn';}
  function zoom(url){let overlay=document.getElementById('v13-zoom');if(!overlay){overlay=document.createElement('div');overlay.id='v13-zoom';overlay.className='v13-zoom';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Xem ảnh lớn');overlay.innerHTML='<button type="button" class="v13-zoom-close" aria-label="Đóng ảnh">✕ Đóng</button><img alt="Ảnh sản phẩm lớn">';document.body.append(overlay);overlay.addEventListener('click',e=>{if(e.target!==overlay.querySelector('img'))overlay.hidden=true;});document.addEventListener('keydown',e=>{if(e.key==='Escape')overlay.hidden=true})}overlay.querySelector('img').src=url;overlay.hidden=false;}
  function openStock(p){
-  // StockQuick V2 su dung Supabase Auth cua cong cu noi bo, khong dung cookie Online API.
-  // Chuyen ma qua URL dung cong doc da co trong V2; trang V2 tu nhan ma, nguoi dung nhan vao ma de mo popup.
-  const u=new URL('/timkiemnhanh_v2.html',location.origin);u.searchParams.set('masp',p.masp);u.searchParams.set('stockquick','1');
-  if(p.requested_size)u.searchParams.set('size',p.requested_size);
-  window.open(u.toString(),'_blank','noopener');
-  info('Đã mở mã '+p.masp+' trong Tìm kiếm nhanh V2. StockQuickPopup sẽ tự mở khi trang V2 xác thực xong (cần đăng nhập hệ thống bán hàng).');
+  // CRM dùng cookie phiên Online; không có Supabase Auth của trang bán lẻ.
+  // Mở popup StockQuick dạng XEM NHANH NGAY TRONG CRM bằng dữ liệu tồn sau kiểm
+  // đã trả về qua RPC Online, không tải hay sửa StockQuickPopup.js của V2.
+  let overlay=document.getElementById('v13-stock-overlay');
+  if(!overlay){
+   overlay=document.createElement('div');overlay.id='v13-stock-overlay';overlay.className='v13-stock-overlay';overlay.hidden=true;
+   overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Thông tin nhanh sản phẩm');
+   overlay.innerHTML='<section class="v13-stock-dialog"><button type="button" class="v13-stock-close" aria-label="Đóng popup">✕</button><div class="v13-stock-body"></div></section>';
+   document.body.append(overlay);
+   overlay.querySelector('.v13-stock-close').onclick=()=>{overlay.hidden=true};
+   overlay.onclick=e=>{if(e.target===overlay)overlay.hidden=true};
+   document.addEventListener('keydown',e=>{if(e.key==='Escape')overlay.hidden=true});
+  }
+  const body=overlay.querySelector('.v13-stock-body');body.replaceChildren();
+  const heading=document.createElement('h2');heading.textContent=p.masp;
+  const desc=document.createElement('p');desc.textContent=[p.ten,p.form,p.mau].filter(Boolean).join(' · ');
+  const photo=document.createElement('img');photo.src=img(p.masp);photo.alt='Ảnh '+p.masp;photo.onclick=()=>zoom(photo.src);photo.onerror=()=>{photo.alt='Sản phẩm chưa có ảnh';};
+  const price=document.createElement('strong');price.className='v13-price';price.textContent=money(p.gia_ban);
+  const c1=document.createElement('div');c1.className='v13-cs v13-cs1';c1.textContent='CS1: '+sizeLine(p,'cs1');
+  const c2=document.createElement('div');c2.className='v13-cs v13-cs2';c2.textContent='CS2: '+sizeLine(p,'cs2');
+  const note=document.createElement('p');note.className='hint';note.textContent='Tồn sau kiểm tại thời điểm tra cứu. Cần kiểm tra lại trước khi chốt đơn. Popup xem nhanh Online chỉ đọc, không cho sửa hay đặt hàng.';
+  body.append(heading,desc,photo,price,c1,c2);
+  if(p.requested_size){const selected=document.createElement('p');selected.className='v13-requested-size';selected.textContent='Size khách hỏi → size kho '+p.requested_size;body.append(selected)}
+  if(p.detail_unverified){const warn=document.createElement('p');warn.className='v13-unverified';warn.textContent='Chưa xác nhận đặc điểm rách; cần đối chiếu ảnh thật.';body.append(warn)}
+  body.append(note);overlay.hidden=false;
  }
  function render(data){last=data.items||[];root.replaceChildren();
   if(!last.length){root.textContent=data.message||'Không có sản phẩm phù hợp.';return;}
   for(const p of last){
    const card=document.createElement('article');card.className='v13-card';
    const photo=document.createElement('img');photo.src=img(p.masp);photo.alt=p.masp;photo.loading='lazy';photo.title='Nhấn xem ảnh lớn';photo.onclick=()=>zoom(photo.src);photo.onerror=()=>{photo.alt='Không có ảnh';photo.style.display='none'};
-   const code=document.createElement('button');code.type='button';code.className='v13-code';code.textContent=p.masp;code.title='Xem StockQuickPopup qua Tìm kiếm nhanh V2';code.onclick=()=>openStock(p);
+   const code=document.createElement('button');code.type='button';code.className='v13-code';code.textContent=p.masp;code.title='Mở xem nhanh sản phẩm ngay trên CRM';code.onclick=()=>openStock(p);
    const title=document.createElement('div');title.className='v13-product-name';title.textContent=[p.ten,p.form].filter(Boolean).join(' · ');
    const price=document.createElement('div');price.className='v13-price';price.textContent=money(p.gia_ban);
    const cs1=document.createElement('div');cs1.className='v13-cs v13-cs1';cs1.textContent='CS1: '+sizeLine(p,'cs1');

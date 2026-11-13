@@ -1,4 +1,4 @@
-import {initProductSearch} from './online_product_v13.js?v=20261113_V131';
+import {initProductSearch} from './online_product_v13.js?v=20261113_V132';
 // HOANTUYET ONLINE AI HYBRID V1.2. Module doc lap, khong sua luong ban hang.
 export function initOnlineAssistant({rpc,getSession,getCart,isAdmin}){
  const $=id=>document.getElementById(id);
