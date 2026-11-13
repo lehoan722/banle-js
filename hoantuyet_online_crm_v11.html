@@ -10,6 +10,18 @@
 .v13-card{padding:9px;border:1px solid #d8e1eb;border-radius:10px;display:flex;flex-direction:column;gap:7px;font-size:12px;min-width:0}
 .v13-card img{width:100%;height:175px;object-fit:contain;cursor:zoom-in;background:#f4f6f8}
 .v13-card strong,.v13-card small{overflow-wrap:anywhere}.v13-card button{margin-top:auto}
+
+/* Online V1.3.1 – thong tin nhu trang tim nhanh V2 */
+#v13-products{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.v13-card{gap:4px;padding:5px;border:1px solid #c9d9e7}
+.v13-card img{width:100%;height:clamp(165px,26vw,285px);object-fit:contain;cursor:zoom-in}
+.v13-card .v13-code{display:block;text-align:left;border:0;background:none;color:#075f9f;text-decoration:underline;font-weight:900;font-size:clamp(14px,2vw,19px);padding:2px 0;overflow-wrap:anywhere;justify-content:flex-start}
+.v13-product-name{font-size:14px;color:#334155}.v13-price{font-weight:900;color:#d92d20;font-size:19px}
+.v13-cs{font-size:clamp(13px,1.9vw,18px);line-height:1.4;overflow-wrap:anywhere;font-weight:800}
+.v13-cs1{color:#c42323}.v13-cs2{color:#0764bc}.v13-unverified{color:#9a5800;font-size:12px}
+.v13-zoom[hidden]{display:none!important}.v13-zoom{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;padding:50px 3px 8px}
+.v13-zoom img{max-width:100%;max-height:100%;object-fit:contain}.v13-zoom-close{position:absolute;top:5px;right:7px;background:#fff!important;color:#111!important;z-index:1}
+@media(max-width:540px){#v13-products{gap:4px}.v13-card{padding:4px}.v13-card img{height:220px}.v13-cs{font-size:14px}}
 </style></head><body>
 <header><div><strong>HOANTUYET ONLINE V1.1</strong><div style="font-size:13px">Trung tâm khách đang cần tư vấn · Facebook / Zalo</div></div><div class="toplinks"><a href="./hoantuyet_online_v1.html" target="_blank" rel="noopener">Mở giỏ ảnh V1.0</a><span id="online-account" style="font-size:12px"></span><button id="logout-online" type="button" class="secondary" style="padding:8px 11px">Thoát Online</button></div></header>
 <main><div id="loader" class="panel">Đang kiểm tra quyền nhân viên và tải danh sách tư vấn…</div><div id="app" hidden>
@@ -35,4 +47,4 @@
 <p class="ai-subnote">Chỉ câu đã đánh giá Tốt và được Admin duyệt mới tham gia kho tri thức. Câu gửi qua Gemini được ẩn số điện thoại/email/link và không gửi giá nhập.</p>
 <h3 style="font-size:15px;margin:14px 0 8px">Lịch sử tư vấn AI gần đây</h3><div id="ai-history" class="ai-history"></div></section>
 <section class="panel"><h2>2. Danh sách khách cần tư vấn</h2><div class="bar"><input id="search" placeholder="Tìm nhanh khách, mã giỏ, nhu cầu..." aria-label="Tìm toàn bảng"><button id="reload" class="secondary">Tải lại</button><button id="clearfilters" class="secondary">Xóa bộ lọc</button><button id="copyrows" class="secondary">Copy dòng đang lọc</button></div><div id="stats" class="stats"></div><p class="hint">Nhập vào ô lọc dưới tiêu đề từng cột; cột Trạng thái có danh sách lọc. Bấm Sửa trên một dòng để mở hồ sơ. Danh sách tối đa 1.000 phiên mới nhất trong phạm vi quyền.</p><div id="crm-table"></div><div id="fallback" hidden></div></section>
-</div></main><script type="module" src="./scripts/online_crm_v11.js?v=20261113_ONLINE_V13"></script></body></html>
+</div></main><script type="module" src="./scripts/online_crm_v11.js?v=20261113_ONLINE_V131"></script></body></html>
