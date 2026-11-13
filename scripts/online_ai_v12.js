@@ -1,6 +1,8 @@
+import {initProductSearch} from './online_product_v13.js';
 // HOANTUYET ONLINE AI HYBRID V1.2. Module doc lap, khong sua luong ban hang.
 export function initOnlineAssistant({rpc,getSession,getCart,isAdmin}){
  const $=id=>document.getElementById(id);
+ const finder=initProductSearch({rpc,getQuestion:()=> $('ai-question').value,getCart});
  let activeId=null,activeFeedback='chua_duyet',activeApproved=false,busy=false;
  const status=(msg,bad=false)=>{const el=$('ai-status');el.textContent=msg;el.className='status '+(bad?'error':'ok')};
  const enabled=v=>{busy=!v;for(const id of ['ai-template','ai-gemini','ai-history-refresh','ai-good','ai-bad','ai-reject','ai-approve'])$(id).disabled=!v};
@@ -14,7 +16,8 @@ export function initOnlineAssistant({rpc,getSession,getCart,isAdmin}){
    activeId=result.id;activeFeedback='chua_duyet';activeApproved=false;
    $('ai-answer').value=(ai?result.ai:result.template)||result.template;
    $('ai-approve').hidden=!isAdmin();$('ai-approve').textContent='Duyệt làm tri thức';
-   status((ai?'Gemini':'Mẫu miễn phí')+' đã soạn xong và lưu lịch sử. Giá và tồn kho cần nhân viên kiểm tra trước khi gửi.');
+   if(result.products?.length)finder.setResults({items:result.products});
+   status((ai?'Gemini':'Mẫu miễn phí')+' đã soạn xong và lưu lịch sử. '+(result.has_verified_stock?'Đã tra tồn sau kiểm, kiểm tra lại khi chốt đơn.':'Không có dữ liệu tồn xác minh cho câu trả lời này.'));
    await loadHistory({silent:true});
   }catch(e){status('Không tạo được câu trả lời: '+e.message+(ai?' · Có thể thử nút Trả lời nhanh.':''),true)}finally{enabled(true)}
  }
