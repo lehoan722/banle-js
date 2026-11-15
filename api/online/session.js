@@ -226,6 +226,7 @@ export default async function handler(req, res) {
             case 'online_v11_admin_ok': data = u.admin; break;
             case 'online_v1_staff_ok': data = true; break;
             case 'online_v11_list': data = await list(client, u); break;
+            case 'meta_inbox_list': if (!u.admin) throw err('Chi Admin duoc xem hop thu Messenger trong V1.4A', 403); data = await rows(client.from('online_meta_inbox').select('id,sender_id,message_text,message_type,received_at,page_id').order('received_at',{ascending:false}).limit(100)); break;
             case 'online_v11_staff_choices': if (!u.admin) throw err('Chi Admin duoc phan cong', 403); data = (await rows(client.from('dmnhanvien').select('manv,tennv,user_id').eq('trangthai', true).not('user_id', 'is', null).order('manv'))).map(x => ({ manv: x.manv, tennv: x.tennv, uid: x.user_id })); break;
             case 'online_v11_cart_choices': data = await choices(client, u); break;
             case 'online_v11_save': data = await save(client, u, req.body.args || {}); break;
