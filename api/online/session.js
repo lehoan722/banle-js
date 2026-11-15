@@ -270,6 +270,7 @@ export default async function handler(req, res) {
             case 'online_v11_admin_ok': data = u.admin; break;
             case 'online_v1_staff_ok': data = true; break;
             case 'online_v11_list': data = await list(client, u); break;
+            case 'meta_v15_status': data = { version: 'V1.5.1', meta_send_reply: true, configured: !!(process.env.META_PAGE_ID && process.env.META_PAGE_ACCESS_TOKEN), admin: !!u.admin }; break;
             case 'meta_send_reply': data = await sendMetaReply(client,u,req.body.args||{}); break;
             case 'meta_inbox_list': if (!u.admin) throw err('Chi Admin duoc xem hop thu Messenger trong V1.4A', 403); data = await rows(client.from('online_meta_inbox').select('id,sender_id,message_text,message_type,received_at,page_id').order('received_at',{ascending:false}).limit(100)); break;
             case 'online_v11_staff_choices': if (!u.admin) throw err('Chi Admin duoc phan cong', 403); data = (await rows(client.from('dmnhanvien').select('manv,tennv,user_id').eq('trangthai', true).not('user_id', 'is', null).order('manv'))).map(x => ({ manv: x.manv, tennv: x.tennv, uid: x.user_id })); break;
