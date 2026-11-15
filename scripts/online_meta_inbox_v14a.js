@@ -70,7 +70,22 @@ function draw(){
    if(preparedFor!==selectedSender){setStatus('Phải chọn tin của đúng khách và đưa vào AI trước khi gửi.');return}
    if(body.length<2){setStatus('Chưa có câu trả lời để gửi.');return}
    if(!window.confirm('XÁC NHẬN gửi cho '+heading.textContent+' qua Messenger?\n\n'+body.slice(0,750)))return;
-   sending=true;send.disabled=true;const rid=crypto.randomUUID();
+   sending=true;send.disabled=true;
+   // V1.5.1: xác nhận API Production đang chạy đúng backend hỗ trợ gửi.
+   try {
+    const sbCheck=getSupabaseClient();const sCheck=await sbCheck.auth.getSession();
+    if(sCheck.error)throw sCheck.error;
+    const checkHeaders={'Content-Type':'application/json'};
+    if(sCheck.data?.session?.access_token)checkHeaders.Authorization='Bearer '+sCheck.data.session.access_token;
+    const checkRes=await fetch('/api/online/session',{method:'POST',credentials:'same-origin',headers:checkHeaders,body:JSON.stringify({action:'meta_v15_status'})});
+    const checkJson=await checkRes.json().catch(()=>({}));
+    if(!checkRes.ok || !checkJson.data?.meta_send_reply){
+     throw new Error('API Production chưa chạy bản V1.5.1 có chức năng gửi. Hãy thay api/online/session.js, kiểm tra Vercel deployment Ready và domain hoantuyet.vn. Chi tiết: '+(checkJson.error||'HTTP '+checkRes.status));
+    }
+    if(!checkJson.data.admin)throw new Error('Tài khoản API chưa được xác nhận là Admin');
+    if(!checkJson.data.configured)throw new Error('API chưa đọc được META_PAGE_ID hoặc META_PAGE_ACCESS_TOKEN trong Production');
+   }catch(e){setStatus('CHƯA GỬI: '+e.message);sending=false;send.disabled=!eligible;return;}
+   const rid=crypto.randomUUID();
    setStatus('Đang gửi một lần tới Meta. Không bấm lại hoặc tải lại trang.');
    try{
     const sb=getSupabaseClient();const {data,error}=await sb.auth.getSession();if(error)throw error;
