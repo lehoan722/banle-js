@@ -23,5 +23,23 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/zalo/callback",
+      "destination": "/api/zalo?__zalo_action=callback"
+    },
+    {
+      "source": "/api/zalo/get-token",
+      "destination": "/api/zalo?__zalo_action=get-token"
+    },
+    {
+      "source": "/api/zalo/send",
+      "destination": "/api/zalo?__zalo_action=send"
+    },
+    {
+      "source": "/api/zalo/webhook",
+      "destination": "/api/zalo?__zalo_action=webhook"
+    }
   ]
 }
