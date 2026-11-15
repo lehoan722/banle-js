@@ -213,6 +213,50 @@ async function assistantApprove(client,u,b){
  return changed.length>0;
 }
 
+
+// V1.5: Gui mot cau tra loi da duoc Admin duyet toi dung nguoi nhan Messenger.
+// Luon doi chieu sender/page tren DB, khong tin recipient do browser gui den.
+async function sendMetaReply(client,u,args){
+ if(!u.admin)throw err('Chi Admin duoc gui Messenger o giai doan thu nghiem',403);
+ const id=Number(args.inbox_id);
+ if(!Number.isSafeInteger(id)||id<=0)throw err('Tin nhan goc khong hop le');
+ const requestId=uuid(args.request_id);if(!requestId)throw err('Ma chong gui trung khong hop le');
+ const message=String(args.message||'').trim();
+ if(message.length<2||message.length>2000)throw err('Noi dung phai tu 2 den 2000 ky tu');
+ const pageId=process.env.META_PAGE_ID;
+ const pageToken=process.env.META_PAGE_ACCESS_TOKEN;
+ if(!pageId||!pageToken)throw err('Chua cau hinh META_PAGE_ID/META_PAGE_ACCESS_TOKEN',503);
+ const src=await rows(client.from('online_meta_inbox').select('id,page_id,sender_id,received_at,message_type').eq('id',id).maybeSingle());
+ if(!src||String(src.page_id)!==String(pageId)||!/^[0-9]{5,40}$/.test(String(src.sender_id||'')))throw err('Khong tim thay khach Messenger hop le',404);
+ // Gioi han 24 gio tinh theo tin nhan cuoi cung cua khach, khong phai tin duoc chon.
+ const latest=await rows(client.from('online_meta_inbox').select('received_at').eq('page_id',pageId).eq('sender_id',src.sender_id).order('received_at',{ascending:false}).limit(1).maybeSingle());
+ const stamp=Date.parse(latest?.received_at||'');
+ if(!Number.isFinite(stamp)||stamp>Date.now()+60000||Date.now()-stamp>23*60*60*1000)throw err('Ngoai cua so an toan 23 gio: khong gui qua API, hay tra loi thu cong theo quy dinh Meta',409);
+ // Dat cho truoc khi goi API. Neu mat mang/timeout, KHONG tu thu lai de tranh gui hai lan.
+ const {error:reserveError}=await client.from('online_meta_outbox').insert({request_id:requestId,page_id:String(pageId),sender_id:String(src.sender_id),inbox_id:id,body:message,created_by_uid:u.uid,status:'sending'});
+ if(reserveError){
+  if(reserveError.code==='23505')throw err('Yeu cau nay da duoc xu ly. Hay kiem tra lich su, khong bam gui lai',409);
+  throw err('Khong ghi duoc nhat ky gui: '+reserveError.message,500);
+ }
+ const update=async fields=>{const {error}=await client.from('online_meta_outbox').update(fields).eq('request_id',requestId);if(error)console.error('Meta outbox update failed',error.code)};
+ let response,payload;
+ try{
+  response=await fetch('https://graph.facebook.com/v23.0/me/messages',{
+   method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+pageToken},
+   body:JSON.stringify({recipient:{id:String(src.sender_id)},messaging_type:'RESPONSE',message:{text:message}}),
+   signal:AbortSignal.timeout(6500)
+  });
+  payload=await response.json().catch(()=>({}));
+ }catch(e){await update({status:'unknown',error_code:'transport_uncertain'});throw err('Khong xac dinh Meta da nhan tin hay chua. KHONG bam gui lai; kiem tra Messenger va nhat ky',504)}
+ if(!response.ok||!payload.message_id){
+  const code=String(payload?.error?.code||response.status).slice(0,50);
+  await update({status:'failed',error_code:code});
+  throw err('Meta tu choi gui (ma '+code+'). Kiem tra quyen pages_messaging, token va cua so 24 gio',502);
+ }
+ await update({status:'sent',meta_message_id:String(payload.message_id).slice(0,250),sent_at:new Date().toISOString(),error_code:null});
+ return {ok:true,request_id:requestId,message_id:String(payload.message_id)};
+}
+
 export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -226,6 +270,7 @@ export default async function handler(req, res) {
             case 'online_v11_admin_ok': data = u.admin; break;
             case 'online_v1_staff_ok': data = true; break;
             case 'online_v11_list': data = await list(client, u); break;
+            case 'meta_send_reply': data = await sendMetaReply(client,u,req.body.args||{}); break;
             case 'meta_inbox_list': if (!u.admin) throw err('Chi Admin duoc xem hop thu Messenger trong V1.4A', 403); data = await rows(client.from('online_meta_inbox').select('id,sender_id,message_text,message_type,received_at,page_id').order('received_at',{ascending:false}).limit(100)); break;
             case 'online_v11_staff_choices': if (!u.admin) throw err('Chi Admin duoc phan cong', 403); data = (await rows(client.from('dmnhanvien').select('manv,tennv,user_id').eq('trangthai', true).not('user_id', 'is', null).order('manv'))).map(x => ({ manv: x.manv, tennv: x.tennv, uid: x.user_id })); break;
             case 'online_v11_cart_choices': data = await choices(client, u); break;
