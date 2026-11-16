@@ -827,6 +827,68 @@ async function taiChiTietDoanhSo(tuNgay, denNgay, manvRaw) {
   setDoanhSoDetailMessage(`Có ${rows.length} dòng bán | Tổng đối chiếu: ${fmtNumber(tong, 0)} đ | Nguồn: manv_ban trên hóa đơn bán thực tế.`);
 }
 
+// V1 doi chieu mien khoan: chi doc RPC, KHONG tac dong luong hien tai.
+let mienKhoanRequestVersion = 0;
+function mkV1Set(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+function mkV1Reset(message = 'Đang tải dữ liệu miễn khoán...') {
+  mkV1Set('mk-v1-status', message);
+  for (const id of ['mk-v1-gio-cong','mk-v1-mien','mk-v1-chiu','mk-v1-doan',
+    'mk-v1-ngay-loi','mk-v1-khoan-cu','mk-v1-khoan-moi','mk-v1-chenh',
+    'mk-v1-thuong','mk-v1-thuc-linh']) mkV1Set(id, '—');
+}
+async function mkV1DoiChieu(tuNgay, denNgay, manv, soLieu, version) {
+  try {
+    const { data, error } = await supabase.rpc('luong1nv_gio_mien_khoan_v1', {
+      p_tu_ngay: tuNgay,
+      p_den_ngay: denNgay,
+      p_manv: manv,
+      p_diadiem: null // Cac co so CS1/CS2; giong chamcong_tinhcong_monthly
+    });
+    if (version !== mienKhoanRequestVersion) return;
+    if (error) throw error;
+
+    const rows = Array.isArray(data) ? data : [];
+    const sum = key => rows.reduce((s, r) => s + (Number(r[key]) || 0), 0);
+    const gioCong = sum('gio_cong_tinh_luong');
+    const gioMien = sum('gio_mien_khoan_de_xuat');
+    const gioChiu = sum('gio_chiu_khoan_de_xuat');
+    const soDoan = sum('so_doan_task_hop_le');
+    const soNgayLoi = rows.filter(r => r.can_kiem_tra === true).length;
+    const soLogLoi = sum('so_log_can_kiem_tra');
+    const chenhlechGio = Math.abs(gioCong - soLieu.gio_cong_tinh_luong);
+    const canCanhBao = soNgayLoi > 0 || soLogLoi > 0 || chenhlechGio > 0.02 ||
+      Math.abs(gioCong - (gioMien + gioChiu)) > 0.02;
+
+    mkV1Set('mk-v1-gio-cong', fmtNumber(gioCong, 4));
+    mkV1Set('mk-v1-mien', fmtNumber(gioMien, 4));
+    mkV1Set('mk-v1-chiu', fmtNumber(gioChiu, 4));
+    mkV1Set('mk-v1-doan', fmtNumber(soDoan, 0));
+    mkV1Set('mk-v1-ngay-loi', fmtNumber(soNgayLoi, 0));
+    mkV1Set('mk-v1-khoan-cu', fmtNumber(soLieu.khoan_thang, 0));
+    if (canCanhBao) {
+      mkV1Set('mk-v1-status', `CẦN KIỂM TRA: ${soNgayLoi} ngày báo lỗi, ${soLogLoi} nhật ký bất thường; lệch giờ công V1/V2 ${fmtNumber(chenhlechGio, 4)} giờ. Tạm không tính khoán mới hoặc lương giả lập.`);
+      return;
+    }
+
+    const khoanMoi = gioChiu * soLieu.khoan_gio;
+    const thuongGiaLap = (soLieu.tong_doanh_thu - khoanMoi) * (soLieu.pct_thuong / 100);
+    const thucLinhGiaLap = soLieu.luong_gio_thang + thuongGiaLap +
+      soLieu.tong_hoa_hong + soLieu.tong_thuong_xa - soLieu.khoan_tru;
+    mkV1Set('mk-v1-khoan-moi', fmtNumber(khoanMoi, 0));
+    mkV1Set('mk-v1-chenh', fmtNumber(soLieu.khoan_thang - khoanMoi, 0));
+    mkV1Set('mk-v1-thuong', fmtNumber(thuongGiaLap, 0));
+    mkV1Set('mk-v1-thuc-linh', fmtNumber(thucLinhGiaLap, 0));
+    mkV1Set('mk-v1-status', `Đối chiếu thành công ${rows.length} dòng ngày/cơ sở. Đây là đề xuất chưa phê duyệt; chưa áp dụng vào lương chính thức.`);
+  } catch (err) {
+    if (version !== mienKhoanRequestVersion) return;
+    console.error('Lỗi RPC miễn khoán V1:', err);
+    mkV1Set('mk-v1-status', 'Không tải được dữ liệu miễn khoán V1. Lương chính thức vẫn giữ nguyên. Xem Console để kiểm tra quyền EXECUTE/RPC hoặc lỗi truy vấn.');
+  }
+}
+
 async function tinhLuongThang() {
   const tuNgay = document.getElementById("tu_ngay").value;
   const denNgay = document.getElementById("den_ngay").value;
@@ -844,6 +906,8 @@ async function tinhLuongThang() {
     return;
   }
 
+  const mkVersion = ++mienKhoanRequestVersion;
+  mkV1Reset();
   setStatus("Đang tính lương, vui lòng đợi...");
   setResultFields({
     manv: "-",
@@ -998,6 +1062,13 @@ async function tinhLuongThang() {
       thuc_linh,
       luong_1_gio
     });
+
+    // V1: chi hien thi doi chieu, TUYET DOI khong thay cong thuc luong hien hanh.
+    void mkV1DoiChieu(tuNgay, denNgay, manv, {
+      gio_cong_tinh_luong, khoan_gio, khoan_thang, pct_thuong,
+      tong_doanh_thu, luong_gio_thang, tong_hoa_hong,
+      tong_thuong_xa, khoan_tru
+    }, mkVersion);
 
     // Đồng bộ bảng công + chi tiết doanh thu theo đúng nhân viên và khoảng ngày.
     await Promise.all([
