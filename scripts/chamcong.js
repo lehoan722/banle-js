@@ -2947,6 +2947,17 @@ async function startUnplannedTask() {
 
     if (!manv) return;
 
+    // V2: kiem tra lai TRUC TIEP truoc khi ghi task vao database.
+    // Khong chi phu thuoc kiem tra tai nut mo modal (co the trang thai da doi).
+    try {
+        todayEvents = await loadTodayEvents(manv, diadiem);
+        if (!requireWorkingShiftBeforeAction()) return;
+    } catch (err) {
+        console.error("Khong xac minh duoc ca lam viec", err);
+        alert("Khong kiem tra duoc trang thai vao ca. Vui long tai lai trang va thu lai.");
+        return;
+    }
+
     const titleEl = document.getElementById("unplanned-title");
     const descEl = document.getElementById("unplanned-description");
     const minutesEl = document.getElementById("unplanned-minutes");
