@@ -837,7 +837,7 @@ function mkV1Reset(message = 'Đang tải dữ liệu miễn khoán...') {
   mkV1Set('mk-v1-status', message);
   for (const id of ['mk-v1-gio-cong','mk-v1-mien','mk-v1-chiu','mk-v1-doan',
     'mk-v1-ngay-loi','mk-v1-khoan-cu','mk-v1-khoan-moi','mk-v1-chenh',
-    'mk-v1-thuong','mk-v1-thuc-linh']) mkV1Set(id, '—');
+    'mk-v1-thuong','mk-v1-thuc-linh','mk-v1-gio-canh-bao']) mkV1Set(id, '—');
 }
 async function mkV1DoiChieu(tuNgay, denNgay, manv, soLieu, version) {
   try {
@@ -859,8 +859,11 @@ async function mkV1DoiChieu(tuNgay, denNgay, manv, soLieu, version) {
     const soNgayLoi = rows.filter(r => r.can_kiem_tra === true).length;
     const soLogLoi = sum('so_log_can_kiem_tra');
     const chenhlechGio = Math.abs(gioCong - soLieu.gio_cong_tinh_luong);
-    const canCanhBao = soNgayLoi > 0 || soLogLoi > 0 || chenhlechGio > 0.02 ||
-      Math.abs(gioCong - (gioMien + gioChiu)) > 0.02;
+    // V2: Nhat ky khong hop le van la canh bao, KHONG tinh vao gio mien khoan.
+    // Chi khoa gia lap neu lech gio cong / loi so hoc nghiem trong.
+    const saiLechNghiemTrong = chenhlechGio > 0.02 ||
+      Math.abs(gioCong - (gioMien + gioChiu)) > 0.02 ||
+      gioMien < -0.00001 || gioChiu < -0.00001 || gioMien > gioCong + 0.02;
 
     mkV1Set('mk-v1-gio-cong', fmtNumber(gioCong, 4));
     mkV1Set('mk-v1-mien', fmtNumber(gioMien, 4));
@@ -868,12 +871,14 @@ async function mkV1DoiChieu(tuNgay, denNgay, manv, soLieu, version) {
     mkV1Set('mk-v1-doan', fmtNumber(soDoan, 0));
     mkV1Set('mk-v1-ngay-loi', fmtNumber(soNgayLoi, 0));
     mkV1Set('mk-v1-khoan-cu', fmtNumber(soLieu.khoan_thang, 0));
-    if (canCanhBao) {
-      mkV1Set('mk-v1-status', `CẦN KIỂM TRA: ${soNgayLoi} ngày báo lỗi, ${soLogLoi} nhật ký bất thường; lệch giờ công V1/V2 ${fmtNumber(chenhlechGio, 4)} giờ. Tạm không tính khoán mới hoặc lương giả lập.`);
+    mkV1Set('mk-v1-gio-canh-bao', fmtNumber(soLogLoi, 0));
+    if (saiLechNghiemTrong) {
+      mkV1Set('mk-v1-status', `DUNG GIA LAP: Lech gio cong V1/V2 ${fmtNumber(chenhlechGio, 4)} gio hoac du lieu gio khong nhat quan. Khong thay doi luong chinh thuc.`);
       return;
     }
 
     const khoanMoi = gioChiu * soLieu.khoan_gio;
+    // GIU NGUYEN CHINH SACH THUONG AM: KHONG dung Math.max(0, ...).
     const thuongGiaLap = (soLieu.tong_doanh_thu - khoanMoi) * (soLieu.pct_thuong / 100);
     const thucLinhGiaLap = soLieu.luong_gio_thang + thuongGiaLap +
       soLieu.tong_hoa_hong + soLieu.tong_thuong_xa - soLieu.khoan_tru;
@@ -881,7 +886,11 @@ async function mkV1DoiChieu(tuNgay, denNgay, manv, soLieu, version) {
     mkV1Set('mk-v1-chenh', fmtNumber(soLieu.khoan_thang - khoanMoi, 0));
     mkV1Set('mk-v1-thuong', fmtNumber(thuongGiaLap, 0));
     mkV1Set('mk-v1-thuc-linh', fmtNumber(thucLinhGiaLap, 0));
-    mkV1Set('mk-v1-status', `Đối chiếu thành công ${rows.length} dòng ngày/cơ sở. Đây là đề xuất chưa phê duyệt; chưa áp dụng vào lương chính thức.`);
+    if (soNgayLoi > 0 || soLogLoi > 0) {
+      mkV1Set('mk-v1-status', `V2 - CO CANH BAO: ${soNgayLoi} ngay, ${soLogLoi} log nhiem vu can kiem tra. CHI tinh thu tu nhiem vu hop le; nhat ky loi khong duoc cong gio mien khoan. KHONG DUOC dung de chot luong khi chua ra soat.`);
+    } else {
+      mkV1Set('mk-v1-status', `V2 - Doi chieu thanh cong ${rows.length} dong ngay/co so. So gio mien khoan la de xuat, chua phe duyet; khong doi luong chinh thuc.`);
+    }
   } catch (err) {
     if (version !== mienKhoanRequestVersion) return;
     console.error('Lỗi RPC miễn khoán V1:', err);
