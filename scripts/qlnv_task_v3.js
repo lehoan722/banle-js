@@ -9,7 +9,7 @@ const idStaff=()=>String(localStorage.getItem('manv')||sessionStorage.getItem('m
 const ms=(v)=>new Date(v).getTime();
 const fmt=(mins)=>Math.max(0,mins).toFixed(1).replace('.',',')+' phút';
 let current=[],busy=false;
-const state=(m)=> { if(!m.started_at)return 'Chưa bắt đầu'; if(m.reported_at)return m.report_status==='reported_done'?'Đã báo hoàn thành':m.report_status==='reported_incomplete'?'Đã báo chưa hoàn thành':m.report_status; if(Date.now()>=ms(m.deadline_at))return 'Hết giờ miễn khoán – Chờ báo cáo';return 'Đang miễn khoán';};
+const state=(m)=> {if(m.report_status==='approved'&&m.approved_at&&m.approved_minutes!=null)return 'Đã duyệt'; if(!m.started_at)return 'Chưa bắt đầu'; if(m.reported_at)return m.report_status==='reported_incomplete'?'Chưa hoàn thành – Chờ quản lý xử lý':'Đã báo hoàn thành – Chờ duyệt'; if(Date.now()>=ms(m.deadline_at))return 'Hết giờ miễn khoán – Chờ báo cáo';return 'Đang miễn khoán';};
 const elapsed=(m,end)=>Math.max(0,(ms(end||new Date())-ms(m.started_at))/60000);
 const candidate=(m)=>!m.started_at?0:Math.min(Number(m.assigned_minutes), elapsed(m,m.reported_at||new Date()));
 function msg(t){alert(t);}
@@ -50,7 +50,7 @@ async function load(){
  let raw= ` <b>#${m.task_id} – ${esc(t.title||'Nhiệm vụ')}</b><div>${esc(t.description||'')}</div><div class="v3-muted">Được giao: ${m.assigned_minutes} phút • ${esc(state(m))}</div>`;
  if(m.started_at){raw+=`<div class="v3-muted">Bắt đầu: ${new Date(m.started_at).toLocaleString('vi-VN')} • Miễn khoán dự kiến: <b>${fmt(candidate(m))}</b> / ${m.assigned_minutes} phút${!m.reported_at?` • <span class="v3countdown" data-deadline="${esc(m.deadline_at)}"></span>`:""}</div>`;}
  if(m.reported_at){raw+=`<div class="v3-muted">Báo cáo: ${esc(m.report_note||'(không ghi chú)')}</div>`;}
- if(m.approved_minutes!==null)raw+=`<div><b>Quản lý duyệt: ${fmt(Number(m.approved_minutes))}</b></div>`;
+ if(m.report_status==='approved'&&m.approved_at&&m.approved_minutes!=null){raw+=`<div style="margin:7px 0;background:#dcfce7;color:#166534;border-radius:6px;padding:8px"><b>✓ ĐÃ DUYỆT: ${fmt(Number(m.approved_minutes))}</b><div>Đã được xác nhận; chỉ được áp dụng tính lương khi đối chiếu giờ công hợp lệ.</div></div>`;}else if(m.reported_at){raw+=`<div style="margin:7px 0;background:#fef3c7;color:#92400e;border-radius:6px;padding:8px"><b>⏳ CHỜ QUẢN LÝ DUYỆT</b><div>Số phút hiển thị mới là dự kiến, chưa được chốt.</div></div>`;}
  box.innerHTML=raw;
  if(t.status==='cancelled')continue;
  if(!m.started_at){button(box,'📷 Ảnh trước & Bắt đầu',()=>begin(m,t));}
