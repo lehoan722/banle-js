@@ -13,6 +13,29 @@ const state=(m)=> { if(!m.started_at)return 'Chưa bắt đầu'; if(m.reported_
 const elapsed=(m,end)=>Math.max(0,(ms(end||new Date())-ms(m.started_at))/60000);
 const candidate=(m)=>!m.started_at?0:Math.min(Number(m.assigned_minutes), elapsed(m,m.reported_at||new Date()));
 function msg(t){alert(t);}
+function askReportText(incomplete){
+ return new Promise(resolve=>{
+  const overlay=document.createElement('div'); overlay.className='v3-report-overlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:2147483646;background:rgba(15,23,42,.65);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;';
+  const dialog=document.createElement('section');
+  dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
+  dialog.style.cssText='width:min(100%,480px);max-height:90dvh;overflow:auto;background:white;border-radius:14px;padding:18px;box-sizing:border-box;color:#172033;box-shadow:0 20px 60px #0005;';
+  const h=document.createElement('h3');h.textContent=incomplete?'Báo cáo CHƯA HOÀN THÀNH':'Báo cáo HOÀN THÀNH';h.style.margin='0 0 10px';
+  const label=document.createElement('label');label.textContent=incomplete?'Phần đã làm, phần chưa làm và lý do (bắt buộc)':'Kết quả công việc (bắt buộc)';label.style.cssText='display:block;font-weight:600;margin-bottom:8px';
+  const input=document.createElement('textarea');input.rows=5;input.placeholder=incomplete?'Ví dụ: Đã dọn 3/5 kệ; còn 2 kệ vì đang thiếu người...':'Ví dụ: Đã sắp xếp đủ 50 sản phẩm theo từng size...';
+  input.style.cssText='display:block;box-sizing:border-box;width:100%;min-height:130px;padding:12px;border:1px solid #94a3b8;border-radius:8px;font-size:16px;line-height:1.5;background:#fff;color:#111;resize:vertical;';
+  const error=document.createElement('div');error.style.cssText='min-height:22px;color:#b91c1c;font-size:13px;margin-top:6px';
+  const row=document.createElement('div');row.style.cssText='display:flex;gap:10px;justify-content:flex-end;margin-top:12px;';
+  const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Hủy';cancel.style.cssText='padding:12px 16px;background:#e2e8f0;color:#111;border:0;border-radius:8px;font-size:16px;';
+  const ok=document.createElement('button');ok.type='button';ok.textContent='Tiếp tục';ok.style.cssText='padding:12px 16px;background:#0877e8;color:white;border:0;border-radius:8px;font-size:16px;';
+  const finish=(v)=>{overlay.remove();resolve(v)};
+  cancel.onclick=()=>finish(null);
+  ok.onclick=()=>{const v=input.value.trim();if(!v){error.textContent='Bạn phải nhập nội dung báo cáo vào ô phía trên.';input.focus();return;}finish(v);};
+  row.append(cancel,ok);dialog.append(h,label,input,error,row);overlay.append(dialog);document.body.append(overlay);
+  // Do not auto-open the iOS keyboard, but keep the field visible and tappable.
+ });
+}
+
 async function load(){
  const manv=idStaff();if(!manv||!panel)return;
  const {data,error}=await sp.schema('qlnv').from('task_v3_meta').select('*').eq('assigned_to',manv).eq('diadiem',branch).order('created_at',{ascending:false}).limit(30);
@@ -20,7 +43,7 @@ async function load(){
  current=data||[];v3Loaded=true;
  const ids=current.map(m=>m.task_id);let tasks=[];
  if(ids.length){let r=await sp.schema('qlnv').from('tasks').select('id,title,description,status,created_at').in('id',ids);if(r.error){msg(r.error.message);return;}tasks=r.data||[];}
- const map=new Map(tasks.map(t=>[t.id,t]));
+ const map=new Map(tasks.map(t=>[t.id,t]));current=current.filter(m=>map.get(m.task_id)?.status!=='cancelled');
  panel.replaceChildren();const title=document.createElement('h2');title.textContent='📋 Nhiệm vụ được quản lý giao – V3';panel.append(title);
  if(!current.length){const p=document.createElement('p');p.textContent='Chưa có nhiệm vụ V3 được giao.';panel.append(p);return;}
  for(const m of current){const t=map.get(m.task_id)||{};const box=document.createElement('div');box.className='v3task';
@@ -29,6 +52,7 @@ async function load(){
  if(m.reported_at){raw+=`<div class="v3-muted">Báo cáo: ${esc(m.report_note||'(không ghi chú)')}</div>`;}
  if(m.approved_minutes!==null)raw+=`<div><b>Quản lý duyệt: ${fmt(Number(m.approved_minutes))}</b></div>`;
  box.innerHTML=raw;
+ if(t.status==='cancelled')continue;
  if(!m.started_at){button(box,'📷 Ảnh trước & Bắt đầu',()=>begin(m,t));}
  else if(!m.reported_at){button(box,'✅ Báo hoàn thành',()=>report(m,t,'reported_done'));button(box,'⚠️ Báo chưa hoàn thành',()=>report(m,t,'reported_incomplete'));}
  panel.append(box);
@@ -61,7 +85,7 @@ async function begin(m,t){if(!confirm(`Bắt đầu "${t.title||m.task_id}" (${m
  const taskUpdate=await sp.schema('qlnv').from('tasks').update({status:'in_progress',started_at:now.toISOString(),deadline_at:deadline.toISOString(),before_image_path:paths[0]||null,before_image_at:paths.length?now.toISOString():null}).eq('id',m.task_id).eq('status','pending');
  if(taskUpdate.error)msg('Đã bắt đầu đồng hồ V3, nhưng cần đồng bộ trạng thái nhiệm vụ: '+taskUpdate.error.message);
 }
-async function report(m,t,status){const incomplete=status==='reported_incomplete';const note=prompt(incomplete?'Nhập lý do chưa hoàn thành (bắt buộc):':'Nhập kết quả công việc (bắt buộc):','');if(note===null)return;if(!note.trim()){msg('Bạn phải nhập nội dung báo cáo.');return;}
+async function report(m,t,status){const incomplete=status==='reported_incomplete';const note=await askReportText(incomplete);if(note===null)return;
  const files=await chooseImages('after',m.image_required&&!incomplete);if(files===null)return;
  const paths=await upload(files,m,'after');const now=new Date();const min=Math.min(Number(m.assigned_minutes),elapsed(m,now));
  const r=await sp.schema('qlnv').from('task_v3_meta').update({reported_at:now.toISOString(),report_status:status,after_images:paths,report_note:note.trim(),updated_at:now.toISOString()}).eq('task_id',m.task_id).is('reported_at',null).select('task_id');if(r.error)throw Error(r.error.message);if(!r.data?.length)throw Error('Đã có báo cáo từ phiên khác');
@@ -76,7 +100,9 @@ document.getElementById('btn-tanca')?.addEventListener('click',(e)=>{
  if(!v3Loaded){e.stopImmediatePropagation();e.preventDefault();msg('Chưa tải xong danh sách nhiệm vụ V3. Vui lòng thử lại khi có mạng.');return;}
  if(current.some(m=>m.started_at&&!m.reported_at)){e.stopImmediatePropagation();e.preventDefault();msg('Bạn cần báo cáo mọi nhiệm vụ V3 đang làm trước khi tan ca.');}
 },true);
-setInterval(()=>{if(document.getElementById('qlnv-v3-panel')?.offsetParent)load();},20000);
+setInterval(()=>{if(document.visibilityState==='visible' && document.getElementById('qlnv-v3-panel')?.offsetParent)load();},5000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')load();});
+window.addEventListener('focus',()=>load());
 setTimeout(load,2500);
 
 // Countdown purely visual, actual time is derived from Supabase timestamps.
