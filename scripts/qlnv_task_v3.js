@@ -38,13 +38,25 @@ function askReportText(incomplete){
 
 async function load(){
  const manv=idStaff();if(!manv||!panel)return;
- const {data,error}=await sp.schema('qlnv').from('task_v3_meta').select('*').eq('assigned_to',manv).eq('diadiem',branch).order('created_at',{ascending:false}).limit(30);
- if(error){panel.innerHTML='<h2>📋 Nhiệm vụ V3</h2><p class="v3-error">Không đọc được dữ liệu V3: '+esc(error.message)+'. Kiểm tra đăng nhập Supabase và chạy SQL_V3_CHAY_TRUOC.sql.</p>';return;}
- current=data||[];v3Loaded=true;
+ // V3.06: lịch sử chỉ ngày hôm nay; nhiệm vụ cũ CHƯA báo cáo vẫn phải hiện để xử lý.
+ const now=new Date();
+ const vnNow=new Date(now.toLocaleString('en-US',{timeZone:'Asia/Ho_Chi_Minh'}));
+ const startVn=new Date(Date.UTC(vnNow.getFullYear(),vnNow.getMonth(),vnNow.getDate(),-7,0,0));
+ const since=startVn.toISOString();
+ const base=()=>sp.schema('qlnv').from('task_v3_meta').select('*').eq('assigned_to',manv).eq('diadiem',branch);
+ const [todayRows,unfinishedRows,reportedToday]=await Promise.all([
+   base().gte('created_at',since).order('created_at',{ascending:false}).limit(300),
+   base().is('reported_at',null).order('created_at',{ascending:false}).limit(300),
+   base().gte('reported_at',since).order('reported_at',{ascending:false}).limit(300)
+ ]);
+ const error=todayRows.error||unfinishedRows.error||reportedToday.error;
+ if(error){panel.innerHTML='<h2>📋 Nhiệm vụ V3</h2><p class="v3-error">Không đọc được dữ liệu V3: '+esc(error.message)+'</p>';v3Loaded=false;return;}
+ const unique=new Map();for(const m of [...(todayRows.data||[]),...(unfinishedRows.data||[]),...(reportedToday.data||[])])unique.set(m.task_id,m);
+ current=[...unique.values()].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));v3Loaded=true;
  const ids=current.map(m=>m.task_id);let tasks=[];
  if(ids.length){let r=await sp.schema('qlnv').from('tasks').select('id,title,description,status,created_at').in('id',ids);if(r.error){msg(r.error.message);return;}tasks=r.data||[];}
  const map=new Map(tasks.map(t=>[t.id,t]));current=current.filter(m=>map.get(m.task_id)?.status!=='cancelled');
- panel.replaceChildren();const title=document.createElement('h2');title.textContent='📋 Nhiệm vụ được quản lý giao – V3';panel.append(title);
+ panel.replaceChildren();const title=document.createElement('h2');title.textContent='📋 Nhiệm vụ hôm nay & việc chưa báo cáo – V3';panel.append(title);
  if(!current.length){const p=document.createElement('p');p.textContent='Chưa có nhiệm vụ V3 được giao.';panel.append(p);return;}
  for(const m of current){const t=map.get(m.task_id)||{};const box=document.createElement('div');box.className='v3task';
  let raw= ` <b>#${m.task_id} – ${esc(t.title||'Nhiệm vụ')}</b><div>${esc(t.description||'')}</div><div class="v3-muted">Được giao: ${m.assigned_minutes} phút • ${esc(state(m))}</div>`;
@@ -62,10 +74,10 @@ function button(el,label,fn){const b=document.createElement('button');b.classNam
 async function wrap(fn){if(busy)return;busy=true;try{await fn();}catch(e){console.error(e);msg('Lỗi V3: '+e.message);}finally{busy=false;await load();}}
 function chooseImages(kind,required){return new Promise(resolve=>{
  const dlg=document.createElement('div');dlg.style.cssText='position:fixed;inset:0;z-index:99999;background:#000a;display:grid;place-items:center;padding:12px';
- dlg.innerHTML=`<div style="background:white;padding:20px;border-radius:12px;max-width:420px;width:100%;color:#111"><h3>${kind==='before'?'Ảnh TRƯỚC khi làm':'Ảnh SAU khi làm'}</h3><p>Chọn 1–4 ảnh. ${required?'Bắt buộc tối thiểu một ảnh.':'Có thể bỏ qua nếu quản lý không yêu cầu.'}</p><input type="file" accept="image/*" multiple style="width:100%"><p class="v3-error" id="v3picerr"></p><button id="v3picok">Tiếp tục</button> <button id="v3piccancel">Hủy</button></div>`;
+ dlg.innerHTML=`<div style="background:white;padding:20px;border-radius:12px;max-width:420px;width:100%;color:#111"><h3>${kind==='before'?'Ảnh TRƯỚC khi làm':'Ảnh SAU khi làm'}</h3><p>Chọn đúng 1 ảnh. ${required?'Bắt buộc tối thiểu một ảnh.':'Có thể bỏ qua nếu quản lý không yêu cầu.'}</p><input type="file" accept="image/*" style="width:100%"><p class="v3-error" id="v3picerr"></p><button id="v3picok">Tiếp tục</button> <button id="v3piccancel">Hủy</button></div>`;
  document.body.append(dlg);const inp=dlg.querySelector('input');
  dlg.querySelector('#v3piccancel').onclick=()=>{dlg.remove();resolve(null);};
- dlg.querySelector('#v3picok').onclick=()=>{const files=Array.from(inp.files||[]);if(files.length>4||(required&&files.length<1)){dlg.querySelector('#v3picerr').textContent='Chọn '+(required?'1–4':'tối đa 4')+' ảnh.';return;}dlg.remove();resolve(files);};
+ dlg.querySelector('#v3picok').onclick=()=>{const files=Array.from(inp.files||[]);if(files.length>1||(required&&files.length!==1)){dlg.querySelector('#v3picerr').textContent='Chọn '+(required?'đúng 1':'tối đa 1')+' ảnh.';return;}dlg.remove();resolve(files);};
  });}
 async function upload(files,m,kind){let paths=[];for(const file of files){if(!file.type.startsWith('image/'))throw Error('Tệp không phải ảnh');if(file.size>12*1024*1024)throw Error('Ảnh vượt 12 MB, vui lòng giảm kích thước');const path=`${branch}/${idStaff()}/v3/task_${m.task_id}_${kind}_${crypto.randomUUID()}.${/png/.test(file.type)?'png':'jpg'}`;const r=await sp.storage.from(bucket).upload(path,file,{upsert:false,contentType:file.type});if(r.error)throw Error('Không tải được ảnh: '+r.error.message);paths.push(path);}return paths;}
 async function begin(m,t){if(!confirm(`Bắt đầu "${t.title||m.task_id}" (${m.assigned_minutes} phút)? Đồng hồ chạy liên tục kể cả khi bán hàng.`))return;
@@ -91,7 +103,7 @@ async function report(m,t,status){const incomplete=status==='reported_incomplete
  const r=await sp.schema('qlnv').from('task_v3_meta').update({reported_at:now.toISOString(),report_status:status,after_images:paths,report_note:note.trim(),updated_at:now.toISOString()}).eq('task_id',m.task_id).is('reported_at',null).select('task_id');if(r.error)throw Error(r.error.message);if(!r.data?.length)throw Error('Đã có báo cáo từ phiên khác');
  const upd=await sp.schema('qlnv').from('tasks').update({status:incomplete?'timeout':'done',completed_at:incomplete?null:now.toISOString(),actual_minutes:Math.ceil(elapsed(m,now)),payroll_minutes:Math.min(Number(m.assigned_minutes),Math.ceil(min)),after_image_path:paths[0]||null,after_image_at:paths.length?now.toISOString():null}).eq('id',m.task_id);
  if(upd.error)msg('Báo cáo V3 đã lưu, nhưng trạng thái task cũ chưa đồng bộ: '+upd.error.message);
- msg('Đã gửi báo cáo. Giờ miễn khoán tối đa: '+fmt(min)+'. Nếu chế độ tự duyệt đang bật và nhiệm vụ hợp lệ, hệ thống sẽ duyệt ngay; nếu không sẽ chờ quản lý.');
+ msg('Đã gửi báo cáo. Giờ miễn khoán tối đa: '+fmt(min)+'. Nếu bật tự duyệt và báo cáo hợp lệ, Supabase sẽ xét duyệt sau ít nhất 5 phút; nếu không sẽ chờ quản lý.');
 }
 // Chặn TANCA trong capture-phase với dữ liệu V3 đã tải gần nhất.
 // Nếu dữ liệu V3 chưa tải được, chặn để tránh bỏ kiểm tra khi mất mạng.
