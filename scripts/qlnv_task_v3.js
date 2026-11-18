@@ -91,7 +91,7 @@ async function report(m,t,status){const incomplete=status==='reported_incomplete
  const r=await sp.schema('qlnv').from('task_v3_meta').update({reported_at:now.toISOString(),report_status:status,after_images:paths,report_note:note.trim(),updated_at:now.toISOString()}).eq('task_id',m.task_id).is('reported_at',null).select('task_id');if(r.error)throw Error(r.error.message);if(!r.data?.length)throw Error('Đã có báo cáo từ phiên khác');
  const upd=await sp.schema('qlnv').from('tasks').update({status:incomplete?'timeout':'done',completed_at:incomplete?null:now.toISOString(),actual_minutes:Math.ceil(elapsed(m,now)),payroll_minutes:Math.min(Number(m.assigned_minutes),Math.ceil(min)),after_image_path:paths[0]||null,after_image_at:paths.length?now.toISOString():null}).eq('id',m.task_id);
  if(upd.error)msg('Báo cáo V3 đã lưu, nhưng trạng thái task cũ chưa đồng bộ: '+upd.error.message);
- msg('Đã gửi báo cáo. Miễn khoán đề xuất: '+fmt(min)+'. Quản lý sẽ xác nhận.');
+ msg('Đã gửi báo cáo. Giờ miễn khoán tối đa: '+fmt(min)+'. Nếu chế độ tự duyệt đang bật và nhiệm vụ hợp lệ, hệ thống sẽ duyệt ngay; nếu không sẽ chờ quản lý.');
 }
 // Chặn TANCA trong capture-phase với dữ liệu V3 đã tải gần nhất.
 // Nếu dữ liệu V3 chưa tải được, chặn để tránh bỏ kiểm tra khi mất mạng.

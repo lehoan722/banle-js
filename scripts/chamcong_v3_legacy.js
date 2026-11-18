@@ -3800,7 +3800,9 @@ async function initChamCong(diadiem) {
     startAutoResumeAfterCleanup({ manv, diadiem });
 
     // Bắt đầu auto check rời khỏi cửa hàng
-    startAutoCheckLeave(manv, diadiem);
+    // V3.05: GPS thieu tin cay KHONG duoc tu dong ghi AUTO_TANCA.
+    // Giữ nguyên hàm startAutoCheckLeave để có thể phục hồi về sau.
+    console.info('[V3.05] Da tam tat AUTO_TANCA GPS; nhan vien van phai bam Tan ca.');
 
     setInterval(async () => {
         const manv = localStorage.getItem("manv");
