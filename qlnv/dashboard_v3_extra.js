@@ -36,7 +36,26 @@ function askAdminText(title,description=''){return new Promise(resolve=>{
  buttons.append(no,yes);wrap.append(heading,text,input,err,buttons);shade.append(wrap);document.body.append(shade);
 });}
 
-async function load(){if(!panel)return;const {data,error}=await sp.schema('qlnv').from('task_v3_meta').select('*').eq('diadiem',branch()).order('created_at',{ascending:false}).limit(300);
+async function renderAutoApprovalSettings(){
+ let mount=document.getElementById('v305-auto-approve');
+ if(!mount){mount=document.createElement('section');mount.id='v305-auto-approve';mount.style.cssText='border:1px solid #94a3b8;border-radius:10px;padding:14px;margin:10px 0;background:#f8fafc';panel.parentElement.insertBefore(mount,panel);}
+ const site=branch();const {data,error}=await sp.schema('qlnv').from('task_v3_settings').select('auto_approve_enabled,updated_at,updated_by').eq('diadiem',site).maybeSingle();
+ mount.replaceChildren();const heading=document.createElement('strong');heading.textContent='⚙️ Tự động duyệt nhiệm vụ V3 – '+site.toUpperCase();mount.append(heading);
+ if(error||!data){const txt=document.createElement('p');txt.textContent='Không tải được cài đặt tự duyệt: '+(error?.message||'chưa có dữ liệu')+'. Kiểm tra SQL V3.05.';mount.append(txt);return;}
+ const line=document.createElement('label');line.style.cssText='display:flex;gap:10px;align-items:center;margin-top:10px';
+ const toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=!!data.auto_approve_enabled;toggle.style.width='20px';toggle.style.height='20px';
+ const name=document.createElement('span');name.textContent=toggle.checked?'ĐANG BẬT – tự duyệt công việc hoàn thành hợp lệ':'ĐANG TẮT – quản lý duyệt thủ công';line.append(toggle,name);mount.append(line);
+ const hint=document.createElement('small');hint.textContent='Lưu lâu dài trên Supabase theo từng cơ sở. Chỉ tự duyệt khi báo hoàn thành, đủ ảnh và không chồng nhiệm vụ; chưa hoàn thành vẫn chờ duyệt. Phút đưa vào lương còn phải đối chiếu giờ công.';mount.append(hint);
+ toggle.addEventListener('change',async()=>{
+  const checked=toggle.checked;toggle.disabled=true;
+  try{
+   const who=getCurrentUserInfo();const r=await sp.schema('qlnv').from('task_v3_settings').update({auto_approve_enabled:checked,updated_at:new Date().toISOString(),updated_by:who.manv||'ADMIN'}).eq('diadiem',site).select('diadiem');
+   if(r.error)throw Error(r.error.message);if(!r.data?.length)throw Error('Không được phép cập nhật. Hãy đăng nhập tài khoản quản lý.');
+   name.textContent=checked?'ĐANG BẬT – tự duyệt công việc hoàn thành hợp lệ':'ĐANG TẮT – quản lý duyệt thủ công';
+  }catch(e){toggle.checked=!checked;alert('Không lưu được công tắc tự duyệt: '+e.message);}finally{toggle.disabled=false;}
+ });
+}
+async function load(){if(!panel)return;await renderAutoApprovalSettings();const {data,error}=await sp.schema('qlnv').from('task_v3_meta').select('*').eq('diadiem',branch()).order('created_at',{ascending:false}).limit(300);
  if(error){panel.textContent='Lỗi đọc V3: '+error.message;return;}const rows=data||[];
  const ids=rows.map(r=>r.task_id);let tasks=[];if(ids.length){const r=await sp.schema('qlnv').from('tasks').select('id,title,description,status').in('id',ids);tasks=r.data||[];}
  const names=new Map(tasks.map(t=>[t.id,t]));panel.replaceChildren();
