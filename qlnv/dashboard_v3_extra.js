@@ -45,7 +45,7 @@ async function renderAutoApprovalSettings(){
  const line=document.createElement('label');line.style.cssText='display:flex;gap:10px;align-items:center;margin-top:10px';
  const toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=!!data.auto_approve_enabled;toggle.style.width='20px';toggle.style.height='20px';
  const name=document.createElement('span');name.textContent=toggle.checked?'ĐANG BẬT – tự duyệt công việc hoàn thành hợp lệ':'ĐANG TẮT – quản lý duyệt thủ công';line.append(toggle,name);mount.append(line);
- const hint=document.createElement('small');hint.textContent='Lưu lâu dài trên Supabase theo từng cơ sở. Chỉ tự duyệt khi báo hoàn thành, đủ ảnh và không chồng nhiệm vụ; chưa hoàn thành vẫn chờ duyệt. Phút đưa vào lương còn phải đối chiếu giờ công.';mount.append(hint);
+ const hint=document.createElement('small');hint.textContent='Lưu lâu dài trên Supabase theo từng cơ sở. Sau khi nhân viên báo hoàn thành đủ ảnh, chờ tối thiểu 5 phút rồi hệ thống mới tự duyệt. Chưa hoàn thành vẫn chờ quản lý; quản lý có thể duyệt thủ công trước. Phút đưa vào lương còn phải đối chiếu giờ công.';mount.append(hint);
  toggle.addEventListener('change',async()=>{
   const checked=toggle.checked;toggle.disabled=true;
   try{
@@ -89,7 +89,7 @@ async function load(){if(!panel)return;await renderAutoApprovalSettings();const 
  const s=m.reported_at?(m.report_status==='reported_done'?'Đã báo hoàn thành':m.report_status==='reported_incomplete'?'Đã báo chưa hoàn thành':m.report_status):(m.started_at?(timedOut?'Hết miễn khoán – Chờ báo cáo':'Đang chạy'):'Chưa bắt đầu');
  const st=v3State(m,t);
  const badge=`<span style="display:inline-block;margin:2px 0;padding:4px 9px;border-radius:15px;background:${st.bg};color:${st.fg};font-weight:700;font-size:12px">${esc(st.name)}</span>`;
- box.innerHTML=`<strong>#${m.task_id}: ${esc(t.title||'Nhiệm vụ')} — ${esc(m.assigned_to)}</strong><div>${badge}</div><div>${esc(t.description||'')}</div><small>Giao ${m.assigned_minutes} phút • ${esc(s)} • Tối đa theo thời gian: ${mins(m).toFixed(2)} phút</small><div>${esc(m.report_note||'')}</div>${v3IsApproved(m)?`<div style="color:#166534;font-weight:700;margin:5px 0">ĐÃ DUYỆT: ${v3Format(m.approved_minutes)} phút • ${esc(m.approved_by||'Quản lý')} • ${esc(new Date(m.approved_at).toLocaleString('vi-VN'))}</div>`:m.reported_at?'<div style="color:#92400e;font-weight:700;margin:5px 0">Chưa được chốt phút miễn khoán – chờ quản lý xử lý</div>':''}`;
+ box.innerHTML=`<strong>#${m.task_id}: ${esc(t.title||'Nhiệm vụ')} — ${esc(m.assigned_to)}</strong><div>${badge}</div><div>${esc(t.description||'')}</div><small>Giao ${m.assigned_minutes} phút • ${esc(s)} • Tối đa theo thời gian: ${mins(m).toFixed(2)} phút</small><div>${esc(m.report_note||'')}</div>${v3IsApproved(m)?`<div style="color:#166534;font-weight:700;margin:5px 0">ĐÃ DUYỆT: ${v3Format(m.approved_minutes)} phút • ${esc(m.approved_by||'Quản lý')} • ${esc(new Date(m.approved_at).toLocaleString('vi-VN'))}</div>`:m.reported_at?'<div style="color:#92400e;font-weight:700;margin:5px 0">Chưa được chốt phút miễn khoán – chờ quản lý xử lý (nếu bật tự duyệt: xét sau 5 phút)</div>':''}`;
  if(t.status==='cancelled'){
   const cancelled=document.createElement('p');cancelled.style.cssText='color:#b91c1c;font-weight:700;margin:8px 0';cancelled.textContent='ĐÃ HỦY – '+(m.report_note||'');box.append(cancelled);panel.append(box);continue;
  }
@@ -109,11 +109,11 @@ async function load(){if(!panel)return;await renderAutoApprovalSettings();const 
 
  if(m.started_at&&!m.reported_at){
    const group=document.createElement('div');group.style.marginTop='9px';
-   const file=document.createElement('input');file.type='file';file.accept='image/*';file.multiple=true;
-   const hint=document.createElement('div');hint.textContent=m.image_required?'Quản lý hoàn thành thay: chọn 1–4 ảnh SAU':'Ảnh sau (tùy chọn, tối đa 4)';group.append(hint,file);
+   const file=document.createElement('input');file.type='file';file.accept='image/*';file.multiple=false;
+   const hint=document.createElement('div');hint.textContent=m.image_required?'Quản lý hoàn thành thay: chọn đúng 1 ảnh SAU':'Ảnh sau (tùy chọn, tối đa 1)';group.append(hint,file);
    const done=document.createElement('button');done.textContent='Quản lý hoàn thành thay nhân viên';done.onclick=()=>act(async()=>{
      const note=await askAdminText('Quản lý hoàn thành thay #'+m.task_id,'Nhập kết quả công việc và lý do phải hoàn thành thay nhân viên.');if(note===null)return;
-     const files=Array.from(file.files||[]);if(files.length>4||(m.image_required&&!files.length)){alert('Chọn 1–4 ảnh sau để xác nhận kết quả.');return;}
+     const files=Array.from(file.files||[]);if(files.length>1||(m.image_required&&files.length!==1)){alert('Chọn đúng 1 ảnh sau để xác nhận kết quả.');return;}
      let paths=[];
      for(const f of files){if(!f.type.startsWith('image/')||f.size>12*1024*1024)throw Error('Chỉ nhận ảnh dưới 12MB');const path=`${branch()}/${m.assigned_to}/v3/task_${m.task_id}_after_admin_${crypto.randomUUID()}.${f.type==='image/png'?'png':'jpg'}`;
        const up=await sp.storage.from('qlnv-task-images').upload(path,f,{upsert:false,contentType:f.type});if(up.error)throw Error(up.error.message);paths.push(path);
