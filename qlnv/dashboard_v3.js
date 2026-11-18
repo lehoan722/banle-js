@@ -1792,6 +1792,25 @@ async function saveUnplannedTaskFromDashboard() {
     ref_id: data.id
   });
 
+  // NOTIFICATION V1: task has been saved. An in-app event is created by the SQL
+  // trigger; this authenticated call only dispatches Web Push to its recipient.
+  try {
+    const {data: sess} = await supabase.auth.getSession();
+    const jwt = sess?.session?.access_token;
+    if (jwt) {
+      const pushResponse = await fetch('/api/ht-notify-v1?action=dispatch-task', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`},
+        body: JSON.stringify({task_id: data.id})
+      });
+      const pushInfo = await pushResponse.json().catch(() => ({}));
+      if (!pushResponse.ok) console.warn('[HT Notify] Thông báo đã lưu; đẩy chưa thành công:', pushInfo.error);
+    }
+  } catch (pushError) {
+    console.warn('[HT Notify] Không gửi Web Push; nhiệm vụ vẫn được giao:', pushError);
+  }
+
+
   unplannedTaskModal.classList.add('hidden');
 
   await loadTasks(diadiem);
