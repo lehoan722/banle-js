@@ -56,43 +56,30 @@ self.addEventListener("activate", event => {
   event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener("push", event => {
-  let data = {};
-
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch (e) {
-    data = {
-      title: "Thông báo",
-      body: event.data ? event.data.text() : ""
-    };
-  }
-
-  event.waitUntil(
-    self.registration.showNotification(data.title || "Thông báo", {
-      body: data.body || "",
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
-      data: data.url || "/chamcongcs1.html"
-    })
-  );
+// HOANTUYET_NOTIFICATION_V1: keep the existing offline fetch handler unchanged.
+self.addEventListener('push', event => {
+  let item = {};
+  try { item = event.data ? event.data.json() : {}; }
+  catch (_) { item = {body: event.data ? event.data.text() : ''}; }
+  const path = typeof item.url === 'string' && item.url.startsWith('/') && !item.url.startsWith('//')
+    ? item.url : '/chamcong_v3_cs1.html';
+  event.waitUntil(self.registration.showNotification(item.title || 'HOÀN TUYẾT', {
+    body: item.body || 'Bạn có thông báo mới',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: item.event_key || undefined,
+    data: {url: path}
+  }));
 });
-
-self.addEventListener("notificationclick", event => {
+self.addEventListener('notificationclick', event => {
   event.notification.close();
-
-  const url = event.notification.data || "/chamcongcs1.html";
-
-  event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true })
-      .then(clientList => {
-        for (const client of clientList) {
-          if ("focus" in client) return client.focus();
-        }
-
-        if (clients.openWindow) {
-          return clients.openWindow(url);
-        }
-      })
-  );
+  const raw = event.notification.data;
+  const relative = typeof raw === 'string' ? raw : (raw && raw.url) || '/';
+  const target = new URL(relative, self.location.origin);
+  if (target.origin !== self.location.origin) return;
+  event.waitUntil(self.clients.matchAll({type:'window', includeUncontrolled:true}).then(async list => {
+    const client = list.find(c => { try {return new URL(c.url).pathname === target.pathname;} catch (_) {return false;} });
+    if (client) { await client.focus(); if ('navigate' in client) await client.navigate(target.href); return; }
+    if (self.clients.openWindow) return self.clients.openWindow(target.href);
+  }));
 });
