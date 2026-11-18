@@ -1,71 +1,342 @@
 <!doctype html>
-<html lang="vi">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hoàn Tuyết · Thử kết nối Chainway R5 (độc lập)</title>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RFID Gán hàng · Hoàn Tuyết | Chẩn đoán công suất R5</title>
+<link rel="stylesheet" href="https://unpkg.com/tabulator-tables@6.5.0/dist/css/tabulator.min.css">
 <style>
-:root{color-scheme:light;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#f4f7fb;color:#172437}
-*{box-sizing:border-box}body{max-width:900px;margin:0 auto;padding:18px 14px 80px}h1{font-size:23px;margin:0 0 5px}h2{font-size:17px;margin:0 0 10px}.muted{color:#607188}.panel{background:white;border:1px solid #dce5ef;border-radius:14px;padding:16px;margin:13px 0}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.metric{background:#f0f5fb;border-radius:10px;padding:12px}.metric b{font-size:22px}.metric small{display:block;color:#607188}button{background:#173b70;border:0;color:white;border-radius:9px;padding:11px 14px;font-size:14px;cursor:pointer;margin:3px 4px 3px 0}button:disabled{background:#a7b5c8;cursor:not-allowed}.secondary{background:#52667e}.danger{background:#b14444}#log{height:175px;overflow:auto;background:#101d2c;color:#c7e4c8;padding:12px;border-radius:9px;white-space:pre-wrap;font:12px/1.5 ui-monospace,monospace}#status{font-weight:700}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:8px 7px;text-align:left;border-bottom:1px solid #e7edf4}th{background:#f6f9fc}code{word-break:break-all}.note{border-left:3px solid #e6ad37;padding-left:10px}.ok{color:#16714d}.warn{color:#ac6718}
-</style></head>
-<body>
-<h1>Kiểm tra Chainway R5 · Hoàn Tuyết</h1>
-<div class="muted">Bản kiểm tra Web Bluetooth độc lập · không đăng nhập Supabase · không thay đổi hóa đơn hay tồn kho</div>
-<div class="panel">
-  <h2>1. Kết nối Bluetooth</h2>
-  <p>Trạng thái: <span id="status">Chưa kết nối</span></p>
-  <button id="connect">Kết nối R5</button><button id="disconnect" class="secondary" disabled>Ngắt kết nối</button>
-  <p class="muted">Khi hiện danh sách thiết bị, chọn R5 (có thể có tên <code>Nordic_UART_CW</code>). Trên Windows dùng Chrome/Edge có BLE; trên iPhone thử bằng Bluefy và HTTPS. Không dùng Chrome/Safari iPhone thông thường.</p>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#13263e;background:#f2f6fb;color-scheme:light}*{box-sizing:border-box}
+body{margin:0}header{background:#123766;color:white;padding:15px max(14px,calc((100vw - 1300px)/2));display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}header h1{font-size:22px;margin:0}header p{font-size:13px;color:#d6e4f7;margin:4px 0 0}.wrap{max-width:1330px;margin:0 auto;padding:16px 14px 65px}.panel{background:white;border:1px solid #dce5ee;padding:15px;border-radius:13px;margin-bottom:14px;box-shadow:0 2px 8px #17314d08}.panel h2{font-size:17px;margin:0 0 13px}.small{color:#657992;font-size:13px}.flex{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.line{display:flex;gap:9px;flex-wrap:wrap;align-items:end}.line>.field{flex:1 1 145px}.field>label{font-weight:650;font-size:13px;display:block;margin-bottom:5px}input,select,textarea{font:inherit;border:1px solid #aebfd1;border-radius:8px;padding:10px 11px;background:white;color:#13263e;width:100%;min-width:0}input:focus,textarea:focus,select:focus{outline:2px solid #77b0ec;outline-offset:0}textarea{resize:vertical;font:13px/1.5 ui-monospace,monospace}button{font:inherit;background:#1b497e;color:white;border:0;border-radius:8px;padding:10px 12px;cursor:pointer}button:hover{filter:brightness(1.09)}button:disabled{opacity:.48;cursor:not-allowed}.neutral{background:#566c84}.success{background:#187757}.warning{background:#ad6621}.danger{background:#a63e44}.outline{background:white;border:1px solid #9fb3c9;color:#194476}.tag{border-radius:20px;padding:5px 10px;font-size:12px;background:#eaf1f8;color:#25476a}.tag.good{background:#e3f6ec;color:#126445}.tag.warn{background:#fff0d9;color:#8f5317}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.metric{background:#f0f5fa;border-radius:8px;padding:10px}.metric b{font-size:22px;display:block}.metric span{font-size:12px;color:#5c6f84}.two{display:grid;grid-template-columns:1.15fr 1fr;gap:13px}.soft{background:#f4f8fc;border:1px solid #dce7f1;border-radius:8px;padding:11px}.table-area{border:1px solid #cfddeb;border-radius:9px;overflow:hidden}.tabulator{font-size:13px;border:none}.tabulator .tabulator-header .tabulator-col .tabulator-col-content{padding:7px 5px}.tabulator .tabulator-row.tabulator-selected{background:#dcecff}.tabulator .tabulator-cell{padding:8px 6px}.tabulator .tabulator-header-filter input{padding:5px;border-radius:5px;font-size:12px}.tabulator .tabulator-row.active-rfid-row{box-shadow:inset 4px 0 #f09e2c;background:#fff2d8}.tabulator .tabulator-row.saved-rfid-row{background:#e7f8ed}.tabulator .tabulator-row.error-rfid-row{background:#fff0ee}.tabulator .tabulator-cell.tabulator-editing{background:#faffd5}.message{padding:9px 11px;border-radius:8px;background:#edf4fe;color:#163b66;font-size:13px;margin:8px 0;white-space:pre-wrap}.message.error{background:#fff0ef;color:#8e2222}.message.ok{background:#e5f8ed;color:#18593c}.epc-list{max-height:205px;overflow:auto;background:#f5f8fc;border:1px solid #dfe6f0;border-radius:8px;padding:7px}.epc-chip{display:flex;justify-content:space-between;gap:9px;align-items:center;background:white;border:1px solid #cddae8;border-radius:7px;padding:7px;margin-bottom:5px;font-family:ui-monospace,monospace;font-size:11px;word-break:break-all}.epc-chip button{font-family:system-ui;font-size:12px;padding:6px 8px;flex-shrink:0}.log{height:135px;overflow:auto;background:#102238;color:#d7efd9;border-radius:9px;padding:10px;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap}.notice{border-left:4px solid #e8a631;padding:8px 12px;background:#fff9e9;font-size:13px}.compact{margin:5px 0}.hr{height:1px;background:#e5edf5;margin:12px 0}.hidden{display:none!important}.session{max-width:420px}.bar{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.primary-row{background:#eff5fe;padding:10px;border-radius:8px}.em{font-weight:750}.kbd{border:1px solid #cbd4de;border-radius:4px;background:#f8fafc;padding:0 5px}#appstatus{font-size:13px}
+@media(max-width:850px){.two{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}header h1{font-size:18px}.wrap{padding:10px 8px 60px}.panel{padding:11px}.line>.field{min-width:135px}}
+
+/* Chế độ tìm EPC: tách biệt tuyệt đối với gán và lưu */
+.find-panel{border:2px solid #aac9e6;background:linear-gradient(180deg,#f5faff,white)}
+.find-result{border-radius:12px;padding:14px;background:#eaf1f8;border:1px solid #ccdbe9}
+.find-result.found{background:#e4f7ec;border-color:#67ba87}
+.find-epc{font:700 14px/1.5 ui-monospace,monospace;word-break:break-all}
+.find-main{font-size:23px;font-weight:800;margin:5px 0}
+.find-meter{height:19px;overflow:hidden;border-radius:12px;background:#cfdbe8}
+.find-meter>div{height:100%;width:0%;background:#2887c6;transition:width .2s}
+.find-stats{display:flex;gap:15px;flex-wrap:wrap;justify-content:space-between;margin:9px 0}
+@media(max-width:580px){.find-main{font-size:20px}}
+.power-card{border:1px solid #c9d7e7;background:#f5f8ff;border-radius:10px;padding:12px;margin:12px 0}.power-range{display:flex;align-items:center;gap:12px;margin-top:10px}.power-range input[type=range]{padding:0;accent-color:#1b497e;flex:1}.power-value{font-weight:800;color:#123766;font-size:20px;min-width:75px;text-align:right}.power-presets{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.power-presets button{font-size:12px;padding:7px 10px}.power-state{font-size:13px;margin:9px 0 0;color:#25476a}.power-state.fail{color:#9c2424}.power-state.good{color:#136947}
+
+.diagnose{border:1px solid #85b6d8;border-radius:10px;padding:12px;background:#fff;margin:12px 0}.diagnose h3{margin:0 0 8px;font-size:16px}.status-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.status-box{border:1px solid #dae3ed;border-radius:8px;padding:9px;background:#f5f9fd;min-width:0}.status-box strong{display:block;font-size:17px;overflow-wrap:anywhere}.status-box small{display:block;color:#586b80}.status-box.good{border-color:#59ae84;background:#e9f9ef}.status-box.bad{border-color:#d77f7b;background:#fff0ed}.status-box.warn{border-color:#d6b26a;background:#fffae9}.raw-list{height:175px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:#d4f4d4;background:#12283b;padding:10px;border-radius:8px;font:12px/1.5 ui-monospace,monospace}.test-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.test-grid .field{min-width:0}.test-grid .field label{display:block;font-size:12px;margin-bottom:4px;color:#425a72}.test-grid .field input{width:100%}@media(max-width:650px){.status-row{grid-template-columns:1fr}.test-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<script src="https://unpkg.com/tabulator-tables@6.5.0/dist/js/tabulator.min.js"></script>
+</head><body>
+<header><div><h1>Gán RFID cho hàng hóa · HOÀN TUYẾT</h1><p>Giai đoạn 1 · tách biệt hóa đơn và tồn kho · CS1 / CS2</p></div><span class="tag" id="appstatus">Đang khởi động…</span></header>
+<main class="wrap">
+<div class="notice" style="margin-bottom:14px"><b>Chế độ an toàn:</b> dữ liệu mô phỏng không được ghi lên Supabase; bảng RFID chỉ ghi vào các bảng mới. Chỉ quản trị viên Supabase được lưu thật trong bản thử nghiệm. Không dùng dữ liệu RFID để thay đổi tồn kho.</div>
+<section class="panel"><h2>1. Cơ sở, chế độ và phiên gán</h2>
+<div class="line">
+ <div class="field" style="flex:0 1 120px"><label for="branch">Cơ sở</label><select id="branch"><option value="1">CS1</option><option value="2">CS2</option></select></div>
+ <div class="field"><label for="mode">Cách gán</label><select id="mode"><option value="single">Từng chiếc / danh sách Zebra</option><option value="group">Theo nhóm cùng MASP + size</option></select></div>
+ <div class="field" style="flex:1 1 240px"><label for="note">Ghi chú phiên</label><input id="note" placeholder="VD: Kệ giày tầng 1, ca sáng" maxlength="500"></div>
+ <div class="field"><label for="sess">Mở lại phiên đã lưu</label><select id="sess"><option value="">Chưa chọn phiên</option></select></div>
 </div>
-<div class="panel">
-  <h2>2. Thử quét EPC (chỉ đọc, không ghi tem)</h2>
-  <button id="start" disabled>Bắt đầu đọc liên tục</button><button id="stop" class="danger" disabled>Dừng đọc</button><button id="clear" class="secondary">Xóa kết quả</button>
-  <div class="grid" style="margin-top:10px">
-    <div class="metric"><b id="unique">0</b><small>EPC duy nhất</small></div>
-    <div class="metric"><b id="readcount">0</b><small>Lượt đọc nhận được</small></div>
-    <div class="metric"><b id="frames">0</b><small>Khung BLE hợp lệ</small></div>
+<div class="bar"><button id="newSession">Tạo phiên lưu thật</button><button id="loadSession" class="neutral">Mở phiên đã chọn</button><button id="checkLogin" class="outline">Kiểm tra quyền Supabase</button><span id="currentSession" class="tag">Chưa có phiên thật</span></div>
+<p class="small compact" id="userInfo">Nếu chưa đăng nhập, vẫn có thể thao tác thử trên bảng và xuất CSV. Để lưu thật: đăng nhập bằng tài khoản quản trị hệ thống rồi chạy file SQL đi kèm.</p>
+<div id="msg" class="message">Sẵn sàng. Có thể dán danh sách ngay bên dưới.</div>
+</section>
+<section class="panel"><h2>2. Quét Zebra / nhập hàng chờ gán</h2>
+<div class="line primary-row">
+ <div class="field" style="flex:2 1 270px"><label for="masp">Mã sản phẩm (Zebra)</label><input id="masp" autocomplete="off" placeholder="27008-KDA.DEN"></div>
+ <div class="field" style="flex:0 1 145px"><label for="size">Size</label><input id="size" autocomplete="off" placeholder="39"></div>
+ <div class="field" style="flex:0 1 105px"><label for="qty">Số chiếc</label><input id="qty" inputmode="numeric" type="number" min="1" max="500" value="1"></div>
+ <button id="addItems" class="success">+ Thêm vào bảng</button>
+</div>
+<p class="small compact">Máy Zebra nhập MASP như bàn phím. Nhập size riêng (không tự đoán size từ chuỗi mã vạch); bấm Enter ở ô MASP hoặc nút Thêm để tạo từng chiếc thành một dòng. Nếu nhiều chiếc cùng MASP/size, dùng Số chiếc.</p>
+<div class="hr"></div><label class="em" for="pasteBox">Dán từ Excel / Google Sheets / CSV (dòng trống được cho phép)</label>
+<p class="small compact">Dán 2 hoặc 3 cột theo thứ tự <b>MASP [Tab] SIZE [Tab] EPC</b>. Có thể không có EPC. Trên iPhone, nhấn giữ trong ô rồi chọn Dán. Bảng phía dưới cũng hỗ trợ Ctrl+C/Ctrl+V trên Windows.</p>
+<textarea id="pasteBox" rows="3" placeholder="27008-KDA.DEN&#9;39&#10;27008-KDA.DEN&#9;40&#10;27008-KDA.NAU&#9;39&#9;E280689400001827"></textarea>
+<div class="bar"><button id="importPaste">Dán dữ liệu vào bảng</button><button id="addBlank" class="outline">+ 50 dòng trống</button><button id="clearFilters" class="outline">Xóa lọc/sắp xếp</button><button id="clearDraft" class="danger">Xóa bảng nháp</button></div>
+</section>
+<section class="panel"><h2>3. Bảng gán RFID – chọn vùng, lọc, sắp xếp và copy/dán</h2>
+<div class="small">Click/giữ và kéo để chọn vùng; bấm tiêu đề cột để chọn cột; <span class="kbd">Ctrl+C</span> sao chép, <span class="kbd">Ctrl+V</span> dán. Dùng ô lọc dưới tiêu đề; bấm biểu tượng sắp xếp trên tiêu đề. Click một dòng để chọn sản phẩm đang gán RFID.</div>
+<div class="metrics"><div class="metric"><b id="countTotal">0</b><span>Dòng sản phẩm</span></div><div class="metric"><b id="countAssigned">0</b><span>Có EPC trong bảng</span></div><div class="metric"><b id="countSaved">0</b><span>Đã lưu thành công</span></div><div class="metric"><b id="countWait">0</b><span>Chờ EPC</span></div></div>
+<div class="small" style="margin:9px 0">Dòng đang chọn: <b id="activeRow">Chưa chọn</b></div>
+<div class="table-area" id="grid"></div>
+<div class="bar"><button id="checkRows" class="outline">Kiểm tra dữ liệu / trùng EPC</button><button id="saveAll" class="success">Lưu phiên + gán EPC hợp lệ</button><button id="copySelected" class="outline">Sao chép vùng chọn</button><button id="csvExport" class="neutral">Xuất CSV</button><button id="csvShare" class="neutral">Chia sẻ CSV (iPhone)</button></div>
+<p class="small">Luôn có các dòng trống để nhập thêm. Sau khi đã lưu được ít nhất một dòng, hãy dán các dòng mới qua ô nhập lớn phía trên để không ghi đè vào vùng đã lưu. Nếu lọc đang bật và không thấy dòng trống, chọn “Xóa lọc/sắp xếp”, hoặc sử dụng ô dán lớn phía trên. Lưu thật chỉ xử lý dòng có MASP và size; dòng có EPC hợp lệ sẽ gán, dòng chưa có EPC sẽ lưu chờ.</p>
+</section>
+<div class="two">
+<section class="panel"><h2>4. R5: nhận EPC và gán vào dòng đang chọn</h2>
+<div class="flex"><span id="bleStatus" class="tag">Bluetooth chưa kết nối</span><button id="bleConnect">Kết nối R5</button><button id="bleDisconnect" class="neutral" disabled>Ngắt</button></div>
+<div class="bar"><button id="bleStart" disabled>Bắt đầu đọc</button><button id="bleStop" class="danger" disabled>Dừng đọc</button><button id="poolClear" class="outline">Xóa danh sách EPC đọc</button><button id="mockEpcs" class="outline">Tạo 5 EPC MÔ PHỎNG</button></div>
+<p class="small">Gán từng chiếc: click dòng trong bảng, sau đó bấm <b>Gán dòng này</b> cạnh một EPC được R5 phát hiện. Không tự gán dựa vào thứ tự máy trả mã. Gán nhóm: chỉ dùng khi các món hàng có cùng MASP và size, đặt tách riêng trong vùng đọc.</p>
+<div id="epcPool" class="epc-list"><div class="small">Chưa có EPC được đọc.</div></div>
+<div class="bar"><button id="assignGroup" class="warning">Gán nhóm đồng nhất từ danh sách EPC</button></div>
+<p class="small">Không có lệnh WRITE, LOCK hoặc KILL. EPC mô phỏng có tiền tố MOCK, bị chặn khi lưu thật. R5 cần kiểm tra trên máy thật để xác nhận lệnh và độ ổn định.</p>
+</section>
+<section class="panel find-panel" id="findSection"><h2>5. Tìm một thẻ RFID theo EPC (chế độ riêng)</h2>
+<p class="small">Nhập EPC HEX thực tế, hoặc chọn dòng đã có EPC trong bảng và bấm <b>Lấy EPC dòng đang chọn</b>. R5 chỉ cần quét và xác định sự xuất hiện của đúng EPC này. <b>Không gán mã, không lưu Supabase, không ghi/khóa tem.</b></p>
+<div class="line">
+ <div class="field" style="flex:3 1 280px"><label for="findTarget">EPC mục tiêu (HEX)</label><input id="findTarget" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="E2806894..."></div>
+ <div class="field" style="flex:0 1 190px"><label for="findSound">Âm báo tìm tem</label><select id="findSound"><option value="on">Bật (thử nghiệm)</option><option value="off">Tắt</option></select></div>
+</div>
+<div class="power-card">
+ <div class="flex" style="justify-content:space-between"><b>Điều chỉnh công suất UHF của R5</b><span class="tag" id="powerActual">Công suất thực: chưa đọc</span></div>
+ <div class="power-range"><label for="powerSlider" class="small" style="white-space:nowrap">5 dBm</label><input id="powerSlider" type="range" min="5" max="30" step="1" value="15" aria-label="Công suất UHF cần đặt"><label for="powerSlider" class="small" style="white-space:nowrap">30</label><output for="powerSlider" id="powerChosen" class="power-value">15 dBm</output></div>
+ <div class="power-presets"><button type="button" class="outline" data-pwr="7">Rất gần · 7</button><button type="button" class="outline" data-pwr="12">Gần · 12</button><button type="button" class="outline" data-pwr="18">Trung bình · 18</button><button type="button" class="outline" data-pwr="24">Xa · 24</button><button type="button" class="outline" data-pwr="30">Tối đa · 30</button></div>
+ <div class="bar"><button id="powerApply" class="warning" type="button">Áp dụng lên R5</button><button id="powerRead" type="button" class="outline">Đọc công suất thực từ R5</button></div>
+ <p id="powerMessage" class="power-state">Chưa gửi lệnh. Giá trị thanh trượt chỉ là mức dự định, <b>không phải mức đã cài trên máy.</b></p>
+ <p class="small compact">Phần mềm gửi lệnh <code>0x10</code> và truy vấn lại <code>0x12</code> theo SDK Chainway. Nếu đang tìm, quá trình đọc sẽ tạm dừng rồi khởi động lại. Mức dBm là công suất phát, <b>không tương đương bán kính đọc chính xác</b>. Dùng mức phù hợp quy định vô tuyến tại Việt Nam.</p>
+ <div class="diagnose" id="r5Diagnose">
+  <h3>Kiểm chứng công suất bằng phản hồi THẬT từ R5</h3>
+  <div class="status-row">
+    <div class="status-box" id="diagRequestedBox"><small>Đang chọn (chưa gửi)</small><strong id="diagRequested">15 dBm</strong></div>
+    <div class="status-box" id="diagActualBox"><small>Giá trị R5 trả về (0x13)</small><strong id="diagActual">Chưa nhận</strong></div>
+    <div class="status-box" id="diagVerifyBox"><small>Kết quả đối chiếu</small><strong id="diagVerify">CHƯA KIỂM CHỨNG</strong></div>
   </div>
-  <p class="muted">Từng EPC có thể xuất hiện nhiều lần; phần mềm tự lọc trùng. Giữ thiết bị đang ở gần tem khi quét.</p>
-  <div class="table-wrap"><table><thead><tr><th>STT</th><th>EPC</th><th>Số lượt</th><th>Cập nhật</th></tr></thead><tbody id="rows"><tr><td colspan="4" class="muted">Chưa nhận EPC.</td></tr></tbody></table></div>
-  <button id="csv" class="secondary">Xuất CSV</button>
+  <div class="bar"><button id="diagReadTwice" class="outline" type="button">Đọc lại 2 lần (không đổi công suất)</button><button id="diagCopy" class="outline" type="button">Sao chép nhật ký công suất</button><button id="diagClear" class="outline" type="button">Xóa nhật ký chẩn đoán</button></div>
+  <p class="small">Mỗi lệnh gửi và gói phản hồi <code>0x11</code>/<code>0x13</code> đều được ghi HEX bên dưới. <b>Chỉ nhãn XÁC NHẬN</b> khi đọc lại hai lần đúng giá trị đặt; không suy ra từ thanh trượt. Nếu R5 báo khác, không coi đã đổi công suất. Giá trị trả về là cấu hình mà firmware báo, <b>không phải đo công suất bức xạ bằng thiết bị RF</b>.</p>
+  <div id="diagRaw" class="raw-list" role="log" aria-live="polite">Chưa có giao tiếp công suất.</div>
+  <h3 style="margin-top:12px">Ghi kết quả thử khoảng cách (đo thủ công)</h3>
+  <div class="test-grid">
+   <div class="field"><label for="testTag">Loại tem</label><input id="testTag" value="UHF 30×17 mm" maxlength="100"></div>
+   <div class="field"><label for="testSurface">Vị trí dán</label><input id="testSurface" value="Tem rời" maxlength="100"></div>
+   <div class="field"><label for="testDistance">Khoảng xa nhất (m)</label><input id="testDistance" type="number" min="0" step="0.1" inputmode="decimal" placeholder="VD: 1.2"></div>
+   <div class="field"><label for="testNote">Ghi chú</label><input id="testNote" maxlength="180" placeholder="Pin, hướng, lần đọc..."></div>
+  </div>
+  <div class="bar"><button id="testAdd" type="button" class="success">Ghi một lượt thử</button><button id="testCsv" class="outline" type="button">Sao chép kết quả dạng CSV</button><button id="testClear" class="outline" type="button">Xóa kết quả thử</button></div>
+  <div style="overflow:auto"><table id="testTable" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px"><thead><tr><th>Thời gian</th><th>Yêu cầu</th><th>R5 báo</th><th>Tem</th><th>Vị trí</th><th>Khoảng cách</th><th>Ghi chú</th></tr></thead><tbody></tbody></table></div>
+  <p class="small">Thử cùng 1 tem, cùng vị trí và hướng anten. Sạc đầy pin; đọc công suất thực trước/sau từng lượt. Dữ liệu thử chỉ lưu tạm trong trang, không gửi Supabase.</p>
+ </div>
 </div>
-<div class="panel">
-  <h2>3. Chẩn đoán</h2>
-  <button id="selftest" class="secondary">Tự kiểm tra bộ giải mã (không cần R5)</button>
-  <p class="muted">Nếu R5 kết nối nhưng không đọc được EPC, sao chép các dòng nhật ký để phân tích. Bản này chỉ sử dụng lệnh START/STOP/POLL, không dùng WRITE, LOCK hoặc KILL.</p>
-  <div id="log" aria-live="polite"></div>
+<div class="bar"><button id="findUseRow" class="neutral">Lấy EPC dòng đang chọn</button><button id="findStart" class="success">Bắt đầu tìm</button><button id="findStop" class="danger" disabled>Dừng tìm</button><button id="findMock" class="outline">Mô phỏng phát hiện EPC</button><button id="findReset" class="outline">Xóa kết quả tìm</button></div>
+<div class="find-result" id="findResult" aria-live="polite" style="margin-top:12px">
+ <div class="small">EPC đang theo dõi</div><div id="findCurrent" class="find-epc">Chưa chọn</div>
+ <div id="findState" class="find-main">Chưa bắt đầu</div>
+ <div class="find-meter"><div id="findBar"></div></div>
+ <div class="find-stats"><span>Lượt đọc trong 3 giây: <b id="findRate">0</b></span><span>Tổng lượt đọc: <b id="findTotal">0</b></span><span>Lần cuối: <b id="findLast">—</b></span></div>
+ <div class="small" id="findTip">Thanh biểu thị <b>tần suất đọc gần đây</b> (quy đổi 0–20 lần/3 giây), <b>không phải RSSI hoặc khoảng cách</b>. Không được xem là định vị theo mét.</div>
 </div>
-<div class="panel"><h2>Giới hạn</h2><p class="note">Đây là <b>bản thử kỹ thuật</b> xây dựng từ mã nguồn SDK iOS Chainway do chủ cửa hàng cung cấp. Chưa kiểm chứng trên máy R5 thật/firmware thực tế. Không sử dụng để quyết định tồn kho hay hóa đơn. Các phiên bản firmware có thể yêu cầu điều chỉnh cách giải mã hoặc chế độ đọc.</p></div>
-<script>
+<p class="notice">Lưu ý kỹ thuật: SDK R5 có API RSSI nhưng bộ giải mã BLE của trang hiện tại chưa xác nhận vị trí byte RSSI từ máy thật. Vì vậy bản này dùng <b>phát hiện đúng EPC + tần suất đọc</b> để tìm sơ bộ. Khi có dữ liệu gốc từ R5 thật sẽ bổ sung RSSI; hiện đã có nút chỉnh công suất bằng lệnh SDK, nhưng cần thử trên firmware thực tế. Muốn dò đúng giá hàng, giảm công suất trên trang hoặc trực tiếp trên R5 và quét từng khu vực; tín hiệu phản xạ có thể gây đọc nhầm vùng.</p>
+</section>
+<section class="panel"><h2>6. Kiểm tra lỗi và xuất dữ liệu</h2><p class="small">Trạng thái kiểm tra dữ liệu, lỗi trùng EPC, kết quả lưu từng dòng và kết nối Bluetooth sẽ hiển thị tại đây.</p>
+<div id="log" class="log"></div>
+<div class="bar"><button id="copyCsv" class="outline">Sao chép toàn bộ CSV</button><button id="showCsv" class="outline">Xem/chọn CSV</button><button id="copyLog" class="outline">Sao chép nhật ký</button></div>
+<textarea id="csvPreview" rows="5" class="hidden" readonly placeholder="CSV sẽ xuất hiện tại đây"></textarea>
+</section>
+</div>
+<section class="panel"><h2>Giới hạn giai đoạn 1</h2><div class="notice">Đây là trang gán RFID độc lập. Chưa xử lý bán hàng, chuyển chi nhánh, thu hồi chíp, kiểm kho hoặc tự đối chiếu số lượng tồn. Chỉ tài khoản quản trị xác thực qua Supabase được lưu trong giai đoạn thử; không mở quyền ghi cho tất cả nhân viên. Các dòng đã lưu là “đã gán” thì không sửa bằng cách nhập đè; việc hủy/đổi gán sẽ được thiết kế ở giai đoạn tiếp theo, có lịch sử.</div></section>
+</main>
+<script type="module">
 'use strict';
-const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-const WRITE='6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-const NOTIFY='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-const $=(id)=>document.getElementById(id);
-let device=null, writeChar=null, notifyChar=null, pollTimer=null, scanning=false, busyPoll=false, rxBuffer=[], frameCount=0, readCount=0;
-const epcs=new Map();
-function log(s){let t=new Date().toLocaleTimeString('vi-VN');let d=$('log');d.textContent=`[${t}] ${s}\n`+d.textContent.slice(0,18000)}
-function status(s){$('status').textContent=s}
-function ui(){const connected=!!(device?.gatt?.connected && writeChar && notifyChar);$('connect').disabled=connected;$('disconnect').disabled=!connected;$('start').disabled=!connected||scanning;$('stop').disabled=!connected||!scanning;$('unique').textContent=epcs.size.toLocaleString('vi-VN');$('readcount').textContent=readCount.toLocaleString('vi-VN');$('frames').textContent=frameCount.toLocaleString('vi-VN')}
-function hex(bytes){return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('').toUpperCase()}
-function pkt(cmd, data=[]){let len=data.length+8;let b=[0xA5,0x5A,len>>8,len&255,cmd,...data];let xor=0;for(let i=2;i<b.length;i++)xor^=b[i];return new Uint8Array([...b,xor,0x0D,0x0A])}
-let writeQueue=Promise.resolve();
-function send(cmd,data=[]){const bytes=pkt(cmd,data);writeQueue=writeQueue.catch(()=>{}).then(async()=>{if(!writeChar||!device?.gatt?.connected)throw Error('Mất kết nối');if(writeChar.writeValueWithoutResponse)await writeChar.writeValueWithoutResponse(bytes);else await writeChar.writeValue(bytes)});return writeQueue}
-function addEpc(epc){if(!epc||epc.length<4)return;readCount++;const now=new Date().toLocaleTimeString('vi-VN');if(epcs.has(epc)){let r=epcs.get(epc);r.count++;r.when=now}else{epcs.set(epc,{count:1,when:now})}if(readCount%10===0||epcs.size<10)render();else ui()}
-function render(){const tbody=$('rows');tbody.replaceChildren();let arr=Array.from(epcs.entries()).reverse().slice(0,300);if(!arr.length){let tr=document.createElement('tr');let td=document.createElement('td');td.colSpan=4;td.textContent='Chưa nhận EPC.';tr.append(td);tbody.append(tr)}else arr.forEach(([epc,r],idx)=>{let tr=document.createElement('tr');for(let x of [epcs.size-idx,epc,r.count,r.when]){let td=document.createElement('td');td.textContent=x;tr.append(td)}tbody.append(tr)});ui()}
-function parseInventory(payload){if(payload.length<5)return;const count=payload[2];let pos=3;for(let i=0;i<count;i++){if(pos>=payload.length)break;const size=payload[pos++];if(size<3||pos+size>payload.length){log('Bản tin E1 có độ dài thẻ khác dự kiến; payload='+hex(payload));break}const tag=payload.slice(pos,pos+size);pos+=size;const epcBytes=((tag[0]>>3)&0x1f)*2;const epc=(epcBytes>0&&tag.length>=2+epcBytes)?tag.slice(2,2+epcBytes):tag;if(epc.length){addEpc(hex(epc))}}}
-function onFrame(cmd,payload){frameCount++;if(cmd===0xE1)parseInventory(payload);else if(cmd===0xE6)log('Nhận sự kiện nút trên R5 (E6)');else if(cmd===0x8C||cmd===0x83)log('Thiết bị phản hồi lệnh 0x'+cmd.toString(16));else if(frameCount<20)log('Phản hồi 0x'+cmd.toString(16)+' data='+hex(payload.slice(0,40)));ui()}
-function feed(bytes){rxBuffer.push(...bytes);let iterations=0;while(rxBuffer.length>=8&&iterations++<500){if(rxBuffer[0]!==0xA5||rxBuffer[1]!==0x5A){rxBuffer.shift();continue}const len=(rxBuffer[2]<<8)|rxBuffer[3];if(len<8||len>2048){log('Khung sai độ dài '+len);rxBuffer.shift();continue}if(rxBuffer.length<len)break;const frame=rxBuffer.slice(0,len);if(frame[len-2]!==0x0D||frame[len-1]!==0x0A){rxBuffer.shift();continue}let sum=0;for(let i=2;i<len-3;i++)sum^=frame[i];if(sum!==frame[len-3]){log('Sai checksum (0x'+frame[4].toString(16)+')');rxBuffer.shift();continue}rxBuffer.splice(0,len);onFrame(frame[4],frame.slice(5,-3))}if(rxBuffer.length>4096){rxBuffer=[];log('Đã xóa bộ đệm vì vượt giới hạn')}}
-function notifyHandler(e){let v=e.target.value;feed(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))}
-function onDisconnect(){stopPolling();writeChar=null;notifyChar=null;status('R5 đã ngắt kết nối');log('Bluetooth bị ngắt');ui()}
-function stopPolling(){scanning=false;busyPoll=false;if(pollTimer){clearInterval(pollTimer);pollTimer=null}ui()}
-async function connect(){if(!navigator.bluetooth){status('Trình duyệt không hỗ trợ Web Bluetooth');log('Hãy dùng Chrome/Edge trên Windows hoặc Bluefy trên iPhone');return}try{status('Đang chọn thiết bị…');device=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SERVICE]});device.addEventListener('gattserverdisconnected',onDisconnect);const gatt=await device.gatt.connect();const service=await gatt.getPrimaryService(SERVICE);writeChar=await service.getCharacteristic(WRITE);notifyChar=await service.getCharacteristic(NOTIFY);notifyChar.addEventListener('characteristicvaluechanged',notifyHandler);await notifyChar.startNotifications();status('Đã kết nối '+(device.name||'R5'));log('Kết nối thành công: '+(device.name||'(không có tên)'));ui()}catch(e){status('Kết nối thất bại: '+e.message);log('ERROR: '+e.name+' '+e.message);try{device?.gatt?.disconnect()}catch(_){ }writeChar=null;notifyChar=null;ui()}}
-async function start(){try{if(scanning)return;scanning=true;await send(0x82,[0,0]);log('Đã gửi START (82). Bắt đầu POLL (E0).');pollTimer=setInterval(async()=>{if(!scanning||busyPoll)return;busyPoll=true;try{await send(0xE0)}catch(e){log('Poll lỗi: '+e.message);stopPolling()}finally{busyPoll=false}},100);ui()}catch(e){stopPolling();log('Lỗi START: '+e.message)}}
-async function stop(){stopPolling();try{await send(0x8C);log('Đã gửi STOP (8C).')}catch(e){log('Lỗi STOP: '+e.message)}}
-function clear(){epcs.clear();readCount=0;frameCount=0;rxBuffer=[];render();log('Xóa danh sách EPC')}
-function exportCsv(){const lines=['epc,so_lan_doc,lan_cuoi',...Array.from(epcs,([epc,r])=>`${epc},${r.count},${r.when}`)];let blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download='r5_epc_thu_nghiem.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000)}
-function selftest(){const epc=Uint8Array.from([0xE2,0x80,0x68,0x94,0,0,0,1,2,3,4,5]);const rec=[0x30,0x00,...epc,0xFF,0xE4];const body=[0,1,1,rec.length,...rec];const frame=pkt(0xE1,body);const before=readCount;const halves=[frame.slice(0,7),frame.slice(7)];halves.forEach(feed);if(readCount===before+1){log('SELF-TEST OK: giải mã EPC '+hex(epc))}else{log('SELF-TEST FAILED: bộ giải mã không lấy được EPC')}}
-$('connect').addEventListener('click',connect);$('disconnect').addEventListener('click',()=>{stopPolling();device?.gatt?.disconnect()});$('start').addEventListener('click',start);$('stop').addEventListener('click',stop);$('clear').addEventListener('click',clear);$('csv').addEventListener('click',exportCsv);$('selftest').addEventListener('click',selftest);
-log('Trang sẵn sàng. Bluetooth API: '+(navigator.bluetooth?'Có':'Không')+' | HTTPS/secure context: '+(isSecureContext?'Có':'Không'));ui();
-</script>
-</body>
-</html>
+import {supabase} from './scripts/supabaseClient.js';
+const $ = id => document.getElementById(id);
+const SERVICE='6e400001-b5a3-f393-e0a9-e50e24dcca9e', WRITE='6e400002-b5a3-f393-e0a9-e50e24dcca9e', NOTIFY='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+let table=null, rows=[], nextStt=1, activeStt=null, session=null, sessionBranch=null, currentUser=null, isAdmin=false, saving=false;
+let device=null, writeChar=null, notifyChar=null, scanning=false, polling=null, busyPoll=false, rx=[], writeQueue=Promise.resolve();
+const epcPool=new Map();
+let findActive=false, findTarget='',findTimes=[],findTotal=0,findLast=0,findTicker=null,findAudio=null;
+let powerBusy=false,powerPending=null,powerReadPending=null,powerKnown=null,powerLastAck=null;
+let diagHistory=[],testHistory=[],verifiedPower=null,verifiedAt=null,lastPowerResponse=null;
+function diagPrint(msg){const line=new Date().toLocaleTimeString('vi-VN')+' '+msg;diagHistory.push(line);if(diagHistory.length>240)diagHistory.shift();$('diagRaw').textContent=diagHistory.join('\n');$('diagRaw').scrollTop=$('diagRaw').scrollHeight;}
+function setDiagState(state,text){const b=$('diagVerifyBox');b.className='status-box '+(state==='ok'?'good':state==='error'?'bad':'warn');$('diagVerify').textContent=text;}
+function updateDiag(){const intended=+$('powerSlider').value;$('diagRequested').textContent=intended+' dBm';$('diagActual').textContent=powerKnown==null?'Chưa nhận':powerKnown+' dBm';$('diagActualBox').className='status-box '+(powerKnown!=null?'good':'');}
+function resetVerified(msg='CHƯA KIỂM CHỨNG'){verifiedPower=null;verifiedAt=null;setDiagState('unknown',msg);}
+function csvField(s){return '"'+String(s??'').replace(/"/g,'""')+'"'}
+function testCSV(){return [['Thoi gian','Cong suat yeu cau dBm','R5 tra ve dBm','Da xac nhan','Loai tem','Vi tri','Khoang cach m','Ghi chu'],...testHistory.map(x=>[x.at,x.want,x.actual,x.verified,x.tag,x.surface,x.distance,x.note])].map(row=>row.map(csvField).join(',')).join('\r\n')}
+function drawTests(){const tbody=$('testTable').querySelector('tbody');tbody.replaceChildren();for(const t of testHistory){const tr=document.createElement('tr');for(const cell of [t.at,t.want,t.actual,t.verified,t.tag,t.surface,t.distance,t.note]){const td=document.createElement('td');td.textContent=cell;td.style.cssText='border-bottom:1px solid #dae5ee;padding:5px;white-space:nowrap';tr.append(td)}tbody.append(tr)}}
+function recordTest(){const d=Number($('testDistance').value);if(!$('testDistance').value||!Number.isFinite(d)||d<0)return say('Nhập khoảng cách đo hợp lệ.','error');testHistory.push({at:new Date().toLocaleString('vi-VN'),want:$('powerSlider').value,actual:powerKnown??'Không có',verified:verifiedPower!==null&&powerKnown===verifiedPower?'CÓ':'KHÔNG',tag:$('testTag').value,surface:$('testSurface').value,distance:String(d),note:$('testNote').value});drawTests();say('Đã ghi kết quả thử (chỉ trong bộ nhớ trang).','ok')}
+
+function powerMsg(text,kind=''){const el=$('powerMessage');el.textContent=text;el.className='power-state '+kind;}
+function syncPower(){const chosen=+$('powerSlider').value;$('powerChosen').textContent=chosen+' dBm';$('powerActual').textContent=powerKnown===null?'Công suất thực: chưa đọc':'R5 báo: '+powerKnown+' dBm';$('powerApply').disabled=powerBusy;$('powerRead').disabled=powerBusy;updateDiag();}
+function powerGetTimeout(promise,label,ms=3500){return Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Không nhận được phản hồi '+label+' từ R5 trong '+ms+'ms')),ms))])}
+async function getPowerLive(){
+ if(!(device?.gatt?.connected&&writeChar&&notifyChar))throw new Error('Chưa kết nối R5');
+ if(powerReadPending)throw new Error('Đang chờ phản hồi đọc công suất');
+ let settle;const reply=new Promise(resolve=>{settle=resolve});powerReadPending=settle;
+ try{diagPrint('TX 0x12 '+hex(packet(0x12)));await send(0x12);return await powerGetTimeout(reply,'đọc công suất',5000);}
+ finally{powerReadPending=null;}
+}
+async function withPowerPaused(operation){
+ const wasScanning=scanning;const wasFinding=findActive;
+ // Tạm dừng phần RF, giữ trạng thái tìm và thống kê; không thoát chế độ tìm EPC.
+ if(wasScanning){scanning=false;if(polling)clearInterval(polling);polling=null;showBle();await send(0x8C);}
+ try{return await operation();}
+ finally{if(wasScanning&&device?.gatt?.connected){try{await startBle(wasFinding);log('Đã tiếp tục đọc sau thay đổi công suất');}catch(e){log('Không thể tiếp tục quét: '+e.message);powerMsg('Hãy bấm Dừng tìm, kiểm tra kết nối rồi bắt đầu lại: '+e.message,'fail');}}}
+}
+async function readPowerUI(){if(powerBusy)return;powerBusy=true;resetVerified('ĐỌC THAM CHIẾU');syncPower();powerMsg('Đang đọc mức công suất từ R5…');try{const p=await getPowerLive();powerKnown=p;setDiagState('unknown','R5 BÁO '+p+' dBm');powerMsg('R5 đang báo mức công suất: '+p+' dBm (chưa phải kiểm tra đổi mức)','good');log('R5 POWER READBACK '+p+' dBm');}catch(e){powerMsg(e.message,'fail');setDiagState('error','LỖI ĐỌC LẠI');diagPrint('ERROR READ '+e.message);log('POWER READ ERROR: '+e.message)}finally{powerBusy=false;syncPower()}}
+async function applyPowerUI(){
+ if(powerBusy)return;const wanted=+$('powerSlider').value;
+ if(!Number.isInteger(wanted)||wanted<5||wanted>30)return powerMsg('Giá trị công suất phải từ 5–30 dBm.','fail');
+ if(!(device?.gatt?.connected&&writeChar&&notifyChar))return powerMsg('Kết nối R5 trước khi đặt công suất.','fail');
+ powerBusy=true;resetVerified('ĐANG ĐẶT '+wanted+' dBm');syncPower();powerMsg('Đang gửi '+wanted+' dBm đến R5 và đọc xác nhận…');
+ try{await withPowerPaused(async()=>{
+   // SDK iOS BluetoothUtil.m: cmd 0x10, payload 02 01 readPower*100 (BE) writePower*100 (BE).
+   // Các trường writePower là thông số của đầu đọc, KHÔNG phải lệnh ghi EPC.
+   const n=wanted*100;powerLastAck=null;
+   const args=[0x02,0x01,(n>>8)&255,n&255,(n>>8)&255,n&255];diagPrint('TX 0x10 '+hex(packet(0x10,args))+' | yêu cầu '+wanted+' dBm');await send(0x10,args);
+   // Một số firmware trả ACK 0x11. Readback 0x13 là nguồn xác nhận chính.
+   await new Promise(r=>setTimeout(r,180));
+   const actual=await getPowerLive();powerKnown=actual;
+   await new Promise(r=>setTimeout(r,350));
+   const confirmAgain=await getPowerLive();diagPrint('POWER DOUBLE VERIFY '+actual+'/'+confirmAgain+' dBm');
+   if(actual!==confirmAgain)throw new Error('R5 đọc lại hai lần khác nhau: '+actual+' / '+confirmAgain+' dBm');
+   if(actual!==wanted)throw new Error('R5 trả về '+actual+' dBm, khác mức yêu cầu '+wanted+' dBm; không xác nhận thành công.');
+   verifiedPower=actual;verifiedAt=Date.now();setDiagState('ok','XÁC NHẬN '+actual+' dBm');diagPrint('VERIFY OK '+actual+' dBm; ACK '+(powerLastAck===null?'không nhận':powerLastAck));log('POWER VERIFIED '+actual+' dBm; ACK: '+(powerLastAck===null?'không nhận':powerLastAck));
+   powerMsg('ĐÃ XÁC NHẬN từ R5: '+actual+' dBm'+(powerLastAck===null?' (không có ACK riêng)':''),'good');
+ });}catch(e){resetVerified('KHÔNG XÁC NHẬN');setDiagState('error','LỖI / KHÔNG KHỚP');diagPrint('ERROR SET '+e.message);powerMsg('Chưa xác nhận mức '+wanted+' dBm: '+e.message,'fail');log('POWER SET ERROR: '+e.message)}finally{powerBusy=false;syncPower()}
+} 
+function validFindEpc(epc){return /^([0-9A-F]{2}){4,64}$/.test(epc)}
+function updateFind(){
+ const t=Date.now();findTimes=findTimes.filter(x=>t-x<=3000);
+ $('findCurrent').textContent=findTarget||'Chưa chọn';
+ $('findRate').textContent=String(findTimes.length);
+ $('findTotal').textContent=String(findTotal);
+ $('findLast').textContent=findLast?new Date(findLast).toLocaleTimeString('vi-VN'):'—';
+ const alive=findTimes.length>0;
+ $('findResult').classList.toggle('found',findActive&&alive);
+ $('findState').textContent=findActive?(alive?'ĐÃ PHÁT HIỆN EPC MỤC TIÊU':'Đang tìm... chưa phát hiện'):findTotal?'Đã dừng tìm':'Chưa bắt đầu';
+ $('findBar').style.width=Math.min(100,findTimes.length/20*100)+'%';
+ $('findStart').disabled=findActive;
+ $('findStop').disabled=!findActive;
+ $('findTarget').disabled=findActive;
+ $('findUseRow').disabled=findActive;
+}
+function findSoundBeep(){
+ if($('findSound').value!=='on'||!findActive||!findAudio)return;
+ try{const ctx=findAudio;if(ctx.state==='suspended')return;const osc=ctx.createOscillator(),gain=ctx.createGain(),now=ctx.currentTime;
+ osc.type='sine';osc.frequency.value=900;gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.07,now+.01);gain.gain.exponentialRampToValueAtTime(.0001,now+.085);
+ osc.connect(gain).connect(ctx.destination);osc.start(now);osc.stop(now+.09);}catch(e){}
+}
+let lastBeep=0;
+function onFoundEpc(epc){
+ if(!findActive||epc!==findTarget)return;
+ const t=Date.now();findTimes.push(t);findTotal++;findLast=t;
+ if(t-lastBeep>280){findSoundBeep();lastBeep=t;}
+ updateFind();
+}
+function useSelectedFindEpc(){
+ const r=activeStt&&table?.getRow(activeStt)?.getData(),e=norm(r?.epc);
+ if(!e){say('Hãy chọn một dòng trong bảng có EPC trước.','error');return}
+ if(!validFindEpc(e)){say('EPC của dòng này không phải HEX hợp lệ (có thể là mã mô phỏng).','error');return}
+ $('findTarget').value=e;findTarget=e;resetFindStats();say('Đã lấy EPC mục tiêu từ dòng '+activeStt+'.','ok');
+}
+function resetFindStats(){findTimes=[];findTotal=0;findLast=0;updateFind()}
+async function findStart(){
+ if(findActive)return;
+ const e=norm($('findTarget').value);
+ if(!validFindEpc(e)){say('EPC mục tiêu phải là mã HEX hợp lệ, độ dài chẵn từ 8 đến 128 ký tự.','error');return}
+ if(scanning){say('Hãy dừng lượt quét/gán trước khi bắt đầu tìm EPC.','error');return}
+ if(!(device?.gatt?.connected&&writeChar&&notifyChar)){say('Hãy kết nối đúng R5 ở mục 4 trước.','error');return}
+ findTarget=e;findActive=true;resetFindStats();
+ try{const AC=window.AudioContext||window.webkitAudioContext;if(AC&&$('findSound').value==='on'){findAudio=findAudio||new AC();await findAudio.resume();}}catch(err){log('Âm báo không khả dụng: '+err.message)}
+ try{await startBle(true);if(!scanning)throw Error('Chưa bật được lượt đọc');findTicker=setInterval(updateFind,350);updateFind();log('FIND START (READ ONLY): '+findTarget);}
+ catch(err){findActive=false;clearInterval(findTicker);findTicker=null;updateFind();say('Chưa bắt đầu tìm được: '+err.message,'error');}
+}
+async function findStop(){
+ if(!findActive)return;findActive=false;clearInterval(findTicker);findTicker=null;
+ if(scanning)await stopBle();updateFind();log('FIND STOP: '+findTarget);
+}
+function findMock(){
+ const e=norm($('findTarget').value);if(!validFindEpc(e)){say('Nhập EPC HEX hợp lệ rồi mới mô phỏng.','error');return}
+ if(findActive||scanning){say('Dừng quét thật trước khi chạy mô phỏng.','error');return}
+ findTarget=e;resetFindStats();findTotal=5;findLast=Date.now();findTimes=Array(5).fill(findLast);updateFind();
+ $('findState').textContent='MÔ PHỎNG: ĐÃ PHÁT HIỆN (không phải R5 thật)';$('findResult').classList.add('found');log('FIND MOCK ONLY: '+e);
+}
+
+const busy = new Set();
+function log(msg){const t=new Date().toLocaleTimeString('vi-VN');$('log').textContent=`[${t}] ${msg}\n`+$('log').textContent.slice(0,12000)}
+function say(msg,kind=''){const m=$('msg');m.textContent=msg;m.className='message '+kind;log(msg)}
+function norm(v){return String(v??'').trim().toUpperCase()}
+function blank(){return {stt:nextStt++,masp:'',size:'',epc:'',ghichu:'',trangthai:'',thongbao:'',mock:false}}
+function realRows(){return table.getData().filter(r=>norm(r.masp)||norm(r.size)||norm(r.epc))}
+function hasContent(r){return !!(norm(r.masp)||norm(r.size)||norm(r.epc))}
+function summary(){const d=realRows(),e=d.filter(x=>norm(x.epc)),s=d.filter(x=>x.trangthai==='da_gan');$('countTotal').textContent=d.length.toLocaleString('vi-VN');$('countAssigned').textContent=e.length.toLocaleString('vi-VN');$('countSaved').textContent=s.length.toLocaleString('vi-VN');$('countWait').textContent=(d.length-e.length).toLocaleString('vi-VN')}
+function rowColor(row){const d=row.getData(),el=row.getElement();el.classList.toggle('active-rfid-row',d.stt===activeStt);el.classList.toggle('saved-rfid-row',d.trangthai==='da_gan');el.classList.toggle('error-rfid-row',d.trangthai==='loi')}
+function styleStatus(cell){const v=cell.getValue();return v==='da_gan'?'Đã gán ✓':v==='cho_gan'?'Chờ gán':v==='loi'?'Lỗi !':v==='san_sang'?'Sẵn sàng':(v||'')}
+function makeGrid(){if(typeof window.Tabulator!=='function'){say('Không tải được Tabulator CDN. Kiểm tra mạng, sau đó tải lại trang.','error');return}
+ table=new Tabulator('#grid',{
+  index:'stt',height:'420px',layout:'fitDataStretch',data:Array.from({length:12},()=>blank()),
+  placeholder:'Chưa có dữ liệu',history:true,editTriggerEvent:'dblclick',
+  selectableRange:1,selectableRangeColumns:true,selectableRangeRows:true,selectableRangeClearCells:false,
+  headerSortClickElement:'icon',clipboard:true,clipboardCopyStyled:false,
+  clipboardCopyRowRange:'range',clipboardPasteParser:'range',clipboardPasteAction:'range',
+  clipboardCopyConfig:{rowHeaders:false,columnHeaders:false},
+  rowHeader:{formatter:'rownum',width:45,frozen:true,hozAlign:'center',headerSort:false,resizable:false},
+  rowFormatter:rowColor,
+  columnDefaults:{headerHozAlign:'center',resizable:'header',headerSort:true,tooltip:true},
+  columns:[
+   {title:'STT',field:'stt',width:65,hozAlign:'right',headerFilter:'input',editable:false},
+   {title:'Mã sản phẩm',field:'masp',width:225,headerFilter:'input',editor:'input',editable:c=>c.getRow().getData().trangthai!=='da_gan'},
+   {title:'Size',field:'size',width:95,headerFilter:'input',editor:'input',editable:c=>c.getRow().getData().trangthai!=='da_gan'},
+   {title:'RFID / EPC',field:'epc',width:270,headerFilter:'input',editor:'input',editable:c=>c.getRow().getData().trangthai!=='da_gan'},
+   {title:'Trạng thái',field:'trangthai',width:125,headerFilter:'list',headerFilterParams:{values:{'':'Tất cả','da_gan':'Đã gán','cho_gan':'Chờ gán','loi':'Lỗi','san_sang':'Sẵn sàng'}},formatter:styleStatus,editable:false},
+   {title:'Ghi chú',field:'ghichu',width:200,headerFilter:'input',editor:'input',editable:c=>c.getRow().getData().trangthai!=='da_gan'},
+   {title:'Kết quả / lỗi',field:'thongbao',width:310,headerFilter:'input',editable:false}
+  ]});
+ table.on('cellClick',(_,cell)=>chooseRow(cell.getRow().getData().stt));
+ table.on('cellEdited',cell=>{const r=cell.getRow().getData();if(['masp','size','epc'].includes(cell.getField())){const f=cell.getField();cell.getRow().update({[f]:norm(r[f]),trangthai:'',thongbao:''});}ensureBlank();summary()});
+ table.on('clipboardPasted',()=>{setTimeout(()=>{normalizeAll();ensureBlank();summary();log('Đã dán dữ liệu vào vùng chọn của bảng')},100)});
+ table.on('rowUpdated',summary);
+ table.on('dataChanged',summary);summary();
+}
+function chooseRow(stt){activeStt=stt;const r=table.getRow(stt)?.getData();$('activeRow').textContent=r?(r.masp?`${r.masp} / ${r.size||'?'} · dòng ${stt}`:`Dòng trống #${stt}`):'Chưa chọn';table.getRows().forEach(rowColor)}
+function ensureBlank(){if(!table)return;const d=table.getData();const b=d.filter(x=>!hasContent(x));if(b.length<3){table.addData(Array.from({length:6-b.length},()=>blank()),false);}}
+function normalizeAll(){for(const r of table.getData()){if(r.trangthai==='da_gan')continue;const x={masp:norm(r.masp),size:norm(r.size),epc:norm(r.epc)};if(r.masp!==x.masp||r.size!==x.size||r.epc!==x.epc)table.getRow(r.stt)?.update(x)}}
+async function fillRows(batch){
+ const spare=table.getData().filter(r=>!hasContent(r)&&r.trangthai!=='da_gan');
+ let i=0;
+ for(;i<spare.length&&i<batch.length;i++){
+   const row=spare[i],newData=batch[i];
+   await table.getRow(row.stt).update({...newData,stt:row.stt});
+ }
+ if(i<batch.length)await table.addData(batch.slice(i),false);
+ ensureBlank();summary();
+}
+function addItems(){const m=norm($('masp').value),s=norm($('size').value),q=Math.floor(Number($('qty').value)||1);if(!m||!s){say('Cần nhập đầy đủ MASP và size.','error');return}if(q<1||q>500){say('Số lượng trong một lần thêm phải từ 1 đến 500.','error');return}const batch=Array.from({length:q},()=>({...blank(),masp:m,size:s}));fillRows(batch).then(()=>{say('Đã thêm '+q+' chiếc '+m+' / '+s+'.');$('masp').focus();$('masp').select()})}
+function splitCSVLine(line){const cells=[];let part='',quoted=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(quoted&&line[i+1]==='"'){part+='"';i++}else quoted=!quoted;}else if(ch===','&&!quoted){cells.push(part);part=''}else part+=ch;}cells.push(part);return cells}
+function importPaste(){const t=$('pasteBox').value.trim();if(!t){say('Chưa có dữ liệu để dán.','error');return}const lines=t.split(/\r?\n/);let data=[];for(let i=0;i<lines.length;i++){if(!lines[i].trim())continue;const parts=lines[i].includes('\t')?lines[i].split('\t'):splitCSVLine(lines[i]);const m=norm(parts[0]),s=norm(parts[1]);if(i===0&&(/^(MASP|MÃ HÀNG|MA HANG|MÃ SẢN PHẨM)$/i.test(m)))continue;data.push({...blank(),masp:m,size:s,epc:norm(parts[2]),ghichu:parts.slice(3).join(' ').slice(0,400)});}if(!data.length){say('Không tìm thấy dòng dữ liệu phù hợp.','error');return}if(data.length>10000){say('Mỗi lần dán tối đa 10.000 dòng.','error');return}fillRows(data).then(()=>{say('Đã dán thêm '+data.length+' dòng. Hãy kiểm tra MASP, size và EPC trước khi lưu.');$('pasteBox').value=''})}
+function clearDraft(){if(!confirm('Xóa nội dung bảng đang hiển thị? Các dòng đã lưu ở Supabase KHÔNG bị xóa.'))return;activeStt=null;nextStt=1;session=null;sessionBranch=null;$('currentSession').textContent='Chưa có phiên thật';table.setData(Array.from({length:12},()=>blank()));summary();say('Đã xóa bảng nháp. Các dữ liệu đã lưu trước đó vẫn tồn tại trong Supabase.')}
+function validate(){normalizeAll();const d=realRows(), epcs=new Map();let errors=0;for(const r of d){let err='';if(!norm(r.masp)||!norm(r.size))err='Thiếu MASP hoặc size';const e=norm(r.epc);if(e){if(!/^([0-9A-F]{2}){4,64}$/.test(e))err='EPC phải là mã HEX độ dài chẵn';if(epcs.has(e))err='Trùng EPC với dòng '+epcs.get(e);else epcs.set(e,r.stt);}if(r.trangthai==='da_gan'){continue}if(err)errors++;table.getRow(r.stt)?.update({trangthai:err?'loi':e?'san_sang':'cho_gan',thongbao:err||''})}summary();say('Đã kiểm tra '+d.length+' dòng; '+errors+' dòng lỗi. Dòng chưa có EPC được lưu ở trạng thái chờ.',errors?'error':'ok');return errors===0}
+function toCsv(){const all=realRows();const esc=x=>'"'+String(x??'').replace(/"/g,'""')+'"';return '\ufeff'+[['STT','MASP','SIZE','EPC','TRANGTHAI','GHICHU','THONGBAO'].map(esc).join(','),...all.map(r=>[r.stt,r.masp,r.size,r.epc,r.trangthai,r.ghichu,r.thongbao].map(esc).join(','))].join('\r\n')}
+function saveCsv(){const blob=new Blob([toCsv()],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='rfid_gan_hang_hoantuyet.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),6000)}
+async function shareCsv(){const f=new File([toCsv()],'rfid_gan_hang_hoantuyet.csv',{type:'text/csv;charset=utf-8'});try{if(typeof navigator.share==='function'&&(!navigator.canShare||navigator.canShare({files:[f]}))){await navigator.share({files:[f],title:'Hoàn Tuyết – Gán RFID'});return}}catch(e){log('Chia sẻ bị hủy/không hỗ trợ: '+(e.message||e))}showCsv();say('Không chia sẻ được file trực tiếp; dùng Sao chép CSV hoặc Xem/chọn CSV.','error')}
+function showCsv(){const el=$('csvPreview');el.classList.remove('hidden');el.value=toCsv();el.focus();el.select()}
+async function copyText(s){try{await navigator.clipboard.writeText(s);say('Đã sao chép vào clipboard.','ok')}catch(e){$('csvPreview').classList.remove('hidden');$('csvPreview').value=s;$('csvPreview').focus();$('csvPreview').select();say('Không thể sao chép tự động; hãy chọn Sao chép thủ công trong ô văn bản.','error')}}
+async function checkLogin(){try{const {data:{user},error}=await supabase.auth.getUser();if(error)throw error;currentUser=user||null;isAdmin=false;if(user){const ret=await supabase.rpc('is_admin');if(ret.error)throw ret.error;isAdmin=ret.data===true;}const ok=!!(currentUser&&isAdmin);$('appstatus').textContent=ok?'Quản trị viên · được lưu RFID':'Thử bảng · chưa đủ quyền lưu';$('appstatus').className='tag '+(ok?'good':'warn');$('userInfo').textContent=ok?'Đã xác thực Supabase với quyền quản trị ('+currentUser.email+'). Chỉ lưu vào bảng RFID mới.':'Chưa có phiên Supabase quản trị. Đăng nhập trên trang quản trị Hoàn Tuyết rồi kiểm tra lại.';if(ok)await loadSessions();return ok}catch(e){isAdmin=false;$('appstatus').textContent='Không kiểm tra được quyền';log('Auth: '+(e.message||e));return false}}
+async function loadSessions(){if(!currentUser)return;const {data,error}=await supabase.from('rfid_phien_gan').select('id,coso,ghichu,tao_luc,trangthai').eq('nguoi_tao',currentUser.id).eq('trangthai','dang_lam').order('tao_luc',{ascending:false}).limit(40);if(error){log('Chưa đọc được bảng RFID: '+error.message);return}const sel=$('sess');sel.replaceChildren(new Option('Chọn phiên đang làm…',''));for(const x of data||[])sel.add(new Option(`CS${x.coso} · ${new Date(x.tao_luc).toLocaleString('vi-VN')} · ${x.ghichu||''}`,x.id));}
+async function newSession(){if(!await checkLogin()){say('Cần tài khoản Supabase quản trị. Kiểm tra trang đăng nhập và SQL quyền.','error');return}try{const c=Number($('branch').value),n=$('note').value;const {data,error}=await supabase.rpc('rpc_rfid_tao_phien',{p_coso:c,p_ghichu:n});if(error)throw error;session=data;sessionBranch=c;$('branch').value=String(c);$('currentSession').textContent='Phiên '+String(data).slice(0,8)+' · CS'+c;await loadSessions();say('Đã tạo phiên gán thật. Các dòng trong bảng CHƯA lưu, bấm Lưu sau khi kiểm tra.','ok')}catch(e){say('Không tạo được phiên: '+e.message,'error')}}
+async function openSession(){const id=$('sess').value;if(!id){say('Hãy chọn phiên gán.','error');return}if(realRows().length&&!confirm('Mở phiên cũ sẽ thay bảng nháp hiện tại. Bạn đã xuất CSV/đã lưu chưa?'))return;try{const {data:s,error:es}=await supabase.from('rfid_phien_gan').select('*').eq('id',id).single();if(es)throw es;let parts=[],from=0;while(true){const {data,error}=await supabase.from('rfid_phien_gan_ct').select('stt,masp,size,epc,trangthai,ghichu').eq('phien_id',id).order('stt').range(from,from+999);if(error)throw error;parts.push(...(data||[]));if((data||[]).length<1000)break;from+=1000;if(from>20000)throw Error('Phiên quá 20.000 dòng; cần công cụ phân trang chuyên dụng.')}session=id;sessionBranch=s.coso;$('branch').value=String(s.coso);$('note').value=s.ghichu||'';nextStt=1;const parsed=parts.map(r=>{nextStt=Math.max(nextStt,r.stt+1);return {...r,epc:r.epc||'',ghichu:r.ghichu||'',thongbao:'Đã đọc từ Supabase',mock:false}});activeStt=null;table.setData([...parsed,...Array.from({length:10},()=>blank())]);$('currentSession').textContent='Phiên '+id.slice(0,8)+' · CS'+s.coso;say('Đã mở phiên: '+parts.length+' dòng. Dòng đã gán không được sửa trực tiếp.','ok')}catch(e){say('Không mở được phiên: '+e.message,'error')}}
+async function saveAll(){if(findActive){say('Dừng chế độ tìm EPC trước khi lưu phiên gán.','error');return}if(saving)return;if(!await checkLogin()){say('Bạn chưa có quyền lưu dữ liệu RFID.','error');return}if(!session){say('Chưa tạo/mở phiên thật. Nhấn "Tạo phiên lưu thật" trước.','error');return}if(Number($('branch').value)!==sessionBranch){say('Không thể đổi cơ sở của phiên đang mở. Chọn lại CS'+sessionBranch+'.','error');return}normalizeAll();const items=realRows();if(!items.length){say('Bảng chưa có dòng MASP/size.','error');return}if(items.some(r=>!norm(r.masp)||!norm(r.size))){say('Có dòng thiếu MASP/size; sửa trước khi lưu.','error');validate();return}if(items.some(r=>/^MOCK/i.test(r.epc)||r.mock)){say('Bảng có EPC MÔ PHỎNG; phải xóa hoặc thay bằng EPC thật trước khi lưu.','error');return}
+ const epcMap=new Map();for(const r of items){const e=norm(r.epc);if(e){if(!/^([0-9A-F]{2}){4,64}$/.test(e)){say('EPC sai định dạng tại dòng '+r.stt,'error');return}if(epcMap.has(e)){say('EPC trùng giữa dòng '+epcMap.get(e)+' và dòng '+r.stt,'error');return}epcMap.set(e,r.stt)}}
+ if(!confirm(`Lưu ${items.length} dòng của CS${sessionBranch} vào các bảng RFID riêng? EPC hợp lệ sẽ được đánh dấu ĐANG GÁN. KHÔNG ảnh hưởng tồn kho.`))return;
+ saving=true;$('saveAll').disabled=true;let nOk=0,nErr=0;try{const chunks=[];for(let i=0;i<items.length;i+=80)chunks.push(items.slice(i,i+80));for(let i=0;i<chunks.length;i++){const payload=chunks[i].map(r=>({stt:r.stt,masp:norm(r.masp),size:norm(r.size),epc:norm(r.epc),ghichu:r.ghichu||''}));const {data,error}=await supabase.rpc('rpc_rfid_luu_dong',{p_phien:session,p_rows:payload});if(error)throw error;for(const res of data.ketqua||[]){const c=table.getRow(res.stt);if(c){await c.update({trangthai:res.ok?res.trangthai:'loi',thongbao:res.thongbao})}if(res.ok)nOk++;else nErr++;}log(`Lô ${i+1}/${chunks.length}: ${data.ok} OK, ${data.loi} lỗi`)}say(`Lưu xong: ${nOk} dòng thành công, ${nErr} dòng lỗi. ${nErr?'Hãy lọc cột Trạng thái = Lỗi.':''}`,nErr?'error':'ok');summary()}catch(e){say('Lưu thất bại: '+e.message+' . Những lô đã thành công KHÔNG tự động hoàn tác; mở lại phiên để kiểm tra.','error')}finally{saving=false;$('saveAll').disabled=false}}
+function recordEpc(epc){epc=norm(epc);if(!epc)return;if(findActive){onFoundEpc(epc);return;}const cur=epcPool.get(epc)||{n:0,mock:false};cur.n++;epcPool.set(epc,cur);refreshPool()}
+function refreshPool(){const el=$('epcPool');el.replaceChildren();if(!epcPool.size){el.innerHTML='<div class="small">Chưa có EPC được đọc.</div>';return}let cnt=0;for(const [epc,info] of [...epcPool].reverse()){if(cnt++>=120)break;const div=document.createElement('div');div.className='epc-chip';const code=document.createElement('span');code.textContent=epc+' · '+info.n+' lượt'+(info.mock?' · MÔ PHỎNG':'');const b=document.createElement('button');b.textContent='Gán dòng này';b.onclick=()=>assignSingle(epc,info.mock);div.append(code,b);el.append(div);}const p=document.createElement('div');p.className='small';p.textContent='Tổng '+epcPool.size+' EPC duy nhất trong vùng đọc; đang hiển thị tối đa 120 mã.';el.prepend(p)}
+function assignSingle(epc,isMock=false){if(findActive){say('Dừng tìm EPC trước khi gán mã.','error');return}let stt=activeStt;let row=stt?table.getRow(stt):null;if(!row||!norm(row.getData().masp)||!norm(row.getData().size)){const next=table.getData().find(x=>norm(x.masp)&&norm(x.size)&&!norm(x.epc)&&x.trangthai!=='da_gan');if(!next){say('Chọn một dòng MASP/size chưa gán EPC bằng cách click vào dòng trong bảng.','error');return}stt=next.stt;row=table.getRow(stt);chooseRow(stt)}const r=row.getData();if(r.trangthai==='da_gan'){say('Dòng đã lưu gán; không thể ghi đè.','error');return}if(table.getData().some(x=>x.stt!==stt&&norm(x.epc)===epc)){say('EPC '+epc+' đã có ở dòng khác trong bảng.','error');return}row.update({epc,trangthai:'',thongbao:'Chưa lưu – chờ xác nhận',mock:!!isMock});summary();say('Đã đưa EPC '+epc+' vào dòng '+stt+'. Chưa ghi Supabase.','ok')}
+function assignGroup(){if(findActive){say('Dừng tìm EPC trước khi gán nhóm.','error');return}const d=table.getData(),first=activeStt?table.getRow(activeStt)?.getData():d.find(x=>norm(x.masp)&&norm(x.size)&&!norm(x.epc));if(!first||!norm(first.masp)||!norm(first.size)){say('Chọn một dòng có MASP và size cần gán nhóm.','error');return}const group=d.filter(r=>norm(r.masp)===norm(first.masp)&&norm(r.size)===norm(first.size)&&!norm(r.epc)&&r.trangthai!=='da_gan');const used=new Set(d.map(r=>norm(r.epc)).filter(Boolean)),cand=[...epcPool].filter(([x])=>!used.has(x));if(!group.length){say('Nhóm này không còn dòng chờ gán.','error');return}if(group.length!==cand.length){say('Chưa thể ghép nhóm: có '+group.length+' chiếc chưa gán nhưng vùng đọc có '+cand.length+' EPC chưa sử dụng. Yêu cầu bằng nhau, tách riêng nhóm hàng và quét lại.','error');return}if(!confirm(`Xác nhận ${group.length} EPC ĐỀU thuộc ${first.masp} / ${first.size} tại cùng cơ sở? Không được có tem của mã hàng khác trong vùng quét.`))return;group.forEach((r,i)=>table.getRow(r.stt)?.update({epc:cand[i][0],mock:!!cand[i][1].mock,trangthai:'',thongbao:'Gán nhóm chưa lưu'}));summary();say('Đã ghép '+group.length+' EPC vào nhóm đồng nhất. Hãy kiểm tra và bấm Lưu.','ok')}
+function mockEpcs(){for(let i=1;i<=5;i++)epcPool.set('MOCK-'+String(i).padStart(5,'0'),{n:3,mock:true});refreshPool();say('Đã tạo EPC mô phỏng (MOCK). Các EPC này KHÔNG thể lưu thật.','ok')}
+const hex=bytes=>Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+function packet(cmd,data=[]){const l=data.length+8,b=[0xA5,0x5A,l>>8,l&255,cmd,...data];let sum=0;for(let i=2;i<b.length;i++)sum^=b[i];return Uint8Array.from([...b,sum,0x0D,0x0A])}
+function feed(bytes){rx.push(...bytes);let k=0;while(rx.length>=8&&k++<500){if(rx[0]!==0xA5||rx[1]!==0x5A){rx.shift();continue}const len=(rx[2]<<8)|rx[3];if(len<8||len>2048){rx.shift();continue}if(rx.length<len)break;const f=rx.slice(0,len);if(f[len-2]!==13||f[len-1]!==10){rx.shift();continue}let s=0;for(let j=2;j<len-3;j++)s^=f[j];if(s!==f[len-3]){rx.shift();continue}rx.splice(0,len);parseFrame(f[4],f.slice(5,-3))}if(rx.length>4096){diagPrint('RX overflow; bỏ gói không hoàn chỉnh');rx=[]}}
+function parseFrame(cmd,payload){
+ if(cmd===0x11){powerLastAck=payload.length?payload[0]:null;diagPrint('RX 0x11 '+hex(payload)+' | ACK mã '+powerLastAck);log('R5 POWER ACK 0x11: '+hex(payload));return;}
+ if(cmd===0x13){
+   diagPrint('RX 0x13 '+hex(payload));
+   // Cấu trúc trả lời đọc công suất theo R5 iOS SDK: byte 2,3 = công suất đọc * 100.
+   if(payload.length>=4){const centi=(payload[2]<<8)|payload[3],val=centi/100;
+     if(val>=0&&val<=40){powerKnown=val;lastPowerResponse=Date.now();syncPower();if(powerReadPending)powerReadPending(val);log('R5 POWER REPLY '+val+' dBm (0x13)');} 
+     else log('POWER 0x13 ngoài giới hạn: '+hex(payload));
+   }else log('POWER 0x13 thiếu dữ liệu: '+hex(payload));return;
+ }
+ if(cmd!==0xE1)return;if(payload.length<5)return;const count=payload[2];let pos=3;for(let i=0;i<count;i++){if(pos>=payload.length)break;const n=payload[pos++];if(n<3||pos+n>payload.length){log('Khung R5 chưa nhận dạng: '+hex(payload.slice(0,70)));break}const x=payload.slice(pos,pos+n);pos+=n;const epcBytes=((x[0]>>3)&31)*2;const epc=(epcBytes>0&&x.length>=2+epcBytes)?x.slice(2,2+epcBytes):x;if(epc.length)recordEpc(hex(epc))}}
+function showBle(){const ok=!!(device?.gatt?.connected&&writeChar&&notifyChar);$('bleStatus').textContent=ok?'R5: '+(device.name||'đã kết nối'):'Bluetooth chưa kết nối';$('bleConnect').disabled=ok;$('bleDisconnect').disabled=!ok;$('bleStart').disabled=!ok||scanning;$('bleStop').disabled=!ok||!scanning}
+function send(cmd,data=[]){const b=packet(cmd,data);writeQueue=writeQueue.catch(()=>{}).then(async()=>{if(!writeChar||!device?.gatt?.connected)throw Error('Chưa kết nối R5');if(writeChar.writeValueWithoutResponse)await writeChar.writeValueWithoutResponse(b);else await writeChar.writeValue(b)});return writeQueue}
+function stopPoll(){scanning=false;if(polling)clearInterval(polling);polling=null;if(findActive){findActive=false;clearInterval(findTicker);findTicker=null;updateFind()}showBle()}
+async function connectBle(){if(!navigator.bluetooth){say('Trình duyệt chưa hỗ trợ Web Bluetooth: Windows dùng Chrome/Edge, iPhone dùng Bluefy.','error');return}try{const d=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SERVICE]});device=d;device.addEventListener('gattserverdisconnected',()=>{stopPoll();writeChar=null;notifyChar=null;showBle();powerKnown=null;resetVerified('MẤT KẾT NỐI');syncPower();diagPrint('BLE DISCONNECT');powerMsg('R5 đã ngắt; cần kết nối lại để đọc công suất.');log('R5 bị ngắt kết nối')});const g=await d.gatt.connect(),svc=await g.getPrimaryService(SERVICE);writeChar=await svc.getCharacteristic(WRITE);notifyChar=await svc.getCharacteristic(NOTIFY);notifyChar.addEventListener('characteristicvaluechanged',e=>{const v=e.target.value;feed(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))});await notifyChar.startNotifications();powerKnown=null;resetVerified('CHƯA ĐỌC CÔNG SUẤT');syncPower();diagPrint('BLE CONNECT '+(d.name||'không tên'));log('BLE kết nối '+(d.name||'thiết bị không tên'));showBle();say('Kết nối BLE thành công; hãy thử quét EPC. Chưa phải xác nhận RFID được đọc đúng.','ok')}catch(e){log('BLE ERROR: '+(e?.name||'Error')+' '+(e?.message||String(e)));try{device?.gatt?.disconnect()}catch(_){}writeChar=null;notifyChar=null;showBle();say('Không kết nối được thiết bị: '+(e?.message||String(e)),'error')}}
+async function startBle(forFind=false){if(scanning)return;if(findActive&&!forFind){say("Đang ở chế độ tìm EPC, hãy dừng tìm trước khi quét gán.","error");return}try{if(!forFind){epcPool.clear();refreshPool()}scanning=true;await send(0x82,[0,0]);polling=setInterval(async()=>{if(!scanning||busyPoll)return;busyPoll=true;try{await send(0xE0)}catch(e){log('R5 POLL ERROR: '+e.message);stopPoll()}finally{busyPoll=false}},100);log('R5 bắt đầu đọc và POLL (chỉ đọc)');showBle()}catch(e){stopPoll();log('START ERROR: '+e.message)}}
+async function stopBle(){stopPoll();try{await send(0x8C);log('R5 đã nhận lệnh STOP')}catch(e){log('STOP ERROR: '+e.message)}}
+function poolClear(){epcPool.clear();refreshPool();log('Đã xóa EPC trong vùng đọc')}
+function wire(){const bind=(id,fn)=>$(id).addEventListener('click',fn);
+ $('grid').addEventListener('paste',e=>{if(table && table.getData().some(r=>r.trangthai==='da_gan')){e.preventDefault();e.stopImmediatePropagation();say('Phiên đã có dòng gán thành công: không cho dán trực tiếp đè lên bảng để bảo vệ dữ liệu đã lưu. Hãy dán danh sách mới vào ô lớn phía trên rồi bấm Dán dữ liệu vào bảng.','error')}},true);bind('addItems',addItems);bind('importPaste',importPaste);bind('addBlank',()=>{table.addData(Array.from({length:50},()=>blank()),false);say('Đã thêm 50 dòng trống.')});bind('clearFilters',()=>{table.clearHeaderFilter();table.clearSort();say('Đã xóa bộ lọc và sắp xếp.')});bind('clearDraft',clearDraft);bind('checkRows',validate);bind('saveAll',saveAll);bind('copySelected',()=>{table.copyToClipboard('range');say('Đã gửi vùng chọn sang clipboard. Nếu chưa chọn vùng, kéo chọn ô trong bảng rồi thử lại.')});bind('csvExport',saveCsv);bind('csvShare',shareCsv);bind('copyCsv',()=>copyText(toCsv()));bind('showCsv',showCsv);bind('copyLog',()=>copyText($('log').textContent));bind('newSession',newSession);bind('loadSession',openSession);bind('checkLogin',checkLogin);bind('bleConnect',connectBle);bind('bleDisconnect',()=>device?.gatt?.disconnect());bind('bleStart',()=>startBle(false));bind('bleStop',stopBle);bind('poolClear',poolClear);bind('mockEpcs',mockEpcs);bind('assignGroup',assignGroup);$('powerSlider').addEventListener('input',()=>{syncPower();if(verifiedPower!==null&&Number($('powerSlider').value)!==verifiedPower)setDiagState('unknown','ĐANG CHỌN MỨC KHÁC');});
+ document.querySelectorAll('[data-pwr]').forEach(btn=>btn.addEventListener('click',()=>{$('powerSlider').value=btn.dataset.pwr;syncPower();if(verifiedPower!==null&&Number(btn.dataset.pwr)!==verifiedPower)setDiagState('unknown','ĐANG CHỌN MỨC KHÁC')}));
+ bind('powerApply',applyPowerUI);bind('powerRead',readPowerUI);
+ bind('diagReadTwice',async()=>{if(powerBusy)return;powerBusy=true;resetVerified('ĐANG ĐỌC HAI LẦN');syncPower();try{const first=await getPowerLive();await new Promise(r=>setTimeout(r,400));const second=await getPowerLive();powerKnown=second;diagPrint('DOUBLE READ '+first+' / '+second+' dBm');if(first===second){setDiagState('unknown','ỔN ĐỊNH '+second+' dBm');powerMsg('Hai lần đọc giống nhau: '+second+' dBm. Đây là mức firmware báo, không phải kiểm tra đổi mức.','good')}else{setDiagState('error','KHÔNG ỔN ĐỊNH');powerMsg('Hai lần đọc khác nhau: '+first+' và '+second+' dBm.','fail')}}catch(e){setDiagState('error','LỖI ĐỌC');diagPrint('DOUBLE READ ERROR '+e.message);powerMsg('Lỗi đọc hai lần: '+e.message,'fail')}finally{powerBusy=false;syncPower()}});
+ bind('diagCopy',()=>copyText(diagHistory.join('\n')));bind('diagClear',()=>{diagHistory=[];$('diagRaw').textContent='Đã xóa nhật ký.'});
+ bind('testAdd',recordTest);bind('testCsv',()=>copyText(testCSV()));bind('testClear',()=>{if(confirm('Xóa kết quả thử khoảng cách trong trang?')){testHistory=[];drawTests()}});
+ bind('findUseRow',useSelectedFindEpc);bind('findStart',findStart);bind('findStop',findStop);bind('findMock',findMock);bind('findReset',()=>{if(findActive){say('Dừng tìm trước khi xóa kết quả.','error');return}resetFindStats();say('Đã xóa kết quả tìm.','ok')});$('masp').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addItems()}});$('size').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addItems()}})}
+makeGrid();wire();refreshPool();showBle();updateFind();syncPower();checkLogin().then(x=>{if(x)log('Xác thực admin: OK');else log('Có thể thử bảng không cần đăng nhập admin. Chưa lưu dữ liệu thật.');});log('Bản chẩn đoán công suất R5 · Không can thiệp bán hàng / tồn kho.');
+</script></body></html>
