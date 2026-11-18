@@ -17,6 +17,7 @@ body{margin:0}header{background:#123766;color:white;padding:15px max(14px,calc((
 .find-meter>div{height:100%;width:0%;background:#2887c6;transition:width .2s}
 .find-stats{display:flex;gap:15px;flex-wrap:wrap;justify-content:space-between;margin:9px 0}
 @media(max-width:580px){.find-main{font-size:20px}}
+.power-card{border:1px solid #c9d7e7;background:#f5f8ff;border-radius:10px;padding:12px;margin:12px 0}.power-range{display:flex;align-items:center;gap:12px;margin-top:10px}.power-range input[type=range]{padding:0;accent-color:#1b497e;flex:1}.power-value{font-weight:800;color:#123766;font-size:20px;min-width:75px;text-align:right}.power-presets{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.power-presets button{font-size:12px;padding:7px 10px}.power-state{font-size:13px;margin:9px 0 0;color:#25476a}.power-state.fail{color:#9c2424}.power-state.good{color:#136947}
 </style>
 <script src="https://unpkg.com/tabulator-tables@6.5.0/dist/js/tabulator.min.js"></script>
 </head><body>
@@ -70,6 +71,14 @@ body{margin:0}header{background:#123766;color:white;padding:15px max(14px,calc((
  <div class="field" style="flex:3 1 280px"><label for="findTarget">EPC mục tiêu (HEX)</label><input id="findTarget" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="E2806894..."></div>
  <div class="field" style="flex:0 1 190px"><label for="findSound">Âm báo tìm tem</label><select id="findSound"><option value="on">Bật (thử nghiệm)</option><option value="off">Tắt</option></select></div>
 </div>
+<div class="power-card">
+ <div class="flex" style="justify-content:space-between"><b>Điều chỉnh công suất UHF của R5</b><span class="tag" id="powerActual">Công suất thực: chưa đọc</span></div>
+ <div class="power-range"><label for="powerSlider" class="small" style="white-space:nowrap">5 dBm</label><input id="powerSlider" type="range" min="5" max="30" step="1" value="15" aria-label="Công suất UHF cần đặt"><label for="powerSlider" class="small" style="white-space:nowrap">30</label><output for="powerSlider" id="powerChosen" class="power-value">15 dBm</output></div>
+ <div class="power-presets"><button type="button" class="outline" data-pwr="7">Rất gần · 7</button><button type="button" class="outline" data-pwr="12">Gần · 12</button><button type="button" class="outline" data-pwr="18">Trung bình · 18</button><button type="button" class="outline" data-pwr="24">Xa · 24</button><button type="button" class="outline" data-pwr="30">Tối đa · 30</button></div>
+ <div class="bar"><button id="powerApply" class="warning" type="button">Áp dụng lên R5</button><button id="powerRead" type="button" class="outline">Đọc công suất thực từ R5</button></div>
+ <p id="powerMessage" class="power-state">Chưa gửi lệnh. Giá trị thanh trượt chỉ là mức dự định, <b>không phải mức đã cài trên máy.</b></p>
+ <p class="small compact">Phần mềm gửi lệnh <code>0x10</code> và truy vấn lại <code>0x12</code> theo SDK Chainway. Nếu đang tìm, quá trình đọc sẽ tạm dừng rồi khởi động lại. Mức dBm là công suất phát, <b>không tương đương bán kính đọc chính xác</b>. Dùng mức phù hợp quy định vô tuyến tại Việt Nam.</p>
+</div>
 <div class="bar"><button id="findUseRow" class="neutral">Lấy EPC dòng đang chọn</button><button id="findStart" class="success">Bắt đầu tìm</button><button id="findStop" class="danger" disabled>Dừng tìm</button><button id="findMock" class="outline">Mô phỏng phát hiện EPC</button><button id="findReset" class="outline">Xóa kết quả tìm</button></div>
 <div class="find-result" id="findResult" aria-live="polite" style="margin-top:12px">
  <div class="small">EPC đang theo dõi</div><div id="findCurrent" class="find-epc">Chưa chọn</div>
@@ -78,7 +87,7 @@ body{margin:0}header{background:#123766;color:white;padding:15px max(14px,calc((
  <div class="find-stats"><span>Lượt đọc trong 3 giây: <b id="findRate">0</b></span><span>Tổng lượt đọc: <b id="findTotal">0</b></span><span>Lần cuối: <b id="findLast">—</b></span></div>
  <div class="small" id="findTip">Thanh biểu thị <b>tần suất đọc gần đây</b> (quy đổi 0–20 lần/3 giây), <b>không phải RSSI hoặc khoảng cách</b>. Không được xem là định vị theo mét.</div>
 </div>
-<p class="notice">Lưu ý kỹ thuật: SDK R5 có API RSSI nhưng bộ giải mã BLE của trang hiện tại chưa xác nhận vị trí byte RSSI từ máy thật. Vì vậy bản này dùng <b>phát hiện đúng EPC + tần suất đọc</b> để tìm sơ bộ. Khi có dữ liệu gốc từ R5 thật sẽ bổ sung RSSI và chỉnh công suất. Muốn dò đúng giá hàng, giảm công suất trực tiếp trên R5 và quét từng khu vực; tín hiệu phản xạ có thể gây đọc nhầm vùng.</p>
+<p class="notice">Lưu ý kỹ thuật: SDK R5 có API RSSI nhưng bộ giải mã BLE của trang hiện tại chưa xác nhận vị trí byte RSSI từ máy thật. Vì vậy bản này dùng <b>phát hiện đúng EPC + tần suất đọc</b> để tìm sơ bộ. Khi có dữ liệu gốc từ R5 thật sẽ bổ sung RSSI; hiện đã có nút chỉnh công suất bằng lệnh SDK, nhưng cần thử trên firmware thực tế. Muốn dò đúng giá hàng, giảm công suất trên trang hoặc trực tiếp trên R5 và quét từng khu vực; tín hiệu phản xạ có thể gây đọc nhầm vùng.</p>
 </section>
 <section class="panel"><h2>6. Kiểm tra lỗi và xuất dữ liệu</h2><p class="small">Trạng thái kiểm tra dữ liệu, lỗi trùng EPC, kết quả lưu từng dòng và kết nối Bluetooth sẽ hiển thị tại đây.</p>
 <div id="log" class="log"></div>
@@ -97,6 +106,43 @@ let table=null, rows=[], nextStt=1, activeStt=null, session=null, sessionBranch=
 let device=null, writeChar=null, notifyChar=null, scanning=false, polling=null, busyPoll=false, rx=[], writeQueue=Promise.resolve();
 const epcPool=new Map();
 let findActive=false, findTarget='',findTimes=[],findTotal=0,findLast=0,findTicker=null,findAudio=null;
+let powerBusy=false,powerPending=null,powerReadPending=null,powerKnown=null,powerLastAck=null;
+function powerMsg(text,kind=''){const el=$('powerMessage');el.textContent=text;el.className='power-state '+kind;}
+function syncPower(){const chosen=+$('powerSlider').value;$('powerChosen').textContent=chosen+' dBm';$('powerActual').textContent=powerKnown===null?'Công suất thực: chưa đọc':'R5 báo: '+powerKnown+' dBm';$('powerApply').disabled=powerBusy;$('powerRead').disabled=powerBusy;}
+function powerGetTimeout(promise,label,ms=3500){return Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Không nhận được phản hồi '+label+' từ R5 trong '+ms+'ms')),ms))])}
+async function getPowerLive(){
+ if(!(device?.gatt?.connected&&writeChar&&notifyChar))throw new Error('Chưa kết nối R5');
+ if(powerReadPending)throw new Error('Đang chờ phản hồi đọc công suất');
+ let settle;const reply=new Promise(resolve=>{settle=resolve});powerReadPending=settle;
+ try{await send(0x12);return await powerGetTimeout(reply,'đọc công suất');}
+ finally{powerReadPending=null;}
+}
+async function withPowerPaused(operation){
+ const wasScanning=scanning;const wasFinding=findActive;
+ // Tạm dừng phần RF, giữ trạng thái tìm và thống kê; không thoát chế độ tìm EPC.
+ if(wasScanning){scanning=false;if(polling)clearInterval(polling);polling=null;showBle();await send(0x8C);}
+ try{return await operation();}
+ finally{if(wasScanning&&device?.gatt?.connected){try{await startBle(wasFinding);log('Đã tiếp tục đọc sau thay đổi công suất');}catch(e){log('Không thể tiếp tục quét: '+e.message);powerMsg('Hãy bấm Dừng tìm, kiểm tra kết nối rồi bắt đầu lại: '+e.message,'fail');}}}
+}
+async function readPowerUI(){if(powerBusy)return;powerBusy=true;syncPower();powerMsg('Đang đọc mức công suất từ R5…');try{const p=await getPowerLive();powerKnown=p;powerMsg('R5 xác nhận công suất hiện tại: '+p+' dBm','good');log('R5 POWER READBACK '+p+' dBm');}catch(e){powerMsg(e.message,'fail');log('POWER READ ERROR: '+e.message)}finally{powerBusy=false;syncPower()}}
+async function applyPowerUI(){
+ if(powerBusy)return;const wanted=+$('powerSlider').value;
+ if(!Number.isInteger(wanted)||wanted<5||wanted>30)return powerMsg('Giá trị công suất phải từ 5–30 dBm.','fail');
+ if(!(device?.gatt?.connected&&writeChar&&notifyChar))return powerMsg('Kết nối R5 trước khi đặt công suất.','fail');
+ powerBusy=true;syncPower();powerMsg('Đang gửi '+wanted+' dBm đến R5 và đọc xác nhận…');
+ try{await withPowerPaused(async()=>{
+   // SDK iOS BluetoothUtil.m: cmd 0x10, payload 02 01 readPower*100 (BE) writePower*100 (BE).
+   // Các trường writePower là thông số của đầu đọc, KHÔNG phải lệnh ghi EPC.
+   const n=wanted*100;powerLastAck=null;
+   await send(0x10,[0x02,0x01,(n>>8)&255,n&255,(n>>8)&255,n&255]);
+   // Một số firmware trả ACK 0x11. Readback 0x13 là nguồn xác nhận chính.
+   await new Promise(r=>setTimeout(r,180));
+   const actual=await getPowerLive();powerKnown=actual;
+   if(actual!==wanted)throw new Error('R5 trả về '+actual+' dBm, khác mức yêu cầu '+wanted+' dBm; không xác nhận thành công.');
+   log('POWER VERIFIED '+actual+' dBm; ACK: '+(powerLastAck===null?'không nhận':powerLastAck));
+   powerMsg('ĐÃ XÁC NHẬN từ R5: '+actual+' dBm'+(powerLastAck===null?' (không có ACK riêng)':''),'good');
+ });}catch(e){powerMsg('Chưa xác nhận mức '+wanted+' dBm: '+e.message,'fail');log('POWER SET ERROR: '+e.message)}finally{powerBusy=false;syncPower()}
+} 
 function validFindEpc(epc){return /^([0-9A-F]{2}){4,64}$/.test(epc)}
 function updateFind(){
  const t=Date.now();findTimes=findTimes.filter(x=>t-x<=3000);
@@ -230,15 +276,27 @@ function mockEpcs(){for(let i=1;i<=5;i++)epcPool.set('MOCK-'+String(i).padStart(
 const hex=bytes=>Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
 function packet(cmd,data=[]){const l=data.length+8,b=[0xA5,0x5A,l>>8,l&255,cmd,...data];let sum=0;for(let i=2;i<b.length;i++)sum^=b[i];return Uint8Array.from([...b,sum,0x0D,0x0A])}
 function feed(bytes){rx.push(...bytes);let k=0;while(rx.length>=8&&k++<500){if(rx[0]!==0xA5||rx[1]!==0x5A){rx.shift();continue}const len=(rx[2]<<8)|rx[3];if(len<8||len>2048){rx.shift();continue}if(rx.length<len)break;const f=rx.slice(0,len);if(f[len-2]!==13||f[len-1]!==10){rx.shift();continue}let s=0;for(let j=2;j<len-3;j++)s^=f[j];if(s!==f[len-3]){rx.shift();continue}rx.splice(0,len);parseFrame(f[4],f.slice(5,-3))}if(rx.length>4096)rx=[]}
-function parseFrame(cmd,payload){if(cmd!==0xE1)return;if(payload.length<5)return;const count=payload[2];let pos=3;for(let i=0;i<count;i++){if(pos>=payload.length)break;const n=payload[pos++];if(n<3||pos+n>payload.length){log('Khung R5 chưa nhận dạng: '+hex(payload.slice(0,70)));break}const x=payload.slice(pos,pos+n);pos+=n;const epcBytes=((x[0]>>3)&31)*2;const epc=(epcBytes>0&&x.length>=2+epcBytes)?x.slice(2,2+epcBytes):x;if(epc.length)recordEpc(hex(epc))}}
+function parseFrame(cmd,payload){
+ if(cmd===0x11){powerLastAck=payload.length?payload[0]:null;log('R5 POWER ACK 0x11: '+hex(payload));return;}
+ if(cmd===0x13){
+   // Cấu trúc trả lời đọc công suất theo R5 iOS SDK: byte 2,3 = công suất đọc * 100.
+   if(payload.length>=4){const centi=(payload[2]<<8)|payload[3],val=centi/100;
+     if(val>=0&&val<=40){powerKnown=val;syncPower();if(powerReadPending)powerReadPending(val);log('R5 POWER REPLY '+val+' dBm (0x13)');}
+     else log('POWER 0x13 ngoài giới hạn: '+hex(payload));
+   }else log('POWER 0x13 thiếu dữ liệu: '+hex(payload));return;
+ }
+ if(cmd!==0xE1)return;if(payload.length<5)return;const count=payload[2];let pos=3;for(let i=0;i<count;i++){if(pos>=payload.length)break;const n=payload[pos++];if(n<3||pos+n>payload.length){log('Khung R5 chưa nhận dạng: '+hex(payload.slice(0,70)));break}const x=payload.slice(pos,pos+n);pos+=n;const epcBytes=((x[0]>>3)&31)*2;const epc=(epcBytes>0&&x.length>=2+epcBytes)?x.slice(2,2+epcBytes):x;if(epc.length)recordEpc(hex(epc))}}
 function showBle(){const ok=!!(device?.gatt?.connected&&writeChar&&notifyChar);$('bleStatus').textContent=ok?'R5: '+(device.name||'đã kết nối'):'Bluetooth chưa kết nối';$('bleConnect').disabled=ok;$('bleDisconnect').disabled=!ok;$('bleStart').disabled=!ok||scanning;$('bleStop').disabled=!ok||!scanning}
 function send(cmd,data=[]){const b=packet(cmd,data);writeQueue=writeQueue.catch(()=>{}).then(async()=>{if(!writeChar||!device?.gatt?.connected)throw Error('Chưa kết nối R5');if(writeChar.writeValueWithoutResponse)await writeChar.writeValueWithoutResponse(b);else await writeChar.writeValue(b)});return writeQueue}
 function stopPoll(){scanning=false;if(polling)clearInterval(polling);polling=null;if(findActive){findActive=false;clearInterval(findTicker);findTicker=null;updateFind()}showBle()}
-async function connectBle(){if(!navigator.bluetooth){say('Trình duyệt chưa hỗ trợ Web Bluetooth: Windows dùng Chrome/Edge, iPhone dùng Bluefy.','error');return}try{const d=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SERVICE]});device=d;device.addEventListener('gattserverdisconnected',()=>{stopPoll();writeChar=null;notifyChar=null;showBle();log('R5 bị ngắt kết nối')});const g=await d.gatt.connect(),svc=await g.getPrimaryService(SERVICE);writeChar=await svc.getCharacteristic(WRITE);notifyChar=await svc.getCharacteristic(NOTIFY);notifyChar.addEventListener('characteristicvaluechanged',e=>{const v=e.target.value;feed(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))});await notifyChar.startNotifications();log('BLE kết nối '+(d.name||'thiết bị không tên'));showBle();say('Kết nối BLE thành công; hãy thử quét EPC. Chưa phải xác nhận RFID được đọc đúng.','ok')}catch(e){log('BLE ERROR: '+(e?.name||'Error')+' '+(e?.message||String(e)));try{device?.gatt?.disconnect()}catch(_){}writeChar=null;notifyChar=null;showBle();say('Không kết nối được thiết bị: '+(e?.message||String(e)),'error')}}
+async function connectBle(){if(!navigator.bluetooth){say('Trình duyệt chưa hỗ trợ Web Bluetooth: Windows dùng Chrome/Edge, iPhone dùng Bluefy.','error');return}try{const d=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[SERVICE]});device=d;device.addEventListener('gattserverdisconnected',()=>{stopPoll();writeChar=null;notifyChar=null;showBle();powerKnown=null;syncPower();powerMsg('R5 đã ngắt; cần kết nối lại để đọc công suất.');log('R5 bị ngắt kết nối')});const g=await d.gatt.connect(),svc=await g.getPrimaryService(SERVICE);writeChar=await svc.getCharacteristic(WRITE);notifyChar=await svc.getCharacteristic(NOTIFY);notifyChar.addEventListener('characteristicvaluechanged',e=>{const v=e.target.value;feed(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))});await notifyChar.startNotifications();powerKnown=null;syncPower();log('BLE kết nối '+(d.name||'thiết bị không tên'));showBle();say('Kết nối BLE thành công; hãy thử quét EPC. Chưa phải xác nhận RFID được đọc đúng.','ok')}catch(e){log('BLE ERROR: '+(e?.name||'Error')+' '+(e?.message||String(e)));try{device?.gatt?.disconnect()}catch(_){}writeChar=null;notifyChar=null;showBle();say('Không kết nối được thiết bị: '+(e?.message||String(e)),'error')}}
 async function startBle(forFind=false){if(scanning)return;if(findActive&&!forFind){say("Đang ở chế độ tìm EPC, hãy dừng tìm trước khi quét gán.","error");return}try{if(!forFind){epcPool.clear();refreshPool()}scanning=true;await send(0x82,[0,0]);polling=setInterval(async()=>{if(!scanning||busyPoll)return;busyPoll=true;try{await send(0xE0)}catch(e){log('R5 POLL ERROR: '+e.message);stopPoll()}finally{busyPoll=false}},100);log('R5 bắt đầu đọc và POLL (chỉ đọc)');showBle()}catch(e){stopPoll();log('START ERROR: '+e.message)}}
 async function stopBle(){stopPoll();try{await send(0x8C);log('R5 đã nhận lệnh STOP')}catch(e){log('STOP ERROR: '+e.message)}}
 function poolClear(){epcPool.clear();refreshPool();log('Đã xóa EPC trong vùng đọc')}
 function wire(){const bind=(id,fn)=>$(id).addEventListener('click',fn);
- $('grid').addEventListener('paste',e=>{if(table && table.getData().some(r=>r.trangthai==='da_gan')){e.preventDefault();e.stopImmediatePropagation();say('Phiên đã có dòng gán thành công: không cho dán trực tiếp đè lên bảng để bảo vệ dữ liệu đã lưu. Hãy dán danh sách mới vào ô lớn phía trên rồi bấm Dán dữ liệu vào bảng.','error')}},true);bind('addItems',addItems);bind('importPaste',importPaste);bind('addBlank',()=>{table.addData(Array.from({length:50},()=>blank()),false);say('Đã thêm 50 dòng trống.')});bind('clearFilters',()=>{table.clearHeaderFilter();table.clearSort();say('Đã xóa bộ lọc và sắp xếp.')});bind('clearDraft',clearDraft);bind('checkRows',validate);bind('saveAll',saveAll);bind('copySelected',()=>{table.copyToClipboard('range');say('Đã gửi vùng chọn sang clipboard. Nếu chưa chọn vùng, kéo chọn ô trong bảng rồi thử lại.')});bind('csvExport',saveCsv);bind('csvShare',shareCsv);bind('copyCsv',()=>copyText(toCsv()));bind('showCsv',showCsv);bind('copyLog',()=>copyText($('log').textContent));bind('newSession',newSession);bind('loadSession',openSession);bind('checkLogin',checkLogin);bind('bleConnect',connectBle);bind('bleDisconnect',()=>device?.gatt?.disconnect());bind('bleStart',()=>startBle(false));bind('bleStop',stopBle);bind('poolClear',poolClear);bind('mockEpcs',mockEpcs);bind('assignGroup',assignGroup);bind('findUseRow',useSelectedFindEpc);bind('findStart',findStart);bind('findStop',findStop);bind('findMock',findMock);bind('findReset',()=>{if(findActive){say('Dừng tìm trước khi xóa kết quả.','error');return}resetFindStats();say('Đã xóa kết quả tìm.','ok')});$('masp').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addItems()}});$('size').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addItems()}})}
-makeGrid();wire();refreshPool();showBle();updateFind();checkLogin().then(x=>{if(x)log('Xác thực admin: OK');else log('Có thể thử bảng không cần đăng nhập admin. Chưa lưu dữ liệu thật.');});log('Trang gán RFID giai đoạn 1. Không can thiệp bán hàng / tồn kho.');
+ $('grid').addEventListener('paste',e=>{if(table && table.getData().some(r=>r.trangthai==='da_gan')){e.preventDefault();e.stopImmediatePropagation();say('Phiên đã có dòng gán thành công: không cho dán trực tiếp đè lên bảng để bảo vệ dữ liệu đã lưu. Hãy dán danh sách mới vào ô lớn phía trên rồi bấm Dán dữ liệu vào bảng.','error')}},true);bind('addItems',addItems);bind('importPaste',importPaste);bind('addBlank',()=>{table.addData(Array.from({length:50},()=>blank()),false);say('Đã thêm 50 dòng trống.')});bind('clearFilters',()=>{table.clearHeaderFilter();table.clearSort();say('Đã xóa bộ lọc và sắp xếp.')});bind('clearDraft',clearDraft);bind('checkRows',validate);bind('saveAll',saveAll);bind('copySelected',()=>{table.copyToClipboard('range');say('Đã gửi vùng chọn sang clipboard. Nếu chưa chọn vùng, kéo chọn ô trong bảng rồi thử lại.')});bind('csvExport',saveCsv);bind('csvShare',shareCsv);bind('copyCsv',()=>copyText(toCsv()));bind('showCsv',showCsv);bind('copyLog',()=>copyText($('log').textContent));bind('newSession',newSession);bind('loadSession',openSession);bind('checkLogin',checkLogin);bind('bleConnect',connectBle);bind('bleDisconnect',()=>device?.gatt?.disconnect());bind('bleStart',()=>startBle(false));bind('bleStop',stopBle);bind('poolClear',poolClear);bind('mockEpcs',mockEpcs);bind('assignGroup',assignGroup);$('powerSlider').addEventListener('input',syncPower);
+ document.querySelectorAll('[data-pwr]').forEach(btn=>btn.addEventListener('click',()=>{$('powerSlider').value=btn.dataset.pwr;syncPower()}));
+ bind('powerApply',applyPowerUI);bind('powerRead',readPowerUI);
+ bind('findUseRow',useSelectedFindEpc);bind('findStart',findStart);bind('findStop',findStop);bind('findMock',findMock);bind('findReset',()=>{if(findActive){say('Dừng tìm trước khi xóa kết quả.','error');return}resetFindStats();say('Đã xóa kết quả tìm.','ok')});$('masp').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addItems()}});$('size').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addItems()}})}
+makeGrid();wire();refreshPool();showBle();updateFind();syncPower();checkLogin().then(x=>{if(x)log('Xác thực admin: OK');else log('Có thể thử bảng không cần đăng nhập admin. Chưa lưu dữ liệu thật.');});log('Trang gán RFID giai đoạn 1. Không can thiệp bán hàng / tồn kho.');
 </script></body></html>
