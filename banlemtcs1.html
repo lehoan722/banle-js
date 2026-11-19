@@ -2034,7 +2034,7 @@
     </script>
 
     <script type="module">
-        import { luuHoaDonBaoMat } from "./scripts/banhangbaomat/luuHoaDonEntry.js?v=20261119_secure_v2_final";
+        import { luuHoaDonBaoMat } from "./scripts/banhangbaomat/luuHoaDonEntry.js?v=20261119_secure_v21_fast_checkout";
 
         function laTrangThaiXemHoaDon() {
             const hdState = String(document.getElementById("hd_state")?.value || "")
@@ -2048,6 +2048,17 @@
                 hdState === "chuaxem"
             );
         }
+
+        // V2.1: held F2/Enter must not generate repeated save clicks.
+        // Keep ordinary Enter handling in product/size fields untouched.
+        document.addEventListener("keydown", (e) => {
+            const id = document.activeElement?.id || "";
+            const isSaveEnter = e.key === "Enter" && id === "btn-luu";
+            if (e.repeat && (e.key === "F2" || isSaveEnter)) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }, true);
 
         // SECURE SAVE V2: chặn xóa phiên khi yêu cầu lưu chưa xác minh kết quả.
         document.getElementById("them")?.addEventListener("click", function(e) {
@@ -2077,6 +2088,8 @@
             btn.disabled = true;
             btn.innerText = "Đang lưu bảo mật...";
 
+            let moHoaDonMoiSauLuu = false;
+            let soHoaDonDaLuu = "";
             try {
 
                 window.__forceBanLeDiaDiem?.();
@@ -2087,6 +2100,10 @@
                 });
                 if (result?.ok) {
                     window.__xacNhanSuaBaoMat_OK = false;
+                    soHoaDonDaLuu = result.sohd || "";
+                    // Auto-New only for a confirmed NEW invoice. For EDIT,
+                    // keep the edited invoice visible and do not start a new sale.
+                    moHoaDonMoiSauLuu = result.mode === "SAVE_REAL_V1";
                 } else if (!result?.silent) {
                     alert("❌ CHƯA XÁC NHẬN LƯU HÓA ĐƠN\n" +
                         "Mã lỗi: " + (result?.code || "UNKNOWN") + "\n" +
@@ -2101,6 +2118,25 @@
                 window.dangLuu = false;
                 btn.disabled = false;
                 btn.innerText = "💾 Lưu";
+            }
+
+            if (moHoaDonMoiSauLuu) {
+                // Existing "Them moi" handler in scripts/nutLenh.js performs
+                // the complete reset (basket, customer, mode, focus, next no.).
+                // The V2 guard only allows this after a verified COMMIT.
+                const btnThem = document.getElementById("them");
+                if (btnThem && !window.__htFastCheckoutResetting) {
+                    window.__htFastCheckoutResetting = true;
+                    try {
+                        btnThem.click();
+                        console.info("[FAST CHECKOUT] Da luu va tu dong them moi", soHoaDonDaLuu);
+                    } finally {
+                        // Do not delay the next scan: this is not a time lock.
+                        window.__htFastCheckoutResetting = false;
+                    }
+                } else if (!btnThem) {
+                    console.error("[FAST CHECKOUT] Khong tim thay nut Them moi; hoa don DA LUU", soHoaDonDaLuu);
+                }
             }
         };
     </script>
@@ -2168,6 +2204,7 @@
                 // F2: CHỈ chạy đúng nút Lưu bảo mật
                 if (e.key === 'F2') {
                     e.preventDefault();
+                    if (e.repeat) return;
                     e.stopImmediatePropagation();
 
                     document.getElementById("btn-luu")?.click();
