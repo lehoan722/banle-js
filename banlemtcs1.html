@@ -2034,7 +2034,7 @@
     </script>
 
     <script type="module">
-        import { luuHoaDonBaoMat } from "./scripts/banhangbaomat/luuHoaDonEntry.js";
+        import { luuHoaDonBaoMat } from "./scripts/banhangbaomat/luuHoaDonEntry.js?v=20261119_secure_v2_final";
 
         function laTrangThaiXemHoaDon() {
             const hdState = String(document.getElementById("hd_state")?.value || "")
@@ -2048,6 +2048,15 @@
                 hdState === "chuaxem"
             );
         }
+
+        // SECURE SAVE V2: chặn xóa phiên khi yêu cầu lưu chưa xác minh kết quả.
+        document.getElementById("them")?.addEventListener("click", function(e) {
+            if (window.__htSecureSaveV2NewInvoice && !window.__htSecureSaveV2NewInvoice()) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                alert("⚠️ Có hóa đơn đang lưu hoặc chưa xác minh kết quả. Không thể chuyển sang hóa đơn mới. Hãy kiểm tra với quản lý.");
+            }
+        }, true);
 
         document.getElementById("btn-luu").onclick = async function () {
             const btn = this;
@@ -2078,12 +2087,15 @@
                 });
                 if (result?.ok) {
                     window.__xacNhanSuaBaoMat_OK = false;
-                } else {
-                    alert("Không thể hoàn tất lưu hóa đơn. Vui lòng thử lại.");
+                } else if (!result?.silent) {
+                    alert("❌ CHƯA XÁC NHẬN LƯU HÓA ĐƠN\n" +
+                        "Mã lỗi: " + (result?.code || "UNKNOWN") + "\n" +
+                        (result?.message || "Không xác định được kết quả; báo quản lý."));
                 }
 
             } catch (e) {
-                alert("❌ Không thể lưu hóa đơn. Vui lòng thử lại hoặc báo quản lý.");
+                console.error("[BANLE UI SAVE]", e);
+                alert("❌ Lỗi giao diện khi xử lý lưu. Hãy kiểm tra trạng thái hóa đơn trước khi thao tác tiếp.");
 
             } finally {
                 window.dangLuu = false;
