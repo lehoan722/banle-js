@@ -346,7 +346,8 @@ async function htFinishCommitted(result,payload,fromRecovery=false) {
   htCommitted=result;
   const sohd=result?.sohd||"(chua co sohd)";
   if(fromRecovery || !payload) {
-    alert("✅ Hoa don DA LUU: "+sohd+". Khong bam Luu lai. Bam Them moi de ban tiep.");
+    // V2.1: Already committed; caller will safely reset the sale form.
+    // Do not block the cashier with an alert.
     return result;
   }
   const warnings=[];
@@ -368,15 +369,23 @@ async function htFinishCommitted(result,payload,fromRecovery=false) {
     try { const r=await guiHoaDonViettel(result.sohdT); if(!r?.ok) warnings.push("gui hoa don dien tu"); }
     catch(e) { console.error("[POST SAVE VIETTEL]",e); warnings.push("gui hoa don dien tu"); }
   }
-  alert("✅ DA LUU hoa don: "+sohd+
-   (warnings.length?"\n⚠️ Tac vu sau luu loi: "+warnings.join(", "):"")+
-   "\nKHONG luu lai. Bam Them moi de ban tiep.");
-  return result;
+  // V2.1: Success is silent. Only post-commit warnings need attention.
+  // The invoice is committed regardless of print/UI failures.
+  if(warnings.length) {
+    console.warn("[FAST CHECKOUT] Hoa don da luu, tac vu sau luu loi", {sohd,warnings});
+    try {
+      if(typeof window.showToast === "function") {
+        window.showToast("Da luu HD " + sohd + "; can kiem tra: " + warnings.join(", "));
+      }
+    } catch(e) { console.warn("[FAST CHECKOUT] Toast unavailable",e); }
+  }
+  return {...result, post_save_warnings:warnings};
 }
 export async function luuHoaDonBaoMat() {
   if(dangLuuBaoMat) return {ok:false,code:"SAVE_IN_PROGRESS",silent:true};
   if(htCommitted?.ok) {
-    alert("✅ Hoa don "+htCommitted.sohd+" da luu. Khong luu lai, hay bam Them moi.");
+    // Duplicate click while the previous invoice is already committed:
+    // replay the same result, never create a new invoice.
     return {...htCommitted,idempotent_local:true};
   }
   dangLuuBaoMat=true;
