@@ -308,107 +308,133 @@ async function xuLyNghiepVuSauLuuBaoMat(
   );
 }
 
-export async function luuHoaDonBaoMat() {
-  if (dangLuuBaoMat) {
-    console.warn("[BAO MAT] Đang có yêu cầu lưu.");
-    return;
+// HOANTUYET SECURE SAVE V2 - client state machine.
+// Ban sao payload bat bien chi nam trong RAM (khong luu du lieu KH vao web storage).
+const HT_PENDING_KEY = "ht_secure_save_v2_pending_" + location.pathname;
+let htPendingPayload = null;
+let htCommitted = null;
+const htReadId = () => { try { return sessionStorage.getItem(HT_PENDING_KEY); } catch { return null; } };
+const htWriteId = id => { try { sessionStorage.setItem(HT_PENDING_KEY,id); } catch {} };
+function htResetInvoiceRequest() {
+  try { sessionStorage.removeItem(HT_PENDING_KEY); } catch {}
+  htPendingPayload = null;
+  htCommitted = null;
+}
+// CHI "Them moi" moi xoa phien; KHONG tu xoa sau khi luu.
+window.__htSecureSaveV2NewInvoice = function () {
+  if (dangLuuBaoMat) return false;
+  const id = htReadId();
+  if (id && !htCommitted?.ok) return false;
+  htResetInvoiceRequest();
+  return true;
+};
+function htError(e,id) {
+  console.error("[HOANTUYET SAVE V2]",{request_id:id,
+    code:e?.code||"SAVE_ERROR",message:e?.message||"",
+    details:e?.details||"",hint:e?.hint||"",time:new Date().toISOString()});
+}
+async function htLookup(id) {
+  const {supabase} = await import("../supabaseClient.js");
+  const {data,error} = await supabase.rpc("rpc_secure_save_status_v2",{p_request_id:id});
+  if(error) { const e=new Error(error.message||"STATUS_LOOKUP_FAILED"); e.code=error.code; throw e; }
+  return data;
+}
+function htUncertain(id,code="SAVE_UNCONFIRMED",message="Khong xac dinh duoc trang thai luu. Bao quan ly kiem tra, khong tao hoa don moi.") {
+  return {ok:false,code,message,request_id:id};
+}
+async function htFinishCommitted(result,payload,fromRecovery=false) {
+  htCommitted=result;
+  const sohd=result?.sohd||"(chua co sohd)";
+  if(fromRecovery || !payload) {
+    alert("✅ Hoa don DA LUU: "+sohd+". Khong bam Luu lai. Bam Them moi de ban tiep.");
+    return result;
   }
-
-  dangLuuBaoMat = true;
-
-  const okValidate = await validateBeforeSecureSave();
-  if (!okValidate) {
-    dangLuuBaoMat = false;
-    return { ok: false, reason: "VALIDATE_BEFORE_SAVE_FAILED" };
-  }
-
+  const warnings=[];
+  try { await xuLyNghiepVuSauLuuBaoMat(result,payload); }
+  catch(e) { console.error("[POST SAVE WORK]",e); warnings.push("dong bo sau luu"); }
   try {
-    console.log("[BAO MAT] BAT DAU TEST");
-
-    const payload = taoDuLieuLuuBaoMat();
-
-
-    const result = await guiDuLieuLuuBaoMat(payload);
-
-    const ketQuaDaXuLy = xuLyKetQuaLuuBaoMat(result);
-
-    if (
-      ketQuaDaXuLy?.ok &&
-      (
-        ketQuaDaXuLy?.mode === "SAVE_REAL_V1" ||
-        ketQuaDaXuLy?.mode === "EDIT_REAL_V1"
-      )
-    ) {
-      await xuLyNghiepVuSauLuuBaoMat(
-        ketQuaDaXuLy,
-        payload
-      );
-
-      const pointResult =
-        ketQuaDaXuLy?.point_result?.new_process ||
-        ketQuaDaXuLy?.point_result ||
-        null;
-
-      if (pointResult?.ok) {
-        const diemEl = document.getElementById("diem_hientai");
-        const hangEl = document.getElementById("hang_khach");
-
-        if (diemEl && pointResult.diem_sau != null) {
-          diemEl.value = pointResult.diem_sau;
-        }
-
-        if (hangEl && pointResult.hang_khach != null) {
-          hangEl.value = pointResult.hang_khach;
-        }
-
-        console.log(
-          "[BAO MAT] Điểm khách hàng đã được RPC xử lý:",
-          pointResult
-        );
-      }
-
-      inHoaDonBaoMat(ketQuaDaXuLy, payload);
-
-      if (
-        ketQuaDaXuLy?.mode === "SAVE_REAL_V1" &&
-        ketQuaDaXuLy?.external_send === true &&
-        ketQuaDaXuLy?.sohdT
-      ) {
-        try {
-          const sendResult = await guiHoaDonViettel(
-            ketQuaDaXuLy.sohdT
-          );
-
-          if (!sendResult?.ok) {
-            alert("⚠️ Đã lưu hóa đơn nhưng gửi hóa đơn điện tử chưa thành công. Có thể kiểm tra và gửi lại sau.");
-          }
-
-        } catch (e) {
-          console.error("[BAO MAT] Gửi tác vụ ngoài thất bại:", e);
-
-          alert("⚠️ Đã lưu hóa đơn nhưng gửi hóa đơn điện tử thất bại. Có thể gửi lại sau.");
-        }
-      }
-
-      setTimeout(() => {
-        document.getElementById("them")?.click();
-      }, 500);
+    const pr=result?.point_result?.new_process||result?.point_result;
+    if(pr?.ok) {
+      const diemEl=document.getElementById("diem_hientai");
+      const hangEl=document.getElementById("hang_khach");
+      if(diemEl && pr.diem_sau!=null) diemEl.value=pr.diem_sau;
+      if(hangEl && pr.hang_khach!=null) hangEl.value=pr.hang_khach;
     }
-
-    return ketQuaDaXuLy;
-  } catch (error) {
-    alert(
-      "❌ Không thể hoàn tất lưu hóa đơn.\n\n" +
-      "Vui lòng thử lại hoặc báo quản lý."
-    );
-
-    return {
-      ok: false,
-      code: "SAVE_FAILED"
-    };
-  } finally {
-    dangLuuBaoMat = false;
+  } catch(e) { console.error("[POST SAVE POINT UI]",e); warnings.push("hien thi diem"); }
+  try { inHoaDonBaoMat(result,payload); }
+  catch(e) { console.error("[POST SAVE PRINT]",e); warnings.push("in hoa don"); }
+  // Gui Viettel chi lan dau; replay KHONG gui tiep de tranh gui trung.
+  if(result?.mode==="SAVE_REAL_V1" && result?.external_send===true && result?.sohdT && !result?.idempotent_replay) {
+    try { const r=await guiHoaDonViettel(result.sohdT); if(!r?.ok) warnings.push("gui hoa don dien tu"); }
+    catch(e) { console.error("[POST SAVE VIETTEL]",e); warnings.push("gui hoa don dien tu"); }
   }
+  alert("✅ DA LUU hoa don: "+sohd+
+   (warnings.length?"\n⚠️ Tac vu sau luu loi: "+warnings.join(", "):"")+
+   "\nKHONG luu lai. Bam Them moi de ban tiep.");
+  return result;
+}
+export async function luuHoaDonBaoMat() {
+  if(dangLuuBaoMat) return {ok:false,code:"SAVE_IN_PROGRESS",silent:true};
+  if(htCommitted?.ok) {
+    alert("✅ Hoa don "+htCommitted.sohd+" da luu. Khong luu lai, hay bam Them moi.");
+    return {...htCommitted,idempotent_local:true};
+  }
+  dangLuuBaoMat=true;
+  let id=htReadId(), payload=htPendingPayload;
+  try {
+    if(id && !payload) {
+      let st;
+      try { st=await htLookup(id); } catch(e) { htError(e,id); return htUncertain(id); }
+      if(st?.found && ["save_ok","edit_ok"].includes(st.status) && st.result?.ok) {
+        return await htFinishCommitted(st.result,null,true);
+      }
+      // After reload, cannot safely reconstruct original immutable payload.
+      // Even if no audit row, the previous network request may still be in-flight.
+      return htUncertain(id,"UNRESOLVED_PREVIOUS_REQUEST");
+    }
+    if(!payload) {
+      const valid=await validateBeforeSecureSave();
+      if(!valid) return {ok:false,code:"VALIDATE_BEFORE_SAVE_FAILED",silent:true};
+      payload=taoDuLieuLuuBaoMat();
+      id=payload.request_id;
+      htPendingPayload=payload;
+      htWriteId(id); // before network request
+    }
+    let result;
+    try {
+      result=xuLyKetQuaLuuBaoMat(await guiDuLieuLuuBaoMat(payload));
+    } catch(e) {
+      htError(e,id);
+      let st;
+      try { st=await htLookup(id); } catch(checkError) { htError(checkError,id); }
+      if(st?.found && ["save_ok","edit_ok"].includes(st.status) && st.result?.ok) {
+        result={...st.result,idempotent_replay:true};
+      } else if(st?.found && st.status==="validate_failed") {
+        // Core guarantees no invoice committed for a validation failure.
+        // Caller can correct data and create a fresh request.
+        htResetInvoiceRequest();
+        return {ok:false,code:e?.code||"VALIDATION_FAILED",
+          message:e?.message||"Du lieu khong hop le, hay sua va luu lai."};
+      } else if(!st?.found && e?.code==="40P01") {
+        // PostgreSQL cancelled the transaction; same immutable payload may retry.
+        return {ok:false,code:"40P01",request_id:id,
+          message:"Xung dot giao dich (deadlock). Bam Luu de thu lai CUNG yeu cau."};
+      }
+      if(!result) return htUncertain(id,e?.code||"SAVE_UNCONFIRMED");
+    }
+    if(!result?.ok) {
+      // Do NOT treat a business rejection as committed.
+      return {ok:false,code:result?.code||"SAVE_REJECTED",
+        message:result?.message||"Yeu cau bi tu choi",request_id:id};
+    }
+    if(!["SAVE_REAL_V1","EDIT_REAL_V1"].includes(result?.mode) || !result?.sohd) {
+      return htUncertain(id,"UNEXPECTED_SAVE_RESULT","RPC tra ket qua khong ro; bao quan ly kiem tra.");
+    }
+    return await htFinishCommitted(result,payload);
+  } catch(e) {
+    htError(e,id);
+    return htUncertain(id,e?.code||"SAVE_FAILED");
+  } finally { dangLuuBaoMat=false; }
 }
 
 window.luuHoaDonBaoMat = luuHoaDonBaoMat;

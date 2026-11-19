@@ -171,8 +171,7 @@ function xacDinhLoaiHoaDon(sohd) {
     .split("_")[0] || "";
 }
 
-export function taoDuLieuLuuBaoMat() {
-  const requestId = taoRequestId();
+export function taoDuLieuLuuBaoMat(requestId = taoRequestId()) {
 
   const bangKetQua = getBangKetQua() || {};
 

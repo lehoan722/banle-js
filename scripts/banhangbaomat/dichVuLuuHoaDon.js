@@ -23,11 +23,11 @@ export async function guiDuLieuLuuBaoMat(payload) {
       error
     });
 
-    throw new Error(
-      error.message ||
-      error.details ||
-      "SECURE_SAVE_FAILED"
-    );
+    const e = new Error(error.message || "SECURE_SAVE_FAILED");
+    e.code = error.code || "SUPABASE_ERROR";
+    e.details = error.details || "";
+    e.hint = error.hint || "";
+    throw e;
   }
 
   if (!data) {
@@ -37,11 +37,11 @@ export async function guiDuLieuLuuBaoMat(payload) {
   if (data.ok === false) {
     console.error("[SECURE SAVE] RPC trả về thất bại:", data);
 
-    throw new Error(
-      data.message ||
-      data.code ||
-      "SECURE_SAVE_FAILED"
-    );
+    const e = new Error(data.message || "SECURE_SAVE_FAILED");
+    e.code = data.code || "RPC_REJECTED";
+    e.details = data.details || "";
+    e.hint = data.hint || "";
+    throw e;
   }
 
   return data;
