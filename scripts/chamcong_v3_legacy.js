@@ -1267,11 +1267,20 @@ async function fetchPendingUrgentOrdersForChamCong({ diadiem }) {
     if (!["cs1", "cs2"].includes(coso)) return { ok: false, rows: [] };
 
     try {
+        // Module chuyển kho khẩn KHÔNG đổi trang_thai khi "Giao ca":
+        // nó lưu giao_ca_at, còn trang_thai vẫn là "moi".
+        // Giao ca chỉ có hiệu lực 5 phút, sau đó tự hiển thị lại "Mới".
+        // Đồng bộ cách kiểm tra TAN CA với effectiveUrgentStatus() của module đó.
+        const nowMs = Date.now();
+        const giaoCaHetHan = new Date(nowMs - 5 * 60 * 1000).toISOString();
+        const hienTai = new Date(nowMs).toISOString();
         const { data, error } = await sp
             .from("dat_hang_chuyen_kho_khan")
-            .select("id,masp,size,soluong,huong_chuyen,tu_coso,den_coso,manv_dat,manv_thuc_hien,ghichu_dat,trang_thai,created_at,updated_at")
+            .select("id,masp,size,soluong,huong_chuyen,tu_coso,den_coso,manv_dat,manv_thuc_hien,ghichu_dat,trang_thai,created_at,updated_at,giao_ca_at")
             .eq("tu_coso", coso)
             .eq("trang_thai", "moi")
+            // Chỉ chặn các dòng thực sự là "Mới"; bỏ qua "Giao ca" còn hiệu lực.
+            .or(`giao_ca_at.is.null,giao_ca_at.lte.${giaoCaHetHan},giao_ca_at.gt.${hienTai}`)
             .order("created_at", { ascending: false })
             .limit(200);
 
