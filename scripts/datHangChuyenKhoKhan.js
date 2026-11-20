@@ -311,8 +311,14 @@ async function insertUrgentOrders(items,note="",source="stockquick") {
   suppressRealtimeUntil=Date.now()+900;
   const {error}=await ctx.supabase.from(TABLE).insert(rows);
   if(error){ console.error("[Đặt hàng khẩn] Insert lỗi:",error); alert("❌ Không lưu được đặt hàng khẩn cấp: "+(error.message||"Lỗi không xác định")); return false; }
-  if(panelMode==="hidden") panelMode="expanded";
-  await refreshPanel({forceOpen:true});
+  // Tạo từ StockQuickPopup: chỉ cập nhật bảng dữ liệu, không tự bung bảng quản lý.
+  // Tạo trực tiếp tại bảng quản lý: giữ luồng hiện tại của người dùng.
+  if(source === "stockquick") {
+    await refreshPanel();
+  } else {
+    if(panelMode==="hidden") panelMode="expanded";
+    await refreshPanel({forceOpen:true});
+  }
   return true;
 }
 
@@ -363,10 +369,7 @@ async function openFromStockQuick(popup,payload) {
   )];
   const initialDirection = suggestedDirs.length === 1 ? suggestedDirs[0] : null;
 
-  if (panelMode === "hidden") {
-    panelMode = "expanded";
-    await refreshPanel({ forceOpen:true });
-  }
+  // Chỉ mở hộp nhập đặt khẩn, không ép bảng quản lý mở theo.
   showManualCreate({
     masp,
     suggestedItems:suggestions,
@@ -1023,7 +1026,7 @@ function confirmUrgentDirection({ masp, direction, totalQty }) {
 function showManualCreate(options={}) {
   document.getElementById("dhkhan-create-box")?.remove();
   document.getElementById("dhkhan-confirm-direction")?.remove();
-  if (panelMode === "hidden") { panelMode = "expanded"; refreshPanel({forceOpen:true}); }
+  if (panelMode === "hidden" && options.source !== "stockquick") { panelMode = "expanded"; refreshPanel({forceOpen:true}); }
 
   const presetMasp = normMasp(options.masp || "");
   const { qtyMap:suggestedQty, dirMap:suggestedDirBySize } = buildSuggestedPresetMaps(options.suggestedItems || []);
