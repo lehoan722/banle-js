@@ -3,7 +3,7 @@
   "use strict";
   if (window.HTLichSuMuaHangV1) return;
   const PAGE_SIZE = 80;                 // So hoa don moi dot; xem them de doc toan bo lich su
-  const TYPES = ["bancs1", "bancs2", "bannvcs1", "bannvcs2"];
+  const TYPES = ["bancs1", "bancs2"];
   const state = { root: null, body: null, more: null, title: null, status: null,
                   makh: "", offset: 0, finished: false, busy: false, token: 0, shown: 0 };
 
