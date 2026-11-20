@@ -2386,6 +2386,28 @@ Bạn chưa nhập màu sắc.
                 // Chặn mã cuối cùng (sau ghép MASP.MAU) trước mọi lệnh ghi Supabase.
                 if (!kiemTraMaSauKhiGhepMau(records)) return;
 
+                // V1: Cảnh báo khi THÊM MỚI có Giá lẻ <= 120% Giá nhập.
+                // Chỉ nhắc người dùng xác nhận; không thay đổi quy tắc lưu hoặc kiểm tra khi in.
+                if (!isEditMode && giaNhapMoi > 0 && giaLeMoi <= giaNhapMoi * 1.2) {
+                    const dinhDangGia = (so) => Number(so).toLocaleString('vi-VN') + 'đ';
+                    const mucGiaThamKhao = Math.floor(giaNhapMoi * 1.2) + 1;
+                    // Không tiết lộ giá nhập, biên lợi nhuận hoặc mức giá suy ra cho nhân viên.
+                    const noiDungCanhBao = currentUserIsAdmin
+                        ? `⚠️ CẢNH BÁO GIÁ LẺ SẢN PHẨM MỚI\n\n` +
+                          `Giá nhập: ${dinhDangGia(giaNhapMoi)}\n` +
+                          `Giá lẻ: ${dinhDangGia(giaLeMoi)}\n` +
+                          `Giá lẻ cần lớn hơn 120% giá nhập (tối thiểu ${dinhDangGia(mucGiaThamKhao)}).\n\n` +
+                          `Bạn đã kiểm tra giá và vẫn muốn lưu sản phẩm này?`
+                        : `⚠️ GIÁ LẺ CẦN ĐƯỢC KIỂM TRA\n\n` +
+                          `Giá lẻ hiện tại: ${dinhDangGia(giaLeMoi)}\n` +
+                          `Giá lẻ sản phẩm mới chưa đạt ngưỡng kiểm tra nội bộ.\n\n` +
+                          `Bạn đã kiểm tra giá và vẫn muốn lưu sản phẩm này?`;
+                    if (!confirm(noiDungCanhBao)) {
+                        document.getElementById('gialeInput').focus();
+                        return;
+                    }
+                }
+
                 let bulkPriceDecision = { proceed: true, siblings: [] };
 
                 if (records.length === 1) {
