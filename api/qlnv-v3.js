@@ -2,13 +2,13 @@
 // Keep warehouse Supabase auth and shared authModule.js untouched.
 import crypto from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
-const URL=process.env.SUPABASE_URL||process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_URL=process.env.SUPABASE_URL||process.env.NEXT_PUBLIC_SUPABASE_URL;
 const KEY=process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SECRET=process.env.QLNV_V3_SESSION_SECRET;
 const COOKIE='ht_qlnv_v3';
 const TTL=60*60; // 1 hour, requires employee-password login again after expiry
 const MAX_IMAGE_BYTES=6*1024*1024;
-const db=URL&&KEY?createClient(URL,KEY,{auth:{persistSession:false,autoRefreshToken:false}}):null;
+const db=SUPABASE_URL&&KEY?createClient(SUPABASE_URL,KEY,{auth:{persistSession:false,autoRefreshToken:false}}):null;
 const clean=x=>String(x??'').trim();
 const person=x=>/^[A-Z0-9_-]{1,40}$/.test(clean(x).toUpperCase())?clean(x).toUpperCase():null;
 const branch=x=>['cs1','cs2'].includes(clean(x).toLowerCase())?clean(x).toLowerCase():null;
@@ -27,7 +27,7 @@ async function auth(req){const t=ticket(req);if(!t)return null;const row=await a
 // Requests must originate from our site AND target an approved host.
 // Vercel preview is accepted only when the exact hostname is this deployment's VERCEL_URL.
 // Diagnostic build: do not weaken origin validation. Expose only a short rejection code.
-const API_BUILD='20261121-origin-diag-2';
+const API_BUILD='20261121-origin-url-shadow-fix-3';
 function originCheck(req){
  const rawOrigin=String(req.headers.origin||'');
  const rawHost=String(req.headers.host||'').toLowerCase();
