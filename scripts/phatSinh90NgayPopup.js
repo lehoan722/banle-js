@@ -190,7 +190,7 @@ function buildRows(history) {
     const thieu = pick(r, ["thieu_size", "size_thieu", "thieu_sai"], "");
     const tich = getCumulativeText(r);
     const cells = [
-      historyCell("Ngày", esc(vnDate(ngay)), "ps90-date"),
+      historyCell("Ngày", `<span class="ps90-date-full">${esc(vnDate(ngay))}</span><span class="ps90-date-short">${esc(vnDate(ngay).replace(/(\d{2}\/\d{2}\/)\d{2}(\d{2})$/, "$1$2"))}</span>`, "ps90-date"),
       historyCell("Nhập mua", esc(blankZero(nhap)), "n"),
       historyCell("Bán CS1", movementHtml(b1, r.size_ban_cs1), "n", formattedMovement(b1, r.size_ban_cs1)),
       historyCell("Bán CS2", movementHtml(b2, r.size_ban_cs2), "n", formattedMovement(b2, r.size_ban_cs2)),
@@ -249,6 +249,7 @@ function ensureStyle() {
     .ps90-table th:nth-child(9){width:15%}
     .ps90-table th:nth-child(10){width:6%}
     .ps90-table th:nth-child(11){width:10%}
+    .ps90-date-short{display:none}
     .ps90-quantity,.ps90-size,.ps90-cumulative,.ps90-speed{display:block}
     .ps90-size{font-size:11px;line-height:1.2;color:#475569;font-weight:500;overflow-wrap:anywhere}
     .ps90-speed{font-weight:800}
@@ -265,33 +266,49 @@ function ensureStyle() {
       .ps90-sub{font-size:11px}
       .ps90-tools{margin-left:0;width:100%;gap:5px}
       .ps90-btn{padding:6px 8px;font-size:12px}
-      .ps90-wrap{padding:7px;background:#f4f7fb;overflow-x:hidden;overflow-y:auto}
-      /* Mobile: mỗi ngày là thẻ 2 cột; chỉ cuộn dọc, không ép bảng 1190px */
-      .ps90-table,.ps90-table tbody{display:block;width:100%;min-width:0}
-      .ps90-table thead{display:none}
-      .ps90-table tr{
-        display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-        width:100%;margin:0 0 8px;background:white;border:1px solid #d6e1ed;
-        border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05);
+      /* Mobile: giữ TABLE thật, chỉ hiển thị 8 cột thiết yếu (1-6, 10-11). */
+      .ps90-wrap{padding:3px;overflow-x:hidden;overflow-y:auto;background:#fff}
+      .ps90-table{display:table;width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;font-size:9px;line-height:1.15}
+      .ps90-table thead{display:table-header-group}
+      .ps90-table tbody{display:table-row-group}
+      .ps90-table tr{display:table-row}
+      .ps90-table th,.ps90-table td,.ps90-table td:first-child{
+        display:table-cell;position:static;box-sizing:border-box;
+        padding:4px 1px;border:1px solid #dce4ed;
+        text-align:center!important;vertical-align:middle;
+        overflow-wrap:anywhere;word-break:normal;white-space:normal;
+        min-width:0;max-width:0;
       }
-      .ps90-table td,.ps90-table td:first-child{
-        position:static;display:flex;min-width:0;flex-direction:column;align-items:flex-start;
-        justify-content:flex-start;text-align:left!important;padding:7px 9px;
-        border:0;border-bottom:1px solid #edf1f6;line-height:1.28;
+      .ps90-table th{position:sticky;top:0;background:#eef4f8;z-index:2;font-size:9px;font-weight:800}
+      .ps90-table th:first-child{z-index:3}
+      .ps90-table td::before{display:none!important;content:none!important}
+      /* Ẩn: Trả NCC (7), Tổng bán (8), Bán tích lũy/tốc độ (9). */
+      .ps90-table th:nth-child(7),.ps90-table td:nth-child(7),
+      .ps90-table th:nth-child(8),.ps90-table td:nth-child(8),
+      .ps90-table th:nth-child(9),.ps90-table td:nth-child(9){display:none!important}
+      /* Bắt buộc vẫn hiện ô trống để không làm lệch cột. */
+      .ps90-table td.ps90-cell-empty{display:table-cell}
+      .ps90-table th:nth-child(1),.ps90-table td:nth-child(1){width:18%}
+      .ps90-table th:nth-child(2),.ps90-table td:nth-child(2){width:10%}
+      .ps90-table th:nth-child(3),.ps90-table td:nth-child(3){width:11%}
+      .ps90-table th:nth-child(4),.ps90-table td:nth-child(4){width:11%}
+      .ps90-table th:nth-child(5),.ps90-table td:nth-child(5){width:13%}
+      .ps90-table th:nth-child(6),.ps90-table td:nth-child(6){width:13%}
+      .ps90-table th:nth-child(10),.ps90-table td:nth-child(10){width:10%}
+      .ps90-table th:nth-child(11),.ps90-table td:nth-child(11){width:14%}
+      .ps90-date-full{display:none}
+      .ps90-date-short{display:inline}
+      .ps90-table td.ps90-date{font-weight:800;color:#075d9e;font-size:9px;background:#f1f7fd}
+      .ps90-size{display:block;font-size:8.5px;line-height:1.13;overflow-wrap:anywhere;word-break:break-word}
+      .ps90-quantity{display:block;font-size:10px;font-weight:800}
+      .ps90-table td.n{font-variant-numeric:tabular-nums}
+      .ps90-table td:nth-child(11){font-size:9px}
+      @media(max-width:370px){
+        .ps90-table{font-size:8px}
+        .ps90-table th{font-size:8px}
+        .ps90-size{font-size:8px}
+        .ps90-table td.ps90-date{font-size:8px}
       }
-      .ps90-table td::before{
-        content:attr(data-label);display:block;color:#64748b;font-size:10px;
-        font-weight:700;margin-bottom:3px;line-height:1.2;
-      }
-      .ps90-table td.ps90-date{
-        grid-column:1/-1;background:#e8f2fc;color:#075d9e;font-size:14px;
-        font-weight:900;padding:8px 10px;
-      }
-      .ps90-table td.ps90-date::before{display:none}
-      .ps90-table td.ps90-cell-empty{display:none}
-      .ps90-table td.ps90-date.ps90-cell-empty{display:flex}
-      .ps90-table .ps90-size{font-size:11px}
-      .ps90-table .ps90-cumulative,.ps90-table .ps90-speed{font-size:12px}
     }
   `;
   document.head.appendChild(st);
