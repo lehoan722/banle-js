@@ -23,7 +23,22 @@ function ticket(req){const raw=readCookie(req);const [p,s,...extras]=raw.split('
  try{const x=JSON.parse(Buffer.from(p,'base64url').toString());if(!person(x.m)||!branch(x.b)||x.exp<Date.now()||x.exp>Date.now()+TTL*1000)return null;return {manv:person(x.m),diadiem:branch(x.b)};}catch{return null;}}
 async function activeStaff(manv){const r=await db.from('dmnhanvien').select('manv,trangthai,matkhau').eq('manv',manv).maybeSingle();if(r.error)throw Error('Không kiểm tra được nhân viên');return r.data;}
 async function auth(req){const t=ticket(req);if(!t)return null;const row=await activeStaff(t.manv);if(!row||row.trangthai===false)return null;return t;}
-function enforceOrigin(req){const o=req.headers.origin;if(!o)return false;try{return new URL(o).origin===`https://${req.headers.host}`;}catch{return false;}}
+// Allow only our two canonical production hosts (with/without www).
+// Requests must originate from our site AND target an approved host.
+// Vercel preview is accepted only when the exact hostname is this deployment's VERCEL_URL.
+function enforceOrigin(req){
+ const rawOrigin=String(req.headers.origin||'');
+ const rawHost=String(req.headers.host||'').toLowerCase();
+ if(!rawOrigin||!rawHost)return false;
+ try{
+  const origin=new URL(rawOrigin);
+  if(origin.protocol!=='https:'||origin.username||origin.password||origin.port)return false;
+  const allowed=new Set(['hoantuyet.vn','www.hoantuyet.vn']);
+  const deployment=String(process.env.VERCEL_URL||'').toLowerCase();
+  if(deployment&&/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.vercel\.app$/.test(deployment))allowed.add(deployment);
+  return allowed.has(origin.hostname.toLowerCase())&&allowed.has(rawHost);
+ }catch{return false;}
+}
 function ip(req){return String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0].trim();}
 async function login(req,res){const manv=person(req.body?.manv),b=branch(req.body?.diadiem),password=clean(req.body?.password);
  if(!manv||!b||!password||password.length>200)return error(res,400,'Nhập đúng mã nhân viên, cơ sở và mật khẩu');
