@@ -35,7 +35,7 @@ export function createUrgentTable(element,rows,section,{isAdmin,currentCoso,stat
   const canMove=section==='canmove';
   const inputFilter={headerFilter:'input',headerFilterPlaceholder:'Tìm...',headerFilterFunc:'like'};
   const textColumn=(title,field,width=105,extra={})=>({title,field,width,headerSort:true,...inputFilter,...extra});
-  const checkboxCol=(title,type,ids)=>({title,field:`${type}_ui`,width:34,minWidth:32,frozen:true,hozAlign:'center',headerSort:false,
+  const checkboxCol=(title,type,ids)=>({title,field:`${type}_ui`,width:34,minWidth:32,hozAlign:'center',headerSort:false,
     formatter:cell=>{ const r=cell.getRow().getData();const ch=document.createElement('input');ch.type='checkbox';
       ch.className=type==='delete'?'dhkhan-delete-check':'dhkhan-move';ch.dataset.id=r.id;ch.checked=ids.has(Number(r.id));
       ch.disabled=type==='delete'?!isAdmin:!(canMove&&effectiveStatus(r)==='moi');
@@ -44,7 +44,7 @@ export function createUrgentTable(element,rows,section,{isAdmin,currentCoso,stat
     }});
   const columns=[
     checkboxCol('Xóa','delete',deleteIds),checkboxCol('Chuyển','move',moveIds),
-    textColumn('Mã sản phẩm','masp',180,{frozen:true,formatter:cell=>`<span style="color:#9b1c1c;font-weight:800;text-decoration:underline;cursor:pointer">${escapeHtml(cell.getValue())}</span>`,cellClick:(e,cell)=>onProduct(cell.getRow().getData())}),
+    textColumn('Mã sản phẩm','masp',180,{formatter:cell=>`<span style="color:#9b1c1c;font-weight:800;text-decoration:underline;cursor:pointer">${escapeHtml(cell.getValue())}</span>`,cellClick:(e,cell)=>onProduct(cell.getRow().getData())}),
     {title:'SL',field:'soluong',width:52,hozAlign:'center',headerFilter:'input'},
     textColumn('Size','size',58),textColumn('Hướng','huong_chuyen',64),
     textColumn('NV đặt','manv_dat',88),
