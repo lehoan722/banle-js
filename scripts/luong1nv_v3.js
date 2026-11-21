@@ -842,10 +842,36 @@ async function v3LoadPayroll(fromDate,toDate,manv,workHours){
   const approvedTasks=new Set(rows.filter(r=>r.is_approved).map(r=>r.task_id));
   const cancelledTasks=new Set(rows.filter(r=>r.is_cancelled).map(r=>r.task_id));
   const pendingTasks=new Set(rows.filter(r=>!r.is_approved&&!r.is_cancelled).map(r=>r.task_id));
-  const issues=rows.filter(r=>r.warning_text);
+  // Cảnh báo SQL bình thường: các phút miễn khoán đã được giới hạn theo giờ công.
+  // Chỉ bỏ chặn khi nội dung là CHÍNH XÁC cảnh báo này, không bỏ qua lỗi khác.
+  const v3CapWarning = 'Da gioi han phut mien khoan theo gio cong ngay.';
+  const cappedRows = rows.filter(r => String(r.warning_text ?? '').trim() === v3CapWarning);
+  const issues = rows.filter(r => {
+    const warning = String(r.warning_text ?? '').trim();
+    return warning !== '' && warning !== v3CapWarning;
+  });
   const approved=rows.reduce((s,r)=>s+Number(r.approved_minutes_part||0),0);
   const eligible=rows.reduce((s,r)=>s+Number(r.eligible_minutes||0),0);
-  if(eligible< -0.0001 || eligible>workHours*60+0.05)throw Error('Miễn khoán V3 vượt giờ công được trả lương; yêu cầu kiểm tra SQL.');
+  // Không cho qua dữ liệu sai dù chuỗi cảnh báo được phân loại là bình thường.
+  const invalidMinutes = rows.filter(r => {
+    const a = Number(r.approved_minutes_part ?? 0);
+    const e = Number(r.eligible_minutes ?? 0);
+    return !Number.isFinite(a) || !Number.isFinite(e) ||
+      a < -0.0001 || e < -0.0001 || e > a + 0.05;
+  });
+  if (invalidMinutes.length) {
+    throw Error(`Miễn khoán V3 có ${invalidMinutes.length} dòng số phút không hợp lệ; đã dừng tính lương.`);
+  }
+  if (!Number.isFinite(approved) || !Number.isFinite(eligible) ||
+      !Number.isFinite(Number(workHours)) || Number(workHours) < 0 ||
+      eligible< -0.0001 || eligible>workHours*60+0.05) {
+    throw Error('Miễn khoán V3 vượt giờ công được trả lương hoặc có giá trị không hợp lệ; yêu cầu kiểm tra SQL.');
+  }
+  if (cappedRows.length) {
+    console.warn('[LƯƠNG V3] Đã giới hạn phút miễn khoán theo giờ công ngày; vẫn tính theo eligible_minutes:',
+      cappedRows.map(r => ({task_id:r.task_id, ngay:r.ngay, diadiem:r.diadiem,
+        approved_minutes_part:r.approved_minutes_part, eligible_minutes:r.eligible_minutes})));
+  }
   const list=document.querySelector('#v3-task-table tbody');
   if(list){list.innerHTML=rows.map(r=>`<tr><td>#${v3Esc(r.task_id)} – ${v3Esc(r.title)}</td><td>${v3Esc(r.ngay)}</td><td>${v3Esc(r.diadiem)}</td><td>${r.is_cancelled?'Đã hủy':r.is_approved?'Đã duyệt':'Chưa duyệt'}</td><td>${v3Fmt(r.approved_minutes_part,2)}</td><td>${v3Fmt(r.eligible_minutes,2)}</td><td>${v3Esc(r.warning_text)}</td></tr>`).join('');}
   for(const [id,value] of Object.entries({'v3-task-total':totalTasks.size,'v3-task-approved':approvedTasks.size,'v3-task-pending':pendingTasks.size,'v3-task-cancelled':cancelledTasks.size,'v3-approved-minutes':v3Fmt(approved,2),'v3-eligible-minutes':v3Fmt(eligible,2),'v3-quota-hours':v3Fmt(Math.max(0,workHours-eligible/60),4)}))v3Set(id,value);
@@ -859,7 +885,8 @@ function v3ShowResult(v2,v3){
   const newNet=v2.hourlyBase+newBonus+v2.commission+v2.clearance-v2.deductions;
   const vals={'v3-old-quota':v2.oldQuota,'v3-new-quota':newQuota,'v3-diff-quota':v2.oldQuota-newQuota,'v3-new-bonus':newBonus,'v3-old-net':v2.oldNet,'v3-new-net':newNet,'v3-diff-net':newNet-v2.oldNet};
   Object.entries(vals).forEach(([id,n])=>v3Set(id,v3Fmt(n,0)));
-  v3Set('v3-payroll-status',`Đã tính theo nhiệm vụ V3 được duyệt. ${v3.pending} nhiệm vụ chưa được duyệt không được tính miễn khoán. Chưa ghi kết quả chốt lương vào DB.`);
+  const capCount=v3.rows.filter(r=>String(r.warning_text??'').trim()==='Da gioi han phut mien khoan theo gio cong ngay.').length;
+  v3Set('v3-payroll-status',`Đã tính theo nhiệm vụ V3 được duyệt. ${v3.pending} nhiệm vụ chưa được duyệt không được tính miễn khoán. ${capCount?`${capCount} dòng được giới hạn phút miễn khoán theo giờ công; xem bảng chi tiết. `:''}Chưa ghi kết quả chốt lương vào DB.`);
   return {quotaHours,newQuota,newBonus,newNet};
 }
 
