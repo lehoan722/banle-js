@@ -26,19 +26,27 @@ async function auth(req){const t=ticket(req);if(!t)return null;const row=await a
 // Allow only our two canonical production hosts (with/without www).
 // Requests must originate from our site AND target an approved host.
 // Vercel preview is accepted only when the exact hostname is this deployment's VERCEL_URL.
-function enforceOrigin(req){
+// Diagnostic build: do not weaken origin validation. Expose only a short rejection code.
+const API_BUILD='20261121-origin-diag-2';
+function originCheck(req){
  const rawOrigin=String(req.headers.origin||'');
  const rawHost=String(req.headers.host||'').toLowerCase();
- if(!rawOrigin||!rawHost)return false;
+ const marker=req.headers['x-qlnv-v3'];
+ if(marker!=='1')return 'missing_custom_header';
+ if(!rawOrigin)return 'missing_origin';
+ if(!rawHost)return 'missing_host';
  try{
-  const origin=new URL(rawOrigin);
-  if(origin.protocol!=='https:'||origin.username||origin.password||origin.port)return false;
+  const o=new URL(rawOrigin);
+  if(o.protocol!=='https:'||o.username||o.password||o.port)return 'invalid_origin_protocol';
   const allowed=new Set(['hoantuyet.vn','www.hoantuyet.vn']);
   const deployment=String(process.env.VERCEL_URL||'').toLowerCase();
   if(deployment&&/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.vercel\.app$/.test(deployment))allowed.add(deployment);
-  return allowed.has(origin.hostname.toLowerCase())&&allowed.has(rawHost);
- }catch{return false;}
+  if(!allowed.has(o.hostname.toLowerCase()))return 'origin_not_allowed';
+  if(!allowed.has(rawHost))return 'host_not_allowed';
+  return null;
+ }catch{return 'invalid_origin';}
 }
+
 function ip(req){return String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0].trim();}
 async function login(req,res){const manv=person(req.body?.manv),b=branch(req.body?.diadiem),password=clean(req.body?.password);
  if(!manv||!b||!password||password.length>200)return error(res,400,'Nhập đúng mã nhân viên, cơ sở và mật khẩu');
@@ -105,8 +113,10 @@ async function report(t,body,res){const id=Number(body?.task_id),status=clean(bo
 }
 export default async function handler(req,res){res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
  if(!db||!SECRET||SECRET.length<32)return error(res,503,'Thiếu SUPABASE_SERVICE_ROLE_KEY hoặc QLNV_V3_SESSION_SECRET (>=32 ký tự)');
+ if(req.method==='GET')return res.status(200).json({ok:true,service:'qlnv-v3',build:API_BUILD,method:'POST required for actions'});
  if(req.method!=='POST')return error(res,405,'Chỉ nhận POST');
- if(req.headers['x-qlnv-v3']!=='1'||!enforceOrigin(req))return error(res,403,'Yêu cầu không đúng nguồn');
+ const rejected=originCheck(req);
+ if(rejected)return res.status(403).json({ok:false,error:'Yêu cầu không đúng nguồn',reason:rejected,build:API_BUILD});
  const action=clean(req.body?.action);if(Number(req.headers['content-length']||0)>9*1024*1024)return error(res,413,'Yêu cầu quá lớn');
  try {if(action==='login')return await login(req,res);
  if(action==='logout'){setCookie(res,'',0);return res.json({ok:true});}
