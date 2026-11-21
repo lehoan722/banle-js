@@ -669,10 +669,8 @@ export function initYeuCauBayMau({ supabase, diadiem, manvDangNhap }) {
     openFromButton(button);
   };
 
-  // Tải trước dữ liệu nhưng tuyệt đối không tự mở popup.
-  setTimeout(() => loadTasks({ force: true }).catch(error => {
-    console.warn("Chưa tải trước được yêu cầu bày mẫu:", error);
-  }), 350);
+  // Không tự gọi RPC nặng khi tải trang hoặc mỗi 2 phút.
+  // Dữ liệu sẽ được lấy khi người dùng bấm BM; các lần mở tiếp theo dùng cache 120 giây.
   if (prefetchTimer) clearInterval(prefetchTimer);
-  prefetchTimer = setInterval(() => loadTasks({ force: true }).catch(() => {}), 120000);
+  prefetchTimer = null;
 }
