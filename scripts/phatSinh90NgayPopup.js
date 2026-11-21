@@ -150,9 +150,33 @@ function formattedMovement(qty, sizes) {
   return `${blankZero(n)}${parts.length ? ` (${parts.join(", ")})` : ""}`;
 }
 
+// V3 FAST UI Compact: chỉ thay cách trình bày, không thay dữ liệu hay RPC.
+function movementHtml(qty, sizes) {
+  const n = num(qty);
+  if (!n) return "";
+  const parts = Object.entries(sizes && typeof sizes === "object" && !Array.isArray(sizes) ? sizes : {})
+    .filter(([, value]) => num(value) > 0)
+    .sort(([a], [b]) => a.localeCompare(b, "vi", { numeric: true }))
+    .map(([size, value]) => `${size}${num(value) === 1 ? "" : `×${num(value)}`}`);
+  const detail = parts.length ? `<span class="ps90-size">(${esc(parts.join(", "))})</span>` : "";
+  return `<span class="ps90-quantity">${esc(blankZero(n))}</span>${detail}`;
+}
+
+function cumulativeHtml(r) {
+  const raw = getCumulativeText(r);
+  if (!raw) return "";
+  const pieces = raw.split(" = ");
+  return `<span class="ps90-cumulative">${esc(pieces[0])}</span>${pieces.length > 1 ? `<span class="ps90-speed">= ${esc(pieces.slice(1).join(" = "))}</span>` : ""}`;
+}
+
+function historyCell(label, content, cssClass = "", value = "") {
+  const empty = !content;
+  const title = value ? ` title="${esc(value)}"` : "";
+  return `<td data-label="${esc(label)}" class="${cssClass}${empty ? " ps90-cell-empty" : ""}"${title}>${content}</td>`;
+}
+
 function buildRows(history) {
   const rank = getRankClasses(history);
-
   return history.map((r, i) => {
     const ngay = pick(r, ["ngay", "ngay_ps", "date"], "");
     const nhap = pick(r, ["nhapmua", "nhap_mua", "nhap", "tong_nhap"], 0);
@@ -165,21 +189,20 @@ function buildRows(history) {
     const ton = pick(r, ["ton", "ton_hien_tai", "ton_sau_ngay"], 0);
     const thieu = pick(r, ["thieu_size", "size_thieu", "thieu_sai"], "");
     const tich = getCumulativeText(r);
-
-    return `
-      <tr>
-        <td>${esc(vnDate(ngay))}</td>
-        <td class="n">${esc(blankZero(nhap))}</td>
-        <td class="n">${esc(formattedMovement(b1, r.size_ban_cs1))}</td>
-        <td class="n">${esc(formattedMovement(b2, r.size_ban_cs2))}</td>
-        <td class="n">${esc(formattedMovement(c12, r.size_chuyen_cs1_cs2))}</td>
-        <td class="n">${esc(formattedMovement(c21, r.size_chuyen_cs2_cs1))}</td>
-        <td class="n">${esc(formattedMovement(traNcc, r.size_tra_ncc))}</td>
-        <td class="n ps90-bold">${esc(blankZero(tongBan))}</td>
-        <td class="${rank[i]}">${esc(tich)}</td>
-        <td class="n">${esc(blankZero(ton))}</td>
-        <td>${esc(thieu || "")}</td>
-      </tr>`;
+    const cells = [
+      historyCell("Ngày", esc(vnDate(ngay)), "ps90-date"),
+      historyCell("Nhập mua", esc(blankZero(nhap)), "n"),
+      historyCell("Bán CS1", movementHtml(b1, r.size_ban_cs1), "n", formattedMovement(b1, r.size_ban_cs1)),
+      historyCell("Bán CS2", movementHtml(b2, r.size_ban_cs2), "n", formattedMovement(b2, r.size_ban_cs2)),
+      historyCell("CS1 → CS2", movementHtml(c12, r.size_chuyen_cs1_cs2), "n", formattedMovement(c12, r.size_chuyen_cs1_cs2)),
+      historyCell("CS2 → CS1", movementHtml(c21, r.size_chuyen_cs2_cs1), "n", formattedMovement(c21, r.size_chuyen_cs2_cs1)),
+      historyCell("Trả NCC", movementHtml(traNcc, r.size_tra_ncc), "n", formattedMovement(traNcc, r.size_tra_ncc)),
+      historyCell("Tổng bán", esc(blankZero(tongBan)), "n ps90-bold"),
+      historyCell("Bán tích lũy / ngày / tốc độ", cumulativeHtml(r), rank[i], tich),
+      historyCell("Tồn", esc(blankZero(ton)), "n"),
+      historyCell("Thiếu size", esc(String(thieu || "")))
+    ];
+    return `<tr>${cells.join("")}</tr>`;
   }).join("");
 }
 
@@ -189,55 +212,86 @@ function ensureStyle() {
   st.id = "ps90-style";
   st.textContent = `
     .ps90-backdrop{
-      position:fixed; inset:0; z-index:320200;
-      background:rgba(15,23,42,.48);
-      display:flex; align-items:center; justify-content:center;
-      padding:12px;
+      position:fixed;inset:0;z-index:320200;background:rgba(15,23,42,.48);
+      display:flex;align-items:center;justify-content:center;padding:10px;
     }
     .ps90-card{
-      width:min(1050px,96vw); max-height:94vh;
-      background:#fff; border-radius:12px;
-      box-shadow:0 18px 55px rgba(0,0,0,.3);
-      overflow:hidden; display:flex; flex-direction:column;
-      color:#111827;
+      width:min(1280px,98vw);max-height:95vh;background:#fff;border-radius:12px;
+      box-shadow:0 18px 55px rgba(0,0,0,.3);overflow:hidden;
+      display:flex;flex-direction:column;min-width:0;color:#111827;
     }
     .ps90-head{
-      display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;
-      padding:12px 14px 10px; border-bottom:1px solid #dbe3ee;
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:10px 12px;border-bottom:1px solid #dbe3ee;
     }
-    .ps90-title{font-size:22px;font-weight:900;color:#155e9f;line-height:1.2}
-    .ps90-sub{font-size:13px;color:#64748b;margin-top:3px}
-    .ps90-tools{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
-    .ps90-btn{
-      border:0;border-radius:8px;padding:8px 12px;
-      background:#e8f2f9;color:#0b5f9e;font-weight:800;cursor:pointer;
-    }
+    .ps90-title{font-size:19px;font-weight:900;color:#155e9f;line-height:1.2;overflow-wrap:anywhere}
+    .ps90-sub{font-size:12px;color:#64748b;margin-top:3px}
+    .ps90-tools{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+    .ps90-btn{border:0;border-radius:8px;padding:7px 10px;background:#e8f2f9;color:#0b5f9e;font-weight:800;cursor:pointer}
     .ps90-btn.primary{background:#2580d8;color:#fff}
-    .ps90-wrap{overflow:auto;-webkit-overflow-scrolling:touch;padding:10px 12px 14px}
-    .ps90-table{border-collapse:collapse;min-width:1310px;width:100%;font-size:14px}
+    .ps90-wrap{overflow:auto;-webkit-overflow-scrolling:touch;padding:8px 10px 12px;min-height:0}
+    /* Desktop: bỏ min-width:1310px và white-space:nowrap trên tất cả ô */
+    .ps90-table{table-layout:fixed;border-collapse:collapse;width:100%;min-width:0;font-size:12px;line-height:1.25}
     .ps90-table th,.ps90-table td{
-      border:1px solid #d9e1ea;padding:6px 8px;white-space:nowrap;text-align:left
+      border:1px solid #d9e1ea;padding:5px 4px;text-align:center;
+      white-space:normal;overflow-wrap:anywhere;vertical-align:middle;
     }
-    .ps90-table th{background:#eef4f8;font-weight:900;position:sticky;top:0;z-index:1}
-    .ps90-table td.n{text-align:right;font-variant-numeric:tabular-nums}
+    .ps90-table th{background:#eef4f8;font-weight:900;position:sticky;top:0;z-index:3;line-height:1.2}
+    .ps90-table td.n{text-align:center;font-variant-numeric:tabular-nums}
     .ps90-table th:first-child,.ps90-table td:first-child{position:sticky;left:0;background:#fff;z-index:2}
-    .ps90-table th:first-child{background:#eef4f8;z-index:3}
+    .ps90-table th:first-child{background:#eef4f8;z-index:4}
+    .ps90-table th:nth-child(1){width:9%}
+    .ps90-table th:nth-child(2){width:7%}
+    .ps90-table th:nth-child(3),.ps90-table th:nth-child(4){width:9%}
+    .ps90-table th:nth-child(5),.ps90-table th:nth-child(6){width:10%}
+    .ps90-table th:nth-child(7){width:8%}
+    .ps90-table th:nth-child(8){width:7%}
+    .ps90-table th:nth-child(9){width:15%}
+    .ps90-table th:nth-child(10){width:6%}
+    .ps90-table th:nth-child(11){width:10%}
+    .ps90-quantity,.ps90-size,.ps90-cumulative,.ps90-speed{display:block}
+    .ps90-size{font-size:11px;line-height:1.2;color:#475569;font-weight:500;overflow-wrap:anywhere}
+    .ps90-speed{font-weight:800}
     .ps90-bold{font-weight:900}
     .ps90-fast-1{color:#d00000;font-weight:900}
     .ps90-fast-2{color:#0b57d0;font-weight:900}
     .ps90-empty{padding:28px;text-align:center;color:#64748b;font-size:16px}
     .ps90-error{padding:18px;color:#b91c1c;font-weight:700}
-    @media(max-width:800px) and (orientation:portrait){
-      .ps90-backdrop{padding:5px;align-items:flex-start}
-      .ps90-card{width:calc(100vw - 10px);max-height:calc(100dvh - 10px);border-radius:10px}
-      .ps90-head{padding:9px 10px 8px}
-      .ps90-title{font-size:18px}
-      .ps90-sub{font-size:12px}
-      .ps90-tools{margin-left:0;width:100%}
-      .ps90-btn{padding:7px 9px;font-size:14px}
-      .ps90-wrap{padding:7px 7px 12px}
-      .ps90-table{font-size:12px;min-width:1190px}
-      .ps90-table th,.ps90-table td{padding:5px 6px}
+    @media(max-width:800px){
+      .ps90-backdrop{padding:4px;align-items:center}
+      .ps90-card{width:calc(100vw - 8px);max-height:calc(100dvh - 8px);border-radius:10px}
+      .ps90-head{padding:8px 9px;align-items:flex-start}
+      .ps90-title{font-size:16px}
+      .ps90-sub{font-size:11px}
+      .ps90-tools{margin-left:0;width:100%;gap:5px}
+      .ps90-btn{padding:6px 8px;font-size:12px}
+      .ps90-wrap{padding:7px;background:#f4f7fb;overflow-x:hidden;overflow-y:auto}
+      /* Mobile: mỗi ngày là thẻ 2 cột; chỉ cuộn dọc, không ép bảng 1190px */
+      .ps90-table,.ps90-table tbody{display:block;width:100%;min-width:0}
+      .ps90-table thead{display:none}
+      .ps90-table tr{
+        display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+        width:100%;margin:0 0 8px;background:white;border:1px solid #d6e1ed;
+        border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.05);
+      }
+      .ps90-table td,.ps90-table td:first-child{
+        position:static;display:flex;min-width:0;flex-direction:column;align-items:flex-start;
+        justify-content:flex-start;text-align:left!important;padding:7px 9px;
+        border:0;border-bottom:1px solid #edf1f6;line-height:1.28;
+      }
+      .ps90-table td::before{
+        content:attr(data-label);display:block;color:#64748b;font-size:10px;
+        font-weight:700;margin-bottom:3px;line-height:1.2;
+      }
+      .ps90-table td.ps90-date{
+        grid-column:1/-1;background:#e8f2fc;color:#075d9e;font-size:14px;
+        font-weight:900;padding:8px 10px;
+      }
+      .ps90-table td.ps90-date::before{display:none}
+      .ps90-table td.ps90-cell-empty{display:none}
+      .ps90-table td.ps90-date.ps90-cell-empty{display:flex}
+      .ps90-table .ps90-size{font-size:11px}
+      .ps90-table .ps90-cumulative,.ps90-table .ps90-speed{font-size:12px}
     }
   `;
   document.head.appendChild(st);
