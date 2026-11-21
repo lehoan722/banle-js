@@ -266,14 +266,14 @@ async function load90History(masp) {
 // Supabase/Postgres statement_timeout ở các mã có lịch sử rất dài.
 // 90 ngày vẫn đi qua rpc_nhapbu2_kiemtra_nguon_v1, không thay đổi.
 async function loadPagedHistory(masp, days, onProgress) {
-  const PAGE_SIZE = 24;
+  const PAGE_SIZE = 60;
   const MAX_PAGES = 300; // chốt an toàn: tối đa 7.200 ngày phát sinh
   const code = String(masp || "").trim().toUpperCase();
   const all = [];
 
   for (let page = 0; page < MAX_PAGES; page++) {
     const offset = page * PAGE_SIZE;
-    const { data, error } = await supabase.rpc("rpc_nhapbu2_phatsinh_page_v2", {
+    const { data, error } = await supabase.rpc("rpc_nhapbu2_phatsinh_page_v3", {
       p_masp: code,
       p_ngay: todayVN(),
       p_so_ngay: days,
@@ -331,7 +331,10 @@ async function open(maspRaw) {
   let historyAll = null;
   let loading = false;
 
-  function render(history, nextMode) {
+  let renderedCount = 0;
+  function render(history, nextMode, isFinal = true) {
+    const sameMode = mode === nextMode;
+    const prevCount = renderedCount;
     mode = nextMode;
     const isAll = mode === "all";
     if (title) title.textContent = `${isAll ? "PHÁT SINH TOÀN BỘ" : "PHÁT SINH 90 NGÀY"} · ${masp}`;
@@ -346,6 +349,15 @@ async function open(maspRaw) {
       return;
     }
 
+    if (!isFinal && sameMode && prevCount > 0 && history.length > prevCount) {
+      const tbody = wrap.querySelector(".ps90-table tbody");
+      if (tbody) {
+        tbody.insertAdjacentHTML("beforeend", buildRows(history.slice(prevCount)));
+        renderedCount = history.length;
+        return;
+      }
+    }
+    renderedCount = history.length;
     wrap.innerHTML = `
       <table class="ps90-table">
         <thead>
@@ -378,7 +390,7 @@ async function open(maspRaw) {
       if (target === "all") {
         if (!historyAll) {
           historyAll = await loadAllHistory(masp, (rows, done) => {
-            render(rows, "all");
+            render(rows, "all", false);
             if (!done && sub) sub.textContent = `Đang tải toàn bộ vòng đời... đã nạp ${rows.length} dòng`;
           });
         }
@@ -417,7 +429,7 @@ async function open(maspRaw) {
 
   try {
     historyAll = await loadAllHistory(masp, (rows, done) => {
-      render(rows, "all");
+      render(rows, "all", false);
       if (!done && sub) sub.textContent = `Đang tải toàn bộ vòng đời... đã nạp ${rows.length} dòng`;
     });
     render(historyAll, "all");
