@@ -33,9 +33,9 @@ const escapeHtml=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
 export function createUrgentTable(element,rows,section,{isAdmin,currentCoso,statusOptions,statusText,effectiveStatus,fmtTime,onStatus,onNote,onProduct,onChecked,deleteIds,moveIds}) {
   if (!window.Tabulator) return null;
   const canMove=section==='canmove';
-  const inputFilter={headerFilter:'input',headerFilterPlaceholder:'Tìm...',headerFilterFunc:'like',headerFilterLiveFilterDelay:250};
+  const inputFilter={headerFilter:'input',headerFilterPlaceholder:'Tìm...',headerFilterFunc:'like'};
   const textColumn=(title,field,width=105,extra={})=>({title,field,width,headerSort:true,...inputFilter,...extra});
-  const checkboxCol=(title,type,ids)=>({title,field:`${type}_ui`,width:34,minWidth:32,hozAlign:'center',headerSort:false,
+  const checkboxCol=(title,type,ids)=>({title,field:`${type}_ui`,width:34,minWidth:32,frozen:true,hozAlign:'center',headerSort:false,
     formatter:cell=>{ const r=cell.getRow().getData();const ch=document.createElement('input');ch.type='checkbox';
       ch.className=type==='delete'?'dhkhan-delete-check':'dhkhan-move';ch.dataset.id=r.id;ch.checked=ids.has(Number(r.id));
       ch.disabled=type==='delete'?!isAdmin:!(canMove&&effectiveStatus(r)==='moi');
@@ -63,9 +63,10 @@ export function createUrgentTable(element,rows,section,{isAdmin,currentCoso,stat
   ];
   const table=new window.Tabulator(element,{
     index:'id',data:rows,layout:'fitColumns',height:'min(62vh,650px)',
+    headerFilterLiveFilterDelay:250,
     columns,placeholder:'Không có dữ liệu',pagination:true,paginationSize:50,
     movableColumns:true,resizableColumns:true,
-    selectableRows:true,selectableRange:true,clipboard:"copy",clipboardCopyRowRange:'active',
+    selectableRows:false,selectableRange:true,clipboard:"copy",clipboardCopyRowRange:'active',
     rowFormatter:row=>{let st=row.getData().trang_thai_hienthi;
       let bg=st==='giao_ca'?'#fff1bf':st==='da_chuyen'?'#e8f7ec':st==='het'?'#eee':st==='huy'?'#eee7ff':'#fff';
       row.getElement().style.background=bg;
