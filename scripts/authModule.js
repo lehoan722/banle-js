@@ -436,8 +436,8 @@ export function khoiTaoDangNhapDungChung(options = {}) {
     return (
       p.includes("kiem_nhapkho_cs1") ||
       p.includes("kiem_nhapkho_cs2") ||
-      p.includes("chamcongcs1") ||
-      p.includes("chamcongcs2") ||
+      p.includes("chamcong_v3_cs1") ||
+      p.includes("chamcong_v3_cs2") ||
       p.includes("banlemtcs1") ||
       p.includes("banlemtcs2")
     );
