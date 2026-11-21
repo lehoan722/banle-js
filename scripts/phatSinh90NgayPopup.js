@@ -140,6 +140,16 @@ function getRankClasses(rows) {
   });
 }
 
+function formattedMovement(qty, sizes) {
+  const n = num(qty);
+  if (!n) return "";
+  const parts = Object.entries(sizes && typeof sizes === "object" && !Array.isArray(sizes) ? sizes : {})
+    .filter(([, value]) => num(value) > 0)
+    .sort(([a], [b]) => a.localeCompare(b, "vi", { numeric: true }))
+    .map(([size, value]) => `${size}${num(value) === 1 ? "" : `×${num(value)}`}`);
+  return `${blankZero(n)}${parts.length ? ` (${parts.join(", ")})` : ""}`;
+}
+
 function buildRows(history) {
   const rank = getRankClasses(history);
 
@@ -149,6 +159,9 @@ function buildRows(history) {
     const b1 = pick(r, ["ban_cs1", "xuat_ban_cs1"], 0);
     const b2 = pick(r, ["ban_cs2", "xuat_ban_cs2"], 0);
     const tongBan = pick(r, ["tong_ban", "ban_tong"], num(b1) + num(b2));
+    const c12 = pick(r, ["chuyen_cs1_cs2"], 0);
+    const c21 = pick(r, ["chuyen_cs2_cs1"], 0);
+    const traNcc = pick(r, ["tra_ncc"], 0);
     const ton = pick(r, ["ton", "ton_hien_tai", "ton_sau_ngay"], 0);
     const thieu = pick(r, ["thieu_size", "size_thieu", "thieu_sai"], "");
     const tich = getCumulativeText(r);
@@ -157,8 +170,11 @@ function buildRows(history) {
       <tr>
         <td>${esc(vnDate(ngay))}</td>
         <td class="n">${esc(blankZero(nhap))}</td>
-        <td class="n">${esc(blankZero(b1))}</td>
-        <td class="n">${esc(blankZero(b2))}</td>
+        <td class="n">${esc(formattedMovement(b1, r.size_ban_cs1))}</td>
+        <td class="n">${esc(formattedMovement(b2, r.size_ban_cs2))}</td>
+        <td class="n">${esc(formattedMovement(c12, r.size_chuyen_cs1_cs2))}</td>
+        <td class="n">${esc(formattedMovement(c21, r.size_chuyen_cs2_cs1))}</td>
+        <td class="n">${esc(formattedMovement(traNcc, r.size_tra_ncc))}</td>
         <td class="n ps90-bold">${esc(blankZero(tongBan))}</td>
         <td class="${rank[i]}">${esc(tich)}</td>
         <td class="n">${esc(blankZero(ton))}</td>
@@ -198,12 +214,14 @@ function ensureStyle() {
     }
     .ps90-btn.primary{background:#2580d8;color:#fff}
     .ps90-wrap{overflow:auto;-webkit-overflow-scrolling:touch;padding:10px 12px 14px}
-    .ps90-table{border-collapse:collapse;min-width:790px;width:100%;font-size:15px}
+    .ps90-table{border-collapse:collapse;min-width:1310px;width:100%;font-size:14px}
     .ps90-table th,.ps90-table td{
       border:1px solid #d9e1ea;padding:6px 8px;white-space:nowrap;text-align:left
     }
     .ps90-table th{background:#eef4f8;font-weight:900;position:sticky;top:0;z-index:1}
     .ps90-table td.n{text-align:right;font-variant-numeric:tabular-nums}
+    .ps90-table th:first-child,.ps90-table td:first-child{position:sticky;left:0;background:#fff;z-index:2}
+    .ps90-table th:first-child{background:#eef4f8;z-index:3}
     .ps90-bold{font-weight:900}
     .ps90-fast-1{color:#d00000;font-weight:900}
     .ps90-fast-2{color:#0b57d0;font-weight:900}
@@ -218,7 +236,7 @@ function ensureStyle() {
       .ps90-tools{margin-left:0;width:100%}
       .ps90-btn{padding:7px 9px;font-size:14px}
       .ps90-wrap{padding:7px 7px 12px}
-      .ps90-table{font-size:13px;min-width:720px}
+      .ps90-table{font-size:12px;min-width:1190px}
       .ps90-table th,.ps90-table td{padding:5px 6px}
     }
   `;
@@ -239,19 +257,15 @@ function openStockLedger(masp) {
   }
 }
 
-async function loadData(masp) {
-  const { data, error } = await supabase.rpc("rpc_nhapbu2_kiemtra_nguon_v1", {
-    p_masp: String(masp || "").trim().toUpperCase(),
-    p_ngay: todayVN()
-  });
-  if (error) throw error;
-  return data || {};
+// Both 90-day and all-history views use the same V2 movement source.
+async function load90History(masp) {
+  return loadPagedHistory(masp, 90);
 }
 
 // V20261101-PAGE: toàn bộ vòng đời được tải theo từng lô nhỏ để tránh
 // Supabase/Postgres statement_timeout ở các mã có lịch sử rất dài.
 // 90 ngày vẫn đi qua rpc_nhapbu2_kiemtra_nguon_v1, không thay đổi.
-async function loadAllHistory(masp, onProgress) {
+async function loadPagedHistory(masp, days, onProgress) {
   const PAGE_SIZE = 24;
   const MAX_PAGES = 300; // chốt an toàn: tối đa 7.200 ngày phát sinh
   const code = String(masp || "").trim().toUpperCase();
@@ -259,10 +273,10 @@ async function loadAllHistory(masp, onProgress) {
 
   for (let page = 0; page < MAX_PAGES; page++) {
     const offset = page * PAGE_SIZE;
-    const { data, error } = await supabase.rpc("rpc_nhapbu2_phatsinh_page_v1", {
+    const { data, error } = await supabase.rpc("rpc_nhapbu2_phatsinh_page_v2", {
       p_masp: code,
       p_ngay: todayVN(),
-      p_so_ngay: 0,
+      p_so_ngay: days,
       p_offset: offset,
       p_limit: PAGE_SIZE
     });
@@ -277,6 +291,8 @@ async function loadAllHistory(masp, onProgress) {
 
   throw new Error("Lịch sử quá dài, đã vượt giới hạn tải an toàn.");
 }
+
+const loadAllHistory = (masp, onProgress) => loadPagedHistory(masp, 0, onProgress);
 
 async function open(maspRaw) {
   const masp = String(maspRaw || "").trim().toUpperCase();
@@ -338,6 +354,9 @@ async function open(maspRaw) {
             <th>Nhập mua</th>
             <th>Bán CS1</th>
             <th>Bán CS2</th>
+            <th>CS1 → CS2</th>
+            <th>CS2 → CS1</th>
+            <th>Trả NCC</th>
             <th>Tổng bán</th>
             <th>Bán tích lũy / ngày / tốc độ</th>
             <th>Tồn</th>
@@ -366,8 +385,7 @@ async function open(maspRaw) {
         render(historyAll, "all");
       } else {
         if (!history90) {
-          const payload = await loadData(masp);
-          history90 = getHistory(payload);
+          history90 = await load90History(masp);
         }
         render(history90, "90");
       }
