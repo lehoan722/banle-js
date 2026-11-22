@@ -55,7 +55,7 @@ async function renderAutoApprovalSettings(){
   }catch(e){toggle.checked=!checked;alert('Không lưu được công tắc tự duyệt: '+e.message);}finally{toggle.disabled=false;}
  });
 }
-async function load(){if(!panel)return;await renderAutoApprovalSettings();const {data,error}=await sp.schema('qlnv').from('task_v3_meta').select('*').eq('diadiem',branch()).order('created_at',{ascending:false}).limit(300);
+async function load(){if(!panel||!window.__qlnvTaskLegacyVisible)return;await renderAutoApprovalSettings();const {data,error}=await sp.schema('qlnv').from('task_v3_meta').select('*').eq('diadiem',branch()).order('created_at',{ascending:false}).limit(300);
  if(error){panel.textContent='Lỗi đọc V3: '+error.message;return;}const rows=data||[];
  const ids=rows.map(r=>r.task_id);let tasks=[];if(ids.length){const r=await sp.schema('qlnv').from('tasks').select('id,title,description,status').in('id',ids);tasks=r.data||[];}
  const names=new Map(tasks.map(t=>[t.id,t]));panel.replaceChildren();
@@ -133,4 +133,5 @@ async function load(){if(!panel)return;await renderAutoApprovalSettings();const 
 }
 async function act(fn){if(busy)return;busy=true;try{await fn();}catch(e){alert('Lỗi: '+e.message);}finally{busy=false;await load();}}
 document.getElementById('selectDiadiem')?.addEventListener('change',()=>setTimeout(load,400));
-setInterval(()=>{if(document.visibilityState==='visible' && !panel.contains(document.activeElement))load();},12000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')load();});setTimeout(load,2000);
+document.addEventListener('qlnv:legacy-open',()=>load());
+setInterval(()=>{if(window.__qlnvTaskLegacyVisible && document.visibilityState==='visible' && !panel.contains(document.activeElement))load();},12000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')load();});setTimeout(load,2000);

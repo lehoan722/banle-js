@@ -1,0 +1,52 @@
+/* Scoped: KHONG thay doi CSS Dashboard V3 */
+#qlnv-task-view{padding:14px 18px;max-width:100%;min-width:0}
+#qlnv-task-view[hidden]{display:none!important}
+#qlnv-task-view .qnv-module{color:#152238;font:14px Arial,sans-serif}
+#qlnv-task-view *{box-sizing:border-box}
+#qlnv-task-view .qnv-heading{margin:0 0 15px}
+#qlnv-task-view .qnv-heading h2{font-size:22px;margin:0 0 4px}
+#qlnv-task-view .qnv-heading p,.qnv-module .mini{color:#60718b;font-size:12px;margin:5px 0}
+#qlnv-task-view .qnv-toolbar,#qlnv-task-view .qnv-card{background:white;border-radius:12px;border:1px solid #dce4ef;padding:15px;margin-bottom:14px}
+#qlnv-task-view .qnv-toolbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+#qlnv-task-view .qnv-toolbar label{display:grid;gap:5px;font-weight:700}
+#qlnv-task-view .qnv-toolbar input{border:1px solid #bfcbda;border-radius:7px;padding:9px;font:inherit}
+#qlnv-task-view .qnv-btn{border:0;border-radius:8px;background:#197de2;color:#fff;padding:10px 14px;cursor:pointer;font-weight:700}
+#qlnv-task-view .qnv-btn:disabled{opacity:.55;cursor:wait}
+#qlnv-task-view .qnv-btn.light{background:#e7f0ff;color:#124d9c}
+#qlnv-task-view .qnv-btn.red{background:#fee2e2;color:#a31325}
+#qlnv-task-view .qnv-stats{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:9px}
+#qlnv-task-view .qnv-stat{background:#f7f9fd;border:1px solid #e0e7f0;border-radius:9px;padding:11px}
+#qlnv-task-view .qnv-stat strong{display:block;font-size:24px;margin-top:5px}
+#qlnv-task-view .qnv-titleline{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+#qlnv-task-view .qnv-titleline h3{margin:0 0 10px}
+#qlnv-task-view .qnv-table-wrap{overflow-x:auto;max-width:100%}
+#qlnv-task-view .tabulator{font-size:13px}
+#qlnv-task-view .tabulator .tabulator-cell{white-space:normal;line-height:1.4;padding:6px}
+#qlnv-task-view .tabulator .tabulator-col-title{white-space:normal}
+#qlnv-task-view .mini{color:#60718b;font-size:12px}
+#qlnv-task-view .tag{border-radius:12px;padding:3px 8px;font-size:12px;display:inline-block}
+#qlnv-task-view .tag.approved{background:#d8f9df;color:#12652b}
+#qlnv-task-view .tag.pending{background:#fff0bf;color:#815200}
+#qlnv-task-view .tag.cancelled{background:#ffdddd;color:#942323}
+#qlnv-task-view .tag.working{background:#dceaff;color:#1d4dd1}
+#qlnv-task-view .tag.not_started{background:#edf0f5;color:#536071}
+#qlnv-task-view .tag.incomplete{background:#ffe7cd;color:#994a09}
+#qlnv-task-view .link{border:0;background:none;color:#0759bf;text-decoration:underline;cursor:pointer;padding:3px}
+#qlnv-task-view .link.red{color:#b91c1c}
+#qlnv-task-view .qnv-modal{position:fixed;inset:0;background:#0c1b36ad;display:none;align-items:center;justify-content:center;padding:15px;z-index:100000}
+#qlnv-task-view .qnv-modal.open{display:flex}
+#qlnv-task-view .qnv-modal-body{background:#fff;border-radius:13px;width:min(720px,100%);max-height:92vh;overflow:auto;padding:18px}
+#qlnv-task-view .qnv-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#qlnv-task-view .photos{display:flex;gap:12px;flex-wrap:wrap}
+#qlnv-task-view .photos img{max-width:100%;width:250px;height:250px;object-fit:contain;background:#f0f3f8;border-radius:8px}
+#qlnv-task-view .actionarea{margin-top:14px;border-top:1px solid #e2e8f0;padding-top:14px}
+#qlnv-task-view #photo-modal .qnv-modal-body{width:min(900px,100%)}
+#qlnv-task-view #photo-large{width:100%;max-height:75vh;object-fit:contain}
+#qlnv-task-view #message{color:#ab2636}
+#qlnv-task-view #qnv-advanced summary{cursor:pointer;font-weight:700;padding:4px}
+#qlnv-task-view #v3-admin-panel{margin:12px 0!important}
+#qlnv-task-view #v305-auto-approve{margin:10px 0!important}
+body.qnv-task-mode .dashboard-page > :not(#qlnv-task-view){display:none!important}
+body.qnv-task-mode #qlnv-task-view{display:block}
+body.qnv-task-mode #qlnv-task-view .qnv-modal.open{display:flex}
+@media(max-width:780px){#qlnv-task-view{padding:9px}#qlnv-task-view .qnv-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#qlnv-task-view .qnv-toolbar{gap:8px}#qlnv-task-view .qnv-toolbar label{flex:1 1 140px}#qlnv-task-view .tabulator{font-size:12px}}

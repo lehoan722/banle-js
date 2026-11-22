@@ -1,0 +1,27 @@
+<section class="qnv-module" aria-label="Quản lý nhiệm vụ V3">
+  <header class="qnv-heading"><h2>📋 Quản lý nhiệm vụ V3 – Báo cáo & ảnh</h2><p>Lọc theo ngày, nhân viên, người giao và tình trạng. Dùng menu bên trái để quay lại Tổng quan.</p></header>
+  <div class="qnv-toolbar">
+    <input type="hidden" id="site" value="cs1">
+    <label>Từ ngày <input id="from" type="date"></label>
+    <label>Đến ngày <input id="to" type="date"></label>
+    <button class="qnv-btn" id="refresh" type="button">🔄 Tải dữ liệu</button>
+    <button class="qnv-btn light" id="today" type="button">Hôm nay</button>
+    <button class="qnv-btn light" id="export" type="button">Xuất CSV</button>
+  </div>
+  <section class="qnv-card"><div id="settings">Đang tải cài đặt...</div></section>
+  <section class="qnv-card"><div class="qnv-stats">
+    <div class="qnv-stat">Đã giao<strong id="stat-total">0</strong></div>
+    <div class="qnv-stat">Chờ duyệt<strong id="stat-pending">0</strong></div>
+    <div class="qnv-stat">Đã duyệt<strong id="stat-approved">0</strong></div>
+    <div class="qnv-stat">Phút giao<strong id="stat-minutes">0</strong></div>
+    <div class="qnv-stat">Phút duyệt<strong id="stat-accepted">0</strong></div>
+  </div><p class="mini">Dữ liệu theo cơ sở chọn trên thanh trên cùng và khoảng ngày. Không cộng nhiệm vụ đã hủy vào thống kê.</p></section>
+  <section class="qnv-card">
+    <div class="qnv-titleline"><h3>Bảng duyệt nhiệm vụ</h3><span id="message" role="status">Chưa tải dữ liệu</span></div>
+    <div class="qnv-table-wrap"><div id="tasks-table"></div></div>
+    <p class="mini">Lọc từng cột tại đầu bảng; bấm ID để xem chi tiết và duyệt. Ảnh mở trong popup ngay trên Dashboard.</p>
+  </section>
+  <details id="qnv-advanced" class="qnv-card"><summary>⚙️ Nghiệp vụ nâng cao đang sử dụng (hoàn thành thay nhân viên và các thao tác V3 cũ)</summary><div id="qnv-legacy-container"></div></details>
+</section>
+<div id="task-modal" class="qnv-modal" role="dialog" aria-modal="true" aria-label="Chi tiết nhiệm vụ"><div class="qnv-modal-body"><div class="qnv-modal-head"><h3 id="detail-title"></h3><button class="qnv-btn light" id="close-detail" type="button">Đóng ✕</button></div><div id="detail-body"></div></div></div>
+<div id="photo-modal" class="qnv-modal" role="dialog" aria-modal="true" aria-label="Ảnh nhiệm vụ"><div class="qnv-modal-body"><div class="qnv-modal-head"><h3 id="photo-title">Ảnh nhiệm vụ</h3><button class="qnv-btn light" id="close-photo" type="button">Đóng ✕</button></div><img id="photo-large" alt="Ảnh nhiệm vụ"></div></div>
