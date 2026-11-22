@@ -59,11 +59,6 @@ const PENDING_KEY="sales_copilot_pending_v1";
 const ACK_KEY="sales_copilot_ack_v1";
 const CART_KEY="tim_kiem_nhanh_selected_v2";
 const RELATED_SHIRT_GROUPS = new Set(["AP", "APB", "APTR", "SM", "SMC", "SMD"]);
-function searchRpcName(standardName) {
-  return RELATED_SHIRT_GROUPS.has(String(state.group || "").trim().toUpperCase())
-    ? standardName + "_nhom_ao"
-    : standardName;
-}
 
 const MAIN_GROUPS={
   AO_HE:{label:"Áo hè",defaultGroup:"AP",groups:["AP","APB","APTR","SM","SMC","SMD","3LO","BOC"]},
@@ -420,7 +415,7 @@ async function enrichProductsAfterCheck(rows){
 
 
 async function fetchDiscountPageV24(offset=0,limit=40){
-  const {data,error}=await supabase.rpc(searchRpcName("timkiemnhanh_giamgia_v24"),{
+  const {data,error}=await supabase.rpc("timkiemnhanh_giamgia_v24_nhom_ao",{
     p_diadiem:state.diadiem,
     p_nhomhang:state.group,
     p_size:state.size,
@@ -463,7 +458,7 @@ async function search(reset=true){
     }
 
     // V2: 1 RPC duy nhất đã xử lý tồn hiện tại + chênh lệch kiểm + size 0 fallback.
-    const {data,error}=await supabase.rpc(searchRpcName("timkiemnhanh_search_v2"),paramsV2(off,40,state.mode));
+    const {data,error}=await supabase.rpc("timkiemnhanh_search_v2_nhom_ao",paramsV2(off,40,state.mode));
     if(error)throw error;
     const raw=normalizeFastRows(data||[]);
     const nextTotal=Number(raw[0]?.total_count||0);
