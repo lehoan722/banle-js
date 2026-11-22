@@ -14,6 +14,7 @@ const esc=(s)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':
 const idStaff=()=>taskIdentity?.manv||staff();
 const ms=(v)=>new Date(v).getTime();
 const fmt=(mins)=>Math.max(0,mins).toFixed(1).replace('.',',')+' phút';
+const formatTaskTime=(value)=>{if(!value)return 'Chưa bắt đầu';const d=new Date(value);if(!Number.isFinite(d.getTime()))return 'Chưa có dữ liệu';return new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(d);};
 let current=[],busy=false;
 const state=(m)=> {if(m.report_status==='approved'&&m.approved_at&&m.approved_minutes!=null)return 'Đã duyệt'; if(!m.started_at)return 'Chưa bắt đầu'; if(m.reported_at)return m.report_status==='reported_incomplete'?'Chưa hoàn thành – Chờ quản lý xử lý':'Đã báo hoàn thành – Chờ duyệt'; if(Date.now()>=ms(m.deadline_at))return 'Hết giờ miễn khoán – Chờ báo cáo';return 'Đang miễn khoán';};
 const elapsed=(m,end)=>Math.max(0,(ms(end||new Date())-ms(m.started_at))/60000);
@@ -61,6 +62,7 @@ async function requireTaskLogin(){
 }
 async function load(force=false){
  if(!panel||!staff())return;
+ if(busy&&!force)return;
  if(!await requireTaskLogin())return;
  let rows;
  try{const r=await api('list');rows=r.items||[];}
@@ -71,7 +73,7 @@ async function load(force=false){
  const wanted=Number(new URLSearchParams(location.search).get('task'));
  for(const m of current){const t=m.__task||{};const box=document.createElement('div');box.className='v3task';box.dataset.taskId=m.task_id;
  if(wanted===m.task_id){box.style.cssText='outline:3px solid #2563eb;outline-offset:3px;scroll-margin-top:24px';}
- let raw=`<b>#${m.task_id} – ${esc(t.title||'Nhiệm vụ')}</b><div>${esc(t.description||'')}</div><div class="v3-muted">Được giao: ${m.assigned_minutes} phút • ${esc(state(m))}</div>`;
+ let raw=`<b>#${m.task_id} – ${esc(t.title||'Nhiệm vụ')}</b><div>${esc(t.description||'')}</div><div class="v3-muted">Được giao: ${m.assigned_minutes} phút • ${esc(state(m))}</div><div class="v3-muted">🗓️ Quản lý giao: ${esc(formatTaskTime(t.created_at||m.created_at))}</div><div class="v3-muted">▶ Nhân viên bắt đầu: ${esc(m.started_at?formatTaskTime(m.started_at):'Chưa bắt đầu')}</div>`;
  if(m.started_at)raw+=`<div class="v3-muted">Bắt đầu: ${new Date(m.started_at).toLocaleString('vi-VN')} • Miễn khoán dự kiến: <b>${fmt(candidate(m))}</b> / ${m.assigned_minutes} phút${!m.reported_at?` • <span class="v3countdown" data-deadline="${esc(m.deadline_at)}"></span>`:''}</div>`;
  if(m.reported_at)raw+=`<div class="v3-muted">Báo cáo: ${esc(m.report_note||'(không ghi chú)')}</div>`;
  if(m.report_status==='approved'&&m.approved_at&&m.approved_minutes!=null)raw+=`<div style="margin:7px 0;background:#dcfce7;color:#166534;border-radius:6px;padding:8px"><b>✓ ĐÃ DUYỆT: ${fmt(Number(m.approved_minutes))}</b></div>`;
@@ -83,8 +85,26 @@ async function load(force=false){
  }
  if(wanted){const target=panel.querySelector(`[data-task-id="${wanted}"]`);if(target&&force)target.scrollIntoView({behavior:'smooth',block:'center'});}
 }
-function button(el,label,fn){const b=document.createElement('button');b.className='primary';b.textContent=label;b.type='button';b.addEventListener('click',()=>wrap(fn));el.append(b);}
-async function wrap(fn){if(busy)return;busy=true;try{await fn();}catch(e){console.error(e);msg('Lỗi V3: '+e.message);}finally{busy=false;await load();}}
+function button(el,label,fn){
+ const b=document.createElement('button');b.className='primary v3-action-btn';b.textContent=label;b.type='button';
+ b.addEventListener('click',()=>wrap(fn,b));el.append(b);
+}
+async function wrap(fn,clicked){
+ if(busy)return;
+ busy=true;
+ const buttons=[...panel.querySelectorAll('.v3-action-btn')];
+ for(const b of buttons){b.disabled=true;b.setAttribute('aria-disabled','true');b.style.opacity='0.65';b.style.cursor='wait';}
+ if(clicked){clicked.dataset.originalLabel=clicked.textContent;clicked.textContent='⏳ Đang xử lý...';clicked.setAttribute('aria-busy','true');}
+ try{await fn();}
+ catch(e){console.error(e);msg('Lỗi V3: '+e.message);}
+ finally{
+   // Không mở nút cũ trong lúc đang cập nhật lại danh sách từ máy chủ.
+   try{await load(true);}catch(e){console.error('Lỗi tải lại nhiệm vụ V3:',e);}
+   busy=false;
+   for(const b of buttons){b.disabled=false;b.removeAttribute('aria-disabled');b.style.opacity='';b.style.cursor='';}
+   if(clicked){clicked.textContent=clicked.dataset.originalLabel||clicked.textContent;clicked.removeAttribute('aria-busy');}
+ }
+}
 function chooseImages(kind,required){return new Promise(resolve=>{
  const dlg=document.createElement('div');dlg.style.cssText='position:fixed;inset:0;z-index:99999;background:#000a;display:grid;place-items:center;padding:12px';
  dlg.innerHTML=`<div style="background:white;padding:20px;border-radius:12px;max-width:420px;width:100%;color:#111"><h3>${kind==='before'?'Ảnh TRƯỚC khi làm':'Ảnh SAU khi làm'}</h3><p>Chọn đúng 1 ảnh. ${required?'Bắt buộc tối thiểu một ảnh.':'Có thể bỏ qua nếu quản lý không yêu cầu.'}</p><input type="file" accept="image/*" style="width:100%"><p class="v3-error" id="v3picerr"></p><button id="v3picok">Tiếp tục</button> <button id="v3piccancel">Hủy</button></div>`;
