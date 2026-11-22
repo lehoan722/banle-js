@@ -58,8 +58,15 @@ const IMAGE_BASE="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/pub
 const PENDING_KEY="sales_copilot_pending_v1";
 const ACK_KEY="sales_copilot_ack_v1";
 const CART_KEY="tim_kiem_nhanh_selected_v2";
+const RELATED_SHIRT_GROUPS = new Set(["AP", "APB", "APTR", "SM", "SMC", "SMD"]);
+function searchRpcName(standardName) {
+  return RELATED_SHIRT_GROUPS.has(String(state.group || "").trim().toUpperCase())
+    ? standardName + "_nhom_ao"
+    : standardName;
+}
+
 const MAIN_GROUPS={
-  AO_HE:{label:"Áo hè",defaultGroup:"AP",groups:["AP","SM","3LO","BOC"]},
+  AO_HE:{label:"Áo hè",defaultGroup:"AP",groups:["AP","APB","APTR","SM","SMC","SMD","3LO","BOC"]},
   QUAN:{label:"Quần",defaultGroup:"QB",groups:["QB","QT","QV","NGO","QNI"]},
   AO_RET:{label:"Áo rét",defaultGroup:"AOKHOAC",groups:["AOKHOAC","TD","SO","LEN","AODA","BOD"]},
   GIAY_DEP:{label:"Giày dép",defaultGroup:"GIAYTHOITRANG",groups:["DEP","GIAYDA","GIAYSUC","GIAYTHOITRANG"]}
@@ -310,6 +317,12 @@ function renderSubgroups(forceOpen=false){
   if(!cfg){box.innerHTML="";box.classList.remove("show");return}
   const rows=state.groups.filter(g=>cfg.groups.some(x=>norm(x)===norm(g.manhom)));
   const known=new Set(rows.map(x=>norm(x.manhom)));
+  for (const code of cfg.groups) {
+    if (RELATED_SHIRT_GROUPS.has(code) && !known.has(code)) {
+      rows.push({manhom:code, ten_hien_thi:code});
+      known.add(code);
+    }
+  }
   if(state.group&&cfg.groups.some(x=>norm(x)===norm(state.group))&&!known.has(norm(state.group))){rows.unshift({manhom:state.group,ten_hien_thi:state.group})}
   box.innerHTML=rows.map(g=>`<button type="button" class="subgroup ${norm(g.manhom)===norm(state.group)?"on":""}" data-group="${esc(g.manhom)}">${esc(g.ten_hien_thi||g.manhom)}</button>`).join("");
   box.classList.toggle("show",forceOpen);
@@ -407,7 +420,7 @@ async function enrichProductsAfterCheck(rows){
 
 
 async function fetchDiscountPageV24(offset=0,limit=40){
-  const {data,error}=await supabase.rpc("timkiemnhanh_giamgia_v24",{
+  const {data,error}=await supabase.rpc(searchRpcName("timkiemnhanh_giamgia_v24"),{
     p_diadiem:state.diadiem,
     p_nhomhang:state.group,
     p_size:state.size,
@@ -450,7 +463,7 @@ async function search(reset=true){
     }
 
     // V2: 1 RPC duy nhất đã xử lý tồn hiện tại + chênh lệch kiểm + size 0 fallback.
-    const {data,error}=await supabase.rpc("timkiemnhanh_search_v2",paramsV2(off,40,state.mode));
+    const {data,error}=await supabase.rpc(searchRpcName("timkiemnhanh_search_v2"),paramsV2(off,40,state.mode));
     if(error)throw error;
     const raw=normalizeFastRows(data||[]);
     const nextTotal=Number(raw[0]?.total_count||0);
