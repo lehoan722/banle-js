@@ -1555,6 +1555,13 @@
 
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+        import { supabase as receiptClient } from "./scripts/supabaseClient.js";
+        import { syncReceipt, retryReceipts } from "./scripts/services/nhapCuoi.js";
+        receiptClient.auth.onAuthStateChange((event, session) => {
+            if (session && (event === "INITIAL_SESSION" || event === "SIGNED_IN")) {
+                setTimeout(() => retryReceipts(receiptClient), 0);
+            }
+        });
 
         function precheckNhapMoiCs2BeforeSave() {
             const makhEl = document.getElementById("makh");
@@ -1582,7 +1589,9 @@
                 window.capNhatBangKetQuaTuDOM();
             }
 
-            return await saveBanLe111(source);
+            const result = await saveBanLe111(source);
+            if (result?.ok && result.sohd) await syncReceipt(receiptClient, result.sohd);
+            return result;
         }
 
         window.LUU_HOADON_F2 = async () => {
