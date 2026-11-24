@@ -397,6 +397,13 @@ export async function luuHoaDonBaoMat() {
       if(st?.found && ["save_ok","edit_ok"].includes(st.status) && st.result?.ok) {
         return await htFinishCommitted(st.result,null,true);
       }
+      if(st?.found && st.status === "validate_failed") {
+        // The server has a terminal failure for this exact request.
+        // Never save the currently displayed basket automatically on recovery.
+        htResetInvoiceRequest();
+        return {ok:false,code:"PREVIOUS_SAVE_REJECTED",
+          message:"Yêu cầu lưu trước đã bị từ chối. Bạn có thể kiểm tra dữ liệu, bấm Lưu lại hoặc Thêm mới."};
+      }
       // After reload, cannot safely reconstruct original immutable payload.
       // Even if no audit row, the previous network request may still be in-flight.
       return htUncertain(id,"UNRESOLVED_PREVIOUS_REQUEST");
@@ -423,7 +430,8 @@ export async function luuHoaDonBaoMat() {
         // Caller can correct data and create a fresh request.
         htResetInvoiceRequest();
         return {ok:false,code:e?.code||"VALIDATION_FAILED",
-          message:e?.message||"Du lieu khong hop le, hay sua va luu lai."};
+          message:(e?.message||"Dữ liệu không hợp lệ") +
+            "\nHóa đơn chưa được lưu bởi yêu cầu này. Có thể sửa và bấm Lưu lại hoặc Thêm mới."};
       } else if(!st?.found && e?.code==="40P01") {
         // PostgreSQL cancelled the transaction; same immutable payload may retry.
         return {ok:false,code:"40P01",request_id:id,
