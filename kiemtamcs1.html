@@ -1,11 +1,13 @@
 <!DOCTYPE html>
+<!-- HOAN TUYET NHAP HANG V5 - ONE MASP ONE ROW -->
+<!-- HOAN TUYET NHAPMOI CS1 V4 - SHARED GROUPED MODEL -->
 
 <html lang="vi">
 
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>kiemtamcs1</title>
+    <title>nhapmoics1</title>
     <!-- Backup: các thư viện ngoài -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -61,7 +63,7 @@
 
         #masp {
             width: 250px;
-            background: rgb(255, 0, 238);
+            background: rgb(230, 0, 255);
         }
 
         #soluong {
@@ -339,6 +341,22 @@
             background-color: #fff3cd !important;
             /* vàng nhạt */
         }
+
+        .kh-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .kh-col {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .kh-col input {
+            width: 100%;
+        }
     </style>
 
 
@@ -378,7 +396,7 @@
         }
 
         .menu-bar {
-            background: #cc009c;
+            background: #cc00cc;
             padding: 8px 20px;
             display: flex;
             gap: 30px;
@@ -539,19 +557,22 @@
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
                         <label>Tổng SL <input id="tongsl" readonly="" /></label>
-                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
-
+                        <label><input id="ghichu" placeholder="Ghi chú hóa đơn" /></label>
                         <!-- khu vuc tìm khách hàng -->
-                        <div style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
-                            <input id="makh" placeholder="mã khách"
-                                style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
-                            <button id="btnPopupKH" type="button"
-                                style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
-                                🔍
-                            </button>
-                        </div>
-                        <label>Khách hàng <input id="khachhang" readonly="" /></label>
+                        <div class="kh-row">
+                            <div class="kh-col" style="position: relative;">mã khách
+                                <input id="makh" placeholder="mã khách"
+                                    style="width:100%;padding-right:32px;box-sizing:border-box;" autocomplete="off">
+                                <button id="btnPopupKH" type="button"
+                                    style="position:absolute;right:2px;top:2px;width:28px;height:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                                    🔍
+                                </button>
+                            </div>
 
+                            <label class="kh-col" style="margin:0;">Khách hàng
+                                <input id="khachhang" readonly="" style="width:100%;box-sizing:border-box;" />
+                            </label>
+                        </div>
                         <!-- Popup tìm khách hàng -->
                         <div id="popupTimKH"
                             style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
@@ -602,7 +623,6 @@
         <div class="footer-buttons">
             <button id="them">Thêm mới</button>
             <button id="btn-luu">💾 Lưu</button>
-            <button id="btn-kiemtra">Kiểm tra</button>
 
             <button id="sua" class="btn edit" type="button">SỬA</button>
 
@@ -610,19 +630,22 @@
             <button id="tieptuc">Tiếp tục</button>
             <button id="xemin">Xem in</button>
             <button id="btnCopy">Copy</button>
-            <button id="xuatexcel">Xuất Excel</button>
+            <button id="btnDanExcel">Dán</button>
             <button id="btnGoiyChuyenKho">📦 Gợi ý chuyển kho</button>
             <button id="btn-logout">THOAT PM</button>
             <div style="margin-bottom:6px;">
                 <button id="btnChuyenngang" class="btnChuyen">🔁 ngang</button>
+                <button id="btnNapNhapTam" class="btnChuyen"
+                    title="Tự động lấy size chi tiết từ nhaptamcs1_ trong NGÀY tạo hóa đơn nmcs1_ và NGÀY HÔM SAU">⬇️
+                    nạp nhập tạm</button>
             </div>
             <button id="btnOpenInTem">In mã vạch</button>
-            <button id="btnImportFromGS">Nhập từ Google Sheet</button>
+            <button id="btnImportFromGS">Nhập từ Google Sheet</button>kiemkhocs1/kiemkhocs1
 
 
             <!-- Popup tìm khách hàng
              
-             
+             <button id="xuatexcel">Xuất Excel</button>
              <button id="timkiem">Tìm kiếm</button>
              <button id="luu">Lưu</button>
             <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
@@ -665,13 +688,12 @@
 
     </div>
 
-
     <!-- Khung đăng nhập dùng module dùng chung -->
     <div id="login-container"></div>
     <script type="module">
         import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
 
-        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
+        // Khởi tạo đăng nhập cho trang bán lẻ MT cs1
         khoiTaoDangNhapDungChung({
             macDinhDiaDiem: "cs1",          // cố định cơ sở 1
             tuDongKhoaCoSo: true,
@@ -720,6 +742,14 @@
                     if (typeof module.khoiTaoUngDung === "function") {
                         module.khoiTaoUngDung();
                     }
+
+                    const nhapHangModule = await import("./scripts/nhapHangGroupedModel.js?v=500");
+                    if (typeof nhapHangModule.khoiTaoNhapHangGrouped === "function") {
+                        nhapHangModule.khoiTaoNhapHangGrouped({
+                            coSo: "cs1",
+                            pageType: "nhapmoi"
+                        });
+                    }
                 } catch (e) {
                     console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
                 }
@@ -744,7 +774,6 @@
         });
     </script>
     <!-- het  Khung đăng nhập dùng module dùng chung -->
-
 
     <script type="module">
         // Nút kính lúp cạnh ô nhập mã KH
@@ -812,40 +841,62 @@
 
 
         // Dán từ clipboard (Excel) vào bảng web
-        document.getElementById('bangketqua').addEventListener('paste', function (e) {
-            e.preventDefault();
-            const text = e.clipboardData.getData('text/plain');
-            const rows = text.trim().split('\n').map(r => r.split('\t'));
+
+        // ✅ Nút Dán: đọc clipboard rồi dán vào bảng bán hàng
+        document.getElementById('btnDanExcel')?.addEventListener('click', async function () {
+            try {
+                const text = await navigator.clipboard.readText();
+
+                if (!text || !text.trim()) {
+                    alert('Clipboard đang trống hoặc chưa copy dữ liệu Excel.');
+                    return;
+                }
+
+                danDuLieuExcelVaoBang(text);
+
+            } catch (err) {
+                console.error('Không đọc được clipboard:', err);
+                alert('Trình duyệt không cho đọc clipboard. Hãy bấm vào bảng rồi Ctrl+V.');
+            }
+        });
+
+
+        function danDuLieuExcelVaoBang(text) {
+            const rows = String(text || '').trim().split('\n').map(r => r.split('\t'));
             const tbody = document.querySelector('#bangketqua tbody');
 
-            // ❌ KHÔNG xoá dữ liệu cũ nữa
-            // tbody.innerHTML = '';
-
-            // ✅ Chỉ nối tiếp các dòng mới vào cuối bảng
             rows.forEach(rowArr => {
                 if (rowArr.length < 2) return;
+
                 const tr = document.createElement('tr');
+
                 rowArr.forEach((cell) => {
                     const td = document.createElement('td');
                     td.innerText = cell;
                     tr.appendChild(td);
                 });
+
                 tbody.appendChild(tr);
             });
 
-            // ✅ Cập nhật lại object từ DOM hiện có (gồm cả cũ + mới)
             if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
                 window.capNhatBangKetQuaTuDOM();
             }
 
-            // ✅ Cập nhật tổng
             if (typeof capNhatThongTinTong === 'function') {
                 capNhatThongTinTong(window.bangKetQua || {});
             }
 
-            // Log kiểm tra
             console.log('window.bangKetQua:', window.bangKetQua);
+        }
+
+        // Dán từ clipboard bằng Ctrl+V vào bảng
+        document.getElementById('bangketqua').addEventListener('paste', function (e) {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            danDuLieuExcelVaoBang(text);
         });
+
 
         function capNhatBangKetQuaTuDOM() {
             const tbody = document.querySelector("#bangketqua tbody");
@@ -894,7 +945,7 @@
             const img = document.querySelector('.product-image');
             if (img) {
                 img.addEventListener('dblclick', function () {
-                    window.open('https://banle-js.vercel.app/xemhoadon111.html', '_blank');
+                    window.open('https://app.hoantuyet.vn/xemhoadon111.html', '_blank');
                 });
             }
         });
@@ -949,9 +1000,60 @@
         const dispatchTarget = document.body || document.documentElement;
 
         document.getElementById('sua')?.addEventListener('click', () => {
-            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
-            dispatchTarget.dispatchEvent(ev);
+            if (typeof window.moPopupXacThucSua === "function") {
+                window.moPopupXacThucSua();
+            } else {
+                alert("❌ Chưa nạp được popup sửa mới.");
+            }
         });
+        // Giả lập phím F2 để dùng đúng nghiệp vụ cũ
+        // ===== Pre-check nhà cung cấp trước khi lưu (F2) =====
+        // ===== Pre-check nhà cung cấp trước khi lưu (F2) - BẮT BUỘC CÓ TÊN KH =====
+        function precheckNhaCungCapBeforeSave() {
+            const makhEl = document.getElementById('makh');
+            const tenEl = document.getElementById('khachhang');
+            const ghichuEl = document.getElementById('ghichu');
+
+            const ten = (tenEl?.value || '').trim();
+            const ghichu = (ghichuEl?.value || '').trim();
+
+            // ✅ BẮT BUỘC: phải có tên khách hàng thì mới cho lưu
+            if (!ten) {
+                alert('⚠️ Bạn chưa chọn/nhập khách hàng. Vui lòng chọn khách hàng trước khi lưu!');
+                // ưu tiên đưa con trỏ về mã khách để người dùng tìm/nhập
+                if (makhEl) { makhEl.focus(); makhEl.select?.(); }
+                return false;
+            }
+
+            // ✅ BẮT BUỘC: phải nhập Ghi chú hàng hóa thì mới cho lưu
+            if (!ghichu) {
+                alert('⚠️ Bắt buộc phải nhập Ghi chú hóa đơn trước khi lưu dữ liệu!');
+                if (ghichuEl) { ghichuEl.focus(); ghichuEl.select?.(); }
+                return false;
+            }
+
+            return true;
+        }
+
+        // Chặn phím F2 (lưu) nếu chưa có nhà cung cấp và người dùng chọn "Không"
+        dispatchTarget.addEventListener('keydown', function (e) {
+            if (e.key === 'F2') {
+                const ok = precheckNhaCungCapBeforeSave();
+                if (!ok) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            }
+        }, true);
+
+        // Chặn nút Lưu nếu chưa đủ điều kiện, sau đó để nghiệp vụ lưu hiện có tiếp tục xử lý
+        document.getElementById('btn-luu')?.addEventListener('click', function (e) {
+            const ok = precheckNhaCungCapBeforeSave();
+            if (!ok) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }, true);
 
         // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
         document.getElementById('xemtonkho')?.addEventListener('click', () => {
@@ -1014,51 +1116,33 @@
     </script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnLuu = document.getElementById('btn-luu');
-            if (btnLuu) {
-                btnLuu.addEventListener('click', () => {
-                    const ev = new KeyboardEvent('keydown', {
-                        key: 'F2',
-                        bubbles: true
-                    });
-                    (document.body || document.documentElement).dispatchEvent(ev);
-                });
-            }
-        });
-    </script>
-
-    <script>
-        // Tránh "URI malformed" khi có % không hợp lệ
-        function safeDecodeURIComponent(str) {
-            if (typeof str !== 'string') return '';
-            try {
-                // Ép encode các dấu % không theo sau là 2 ký tự hex
-                // ... rồi mới decode bình thường
-                const protectedStr = str.replace(/%(?![0-9A-Fa-f]{2})/g, '%25');
-                return decodeURIComponent(protectedStr.replace(/\+/g, ' ')); // '+' -> space
-            } catch (e) {
-                // Nếu vẫn lỗi (do bị decode 2 lần hoặc không phải URI), trả về nguyên bản
-                return str;
-            }
-        }
-    </script>
-
-    <script>
         // ===== script nhap xuat du lieu tu in ma vavh Parse payload từ hash/localStorage → trả về bangObj { MASP:{...sizes,soluongs} } =====
         window.parseImportPayload = function () {
             const hash = location.hash || '';
             if (!hash) return null;
 
-            const params = new URLSearchParams(hash.slice(1));
+            const rawHash = (location.hash || '').replace(/^#/, '');
+            if (!rawHash) return null;
+
+            const params = new URLSearchParams(rawHash);
             let payload = null;
 
             // 1) Base64 hash
             if (params.get('imp')) {
                 try {
-                    const json = decodeURIComponent(escape(atob(params.get('imp'))));
+                    let imp = params.get('imp').trim();
+
+                    // khôi phục base64 nếu bị đổi ký tự
+                    imp = imp.replace(/ /g, '+').replace(/-/g, '+').replace(/_/g, '/');
+
+                    const pad = imp.length % 4;
+                    if (pad) imp += '='.repeat(4 - pad);
+
+                    const json = decodeURIComponent(escape(atob(imp)));
                     payload = JSON.parse(json);
-                } catch (e) { console.error('Decode imp error', e); }
+                } catch (e) {
+                    console.error('Decode imp error', e, params.get('imp'));
+                }
             }
 
             // 2) localStorage key
@@ -1356,7 +1440,7 @@
         // ====== NHẬP DỮ LIỆU TỪ GOOGLE SHEET ======
 
         async function importFromGoogleSheet() {
-            const sheetId = "1JI3BMl8jsc__bCTH_HA-6uNWtReBy0zpDMGkqsX1JpA";
+            const sheetId = "1VLsPb3yVtQzoc_rBm0f7bKRaaSt4Tq21A2j3ISgwWk8";
             const sheetName = "kiemkhocs1";
             const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
 
@@ -1469,72 +1553,64 @@
     </script>
 
     <script type="module">
-        import { autoSuggestAndOpenCcn } from "./scripts/chuyenkhoAutoEngine.js?v=2.0";
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
-        function layDanhSachMaspTuBangNhapTam() {
-            if (typeof window.capNhatBangKetQuaTuDOM === "function") {
+        function precheckNhapMoiCs1BeforeSave() {
+            const makhEl = document.getElementById("makh");
+            const tenEl = document.getElementById("khachhang");
+            const ten = (tenEl?.value || "").trim();
+
+            if (!ten) {
+                alert("⚠️ Bạn chưa chọn/nhập nhà cung cấp. Vui lòng chọn trước khi lưu!");
+                if (makhEl) {
+                    makhEl.focus();
+                    makhEl.select?.();
+                }
+                return false;
+            }
+
+            return true;
+        }
+
+        async function luuNhapMoiCs1(source = "BTN-LUU-NHAPMOI-CS1") {
+            if (!precheckNhapMoiCs1BeforeSave()) {
+                return { ok: false, reason: "MISSING_NCC" };
+            }
+
+            if (typeof window.getNhapHangGroupedBangKetQua === "function") {
+                window.getNhapHangGroupedBangKetQua();
+            } else if (typeof window.capNhatBangKetQuaTuDOM === "function") {
                 window.capNhatBangKetQuaTuDOM();
             }
 
-            const bang = window.bangKetQua || {};
-            const masps = Object.keys(bang)
-                .map(x => String(x || "").trim().toUpperCase())
-                .filter(Boolean);
-
-            if (masps.length) return [...new Set(masps)];
-
-            const rows = document.querySelectorAll("#bangketqua tbody tr");
-            const out = new Set();
-
-            rows.forEach(tr => {
-                const maspCell = tr.cells[0];
-                const masp = String(maspCell?.innerText || "").trim().toUpperCase();
-                if (masp) out.add(masp);
-            });
-
-            return Array.from(out);
+            return await saveBanLe111(source);
         }
 
-        async function goiYChuyenKhoTuNhapTamCs1() {
+        window.LUU_HOADON_F2 = async () => {
+            return await luuNhapMoiCs1("F2-NHAPMOI-CS1");
+        };
+
+        document.getElementById("btn-luu")?.addEventListener("click", async function (e) {
+            e.preventDefault();
+
+            if (window.dangLuu) return;
+
+            window.dangLuu = true;
+            this.disabled = true;
+            this.innerText = "Đang lưu...";
+
             try {
-                const masps = layDanhSachMaspTuBangNhapTam();
-
-                if (!masps.length) {
-                    alert("Phiếu chưa có mã sản phẩm.");
-                    return;
-                }
-
-                const manv = String(localStorage.getItem("manv") || "").trim().toUpperCase();
-                const sohd = String(document.getElementById("sohd")?.value || "").trim();
-                const ghichu = String(document.getElementById("ghichu")?.value || "").trim();
-
-                const now = new Date();
-                const pad = n => String(n).padStart(2, "0");
-                const note =
-                    `Tạo tự động từ nhập tạm CS1 - ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}` +
-                    (manv ? ` - ${manv}` : "") +
-                    (sohd ? ` - ${sohd}` : "") +
-                    (ghichu ? ` - ${ghichu}` : "");
-
-                const rs = await autoSuggestAndOpenCcn({
-                    masps,
-                    pageKind: "cs1",
-                    note
-                });
-
-                if (!rs.ok) {
-                    alert(rs.message || "Không có mã nào cần chuyển kho.");
-                    return;
-                }
-
-                console.log("[NHAPTAM CS1] Đã mở phiếu chuyển kho:", rs);
-            } catch (e) {
-                console.error("[NHAPTAM CS1] Lỗi gợi ý chuyển kho:", e);
-                alert("Có lỗi khi tự động gợi ý chuyển kho.");
+                const result = await luuNhapMoiCs1("BTN-LUU-NHAPMOI-CS1");
+                console.log("✅ Kết quả lưu nhập mới CS1:", result);
+            } catch (err) {
+                console.error(err);
+                alert("❌ Lỗi lưu nhập mới CS1: " + (err?.message || err));
+            } finally {
+                window.dangLuu = false;
+                this.disabled = false;
+                this.innerText = "💾 Lưu";
             }
-        }
-
-        document.getElementById("btnGoiyChuyenKho")?.addEventListener("click", goiYChuyenKhoTuNhapTamCs1);
+        });
     </script>
 
     <!-- Overlay quét -->
@@ -1570,51 +1646,42 @@
 
     <script type="module">
         import { popupNgang } from './scripts/popupNgang.js';
+        import { bindNapNhapTamButton } from './scripts/nhapmoiNapNhapTam.js?v=500';
 
         document.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('btnChuyenngang');
-            if (!btn) return;
+            const btnNgang = document.getElementById('btnChuyenngang');
+            if (btnNgang) {
+                btnNgang.addEventListener('click', () => {
+                    const bang = (typeof window.getNhapHangGroupedBangKetQua === 'function')
+                        ? window.getNhapHangGroupedBangKetQua()
+                        : (window.bangKetQua || {});
 
-            btn.addEventListener('click', () => {
-                // 1️⃣ Cập nhật dữ liệu mới nhất từ bảng DOM
-                if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
-                    window.capNhatBangKetQuaTuDOM();
-                }
-
-                // 2️⃣ Lấy dữ liệu dọc hiện tại
-                const bang = window.bangKetQua || {};
-                const rows = [];
-                Object.values(bang).forEach(item => {
-                    item.sizes.forEach((sz, i) => {
-                        rows.push({
-                            masp: item.masp,
-                            tenhang: item.tensp || '',
-                            size: sz,
-                            sl: item.soluongs[i] || 0
+                    const rows = [];
+                    Object.values(bang).forEach(item => {
+                        (item.sizes || []).forEach((sz, i) => {
+                            rows.push({
+                                masp: item.masp,
+                                tenhang: item.tensp || '',
+                                size: sz,
+                                sl: item.soluongs?.[i] || 0
+                            });
                         });
                     });
+
+                    if (!rows.length) {
+                        alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
+                        return;
+                    }
+
+                    popupNgang.open(rows);
                 });
+            }
 
-                if (rows.length === 0) {
-                    alert('⚠️ Chưa có dữ liệu để xem dạng ngang!');
-                    return;
-                }
-
-                // 3️⃣ Gọi popup để hiển thị bảng ngang
-                popupNgang.open(rows);
-            });
+            bindNapNhapTamButton({ coSo: 'cs1' });
         });
     </script>
-
-    <!-- Adapter gom size theo mã cho trang CCN (chỉ chạy ở đây) -->
-    <script src="./scripts/ccnBangKetQuaAdapter.js"></script>
-    <script>
-        if (window.initCCNAdapter) {
-            window.initCCNAdapter();
-        }
-    </script>
-
-    <style>
+    <!-- V4: grouped engine riêng, không dùng ccnBangKetQuaAdapter. -->
+<style>
         /* Cột size của bảng kết quả CCN1V2:
      đủ cho chuỗi kiểu "40/12", các token sẽ tự xuống dòng */
         #bangketqua th:nth-child(3),
@@ -1629,7 +1696,6 @@
             /* tùy, thích center thì bỏ dòng này */
         }
     </style>
-
     <style>
         /* Khi hd_state = xem → chữ đỏ */
         #hd_state[data-state="xem"] {
@@ -1639,6 +1705,7 @@
         }
     </style>
     <script>
+        //Điều khiển việc tô màu ô số hóa đơn và ô Trạng thái theo giá trị tiền trong ô tổng phải trả
         // Đồng bộ giá trị .value -> data-state để CSS nhận biết
         document.addEventListener("DOMContentLoaded", () => {
             const hd = document.getElementById("hd_state");
@@ -1658,9 +1725,50 @@
         });
     </script>
 
-    <script type="module" src="./scripts/nhaptamAutoSync.js"></script>
+    <script>
 
+        document.getElementById("btnGoiyChuyenKho").addEventListener("click", function () {
 
+            const rows = document.querySelectorAll("#bangketqua tbody tr");
+
+            const maspSet = new Set();
+
+            rows.forEach(tr => {
+
+                const maspCell = tr.cells[0]; // cột mã hàng
+
+                if (!maspCell) return;
+
+                const masp = maspCell.innerText.trim().toUpperCase();
+
+                if (masp) {
+                    maspSet.add(masp);
+                }
+
+            });
+
+            const maspList = Array.from(maspSet);
+
+            if (maspList.length === 0) {
+                alert("Phiếu chưa có mã sản phẩm.");
+                return;
+            }
+
+            // lưu localStorage để XNT17 đọc
+            localStorage.setItem(
+                "XNT17_MASPS_LS",
+                JSON.stringify({ list: maspList })
+            );
+
+            // mở trang gợi ý chuyển kho
+            window.open(
+                "https://app.hoantuyet.vn/baocaoxnt17_chuyenkho.html",
+                "_blank"
+            );
+
+        });
+
+    </script>
 
 </body>
 
