@@ -833,9 +833,6 @@ function applyTuVanToCurrentForm(tuVan) {
     // Ưu tiên khách thật, không để KL ghi đè.
     dongBoKhachHangUuTienKhachThat(tuVan);
 
-    // Buoc 1: gia/KM tai quay doc lap voi hoa don nhan vien.
-    // Khong ghi de gia, KM hoac thanh tien hien tai.
-    if (isBanLeMainPage()) return;
 
     if (kmEl && Number.isFinite(Number(tuVan.km))) {
         kmEl.value = formatMoneyVN(tuVan.km);
@@ -869,11 +866,9 @@ function consumeTuVanLineMeta(masp, size) {
 
     // Co hoa don nhan vien match: uu tien tuyet doi nhan vien cua dong tu van.
     return {
-        // Khong ke thua metadata KM tu hoa don nhan vien tai quay.
-        // RPC luu tinh lai % KM va tran xa cho hoa don moi.
-        km_pct: null,
-        km_max_pct: null,
-        km_source: null,
+        km_pct: tv.km_pct == null ? null : Number(tv.km_pct),
+        km_max_pct: tv.km_max_pct == null ? null : Number(tv.km_max_pct),
+        km_source: tv.km_source || null,
         manv_ban: tv.manv_ban || tv.manv || null,
         tennv_ban: tv.tennv_ban || tv.tennv || null,
         tu_van_ct_id: tv.id == null ? null : Number(tv.id),
