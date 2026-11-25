@@ -503,7 +503,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" readonly placeholder="Mã SP" autocomplete="off" />
+                <input id="masp" placeholder="Mã SP" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -511,9 +511,9 @@
             <input id="soluong" value="1" />
             <input id="dvt" placeholder="DVT" />
             <input id="size" placeholder="SIZE" />
-            <input id="gia" readonly placeholder="Giá SP" />
-            <input id="khuyenmai" readonly placeholder="khuyen mai" />
-            <input id="thanhtien" readonly placeholder="Thành tiền" />
+            <input id="gia" placeholder="Giá SP" />
+            <input id="khuyenmai" placeholder="khuyen mai" />
+            <input id="thanhtien" placeholder="Thành tiền" />
             <input id="sohd" placeholder="Số HĐ" />
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
@@ -601,7 +601,7 @@
                                 <option value="ck">Chuyển khoản</option>
                             </select></label>
 
-                        <label>Chiết khấu <input id="chietkhau" readonly /></label>
+                        <label>Chiết khấu <input id="chietkhau" /></label>
                         <label>Tổng KM <input id="tongkm" readonly="" /></label>
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
@@ -822,8 +822,6 @@
                     return false;
                 }
                 if (okInit === false) return false;
-                const btnScanQuick = document.getElementById("btnScanQuick");
-                if (btnScanQuick) btnScanQuick.disabled = true;
                 // 6. Chọn tab & checkbox mặc định giống code cũ
                 if (typeof window.switchTab === "function") {
                     window.switchTab("thongtin");
@@ -873,22 +871,9 @@
         });
 
         // ✅ Hàm dùng chung để dán dữ liệu Excel vào bảng
-        async function danDuLieuExcelVaoBang(text) {
+        function danDuLieuExcelVaoBang(text) {
             const rows = String(text || '').trim().split('\n').map(r => r.split('\t'));
             const tbody = document.querySelector('#bangketqua tbody');
-            const { tinhKhuyenMai } = await import('./scripts/khuyenmai.js');
-            const money = v => Number(String(v ?? '').trim().replace(/[.,\s]/g, ''));
-            for (const r of rows) {
-                const sp = window.sanPhamData?.[String(r[0] || '').trim().toUpperCase()];
-                const gia = sp ? money(sp.giale || 0) : NaN;
-                const km = sp ? (tinhKhuyenMai(sp, gia) || 0) : NaN;
-                const sl = Number(r[3]);
-                if (r.length < 8 || !sp || !Number.isInteger(sl) || sl <= 0 ||
-                    money(r[5]) !== gia || money(r[6]) !== km * sl || money(r[7]) !== (gia-km)*sl) {
-                    alert('Không dán được: mã hàng, giá hoặc KM không đúng danh mục. Hãy nhập/quét mã hoặc tải lại danh mục.');
-                    return;
-                }
-            }
 
             rows.forEach(rowArr => {
                 if (rowArr.length < 2) return;
@@ -925,7 +910,7 @@
                     return;
                 }
 
-                await danDuLieuExcelVaoBang(text);
+                danDuLieuExcelVaoBang(text);
 
             } catch (err) {
                 console.error('Không đọc được clipboard:', err);
@@ -934,10 +919,10 @@
         });
 
         // ✅ Ctrl+V trực tiếp vào bảng
-        document.getElementById('bangketqua')?.addEventListener('paste', async function (e) {
+        document.getElementById('bangketqua')?.addEventListener('paste', function (e) {
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
-            await danDuLieuExcelVaoBang(text);
+            danDuLieuExcelVaoBang(text);
         });
     </script>
 
@@ -1919,7 +1904,6 @@ Shop chân thành cảm ơn!`;
     
     <script src="/scripts/salesCopilotBridgeBannv.js?v=52"></script>
 
-    <script type="module" src="scripts/bannvSuaSize.js?v=2"></script>
 </body>
 
 </html>
