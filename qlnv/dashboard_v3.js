@@ -2016,12 +2016,14 @@ function showDashboardPanel(panel) {
 btnToggleSidebar?.addEventListener('click', (e) => {
   e.stopPropagation();
   dashboardPanelMenu?.classList.toggle('hidden');
+  btnToggleSidebar?.setAttribute('aria-expanded',String(!dashboardPanelMenu?.classList.contains('hidden')));
 });
 
 panelTabs.forEach(btn => {
   btn.addEventListener('click', () => {
     showDashboardPanel(btn.dataset.panel);
     dashboardPanelMenu?.classList.add('hidden');
+    btnToggleSidebar?.setAttribute('aria-expanded','false');
   });
 });
 
@@ -2031,6 +2033,7 @@ dashboardPanelMenu?.addEventListener('click', (e) => {
 
 document.addEventListener('click', () => {
   dashboardPanelMenu?.classList.add('hidden');
+  btnToggleSidebar?.setAttribute('aria-expanded','false');
 });
 
 showDashboardPanel('tasks');

@@ -25,9 +25,44 @@ async function load(){if(loading)return;loading=true;$('refresh').disabled=true;
  const ids=meta.map(m=>m.task_id);const taskMap=new Map();for(let i=0;i<ids.length;i+=100){const {data,error}=await sp.schema('qlnv').from('tasks').select('id,title,description,status,created_by,created_at,completed_at,assigned_name').in('id',ids.slice(i,i+100));if(error)throw Error(error.message);for(const t of data||[])taskMap.set(String(t.id),t);}
  rows=meta.map(m=>{const t=taskMap.get(String(m.task_id))||{};const [state,cat]=status(m,t);return {id:m.task_id,created:m.created_at||t.created_at,title:t.title||'Nhiệm vụ',description:t.description||'',employee:m.assigned_to||'',manager:t.created_by||'',site:m.diadiem,started:m.started_at,reported:m.reported_at,approved_at:m.approved_at,assigned_minutes:Number(m.assigned_minutes||0),actual:maxMinutes(m),approved_minutes:m.approved_minutes,status:state,category:cat,meta:m,task:t};});
  const live=rows.filter(r=>r.category!=='cancelled');$('stat-total').textContent=fmt(live.length);$('stat-pending').textContent=fmt(live.filter(r=>['pending','incomplete'].includes(r.category)).length);$('stat-approved').textContent=fmt(live.filter(r=>r.category==='approved').length);$('stat-minutes').textContent=fmt(live.reduce((a,r)=>a+r.assigned_minutes,0));$('stat-accepted').textContent=fmt(live.filter(r=>r.category==='approved').reduce((a,r)=>a+Number(r.approved_minutes||0),0));
- if(table)table.setData(rows);else createTable();notify(`Đã tải ${rows.length} nhiệm vụ`);await settings();
+ if(table)table.setData(rows);else createTable();renderMobileTasks();notify(`Đã tải ${rows.length} nhiệm vụ`);await settings();
  const taskId=new URLSearchParams(location.search).get('task');if(taskId){const match=rows.find(r=>String(r.id)===taskId);if(match){openDetail(match)}else notify(`Không thấy nhiệm vụ #${taskId} trong khoảng ngày đang chọn`)}
  }catch(e){console.error(e);notify('Lỗi: '+e.message)}finally{loading=false;$('refresh').disabled=false}}
+// Mobile card layout: same rows and same openDetail, no change in approval or data flows.
+let mobileLimit=30;
+function renderMobileTasks(){
+ const container=$('qnv-mobile-list');if(!container)return;
+ const term=($('qnv-mobile-search')?.value||'').trim().toLowerCase();
+ const selected=$('qnv-mobile-status')?.value||'';
+ const filtered=rows.filter(r=>(!selected||r.category===selected)&&(!term||[r.id,r.title,r.employee,r.manager,r.description].some(v=>String(v||'').toLowerCase().includes(term))));
+ container.replaceChildren();
+ if(!filtered.length){const empty=document.createElement('p');empty.className='mini';empty.textContent='Không có nhiệm vụ phù hợp.';container.append(empty);}
+ for(const r of filtered.slice(0,mobileLimit)){
+  const card=document.createElement('article');card.className='qnv-mobile-card';
+  const head=document.createElement('div');head.className='qnv-mobile-card-head';
+  const name=document.createElement('strong');name.textContent='#'+r.id+' · '+r.title;
+  const state=document.createElement('span');state.className='tag '+r.category;state.textContent=r.status;
+  head.append(name,state);
+  const info=document.createElement('div');info.className='qnv-mobile-card-info';
+  info.textContent='👤 '+(r.employee||'—')+' · Giao: '+(r.manager||'—');
+  const time=document.createElement('div');time.className='qnv-mobile-card-info';time.textContent='🕒 '+formatTime(r.created);
+  const mins=document.createElement('div');mins.className='qnv-mobile-card-info';
+  mins.textContent='Phút giao: '+fmt(r.assigned_minutes)+' · Thực tế: '+fmt(r.actual)+' · Duyệt: '+(r.approved_minutes==null?'—':fmt(r.approved_minutes));
+  const action=document.createElement('button');action.type='button';action.className='qnv-btn';action.textContent='Xem chi tiết / Duyệt';action.addEventListener('click',()=>openDetail(r));
+  card.append(head,info,time,mins,action);container.append(card);
+ }
+ const more=$('qnv-mobile-more');if(more){more.hidden=filtered.length<=mobileLimit;more.textContent='Xem thêm ('+Math.max(0,filtered.length-mobileLimit)+' nhiệm vụ)';}
+}
+function initMobileTasks(){
+ const wrap=document.querySelector('#qlnv-task-view .qnv-table-wrap');if(!wrap||$('qnv-mobile-list'))return;
+ const tools=document.createElement('div');tools.className='qnv-mobile-tools';
+ tools.innerHTML='<input id="qnv-mobile-search" type="search" placeholder="Tìm mã, nhân viên, công việc…" aria-label="Tìm nhiệm vụ"><select id="qnv-mobile-status" aria-label="Lọc trạng thái"><option value="">Tất cả trạng thái</option><option value="pending">Chờ duyệt</option><option value="working">Đang làm</option><option value="not_started">Chưa bắt đầu</option><option value="approved">Đã duyệt</option><option value="incomplete">Chưa hoàn thành</option><option value="cancelled">Đã hủy</option></select>';
+ const list=document.createElement('div');list.id='qnv-mobile-list';
+ const more=document.createElement('button');more.id='qnv-mobile-more';more.className='qnv-btn light';more.type='button';more.hidden=true;
+ wrap.after(tools,list,more);
+ tools.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',()=>{mobileLimit=30;renderMobileTasks()}));
+ more.addEventListener('click',()=>{mobileLimit+=30;renderMobileTasks()});
+}
 function createTable(){if(typeof Tabulator==='undefined'){$('tasks-table').textContent='Không tải được thư viện Tabulator. Kiểm tra kết nối mạng/CDN.';return;}
  const filter={headerFilter:'input',headerFilterPlaceholder:'Lọc...'};
  table=new Tabulator('#tasks-table',{data:rows,layout:'fitDataStretch',height:'650px',pagination:true,paginationSize:30,paginationSizeSelector:[15,30,50,100],placeholder:'Không có nhiệm vụ',columns:[
@@ -60,7 +95,7 @@ function openDetail(r){current=r;$('detail-title').textContent=`Nhiệm vụ #${
  if(r.started&&!r.reported&&r.category!=='cancelled'){const p=document.createElement('p');p.className='mini';p.textContent='Chức năng quản lý hoàn thành thay nhân viên: tiếp tục thao tác tại Dashboard cũ cho đến khi tích hợp đầy đủ bước tải ảnh an toàn.';action.append(p);}
  $('task-modal').classList.add('open');}
 async function perform(btn,fn){if(busy)return;busy=true;btn.disabled=true;const old=btn.textContent;btn.textContent='Đang xử lý...';try{await fn();$('task-modal').classList.remove('open');await load()}catch(e){alert('Không thực hiện được: '+e.message)}finally{btn.disabled=false;btn.textContent=old;busy=false}}
-function init(){const d=day(Date.now());$('from').value=d;$('to').value=d;$('refresh').onclick=load;$('today').onclick=()=>{$('from').value=d;$('to').value=d;load()};$('site').onchange=load;$('export').onclick=()=>{if(!table)return;table.download('csv','nhiemvu_v3_'+$('site').value+'.csv',{bom:true})};$('close-detail').onclick=()=>$('task-modal').classList.remove('open');$('close-photo').onclick=()=>{$('photo-modal').classList.remove('open');$('photo-large').removeAttribute('src')};load()}
+function init(){initMobileTasks();const d=day(Date.now());$('from').value=d;$('to').value=d;$('refresh').onclick=load;$('today').onclick=()=>{$('from').value=d;$('to').value=d;load()};$('site').onchange=load;$('export').onclick=()=>{if(!table)return;table.download('csv','nhiemvu_v3_'+$('site').value+'.csv',{bom:true})};$('close-detail').onclick=()=>$('task-modal').classList.remove('open');$('close-photo').onclick=()=>{$('photo-modal').classList.remove('open');$('photo-large').removeAttribute('src')};load()}
 export function mountTaskManagerV3(site='cs1') {
   if(!getCurrentUserInfo()?.is_admin){throw new Error('Chỉ quản lý được xem nhiệm vụ V3');}
   $('site').value=site;

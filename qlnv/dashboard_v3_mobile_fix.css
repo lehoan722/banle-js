@@ -1,0 +1,44 @@
+/* QLNV Dashboard V3 - giao diện điều hướng và thẻ nhiệm vụ trên điện thoại. */
+.topbar{position:sticky;isolation:isolate}
+#dashboardPanelMenu{top:calc(100% - 4px);left:10px;width:min(340px,calc(100vw - 20px));max-height:min(76dvh,620px);overflow-y:auto;overscroll-behavior:contain;z-index:1000}
+#dashboardPanelMenu .qnv-nav-item{display:block;width:100%;border:0;border-radius:10px;background:transparent;text-align:left;padding:12px;font-size:14px;font-weight:800;color:#15243b;cursor:pointer}
+#dashboardPanelMenu .qnv-nav-item:hover,#dashboardPanelMenu .qnv-nav-item.active{background:#e8f2ff;color:#075bc3}
+#dashboardPanelMenu .qnv-nav-separator{font-size:11px;font-weight:800;color:#64748b;padding:9px 11px 3px;border-top:1px solid #e2e8f0;margin-top:4px}
+#qnv-mobile-list,#qnv-mobile-more,.qnv-mobile-tools{display:none}
+@media(max-width:768px){
+ html,body{max-width:100%;overflow-x:hidden}
+ .main-shell,.dashboard-page{min-width:0;max-width:100%}
+ .topbar{grid-template-columns:38px minmax(0,1fr) minmax(0,1fr);gap:7px;align-items:center}
+ .topbar .topbar-control{min-width:0;max-width:100%;overflow:hidden}
+ .topbar #selectDiadiem{max-width:100%;width:100%}
+ .topbar #btnToday{grid-column:1 / 2}
+ .topbar .realtime-badge{grid-column:2 / 4;min-width:0}
+ #dashboardPanelMenu{top:42px;left:7px;width:min(330px,calc(100vw - 14px));box-shadow:0 12px 35px #0f172a40}
+ .dashboard-page{padding:10px 10px calc(96px + env(safe-area-inset-bottom,0px))}
+ #qlnv-task-view{padding:4px 0 12px}
+ #qlnv-task-view .qnv-heading h2{font-size:19px;line-height:1.3}
+ #qlnv-task-view .qnv-heading p{font-size:12px;line-height:1.5}
+ #qlnv-task-view .qnv-card,#qlnv-task-view .qnv-toolbar{padding:11px;border-radius:12px;margin-bottom:11px}
+ #qlnv-task-view .qnv-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ #qlnv-task-view .qnv-toolbar label{min-width:0;display:grid;gap:4px}
+ #qlnv-task-view .qnv-toolbar input{width:100%;min-width:0;font-size:14px}
+ #qlnv-task-view .qnv-toolbar .qnv-btn{min-height:42px;padding:9px 7px}
+ #qlnv-task-view .qnv-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ #qlnv-task-view .qnv-stat{padding:10px}
+ #qlnv-task-view .qnv-stat strong{font-size:21px}
+ #qlnv-task-view #tasks-table{display:none}
+ #qnv-mobile-list,.qnv-mobile-tools{display:grid;gap:10px}
+ .qnv-mobile-tools{grid-template-columns:1fr;gap:7px;margin-bottom:12px}
+ .qnv-mobile-tools input,.qnv-mobile-tools select{width:100%;min-height:42px;padding:9px;border:1px solid #cbd5e1;border-radius:9px;font:inherit}
+ #qnv-mobile-list{gap:10px}
+ .qnv-mobile-card{padding:13px;background:#f8faff;border:1px solid #dae4f1;border-radius:12px;display:grid;gap:9px}
+ .qnv-mobile-card-head{display:flex;align-items:start;justify-content:space-between;gap:8px;flex-wrap:wrap}
+ .qnv-mobile-card-head strong{font-size:14px;overflow-wrap:anywhere}
+ .qnv-mobile-card-info{font-size:12px;color:#475569;line-height:1.45;overflow-wrap:anywhere}
+ .qnv-mobile-card .qnv-btn{min-height:42px;width:100%}
+ #qnv-mobile-more:not([hidden]){display:block;width:100%;margin-top:12px}
+ #qlnv-task-view .qnv-modal{padding:7px}
+ #qlnv-task-view .qnv-modal-body{padding:13px;max-height:calc(100dvh - 20px);width:100%}
+ #qlnv-task-view .photos img{width:min(250px,100%);height:auto;max-height:280px}
+ .mobile-nav{padding-bottom:env(safe-area-inset-bottom,0px)}
+}

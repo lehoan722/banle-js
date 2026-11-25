@@ -4,10 +4,23 @@ const select=document.getElementById('selectDiadiem');
 const nav=document.querySelector('.sidebar-menu');
 const menu=document.getElementById('qnv-task-menu');
 const overview=document.querySelector('.sidebar-menu .menu-item');
+const toolbar=document.getElementById('dashboardPanelMenu');
+const toggleButton=document.getElementById('btnToggleSidebar');
+const mobileTask=document.getElementById('qnv-mobile-tasks');
+const mobileOverview=document.querySelector('.mobile-nav a[href="dashboard_v3.html"]');
+function closeNavigation(){toolbar?.classList.add('hidden');toggleButton?.setAttribute('aria-expanded','false');}
+function updateNavigation(mode){
+  document.getElementById('qnv-menu-overview')?.classList.toggle('active',mode==='overview');
+  document.getElementById('qnv-menu-tasks')?.classList.toggle('active',mode==='tasks');
+  mobileTask?.classList.toggle('active',mode==='tasks');
+  mobileOverview?.classList.toggle('active',mode==='overview');
+  closeNavigation();
+}
 let moduleApi=null,loadingPromise=null,view=null;
 function setSelected(mode){
   if(overview)overview.classList.toggle('active',mode==='overview');
   if(menu)menu.classList.toggle('active',mode==='tasks');
+  updateNavigation(mode);
 }
 function importScript(src){return new Promise((resolve,reject)=>{
   const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Không tải được thư viện: '+src));document.head.append(s);
@@ -43,7 +56,7 @@ async function initModule(){
   try{return await loadingPromise;}catch(e){loadingPromise=null;if(view){view.remove();view=null;}throw e;}
 }
 export async function showTaskModule(){
-  if(document.body.classList.contains('qnv-task-mode'))return;
+  if(document.body.classList.contains('qnv-task-mode')){closeNavigation();return;}
   document.body.classList.add('qnv-task-mode');setSelected('tasks');
   try{
     const api=await initModule();view.hidden=false;
@@ -59,6 +72,15 @@ export function showOverview(){
   if(location.hash==='#quanly-nhiemvu')history.replaceState(null,'',location.pathname);
 }
 menu?.addEventListener('click',e=>{e.preventDefault();showTaskModule();});
+document.getElementById('qnv-menu-tasks')?.addEventListener('click',()=>showTaskModule());
+document.getElementById('qnv-menu-overview')?.addEventListener('click',()=>showOverview());
+mobileTask?.addEventListener('click',e=>{e.preventDefault();showTaskModule();});
+mobileOverview?.addEventListener('click',e=>{e.preventDefault();showOverview();});
+// Menu con cua Tong quan: neu dang xem QL nhiem vu thi tro ve Tong quan truoc.
+// Listener cua dashboard_v3.js van chuyen dung khu vuc da chon.
+toolbar?.querySelectorAll('.panel-tab').forEach(btn=>btn.addEventListener('click',()=>{if(document.body.classList.contains('qnv-task-mode'))showOverview();}));
+// Tren dien thoai, giai phong cuon tai body sau khi dong popup.
+updateNavigation(location.hash==='#quanly-nhiemvu'?'tasks':'overview');
 overview?.addEventListener('click',e=>{e.preventDefault();showOverview();});
 select?.addEventListener('change',()=>{
   if(document.body.classList.contains('qnv-task-mode')&&moduleApi)moduleApi.mountTaskManagerV3(select.value);
