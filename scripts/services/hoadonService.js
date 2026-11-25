@@ -1,6 +1,7 @@
 // scripts/services/hoadonService.js
 
 import { buildContext } from './hoadonContext.js';
+import { validateNvBasicPricesBeforeSave } from '../hoadon.js';
 import { saveHoaDonBanLe } from './hoadonSale.js';
 import { saveHoaDonNhap } from './hoadonNhap.js';
 import { saveHoaDonSpecial } from './hoadonSpecial.js';
@@ -14,6 +15,10 @@ export async function saveHoaDonService() {
 
   if (!ctx || !ctx.bangKetQua || Object.keys(ctx.bangKetQua).length === 0) {
     throw new Error("❌ Không có dữ liệu để lưu.");
+  }
+
+  if (!await validateNvBasicPricesBeforeSave(ctx.bangKetQua)) {
+    return { ok: false, code: "NV_BASIC_PRICE_ONLY" };
   }
 
   // ✅ Chặn cứng: nếu đang sửa hóa đơn thì tuyệt đối không được lưu 2 bản
