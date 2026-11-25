@@ -3729,6 +3729,11 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     popup.dataset.nhomhang = payload.nhomhang || "";
     popup.dataset.form = String(payload.form || "").trim().toUpperCase();
 
+    // X/N: nạp độc lập sau khi popup hiển thị; không chặn tốc độ hiển thị tồn.
+    void import("/scripts/stockQuickkiemnhap.js?v=20261125-xn1")
+      .then(() => window.StockQuickKiemNhap?.attach?.(popup, masp))
+      .catch(err => console.warn("[StockQuickPopup] Module kiểm nhập X/N không tải được:", err));
+
     // auto-fit độ rộng cột theo nội dung
     applyAutoFitInPopup(popup);
 
