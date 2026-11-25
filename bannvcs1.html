@@ -511,9 +511,9 @@
             <input id="soluong" value="1" />
             <input id="dvt" placeholder="DVT" />
             <input id="size" placeholder="SIZE" />
-            <input id="gia" placeholder="Giá SP" />
-            <input id="khuyenmai" placeholder="khuyen mai" />
-            <input id="thanhtien" placeholder="Thành tiền" />
+            <input id="gia" readonly placeholder="Giá SP" />
+            <input id="khuyenmai" readonly placeholder="khuyen mai" />
+            <input id="thanhtien" readonly placeholder="Thành tiền" />
             <input id="sohd" placeholder="Số HĐ" />
             <input id="vitri" placeholder="vi tri" readonly />
             <button id="xemtonkho">🔍</button>
@@ -601,7 +601,7 @@
                                 <option value="ck">Chuyển khoản</option>
                             </select></label>
 
-                        <label>Chiết khấu <input id="chietkhau" /></label>
+                        <label>Chiết khấu <input id="chietkhau" readonly /></label>
                         <label>Tổng KM <input id="tongkm" readonly="" /></label>
 
                         <label>Mặt hàng <input id="mathang" readonly="" /></label>
@@ -871,9 +871,22 @@
         });
 
         // ✅ Hàm dùng chung để dán dữ liệu Excel vào bảng
-        function danDuLieuExcelVaoBang(text) {
+        async function danDuLieuExcelVaoBang(text) {
             const rows = String(text || '').trim().split('\n').map(r => r.split('\t'));
             const tbody = document.querySelector('#bangketqua tbody');
+            const { tinhKhuyenMai } = await import('./scripts/khuyenmai.js');
+            const money = v => Number(String(v ?? '').trim().replace(/[.,\s]/g, ''));
+            for (const r of rows) {
+                const sp = window.sanPhamData?.[String(r[0] || '').trim().toUpperCase()];
+                const gia = sp ? money(sp.giale || 0) : NaN;
+                const km = sp ? (tinhKhuyenMai(sp, gia) || 0) : NaN;
+                const sl = Number(r[3]);
+                if (r.length < 8 || !sp || !Number.isInteger(sl) || sl <= 0 ||
+                    money(r[5]) !== gia || money(r[6]) !== km * sl || money(r[7]) !== (gia-km)*sl) {
+                    alert('Không dán được: mã hàng, giá hoặc KM không đúng danh mục. Hãy nhập/quét mã hoặc tải lại danh mục.');
+                    return;
+                }
+            }
 
             rows.forEach(rowArr => {
                 if (rowArr.length < 2) return;
@@ -910,7 +923,7 @@
                     return;
                 }
 
-                danDuLieuExcelVaoBang(text);
+                await danDuLieuExcelVaoBang(text);
 
             } catch (err) {
                 console.error('Không đọc được clipboard:', err);
@@ -919,10 +932,10 @@
         });
 
         // ✅ Ctrl+V trực tiếp vào bảng
-        document.getElementById('bangketqua')?.addEventListener('paste', function (e) {
+        document.getElementById('bangketqua')?.addEventListener('paste', async function (e) {
             e.preventDefault();
             const text = e.clipboardData.getData('text/plain');
-            danDuLieuExcelVaoBang(text);
+            await danDuLieuExcelVaoBang(text);
         });
     </script>
 
