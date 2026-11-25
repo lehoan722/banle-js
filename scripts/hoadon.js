@@ -417,8 +417,11 @@ function isAdminUser() {
     return false;
 }
 
+// HT: tat quyen tu chon gia/KM tren ca hai trang ban NV.
+const NV_BASIC_PRICE_ONLY = true;
+function nvBasicPriceOnly() { return NV_BASIC_PRICE_ONLY && isBanNvPage(); }
 function applyRoleLockToPriceFields() {
-    const lock = !isAdminUser();
+    const lock = nvBasicPriceOnly() || !isAdminUser();
     ['gia', 'khuyenmai', 'thanhtien', 'chietkhau', 'chiet_khau'].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -427,6 +430,7 @@ function applyRoleLockToPriceFields() {
         // #khuyenmai chỉ mở khi mã hiện tại có quyền xả đã được prepareKmXaContext xác nhận.
         if (
             id === 'khuyenmai' &&
+            !nvBasicPriceOnly() &&
             lock &&
             isBanNvPage() &&
             el.dataset.clearanceEnabled === '1'
@@ -440,7 +444,7 @@ function applyRoleLockToPriceFields() {
         el.readOnly = lock;
         if (lock) {
             el.dataset.lockedByRole = '1';
-            el.title = 'Chỉ ADMIN được sửa';
+            el.title = nvBasicPriceOnly() ? 'Giá và KM theo danh mục' : 'Chỉ ADMIN được sửa';
         } else {
             delete el.dataset.lockedByRole;
             el.title = '';
@@ -513,7 +517,7 @@ function resetKmXaContext({ keepMasp = false } = {}) {
         kmEl.style.fontWeight = "";
         kmEl.style.color = "";
         kmEl.title = "";
-        if (!isAdminUser()) kmEl.readOnly = true;
+        if (nvBasicPriceOnly() || !isAdminUser()) kmEl.readOnly = true;
     }
 
     if (keepMasp && old?.masp) {
@@ -612,6 +616,13 @@ async function prepareKmXaContext(spData, masp, gia, defaultKm) {
     const kmEl = document.getElementById("khuyenmai");
     if (!kmEl) return ctx;
 
+    if (nvBasicPriceOnly()) {
+        // Giu snapshot luat xa, khong hien hau to va khong mo o KM.
+        kmEl.value = formatMoneyVN(ctx.defaultKm);
+        kmEl.readOnly = true;
+        recalcThanhtienFromForm();
+        return ctx;
+    }
     if (maxPct > 0) {
         const hintValue = `${formatMoneyVN(ctx.defaultKm)}-${Math.round(maxPct)}`;
         ctx.hintValue = hintValue;
@@ -641,6 +652,7 @@ async function prepareKmXaContext(spData, masp, gia, defaultKm) {
 }
 
 function getActiveKmXaContext(masp = null) {
+    if (nvBasicPriceOnly()) return null;
     const ctx = window.__KM_XA_CTX;
     if (!ctx || Number(ctx.maxPct || 0) <= 0) return null;
     if (masp && String(ctx.masp).toUpperCase() !== String(masp).toUpperCase()) return null;
@@ -681,6 +693,7 @@ function focusAndSelectKhuyenMaiReliable(kmEl) {
 }
 
 function armKmXaBeforeAdd(masp, size, opts = {}) {
+    if (nvBasicPriceOnly()) return false;
     if (opts?.bypassClearancePrompt === true) return false;
     if (!isBanNvPage()) return false;
 
@@ -1296,6 +1309,7 @@ export async function chuyenFocus(e) {
             return;
         }
     } else if (e.target.id === "khuyenmai") {
+        if (nvBasicPriceOnly()) { document.getElementById("size")?.focus(); return; }
         // Trang bán nhân viên + mã có quyền xả: xử lý theo luật KM từng sản phẩm.
         if (isBanNvPage() && getActiveKmXaContext()) {
             e.preventDefault();
@@ -1323,6 +1337,7 @@ export async function chuyenFocus(e) {
         return;
 
     } else if (e.target.id === "gia") {
+        if (nvBasicPriceOnly()) { document.getElementById("size")?.focus(); return; }
         const gia = parseInt((document.getElementById("gia")?.value || "0").replace(/[.,\s]/g, ""), 10) || 0;
         document.getElementById("gia").value = gia.toLocaleString();
 
@@ -1969,7 +1984,11 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
     // Nếu ADMIN nhập khuyến mại tay:
     // <=100 là %, >100 là tiền
-    if (isAdminUser() && opts?.kmOverride == null) {
+    if (nvBasicPriceOnly()) {
+        if (!sp) { alert("Không tìm thấy sản phẩm trong danh mục."); return; }
+        giaForm = Math.round(parseMoneyInt(sp.giale || 0));
+        kmForm = tinhKhuyenMai(sp, giaForm) || 0;
+    } else if (isAdminUser() && opts?.kmOverride == null) {
         kmForm = chuanHoaKhuyenMaiNhapTay();
     }
 
@@ -2021,6 +2040,11 @@ export function themVaoBang(forcedSize = null, opts = {}) {
         }
     }
 
+    if (nvBasicPriceOnly()) {
+        const ctx = window.__KM_XA_CTX;
+        const matchedCtx = ctx && String(ctx.masp).toUpperCase() === String(masp).toUpperCase() ? ctx : null;
+        lineMeta = currentEmployeeLineMeta(matchedCtx, false);
+    }
     const entryKey = taoEntryKeyMoi(masp);
     const lineKey = entryKey;
 
@@ -2069,7 +2093,7 @@ export function themVaoBang(forcedSize = null, opts = {}) {
     if (opts.afterAdd === "keepMaspFocusSize") {
         // Với nhập size liên tiếp cùng mã: arm lại gợi ý KM cho size kế tiếp.
         const oldCtx = window.__KM_XA_CTX;
-        if (oldCtx && isBanNvPage()) {
+        if (oldCtx && isBanNvPage() && !nvBasicPriceOnly()) {
             oldCtx.pendingSize = null;
             oldCtx.selectedPct = null;
             oldCtx.selectedKm = null;
@@ -2104,6 +2128,41 @@ export function themVaoBang(forcedSize = null, opts = {}) {
 
 }
 
+
+// Check all employee lines before any header/detail writes (including pasted lines).
+// Do not silently reprice historical invoices or mutate the cart.
+export async function validateNvBasicPricesBeforeSave(bang) {
+    if (!nvBasicPriceOnly()) return true;
+    const items = Object.values(bang || {});
+    const codes = [...new Set(items.map(i => String(i.masp || "").trim()))];
+    const catalog = new Map();
+    try {
+        for (let i = 0; i < codes.length; i += 100) {
+            const {data, error} = await supabase.from("dmhanghoa")
+                .select("masp,giale,khuyenmai").in("masp", codes.slice(i, i + 100));
+            if (error) throw error;
+            for (const sp of data || []) catalog.set(String(sp.masp).trim().toUpperCase(), sp);
+        }
+        for (const item of items) {
+            const sp = catalog.get(String(item.masp || "").trim().toUpperCase());
+            if (!sp) throw new Error(`Không tìm thấy ${item.masp} trong danh mục hiện hành.`);
+            const gia = Math.round(parseMoneyInt(sp.giale || 0));
+            const km = tinhKhuyenMai(sp, gia) || 0;
+            const sizes = item.sizes || [];
+            if (Number(item.gia) !== gia || sizes.some((_, i) =>
+                Number(item.kms?.[i] ?? item.km ?? 0) !== km || Number(item.km_pcts?.[i] || 0) !== 0)) {
+                throw new Error(`${item.masp}: giá/KM phải là ${formatMoneyVN(gia)} / ${formatMoneyVN(km)}. Nếu là hóa đơn cũ, báo quản lý; không tự đổi dữ liệu lịch sử.`);
+            }
+        }
+        if (toInt(document.getElementById("chietkhau")?.value || 0) !== 0) {
+            throw new Error("Trang bán nhân viên không được nhập chiết khấu bổ sung.");
+        }
+        return true;
+    } catch (err) {
+        alert("Chưa lưu hóa đơn nhân viên: " + (err?.message || String(err)));
+        return false;
+    }
+}
 
 export function getBangKetQua() {
     if (window.bangKetQua && Object.keys(window.bangKetQua).length > 0) {
@@ -2327,7 +2386,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const giaEl = document.getElementById("gia");
     if (giaEl) {
         giaEl.addEventListener("input", () => {
-            if (!isAdminUser()) return;
+            if (nvBasicPriceOnly() || !isAdminUser()) return;
             recalcThanhtienFromForm();
         });
 
@@ -2337,6 +2396,7 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             e.stopPropagation();
 
+            if (nvBasicPriceOnly()) { document.getElementById("size")?.focus(); return; }
             if (!isAdminUser()) {
                 alert("Chỉ ADMIN được sửa giá.");
                 return;
@@ -2376,6 +2436,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
+            if (nvBasicPriceOnly()) { document.getElementById("size")?.focus(); return; }
             // Non-admin ngoài chế độ xả: không được tự sửa KM.
             if (!isAdminUser()) {
                 return;
