@@ -59,7 +59,7 @@
 
 
 import { supabase } from './supabaseClient.js';
-import { resetBangKetQua, getBangKetQua } from './hoadon.js';
+import { resetBangKetQua, getBangKetQua, validateNvBasicPricesBeforeSave } from './hoadon.js';
 
 import { capNhatThongTinTong } from './utils.js';
 import { capNhatSoHoaDonTuDong } from './sohoadon.js';
@@ -173,6 +173,7 @@ const CCN_CTX = buildCCNCtxFromPathname();
 
 
 export async function luuHoaDonQuaAPI() {
+    if (!await validateNvBasicPricesBeforeSave(getBangKetQua())) return { ok: false, code: "NV_BASIC_PRICE_ONLY" };
     capNhatThongTinTong(getBangKetQua()); // Đảm bảo input tổng cập nhật lại trước khi lấy dữ liệu
 
     const maspChuaNhap = document.getElementById("masp")?.value.trim();
