@@ -1,0 +1,1922 @@
+<!DOCTYPE html>
+
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>BAN NV cs1</title>
+    <!-- Backup: các thư viện ngoài -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@13.0.0/dist/handsontable.min.css" />
+
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 0;
+            height: 100%;
+        }
+
+        .header {
+            background-color: #0078d7;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .top-inputs {
+            display: flex;
+            padding: 5px;
+            gap: 5px;
+            background: #f4f4f4;
+            align-items: center;
+        }
+
+        .tennv {
+            display: auto;
+            padding: 5px;
+            gap: 5px;
+            background: #0088cc;
+            align-items: center;
+            justify-content: flex-end;
+            /* Đẩy hết sang phải */
+        }
+
+
+        .top-inputs input,
+        .top-inputs select {
+            padding: 4px;
+            font-size: 20px;
+        }
+
+        .top-inputs input {
+            box-sizing: border-box;
+        }
+
+        #masp {
+            width: 250px;
+            background: cyan;
+        }
+
+        #soluong {
+            width: 60px;
+            background: yellow;
+            text-align: center;
+        }
+
+        #dvt {
+            width: 60px;
+        }
+
+        #size {
+            width: 60px;
+            text-align: center;
+            background: yellow;
+        }
+
+        #gia,
+        #khuyenmai,
+        #thanhtien {
+            width: 150px;
+            text-align: right;
+        }
+
+
+
+        .main {
+            display: flex;
+            height: calc(100vh - 150px);
+            overflow: hidden;
+        }
+
+        .table-area {
+            flex: 1;
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th,
+        table td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: center;
+        }
+
+        .sidebar {
+            width: 360px;
+            border-left: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .tabs {
+            display: flex;
+            background: #eee;
+        }
+
+        .tabs button {
+            flex: 1;
+            padding: 8px;
+            cursor: pointer;
+            border: none;
+            background: #ddd;
+        }
+
+        .tabs button.active {
+            background: white;
+            font-weight: bold;
+            border-bottom: 2px solid #0078d7;
+        }
+
+        .tab-content {
+            flex: 1;
+            padding: 10px;
+            font-size: 13px;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .sidebar input,
+        .sidebar select {
+            width: 100%;
+            padding: 4px;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .checkbox-list label {
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .btn-big {
+            width: 85%;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 10px;
+            margin: 6px 0;
+        }
+
+        .red {
+            background-color: darkred;
+            color: white;
+        }
+
+        .gray {
+            background-color: lightgray;
+            color: black;
+        }
+
+        .product-image {
+            width: 360px !important;
+            height: 360px !important;
+            display: block;
+            object-fit: contain;
+            /* Giữ nguyên tỉ lệ, không cắt ảnh */
+            object-position: center;
+            background: #f5f5f5;
+            /* Màu nền trung tính, có thể chỉnh nếu muốn */
+            border: 1px solid #ccc;
+            margin: 0 auto;
+        }
+
+
+        .footer-buttons {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            /* dồn trái */
+            flex-wrap: wrap;
+            gap: 7px;
+            padding: 5px 0 5px 8px;
+            background: #dce9f9;
+        }
+
+        .footer-buttons button {
+            margin-right: 4px;
+            font-size: 15px;
+            padding: 7px 13px;
+            min-width: 85px;
+        }
+
+
+        .popup {
+            display: none;
+            position: fixed;
+            top: 10%;
+            left: 5%;
+            width: 90%;
+            height: 70%;
+            background: white;
+            border: 1px solid #ccc;
+            z-index: 999;
+            box-shadow: 0 0 10px #333;
+        }
+
+        .popup-content {
+            padding: 10px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .popup-list {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            margin-top: 6px;
+        }
+
+        /* Bố cục nhóm nhập liệu */
+        .tab-pane label {
+            display: inline-block;
+            width: 32%;
+            box-sizing: border-box;
+            padding-right: 4px;
+            margin-bottom: 6px;
+        }
+
+        .tab-pane input,
+        .tab-pane select {
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 360px;
+            border-left: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            /* ⚠️ CHUYỂN TỪ space-between */
+        }
+
+        .tab-content {
+            flex-grow: 0;
+            /* ⚠️ KHÔNG chiếm toàn bộ chiều cao */
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            height: 100%;
+        }
+
+        #app-container {
+            min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main {
+            flex: 1 1 auto;
+            display: flex;
+            min-height: 0;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        .table-area {
+            flex: 1 1 auto;
+            overflow: auto;
+            min-height: 0;
+            max-height: 100%;
+            background: #fff;
+        }
+
+        .footer-userinfo,
+        .footer-buttons {
+            flex-shrink: 0;
+            width: 75%;
+            z-index: 100;
+        }
+
+        @media print {
+
+            html,
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 80mm;
+                /* đúng khổ K80 */
+                box-sizing: border-box;
+            }
+
+            body {
+                /* Xóa font-size mặc định lớn */
+                font-size: 12px;
+                line-height: 1.2;
+            }
+
+            /* Xóa header/footer mặc định của trình duyệt nếu có */
+            @page {
+                margin: 0;
+                size: 80mm auto;
+            }
+        }
+
+        tr.highlight {
+            background-color: #fff3cd !important;
+            /* vàng nhạt */
+        }
+
+        .khach-footer-info {
+            width: 75%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 8px;
+            background: #f7f7f7;
+            border-top: 1px solid #d0d0d0;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        .khach-footer-info label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .khach-footer-info input {
+            width: 110px;
+            height: 24px;
+            font-size: 14px;
+            padding: 2px 5px;
+            box-sizing: border-box;
+        }
+
+        #diem_tru {
+            background: #fffbe6;
+        }
+
+        .zalo-joined-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #zalo_da_vao_nhom {
+            width: 20px !important;
+            height: 20px !important;
+        }
+    </style>
+
+    </script>
+
+    <!-- banlemobile -->
+    <!-- (ADD #1) Nếu bản gốc CHƯA có viewport thì thêm: -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <!-- (ADD #2) Link CSS ghi đè cho mobile: đặt CUỐI <head> để nó override -->
+    <link rel="stylesheet" href="banlemobilecs1.css?v=16">
+
+    <!-- Cau hinh Zalo dung chung -->
+    <script src="/scripts/zaloConfig.js"></script>
+</head>
+
+<body>
+
+    <style>
+        .menu-bar {
+            background: #0088cc;
+            padding: 8px 20px;
+            display: flex;
+            gap: 30px;
+            color: rgb(42, 11, 245);
+            position: relative;
+            z-index: 1000;
+        }
+
+        .menu-item {
+            position: relative;
+        }
+
+        .menu-link {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 6px 10px;
+            display: inline-block;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f1f1f1;
+            min-width: 240px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            top: 100%;
+            left: 0;
+            z-index: 1001;
+            padding: 6px 0;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 10px 16px;
+            text-decoration: none;
+            display: block;
+            white-space: nowrap;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #ddd;
+        }
+
+        .menu-item:hover .dropdown-content {
+            display: block;
+        }
+
+        .footer-userinfo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding: 4px 0 4px 8px;
+            background: #e5eef9;
+            border-top: 1px solid #c7d3e9;
+        }
+
+        .footer-userinfo label {
+            margin-bottom: 0;
+            font-size: 15px;
+        }
+
+        .footer-userinfo input,
+        .footer-userinfo select {
+            padding: 3px 6px;
+            font-size: 15px;
+            margin-left: 2px;
+        }
+    </style>
+
+    <div class="menu-bar">
+        <div class="tennv">
+
+            <input id="diadiem" placeholder="diadiem" readonly style="width:70px" />
+            <!-- CỜ TRẠNG THÁI HÓA ĐƠN: moi | xem | sua (readonly nhưng JS sẽ set) -->
+            <input id="hd_state" readonly value="moi" title="Trạng thái hóa đơn: moi / xem / sua"
+                style="width:55px; text-align:center; font-weight:bold;" />
+            <input id="ngay" type="date" readonly />
+
+            <input id="gio" type="text" readonly style="width:70px" />
+
+            <input id="manv" type="hidden" />
+            <input id="tennv" placeholder="Tên NV" readonly />
+            <button id="btnReloadSP" style="margin-left:10px">🔄 Tải</button>
+
+        </div>
+
+        <div id="app-menu" class="menu-item"></div>
+
+        <!--        
+        <label>Giờ <input id="gio" /></label> -->
+
+
+    </div>
+
+    <div id="app-container" style="display:none;">
+
+        <div class="top-inputs">
+            <div style="position: relative;">
+                <input id="masp" placeholder="Mã SP" autocomplete="off" />
+                <div id="popup_masp"
+                    style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
+                </div>
+            </div>
+            <input id="soluong" value="1" />
+            <input id="dvt" placeholder="DVT" />
+            <input id="size" placeholder="SIZE" />
+            <input id="gia" readonly placeholder="Giá SP" />
+            <input id="khuyenmai" readonly placeholder="khuyen mai" />
+            <input id="thanhtien" readonly placeholder="Thành tiền" />
+            <input id="sohd" placeholder="Số HĐ" />
+            <input id="vitri" placeholder="vi tri" readonly />
+            <button id="xemtonkho">🔍</button>
+
+            <button id="btnQLMK" type="button" style="
+    background:#ff9800;
+    color:white;
+    font-weight:bold;
+    border:none;
+    border-radius:8px;
+    padding:0 12px;
+    font-size:18px;
+">
+                QLMK
+            </button>
+
+            <button id="btnQRZalo" style="
+    background:#00c853;
+    color:white;
+    font-weight:bold;
+    border:none;
+    border-radius:8px;
+    padding:0 12px;
+    font-size:18px;
+">
+                📱 QR
+            </button>
+
+            <button id="btnMoiZalo" style="
+    background:#0068ff;
+    color:white;
+    font-weight:bold;
+    border:none;
+    border-radius:8px;
+    padding:0 12px;
+    font-size:18px;
+">
+                💬 Zalo
+            </button>
+
+            <button id="ghivitri">✏️</button>
+
+            <button id="btnQrOA" type="button"
+                style="background:#10c95a;color:white;font-weight:bold;border:none;border-radius:6px;padding:5px 10px;font-size:16px;">
+                📱 QR OA
+            </button>
+
+        </div>
+
+
+        <div class="main">
+            <div class="table-area">
+
+                <table id="bangketqua">
+                    <thead>
+                        <tr>
+                            <th>Mã hàng</th>
+                            <th>Tên hàng</th>
+                            <th>Kích cỡ</th>
+                            <th>S.lượng</th>
+                            <th>ĐVT</th>
+                            <th>Đơn giá</th>
+                            <th>Khuyến mại</th>
+                            <th>Thành tiền</th>
+                            <th>Vị trí</th> <!-- (giữ nguyên) -->
+                            <!-- ⬇️ THÊM 2 CỘT MỚI NGAY SAU "Vị trí" -->
+                            <th>T1</th>
+                            <th>T2</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+
+            </div>
+            <div class="sidebar">
+                <div class="tabs">
+                    <button id="btn_thongtin" onclick="switchTab('thongtin')">Thông tin hóa đơn</button>
+                    <button id="btn_tacvu" onclick="switchTab('tacvu')">Thao tác nhanh</button>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane" id="thongtin">
+
+                        <label>Hình thức TT <select id="hinhthuctt">
+                                <option value="tm">Tiền mặt</option>
+                                <option value="ck">Chuyển khoản</option>
+                            </select></label>
+
+                        <label>Chiết khấu <input id="chietkhau" readonly /></label>
+                        <label>Tổng KM <input id="tongkm" readonly="" /></label>
+
+                        <label>Mặt hàng <input id="mathang" readonly="" /></label>
+                        <label>Tổng SL <input id="tongsl" readonly="" /></label>
+                        <label><input id="ghichu" placeholder="Ghi chú HH" /></label>
+
+
+
+                        <!-- Popup tìm khách hàng -->
+                        <div id="popupTimKH"
+                            style="display:none; position:fixed; top:100px; left:40%; background:#fff; border:1px solid #ccc; z-index:9999; min-width:340px; max-height:400px; overflow:auto">
+                            <input id="txtSearchKH" placeholder="Nhập mã/tên khách..." style="width:95%;margin:5px">
+                            <table id="tableKH" style="width:100%;font-size:15px"></table>
+                        </div>
+                        <!-- het khu vuc tìm khách hàng -->
+                    </div>
+                    <div class="tab-pane" id="tacvu">
+                        <div class="checkbox-list">
+                            <label><input id="nhapnhanh" type="checkbox" /> nhap so luong</label>
+                            <label><input id="size45" type="checkbox" />QL SIZE</label>
+                            <label><input id="bansieunhanh" type="checkbox" /> Bán siêu nhanh</label>
+                            <label><input id="quanlysizetheonhom" type="checkbox" /> quanlysizetheonhom</label>
+                            <label><input id="inKhongHoi" type="checkbox" /> In không hỏi</label>
+                            <label><input checked="" type="checkbox" /> Hiển thị hình ảnh</label>
+                            <label><input id="nhapsize" type="checkbox" /> nhap size lien tiep</label>
+                            <label><input type="checkbox" id="quanlysizetheogia" />quanlysizetheogia170k</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-big red" style="font-size: 20px; padding: 6px 10px;">
+                    Tổng phải trả
+                    <input id="phaithanhtoan"
+                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:white; padding:0; margin:0;" />
+                </div>
+                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
+                    Khách thanh toán
+                    <input id="khachtra"
+                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;" />
+                </div>
+                <div class="btn-big gray" style="font-size: 20px; padding: 6px 10px;">
+                    Còn lại
+                    <input id="conlai"
+                        style="float:right; width:110px; text-align:right; font-size:20px; font-weight:bold; background:none; border:none; color:#222; padding:0; margin:0;"
+                        readonly />
+                </div>
+
+
+
+                <img alt="Ảnh sản phẩm" class="product-image"
+                    src="https://rddjrmbyftlcvrgzlyby.supabase.co/storage/v1/object/public/anhsanpham//no-image.jpg" />
+            </div>
+        </div>
+        <div class="khach-footer-info">
+            <div id="khBox" style="position: relative; display: inline-block; width: 220px; vertical-align: middle;">
+                <input id="makh" placeholder="mã khách" style="width:100%;padding-right:32px;box-sizing:border-box;"
+                    autocomplete="off">
+                <button id="btnPopupKH" type="button"
+                    style="position:absolute;right:2px;top:50%;transform:translateY(-50%);height:26px;width:28px;border:none;background:transparent;cursor:pointer;outline:none;">
+                    🔍
+                </button>
+
+                <div id="khSuggestList"
+                    style="display:none; position:absolute; bottom:100%; left:0; width:360px; max-height:240px; overflow:auto; background:#fff; border:1px solid #888; z-index:99999; box-shadow:0 -3px 12px #999;">
+                </div>
+            </div>
+
+            <label> <input id="khachhang" placeholder="ten khách" readonly /></label>
+            <label>
+                <input id="diem_hientai" placeholder="Điểm KH" readonly style="width:55px;" />
+            </label>
+
+            <div class="zalo-status-wrap">
+
+                <label class="zalo-invited-label">
+                    Mời
+                    <input id="zalo_da_moi" type="checkbox" />
+                </label>
+
+                <label class="zalo-joined-label">
+                    Vào
+                    <input id="zalo_da_vao_nhom" type="checkbox" />
+                </label>
+
+            </div>
+
+            <label>Hạng KH <input id="hang_khach" readonly /></label>
+            <label>Điểm dùng <input id="diem_tru" value="0" /></label>
+            <label>Giảm điểm <input id="tien_doi_diem" readonly /></label>
+        </div>
+        <div class="footer-buttons">
+            <button id="them">Thêm mới</button>
+            <button id="btn-luu">💾 Lưu</button>
+
+            <button id="sua" class="btn edit" type="button">SỬA</button>
+
+            <button id="quaylai">Quay lại</button>
+            <button id="tieptuc">Tiếp tục</button>
+            <button id="xemin">Xem in</button>
+            <button id="btnCopy">Copy</button>
+            <button id="btnDanExcel">Dán</button>
+            <button id="btnCCN">CCN</button>
+
+
+            <!-- Popup tìm khách hàng
+             
+             <button id="xuatexcel">Xuất Excel</button>
+             <button id="timkiem">Tìm kiếm</button>
+             <button id="luu">Lưu</button>
+            <button onclick="luuHoaDonQuaAPI()">Lưu API</button>
+            
+            -->
+
+        </div>
+
+
+        <div class="top-inputs">
+            F1: thêm mới, F2: lưu dữ liệu, F3: sửa dữ liệu, F4: khách thanh toán, F5: nhập số lượng, F6: quản lý size,
+            F7: xem tồn kho nhanh, F8: nhập vị trí kho
+        </div>
+        <div class="top-inputs">
+            ----------------------------------------------------------
+        </div>
+
+        <!-- ✅ Popup xác thực sửa hóa đơn -->
+        <div id="popupXacThucSua" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%, -50%);
+     background:white; padding:20px; border:1px solid #ccc; z-index:9999; box-shadow: 0 0 10px #000;">
+            <h3>Xác thực sửa hóa đơn</h3>
+            <input id="xacmanv" placeholder="Mã nhân viên" type="password"
+                style="display:block; margin-bottom:6px; width:100%; padding:6px;" />
+            <input id="xacmatkhau" placeholder="Mật khẩu" type="password"
+                style="display:block; margin-bottom:10px; width:100%; padding:6px;" />
+            <button id="btnXacNhanSua" onclick="xacNhanSuaHoaDon()">Xác nhận</button>
+
+            <button onclick="document.getElementById('popupXacThucSua').style.display='none'">Hủy</button>
+        </div>
+
+        <!-- Popup xác nhận thêm mới -->
+        <div id="popupThemMoi" class="popup-confirm" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%);
+     background:white; border:1px solid #888; padding:20px; z-index:10000; box-shadow:0 0 10px #000;">
+            <h3>Bạn có thực sự muốn thêm mới?</h3>
+            <div style="text-align:center; margin-top:10px;">
+                <button id="btnThemMoiCo">✅ Có</button>
+                <button onclick="dongTatCaPopup()">❌ Không</button>
+            </div>
+        </div>
+
+    </div>
+
+
+
+
+    <!-- Khung đăng nhập dùng module dùng chung -->
+    <div id="login-container"></div>
+    <script type="module">
+        import { khoiTaoDangNhapDungChung } from "./scripts/authModule.js";
+
+        // Khởi tạo đăng nhập cho trang bán lẻ MT CS1
+        khoiTaoDangNhapDungChung({
+            macDinhDiaDiem: "cs1",          // cố định cơ sở 1
+            tuDongKhoaCoSo: true,
+            loginApiPath: "/api/login-cs1", // API backend mới
+
+            // Hàm được gọi khi đăng nhập thành công
+            onLoginSuccess: async (nhanvien, { diadiem, session }) => {
+                // 1. Lưu thông tin vào localStorage giống logic cũ
+                if (diadiem) {
+                    localStorage.setItem("diadiem", diadiem);
+                }
+                if (session && session.access_token) {
+                    localStorage.setItem("supabase_access_token", session.access_token);
+                }
+                localStorage.setItem("manv", nhanvien.manv);
+                localStorage.setItem("tennv", nhanvien.tennv);
+                localStorage.setItem(
+                    "quyen_sua_hoadon",
+                    nhanvien.sua_hoadon ? "true" : "false"
+                );
+
+                // 🔴 THÊM 3 DÒNG NÀY
+                localStorage.setItem("is_admin", nhanvien.is_admin ? "true" : "false");
+                localStorage.setItem("sua_hoadon", nhanvien.sua_hoadon ? "true" : "false");
+                localStorage.setItem("xoa_hoadon", nhanvien.xoa_hoadon ? "true" : "false");
+
+                // 2. Cho các script khác trên trang dùng
+                window.diadiem = diadiem;
+                window.dangLuu = false;
+
+                // 3. Cập nhật lên giao diện bán hàng
+                const manvInput = document.getElementById("manv");
+                const tennvInput = document.getElementById("tennv");
+                if (manvInput) {
+                    manvInput.value = nhanvien.manv;
+                    manvInput.readOnly = true;
+                }
+                if (tennvInput) {
+                    tennvInput.value = nhanvien.tennv;
+                    tennvInput.readOnly = true;
+                }
+
+                // 4. Cập nhật quyền giao diện nếu có hàm này
+                if (typeof window.capNhatQuyenGiaoDien === "function") {
+                    window.capNhatQuyenGiaoDien();
+                }
+
+                // 5. Import và khởi tạo logic chính của trang (giống code cũ)
+                //    ✅ QUAN TRỌNG: phải `await` và `return false` nếu bị chặn vị trí,
+                //    để authModule KHÔNG ẩn màn hình đăng nhập (tránh bị kẹt trên điện thoại).
+                let okInit = true;
+                try {
+                    const module = await import("./scripts/main.js?v=75");
+                    if (typeof module.khoiTaoUngDung === "function") {
+                        okInit = await module.khoiTaoUngDung();
+                    }
+                } catch (e) {
+                    console.error("Lỗi import ./scripts/main.js sau đăng nhập:", e);
+                    alert("Không tải được module main.js. Vui lòng tải lại trang.");
+                    return false;
+                }
+                if (okInit === false) return false;
+                // 6. Chọn tab & checkbox mặc định giống code cũ
+                if (typeof window.switchTab === "function") {
+                    window.switchTab("thongtin");
+                }
+                const size45 = document.getElementById("size45");
+                if (size45) size45.checked = true;
+
+                const qlNhom = document.getElementById("quanlysizetheonhom");
+                if (qlNhom) qlNhom.checked = true;
+
+                const nhapsize = document.getElementById("nhapsize");
+                if (nhapsize) nhapsize.checked = false;
+
+                // 7. Hiện app, ẩn form login (phòng khi chưa ẩn)
+                const appContainer = document.getElementById("app-container");
+                if (appContainer) appContainer.style.display = "";
+
+                const loginContainer = document.getElementById("login-container");
+                if (loginContainer) loginContainer.style.display = "none";
+            }
+        });
+    </script>
+    <!-- het  Khung đăng nhập dùng module dùng chung -->
+
+    <script>
+        document.getElementById('btnReloadSP').onclick = window.taiLaiSanPhamData;
+
+        // ✅ Copy bảng bán hàng ra clipboard
+        document.getElementById('btnCopy')?.addEventListener('click', function () {
+            const table = document.getElementById('bangketqua');
+            let str = '';
+
+            for (let row of table.querySelectorAll('tbody tr')) {
+                let line = [];
+                for (let cell of row.cells) {
+                    line.push(cell.innerText);
+                }
+                str += line.join('\t') + '\n';
+            }
+
+            navigator.clipboard.writeText(str)
+                .then(() => alert('Đã copy dữ liệu ra clipboard'))
+                .catch(err => {
+                    console.error('Lỗi copy:', err);
+                    alert('Không copy được dữ liệu.');
+                });
+        });
+
+        // ✅ Hàm dùng chung để dán dữ liệu Excel vào bảng
+        async function danDuLieuExcelVaoBang(text) {
+            const rows = String(text || '').trim().split('\n').map(r => r.split('\t'));
+            const tbody = document.querySelector('#bangketqua tbody');
+            const { tinhKhuyenMai } = await import('./scripts/khuyenmai.js');
+            const money = v => Number(String(v ?? '').trim().replace(/[.,\s]/g, ''));
+            for (const r of rows) {
+                const sp = window.sanPhamData?.[String(r[0] || '').trim().toUpperCase()];
+                const gia = sp ? money(sp.giale || 0) : NaN;
+                const km = sp ? (tinhKhuyenMai(sp, gia) || 0) : NaN;
+                const sl = Number(r[3]);
+                if (r.length < 8 || !sp || !Number.isInteger(sl) || sl <= 0 ||
+                    money(r[5]) !== gia || money(r[6]) !== km * sl || money(r[7]) !== (gia-km)*sl) {
+                    alert('Không dán được: mã hàng, giá hoặc KM không đúng danh mục. Hãy nhập/quét mã hoặc tải lại danh mục.');
+                    return;
+                }
+            }
+
+            rows.forEach(rowArr => {
+                if (rowArr.length < 2) return;
+
+                const tr = document.createElement('tr');
+
+                rowArr.forEach((cell) => {
+                    const td = document.createElement('td');
+                    td.innerText = cell;
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            if (typeof window.capNhatBangKetQuaTuDOM === 'function') {
+                window.capNhatBangKetQuaTuDOM();
+            }
+
+            if (typeof capNhatThongTinTong === 'function') {
+                capNhatThongTinTong(window.bangKetQua || {});
+            }
+
+            console.log('window.bangKetQua:', window.bangKetQua);
+        }
+
+        // ✅ Nút Dán: đọc clipboard rồi dán vào bảng
+        document.getElementById('btnDanExcel')?.addEventListener('click', async function () {
+            try {
+                const text = await navigator.clipboard.readText();
+
+                if (!text || !text.trim()) {
+                    alert('Clipboard đang trống hoặc chưa copy dữ liệu Excel.');
+                    return;
+                }
+
+                await danDuLieuExcelVaoBang(text);
+
+            } catch (err) {
+                console.error('Không đọc được clipboard:', err);
+                alert('Trình duyệt không cho đọc clipboard. Hãy bấm vào bảng rồi Ctrl+V.');
+            }
+        });
+
+        // ✅ Ctrl+V trực tiếp vào bảng
+        document.getElementById('bangketqua')?.addEventListener('paste', async function (e) {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            await danDuLieuExcelVaoBang(text);
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const img = document.querySelector('.product-image');
+            if (img) {
+                img.addEventListener('dblclick', function () {
+                    window.open('https://banle-js.vercel.app/xemhoadon111.html', '_blank');
+                });
+            }
+        });
+    </script>
+
+
+    <!-- Overlay loading khi backup -->
+    <div id="backup-overlay" style="
+    display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999;
+    background:rgba(0,0,0,0.18); backdrop-filter: blur(2px); text-align:center;">
+        <div style="position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);">
+            <img src="https://i.gifer.com/ZZ5H.gif" width="64" alt="loading...">
+            <div style="font-size:1.2em;font-weight:bold; color:#004;">Đang backup toàn bộ dữ liệu, vui lòng chờ...
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { backupAllTablesToZip } from './scripts/backup.js';
+
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.onclick = async function () {
+                await dangXuatApp();
+            };
+        }
+
+        async function dangXuatApp() {
+            // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
+            if (window.supabase && window.supabase.auth) {
+                await window.supabase.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+                localStorage.removeItem("quyen_sua_hoadon");
+            }
+            document.getElementById('login-manv').value = "";
+            document.getElementById('login-error').textContent = "";
+            document.getElementById('login-container').style.display = '';
+            document.getElementById('app-container').style.display = 'none';
+            const tbody = document.getElementById('bangketqua').querySelector('tbody');
+            if (tbody) tbody.innerHTML = '';
+            if (typeof window.bangKetQua !== "undefined") window.bangKetQua = {};
+            const idsToClear = ['mathang', 'tongsl', 'tongkm', 'phaithanhtoan', 'khachtra', 'conlai'];
+            idsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            localStorage.removeItem('draft_hoadon');
+            sessionStorage.removeItem('draft_hoadon');
+            document.getElementById('login-manv').focus();
+        }
+    </script>
+    <!-- Popup tồn/bán nhanh theo mã (xnt17_tonban_snapshot) -->
+    <script src="/scripts/stockQuickPopup.js?v=77"></script>
+    <!-- HOANTUYET: lich su mua hang khi nhan ten khach -->
+    <script src="/scripts/lichsumuahang.js?v=3"></script>
+    <script src="scripts/menu-component.js"></script>
+
+    <script type="module">
+        import { mountKhachHangSuggest } from "./scripts/dmkhachhang_diem.js";
+
+        function setVal(id, val) {
+            const el = document.getElementById(id);
+            if (el) el.value = val ?? "";
+        }
+
+        async function napKhachHangTheoSoHoaDon(sohd) {
+            sohd = String(sohd || "").trim();
+            if (!sohd || !window.supabase) return;
+
+            const { data: hd, error } = await window.supabase
+                .from("hoadon_banle")
+                .select("sohd, makh, khachhang, diem_tru, tien_doi_diem")
+                .eq("sohd", sohd)
+                .maybeSingle();
+
+            if (error) {
+                console.error("❌ Lỗi nạp khách theo hóa đơn:", error);
+                return;
+            }
+
+            if (!hd) return;
+
+            setVal("makh", hd.makh || "");
+            setVal("khachhang", hd.khachhang || "");
+            setVal("diem_tru", hd.diem_tru || 0);
+            setVal("tien_doi_diem", Number(hd.tien_doi_diem || 0).toLocaleString("vi-VN"));
+
+            if (hd.makh) {
+                const { data: kh } = await window.supabase
+                    .from("dmkhachhang")
+                    .select("diem_hientai, hang_khach")
+                    .eq("makh", hd.makh)
+                    .maybeSingle();
+
+                if (kh) {
+                    setVal("diem_hientai", kh.diem_hientai ?? "");
+                    setVal("hang_khach", kh.hang_khach ?? "");
+
+                    await window.napTrangThaiZaloKhach?.(hd.makh);
+                }
+            }
+
+            if (hd.makh) {
+                await window.napTrangThaiZaloKhach?.(hd.makh);
+            } else {
+                window.resetZaloJoinedUI?.();
+            }
+        }
+
+        let dsQLMK = [];
+        let indexQLMK = -1;
+
+        function resetQLMK() {
+            dsQLMK = [];
+            indexQLMK = -1;
+            console.log("✅ Đã reset QLMK về khách gần nhất.");
+        }
+
+        window.resetQLMK = resetQLMK;
+
+        function layPrefixBanNhanVienTheoTrang() {
+            const path = String(location.pathname || "").toLowerCase();
+
+            if (path.includes("cs2")) return "bannvcs2_";
+            return "bannvcs1_";
+        }
+
+        async function napDanhSachQLMK() {
+            if (!window.supabase) {
+                alert("Chưa kết nối Supabase.");
+                return [];
+            }
+
+            const prefix = layPrefixBanNhanVienTheoTrang();
+
+            const { data, error } = await window.supabase
+                .from("hoadon_banle")
+                .select("sohd, ngay, created_at, makh, khachhang, diadiem")
+                .like("sohd", `${prefix}%`)
+                .not("makh", "is", null)
+                .neq("makh", "")
+                .order("created_at", { ascending: false })
+                .limit(50);
+
+            if (error) {
+                console.error("❌ Lỗi tải danh sách QLMK:", error);
+                alert("Không tải được danh sách khách gần đây.");
+                return [];
+            }
+
+            const seen = new Set();
+            const ds = [];
+
+            (data || []).forEach(row => {
+                const makh = String(row.makh || "").trim();
+                if (!makh) return;
+                if (seen.has(makh)) return;
+
+                seen.add(makh);
+                ds.push(row);
+            });
+
+            return ds;
+        }
+
+        async function napChiTietKhachChoQLMK(makh, tenFallback = "") {
+            const makhEl = document.getElementById("makh");
+            const tenEl = document.getElementById("khachhang");
+            const diemEl = document.getElementById("diem_hientai");
+            const hangEl = document.getElementById("hang_khach");
+            const diemTruEl = document.getElementById("diem_tru");
+            const tienDoiDiemEl = document.getElementById("tien_doi_diem");
+
+            if (makhEl) makhEl.value = makh || "";
+            if (tenEl) tenEl.value = tenFallback || "";
+            if (diemTruEl) diemTruEl.value = "0";
+            if (tienDoiDiemEl) tienDoiDiemEl.value = "0";
+
+            if (!makh) return;
+
+            const { data: kh, error } = await window.supabase
+                .from("dmkhachhang")
+                .select("makh, tenkh, diem_hientai, hang_khach, created_by_manv")
+                .eq("makh", makh)
+                .maybeSingle();
+
+            if (error) {
+                console.warn("⚠️ Không đọc được chi tiết khách QLMK:", error);
+                return;
+            }
+
+            if (kh) {
+                if (tenEl) tenEl.value = kh.tenkh || tenFallback || "";
+                if (diemEl) diemEl.value = kh.diem_hientai ?? 0;
+
+                const nvTao = kh.created_by_manv ? "/" + kh.created_by_manv : "";
+                if (hangEl) hangEl.value = (kh.hang_khach || "THUONG") + nvTao;
+                await window.napTrangThaiZaloKhach?.(makh);
+            }
+
+            localStorage.setItem("pending_makh_banle", makh || "");
+            localStorage.setItem("pending_tenkh_banle", tenEl?.value || "");
+
+            setTimeout(() => {
+                const maspEl = document.getElementById("masp");
+                if (maspEl) {
+                    maspEl.focus();
+                    maspEl.select?.();
+                }
+            }, 50);
+        }
+
+        async function quayLaiMaKhach() {
+            window.__chanTuDongMoQrZalo = true;
+            const btn = document.getElementById("btnQLMK");
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "Đang...";
+            }
+
+            try {
+                if (!dsQLMK.length) {
+                    dsQLMK = await napDanhSachQLMK();
+                    indexQLMK = -1;
+                }
+
+                if (!dsQLMK.length) {
+                    alert("Chưa có khách hàng gần đây để quay lại.");
+                    return;
+                }
+
+                indexQLMK++;
+
+                if (indexQLMK >= dsQLMK.length) {
+                    indexQLMK = 0;
+                }
+
+                const kh = dsQLMK[indexQLMK];
+
+                await napChiTietKhachChoQLMK(
+                    String(kh.makh || "").trim(),
+                    String(kh.khachhang || "").trim()
+                );
+
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = "QLMK";
+                }
+
+                setTimeout(() => {
+                    window.__chanTuDongMoQrZalo = false;
+                }, 1500);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            mountKhachHangSuggest({
+                inputId: "makh",
+                tenInputId: "khachhang",
+                suggestBoxId: "khSuggestList",
+                btnSearchId: "btnPopupKH",
+                diemInputId: "diem_hientai",
+                hangInputId: "hang_khach",
+                diemTruInputId: "diem_tru",
+                tienDoiDiemInputId: "tien_doi_diem",
+                nhapKhachUrl: "/nhapdmkhachhang.html"
+            });
+
+            const btnQLMK = document.getElementById("btnQLMK");
+            if (btnQLMK) {
+                btnQLMK.addEventListener("click", quayLaiMaKhach);
+            }
+
+            const btnThemMoi = document.getElementById("them");
+            if (btnThemMoi) {
+                btnThemMoi.addEventListener("click", resetQLMK);
+            }
+
+            const btnThemMoiCo = document.getElementById("btnThemMoiCo");
+            if (btnThemMoiCo) {
+                btnThemMoiCo.addEventListener("click", resetQLMK);
+            }
+
+            const sohdEl = document.getElementById("sohd");
+            if (!sohdEl) return;
+
+            let lastSohd = "";
+
+            async function checkSohdVaNapKhach() {
+                const sohd = String(sohdEl.value || "").trim();
+                if (!sohd || sohd === lastSohd) return;
+
+                lastSohd = sohd;
+                await napKhachHangTheoSoHoaDon(sohd);
+            }
+
+            sohdEl.addEventListener("change", checkSohdVaNapKhach);
+            sohdEl.addEventListener("input", checkSohdVaNapKhach);
+
+            setInterval(checkSohdVaNapKhach, 500);
+        });
+    </script>
+
+    <script>
+        // Lấy bối cảnh sẵn có từ trang bán lẻ
+        const cs = (localStorage.diadiem || "cs1");       // vd: "cs1" / "cs1"
+        const manv = (localStorage.manv || "");           // nếu cần lọc theo roles
+
+        // Bạn đã cung cấp:
+        const SHEET_ID = '1LK_VKjXFRwLWuabZgjlIs1Q0EIEYF7Vf3EdCSGbTDOk_sua_o_day';
+        const SHEET_NAME = 'menubanlemt';
+
+        MenuComponent.mount({
+            el: '#app-menu',
+            sheetId: SHEET_ID,
+            sheetName: SHEET_NAME,
+            cs,
+            manv,
+            cacheTtlMin: 30 // TTL cache 30 phút
+        });
+    </script>
+
+    <!-- Layer xac nhan anh BAN NHAN VIEN: khong can checkbox, than thien dien thoai -->
+    <script src="scripts/bannv_xacnhan_anh_truoc_luu.js?v=20261111nv1"></script>
+
+    <script type="module">
+        import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
+
+        // ✅ Lưu xong chỉ báo thành công, không hỏi/in/xem hóa đơn nữa
+        async function luuHoaDonNVKhongIn(context) {
+            // Chan truoc KHI goi dich vu luu: ca nut Luu va phim F2.
+            if (!window.BANNV_PHOTO_GUARD?.checkBeforeSave?.()) {
+                if (!window.BANNV_PHOTO_GUARD) alert('Module xac nhan anh chua tai. Vui long tai lai trang.');
+                return { ok:false, code:'PHOTO_NOT_CONFIRMED' };
+            }
+            const oldConfirm = window.confirm;
+            const oldPrint = window.print;
+            const oldOpen = window.open;
+
+            window.__SKIP_PRINT_AFTER_SAVE = true;
+            window.__KHONG_IN_HOA_DON_SAU_LUU = true;
+
+            window.confirm = function (msg) {
+                const text = String(msg || "").toLowerCase();
+                if (text.includes("in") || text.includes("hóa đơn") || text.includes("hoá đơn") || text.includes("xem in")) {
+                    return false;
+                }
+                return oldConfirm.call(window, msg);
+            };
+
+            window.print = function () {
+                console.log("Đã chặn lệnh in hóa đơn sau khi lưu.");
+            };
+
+            window.open = function (url, target, features) {
+                const text = String(url || "").toLowerCase();
+                if (text.includes("xemhoadon") || text.includes("hoadon") || text.includes("print") || text.includes("invoice")) {
+                    console.log("Đã chặn mở trang in hóa đơn sau khi lưu:", url);
+                    return null;
+                }
+                return oldOpen.call(window, url, target, features);
+            };
+
+            try {
+                const result = await saveBanLe111(context);
+
+                if (result?.ok) {
+                    window.resetQLMK?.();
+                    alert("✅ Đã lưu dữ liệu thành công");
+                }
+
+                return result;
+            } finally {
+                window.confirm = oldConfirm;
+                window.print = oldPrint;
+                window.open = oldOpen;
+                window.__SKIP_PRINT_AFTER_SAVE = false;
+                window.__KHONG_IN_HOA_DON_SAU_LUU = false;
+            }
+        }
+
+        setTimeout(function () {
+            window.LUU_HOADON_F2 = async () => {
+                return await luuHoaDonNVKhongIn("F2-NV");
+            };
+        }, 1000);
+
+        const dispatchTarget = document.body || document.documentElement;
+
+        document.getElementById('sua')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F3', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
+        document.getElementById('btn-luu')?.addEventListener('click', async () => {
+            if (window.dangLuu) return;
+
+            window.dangLuu = true;
+            const btn = document.getElementById('btn-luu');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "Đang lưu...";
+            }
+
+            try {
+                const result = await luuHoaDonNVKhongIn("BTN-LUU-NV");
+
+                if (!result?.ok) {
+                    console.warn("saveBanLe111 NV không trả ok=true:", result);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("❌ Lỗi lưu NV: " + (e?.message || e));
+            } finally {
+                window.dangLuu = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = "💾 Lưu";
+                }
+            }
+        });
+
+        // Giả lập phím F7 để dùng đúng nghiệp vụ cũ
+        document.getElementById('xemtonkho')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F7', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
+        // Giả lập phím F8 để dùng đúng nghiệp vụ cũ
+        document.getElementById('ghivitri')?.addEventListener('click', () => {
+            const ev = new KeyboardEvent('keydown', { key: 'F8', bubbles: true });
+            dispatchTarget.dispatchEvent(ev);
+        });
+
+    </script>
+
+    <script>
+        // Mở popup xác thực + focus ngay vào #xacmanv
+        function moPopupXacThucSua() {
+            const p = document.getElementById('popupXacThucSua');
+            p.style.display = 'block';
+            setTimeout(() => {
+                const manv = document.getElementById('xacmanv');
+                if (manv) { manv.focus(); manv.select(); }
+                return true;
+            }, 0);
+        }
+
+        // Điều khiển Enter theo thứ tự: xacmanv -> xacmatkhau -> nút xác nhận -> click
+        document.addEventListener('DOMContentLoaded', () => {
+            const manv = document.getElementById('xacmanv');
+            const mk = document.getElementById('xacmatkhau');
+            const btn = document.getElementById('btnXacNhanSua');
+
+            if (manv) {
+                manv.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (mk) { mk.focus(); mk.select(); }
+                    }
+                });
+            }
+
+            if (mk) {
+                mk.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (btn) { btn.focus(); }
+                    }
+                });
+            }
+
+            if (btn) {
+                btn.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        btn.click(); // = gọi xacNhanSuaHoaDon() 
+                    }
+                });
+            }
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnLuu = document.getElementById('btn-luu');
+            if (btnLuu) {
+                btnLuu.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Tùy quy trình: nếu cần xác thực mỗi lần lưu thì bật popup ở đây
+                    //moPopupXacThucSua();
+                    // Sau khi xác nhận xong trong xacNhanSuaHoaDon(), bạn sẽ gọi hàm lưu thực sự.
+                });
+            }
+
+        });
+    </script>
+
+    <!-- Popup QR Zalo -->
+    <div id="popupQRZalo" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    z-index:20000;
+    align-items:center;
+    justify-content:center;
+    ">
+
+        <div style="
+        width:92%;
+        max-width:420px;
+        background:white;
+        border-radius:14px;
+        padding:20px;
+        text-align:center;
+        box-shadow:0 0 20px rgba(0,0,0,0.3);
+    ">
+
+            <div style="
+            font-size:28px;
+            font-weight:bold;
+            color:#00a1ff;
+            margin-bottom:10px;
+        ">
+                🎉 NHẬN ƯU ĐÃI 🎉
+            </div>
+
+            <div style="
+            font-size:18px;
+            margin-bottom:12px;
+            color:#333;
+        ">
+                Quét mã để tham gia nhóm Zalo
+            </div>
+
+            <img data-ht-zalo-qr data-qr-size="260" src=""
+                style="
+            width:260px;
+            max-width:90%;
+            border:1px solid #ddd;
+            border-radius:10px;
+            ">
+
+            <div style="
+            margin-top:18px;
+            font-size:16px;
+            color:#666;
+        ">
+                SĐT tích điểm
+            </div>
+
+            <div id="qrSdtKhach" style="
+            font-size:34px;
+            font-weight:bold;
+            color:#e53935;
+            margin-top:6px;
+            letter-spacing:1px;
+        ">
+            </div>
+
+            <button id="btnDongQR" style="
+            margin-top:20px;
+            width:100%;
+            padding:12px;
+            border:none;
+            border-radius:10px;
+            background:#0088cc;
+            color:white;
+            font-size:18px;
+            font-weight:bold;
+            ">
+                Đóng
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Overlay quét -->
+    <div id="popupScan" style="display:none;position:fixed;inset:0;background:#000;z-index:10000;">
+        <video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+
+        <!-- Thanh điều khiển -->
+        <div
+            style="position:absolute;left:10px;right:10px;bottom:12px;display:flex;gap:8px;align-items:center;z-index:10001;">
+            <!-- Giữ select ẩn để main.js hiện tại vẫn hoạt động nguyên vẹn -->
+            <select id="cameraSelect" style="display:none;"></select>
+
+            <!-- 2 nút chọn camera hiển thị trực tiếp để thao tác nhanh -->
+            <button id="btnCameraUltra" type="button"
+                style="padding:7px 11px;border-radius:8px;border:2px solid #fff;background:#1976d2;color:#fff;font-weight:bold;">
+                📷 Rộng
+            </button>
+            <button id="btnCameraNormal" type="button"
+                style="padding:7px 11px;border-radius:8px;border:1px solid #aaa;background:#fff;color:#111;font-weight:bold;">
+                📷 Thường
+            </button>
+
+            <button id="flashBtn" style="padding:6px 10px;border-radius:8px;">🔦 Đèn</button>
+
+            <label style="padding:6px 10px;border-radius:8px;background:#fff;color:#000;cursor:pointer;">
+                Ảnh có sẵn
+                <input id="pickImage" type="file" accept="image/*" capture="environment" hidden>
+            </label>
+
+            <button id="btnCloseScan" style="padding:6px 10px;border-radius:8px;">Đóng</button>
+        </div>
+
+        <div id="scanStatus" style="position:absolute;left:10px;top:10px;color:#fff;z-index:10001;"></div>
+    </div>
+
+    <!-- Flash + Toast -->
+    <div id="flashOverlay"></div>
+    <div id="toastMsg"></div>
+
+
+    <script type="module" src="scripts/feedback.js"></script>
+    <script type="module" src="scripts/scanner.js?v=9"></script>
+
+    <script>
+
+        function taoNoiDungMoiThamGiaZalo() {
+
+            const ten =
+                document.getElementById("khachhang")?.value?.trim()
+                || "anh/chị";
+
+            const diem =
+                Number(
+                    document.getElementById("diem_hientai")?.value || 0
+                );
+
+            const tienDiem = diem * 1000;
+
+            return `Shop Hoàn Tuyết xin chào anh/chị ${ten}.
+
+Cảm ơn anh/chị đã mua hàng tại shop.
+
+Hiện anh/chị đang có ${diem} điểm,
+tương đương ${tienDiem.toLocaleString("vi-VN")}đ ưu đãi cho lần mua tiếp theo.
+
+Mời anh/chị tham gia cộng đồng khuyến mại của shop để nhận ưu đãi và tích điểm khi mua hàng:
+
+${window.HT_ZALO.getGroupUrl()}
+
+Shop chân thành cảm ơn!`;
+        }
+
+        async function luuLogMoiZalo() {
+
+            if (!window.supabase) return;
+
+            const makh =
+                document.getElementById("makh")?.value?.trim() || "";
+
+            if (!makh) return;
+
+            const payload = {
+
+                makh,
+
+                tenkh:
+                    document.getElementById("khachhang")?.value || "",
+
+                dienthoai: makh,
+
+                noi_dung: taoNoiDungMoiThamGiaZalo(),
+
+                nguoi_gui_manv:
+                    localStorage.getItem("manv") || "",
+
+                nguoi_gui_tennv:
+                    localStorage.getItem("tennv") || "",
+
+                nguoi_gui_diadiem:
+                    localStorage.getItem("diadiem") || "",
+
+                loai_gui: "BANLE_ZALO"
+            };
+
+            await window.supabase
+                .from("zalo_message_logs")
+                .insert(payload);
+        }
+
+        async function capNhatDaGuiLoiMoiZalo() {
+
+            if (!window.supabase) return;
+
+            const makh =
+                document.getElementById("makh")?.value?.trim() || "";
+
+            if (!makh) return;
+
+            await window.supabase
+                .from("zalo_customer_status")
+                .upsert({
+
+                    makh,
+
+                    tenkh:
+                        document.getElementById("khachhang")?.value || "",
+
+                    dienthoai: makh,
+
+                    da_gui_loi_moi: true,
+
+                    lan_gui_cuoi:
+                        new Date().toISOString(),
+
+                    updated_by_manv:
+                        localStorage.getItem("manv") || "",
+
+                    updated_by_tennv:
+                        localStorage.getItem("tennv") || "",
+
+                    updated_at:
+                        new Date().toISOString()
+
+                }, {
+                    onConflict: "makh"
+                });
+        }
+
+    </script>
+
+    <script>
+        // Tự động mở QR Zalo sau khi thêm nhanh khách hàng thành công
+        document.addEventListener("DOMContentLoaded", () => {
+
+            const btnQR = document.getElementById("btnQRZalo");
+            const btnMoiZalo =
+                document.getElementById("btnMoiZalo");
+            const popup = document.getElementById("popupQRZalo");
+            const btnDong = document.getElementById("btnDongQR");
+            const qrSdt = document.getElementById("qrSdtKhach");
+
+            if (btnMoiZalo) {
+
+                btnMoiZalo.addEventListener("click", async () => {
+
+                    const makh =
+                        document.getElementById("makh")
+                            ?.value?.trim() || "";
+
+                    if (!makh) {
+                        alert("Vui lòng nhập mã khách.");
+                        return;
+                    }
+
+                    const text =
+                        taoNoiDungMoiThamGiaZalo();
+
+                    try {
+
+                        await navigator.clipboard.writeText(text);
+
+                        await luuLogMoiZalo();
+
+                        await capNhatDaGuiLoiMoiZalo();
+                        const cbMoi =
+                            document.getElementById("zalo_da_moi");
+
+                        if (cbMoi) {
+                            cbMoi.checked = true;
+                        }
+
+                        window.open(
+                            `https://zalo.me/${makh}`,
+                            "_blank"
+                        );
+
+                        alert(
+                            "Đã copy nội dung và mở Zalo."
+                        );
+
+                    } catch (err) {
+
+                        console.error(err);
+
+                        alert(
+                            "Không copy được nội dung."
+                        );
+                    }
+                });
+            }
+
+            if (btnQR) {
+                btnQR.addEventListener("click", () => {
+
+                    const makh = document.getElementById("makh")?.value?.trim() || "";
+
+                    if (!makh) {
+                        alert("Vui lòng nhập số điện thoại khách hàng trước.");
+                        return;
+                    }
+
+                    qrSdt.textContent = makh;
+
+                    window.supabase
+                        ?.from("zalo_customer_status")
+                        .upsert({
+                            makh,
+                            tenkh: document.getElementById("khachhang")?.value || "",
+                            dienthoai: makh,
+                            da_gui_loi_moi: true,
+                            lan_gui_cuoi: new Date().toISOString(),
+                            updated_by_manv: localStorage.getItem("manv") || "",
+                            updated_by_tennv: localStorage.getItem("tennv") || "",
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: "makh" });
+
+                    popup.style.display = "flex";
+                });
+            }
+
+            if (btnDong) {
+                btnDong.addEventListener("click", () => {
+                    popup.style.display = "none";
+                });
+            }
+
+            popup?.addEventListener("click", (e) => {
+                if (e.target === popup) {
+                    popup.style.display = "none";
+                }
+            });
+
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (window.__autoOpenQrOnlyAfterNewCustomer_v1) return;
+            window.__autoOpenQrOnlyAfterNewCustomer_v1 = true;
+
+            function moQrZaloSauKhiLuuKhachMoi(makh) {
+                const popup = document.getElementById("popupQRZalo");
+                const qrSdt = document.getElementById("qrSdtKhach");
+
+                if (!makh || !popup || !qrSdt) return;
+                if (String(makh).toUpperCase() === "KL") return;
+
+                qrSdt.textContent = makh;
+                popup.style.display = "flex";
+            }
+
+            window.addEventListener("ht:khachhangmoi:saved", (e) => {
+                const makh =
+                    e.detail?.makh ||
+                    document.getElementById("makh")?.value?.trim() ||
+                    "";
+
+                setTimeout(() => {
+                    moQrZaloSauKhiLuuKhachMoi(makh);
+                }, 300);
+            });
+        });
+    </script>
+
+    <!-- Popup QR OA / Thành viên -->
+    <div id="popupQrOA"
+        style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999999;align-items:center;justify-content:center;">
+        <div
+            style="width:92%;max-width:430px;background:#fff;border-radius:22px;padding:22px;text-align:center;box-shadow:0 10px 35px #0007;">
+            <div style="font-size:30px;font-weight:900;color:#078bd3;margin-bottom:8px;">
+                🎉 THÀNH VIÊN 🎉
+            </div>
+
+            <div style="font-size:18px;margin-bottom:14px;color:#333;">
+                Khách quét mã để kích hoạt tích điểm
+            </div>
+
+            <img id="qrOAImg" src="" alt="QR OA"
+                style="width:260px;height:260px;border:1px solid #ddd;border-radius:16px;padding:8px;background:white;">
+
+            <div style="margin-top:14px;color:#777;font-size:17px;">
+                SĐT tích điểm
+            </div>
+
+            <div id="qrOAPhone"
+                style="font-size:42px;font-weight:900;color:#e53935;letter-spacing:1px;margin:5px 0 12px;">
+                ---
+            </div>
+
+            <div style="font-size:15px;color:#444;margin-bottom:16px;line-height:1.5;">
+                Vui lòng kiểm tra đúng số điện thoại trước khi khách quét mã.
+            </div>
+
+            <button id="btnCloseQrOA"
+                style="width:100%;border:none;border-radius:14px;background:#078bd3;color:white;font-size:22px;font-weight:bold;padding:14px;">
+                Đóng
+            </button>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const LANDING_URL = "https://app.hoantuyet.vn/thamgia.html";
+
+            function onlyDigits(s) {
+                return String(s || "").replace(/\D/g, "");
+            }
+
+            function formatPhone(s) {
+                const d = onlyDigits(s);
+                if (d.length === 10) {
+                    return d.slice(0, 4) + " " + d.slice(4, 7) + " " + d.slice(7);
+                }
+                return d || "---";
+            }
+
+            function getVal(id) {
+                return String(document.getElementById(id)?.value || "").trim();
+            }
+
+            function moPopupQrOA() {
+                const phone = onlyDigits(getVal("makh"));
+
+                if (!phone || phone.length !== 10) {
+                    alert("❌ Vui lòng nhập mã khách là số điện thoại 10 số trước khi tạo QR OA.");
+                    document.getElementById("makh")?.focus();
+                    return;
+                }
+
+                const manv = getVal("manv") || localStorage.getItem("manv") || "";
+                const tennv = getVal("tennv") || localStorage.getItem("tennv") || "";
+                const cs = getVal("diadiem") || localStorage.getItem("diadiem") || "";
+                const tenkh = getVal("khachhang") || "";
+                const sohd = getVal("sohd") || "";
+
+                const landing = new URL(LANDING_URL);
+                landing.searchParams.set("sdt", phone);
+                landing.searchParams.set("makh", phone);
+                landing.searchParams.set("manv", manv);
+                landing.searchParams.set("tennv", tennv);
+                landing.searchParams.set("cs", cs);
+                landing.searchParams.set("tenkh", tenkh);
+                landing.searchParams.set("sohd", sohd);
+
+                const qrUrl =
+                    "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" +
+                    encodeURIComponent(landing.toString());
+
+                document.getElementById("qrOAImg").src = qrUrl;
+                document.getElementById("qrOAPhone").textContent = formatPhone(phone);
+                document.getElementById("popupQrOA").style.display = "flex";
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                document.getElementById("btnQrOA")?.addEventListener("click", moPopupQrOA);
+
+                document.getElementById("btnCloseQrOA")?.addEventListener("click", function () {
+                    document.getElementById("popupQrOA").style.display = "none";
+                });
+
+                document.getElementById("popupQrOA")?.addEventListener("click", function (e) {
+                    if (e.target.id === "popupQrOA") {
+                        e.currentTarget.style.display = "none";
+                    }
+                });
+            });
+        })();
+    </script>
+
+    <script type="module" src="scripts/viettelInvoice.js"></script>
+    <script src="scripts/stockQuickSimilar.js"></script>
+    
+    <script src="/scripts/salesCopilotBridgeBannv.js?v=52"></script>
+
+</body>
+
+</html>
