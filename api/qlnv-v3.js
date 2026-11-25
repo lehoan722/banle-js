@@ -27,7 +27,7 @@ async function auth(req){const t=ticket(req);if(!t)return null;const row=await a
 // Requests must originate from our site AND target an approved host.
 // Vercel preview is accepted only when the exact hostname is this deployment's VERCEL_URL.
 // Diagnostic build: do not weaken origin validation. Expose only a short rejection code.
-const API_BUILD='20261121-origin-url-shadow-fix-3';
+const API_BUILD='20261125-allow-app-hoantuyet-v4';
 function originCheck(req){
  const rawOrigin=String(req.headers.origin||'');
  const rawHost=String(req.headers.host||'').toLowerCase();
@@ -38,7 +38,7 @@ function originCheck(req){
  try{
   const o=new URL(rawOrigin);
   if(o.protocol!=='https:'||o.username||o.password||o.port)return 'invalid_origin_protocol';
-  const allowed=new Set(['hoantuyet.vn','www.hoantuyet.vn']);
+  const allowed=new Set(['app.hoantuyet.vn','hoantuyet.vn','www.hoantuyet.vn']);
   const deployment=String(process.env.VERCEL_URL||'').toLowerCase();
   if(deployment&&/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.vercel\.app$/.test(deployment))allowed.add(deployment);
   if(!allowed.has(o.hostname.toLowerCase()))return 'origin_not_allowed';
