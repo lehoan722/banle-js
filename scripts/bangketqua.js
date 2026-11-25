@@ -167,47 +167,6 @@ export function capNhatBangHTML(bangKetQua, lastAdded = null) {
                 highlightRow(tr);
             });
 
-            // Chỉ trang bán NV: chạm cột Kích cỡ để sửa đúng dòng đang làm.
-            if (/\/bannvcs[12]\.html$/i.test(window.location.pathname)) {
-                const sizeCell = tr.cells[2];
-                sizeCell.addEventListener("click", (e) => {
-                    const state = document.getElementById("hd_state")?.value?.trim().toLowerCase();
-                    if (state !== "moi" && state !== "sua") return;
-                    e.stopPropagation();
-                    setMaspspDangChon({ entryKey, lineKey, masp: item.masp, size: sz, index: i });
-                    highlightRow(tr);
-                    const raw = window.prompt(`Sửa size ${item.masp}:`, sz);
-                    if (raw === null) return;
-                    const next = raw.trim().toUpperCase();
-                    if (next === sz.toUpperCase()) return;
-                    const allowed = Array.isArray(window.danhMucSize)
-                        ? window.danhMucSize.map(v => String(v).trim().toUpperCase()) : [];
-                    if (!next || !allowed.includes(next)) {
-                        alert("Size không hợp lệ hoặc danh mục size chưa được tải.");
-                        return;
-                    }
-                    const sp = window.sanPhamData?.[item.masp] || window.sanPhamData?.[String(item.masp).toUpperCase()];
-                    if (!sp) { alert("Chưa tải thông tin sản phẩm."); return; }
-                    const managed = String(sp.chungloai || "").trim().toUpperCase() === "GD" || sp.quanlykichco === true;
-                    const branch = window.location.pathname.toLowerCase().includes("bannvcs2") ? "CS2" : "CS1";
-                    const group = window.danhMucNhom?.get?.(String(sp.nhomhang || "").toUpperCase());
-                    const groupRequires = document.getElementById("quanlysizetheonhom")?.checked && group?.quanlysize &&
-                        (group.diadiem === "ALL" || group.diadiem === branch);
-                    const requireManaged = (document.getElementById("size45")?.checked && managed) || groupRequires ||
-                        (document.getElementById("quanlysizetheogia")?.checked && (managed || Number(sp.giale) >= 170000));
-                    if (requireManaged && !["38", "39", "40", "41", "42", "43", "44", "45", "46"].includes(next)) {
-                        alert("Size không hợp lệ! Chỉ cho phép nhập size 38–46.");
-                        return;
-                    }
-                    // Đổi dữ liệu thật, không chỉ chữ hiển thị. Giữ nguyên mọi metadata khác.
-                    item.sizes[i] = next;
-                    setMaspspDangChon({ entryKey, lineKey, masp: item.masp, size: next, index: i });
-                    capNhatBangHTML(bangKetQua);
-                    const selected = Array.from(tbody.rows).find(row => row.dataset.entryKey === entryKey && row.dataset.lineIndex === String(i));
-                    if (selected) highlightRow(selected);
-                });
-            }
-
             if (lastAdded?.lineKey && String(lastAdded.lineKey) === String(lineKey)) {
                 // Với KM xả ưu tiên màu tím; dòng thường vẫn dùng highlight vàng cũ.
                 if (!isClearance) tr.classList.add("highlight");
