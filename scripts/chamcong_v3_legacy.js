@@ -1259,40 +1259,48 @@ function urgentDirectionLabel(row) {
     return dir || "-";
 }
 
+const URGENT_HANDOFF_MS_CHAMCONG = 5 * 60 * 1000;
+
+// "Giao ca" là trạng thái HIỂN THỊ tạm thời, DB vẫn lưu trang_thai='moi'.
+// Dùng cùng quy tắc với datHangChuyenKhoKhan.js, tránh chặn nhầm Tan ca.
+function urgentIsHandedOffNowChamCong(row, nowMs = Date.now()) {
+    if (!["moi", "dang_chuyen"].includes(String(row?.trang_thai || "").trim().toLowerCase())) return false;
+    const at = Date.parse(row?.giao_ca_at || "");
+    return Number.isFinite(at) && nowMs >= at && nowMs - at < URGENT_HANDOFF_MS_CHAMCONG;
+}
+
 async function fetchPendingUrgentOrdersForChamCong({ diadiem }) {
     const sp = await ensureSupabase();
     if (!sp) return { ok: false, rows: [] };
-
     const coso = String(diadiem || "").trim().toLowerCase();
     if (!["cs1", "cs2"].includes(coso)) return { ok: false, rows: [] };
 
     try {
-        // Module chuyển kho khẩn KHÔNG đổi trang_thai khi "Giao ca":
-        // nó lưu giao_ca_at, còn trang_thai vẫn là "moi".
-        // Giao ca chỉ có hiệu lực 5 phút, sau đó tự hiển thị lại "Mới".
-        // Đồng bộ cách kiểm tra TAN CA với effectiveUrgentStatus() của module đó.
-        const nowMs = Date.now();
-        const giaoCaHetHan = new Date(nowMs - 5 * 60 * 1000).toISOString();
-        const hienTai = new Date(nowMs).toISOString();
-        const { data, error } = await sp
-            .from("dat_hang_chuyen_kho_khan")
-            .select("id,masp,size,soluong,huong_chuyen,tu_coso,den_coso,manv_dat,manv_thuc_hien,ghichu_dat,trang_thai,created_at,updated_at,giao_ca_at")
-            .eq("tu_coso", coso)
-            .eq("trang_thai", "moi")
-            // Chỉ chặn các dòng thực sự là "Mới"; bỏ qua "Giao ca" còn hiệu lực.
-            .or(`giao_ca_at.is.null,giao_ca_at.lte.${giaoCaHetHan},giao_ca_at.gt.${hienTai}`)
-            .order("created_at", { ascending: false })
-            .limit(200);
-
-        if (error) {
-            console.error("[Chấm công] Lỗi đọc đặt hàng khẩn chưa xử lý:", error);
-            alert("Không kiểm tra được Đặt hàng khẩn cấp. Vui lòng thử lại trước khi tan ca.");
-            return { ok: false, rows: [] };
+        // Không giới hạn 200 đơn đầu: các đơn cũ hơn cũng phải được kiểm tra.
+        // Đọc từng trang và lọc Giao ca tạm thời theo cùng đồng hồ client.
+        // Không dùng chuỗi .or(timestamp...) để tránh sai lệch PostgREST khi phân tích dấu ':' trong ISO date.
+        const pageSize = 200;
+        const maxPages = 30; // quá 6000 dòng: chặn an toàn, yêu cầu quản lý xử lý
+        const rows = [];
+        for (let page = 0; page < maxPages; page++) {
+            const { data, error } = await sp
+                .from("dat_hang_chuyen_kho_khan")
+                .select("id,masp,size,soluong,huong_chuyen,tu_coso,den_coso,manv_dat,manv_thuc_hien,ghichu_dat,trang_thai,created_at,updated_at,giao_ca_at")
+                .eq("tu_coso", coso)
+                .in("trang_thai", ["moi", "dang_chuyen"])
+                .order("id", { ascending: false })
+                .range(page * pageSize, (page + 1) * pageSize - 1);
+            if (error) throw error;
+            const batch = Array.isArray(data) ? data : [];
+            rows.push(...batch);
+            if (batch.length < pageSize) {
+                const nowMs = Date.now();
+                return { ok: true, rows: rows.filter(r => !urgentIsHandedOffNowChamCong(r, nowMs)) };
+            }
         }
-
-        return { ok: true, rows: Array.isArray(data) ? data : [] };
+        throw new Error("Quá nhiều đơn khẩn cần kiểm tra; hãy liên hệ quản lý.");
     } catch (e) {
-        console.error("[Chấm công] Exception đọc đặt hàng khẩn:", e);
+        console.error("[Chấm công] Không kiểm tra được Đặt hàng khẩn:", e);
         alert("Không kiểm tra được Đặt hàng khẩn cấp. Vui lòng thử lại trước khi tan ca.");
         return { ok: false, rows: [] };
     }
@@ -1351,7 +1359,7 @@ function showUrgentOrdersPopupChamCong(rows, { diadiem, manv }) {
 
         const info = document.createElement("div");
         info.style.cssText = "padding:8px 12px;background:#fff7ed;color:#7c2d12;border-bottom:1px solid #fdba74;";
-        info.innerHTML = "Bạn phải xử lý <b>tất cả</b> yêu cầu mà cơ sở này phải chuyển trước khi TAN CA. Chọn <b>Đã chuyển</b>, <b>Hết</b> hoặc <b>Hủy</b> cho từng dòng.";
+        info.innerHTML = "Bạn phải xử lý <b>tất cả</b> yêu cầu mà cơ sở này phải chuyển trước khi TAN CA. Chọn <b>Giao ca</b> nếu bàn giao cho ca sau (hiệu lực 5 phút), hoặc <b>Đã chuyển</b>, <b>Hết</b>, <b>Hủy</b> theo thực tế. Sau khi lưu, hệ thống sẽ kiểm tra lại trước khi TAN CA.";
         popup.appendChild(info);
 
         const body = document.createElement("div");
@@ -1380,19 +1388,20 @@ function showUrgentOrdersPopupChamCong(rows, { diadiem, manv }) {
         rows.forEach((r) => {
             const tr = document.createElement("tr");
             tr.innerHTML = `
-                <td style="border:1px solid #ddd;padding:5px;font-weight:700;">${escHtmlUrgent(r.masp)}</td>
-                <td style="border:1px solid #ddd;padding:5px;text-align:center;">${escHtmlUrgent(r.size)}</td>
-                <td style="border:1px solid #ddd;padding:5px;text-align:center;">${Number(r.soluong || 1)}</td>
-                <td style="border:1px solid #ddd;padding:5px;text-align:center;">${escHtmlUrgent(urgentDirectionLabel(r))}</td>
-                <td style="border:1px solid #ddd;padding:5px;text-align:center;">${escHtmlUrgent(r.manv_dat || "")}</td>
-                <td style="border:1px solid #ddd;padding:5px;">${escHtmlUrgent(r.ghichu_dat || "")}</td>
-                <td style="border:1px solid #ddd;padding:5px;text-align:center;"></td>
+                <td data-label="Mã SP" style="border:1px solid #ddd;padding:5px;font-weight:700;">${escHtmlUrgent(r.masp)}</td>
+                <td data-label="Size" style="border:1px solid #ddd;padding:5px;text-align:center;">${escHtmlUrgent(r.size)}</td>
+                <td data-label="Số lượng" style="border:1px solid #ddd;padding:5px;text-align:center;">${Number(r.soluong || 1)}</td>
+                <td data-label="Hướng" style="border:1px solid #ddd;padding:5px;text-align:center;">${escHtmlUrgent(urgentDirectionLabel(r))}</td>
+                <td data-label="NV đặt" style="border:1px solid #ddd;padding:5px;text-align:center;">${escHtmlUrgent(r.manv_dat || "")}</td>
+                <td data-label="Ghi chú" style="border:1px solid #ddd;padding:5px;">${escHtmlUrgent(r.ghichu_dat || "")}</td>
+                <td data-label="Trạng thái" style="border:1px solid #ddd;padding:5px;text-align:center;"></td>
             `;
 
             const select = document.createElement("select");
             select.style.cssText = "width:100%;min-width:125px;padding:7px 5px;font-size:14px;font-weight:700;";
             select.innerHTML = `
                 <option value="moi">Mới</option>
+                <option value="giao_ca">Giao ca (5 phút)</option>
                 <option value="da_chuyen">Đã chuyển</option>
                 <option value="het">Hết</option>
                 <option value="huy">Hủy</option>
@@ -1404,13 +1413,28 @@ function showUrgentOrdersPopupChamCong(rows, { diadiem, manv }) {
             rowStates.push({ id: Number(r.id), select, row: r });
         });
 
+        // Mobile: không ép người dùng vuốt ngang bảng 760px khi giao ca.
+        const mobileStyle = document.createElement("style");
+        mobileStyle.textContent = `
+          @media(max-width:640px){
+            #urgent-cc-overlay table {min-width:0!important;}
+            #urgent-cc-overlay thead {display:none;}
+            #urgent-cc-overlay tbody, #urgent-cc-overlay tr {display:block;}
+            #urgent-cc-overlay tr {padding:9px;margin:0 0 10px;border:1px solid #fca5a5;border-radius:9px;background:#fff;}
+            #urgent-cc-overlay td {display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:right!important;border:0!important;border-bottom:1px solid #f3f4f6!important;padding:6px!important;}
+            #urgent-cc-overlay td::before {content:attr(data-label);font-weight:700;color:#374151;text-align:left;flex:0 0 35%;}
+            #urgent-cc-overlay select {max-width:180px;font-size:16px!important;}
+            #urgent-cc-overlay button {min-height:44px;}
+          }
+        `;
+        body.appendChild(mobileStyle);
         body.appendChild(table);
         popup.appendChild(body);
 
         const footer = document.createElement("div");
         footer.style.cssText = "padding:9px 12px;background:#fee2e2;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;";
         footer.innerHTML = `
-            <span style="color:#991b1b;font-weight:700;">Còn trạng thái Mới = chưa được phép TAN CA.</span>
+            <span style="color:#991b1b;font-weight:700;">Chọn Giao ca hoặc trạng thái xử lý cho mọi dòng. Giao ca có hiệu lực 5 phút.</span>
             <div style="display:flex;gap:8px;">
                 <button id="urgent-cc-cancel" type="button" style="padding:9px 14px;border:0;border-radius:6px;background:#e5e7eb;font-weight:700;">Quay lại</button>
                 <button id="urgent-cc-save" type="button" style="padding:9px 14px;border:0;border-radius:6px;background:#dc2626;color:#fff;font-weight:800;">Lưu & tiếp tục TAN CA</button>
@@ -1470,26 +1494,47 @@ function showUrgentOrdersPopupChamCong(rows, { diadiem, manv }) {
 
             const manvUpper = String(manv || "").trim().toUpperCase();
             const coso = String(diadiem || "").trim().toLowerCase();
-            const nowIso = new Date().toISOString();
 
             for (const state of rowStates) {
                 const nextStatus = state.select.value;
-                const { error } = await sp
-                    .from("dat_hang_chuyen_kho_khan")
-                    .update({
+                const nowIso = new Date().toISOString();
+                let updateData;
+                if (nextStatus === "giao_ca") {
+                    // Khớp 100% cách ghi của datHangChuyenKhoKhan.js:
+                    // trang_thai GIỮ NGUYÊN 'moi', chỉ ghi dấu mốc giao ca.
+                    const stamp = new Date().toLocaleString("vi-VN", {hour:"2-digit",minute:"2-digit",day:"2-digit",month:"2-digit"});
+                    const note = String(state.row.ghichu_dat || "").trim();
+                    const label = `Giao ca - ${manvUpper} - ${stamp}`;
+                    updateData = {
+                        giao_ca_at: nowIso,
+                        giao_ca_by: manvUpper,
+                        manv_thuc_hien: manvUpper,
+                        thuc_hien_at: nowIso,
+                        ghichu_dat: note ? `${note} | ${label}` : label,
+                        updated_at: nowIso
+                    };
+                } else {
+                    updateData = {
                         trang_thai: nextStatus,
                         manv_thuc_hien: manvUpper || null,
+                        thuc_hien_at: nowIso,
                         updated_at: nowIso
-                    })
+                    };
+                }
+                const { data: updatedRows, error } = await sp
+                    .from("dat_hang_chuyen_kho_khan")
+                    .update(updateData)
                     .eq("id", state.id)
                     .eq("tu_coso", coso)
-                    .eq("trang_thai", "moi");
+                    .eq("trang_thai", "moi")
+                    .select("id");
 
-                if (error) {
-                    console.error("[Chấm công] Lỗi xử lý đặt hàng khẩn:", state.id, error);
-                    alert("Không lưu được trạng thái Đặt hàng khẩn cấp. Vui lòng thử lại.");
+                if (error || !updatedRows?.length) {
+                    console.error("[Chấm công] Không lưu được trạng thái đặt hàng khẩn:", state.id, error);
+                    alert(`Không lưu được trạng thái đơn #${state.id}. Có thể đơn đã được người khác xử lý. Hãy kiểm tra lại.`);
                     saveBtn.disabled = false;
                     saveBtn.textContent = "Lưu & tiếp tục TAN CA";
+                    cleanup(false); // Lỗi lưu: KHÔNG cho phép Tan ca.
                     return;
                 }
             }
