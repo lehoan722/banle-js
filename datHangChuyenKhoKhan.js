@@ -1,0 +1,1312 @@
+// /scripts/datHangChuyenKhoKhan.js
+// BƯỚC 1 - Đặt hàng chuyển kho KHẨN CẤP
+// - Panel 3 trạng thái: ẩn / thu gọn / mở gần full-height
+// - Lưu lịch sử, luôn sắp xếp created_at mới nhất trước
+// - Trạng thái: moi / da_chuyen / het / huy
+// - Ghi NV thực hiện mới nhất khi thay đổi trạng thái
+// - Popup +Đặt khẩn dạng lưới size 0, 38..46, nhập SL từng size
+// - StockQuick luôn cho đặt khẩn; gợi ý (nếu có) chỉ dùng để điền sẵn lưới size
+
+import { calcSuggestionsFromPayload } from "./services/luatChuyenKho.js";
+import {loadUrgentTabulator,createUrgentTable,destroyUrgentTables,copyUrgentVisible,hasUrgentTables,updateUrgentTables,clearUrgentFilters} from "./datHangKhanTabulator.js";
+
+let ctx = null;
+let realtimeChannel = null;
+let suppressRealtimeUntil = 0;
+let audioCtx = null;
+let audioUnlocked = false;
+let repositionTimer = null;
+let panelMode = "collapsed"; // expanded | collapsed; "hidden" chỉ giữ tương thích dữ liệu cũ
+let selectedUrgentRowId = null; // dòng đặt khẩn đang được chọn để mở StockQuick
+let moduleInitialized = false; // chống init trùng khi trang cũ và StockQuick cùng nạp module
+
+const TABLE = "dat_hang_chuyen_kho_khan";
+const HISTORY_LIMIT = 200; // Lich su mac dinh, loc tren du lieu da tai
+let tabulatorAvailable = false;
+let nextHandoffExpiry = 0;
+let urgentRefreshSeq = 0;
+const selectedMoveIds=new Set();
+const selectedDeleteIds=new Set();
+const ACTIVE_STATUS = "moi";
+const VALID_STATUSES = ["moi", "da_chuyen", "het", "huy"];
+const FIVE_MINUTES = 5 * 60 * 1000;
+function effectiveUrgentStatus(row) {
+  const st=norm(row.trang_thai).toLowerCase();
+  if(st!=="moi" && st!=="dang_chuyen") return st;
+  const time=Date.parse(row.giao_ca_at||"");
+  return Number.isFinite(time) && Date.now() - time >= 0 && Date.now() - time < FIVE_MINUTES ? "giao_ca" : "moi";
+}
+function enrichedRow(r){return {...r,trang_thai_hienthi:effectiveUrgentStatus(r),gio_dat_hienthi:fmtTime(r.created_at),gio_thuc_hien_hienthi:fmtTime(r.thuc_hien_at),gio_giao_ca_hienthi:fmtTime(r.giao_ca_at)};}
+const SIZE_OPTIONS = ["0", "38", "39", "40", "41", "42", "43", "44", "45", "46"];
+
+// Lớp hiển thị riêng cho popup Đặt hàng khẩn.
+// Phải cao hơn overlay xác nhận ảnh (90000) và StockQuick khi xác nhận ảnh (200000+).
+const URGENT_CREATE_Z = 300100;
+const URGENT_CONFIRM_Z = 300200;
+
+function norm(v) { return String(v ?? "").trim(); }
+function normMasp(v) { return norm(v).toUpperCase(); }
+function normSize(v) {
+  const s = norm(v).replace(/^size\s+/i, "");
+  const m = s.match(/\d{1,2}/);
+  return m ? m[0] : s;
+}
+function getCurrentCoso() {
+  return norm(ctx?.diadiem || window.__BANLE_PAGE_DIADIEM || localStorage.getItem("diadiem") || window.diadiem || "").toLowerCase();
+}
+function getManv() {
+  return norm(ctx?.manvDangNhap || localStorage.getItem("manv") || document.getElementById("manv")?.value || "").toUpperCase();
+}
+async function isAdminUser() {
+  try {
+    if (ctx?.isAdmin === true || window.isAdmin === true) return true;
+    const cu = JSON.parse(localStorage.getItem("currentUser") || "null");
+    if (cu?.is_admin === true) return true;
+  } catch (_) {}
+  if (!ctx?.supabase || typeof ctx.supabase.rpc !== "function") return false;
+  try {
+    const { data, error } = await ctx.supabase.rpc("is_admin");
+    if (!error) return data === true;
+  } catch (_) {}
+  return false;
+}
+function otherCoso(coso) { return coso === "cs1" ? "cs2" : "cs1"; }
+function esc(v) {
+  return String(v ?? "")
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+}
+function fmtTime(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("vi-VN", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+}
+function statusText(v) {
+  const s = norm(v).toLowerCase();
+  if (s === "moi") return "Mới";
+  if (s === "giao_ca") return "Giao ca";
+  if (s === "da_chuyen") return "Đã chuyển";
+  if (s === "het") return "Hết";
+  if (s === "huy") return "Hủy";
+  if (s === "dang_chuyen") return "Mới"; // tương thích dữ liệu cũ trước migration
+  return s || "-";
+}
+function statusOptions(currentRaw) {
+  let current = norm(currentRaw).toLowerCase();
+  if (current === "dang_chuyen") current = "moi";
+  return [...VALID_STATUSES.slice(0,1),"giao_ca",...VALID_STATUSES.slice(1)].map(v => `<option value="${v}" ${v === current ? "selected" : ""}>${statusText(v)}</option>`).join("");
+}
+function buildKey(x) { return [normMasp(x.masp), normSize(x.size), norm(x.huong_chuyen).toLowerCase()].join("|"); }
+
+function ensureStyles() {
+  if (document.getElementById("dhkhan-style")) return;
+  const style = document.createElement("style");
+  style.id = "dhkhan-style";
+  style.textContent = `
+    #dhkhan-panel { font-family:Arial,sans-serif; }
+    #dhkhan-panel .tabulator {font-size:12px;background:#fff;}
+    #dhkhan-panel .tabulator .tabulator-header-filter input,#dhkhan-panel .tabulator .tabulator-header-filter select{width:100%;font-size:12px;padding:3px;box-sizing:border-box;}
+    #dhkhan-panel .tabulator-row.tabulator-selected {outline:2px solid #d59500;}
+    #dhkhan-panel .dhkhan-tbl-wrap {width:100%;overflow:hidden;margin-bottom:10px;}
+    #dhkhan-panel th,#dhkhan-panel td { border:1px solid #efb0a9;padding:3px 5px;white-space:nowrap;font-size:13px; }
+    #dhkhan-panel .dhkhan-masp-link { color:#9b1c1c;font-weight:800;text-decoration:underline;cursor:pointer; }
+    #dhkhan-panel .dhkhan-masp-cell { cursor:pointer; }
+    #dhkhan-panel tr.dhkhan-selected-row td { background:#fff2a8 !important; }
+    #dhkhan-header { cursor:pointer; }
+    #dhkhan-header button, #dhkhan-header input, #dhkhan-header select { cursor:pointer; }
+    #dhkhan-toggle { display:flex;align-items:center;justify-content:center;align-self:center;line-height:1;height:28px;min-width:28px;padding:0 4px;margin:0; }
+    #dhkhan-panel .dhkhan-note { min-width:120px;max-width:230px;width:100%;box-sizing:border-box;padding:3px 5px; }
+    #dhkhan-panel .dhkhan-status-select { min-width:100px;padding:3px 4px;font-size:13px; }
+    #dhkhan-panel tr[data-status="moi"] td { background:#ffffff; color:#111827; }
+    #dhkhan-panel tr[data-status="da_chuyen"] td { background:#e8f7ec; color:#14532d; }
+    #dhkhan-panel tr[data-status="het"] td { background:#eeeeee; color:#555555; }
+    #dhkhan-panel tr[data-status="huy"] td { background:#eee7ff; color:#5b3f8c; }
+    #dhkhan-panel.dhkhan-flash { animation:dhkhanFlash .45s ease-in-out 0s 4 alternate; }
+    @keyframes dhkhanFlash { from{box-shadow:0 0 0 2px #d00000,0 3px 14px rgba(0,0,0,.3)} to{box-shadow:0 0 0 6px rgba(208,0,0,.15),0 3px 14px rgba(0,0,0,.3)} }
+
+    #dhkhan-fab{
+      position:fixed;
+      right:64px;
+      bottom:calc(14px + env(safe-area-inset-bottom));
+      z-index:26010;
+      width:48px;
+      height:48px;
+      border:2px solid #d00000;
+      border-radius:50%;
+      background:#ffe5df;
+      color:#9b0000;
+      box-shadow:0 4px 14px rgba(0,0,0,.25);
+      padding:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      font-family:Arial,sans-serif;
+      font-weight:900;
+      cursor:pointer;
+      touch-action:manipulation;
+      -webkit-tap-highlight-color:transparent;
+    }
+    #dhkhan-fab .l1{font-size:11px;line-height:1.02}
+    #dhkhan-fab .l2{font-size:9px;line-height:1.02}
+    #dhkhan-fab:active{transform:scale(.94)}
+    @media(min-width:801px){
+      #dhkhan-fab{
+        right:8px;
+        bottom:8px;
+        width:58px;
+        height:58px;
+      }
+      #dhkhan-fab .l1{font-size:12px}
+      #dhkhan-fab .l2{font-size:10px}
+    }
+
+    #dhkhan-create-box { font-family:Arial,sans-serif; }
+    #dhkhan-create-box input { font-size:16px;padding:6px;box-sizing:border-box; }
+    #dhkhan-create-box .dhkhan-grid { display:grid;grid-template-columns:90px repeat(10,minmax(42px,1fr));gap:3px;align-items:center; }
+    #dhkhan-create-box .dhkhan-grid-label { font-weight:700; }
+    #dhkhan-create-box .dhkhan-size-head { text-align:center;font-weight:800;padding:4px 0; }
+    #dhkhan-create-box .dhkhan-qty { width:100%;min-width:0;text-align:center; }
+    #dhkhan-create-box .dhkhan-wide { grid-column:2 / 12; }
+    #dhkhan-create-box .dhkhan-direction { font-weight:900;color:#1745d1;font-size:17px; }
+    #dhkhan-create-box .dhkhan-direction-btn { border:0;background:transparent;padding:2px 4px;color:#1745d1;font-weight:900;font-size:17px;text-decoration:underline;cursor:pointer; }
+    #dhkhan-create-box .dhkhan-direction-btn:hover { color:#d00000; }
+    #dhkhan-create-box .dhkhan-drag-handle { cursor:move;user-select:none;touch-action:none; }
+    #dhkhan-create-box .dhkhan-actions { display:flex;gap:10px;justify-content:center;margin-top:12px; }
+    #dhkhan-confirm-direction { font-family:Arial,sans-serif; }
+    #dhkhan-create-box .dhkhan-actions button { min-width:110px;padding:8px 14px;font-size:15px;font-weight:800; }
+
+    @media(max-width:800px){
+      #dhkhan-panel:not(.dhkhan-collapsed) { left:0!important;right:0!important;width:100vw!important;max-width:100vw!important;font-size:12px!important; }
+      #dhkhan-panel.dhkhan-collapsed { font-size:11px!important; }
+      #dhkhan-panel th,#dhkhan-panel td { font-size:12px;padding:3px 4px; }
+      #dhkhan-panel .dhkhan-note { min-width:100px; }
+      #dhkhan-create-box { width:98vw!important;max-width:98vw!important;min-width:0!important;padding:9px!important; }
+      #dhkhan-create-box .dhkhan-grid { grid-template-columns:72px repeat(10,minmax(31px,1fr));gap:2px; }
+      #dhkhan-create-box input { font-size:15px;padding:5px 2px; }
+      #dhkhan-create-box .dhkhan-size-head { font-size:13px; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function unlockAudioOnce() {
+  if (audioUnlocked) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audioCtx = audioCtx || new AC();
+    audioCtx.resume?.();
+    audioUnlocked = true;
+  } catch (_) {}
+}
+function setupAudioUnlock() {
+  const fn = () => unlockAudioOnce();
+  document.addEventListener("pointerdown", fn, { once:true, capture:true });
+  document.addEventListener("keydown", fn, { once:true, capture:true });
+}
+// Âm báo khẩn: 2 tiếng chuông đa tần, ngân dài và stereo nhẹ.
+// Chỉ dùng Web Audio nên không cần thêm file âm thanh bên ngoài.
+function chimeVoice(freq, when, duration, pan = 0, peak = 0.16) {
+  if (!audioCtx || audioCtx.state !== "running") return;
+
+  const master = audioCtx.createGain();
+  const panner = typeof audioCtx.createStereoPanner === "function"
+    ? audioCtx.createStereoPanner()
+    : null;
+
+  if (panner) panner.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), when);
+
+  // Fundamental + 2 harmonic nhỏ làm tiếng chuông đầy và bớt "khô".
+  [
+    { mult: 1, gain: 1.00, type: "sine" },
+    { mult: 2.01, gain: 0.30, type: "sine" },
+    { mult: 3.02, gain: 0.12, type: "triangle" }
+  ].forEach(part => {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = part.type;
+    osc.frequency.setValueAtTime(freq * part.mult, when);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * part.gain), when + 0.018);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(when);
+    osc.stop(when + duration + 0.04);
+  });
+
+  // Một lớp ngân trễ rất nhỏ tạo cảm giác chuông điện thoại.
+  const delay = audioCtx.createDelay(0.25);
+  const echoGain = audioCtx.createGain();
+  delay.delayTime.setValueAtTime(0.085, when);
+  echoGain.gain.setValueAtTime(0.16, when);
+
+  if (panner) {
+    master.connect(panner);
+    panner.connect(audioCtx.destination);
+    panner.connect(delay);
+  } else {
+    master.connect(audioCtx.destination);
+    master.connect(delay);
+  }
+  delay.connect(echoGain);
+  echoGain.connect(audioCtx.destination);
+}
+function playUrgentSound() {
+  try {
+    unlockAudioOnce();
+    if (!audioCtx || audioCtx.state !== "running") return;
+    const t = audioCtx.currentTime + 0.025;
+    chimeVoice(783.99, t, 0.48, -0.25, 0.19);   // G5
+    chimeVoice(1046.50, t + 0.33, 0.62, 0.25, 0.21); // C6
+  } catch (e) {
+    console.warn("[Đặt hàng khẩn] Không phát được âm thanh:", e);
+  }
+}
+
+function openStockQuick(masp) {
+  const code = normMasp(masp); if(!code) return;
+  try {
+    if (window.StockQuick?.showFor) return window.StockQuick.showFor(document.body, code);
+    if (typeof window.stockQuickPopup === "function") return window.stockQuickPopup(code);
+  } catch(e){ console.warn("[Đặt hàng khẩn] Không mở được StockQuick:",e); }
+}
+
+async function fetchOrders() {
+  if (!ctx?.supabase) return [];
+  const { data, error } = await ctx.supabase.from(TABLE).select("*").order("created_at",{ascending:false}).limit(HISTORY_LIMIT);
+  if(error){ console.error("[Đặt hàng khẩn] Lỗi tải dữ liệu:",error); return []; }
+  return (data||[]).sort((a,b)=>new Date(b.created_at||0).getTime()-new Date(a.created_at||0).getTime());
+}
+
+async function checkDuplicates(items) {
+  if(!ctx?.supabase || !items.length) return {newItems:items,existed:[]};
+  const masps=[...new Set(items.map(x=>normMasp(x.masp)).filter(Boolean))];
+  if(!masps.length) return {newItems:[],existed:[]};
+  const {data,error}=await ctx.supabase.from(TABLE).select("id,masp,size,huong_chuyen,trang_thai").eq("trang_thai",ACTIVE_STATUS).in("masp",masps);
+  if(error){ console.warn("[Đặt hàng khẩn] Không kiểm tra được trùng:",error); return {newItems:items,existed:[]}; }
+  const opened=new Set((data||[]).map(buildKey));
+  return {newItems:items.filter(x=>!opened.has(buildKey(x))),existed:items.filter(x=>opened.has(buildKey(x)))};
+}
+
+async function insertUrgentOrders(items,note="",source="stockquick") {
+  if(!ctx?.supabase || !items?.length) return false;
+  const unique=new Map();
+  items.forEach(x=>{
+    const huong=norm(x.huong_chuyen).toLowerCase();
+    const fallbackTu=huong==="1v2"?"cs1":huong==="2v1"?"cs2":"";
+    const fallbackDen=huong==="1v2"?"cs2":huong==="2v1"?"cs1":"";
+    const row={masp:normMasp(x.masp),size:normSize(x.size),soluong:Math.max(1,Number(x.soluong||1)),huong_chuyen:huong,tu_coso:norm(x.tu_coso||fallbackTu).toLowerCase(),den_coso:norm(x.den_coso||fallbackDen).toLowerCase()};
+    if(row.masp&&row.size&&["1v2","2v1"].includes(row.huong_chuyen)) unique.set(buildKey(row),row);
+  });
+  const checked=await checkDuplicates([...unique.values()]);
+  if(checked.existed.length){
+    alert("⚠️ Một số dòng đã có trạng thái MỚI trong ĐẶT HÀNG KHẨN nên không tạo trùng:\n\n"+checked.existed.map(x=>`${x.huong_chuyen} | ${x.masp} | size ${x.size}`).join("\n"));
+  }
+  if(!checked.newItems.length) return false;
+  const now=new Date().toISOString();
+  const rows=checked.newItems.map(x=>({...x,manv_dat:getManv(),manv_thuc_hien:null,ghichu_dat:norm(note),trang_thai:"moi",nguon:source,updated_at:now}));
+  suppressRealtimeUntil=Date.now()+900;
+  const {error}=await ctx.supabase.from(TABLE).insert(rows);
+  if(error){ console.error("[Đặt hàng khẩn] Insert lỗi:",error); alert("❌ Không lưu được đặt hàng khẩn cấp: "+(error.message||"Lỗi không xác định")); return false; }
+  // Tạo từ StockQuickPopup: chỉ cập nhật bảng dữ liệu, không tự bung bảng quản lý.
+  // Tạo trực tiếp tại bảng quản lý: giữ luồng hiện tại của người dùng.
+  if(source === "stockquick") {
+    await refreshPanel();
+  } else {
+    if(panelMode==="hidden") panelMode="expanded";
+    await refreshPanel({forceOpen:true});
+  }
+  return true;
+}
+
+function buildSuggestedPresetMaps(items) {
+  const qtyMap = new Map();
+  const dirMap = new Map();
+
+  (items || []).forEach(x => {
+    const size = normSize(x.size);
+    const dir = norm(x.huong_chuyen).toLowerCase();
+    if (!SIZE_OPTIONS.includes(size)) return;
+
+    const qty = Math.max(1, Number(x.soluong || 1));
+    qtyMap.set(size, Number(qtyMap.get(size) || 0) + qty);
+
+    // Gợi ý của StockQuick là theo TỪNG SIZE. Không được gom mất hướng.
+    // Nếu cùng một size bất thường xuất hiện cả 2 hướng thì để trống để người dùng
+    // quyết định bằng hướng mặc định, tránh tự gán sai.
+    if (["1v2", "2v1"].includes(dir)) {
+      const oldDir = dirMap.get(size);
+      dirMap.set(size, !oldDir || oldDir === dir ? dir : "");
+    }
+  });
+
+  return { qtyMap, dirMap };
+}
+
+async function openFromStockQuick(popup,payload) {
+  const masp=normMasp(popup?.dataset?.masp||payload?.masp);
+  if(!masp) return alert("Thiếu mã sản phẩm để tạo đặt hàng khẩn.");
+
+  let suggestions=[];
+  try {
+    suggestions = payload ? (calcSuggestionsFromPayload(masp,payload)||[]) : [];
+  } catch(e) {
+    console.warn("[Đặt hàng khẩn] Không tính được gợi ý; vẫn cho đặt thủ công:", e);
+    suggestions=[];
+  }
+
+  // Khẩn cấp KHÔNG phụ thuộc luật gợi ý.
+  // Nếu có gợi ý thì dùng để điền sẵn SL và, khi toàn bộ gợi ý cùng một hướng,
+  // dùng luôn hướng đó làm hướng mặc định. Nếu gợi ý lẫn 2 hướng thì dùng hướng
+  // mặc định "cơ sở khác -> cơ sở đang đặt" để người dùng tự quyết định.
+  const suggestedDirs = [...new Set(
+    (suggestions || [])
+      .map(x => norm(x.huong_chuyen).toLowerCase())
+      .filter(x => ["1v2", "2v1"].includes(x))
+  )];
+  const initialDirection = suggestedDirs.length === 1 ? suggestedDirs[0] : null;
+
+  // Chỉ mở hộp nhập đặt khẩn, không ép bảng quản lý mở theo.
+  showManualCreate({
+    masp,
+    suggestedItems:suggestions,
+    source:"stockquick",
+    initialDirection
+  });
+}
+
+function renderRows(rows,canMoveSection,isAdmin) {
+  return rows.map(r=>{
+    let st=effectiveUrgentStatus(r);
+    const canExecute = canMoveSection;
+    const canSelectForFutureCcn=canExecute && st==="moi";
+    const statusDisabled = canExecute ? "" : "disabled title=\"Chỉ cơ sở thực hiện chuyển hàng mới được đổi trạng thái\"";
+    const selectedClass = Number(r.id) === Number(selectedUrgentRowId) ? " dhkhan-selected-row" : "";
+    return `<tr class="${selectedClass.trim()}" data-id="${Number(r.id)}" data-status="${esc(st)}">
+      <td style="text-align:center;"><input type="checkbox" class="dhkhan-delete-check" data-id="${Number(r.id)}" ${isAdmin?"":"disabled"} title="${isAdmin?"Chọn để admin xóa đặt hàng":"Chỉ admin được xóa"}"></td>
+      <td style="text-align:center;"><input type="checkbox" class="dhkhan-move" data-id="${Number(r.id)}" ${canSelectForFutureCcn?"":"disabled"} title="Chọn dòng để tạo hóa đơn CCN"></td>
+      <td class="dhkhan-masp-cell" data-id="${Number(r.id)}" data-masp="${esc(r.masp)}" title="Bấm vào ô này để mở StockQuick"><span class="dhkhan-masp-link">${esc(r.masp)}</span></td>
+      <td style="text-align:center;">${Number(r.soluong||1)}</td>
+      <td style="text-align:center;">${esc(r.size)}</td>
+      <td style="font-weight:700;">${esc(r.huong_chuyen)}</td>
+      <td>${esc(r.manv_dat||"")}</td>
+      <td>${esc(fmtTime(r.created_at))}</td>
+      <td>${esc(r.manv_thuc_hien||"")}</td>
+      <td>${esc(fmtTime(r.thuc_hien_at))}</td>
+      <td><input class="dhkhan-note" data-id="${Number(r.id)}" value="${esc(r.ghichu_dat||"")}"></td>
+      <td><select class="dhkhan-status-select" data-id="${Number(r.id)}" ${statusDisabled}>${statusOptions(st)}</select></td>
+    </tr>`;
+  }).join("");
+}
+
+
+function bindDhkhanFabDrag(button) {
+  if (!button || button.dataset.dragBound === "1") return;
+  button.dataset.dragBound = "1";
+
+  const STORAGE_KEY = "hoantuyet_fab_pos_ck_khan_v1";
+  const DEFAULT_RIGHT = 64;
+  const DEFAULT_BOTTOM = 14;
+  const MARGIN = 4;
+  let drag = null;
+
+  const clamp = (v, min, max) => Math.min(Math.max(v, min), Math.max(min, max));
+
+  const applySavedPosition = () => {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch (_) {}
+
+    const rect = button.getBoundingClientRect();
+    const w = rect.width || button.offsetWidth || 48;
+    const h = rect.height || button.offsetHeight || 48;
+
+    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+      const x = clamp(saved.x, MARGIN, window.innerWidth - w - MARGIN);
+      const y = clamp(saved.y, MARGIN, window.innerHeight - h - MARGIN);
+      button.style.left = x + "px";
+      button.style.top = y + "px";
+      button.style.right = "auto";
+      button.style.bottom = "auto";
+    } else {
+      button.style.left = "auto";
+      button.style.top = "auto";
+      button.style.right = DEFAULT_RIGHT + "px";
+      button.style.bottom = `calc(${DEFAULT_BOTTOM}px + env(safe-area-inset-bottom))`;
+    }
+  };
+
+  const saveCurrentPosition = () => {
+    const r = button.getBoundingClientRect();
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) }));
+    } catch (_) {}
+  };
+
+  button.addEventListener("pointerdown", e => {
+    if (e.button != null && e.button !== 0) return;
+    const r = button.getBoundingClientRect();
+    drag = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      left: r.left,
+      top: r.top,
+      moved: false
+    };
+    try { button.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  button.addEventListener("pointermove", e => {
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+
+    if (!drag.moved && Math.hypot(dx, dy) < 7) return;
+    drag.moved = true;
+    e.preventDefault();
+
+    const w = button.offsetWidth || 48;
+    const h = button.offsetHeight || 48;
+    const x = clamp(drag.left + dx, MARGIN, window.innerWidth - w - MARGIN);
+    const y = clamp(drag.top + dy, MARGIN, window.innerHeight - h - MARGIN);
+
+    button.style.left = x + "px";
+    button.style.top = y + "px";
+    button.style.right = "auto";
+    button.style.bottom = "auto";
+  });
+
+  const endDrag = e => {
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const moved = drag.moved;
+    drag = null;
+    try { button.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (moved) {
+      button.dataset.suppressClickUntil = String(Date.now() + 350);
+      saveCurrentPosition();
+    }
+  };
+
+  button.addEventListener("pointerup", endDrag);
+  button.addEventListener("pointercancel", endDrag);
+  window.addEventListener("resize", applySavedPosition);
+  window.visualViewport?.addEventListener("resize", applySavedPosition);
+
+  applySavedPosition();
+}
+
+function ensureDhkhanFab() {
+  let fab = document.getElementById("dhkhan-fab");
+  if (!fab) {
+    fab = document.createElement("button");
+    fab.id = "dhkhan-fab";
+    fab.type = "button";
+    fab.title = "Mở / thu gọn Chuyển kho khẩn";
+    fab.setAttribute("aria-label", "Mở hoặc thu gọn Chuyển kho khẩn");
+    fab.innerHTML = '<span class="l1">CK</span><span class="l2">KHẨN</span>';
+    document.body.appendChild(fab);
+
+    bindDhkhanFabDrag(fab);
+
+    fab.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (Date.now() < Number(fab.dataset.suppressClickUntil || 0)) return;
+      panelMode = panelMode === "expanded" ? "collapsed" : "expanded";
+      applyPanelMode();
+    });
+  } else {
+    bindDhkhanFabDrag(fab);
+  }
+  return fab;
+}
+
+function positionPanel() {
+  const box=document.getElementById("dhkhan-panel");
+  if(!box) return;
+
+  const mobile=window.matchMedia("(max-width:800px)").matches;
+  const vh=window.visualViewport?.height||window.innerHeight;
+
+  if(panelMode==="collapsed"){
+    box.style.display="none";
+    return;
+  }
+
+  box.style.display="block";
+  box.style.left=mobile?"0":"6px";
+  box.style.right="auto";
+  box.style.top="auto";
+  box.style.bottom=mobile?"0":"6px";
+  box.style.width=mobile?"100vw":"calc(100vw - 20px)";
+  box.style.minWidth="0";
+  box.style.maxWidth=mobile?"100vw":"calc(100vw - 20px)";
+  box.style.height=mobile?`${Math.max(320,vh-78)}px`:`${Math.max(420,vh-92)}px`;
+  box.style.maxHeight=box.style.height;
+  box.style.padding="6px";
+  box.style.overflow="auto";
+  box.style.borderRadius="7px";
+  box.style.zIndex="9800";
+}
+
+function schedulePosition(){
+  clearTimeout(repositionTimer);
+  repositionTimer=setTimeout(positionPanel,40);
+}
+
+function applyPanelMode(){
+  const box=document.getElementById("dhkhan-panel");
+  if(!box) return;
+
+  if(panelMode==="hidden") panelMode="collapsed";
+
+  const fab = ensureDhkhanFab();
+  fab.style.display = "flex";
+
+  const body=box.querySelector("#dhkhan-body");
+  const title=box.querySelector("#dhkhan-header-title");
+  const actions=box.querySelector("#dhkhan-header-actions");
+  const header=box.querySelector("#dhkhan-header");
+
+  box.classList.toggle("dhkhan-collapsed", panelMode === "collapsed");
+
+  if(panelMode==="collapsed"){
+    if(body) body.style.display="none";
+  }else{
+    if(body) body.style.display="block";
+    if(title) title.innerHTML=box.dataset.fullTitleHtml||"🚨 ĐẶT HÀNG KHẨN CẤP";
+    if(actions) actions.style.display="flex";
+    if(header){
+      header.style.position="sticky";
+      header.style.height="auto";
+      header.style.minHeight="26px";
+      header.style.padding="0";
+      header.style.justifyContent="space-between";
+      header.style.alignItems="center";
+      header.style.flexDirection="row";
+      header.style.gap="8px";
+      header.style.cursor="pointer";
+      header.style.background="#ffe5df";
+      header.style.whiteSpace="normal";
+      header.style.borderRadius="0";
+      header.title="Bấm dòng tiêu đề hoặc nút CK KHẨN để thu gọn";
+    }
+  }
+
+  positionPanel();
+}
+
+async function handoffUrgentOrder(row,section,{skipConfirm=false,suppressRefresh=false}={}) {
+  if(section!=="canmove" || norm(row.tu_coso).toLowerCase()!==getCurrentCoso()){
+    alert("Chỉ cơ sở chịu trách nhiệm chuyển hàng mới được giao ca.");return;
+  }
+  if(norm(row.trang_thai).toLowerCase()!=="moi"){
+    alert("Chỉ yêu cầu MỚI mới được giao ca.");return;
+  }
+  const manv=getManv();if(!manv){alert("Chưa xác định được nhân viên giao ca.");return;}
+  if(!skipConfirm && !confirm(`Giao ca yêu cầu ${row.masp} size ${row.size} cho ca sau?`))return;
+  const now=new Date().toISOString();
+  const stamp=new Date().toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'});
+  const previous=norm(row.ghichu_dat||'');
+  const label=`Giao ca - ${manv} - ${stamp}`;
+  const note=previous?(previous.includes(label)?previous:previous+' | '+label):label;
+  suppressRealtimeUntil=Date.now()+900;
+  const {data,error}=await ctx.supabase.from(TABLE)
+    .update({giao_ca_by:manv,giao_ca_at:now,manv_thuc_hien:manv,thuc_hien_at:now,ghichu_dat:note,updated_at:now})
+    .eq('id',Number(row.id)).eq('tu_coso',getCurrentCoso()).eq('trang_thai','moi')
+    .select('id');
+  if(error){if(!suppressRefresh){alert('Không giao ca được: '+error.message);await refreshPanel();}return false;}
+  if(!data?.length){if(!suppressRefresh){alert('Yêu cầu không còn ở trạng thái Mới.');await refreshPanel();}return false;}
+  if(!suppressRefresh)await refreshPanel({forceOpen:true});
+  return true;
+}
+
+async function updateStatus(id,nextStatus,selectEl,sectionOverride="") {
+  if(nextStatus==="giao_ca") {
+    const sourceRow = await ctx.supabase.from(TABLE).select("*").eq("id",Number(id)).maybeSingle();
+    if(sourceRow.error || !sourceRow.data) {alert("Không tìm thấy yêu cầu giao ca.");return;}
+    await handoffUrgentOrder(sourceRow.data,sectionOverride||selectEl?.closest("tbody")?.dataset.section||"");return;
+  }
+  if(!VALID_STATUSES.includes(nextStatus)) return;
+  const tr = selectEl?.closest("tr");
+  const section = sectionOverride || tr?.closest("tbody")?.dataset?.section || "";
+  if (section !== "canmove") {
+    alert("⛔ Chỉ cơ sở có trách nhiệm chuyển hàng mới được thay đổi trạng thái dòng này.");
+    await refreshPanel();
+    return;
+  }
+  const manv=getManv(); const now=new Date().toISOString();
+  // V3.08: Khi người dùng CHỦ ĐỘNG chọn Mới (kể cả sau Giao ca),
+  // phải xóa cờ bàn giao tạm thời. Nếu không, 5 phút tiếp theo máy vẫn
+  // hiểu là Giao ca dù trên bảng đang chọn Mới, khiến Tan ca bị lọt.
+  // Các trạng thái kết thúc cũng xóa cờ để không để lại hiệu lực bàn giao cũ.
+  const changes={
+    trang_thai:nextStatus,
+    giao_ca_at:null,
+    giao_ca_by:null,
+    manv_thuc_hien:manv||null,
+    thuc_hien_at:now,
+    updated_at:now
+  };
+  suppressRealtimeUntil=Date.now()+700;
+  const {data,error}=await ctx.supabase.from(TABLE)
+    .update(changes)
+    .eq("id",Number(id))
+    .eq("tu_coso",getCurrentCoso())
+    .select("id,trang_thai,giao_ca_at");
+  if(error){ alert("❌ Không cập nhật được trạng thái: "+error.message); await refreshPanel({forceOpen:true}); return; }
+  if(!Array.isArray(data) || data.length!==1 ||
+      norm(data[0].trang_thai).toLowerCase()!==nextStatus || data[0].giao_ca_at){
+    alert("Chưa xác nhận được trạng thái mới trong Supabase. Vui lòng kiểm tra lại trước khi Tan ca.");
+    await refreshPanel({forceOpen:true});return;
+  }
+  await refreshPanel({forceOpen:true});
+}
+
+// Giao ca toàn bộ MỚI ở cơ sở xuất, không phụ thuộc vào 200 dòng đang hiển thị.
+// Giữ nguyên trang_thai='moi'; giao_ca_at là hiệu lực 5 phút dùng chung với Chấm công V3.
+let handoffAllBusy = false;
+async function handoffAllUrgentOrders(box) {
+  if (handoffAllBusy) return;
+  const coso = getCurrentCoso();
+  const manv = getManv();
+  if (!ctx?.supabase || !["cs1", "cs2"].includes(coso) || !manv) {
+    alert("Không xác định được cơ sở / nhân viên hoặc chưa kết nối Supabase.");
+    return;
+  }
+  const btn = box?.querySelector('#dhkhan-handoff-selected');
+  handoffAllBusy = true;
+  if (btn) {btn.disabled = true; btn.textContent = 'Đang kiểm tra…';}
+  try {
+    const pageSize = 200;
+    const maxPages = 30; // Không giao ca thiếu khi vượt giới hạn kiểm tra.
+    const candidates = [];
+    let complete = false;
+    for (let page = 0; page < maxPages; page++) {
+      const { data, error } = await ctx.supabase.from(TABLE)
+        .select('id, trang_thai, giao_ca_at')
+        .eq('tu_coso', coso).eq('trang_thai', 'moi')
+        .order('id', {ascending: false})
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      if (error) throw error;
+      const batch = Array.isArray(data) ? data : [];
+      candidates.push(...batch);
+      if (batch.length < pageSize) {complete = true; break;}
+    }
+    if (!complete) throw new Error('Số lượng đơn Mới vượt giới hạn kiểm tra an toàn (6000 dòng).');
+    const nowMs = Date.now();
+    const ids = candidates.filter(row => effectiveUrgentStatus(row) === 'moi')
+      .map(row => Number(row.id)).filter(Number.isFinite);
+    if (!ids.length) {
+      alert('Không có dòng Mới nào cần bàn giao tại ' + coso.toUpperCase() + '.');
+      return;
+    }
+    if (!confirm(`Giao ca toàn bộ ${ids.length} dòng MỚI thuộc ${coso.toUpperCase()}?\nCác dòng sẽ trở lại MỚI sau 5 phút nếu chưa xử lý.`)) return;
+    if (btn) btn.textContent = 'Đang giao ca…';
+
+    // Chia nhóm cập nhật, không động vào ghi chú cũ hoặc số lượng/hướng chuyển.
+    // Tất cả dùng một mốc thời gian để việc hết hạn Giao ca thống nhất.
+    const now = new Date().toISOString();
+    let success = 0;
+    const failed = [];
+    suppressRealtimeUntil = Date.now() + 2500;
+    for (let i = 0; i < ids.length; i += 100) {
+      const batchIds = ids.slice(i, i + 100);
+      const {data, error} = await ctx.supabase.from(TABLE)
+        .update({giao_ca_by: manv, giao_ca_at: now,
+          manv_thuc_hien: manv, thuc_hien_at: now, updated_at: now})
+        .in('id', batchIds).eq('tu_coso', coso).eq('trang_thai', 'moi')
+        .select('id');
+      if (error) { console.error('[Đặt hàng khẩn] Giao ca hàng loạt lỗi:', error);failed.push(...batchIds);continue; }
+      success += Array.isArray(data) ? data.length : 0;
+      if ((data||[]).length !== batchIds.length) {
+        const done = new Set((data||[]).map(r => Number(r.id)));
+        failed.push(...batchIds.filter(id => !done.has(id)));
+      }
+    }
+    selectedMoveIds.clear();
+    await refreshPanel({forceOpen:true});
+    if (failed.length) {
+      alert(`Đã giao ca ${success}/${ids.length} dòng.\n${failed.length} dòng chưa cập nhật được hoặc đã được người khác xử lý. Hãy kiểm tra lại trước khi Tan ca.`);
+    } else {
+      alert(`Đã Giao ca ${success} dòng MỚI của ${coso.toUpperCase()}.\nVui lòng Tan ca trong 5 phút. Sau 5 phút các dòng chưa xử lý sẽ trở lại MỚI.`);
+    }
+  } catch (error) {
+    console.error('[Đặt hàng khẩn] Không giao ca được toàn bộ:', error);
+    alert('Không giao ca được: ' + (error?.message || 'Lỗi không xác định') + '. Chưa xác nhận bàn giao thành công.');
+  } finally {
+    handoffAllBusy = false;
+    const current = document.getElementById('dhkhan-handoff-selected');
+    if (current) {current.disabled = false;current.textContent = 'Giao ca';}
+  }
+}
+
+async function deleteSelectedOrders(box) {
+  if (!(await isAdminUser())) return alert("⛔ Chỉ admin được xóa đặt hàng khẩn cấp.");
+  const ids=tabulatorAvailable?[...selectedDeleteIds]:[...box.querySelectorAll(".dhkhan-delete-check:checked")].map(x=>Number(x.dataset.id)).filter(Boolean);
+  if(!ids.length) return alert("Bạn chưa chọn dòng nào để xóa.");
+  if(!confirm(`Bạn chắc chắn muốn xóa vĩnh viễn ${ids.length} dòng đặt hàng khẩn cấp?`)) return;
+  suppressRealtimeUntil=Date.now()+900;
+  const {error}=await ctx.supabase.from(TABLE).delete().in("id",ids);
+  if(error){ console.error("[Đặt hàng khẩn] Xóa lỗi:",error); return alert("❌ Không xóa được đặt hàng: "+(error.message||"Lỗi")); }
+  ids.forEach(id=>{selectedDeleteIds.delete(id);selectedMoveIds.delete(id);});
+  await refreshPanel({forceOpen:true});
+}
+
+async function createUrgentCcnFromChecked(box) {
+  const coso = getCurrentCoso();
+  if (!coso) return alert("Không xác định được cơ sở hiện tại.");
+
+  const ids = tabulatorAvailable?[...selectedMoveIds]:[...box.querySelectorAll('tbody[data-section="canmove"] .dhkhan-move:checked')]
+    .map(x => Number(x.dataset.id))
+    .filter(Boolean);
+
+  if (!ids.length) {
+    alert("Bạn chưa tick dòng nào để tạo hóa đơn CCN.");
+    return;
+  }
+
+  const { data: rows, error } = await ctx.supabase
+    .from(TABLE)
+    .select("id,masp,size,soluong,huong_chuyen,tu_coso,den_coso,trang_thai,ghichu_dat,giao_ca_at")
+    .in("id", ids)
+    .eq("tu_coso", coso);
+
+  if (error) {
+    console.error("[Đặt hàng khẩn] Không đọc được dòng tạo CCN:", error);
+    alert("❌ Không đọc được dữ liệu để tạo hóa đơn CCN.");
+    return;
+  }
+
+  const selected = (rows || []).filter(r => norm(r.trang_thai).toLowerCase() === "moi" && effectiveUrgentStatus(r)==="moi");
+  if (!selected.length) {
+    alert("Các dòng đã chọn không còn ở trạng thái Mới.");
+    await refreshPanel({ forceOpen:true });
+    return;
+  }
+
+  const dirs = [...new Set(selected.map(r => norm(r.huong_chuyen).toLowerCase()))];
+  if (dirs.length !== 1) {
+    alert("Chỉ được tạo một hướng chuyển mỗi lần.");
+    return;
+  }
+
+  const dir = dirs[0];
+  const validFrom = dir === "1v2" ? "cs1" : "cs2";
+  if (validFrom !== coso) {
+    alert("⛔ Chỉ cơ sở thực hiện chuyển hàng mới được tạo hóa đơn CCN.");
+    return;
+  }
+
+  const grouped = new Map();
+  selected.forEach(r => {
+    const code = normMasp(r.masp);
+    if (!grouped.has(code)) grouped.set(code, []);
+    grouped.get(code).push({
+      size: normSize(r.size),
+      // Trang CCN hiện tại đọc số lượng từ field `sl` (không phải `soluong`).
+      sl: Number(r.soluong || 1)
+    });
+  });
+
+  const selectedIds = selected.map(r => Number(r.id)).filter(Boolean);
+  const payload = {
+    dir,
+    note: "ĐẶT HÀNG KHẨN: " + selectedIds.join(","),
+    source: "dat_hang_chuyen_kho_khan",
+    order_ids: selectedIds,
+    items: [...grouped.entries()].map(([masp, items]) => ({ masp, items }))
+  };
+
+  localStorage.setItem("ccn_prefill_payload", JSON.stringify(payload));
+  localStorage.setItem("dhkhan_pending_ids", JSON.stringify(selectedIds));
+  // Quan trọng: không dùng dhck_pending_ids để tránh module chuyển kho tự động xử lý nhầm ID.
+  localStorage.removeItem("dhck_pending_ids");
+
+  // Theo nghiệp vụ đặt hàng KHẨN: ngay khi người dùng đã tick Chuyển và
+  // bấm Tạo hóa đơn CCN, các dòng đó được ghi nhận là ĐÃ CHUYỂN ngay.
+  // Vẫn giữ dhkhan_pending_ids + payload để luồng sau khi lưu hóa đơn có thể
+  // đối chiếu lại an toàn, nhưng trạng thái trên panel cập nhật realtime tức thì.
+  const now = new Date().toISOString();
+  const manv = getManv();
+  suppressRealtimeUntil = Date.now() + 900;
+  const { error: markErr } = await ctx.supabase
+    .from(TABLE)
+    .update({
+      trang_thai: "da_chuyen",
+      manv_thuc_hien: manv || null,
+      thuc_hien_at: now,
+      updated_at: now
+    })
+    .in("id", selectedIds)
+    .eq("tu_coso", coso)
+    .eq("trang_thai", "moi");
+
+  if (markErr) {
+    console.error("[Đặt hàng khẩn] Không cập nhật Đã chuyển khi tạo CCN:", markErr);
+    alert("❌ Không cập nhật được trạng thái Đã chuyển. Chưa mở hóa đơn CCN để tránh lệch dữ liệu.");
+    return;
+  }
+
+  selectedIds.forEach(id=>selectedMoveIds.delete(id));
+  await refreshPanel({ forceOpen: true });
+
+  const url = dir === "2v1" ? "/ccn2v1cs2.html" : "/ccn1v2cs1.html";
+  window.open(location.origin + url, "_blank");
+}
+
+function bindPanelEvents(box) {
+  const togglePanel = () => {
+    panelMode = panelMode === "collapsed" ? "expanded" : "collapsed";
+    applyPanelMode();
+    if(panelMode==="expanded" && tabulatorAvailable)refreshPanel({forceOpen:true});
+  };
+
+  box.querySelector("#dhkhan-toggle")?.addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); togglePanel(); });
+
+  // Có thể bấm vào phần trống/tiêu đề của cả thanh để thu gọn hoặc mở rộng.
+  // Các nút thao tác riêng vẫn hoạt động độc lập, không làm panel đổi trạng thái.
+  box.querySelector("#dhkhan-header")?.addEventListener("click", e => {
+    if (e.target.closest("button,input,select,textarea,a")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    togglePanel();
+  });
+
+  box.querySelector("#dhkhan-close")?.addEventListener("click",e=>{ e.stopPropagation(); panelMode="collapsed"; applyPanelMode(); });
+  box.querySelector("#dhkhan-create")?.addEventListener("click",()=>{ showManualCreate(); });
+  box.querySelector("#dhkhan-delete")?.addEventListener("click",()=>deleteSelectedOrders(box));
+  box.querySelector("#dhkhan-create-ccn")?.addEventListener("click",()=>createUrgentCcnFromChecked(box));
+  box.querySelector("#dhkhan-handoff-selected")?.addEventListener("click",()=>handoffAllUrgentOrders(box));
+
+  box.querySelectorAll(".dhkhan-status-select").forEach(sel=>{
+    sel.addEventListener("change",async()=>{ await updateStatus(Number(sel.dataset.id),norm(sel.value).toLowerCase(),sel); });
+  });
+  box.querySelectorAll(".dhkhan-note").forEach(input=>{
+    input.addEventListener("change",async()=>{ suppressRealtimeUntil=Date.now()+600; const {error}=await ctx.supabase.from(TABLE).update({ghichu_dat:input.value||"",updated_at:new Date().toISOString()}).eq("id",Number(input.dataset.id)); input.style.background=error?"#ffd6d6":"#e8f7e8"; setTimeout(()=>input.style.background="",650); });
+  });
+  // Bấm ở BẤT KỲ vị trí nào trong ô mã SP đều mở StockQuick.
+  // Đồng thời chỉ giữ một dòng được tô vàng để nhận biết dòng đang chọn.
+  box.querySelectorAll(".dhkhan-masp-cell").forEach(cell => cell.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = Number(cell.dataset.id);
+    selectedUrgentRowId = Number.isFinite(id) ? id : null;
+    box.querySelectorAll("tr.dhkhan-selected-row").forEach(tr => tr.classList.remove("dhkhan-selected-row"));
+    cell.closest("tr")?.classList.add("dhkhan-selected-row");
+    openStockQuick(cell.dataset.masp);
+  }));
+}
+
+async function renderPanel(rows,{forceOpen=false,flash=false,refreshSeq=null}={}) {
+  ensureStyles();
+  const coso=getCurrentCoso();
+  if(!coso) return;
+
+  rows = Array.isArray(rows) ? rows : [];
+  nextHandoffExpiry=rows.reduce((min,r)=>{
+    if(norm(r.trang_thai).toLowerCase()!=="moi")return min;
+    const t=Date.parse(r.giao_ca_at||"")+FIVE_MINUTES;
+    return Number.isFinite(t)&&t>Date.now()&&(!min||t<min)?t:min;
+  },0);
+
+  // Không tự ẩn nữa. Nếu code cũ còn truyền trạng thái hidden thì đưa về collapsed.
+  if(panelMode==="hidden") panelMode = forceOpen ? "expanded" : "collapsed";
+
+  const isAdmin = await isAdminUser();
+  if(refreshSeq!==null && refreshSeq!==urgentRefreshSeq)return;
+  const canMove=rows.filter(r=>norm(r.tu_coso).toLowerCase()===coso);
+  const onlyView=rows.filter(r=>norm(r.tu_coso).toLowerCase()!==coso);
+  const canMoveNew=canMove.filter(r=>["moi","dang_chuyen"].includes(norm(r.trang_thai).toLowerCase())).length;
+  const onlyViewNew=onlyView.filter(r=>["moi","dang_chuyen"].includes(norm(r.trang_thai).toLowerCase())).length;
+
+  // Realtime / đổi trạng thái: GIỮ NGUYÊN panel và hai bảng đang thao tác.
+  // Không tháo bảng ra khỏi DOM vì sẽ làm điện thoại nhảy lên đầu,
+  // mất dropdown đang mở và mất các ô lọc.
+  const existingPanel=document.getElementById('dhkhan-panel');
+  if(existingPanel && tabulatorAvailable && hasUrgentTables()) {
+    const ok=await updateUrgentTables(canMove.map(enrichedRow),onlyView.map(enrichedRow));
+    if(ok) {
+      existingPanel.dataset.fullTitleHtml=`🚨 ĐẶT HÀNG KHẨN CẤP | Cần chuyển: ${canMoveNew} | Theo dõi: ${onlyViewNew}`;
+      const title=existingPanel.querySelector('#dhkhan-header-title');
+      if(title) title.textContent=existingPanel.dataset.fullTitleHtml;
+      // Không nháy popup khi đồng bộ Realtime: tránh phân tâm trên điện thoại.
+      if(forceOpen && panelMode!=='expanded'){panelMode='expanded';applyPanelMode();}
+      return;
+    }
+  }
+
+  destroyUrgentTables();
+  existingPanel?.remove();
+
+  const box=document.createElement("div");
+  box.id="dhkhan-panel";
+  box.style.cssText=`position:fixed;background:#ffe5df;border:2px solid #d00000;border-radius:7px;box-shadow:0 3px 14px rgba(0,0,0,.3);overflow:auto;padding:6px;box-sizing:border-box;`;
+
+  const fullTitleHtml = `🚨 ĐẶT HÀNG KHẨN CẤP | Cần chuyển: ${canMoveNew} | Theo dõi: ${onlyViewNew}`;
+  box.dataset.fullTitleHtml = fullTitleHtml;
+
+  box.innerHTML=`
+    <div id="dhkhan-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:5;background:#ffe5df;min-height:26px;font-weight:900;color:#9b0000;">
+      <span id="dhkhan-header-title">${fullTitleHtml}</span>
+      <div id="dhkhan-header-actions" style="display:flex;gap:5px;align-items:center;">
+        <button id="dhkhan-create" style="font-weight:800;color:#9b0000;">+ Đặt khẩn</button>
+        ${isAdmin ? `<button id="dhkhan-delete" style="font-weight:800;color:#9b0000;">Xóa đặt hàng</button>` : ""}
+        <button id="dhkhan-handoff-selected" style="font-weight:800;color:#865500;" title="Giao ca tất cả dòng Mới của cơ sở xuất, không cần tích chọn">Giao ca</button>
+        <button id="dhkhan-create-ccn" style="font-weight:800;color:#0b57d0;">Tạo hóa đơn CCN</button>
+        <button id="dhkhan-toggle" title="Thu gọn" style="border:0;background:transparent;font-size:18px;font-weight:900;">▼</button>
+        <button id="dhkhan-close" title="Thu gọn" style="border:0;background:transparent;font-size:20px;font-weight:900;color:#9b0000;">×</button>
+      </div>
+    </div>
+    <div id="dhkhan-body" style="display:${panelMode==="collapsed"?"none":"block"};">
+      <div style="font-size:12px;color:#7a3630;margin:4px 0 5px;">Hiển thị ${rows.length} dòng mới nhất (tối đa ${HISTORY_LIMIT}), sắp xếp theo thời gian tạo mới nhất.</div>
+      ${tabulatorAvailable?`<div style="display:flex;justify-content:flex-end;gap:8px;margin:4px 0"><button id="dhkhan-copy">Copy dòng đang lọc</button><button id="dhkhan-reset-filter">Xóa bộ lọc</button></div><div id="dhkhan-grid-canmove" class="dhkhan-tbl-wrap"></div><div style="font-weight:800;margin:8px 0 4px;color:#555;">Theo dõi / yêu cầu từ cơ sở này</div><div id="dhkhan-grid-onlyview" class="dhkhan-tbl-wrap"></div>`:`
+      <table style="width:100%;border-collapse:collapse;background:#fff;">
+        <thead><tr style="background:#f7b3a9;"><th>Xóa</th><th>Chuyển</th><th>Mã SP</th><th>SL</th><th>Size</th><th>Hướng</th><th>NV đặt</th><th>Giờ đặt</th><th>NV thực hiện</th><th>Giờ thực hiện</th><th>Ghi chú</th><th>Trạng thái</th></tr></thead>
+        <tbody data-section="canmove">${renderRows(canMove,true,isAdmin)}</tbody>
+      </table>
+      <div style="font-weight:800;margin:8px 0 4px;color:#555;">Theo dõi / yêu cầu từ cơ sở này</div>
+      <table style="width:100%;border-collapse:collapse;background:#fafafa;">
+        <thead><tr style="background:#ddd;"><th>Xóa</th><th>Chuyển</th><th>Mã SP</th><th>SL</th><th>Size</th><th>Hướng</th><th>NV đặt</th><th>Giờ đặt</th><th>NV thực hiện</th><th>Giờ thực hiện</th><th>Ghi chú</th><th>Trạng thái</th></tr></thead>
+        <tbody data-section="onlyview">${renderRows(onlyView,false,isAdmin)}</tbody>
+      </table>`}
+    </div>`;
+
+  document.body.appendChild(box);
+  bindPanelEvents(box);
+  if(tabulatorAvailable){
+    const callbacks={isAdmin,currentCoso:coso,statusOptions,statusText,effectiveStatus:effectiveUrgentStatus,fmtTime,
+      deleteIds:selectedDeleteIds,moveIds:selectedMoveIds,
+      onChecked:(type,id,checked)=>{const set=type==='delete'?selectedDeleteIds:selectedMoveIds;checked?set.add(id):set.delete(id);},
+      onStatus:(row,status,select,section)=>updateStatus(row.id,status,select,section),
+      onNote:async(row,note)=>{if(norm(row.tu_coso).toLowerCase()!==coso)return;
+        const {error}=await ctx.supabase.from(TABLE).update({ghichu_dat:note,updated_at:new Date().toISOString()}).eq('id',Number(row.id)).eq('tu_coso',coso);
+        if(error){alert('Không lưu ghi chú: '+error.message);await refreshPanel();}},
+      onProduct:row=>{selectedUrgentRowId=Number(row.id);openStockQuick(row.masp);}
+    };
+    createUrgentTable(box.querySelector('#dhkhan-grid-canmove'),canMove.map(enrichedRow),'canmove',callbacks);
+    createUrgentTable(box.querySelector('#dhkhan-grid-onlyview'),onlyView.map(enrichedRow),'onlyview',callbacks);
+    box.querySelector('#dhkhan-copy')?.addEventListener('click',()=>copyUrgentVisible('canmove'));
+    box.querySelector('#dhkhan-reset-filter')?.addEventListener('click',()=>clearUrgentFilters());
+  }
+  applyPanelMode();
+
+}
+async function refreshPanel(options={}) {
+  const refreshSeq=++urgentRefreshSeq;
+  const rows=await fetchOrders();
+  if(refreshSeq!==urgentRefreshSeq)return;
+  await renderPanel(rows,{...options,refreshSeq});
+}
+
+function sanitizeQtyInput(input) {
+  const cleaned=String(input.value||"").replace(/[^0-9]/g,"").replace(/^0+(?=\d)/,"");
+  input.value=cleaned;
+}
+function bindManualCreateKeyboard(box) {
+  const focusables=[box.querySelector("#dhkhan-masp"),...box.querySelectorAll(".dhkhan-qty"),box.querySelector("#dhkhan-note")].filter(Boolean);
+  focusables.forEach((el,index)=>{
+    el.addEventListener("focus",()=>{ try{el.select?.();}catch(_){} });
+    el.addEventListener("keydown",e=>{
+      if(e.key!=="Enter") return;
+      e.preventDefault(); e.stopPropagation();
+      const next=focusables[index+1];
+      if(next){ next.focus(); next.select?.(); }
+      else box.querySelector("#dhkhan-save")?.focus();
+    });
+  });
+  box.querySelectorAll(".dhkhan-qty").forEach(input=>input.addEventListener("input",()=>sanitizeQtyInput(input)));
+}
+
+function dirToCosoPair(dir) {
+  const d = norm(dir).toLowerCase();
+  if (d === "1v2") return { dir:"1v2", from:"cs1", to:"cs2" };
+  if (d === "2v1") return { dir:"2v1", from:"cs2", to:"cs1" };
+  return null;
+}
+
+function defaultIncomingDirection() {
+  const coso = getCurrentCoso();
+  if (coso === "cs1") return "2v1";
+  if (coso === "cs2") return "1v2";
+  return "";
+}
+
+function directionLabel(dir) {
+  const p = dirToCosoPair(dir);
+  return p ? `${p.from.toUpperCase()} → ${p.to.toUpperCase()}` : "-";
+}
+
+function oppositeDirection(dir) {
+  return norm(dir).toLowerCase() === "1v2" ? "2v1" : "1v2";
+}
+
+function makeUrgentCreateDraggable(box, handle) {
+  if (!box || !handle || window.matchMedia("(max-width:800px)").matches) return;
+  let dragging = false;
+  let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+  handle.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest("button,input,select,textarea,a")) return;
+    const r = box.getBoundingClientRect();
+    dragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = r.left;
+    startTop = r.top;
+    box.style.left = `${startLeft}px`;
+    box.style.top = `${startTop}px`;
+    box.style.transform = "none";
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  const move = (e) => {
+    if (!dragging) return;
+    const maxLeft = Math.max(0, window.innerWidth - box.offsetWidth);
+    const maxTop = Math.max(0, window.innerHeight - Math.min(box.offsetHeight, window.innerHeight));
+    const nextLeft = Math.min(maxLeft, Math.max(0, startLeft + e.clientX - startX));
+    const nextTop = Math.min(maxTop, Math.max(0, startTop + e.clientY - startY));
+    box.style.left = `${nextLeft}px`;
+    box.style.top = `${nextTop}px`;
+    e.preventDefault();
+  };
+  const up = () => { dragging = false; };
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", up);
+  box.dataset.dragCleanup = "1";
+}
+
+function confirmUrgentDirection({ masp, direction, totalQty }) {
+  return new Promise((resolve) => {
+    document.getElementById("dhkhan-confirm-direction")?.remove();
+    const overlay = document.createElement("div");
+    overlay.id = "dhkhan-confirm-direction";
+    overlay.style.cssText = `position:fixed;inset:0;z-index:${URGENT_CONFIRM_Z};background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;padding:14px;`;
+    overlay.innerHTML = `
+      <div style="width:min(430px,94vw);background:#fff;border:2px solid #d00000;border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.35);padding:16px;text-align:center;">
+        <div style="font-weight:900;font-size:19px;color:#9b0000;margin-bottom:12px;">XÁC NHẬN ĐẶT HÀNG KHẨN</div>
+        <div style="font-size:16px;line-height:1.55;">
+          Hướng đang đặt:<br>
+          <b style="font-size:22px;color:#1745d1;text-decoration:underline;">${esc(directionLabel(direction))}</b><br>
+          Mã: <b>${esc(masp)}</b> &nbsp;•&nbsp; Tổng SL: <b>${Number(totalQty||0)}</b>
+        </div>
+        <div style="display:flex;justify-content:center;gap:12px;margin-top:16px;">
+          <button id="dhkhan-confirm-cancel" style="min-width:110px;padding:9px 14px;font-weight:800;">Hủy</button>
+          <button id="dhkhan-confirm-ok" style="min-width:110px;padding:9px 14px;font-weight:900;background:#d00000;color:#fff;border:0;border-radius:6px;">Đồng ý</button>
+        </div>
+      </div>`;
+    // Không cho click trong popup xác nhận lan tới global close của StockQuick.
+    overlay.addEventListener("click", e => e.stopPropagation());
+    overlay.addEventListener("mousedown", e => e.stopPropagation());
+    document.body.appendChild(overlay);
+    const done = (v) => { overlay.remove(); resolve(v); };
+    overlay.querySelector("#dhkhan-confirm-cancel").onclick = (e) => { e.preventDefault(); e.stopPropagation(); done(false); };
+    overlay.querySelector("#dhkhan-confirm-ok").onclick = (e) => { e.preventDefault(); e.stopPropagation(); done(true); };
+  });
+}
+
+function showManualCreate(options={}) {
+  document.getElementById("dhkhan-create-box")?.remove();
+  document.getElementById("dhkhan-confirm-direction")?.remove();
+  if (panelMode === "hidden" && options.source !== "stockquick") { panelMode = "expanded"; refreshPanel({forceOpen:true}); }
+
+  const presetMasp = normMasp(options.masp || "");
+  const { qtyMap:suggestedQty, dirMap:suggestedDirBySize } = buildSuggestedPresetMaps(options.suggestedItems || []);
+  const source = options.source || "manual";
+  const hasMixedSuggestedDirections = new Set(
+    [...suggestedDirBySize.values()].filter(d => ["1v2", "2v1"].includes(d))
+  ).size > 1;
+  const coso = getCurrentCoso();
+  if (!coso) return alert("Không xác định được cơ sở hiện tại.");
+
+  // +Đặt khẩn trực tiếp: mặc định cơ sở khác -> cơ sở hiện tại.
+  // Mở từ StockQuick: nếu gợi ý có đúng 1 hướng thì ưu tiên hướng gợi ý.
+  let currentDirection = norm(options.initialDirection).toLowerCase();
+  if (!["1v2","2v1"].includes(currentDirection)) currentDirection = defaultIncomingDirection();
+  if (!["1v2","2v1"].includes(currentDirection)) return alert("Không xác định được hướng chuyển.");
+
+  const box = document.createElement("div");
+  box.id = "dhkhan-create-box";
+  box.style.cssText = `position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:${URGENT_CREATE_Z};background:#fff;border:2px solid #d00000;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.32);padding:12px;width:760px;max-width:98vw;overflow:auto;`;
+  box.innerHTML = `
+    <div id="dhkhan-create-drag" class="dhkhan-drag-handle" style="font-weight:900;color:#111;font-size:18px;margin:-4px -4px 10px;padding:5px 4px;">🚨 ĐẶT HÀNG KHẨN CẤP</div>
+    <div class="dhkhan-grid">
+      <div class="dhkhan-grid-label">Mã SP</div>
+      <input id="dhkhan-masp" class="dhkhan-wide" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;" value="${esc(presetMasp)}">
+
+      <div class="dhkhan-grid-label">Size</div>
+      ${SIZE_OPTIONS.map(s=>`<div class="dhkhan-size-head">${s}</div>`).join("")}
+
+      <div class="dhkhan-grid-label">Số lượng</div>
+      ${SIZE_OPTIONS.map(s=>{
+        const suggestedDir = suggestedDirBySize.get(s) || "";
+        const bg = suggestedDir === "1v2" ? "#d9fbe6" : suggestedDir === "2v1" ? "#eee5ff" : "";
+        const title = suggestedDir ? `Gợi ý StockQuick: ${directionLabel(suggestedDir)}` : "";
+        return `<input class="dhkhan-qty" data-size="${s}" data-suggested-dir="${esc(suggestedDir)}" type="text" inputmode="text" enterkeyhint="next" autocomplete="off" value="${suggestedQty.get(s)||""}" style="${bg ? `background:${bg};font-weight:800;` : ""}" title="${esc(title)}">`;
+      }).join("")}
+
+      <div class="dhkhan-grid-label">Hướng</div>
+      <div class="dhkhan-wide dhkhan-direction">
+        <button id="dhkhan-direction-toggle" type="button" class="dhkhan-direction-btn" title="Hướng này chỉ áp dụng cho size nhập thêm/không có gợi ý StockQuick">⇄ <span id="dhkhan-direction-label">${esc(directionLabel(currentDirection))}</span></button>
+        ${hasMixedSuggestedDirections ? `<span style="margin-left:10px;font-size:13px;color:#7c3aed;font-weight:800;">Các size tô màu sẽ giữ đúng hướng gợi ý riêng của StockQuick</span>` : ""}
+      </div>
+
+      <div class="dhkhan-grid-label">Ghi chú</div>
+      <input id="dhkhan-note" class="dhkhan-wide" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" placeholder="VD: khách đang đợi">
+    </div>
+    <div class="dhkhan-actions"><button id="dhkhan-cancel">Hủy</button><button id="dhkhan-save" style="background:#d00000;color:#fff;border:0;border-radius:6px;">ĐẶT KHẨN</button></div>`;
+
+  // Quan trọng: mọi click/mousedown trong popup khẩn không được lan tới document,
+  // nếu không global click handler của StockQuick sẽ đóng StockQuick phía sau.
+  box.addEventListener("click", e => e.stopPropagation());
+  box.addEventListener("mousedown", e => e.stopPropagation());
+  document.body.appendChild(box);
+  bindManualCreateKeyboard(box);
+  makeUrgentCreateDraggable(box, box.querySelector("#dhkhan-create-drag"));
+
+  const maspEl = box.querySelector("#dhkhan-masp");
+  const directionLabelEl = box.querySelector("#dhkhan-direction-label");
+  const refreshDirectionLabel = () => { if (directionLabelEl) directionLabelEl.textContent = directionLabel(currentDirection); };
+
+  box.querySelector("#dhkhan-direction-toggle")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    currentDirection = oppositeDirection(currentDirection);
+    refreshDirectionLabel();
+  });
+
+  setTimeout(() => {
+    const firstQty = [...box.querySelectorAll(".dhkhan-qty")].find(x => !x.value);
+    (presetMasp ? (firstQty || box.querySelector(".dhkhan-qty")) : maspEl)?.focus();
+  }, 20);
+
+  box.querySelector("#dhkhan-cancel").onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Chỉ đóng popup đặt khẩn; StockQuick phía sau giữ nguyên.
+    box.remove();
+  };
+
+  box.querySelector("#dhkhan-save").onclick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const masp = normMasp(maspEl?.value);
+    const note = box.querySelector("#dhkhan-note")?.value || "";
+    const qtyEntries = [...box.querySelectorAll(".dhkhan-qty")]
+      .map(input => ({
+        size:input.dataset.size,
+        soluong:Number(String(input.value||"").trim()||0),
+        suggestedDir:norm(input.dataset.suggestedDir).toLowerCase()
+      }))
+      .filter(x => Number.isFinite(x.soluong) && x.soluong > 0);
+
+    if (!masp) return alert("Bạn cần nhập Mã SP.");
+    if (!qtyEntries.length) return alert("Bạn cần nhập số lượng cho ít nhất một size.");
+
+    const {data,error} = await ctx.supabase.from("dmhanghoa").select("masp").eq("masp",masp).maybeSingle();
+    if (error || !data) return alert("❌ Mã sản phẩm không tồn tại trong danh mục.");
+
+    // QUAN TRỌNG: hướng được xác định theo từng size.
+    // - Size được StockQuick gợi ý: giữ nguyên hướng gợi ý của chính size đó.
+    // - Size người dùng nhập thêm / không có gợi ý: dùng hướng mặc định đang chọn.
+    const items = qtyEntries.map(x => {
+      const dir = ["1v2", "2v1"].includes(x.suggestedDir) ? x.suggestedDir : currentDirection;
+      const pair = dirToCosoPair(dir);
+      return pair ? {
+        masp,
+        size:x.size,
+        soluong:x.soluong,
+        huong_chuyen:pair.dir,
+        tu_coso:pair.from,
+        den_coso:pair.to
+      } : null;
+    }).filter(Boolean);
+
+    if (items.length !== qtyEntries.length) return alert("Không xác định được hướng chuyển cho một số size.");
+
+    // Xác nhận lần cuối theo TỪNG HƯỚNG để tránh trường hợp gợi ý có cả 1v2 và 2v1.
+    const groupedConfirm = new Map();
+    items.forEach(x => {
+      const key = x.huong_chuyen;
+      if (!groupedConfirm.has(key)) groupedConfirm.set(key, { qty:0, sizes:[] });
+      const g = groupedConfirm.get(key);
+      g.qty += Number(x.soluong || 0);
+      g.sizes.push(`${x.size}×${x.soluong}`);
+    });
+
+    const confirmText = [...groupedConfirm.entries()]
+      .map(([dir,g]) => `${directionLabel(dir)}: ${g.sizes.join(", ")} (SL ${g.qty})`)
+      .join("\n");
+
+    const confirmed = window.confirm(`XÁC NHẬN ĐẶT HÀNG KHẨN\n\nMã: ${masp}\n${confirmText}`);
+    if (!confirmed) return;
+
+    const ok = await insertUrgentOrders(items,note,source);
+    if (ok) {
+      // Chỉ đóng popup đặt khẩn; không đóng StockQuick phía sau.
+      box.remove();
+    }
+  };
+}
+
+function setupRealtime() {
+  if(!ctx?.supabase||realtimeChannel) return;
+  realtimeChannel=ctx.supabase.channel("dat_hang_chuyen_kho_khan_realtime")
+    .on("postgres_changes",{event:"*",schema:"public",table:TABLE},async payload=>{
+      if(Date.now()<suppressRealtimeUntil) return;
+      const eventType=payload?.eventType||payload?.event||""; const row=payload?.new||{}; const current=getCurrentCoso();
+      const incoming=eventType==="INSERT" && norm(row.tu_coso).toLowerCase()===current;
+      if(incoming){
+        // Có đơn mới: phát âm thanh + nháy nút/panel, nhưng KHÔNG tự bung panel.
+        playUrgentSound();
+        await refreshPanel({flash:true});
+      } else {
+        await refreshPanel();
+      }
+    }).subscribe(status=>{ if(status==="CHANNEL_ERROR") console.warn("[Đặt hàng khẩn] Realtime channel lỗi"); });
+}
+
+function bindStockQuickExisting() {
+  const tryBind=(popup,payload)=>{
+    if(!popup||popup.dataset.dhkhanBound==="1") return;
+    const th=popup.querySelector(".sq-dhck-open")||popup.querySelector("thead th:first-child"); if(!th) return;
+    popup.dataset.dhkhanBound="1"; th.textContent="Size / Đặt khẩn"; th.title="Bấm để tạo đặt hàng chuyển kho khẩn cấp"; th.style.cursor="pointer"; th.style.color="#d00000"; th.style.fontWeight="800";
+    th.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();openFromStockQuick(popup,payload);},true);
+  };
+  window.addEventListener("stockquick:rendered",e=>tryBind(e.detail?.popup,e.detail?.payload));
+  setTimeout(()=>tryBind(window.__LAST_STOCKQUICK_POPUP__,window.__LAST_STOCKQUICK_PAYLOAD__),350);
+}
+
+export function initDatHangChuyenKhoKhan(options={}) {
+  // Gộp context để tương thích cả trang cũ đang init riêng và cơ chế StockQuick tự nạp.
+  ctx = { ...(ctx || {}), ...(options || {}) };
+  ensureStyles();
+  ensureDhkhanFab();
+
+  // API global luôn được bảo đảm tồn tại, nhưng listener/realtime/interval chỉ khởi tạo 1 lần.
+  window.DatHangChuyenKhoKhan={
+    openFromStockQuick,
+    openManual:()=>{panelMode="expanded"; refreshPanel({forceOpen:true}); showManualCreate();},
+    refresh:()=>refreshPanel()
+  };
+
+  if (moduleInitialized) {
+    // Nếu một trang cũ gọi init lần 2 với context đầy đủ hơn thì chỉ cập nhật dữ liệu/panel.
+    refreshPanel();
+    return window.DatHangChuyenKhoKhan;
+  }
+
+  moduleInitialized = true;
+  setupAudioUnlock();
+  bindStockQuickExisting(); loadUrgentTabulator().then(ok=>{tabulatorAvailable=ok;refreshPanel();}); setupRealtime();
+  window.addEventListener("resize",schedulePosition); window.visualViewport?.addEventListener("resize",schedulePosition);
+  setInterval(()=>{if(document.getElementById("dhkhan-panel")) schedulePosition();},2000);
+  setInterval(()=>{if(nextHandoffExpiry && Date.now()>=nextHandoffExpiry && document.getElementById("dhkhan-panel"))refreshPanel();},15000);
+  return window.DatHangChuyenKhoKhan;
+}
