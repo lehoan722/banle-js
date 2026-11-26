@@ -26,10 +26,14 @@
         display:inline-flex; align-items:center; justify-content:center;
         vertical-align:middle; margin-right:3px; padding:1px 3px;
         border-radius:3px; min-width:13px; font-size:12px;
-        font-weight:800; line-height:1.2; cursor:help;
+        font-weight:800; line-height:1.2; cursor:pointer; user-select:none;
       }
       .sq-stock-popup .sq-kn-xn-x { background:#ffedd5; color:#9a3412; border:1px solid #fdba74; }
       .sq-stock-popup .sq-kn-xn-n { background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; }
+      .sq-kn-invoice-mask {position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;}
+      .sq-kn-invoice-dialog {width:min(94vw,470px);max-height:80vh;overflow:auto;background:#fff;color:#16243b;border-radius:12px;padding:16px;box-shadow:0 10px 36px rgba(0,0,0,.25);font:inherit;}
+      .sq-kn-invoice-dialog button {cursor:pointer;min-height:40px;}
+      .sq-kn-invoice-link {display:block;width:100%;text-align:left;border:1px solid #cbd5e1;background:#f8fafc;padding:11px;margin:7px 0;border-radius:8px;color:#1d4ed8;word-break:break-word;}
     `;
     document.head.appendChild(style);
   }
@@ -44,6 +48,59 @@
     const rows = Array.isArray(data) ? data : [];
     cache.set(key, { rows, at: Date.now() });
     return rows;
+  }
+  function invoiceUrl(sohd) {
+    const url = new URL("/xemhoadon111.html", window.location.origin);
+    url.searchParams.set("sohd", sohd);
+    return url.toString();
+  }
+  function openInvoice(sohd) {
+    if (!/^xcncs[12]_[a-z0-9_-]+$/i.test(sohd)) return;
+    window.open(invoiceUrl(sohd), "_blank", "noopener,noreferrer");
+  }
+  function showInvoicePicker(invoices, caption) {
+    const ids = Array.from(new Set(invoices.map(x => String(x || "").trim())))
+      .filter(x => /^xcncs[12]_[a-z0-9_-]+$/i.test(x));
+    if (!ids.length) return;
+    if (ids.length === 1) { openInvoice(ids[0]); return; }
+    document.querySelectorAll(".sq-kn-invoice-mask").forEach(el => el.remove());
+    const overlay = document.createElement("div");
+    overlay.className = "sq-kn-invoice-mask";
+    overlay.setAttribute("role", "presentation");
+    const dialog = document.createElement("div");
+    dialog.className = "sq-kn-invoice-dialog";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    const header = document.createElement("div");
+    header.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:12px";
+    const heading = document.createElement("strong");
+    heading.textContent = `Chọn phiếu xuất chi nhánh (${ids.length})`;
+    const close = document.createElement("button");
+    close.textContent = "Đóng";
+    close.type = "button";
+    close.addEventListener("click", () => overlay.remove());
+    header.append(heading, close);
+    const sub = document.createElement("p");
+    sub.textContent = caption;
+    sub.style.cssText = "font-size:13px;color:#475569;margin:10px 0";
+    dialog.append(header, sub);
+    for (const id of ids) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sq-kn-invoice-link";
+      button.textContent = id;
+      button.addEventListener("click", () => { openInvoice(id); overlay.remove(); });
+      dialog.appendChild(button);
+    }
+    overlay.appendChild(dialog);
+    overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+    document.addEventListener("keydown", function dismiss(e) {
+      if (e.key === "Escape" || !overlay.isConnected) { overlay.remove(); document.removeEventListener("keydown", dismiss); }
+    });
+    document.body.appendChild(overlay);
+  }
+  function isTouchDevice() {
+    return window.matchMedia?.("(pointer: coarse)")?.matches === true;
   }
   function render(popup, rows) {
     if (!popup?.isConnected) return;
@@ -71,7 +128,22 @@
           badge.textContent = char;
           badge.title = `${char === "X" ? "Xuất" : "Nhập"} ${from.toUpperCase()} → ${to.toUpperCase()} · ${info}`;
           badge.setAttribute("aria-label", badge.title);
-          badge.addEventListener("click", e => e.stopPropagation());
+          const open = e => {
+            e.preventDefault();
+            e.stopPropagation();
+            showInvoicePicker(inv, `${char === "X" ? "Xuất" : "Nhập"} ${from.toUpperCase()} → ${to.toUpperCase()} · Size ${size} · ${qty} SP chưa kiểm nhập`);
+          };
+          badge.title += " · Nhấp đúp để xem hóa đơn (điện thoại: chạm một lần)";
+          badge.setAttribute("tabindex", "0");
+          badge.setAttribute("role", "button");
+          badge.addEventListener("click", e => {
+            e.stopPropagation();
+            if (isTouchDevice()) open(e);
+          });
+          badge.addEventListener("dblclick", open);
+          badge.addEventListener("keydown", e => {
+            if (e.key === "Enter" || e.key === " ") open(e);
+          });
           td.prepend(badge);
         }
       }
