@@ -194,8 +194,8 @@ function buildRows(history) {
       historyCell("Nhập mua", esc(blankZero(nhap)), "n"),
       historyCell("Bán CS1", movementHtml(b1, r.size_ban_cs1), "n", formattedMovement(b1, r.size_ban_cs1)),
       historyCell("Bán CS2", movementHtml(b2, r.size_ban_cs2), "n", formattedMovement(b2, r.size_ban_cs2)),
-      historyCell("CS1 → CS2", movementHtml(c12, r.size_chuyen_cs1_cs2), "n", formattedMovement(c12, r.size_chuyen_cs1_cs2)),
-      historyCell("CS2 → CS1", movementHtml(c21, r.size_chuyen_cs2_cs1), "n", formattedMovement(c21, r.size_chuyen_cs2_cs1)),
+      historyCell("CS1 → CS2", c12 ? `<button type="button" class="ps90-transfer" data-date="${esc(String(ngay).slice(0,10))}" data-direction="cs1_cs2" title="Xem hóa đơn chuyển CS1 → CS2">${movementHtml(c12, r.size_chuyen_cs1_cs2)}</button>` : "", "n", formattedMovement(c12, r.size_chuyen_cs1_cs2)),
+      historyCell("CS2 → CS1", c21 ? `<button type="button" class="ps90-transfer" data-date="${esc(String(ngay).slice(0,10))}" data-direction="cs2_cs1" title="Xem hóa đơn chuyển CS2 → CS1">${movementHtml(c21, r.size_chuyen_cs2_cs1)}</button>` : "", "n", formattedMovement(c21, r.size_chuyen_cs2_cs1)),
       historyCell("Trả NCC", movementHtml(traNcc, r.size_tra_ncc), "n", formattedMovement(traNcc, r.size_tra_ncc)),
       historyCell("Tổng bán", esc(blankZero(tongBan)), "n ps90-bold"),
       historyCell("Bán tích lũy / ngày / tốc độ", cumulativeHtml(r), rank[i], tich),
@@ -223,7 +223,24 @@ function ensureStyle() {
     .ps90-head{
       display:flex;align-items:center;gap:8px;flex-wrap:wrap;
       padding:10px 12px;border-bottom:1px solid #dbe3ee;
+      cursor:grab;touch-action:none;user-select:none;
     }
+    .ps90-head.ps90-dragging{cursor:grabbing}
+    .ps90-tools,.ps90-tools *{cursor:pointer;touch-action:manipulation}
+    .ps90-transfer{display:block;width:100%;border:0;background:transparent;padding:3px 1px;
+      color:inherit;font:inherit;cursor:pointer;border-radius:5px;touch-action:manipulation;}
+    .ps90-transfer:hover,.ps90-transfer:focus-visible{background:#e0f2fe;outline:1px solid #60a5fa}
+    .ps90-transfer .ps90-quantity{color:#1267ab;text-decoration:underline;text-underline-offset:2px}
+    .ps90-detail{position:fixed;z-index:320205;background:#fff;border:1px solid #a6cce7;border-radius:12px;
+      box-shadow:0 16px 38px rgba(15,23,42,.26);padding:12px;width:min(360px,calc(100vw - 20px));
+      max-height:min(440px,calc(100dvh - 25px));overflow:auto;color:#0f172a;font-size:13px;line-height:1.45;}
+    .ps90-detail-header{display:flex;align-items:start;justify-content:space-between;gap:6px;margin-bottom:7px}
+    .ps90-detail-close{border:0;background:#f1f5f9;border-radius:7px;padding:3px 8px;cursor:pointer;font-size:18px}
+    .ps90-detail-row{padding:9px 0;border-top:1px solid #e2e8f0}
+    .ps90-detail-open{margin-top:5px;border:1px solid #a5cbee;border-radius:6px;
+      color:#0b65ac;background:#eff6ff;padding:5px 9px;cursor:pointer;font-weight:700}
+    .ps90-detail-small{font-size:12px;color:#475569;overflow-wrap:anywhere}
+    .ps90-detail-warn{font-size:12px;color:#b45309}
     .ps90-title{font-size:19px;font-weight:900;color:#155e9f;line-height:1.2;overflow-wrap:anywhere}
     .ps90-sub{font-size:12px;color:#64748b;margin-top:3px}
     .ps90-tools{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
@@ -365,6 +382,60 @@ async function loadPagedHistory(masp, days, onProgress) {
 
 const loadAllHistory = (masp, onProgress) => loadPagedHistory(masp, 0, onProgress);
 
+// Chỉ truy vấn hóa đơn khi người dùng nhấn ô số lượng chuyển, không ảnh hưởng thời gian mở popup.
+async function fetchTransferInvoices(masp, ngay, direction) {
+  const { data, error } = await supabase.rpc("rpc_ps90_hoa_don_chuyen_ngay_v1", {
+    p_masp: masp, p_ngay: ngay, p_huong: direction
+  });
+  if (error) throw error;
+  return normalizeArray(data);
+}
+
+function openTransferInvoice(sohd) {
+  const url = `${window.location.origin}/xemhoadon111.html?sohd=${encodeURIComponent(sohd)}`;
+  const win = window.open(url, "_blank", "noopener");
+  if (!win) window.location.href = url;
+}
+
+function setupDragHead(card, head, onMoveStart) {
+  if (!card || !head) return;
+  let drag = null;
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(n, Math.max(lo, hi)));
+  head.addEventListener("pointerdown", e => {
+    if (e.button !== 0 || e.target.closest("button, a, input, select")) return;
+    const rect = card.getBoundingClientRect();
+    // Chuyển từ layout centered sang vị trí tuyệt đối trong overlay.
+    card.style.position = "fixed";
+    card.style.margin = "0";
+    card.style.left = `${rect.left}px`;
+    card.style.top = `${rect.top}px`;
+    card.style.width = `${rect.width}px`;
+    drag = { x:e.clientX, y:e.clientY, left:rect.left, top:rect.top, id:e.pointerId };
+    head.classList.add("ps90-dragging");
+    try { head.setPointerCapture(e.pointerId); } catch(_) {}
+    onMoveStart?.();
+    e.preventDefault();
+  });
+  head.addEventListener("pointermove", e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const rect = card.getBoundingClientRect();
+    // Cho phép kéo một phần popup ra ngoài rìa để nhìn bảng phía sau,
+    // nhưng luôn giữ ít nhất 240px chiều ngang và thanh tiêu đề có thể kéo lại.
+    const visibleGrip = Math.min(240, rect.width);
+    card.style.left = `${clamp(drag.left + e.clientX - drag.x, -rect.width + visibleGrip, innerWidth - visibleGrip)}px`;
+    card.style.top = `${clamp(drag.top + e.clientY - drag.y, 0, innerHeight - Math.min(56, rect.height))}px`;
+  });
+  const finish = e => {
+    if (drag && e.pointerId === drag.id) {
+      drag = null;
+      head.classList.remove("ps90-dragging");
+      try {head.releasePointerCapture(e.pointerId);}catch(_){}
+    }
+  };
+  head.addEventListener("pointerup", finish);
+  head.addEventListener("pointercancel", finish);
+}
+
 async function open(maspRaw) {
   const masp = String(maspRaw || "").trim().toUpperCase();
   if (!masp) return;
@@ -397,6 +468,73 @@ async function open(maspRaw) {
   const sub = overlay.querySelector(".ps90-sub");
   const wrap = overlay.querySelector(".ps90-wrap");
   const btnAll = overlay.querySelector(".ps90-all");
+  const head = overlay.querySelector(".ps90-head");
+  let detailPanel = null;
+  let detailRequest = 0;
+  const closeDetail = () => {
+    detailRequest++;
+    detailPanel?.remove();
+    detailPanel = null;
+  };
+  setupDragHead(card, head, closeDetail);
+
+  async function showTransferDetail(button) {
+    const ngay = button.dataset.date;
+    const direction = button.dataset.direction;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ngay || "") || !["cs1_cs2", "cs2_cs1"].includes(direction)) return;
+    closeDetail();
+    const req = detailRequest;
+    const popup = document.createElement("div");
+    popup.className = "ps90-detail";
+    popup.setAttribute("role", "dialog");
+    const heading = direction === "cs1_cs2" ? "CS1 → CS2" : "CS2 → CS1";
+    popup.innerHTML = `<div class="ps90-detail-header"><div><strong>Hóa đơn chuyển ${heading}</strong><div class="ps90-detail-small">${esc(masp)} · ${esc(vnDate(ngay))}</div></div><button class="ps90-detail-close" type="button" aria-label="Đóng">×</button></div><div class="ps90-detail-content">Đang lấy hóa đơn...</div>`;
+    overlay.appendChild(popup);
+    detailPanel = popup;
+    popup.addEventListener("click", e => e.stopPropagation());
+    popup.querySelector(".ps90-detail-close").addEventListener("click", closeDetail);
+    const move = () => {
+      const rect = button.getBoundingClientRect();
+      const w = popup.getBoundingClientRect().width;
+      const h = popup.getBoundingClientRect().height;
+      const left = Math.max(10, Math.min(rect.left, innerWidth - w - 10));
+      const below = rect.bottom + 8;
+      const top = below + h <= innerHeight - 10 ? below : Math.max(8, rect.top - h - 8);
+      popup.style.left = `${left}px`;
+      popup.style.top = `${top}px`;
+    };
+    move();
+    try {
+      const rows = await fetchTransferInvoices(masp, ngay, direction);
+      if (req !== detailRequest || !popup.isConnected) return;
+      const content = popup.querySelector(".ps90-detail-content");
+      if (!rows.length) {
+        content.innerHTML = `<div class="ps90-detail-warn">Không tìm thấy chứng từ xuất chuyển tương ứng trong hóa đơn đã lưu. Có thể số tổng hợp gồm điều chỉnh khác; hãy đối chiếu sổ chi tiết tồn.</div>`;
+      } else {
+        const total = rows.reduce((s,r)=>s+num(r.qty),0);
+        content.innerHTML = `<div><strong>${esc(String(total))} sản phẩm · ${rows.length} hóa đơn</strong></div>` +
+          rows.map(r => `<div class="ps90-detail-row"><strong>${esc(r.sohd)}</strong>` +
+            `<div class="ps90-detail-small">${esc(vnDate(r.ngay))} · NV: ${esc(r.manv || "—")} · SL: ${esc(String(r.qty))}</div>` +
+            `<button class="ps90-detail-open" data-sohd="${esc(r.sohd)}" type="button">Xem hóa đơn</button></div>`).join("");
+        content.querySelectorAll(".ps90-detail-open").forEach(btn => btn.addEventListener("click", () => openTransferInvoice(btn.dataset.sohd)));
+      }
+      move();
+    } catch(err) {
+      if (req !== detailRequest || !popup.isConnected) return;
+      popup.querySelector(".ps90-detail-content").textContent = `Không tải được thông tin: ${err?.message || err}`;
+      move();
+    }
+  }
+  // Event delegation hoạt động cả khi bảng tiếp tục nạp các trang lịch sử.
+  wrap.addEventListener("click", e => {
+    const target = e.target.closest(".ps90-transfer");
+    if (target && wrap.contains(target)) {
+      e.stopPropagation();
+      showTransferDetail(target);
+    } else if (detailPanel) {
+      closeDetail();
+    }
+  });
   let mode = "all";
   let history90 = null;
   let historyAll = null;
@@ -453,6 +591,7 @@ async function open(maspRaw) {
 
   async function switchMode() {
     if (loading) return;
+    closeDetail();
     const target = mode === "90" ? "all" : "90";
     loading = true;
     if (btnAll) btnAll.disabled = true;
@@ -482,18 +621,22 @@ async function open(maspRaw) {
     }
   }
 
-  overlay.querySelector(".ps90-close")?.addEventListener("click", () => overlay.remove());
+  function removePopup() {
+    closeDetail();
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+  }
+  overlay.querySelector(".ps90-close")?.addEventListener("click", removePopup);
   overlay.querySelector(".ps90-ledger")?.addEventListener("click", () => openStockLedger(masp));
   btnAll?.addEventListener("click", switchMode);
   overlay.addEventListener("click", e => {
-    if (e.target === overlay) overlay.remove();
+    if (e.target === overlay) removePopup();
   });
   card?.addEventListener("click", e => e.stopPropagation());
 
   const onKey = e => {
     if (e.key === "Escape") {
-      overlay.remove();
-      document.removeEventListener("keydown", onKey);
+      removePopup();
     }
   };
   document.addEventListener("keydown", onKey);
