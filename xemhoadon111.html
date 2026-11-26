@@ -1738,24 +1738,38 @@
         if (opt) opt.selected = true;
         updateLoaiChungTuDisplay();
 
-        // lấy ngày của hóa đơn -> đặt từ/đến đúng ngày đó
+        // FIX 26/11/2026: lấy ngày qua phiên Supabase ADMIN đã xác thực.
+        // hoadon_banle.ngay là DATE (YYYY-MM-DD), không tạo kết nối anon riêng
+        // và không chuyển qua UTC để tránh lệch ngày.
+        const tuNgayInput = document.getElementById('tuNgay');
+        const denNgayInput = document.getElementById('denNgay');
+        const ngayQ = (params.get('ngay') || '').trim();
+        const ngayHopLe = /^\d{4}-\d{2}-\d{2}$/.test(ngayQ) ? ngayQ : '';
+        let ngayHoaDon = '';
         try {
-          const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-          const sb = createClient(
-            'https://rddjrmbyftlcvrgzlyby.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdX...cCI6MjA2MjM0MTgwNH0.-0xtqxn6b9OBz4unTTvJ4klxizWhHa1iSuYGm7cOYTM'
-          );
-          const { data } = await sb.from('hoadon_banle').select('ngay').eq('sohd', sohdQ).maybeSingle();
-          if (data?.ngay) {
-            const d = new Date(data.ngay);
-            const yyyy_mm_dd = d.toISOString().slice(0, 10);
-            document.getElementById('tuNgay').value = yyyy_mm_dd;
-            document.getElementById('denNgay').value = yyyy_mm_dd;
-          } else {
-            document.getElementById('tuNgay').value = '';
-            document.getElementById('denNgay').value = '';
+          if (!window.supabase || typeof window.supabase.from !== 'function') {
+            throw new Error('Phiên Supabase chưa sẵn sàng');
           }
-        } catch (e) { /* bỏ qua nếu lỗi nhỏ */ }
+          const { data, error } = await window.supabase
+            .from('hoadon_banle')
+            .select('ngay')
+            .eq('sohd', sohdQ)
+            .maybeSingle();
+          if (error) throw error;
+          const ngayDb = String(data?.ngay || '').trim();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(ngayDb)) ngayHoaDon = ngayDb;
+        } catch (e) {
+          console.warn('[xemhoadon111] Không tra được ngày hóa đơn:', sohdQ, e);
+        }
+        // Nếu sau này module X/N gửi kèm ?ngay=YYYY-MM-DD, có thể dùng
+        // làm phương án dự phòng, nhưng ưu tiên ngày từ DB khi có.
+        const ngayLoc = ngayHoaDon || ngayHopLe;
+        tuNgayInput.value = ngayLoc;
+        denNgayInput.value = ngayLoc;
+        if (!ngayLoc) {
+          console.warn('[xemhoadon111] Chưa có ngày để lọc hóa đơn:', sohdQ);
+          // Không tự chọn hôm nay vì sẽ dẫn đến lọc sai hóa đơn cũ.
+        }
         return;
       }
 
