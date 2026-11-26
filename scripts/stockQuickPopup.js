@@ -3730,7 +3730,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     popup.dataset.form = String(payload.form || "").trim().toUpperCase();
 
     // X/N: nạp độc lập sau khi popup hiển thị; không chặn tốc độ hiển thị tồn.
-    void import("/scripts/stockQuickkiemnhap.js?v=20261125-xn2-open-invoice")
+    void import("/scripts/stockQuickkiemnhap.js?v=20261126-xn3-info-doubletap")
       .then(() => window.StockQuickKiemNhap?.attach?.(popup, masp))
       .catch(err => console.warn("[StockQuickPopup] Module kiểm nhập X/N không tải được:", err));
 
