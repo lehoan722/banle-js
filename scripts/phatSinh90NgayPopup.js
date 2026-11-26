@@ -393,8 +393,9 @@ async function fetchTransferInvoices(masp, ngay, direction) {
 
 function openTransferInvoice(sohd) {
   const url = `${window.location.origin}/xemhoadon111.html?sohd=${encodeURIComponent(sohd)}`;
-  const win = window.open(url, "_blank", "noopener");
-  if (!win) window.location.href = url;
+  // "noopener" có thể trả về null dù tab mới đã mở thành công.
+  // Không fallback sang location.href: phải giữ nguyên trang đang làm việc.
+  window.open(url, "_blank", "noopener");
 }
 
 function setupDragHead(card, head, onMoveStart) {
