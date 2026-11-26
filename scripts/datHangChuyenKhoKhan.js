@@ -2,13 +2,14 @@
 // BƯỚC 1 - Đặt hàng chuyển kho KHẨN CẤP
 // - Panel 3 trạng thái: ẩn / thu gọn / mở gần full-height
 // - Lưu lịch sử, luôn sắp xếp created_at mới nhất trước
-// - Trạng thái: moi / da_chuyen / het / huy
+// - Trạng thái thao tác mới: moi / da_chuyen / khong_thay / het; huy là dữ liệu lịch sử
 // - Ghi NV thực hiện mới nhất khi thay đổi trạng thái
+// - V3.09: Nhật ký ghichu_dat chỉ đọc, sự kiện được nối bằng SQL trigger ht_dhkhan_status_history_v309
 // - Popup +Đặt khẩn dạng lưới size 0, 38..46, nhập SL từng size
 // - StockQuick luôn cho đặt khẩn; gợi ý (nếu có) chỉ dùng để điền sẵn lưới size
 
 import { calcSuggestionsFromPayload } from "./services/luatChuyenKho.js";
-import {loadUrgentTabulator,createUrgentTable,destroyUrgentTables,copyUrgentVisible,hasUrgentTables,updateUrgentTables,clearUrgentFilters} from "./datHangKhanTabulator.js";
+import {loadUrgentTabulator,createUrgentTable,destroyUrgentTables,copyUrgentVisible,hasUrgentTables,updateUrgentTables,clearUrgentFilters} from "./datHangKhanTabulator.js?v=20261126_v309";
 
 let ctx = null;
 let realtimeChannel = null;
@@ -28,7 +29,7 @@ let urgentRefreshSeq = 0;
 const selectedMoveIds=new Set();
 const selectedDeleteIds=new Set();
 const ACTIVE_STATUS = "moi";
-const VALID_STATUSES = ["moi", "da_chuyen", "het", "huy"];
+const VALID_STATUSES = ["moi", "da_chuyen", "khong_thay", "het"];
 const FIVE_MINUTES = 5 * 60 * 1000;
 function effectiveUrgentStatus(row) {
   const st=norm(row.trang_thai).toLowerCase();
@@ -87,6 +88,7 @@ function statusText(v) {
   if (s === "moi") return "Mới";
   if (s === "giao_ca") return "Giao ca";
   if (s === "da_chuyen") return "Đã chuyển";
+  if (s === "khong_thay") return "Không thấy";
   if (s === "het") return "Hết";
   if (s === "huy") return "Hủy";
   if (s === "dang_chuyen") return "Mới"; // tương thích dữ liệu cũ trước migration
@@ -95,7 +97,10 @@ function statusText(v) {
 function statusOptions(currentRaw) {
   let current = norm(currentRaw).toLowerCase();
   if (current === "dang_chuyen") current = "moi";
-  return [...VALID_STATUSES.slice(0,1),"giao_ca",...VALID_STATUSES.slice(1)].map(v => `<option value="${v}" ${v === current ? "selected" : ""}>${statusText(v)}</option>`).join("");
+  const options = [...VALID_STATUSES.slice(0,1),"giao_ca",...VALID_STATUSES.slice(1)];
+  // Huy cu van hien thi de tranh hieu nham du lieu lich su; khong cho chon Huy moi.
+  if (current === "huy") return `<option value="huy" selected disabled>Hủy (lịch sử)</option>` + options.map(v => `<option value="${v}">${statusText(v)}</option>`).join("");
+  return options.map(v => `<option value="${v}" ${v === current ? "selected" : ""}>${statusText(v)}</option>`).join("");
 }
 function buildKey(x) { return [normMasp(x.masp), normSize(x.size), norm(x.huong_chuyen).toLowerCase()].join("|"); }
 
@@ -116,10 +121,11 @@ function ensureStyles() {
     #dhkhan-header { cursor:pointer; }
     #dhkhan-header button, #dhkhan-header input, #dhkhan-header select { cursor:pointer; }
     #dhkhan-toggle { display:flex;align-items:center;justify-content:center;align-self:center;line-height:1;height:28px;min-width:28px;padding:0 4px;margin:0; }
-    #dhkhan-panel .dhkhan-note { min-width:120px;max-width:230px;width:100%;box-sizing:border-box;padding:3px 5px; }
+    #dhkhan-panel .dhkhan-note-history { min-width:155px;max-width:min(430px,42vw);white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.4;padding:3px 5px;box-sizing:border-box; }
     #dhkhan-panel .dhkhan-status-select { min-width:100px;padding:3px 4px;font-size:13px; }
     #dhkhan-panel tr[data-status="moi"] td { background:#ffffff; color:#111827; }
     #dhkhan-panel tr[data-status="da_chuyen"] td { background:#e8f7ec; color:#14532d; }
+    #dhkhan-panel tr[data-status="khong_thay"] td { background:#fff3e0; color:#854d0e; }
     #dhkhan-panel tr[data-status="het"] td { background:#eeeeee; color:#555555; }
     #dhkhan-panel tr[data-status="huy"] td { background:#eee7ff; color:#5b3f8c; }
     #dhkhan-panel.dhkhan-flash { animation:dhkhanFlash .45s ease-in-out 0s 4 alternate; }
@@ -181,7 +187,7 @@ function ensureStyles() {
       #dhkhan-panel:not(.dhkhan-collapsed) { left:0!important;right:0!important;width:100vw!important;max-width:100vw!important;font-size:12px!important; }
       #dhkhan-panel.dhkhan-collapsed { font-size:11px!important; }
       #dhkhan-panel th,#dhkhan-panel td { font-size:12px;padding:3px 4px; }
-      #dhkhan-panel .dhkhan-note { min-width:100px; }
+      #dhkhan-panel .dhkhan-note-history { min-width:110px;max-width:38vw; }
       #dhkhan-create-box { width:98vw!important;max-width:98vw!important;min-width:0!important;padding:9px!important; }
       #dhkhan-create-box .dhkhan-grid { grid-template-columns:72px repeat(10,minmax(31px,1fr));gap:2px; }
       #dhkhan-create-box input { font-size:15px;padding:5px 2px; }
@@ -396,7 +402,7 @@ function renderRows(rows,canMoveSection,isAdmin) {
       <td>${esc(fmtTime(r.created_at))}</td>
       <td>${esc(r.manv_thuc_hien||"")}</td>
       <td>${esc(fmtTime(r.thuc_hien_at))}</td>
-      <td><input class="dhkhan-note" data-id="${Number(r.id)}" value="${esc(r.ghichu_dat||"")}"></td>
+      <td style="max-width:min(430px,42vw);white-space:normal;"><div class="dhkhan-note-history" title="Nhật ký trạng thái tự động, không sửa tay">${esc(r.ghichu_dat||"")}</div></td>
       <td><select class="dhkhan-status-select" data-id="${Number(r.id)}" ${statusDisabled}>${statusOptions(st)}</select></td>
     </tr>`;
   }).join("");
@@ -609,13 +615,10 @@ async function handoffUrgentOrder(row,section,{skipConfirm=false,suppressRefresh
   const manv=getManv();if(!manv){alert("Chưa xác định được nhân viên giao ca.");return;}
   if(!skipConfirm && !confirm(`Giao ca yêu cầu ${row.masp} size ${row.size} cho ca sau?`))return;
   const now=new Date().toISOString();
-  const stamp=new Date().toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'});
-  const previous=norm(row.ghichu_dat||'');
-  const label=`Giao ca - ${manv} - ${stamp}`;
-  const note=previous?(previous.includes(label)?previous:previous+' | '+label):label;
+  // V3.09: Nhật ký Giao ca được trigger Supabase nối thêm an toàn.
   suppressRealtimeUntil=Date.now()+900;
   const {data,error}=await ctx.supabase.from(TABLE)
-    .update({giao_ca_by:manv,giao_ca_at:now,manv_thuc_hien:manv,thuc_hien_at:now,ghichu_dat:note,updated_at:now})
+    .update({giao_ca_by:manv,giao_ca_at:now,manv_thuc_hien:manv,thuc_hien_at:now,updated_at:now})
     .eq('id',Number(row.id)).eq('tu_coso',getCurrentCoso()).eq('trang_thai','moi')
     .select('id');
   if(error){if(!suppressRefresh){alert('Không giao ca được: '+error.message);await refreshPanel();}return false;}
@@ -639,9 +642,30 @@ async function updateStatus(id,nextStatus,selectEl,sectionOverride="") {
     return;
   }
   const manv=getManv(); const now=new Date().toISOString();
+  // V3.08: Khi người dùng CHỦ ĐỘNG chọn Mới (kể cả sau Giao ca),
+  // phải xóa cờ bàn giao tạm thời. Nếu không, 5 phút tiếp theo máy vẫn
+  // hiểu là Giao ca dù trên bảng đang chọn Mới, khiến Tan ca bị lọt.
+  // Các trạng thái kết thúc cũng xóa cờ để không để lại hiệu lực bàn giao cũ.
+  const changes={
+    trang_thai:nextStatus,
+    giao_ca_at:null,
+    giao_ca_by:null,
+    manv_thuc_hien:manv||null,
+    thuc_hien_at:now,
+    updated_at:now
+  };
   suppressRealtimeUntil=Date.now()+700;
-  const {error}=await ctx.supabase.from(TABLE).update({trang_thai:nextStatus,manv_thuc_hien:manv||null,thuc_hien_at:now,updated_at:now}).eq("id",Number(id)).eq("tu_coso",getCurrentCoso());
-  if(error){ alert("❌ Không cập nhật được trạng thái: "+error.message); await refreshPanel(); return; }
+  const {data,error}=await ctx.supabase.from(TABLE)
+    .update(changes)
+    .eq("id",Number(id))
+    .eq("tu_coso",getCurrentCoso())
+    .select("id,trang_thai,giao_ca_at");
+  if(error){ alert("❌ Không cập nhật được trạng thái: "+error.message); await refreshPanel({forceOpen:true}); return; }
+  if(!Array.isArray(data) || data.length!==1 ||
+      norm(data[0].trang_thai).toLowerCase()!==nextStatus || data[0].giao_ca_at){
+    alert("Chưa xác nhận được trạng thái mới trong Supabase. Vui lòng kiểm tra lại trước khi Tan ca.");
+    await refreshPanel({forceOpen:true});return;
+  }
   await refreshPanel({forceOpen:true});
 }
 
@@ -864,9 +888,6 @@ function bindPanelEvents(box) {
   box.querySelectorAll(".dhkhan-status-select").forEach(sel=>{
     sel.addEventListener("change",async()=>{ await updateStatus(Number(sel.dataset.id),norm(sel.value).toLowerCase(),sel); });
   });
-  box.querySelectorAll(".dhkhan-note").forEach(input=>{
-    input.addEventListener("change",async()=>{ suppressRealtimeUntil=Date.now()+600; const {error}=await ctx.supabase.from(TABLE).update({ghichu_dat:input.value||"",updated_at:new Date().toISOString()}).eq("id",Number(input.dataset.id)); input.style.background=error?"#ffd6d6":"#e8f7e8"; setTimeout(()=>input.style.background="",650); });
-  });
   // Bấm ở BẤT KỲ vị trí nào trong ô mã SP đều mở StockQuick.
   // Đồng thời chỉ giữ một dòng được tô vàng để nhận biết dòng đang chọn.
   box.querySelectorAll(".dhkhan-masp-cell").forEach(cell => cell.addEventListener("click", e => {
@@ -944,12 +965,12 @@ async function renderPanel(rows,{forceOpen=false,flash=false,refreshSeq=null}={}
       <div style="font-size:12px;color:#7a3630;margin:4px 0 5px;">Hiển thị ${rows.length} dòng mới nhất (tối đa ${HISTORY_LIMIT}), sắp xếp theo thời gian tạo mới nhất.</div>
       ${tabulatorAvailable?`<div style="display:flex;justify-content:flex-end;gap:8px;margin:4px 0"><button id="dhkhan-copy">Copy dòng đang lọc</button><button id="dhkhan-reset-filter">Xóa bộ lọc</button></div><div id="dhkhan-grid-canmove" class="dhkhan-tbl-wrap"></div><div style="font-weight:800;margin:8px 0 4px;color:#555;">Theo dõi / yêu cầu từ cơ sở này</div><div id="dhkhan-grid-onlyview" class="dhkhan-tbl-wrap"></div>`:`
       <table style="width:100%;border-collapse:collapse;background:#fff;">
-        <thead><tr style="background:#f7b3a9;"><th>Xóa</th><th>Chuyển</th><th>Mã SP</th><th>SL</th><th>Size</th><th>Hướng</th><th>NV đặt</th><th>Giờ đặt</th><th>NV thực hiện</th><th>Giờ thực hiện</th><th>Ghi chú</th><th>Trạng thái</th></tr></thead>
+        <thead><tr style="background:#f7b3a9;"><th>Xóa</th><th>Chuyển</th><th>Mã SP</th><th>SL</th><th>Size</th><th>Hướng</th><th>NV đặt</th><th>Giờ đặt</th><th>NV thực hiện</th><th>Giờ thực hiện</th><th>Nhật ký trạng thái</th><th>Trạng thái</th></tr></thead>
         <tbody data-section="canmove">${renderRows(canMove,true,isAdmin)}</tbody>
       </table>
       <div style="font-weight:800;margin:8px 0 4px;color:#555;">Theo dõi / yêu cầu từ cơ sở này</div>
       <table style="width:100%;border-collapse:collapse;background:#fafafa;">
-        <thead><tr style="background:#ddd;"><th>Xóa</th><th>Chuyển</th><th>Mã SP</th><th>SL</th><th>Size</th><th>Hướng</th><th>NV đặt</th><th>Giờ đặt</th><th>NV thực hiện</th><th>Giờ thực hiện</th><th>Ghi chú</th><th>Trạng thái</th></tr></thead>
+        <thead><tr style="background:#ddd;"><th>Xóa</th><th>Chuyển</th><th>Mã SP</th><th>SL</th><th>Size</th><th>Hướng</th><th>NV đặt</th><th>Giờ đặt</th><th>NV thực hiện</th><th>Giờ thực hiện</th><th>Nhật ký trạng thái</th><th>Trạng thái</th></tr></thead>
         <tbody data-section="onlyview">${renderRows(onlyView,false,isAdmin)}</tbody>
       </table>`}
     </div>`;
@@ -961,9 +982,6 @@ async function renderPanel(rows,{forceOpen=false,flash=false,refreshSeq=null}={}
       deleteIds:selectedDeleteIds,moveIds:selectedMoveIds,
       onChecked:(type,id,checked)=>{const set=type==='delete'?selectedDeleteIds:selectedMoveIds;checked?set.add(id):set.delete(id);},
       onStatus:(row,status,select,section)=>updateStatus(row.id,status,select,section),
-      onNote:async(row,note)=>{if(norm(row.tu_coso).toLowerCase()!==coso)return;
-        const {error}=await ctx.supabase.from(TABLE).update({ghichu_dat:note,updated_at:new Date().toISOString()}).eq('id',Number(row.id)).eq('tu_coso',coso);
-        if(error){alert('Không lưu ghi chú: '+error.message);await refreshPanel();}},
       onProduct:row=>{selectedUrgentRowId=Number(row.id);openStockQuick(row.masp);}
     };
     createUrgentTable(box.querySelector('#dhkhan-grid-canmove'),canMove.map(enrichedRow),'canmove',callbacks);
@@ -986,7 +1004,7 @@ function sanitizeQtyInput(input) {
   input.value=cleaned;
 }
 function bindManualCreateKeyboard(box) {
-  const focusables=[box.querySelector("#dhkhan-masp"),...box.querySelectorAll(".dhkhan-qty"),box.querySelector("#dhkhan-note")].filter(Boolean);
+  const focusables=[box.querySelector("#dhkhan-masp"),...box.querySelectorAll(".dhkhan-qty"),null].filter(Boolean);
   focusables.forEach((el,index)=>{
     el.addEventListener("focus",()=>{ try{el.select?.();}catch(_){} });
     el.addEventListener("keydown",e=>{
@@ -1135,8 +1153,8 @@ function showManualCreate(options={}) {
         ${hasMixedSuggestedDirections ? `<span style="margin-left:10px;font-size:13px;color:#7c3aed;font-weight:800;">Các size tô màu sẽ giữ đúng hướng gợi ý riêng của StockQuick</span>` : ""}
       </div>
 
-      <div class="dhkhan-grid-label">Ghi chú</div>
-      <input id="dhkhan-note" class="dhkhan-wide" type="text" inputmode="text" enterkeyhint="done" autocomplete="off" placeholder="VD: khách đang đợi">
+      <div class="dhkhan-grid-label">Nhật ký</div>
+      <div class="dhkhan-wide" style="font-size:12px;color:#666;padding:5px;">Ghi tự động khi nhân viên thay đổi trạng thái. Không nhập tay.</div>
     </div>
     <div class="dhkhan-actions"><button id="dhkhan-cancel">Hủy</button><button id="dhkhan-save" style="background:#d00000;color:#fff;border:0;border-radius:6px;">ĐẶT KHẨN</button></div>`;
 
@@ -1176,7 +1194,7 @@ function showManualCreate(options={}) {
     e.stopPropagation();
 
     const masp = normMasp(maspEl?.value);
-    const note = box.querySelector("#dhkhan-note")?.value || "";
+    const note = ""; // V3.09: Cột ghi chú dành riêng cho nhật ký trạng thái tự động.
     const qtyEntries = [...box.querySelectorAll(".dhkhan-qty")]
       .map(input => ({
         size:input.dataset.size,

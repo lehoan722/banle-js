@@ -51,9 +51,9 @@ export function createUrgentTable(element,rows,section,{isAdmin,currentCoso,stat
     textColumn('Giờ đặt','gio_dat_hienthi',95),
     textColumn('NV thực hiện','manv_thuc_hien',104),
     textColumn('Giờ thực hiện','gio_thuc_hien_hienthi',95),
-    textColumn('Ghi chú','ghichu_dat',160,{editor:canMove?'input':false,cellEdited:cell=>onNote(cell.getRow().getData(),String(cell.getValue()||''))}),
+    {title:'Nhật ký trạng thái',field:'ghichu_dat',minWidth:160,widthGrow:3,maxWidth:460,headerFilter:'input',headerFilterPlaceholder:'Tìm...',formatter:cell=>`<div title="Nhật ký trạng thái tự động (chỉ đọc)" style="white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.4;max-width:100%;padding:2px 0">${escapeHtml(cell.getValue()||'')}</div>`,variableHeight:true,editor:false},
     {title:'Trạng thái',field:'trang_thai_hienthi',width:150,minWidth:142,
-      headerFilter:'list',headerFilterParams:{values:{'':'Tất cả','moi':'Mới','giao_ca':'Giao ca','da_chuyen':'Đã chuyển','het':'Hết','huy':'Hủy'},clearable:true},
+      headerFilter:'list',headerFilterParams:{values:{'':'Tất cả','moi':'Mới','giao_ca':'Giao ca','da_chuyen':'Đã chuyển','khong_thay':'Không thấy','het':'Hết'},clearable:true},
       formatter:cell=>{const r=cell.getRow().getData();const select=document.createElement('select');select.className='dhkhan-status-select';select.dataset.id=r.id;
         select.style.cssText='width:100%;min-width:0;font-size:12px;box-sizing:border-box;';select.disabled=!canMove;
         const real=effectiveStatus(r);select.innerHTML=statusOptions(real);
@@ -68,7 +68,7 @@ export function createUrgentTable(element,rows,section,{isAdmin,currentCoso,stat
     movableColumns:true,resizableColumns:true,
     selectableRows:false,selectableRange:true,clipboard:"copy",clipboardCopyRowRange:'active',
     rowFormatter:row=>{let st=row.getData().trang_thai_hienthi;
-      let bg=st==='giao_ca'?'#fff1bf':st==='da_chuyen'?'#e8f7ec':st==='het'?'#eee':st==='huy'?'#eee7ff':'#fff';
+      let bg=st==='giao_ca'?'#fff1bf':st==='da_chuyen'?'#e8f7ec':st==='khong_thay'?'#fff3e0':st==='het'?'#eee':st==='huy'?'#eee7ff':'#fff';
       row.getElement().style.background=bg;
     }
   });
