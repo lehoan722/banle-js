@@ -362,6 +362,10 @@
       const phoneInfo = classifyVietnamPhone(getVal("dienthoai"));
 
       if (!makh) return "Mã khách hàng không được bỏ trống!";
+      // Không tạo mã mới chứa khoảng trắng; giữ nguyên khả năng sửa hồ sơ cũ.
+      if (!editingOld && /\s/.test(getVal("makh"))) {
+        return "Mã khách hàng không được chứa dấu cách hoặc khoảng trắng!";
+      }
       if (!tenkh) return "Tên khách hàng không được bỏ trống!";
       if (!phoneInfo.phone) return "Số điện thoại không được bỏ trống!";
 
@@ -564,6 +568,24 @@
 
     function bindEvents() {
       const makhInp = document.getElementById("makh");
+      // Chặn khoảng trắng khi gõ hoặc dán vào mã khách hàng.
+      const warnMaKHSpace = () => showMsg("Mã khách hàng không được chứa dấu cách hoặc khoảng trắng!", "error");
+      makhInp?.addEventListener("beforeinput", (ev) => {
+        if (!makhInp.readOnly && typeof ev.data === "string" && /\s/.test(ev.data)) {
+          ev.preventDefault();
+          warnMaKHSpace();
+        }
+      });
+      makhInp?.addEventListener("paste", (ev) => {
+        const pasted = ev.clipboardData?.getData("text") || "";
+        if (!makhInp.readOnly && /\s/.test(pasted)) {
+          ev.preventDefault();
+          warnMaKHSpace();
+        }
+      });
+      makhInp?.addEventListener("input", () => {
+        if (!makhInp.readOnly && /\s/.test(makhInp.value)) warnMaKHSpace();
+      });
       makhInp?.addEventListener("input", suggestKH);
       makhInp?.addEventListener("focus", suggestKH);
       makhInp?.addEventListener("blur", autoFillPhoneFromMaKH);
