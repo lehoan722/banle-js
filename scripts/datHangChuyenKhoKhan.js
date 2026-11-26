@@ -645,16 +645,82 @@ async function updateStatus(id,nextStatus,selectEl,sectionOverride="") {
   await refreshPanel({forceOpen:true});
 }
 
-async function handoffSelectedOrders(box){
-  const ids=tabulatorAvailable?[...selectedMoveIds]:[...box.querySelectorAll('tbody[data-section="canmove"] .dhkhan-move:checked')].map(e=>Number(e.dataset.id));
-  if(!ids.length){alert('Hãy tích các dòng cần giao ca trong cột Chuyển.');return;}
-  if(!confirm(`Giao ca ${ids.length} dòng đã chọn cho ca tiếp theo?`))return;
-  const {data, error}=await ctx.supabase.from(TABLE).select('*').in('id',ids).eq('tu_coso',getCurrentCoso()).eq('trang_thai','moi');
-  if(error){alert('Không đọc được danh sách giao ca: '+error.message);return;}
-  let ok=0;
-  for(const row of data||[]){ if(await handoffUrgentOrder(row,'canmove',{skipConfirm:true,suppressRefresh:true})){ok++;selectedMoveIds.delete(Number(row.id));}}
-  await refreshPanel({forceOpen:true});
-  if(ok!==ids.length)alert(`Đã giao ca ${ok}/${ids.length} dòng. Các dòng không thành công cần kiểm tra lại.`);
+// Giao ca toàn bộ MỚI ở cơ sở xuất, không phụ thuộc vào 200 dòng đang hiển thị.
+// Giữ nguyên trang_thai='moi'; giao_ca_at là hiệu lực 5 phút dùng chung với Chấm công V3.
+let handoffAllBusy = false;
+async function handoffAllUrgentOrders(box) {
+  if (handoffAllBusy) return;
+  const coso = getCurrentCoso();
+  const manv = getManv();
+  if (!ctx?.supabase || !["cs1", "cs2"].includes(coso) || !manv) {
+    alert("Không xác định được cơ sở / nhân viên hoặc chưa kết nối Supabase.");
+    return;
+  }
+  const btn = box?.querySelector('#dhkhan-handoff-selected');
+  handoffAllBusy = true;
+  if (btn) {btn.disabled = true; btn.textContent = 'Đang kiểm tra…';}
+  try {
+    const pageSize = 200;
+    const maxPages = 30; // Không giao ca thiếu khi vượt giới hạn kiểm tra.
+    const candidates = [];
+    let complete = false;
+    for (let page = 0; page < maxPages; page++) {
+      const { data, error } = await ctx.supabase.from(TABLE)
+        .select('id, trang_thai, giao_ca_at')
+        .eq('tu_coso', coso).eq('trang_thai', 'moi')
+        .order('id', {ascending: false})
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      if (error) throw error;
+      const batch = Array.isArray(data) ? data : [];
+      candidates.push(...batch);
+      if (batch.length < pageSize) {complete = true; break;}
+    }
+    if (!complete) throw new Error('Số lượng đơn Mới vượt giới hạn kiểm tra an toàn (6000 dòng).');
+    const nowMs = Date.now();
+    const ids = candidates.filter(row => effectiveUrgentStatus(row) === 'moi')
+      .map(row => Number(row.id)).filter(Number.isFinite);
+    if (!ids.length) {
+      alert('Không có dòng Mới nào cần bàn giao tại ' + coso.toUpperCase() + '.');
+      return;
+    }
+    if (!confirm(`Giao ca toàn bộ ${ids.length} dòng MỚI thuộc ${coso.toUpperCase()}?\nCác dòng sẽ trở lại MỚI sau 5 phút nếu chưa xử lý.`)) return;
+    if (btn) btn.textContent = 'Đang giao ca…';
+
+    // Chia nhóm cập nhật, không động vào ghi chú cũ hoặc số lượng/hướng chuyển.
+    // Tất cả dùng một mốc thời gian để việc hết hạn Giao ca thống nhất.
+    const now = new Date().toISOString();
+    let success = 0;
+    const failed = [];
+    suppressRealtimeUntil = Date.now() + 2500;
+    for (let i = 0; i < ids.length; i += 100) {
+      const batchIds = ids.slice(i, i + 100);
+      const {data, error} = await ctx.supabase.from(TABLE)
+        .update({giao_ca_by: manv, giao_ca_at: now,
+          manv_thuc_hien: manv, thuc_hien_at: now, updated_at: now})
+        .in('id', batchIds).eq('tu_coso', coso).eq('trang_thai', 'moi')
+        .select('id');
+      if (error) { console.error('[Đặt hàng khẩn] Giao ca hàng loạt lỗi:', error);failed.push(...batchIds);continue; }
+      success += Array.isArray(data) ? data.length : 0;
+      if ((data||[]).length !== batchIds.length) {
+        const done = new Set((data||[]).map(r => Number(r.id)));
+        failed.push(...batchIds.filter(id => !done.has(id)));
+      }
+    }
+    selectedMoveIds.clear();
+    await refreshPanel({forceOpen:true});
+    if (failed.length) {
+      alert(`Đã giao ca ${success}/${ids.length} dòng.\n${failed.length} dòng chưa cập nhật được hoặc đã được người khác xử lý. Hãy kiểm tra lại trước khi Tan ca.`);
+    } else {
+      alert(`Đã Giao ca ${success} dòng MỚI của ${coso.toUpperCase()}.\nVui lòng Tan ca trong 5 phút. Sau 5 phút các dòng chưa xử lý sẽ trở lại MỚI.`);
+    }
+  } catch (error) {
+    console.error('[Đặt hàng khẩn] Không giao ca được toàn bộ:', error);
+    alert('Không giao ca được: ' + (error?.message || 'Lỗi không xác định') + '. Chưa xác nhận bàn giao thành công.');
+  } finally {
+    handoffAllBusy = false;
+    const current = document.getElementById('dhkhan-handoff-selected');
+    if (current) {current.disabled = false;current.textContent = 'Giao ca';}
+  }
 }
 
 async function deleteSelectedOrders(box) {
@@ -793,7 +859,7 @@ function bindPanelEvents(box) {
   box.querySelector("#dhkhan-create")?.addEventListener("click",()=>{ showManualCreate(); });
   box.querySelector("#dhkhan-delete")?.addEventListener("click",()=>deleteSelectedOrders(box));
   box.querySelector("#dhkhan-create-ccn")?.addEventListener("click",()=>createUrgentCcnFromChecked(box));
-  box.querySelector("#dhkhan-handoff-selected")?.addEventListener("click",()=>handoffSelectedOrders(box));
+  box.querySelector("#dhkhan-handoff-selected")?.addEventListener("click",()=>handoffAllUrgentOrders(box));
 
   box.querySelectorAll(".dhkhan-status-select").forEach(sel=>{
     sel.addEventListener("change",async()=>{ await updateStatus(Number(sel.dataset.id),norm(sel.value).toLowerCase(),sel); });
@@ -868,7 +934,7 @@ async function renderPanel(rows,{forceOpen=false,flash=false,refreshSeq=null}={}
       <div id="dhkhan-header-actions" style="display:flex;gap:5px;align-items:center;">
         <button id="dhkhan-create" style="font-weight:800;color:#9b0000;">+ Đặt khẩn</button>
         ${isAdmin ? `<button id="dhkhan-delete" style="font-weight:800;color:#9b0000;">Xóa đặt hàng</button>` : ""}
-        <button id="dhkhan-handoff-selected" style="font-weight:800;color:#865500;">Giao ca đã chọn</button>
+        <button id="dhkhan-handoff-selected" style="font-weight:800;color:#865500;" title="Giao ca tất cả dòng Mới của cơ sở xuất, không cần tích chọn">Giao ca</button>
         <button id="dhkhan-create-ccn" style="font-weight:800;color:#0b57d0;">Tạo hóa đơn CCN</button>
         <button id="dhkhan-toggle" title="Thu gọn" style="border:0;background:transparent;font-size:18px;font-weight:900;">▼</button>
         <button id="dhkhan-close" title="Thu gọn" style="border:0;background:transparent;font-size:20px;font-weight:900;color:#9b0000;">×</button>

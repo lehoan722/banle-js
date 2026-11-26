@@ -1557,17 +1557,15 @@ function showUrgentOrdersPopupChamCong(rows, { diadiem, manv }) {
     });
 }
 
+// V3.07: Chỉ kiểm tra và cảnh báo; KHÔNG mở popup xử lý đơn khẩn ở trang Chấm công.
+// Giữ hàm popup cũ nguyên mã nguồn để có thể dọn ở đợt nâng cấp riêng.
 async function enforceUrgentOrdersBeforeTanca({ diadiem, manv }) {
-    while (true) {
-        const result = await fetchPendingUrgentOrdersForChamCong({ diadiem });
-        if (!result.ok) return false; // fail-closed: lỗi kiểm tra thì không TAN CA
-        if (!result.rows.length) return true;
-
-        const handled = await showUrgentOrdersPopupChamCong(result.rows, { diadiem, manv });
-        if (!handled) return false; // người dùng quay lại / đóng popup => hủy TAN CA
-
-        // Lặp lại SELECT để chắc chắn không có đơn Mới vừa xuất hiện trong lúc xử lý.
-    }
+    const result = await fetchPendingUrgentOrdersForChamCong({ diadiem });
+    if (!result.ok) return false; // không đọc được Supabase thì không tự bỏ qua
+    if (!result.rows.length) return true;
+    const coso = String(diadiem || '').trim().toUpperCase();
+    alert(`Chưa thể TAN CA. ${coso} còn ${result.rows.length} dòng đặt hàng chuyển kho khẩn chưa xử lý / chưa Giao ca.\n\nVui lòng vào trang Bán hàng của ${coso} và bấm Giao ca hoặc xử lý đơn. Sau đó quay lại Chấm công để Tan ca trong 5 phút.`);
+    return false;
 }
 
 // ====== HẾT CHẶN TAN CA KHI CÒN ĐẶT HÀNG KHẨN CẤP ======
