@@ -239,6 +239,8 @@
 
   .sq-red { color:#dc2626; font-weight:700; }
 .sq-blue { color:#2563eb; font-weight:700; }
+.sq-stock-popup .sq-tra-ncc { color:#b91c1c; font-size:0.85em; margin-left:4px; font-weight:600; }
+
 
 .sq-title-text {
   font-weight: 600;
@@ -1458,7 +1460,7 @@ data-color-masp="${targetMasp}"
     }
 
     const denNgay = getDenNgay();
-    console.log("[StockQuickPopup] Gọi xntnhanh", { masp, denNgay });
+    console.log("[StockQuickPopup] Gọi xntnhanh_v2", { masp, denNgay });
 
     let rows = [];
     let vitri_cs1 = "";
@@ -1494,7 +1496,7 @@ data-color-masp="${targetMasp}"
     }
 
     try {
-      // 1) Gọi RPC xntnhanh (giữ nguyên) + 2) Đọc dmhanghoa (thêm nhapdau)
+      // 1) Gọi RPC xntnhanh_v2 + 2) Đọc dmhanghoa (thêm nhapdau)
       const colorInfo = getMaspBaseAndColor(masp);
 
       let colorResPromise = Promise.resolve({
@@ -1523,7 +1525,7 @@ data-color-masp="${targetMasp}"
       }
 
       let [snapRes, hhRes, kiemRes, colorRes, manocanhRes, dangChuyenRes] = await Promise.all([
-        client.rpc("xntnhanh", {
+        client.rpc("xntnhanh_v2", {
           p_masps: [masp],
           p_den_ngay: denNgay,
           p_tonghop_size: false,
@@ -1559,13 +1561,13 @@ data-color-masp="${targetMasp}"
       if (!firstRows.length && !snapRes?.error) {
         await new Promise(r => setTimeout(r, 400));
 
-        snapRes = await client.rpc("xntnhanh", {
+        snapRes = await client.rpc("xntnhanh_v2", {
           p_masps: [masp],
           p_den_ngay: denNgay,
           p_tonghop_size: false,
         });
 
-        console.log("[StockQuickPopup] Gọi lại xntnhanh sau 400ms", {
+        console.log("[StockQuickPopup] Gọi lại xntnhanh_v2 sau 400ms", {
           masp,
           denNgay,
           rows: Array.isArray(snapRes?.data) ? snapRes.data.length : 0
@@ -1648,11 +1650,12 @@ data-color-masp="${targetMasp}"
             ban_cs2: ban2,
             tong_ban: ban1 + ban2,
             tong_nhap: Number(r.tong_nhap || 0),
+            tong_tra_ncc: Number(r.tong_tra_ncc || 0),
             tong_ton: Number(r.tong_ton || 0),
           };
         });
       } else if (error) {
-        console.warn("xntnhanh error:", error);
+        console.warn("xntnhanh_v2 error:", error);
       }
 
       // --- B) dữ liệu từ dmhanghoa: vị trí + ưu tiên ND từ nhapdau ---
@@ -1903,6 +1906,16 @@ data-color-masp="${targetMasp}"
       return `${cText}${dText}${tonText}<span class="sq-lech">${sign}${lech}</span><span class="sq-ton-result">=${tonSauKiem}</span>`;
     }
 
+    // Chỉ hiển thị trả NCC; không tính lại tồn kho.
+    function renderNhapTra(nhapRaw, traRaw) {
+      const nhap = Number(nhapRaw || 0);
+      const tra = Number(traRaw || 0);
+      const nhapText = nhap ? String(nhap) : "";
+      if (!tra || !Number.isFinite(tra)) return nhapText;
+      const traText = tra > 0 ? `-${tra}` : `+${Math.abs(tra)}`;
+      return `${nhapText}<span class="sq-tra-ncc"${nhapText ? "" : ' style="margin-left:0"'} title="Trả lại nhà cung cấp (số lượng ròng)">${traText}</span>`;
+    }
+
     function renderSumTonLech(tonRaw, lechRaw) {
       const ton = Number(tonRaw || 0);
       const lech = Number(lechRaw || 0);
@@ -1937,6 +1950,7 @@ data-color-masp="${targetMasp}"
       sumBan1 = 0,
       sumBan2 = 0,
       sumNhap = 0,
+      sumTraNcc = 0,
       sumTongBan = 0,     // ✅ THÊM
       sumTongTon = 0;
 
@@ -2000,6 +2014,7 @@ data-color-masp="${targetMasp}"
           ban_cs2: 0,
           tong_ban: 0,        // ✅ THÊM
           tong_nhap: 0,
+          tong_tra_ncc: 0,
           tong_ton: 0,
         };
 
@@ -2020,6 +2035,7 @@ data-color-masp="${targetMasp}"
         sumBan1 += Number(r.ban_cs1 || 0);
         sumBan2 += Number(r.ban_cs2 || 0);
         sumNhap += Number(r.tong_nhap || 0);
+        sumTraNcc += Number(r.tong_tra_ncc || 0);
         sumTongBan += Number(r.tong_ban || 0);   // ✅ THÊM
 
         const tonTong = Number(r.ton_cs1 || 0) + Number(r.ton_cs2 || 0);
@@ -2141,7 +2157,7 @@ data-color-masp="${targetMasp}"
 </td>
           <td class="num sq-col-b1">${r.ban_cs1 ? r.ban_cs1 : ""}</td>
           <td class="num sq-col-b2">${r.ban_cs2 ? r.ban_cs2 : ""}</td>
-          <td class="num sq-blue">${r.tong_nhap ? r.tong_nhap : ""}</td>
+          <td class="num sq-blue">${renderNhapTra(r.tong_nhap, r.tong_tra_ncc)}</td>
           <td class="num">${r.tong_ban ? r.tong_ban : ""}</td>
           <td class="num sq-red">${tonTong ? tonTong : ""}</td>
         </tr>`;
@@ -2158,7 +2174,7 @@ data-color-masp="${targetMasp}"
 <td class="num sq-col-k2">${renderSumTonLech(sum2, sumLech2)}</td>
     <td class="num sq-col-b1">${sumBan1 || ""}</td>
     <td class="num sq-col-b2">${sumBan2 || ""}</td>
-    <td class="num sq-blue">${sumNhap || ""}</td>
+    <td class="num sq-blue">${renderNhapTra(sumNhap, sumTraNcc)}</td>
     <td class="num">${sumTongBan || ""}</td>
     <td class="num sq-red">${sumTongTon || ""}</td>
   </tr>`
@@ -3002,7 +3018,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     if (!btn || !input) return;
 
     const runSave = async () => {
-      if (btn.disabled) return;
       if (!getIsAdminLocal()) {
         if (msgEl) {
           msgEl.textContent = "Chỉ admin được phép sửa form";
@@ -3014,14 +3029,12 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       const masp = String(popup.dataset.masp || "").trim().toUpperCase();
       const formValue = String(input.value || "").trim().toUpperCase();
       btn.disabled = true;
-      input.disabled = true;
       const oldText = btn.textContent;
       btn.textContent = "Đang lưu...";
       if (msgEl) { msgEl.textContent = ""; msgEl.className = "sq-vitri-msg"; }
 
       const rs = await saveFormNhanh(masp, formValue);
       btn.disabled = false;
-      input.disabled = false;
       btn.textContent = oldText;
 
       if (rs?.ok) {
@@ -3043,9 +3056,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     };
 
     btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); runSave(); });
-    input.addEventListener("change", () => {
-      if (getIsAdminLocal()) runSave();
-    });
     input.addEventListener("click", (e) => e.stopPropagation());
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); runSave(); }
@@ -3112,10 +3122,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
         input.value = normalizeNhomHangCode(code);
         close();
         input.focus();
-        if (getIsAdminLocal()) {
-          close();
-          row.querySelector('.sq-vitri-save-btn[data-loai="nhomhang"]')?.click();
-        }
       };
 
       const refreshActive = () => {
@@ -3174,11 +3180,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       const coso = row.dataset.coso || (btn ? btn.dataset.coso : "");
       const loai = row.dataset.loai || (btn ? btn.dataset.loai : "kho") || "kho";
 
-      if (!btn || !input || !coso || btn.dataset.sqVitriBound === "1") return;
-      btn.dataset.sqVitriBound = "1";
-      let savingGroup = false;
+      if (!btn || !input || !coso) return;
 
-      const save = async () => {
+      const runSave = async () => {
         const masp = String(popup.dataset.masp || "").trim().toUpperCase();
         let vitri = String(input.value || "").trim();
 
@@ -3223,7 +3227,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
         }
 
         btn.disabled = true;
-        if (loai === "nhomhang") input.disabled = true;
         const oldBtnText = btn.textContent;
         btn.textContent = "Đang lưu...";
 
@@ -3239,7 +3242,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
             Object.prototype.hasOwnProperty.call(rs, "vitri_moi") ? rs.vitri_moi : vitri
           ).trim();
 
-          if (loai === "nhomhang") popup.dataset.nhomhang = vitriMoi;
           const isAdminNow = getIsAdminLocal();
           const btnLabel =
             loai === "baymau"
@@ -3284,7 +3286,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
         }
 
         btn.disabled = false;
-        if (loai === "nhomhang") input.disabled = false;
         btn.textContent = oldBtnText;
 
         if (msgEl) {
@@ -3301,13 +3302,6 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
         input.focus();
         input.select();
-      };
-
-      const runSave = async () => {
-        if (loai !== "nhomhang") return save();
-        if (savingGroup || btn.disabled) return;
-        savingGroup = true;
-        try { await save(); } finally { savingGroup = false; }
       };
 
       btn.addEventListener("click", (e) => {
