@@ -3002,6 +3002,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     if (!btn || !input) return;
 
     const runSave = async () => {
+      if (btn.disabled) return;
       if (!getIsAdminLocal()) {
         if (msgEl) {
           msgEl.textContent = "Chỉ admin được phép sửa form";
@@ -3013,12 +3014,14 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       const masp = String(popup.dataset.masp || "").trim().toUpperCase();
       const formValue = String(input.value || "").trim().toUpperCase();
       btn.disabled = true;
+      input.disabled = true;
       const oldText = btn.textContent;
       btn.textContent = "Đang lưu...";
       if (msgEl) { msgEl.textContent = ""; msgEl.className = "sq-vitri-msg"; }
 
       const rs = await saveFormNhanh(masp, formValue);
       btn.disabled = false;
+      input.disabled = false;
       btn.textContent = oldText;
 
       if (rs?.ok) {
@@ -3040,6 +3043,9 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
     };
 
     btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); runSave(); });
+    input.addEventListener("change", () => {
+      if (getIsAdminLocal()) runSave();
+    });
     input.addEventListener("click", (e) => e.stopPropagation());
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); runSave(); }
@@ -3106,6 +3112,10 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
         input.value = normalizeNhomHangCode(code);
         close();
         input.focus();
+        if (getIsAdminLocal()) {
+          close();
+          row.querySelector('.sq-vitri-save-btn[data-loai="nhomhang"]')?.click();
+        }
       };
 
       const refreshActive = () => {
@@ -3164,9 +3174,11 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
       const coso = row.dataset.coso || (btn ? btn.dataset.coso : "");
       const loai = row.dataset.loai || (btn ? btn.dataset.loai : "kho") || "kho";
 
-      if (!btn || !input || !coso) return;
+      if (!btn || !input || !coso || btn.dataset.sqVitriBound === "1") return;
+      btn.dataset.sqVitriBound = "1";
+      let savingGroup = false;
 
-      const runSave = async () => {
+      const save = async () => {
         const masp = String(popup.dataset.masp || "").trim().toUpperCase();
         let vitri = String(input.value || "").trim();
 
@@ -3211,6 +3223,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
         }
 
         btn.disabled = true;
+        if (loai === "nhomhang") input.disabled = true;
         const oldBtnText = btn.textContent;
         btn.textContent = "Đang lưu...";
 
@@ -3226,6 +3239,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
             Object.prototype.hasOwnProperty.call(rs, "vitri_moi") ? rs.vitri_moi : vitri
           ).trim();
 
+          if (loai === "nhomhang") popup.dataset.nhomhang = vitriMoi;
           const isAdminNow = getIsAdminLocal();
           const btnLabel =
             loai === "baymau"
@@ -3270,6 +3284,7 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
         }
 
         btn.disabled = false;
+        if (loai === "nhomhang") input.disabled = false;
         btn.textContent = oldBtnText;
 
         if (msgEl) {
@@ -3286,6 +3301,13 @@ ${thongTinKiem ? ` / Kiểm: ${thongTinKiem}` : ""}
 
         input.focus();
         input.select();
+      };
+
+      const runSave = async () => {
+        if (loai !== "nhomhang") return save();
+        if (savingGroup || btn.disabled) return;
+        savingGroup = true;
+        try { await save(); } finally { savingGroup = false; }
       };
 
       btn.addEventListener("click", (e) => {
