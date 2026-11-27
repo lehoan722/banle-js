@@ -503,7 +503,7 @@
 
         <div class="top-inputs">
             <div style="position: relative;">
-                <input id="masp" placeholder="Mã SP" autocomplete="off" />
+                <input id="masp" readonly placeholder="Mã SP" autocomplete="off" />
                 <div id="popup_masp"
                     style="position: absolute; top: 100%; left: 0; width: 300px; max-height: 120px; background: #fff; border: 1px solid #ccc; display: none; overflow-y: auto; z-index: 10000;">
                 </div>
@@ -822,6 +822,8 @@
                     return false;
                 }
                 if (okInit === false) return false;
+                const btnScanQuick = document.getElementById("btnScanQuick");
+                if (btnScanQuick) btnScanQuick.disabled = true;
                 // 6. Chọn tab & checkbox mặc định giống code cũ
                 if (typeof window.switchTab === "function") {
                     window.switchTab("thongtin");
@@ -1917,6 +1919,7 @@ Shop chân thành cảm ơn!`;
 
     <script src="/scripts/salesCopilotBridgeBannv.js?v=5"></script>
 
+    <script type="module" src="scripts/bannvSuaSize.js?v=2"></script>
 </body>
 
 </html>
