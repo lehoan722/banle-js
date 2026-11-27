@@ -509,7 +509,9 @@ function closeImage(){$("imageOverlay").classList.remove("show");$("imageOverlay
 function productCardHtml(sp,orderNo=0,totalNo=0){
   const img=`${IMAGE_BASE}${encodeURIComponent(norm(sp.masp))}.JPG`;
   const {kho,mau}=locationParts(sp);
-  const formSizes=compactFormSizes(sp);
+  const form=formLabel(sp?.form)||"-";
+  const sizeChoices=(sp.__size0_fallback ? [SIZE_FALLBACK_ZERO] : availableSizes(sp)).filter(sz=>stockFor(sp,sz)>0);
+  const sizeButtons=sizeChoices.map(sz=>`<button type="button" class="pick-size has" data-add="${esc(sp.masp)}" data-size="${esc(sz)}" aria-label="Chọn ${esc(sp.masp)} size ${esc(sz)}, tồn ${stockFor(sp,sz)}"><span class="pick-size-number">${sz==="0"?"Size 0":esc(sz)}</span><span class="pick-size-stock">Tồn: ${stockFor(sp,sz)}</span></button>`).join("");
   const orderText=orderNo>0?`${orderNo}/${totalNo||orderNo}`:"";
   const rulePct=Number(sp.goi_y_xa_pct||0);
   const adminPct=Number(sp.giam_gia_admin_pct ?? sp.giam_gia_pct ?? 0);
@@ -526,15 +528,14 @@ function productCardHtml(sp,orderNo=0,totalNo=0){
   const sizeBadge=isDiscountView&&matchedSize?`<div class="search-size-badge">${esc(matchedSize)}</div>`:"";
   const badge=`${sizeBadge}${discountBadge}`;
   const size0Tag=sp.__size0_fallback
-    ? `<div class="size0-fallback-tag">Không quản lý size · Tồn size 0: ${stockForAny(sp,SIZE_FALLBACK_ZERO)}</div>`
+    ? `<div class="size0-fallback-tag">Không quản lý size</div>`
     : "";
-  return `<article class="product${xaClass}${strongClass}" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">${badge}</div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(formSizes)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div>${size0Tag}<div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div><button type="button" class="pick" data-pick="${esc(sp.masp)}">Chọn</button><div class="pick-sizes" data-sizes="${esc(sp.masp)}">${sp.__size0_fallback ? `<button type="button" class="pick-size has" data-add="${esc(sp.masp)}" data-size="0">Size 0</button>` : SIZE_LIST.filter(s=>stockFor(sp,s)>0).map(s=>`<button type="button" class="pick-size has" data-add="${esc(sp.masp)}" data-size="${s}">${s} (${stockFor(sp,s)})</button>`).join("")}</div></div></article>`;
+  return `<article class="product${xaClass}${strongClass}" data-card="${esc(sp.masp)}"><div class="product-image-wrap"><img class="product-image" loading="lazy" decoding="async" src="${img}" alt="${esc(sp.masp)}" onerror="this.onerror=null;this.src='${IMAGE_BASE}NO-IMAGE.JPG'">${badge}</div><div class="pb"><button type="button" class="stock-link" data-stock="${esc(sp.masp)}">${esc(sp.masp)}</button><div class="product-info-line product-meta">${esc(form)}</div><div class="product-info-line product-kho">Kho: ${esc(kho||"-")}</div><div class="product-info-line product-mau">Mẫu: ${esc(mau||"-")}</div>${size0Tag}<div class="price-row"><div class="price">${money(sp.giale)} đ</div><div class="product-order" ${xaTitle?`title="${xaTitle}"`:""}>${esc(orderXaText)}</div></div>${sizeButtons?`<div class="pick-size-hint">Chạm size để chọn ↓</div><div class="pick-sizes">${sizeButtons}</div>`:`<div class="pick-size-hint">Không có size còn tồn</div>`}</div></article>`;
 }
 function bindProductCards(cards){
   cards.forEach(card=>{
     card.querySelectorAll(".stock-link").forEach(b=>b.onclick=e=>window.StockQuick?.showFor(e.currentTarget,b.dataset.stock));
     card.querySelectorAll(".product-image").forEach(img=>img.onclick=e=>{e.preventDefault();e.stopPropagation();openImage(img.src,img.alt)});
-    card.querySelectorAll(".pick").forEach(b=>b.onclick=()=>{const el=card.querySelector(`[data-sizes="${CSS.escape(b.dataset.pick)}"]`);el?.classList.toggle("show")});
     card.querySelectorAll(".pick-size").forEach(b=>b.onclick=()=>{if(!b.disabled)addSelected(b.dataset.add,b.dataset.size)});
   });
 }
