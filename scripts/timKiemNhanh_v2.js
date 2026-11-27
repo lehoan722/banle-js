@@ -603,6 +603,7 @@ function initPageJump(){
     if(pageJumpTicking)return;pageJumpTicking=true;
     requestAnimationFrame(()=>{pageJumpTicking=false;updatePageJumpButton();});
   },{passive:true});
+  $("pageCodeBtn")?.addEventListener("click",()=>{const el=$("codeInput");if(!el)return;jumpToElement(el,"center");el.focus({preventScroll:true});el.select();});
   updatePageJumpButton();
 }
 
@@ -654,6 +655,8 @@ function scrollToProduct(masp){
 }
 
 function resetToInitialState(){
+  if(saleBusy){toast("Đang chuyển sản phẩm, vui lòng chờ xác nhận.");return;}
+  if(state.selected.some(r=>r.salePending)&&!confirm("Có sản phẩm chưa xác nhận kết quả. Bạn đã kiểm tra tab bán và muốn tạo lượt mới?"))return;
   closeMissingSizePrompt();
   try{state.scanner?.stopScan?.()}catch{}
   $("scanOverlay")?.classList.remove("show");
@@ -678,18 +681,23 @@ async function researchSelected(id){
   jumpToElement(document.querySelector("main.wrap > section.card:not(#selectedSection)"),"start");
 }
 
+let saleBusy=false;
 function renderSelected(){
   const box=$("selectedList");$("selectedCount").textContent=`${state.selected.length} sản phẩm`;
   if(!state.selected.length){box.innerHTML='<div class="empty selected-empty">Chưa chọn sản phẩm.</div>';return}
-  box.innerHTML=state.selected.map(r=>{
-    const {kho,mau}=locationParts(r);
-    const formSizes=compactFormSizes(r);
-    return `<div class="selected-item"><div class="sel-line"><button type="button" class="sel-code" data-sel-stock="${esc(r.masp)}">${esc(r.masp)}</button><span class="sel-size">Size ${esc(r.size)}</span></div><div class="selected-info-line"><span class="selected-kho">Kho: ${esc(kho||"-")}</span><span class="selected-mau">Mẫu: ${esc(mau||"-")}</span><span class="selected-formstock">${esc(formSizes)}</span></div><div class="sel-actions"><button type="button" class="continue" data-continue="${esc(r.masp)}">Tìm tiếp</button><button type="button" class="research" data-research="${esc(r.id)}">Tìm lại</button><button type="button" class="remove" data-remove="${esc(r.id)}">Bỏ</button><button type="button" class="sale" data-sale="${esc(r.id)}">Sang bán</button></div></div>`
+  const count=state.selected.filter(r=>r.saleChecked&&!r.saleDone&&!r.salePending).length;
+  const done=state.selected.filter(r=>r.saleDone).length;
+  box.innerHTML=state.selected.map((r,i)=>{
+    const {kho,mau}=locationParts(r), formSizes=compactFormSizes(r);
+    const sold=!!r.saleDone, pending=!!r.salePending, checked=!!r.saleChecked&&!sold&&!pending;
+    const disabled=saleBusy||pending?"disabled":"";
+    return `<div class="selected-item ${sold?'sale-done':checked?'sale-checked':''}"><div class="sel-line"><button type="button" class="sel-code" data-sel-stock="${esc(r.masp)}">${esc(r.masp)}</button><span class="sel-index">${i+1}</span><span class="sel-size">Size ${esc(r.size)}</span></div><div class="selected-info-line"><span class="selected-kho">Kho: ${esc(kho||"-")}</span><span class="selected-mau">Mẫu: ${esc(mau||"-")}</span><span class="selected-formstock">${esc(formSizes)}</span></div><div class="sel-actions"><button type="button" class="continue" data-continue="${esc(r.masp)}">Tìm tiếp</button><button type="button" class="research" data-research="${esc(r.id)}">Tìm lại</button><button type="button" class="remove ${sold?'remove-sold':''}" data-remove="${esc(r.id)}" ${saleBusy?'disabled':''}>${sold&&done>1?`Bỏ (${done})`:'Bỏ'}</button><button type="button" class="sale" data-sale="${esc(r.id)}" ${sold?'disabled':disabled}>${sold?'Đã bán':pending?'Chờ xác nhận':checked&&count>1?`Sang bán (${count})`:'Sang bán'}</button><button type="button" class="sale-tick ${checked||sold?'active':''}" data-tick="${esc(r.id)}" aria-label="Chọn sang bán" aria-pressed="${checked}" ${sold?'disabled':disabled}>${sold?'✓✓':checked?'✓':'□'}</button></div></div>`;
   }).join("");
   box.querySelectorAll("[data-sel-stock]").forEach(b=>b.onclick=e=>window.StockQuick?.showFor(e.currentTarget,b.dataset.selStock));
   box.querySelectorAll("[data-research]").forEach(b=>b.onclick=()=>researchSelected(b.dataset.research));
   box.querySelectorAll("[data-continue]").forEach(b=>b.onclick=()=>scrollToProduct(b.dataset.continue));
-  box.querySelectorAll("[data-remove]").forEach(b=>b.onclick=()=>{state.selected=state.selected.filter(x=>String(x.id)!==String(b.dataset.remove));saveSelected();renderSelected()});
+  box.querySelectorAll("[data-tick]").forEach(b=>b.onclick=()=>{const r=state.selected.find(x=>String(x.id)===b.dataset.tick);if(!r||r.saleDone||r.salePending||saleBusy)return;r.saleChecked=!r.saleChecked;saveSelected();renderSelected()});
+  box.querySelectorAll("[data-remove]").forEach(b=>b.onclick=()=>{if(saleBusy)return;const r=state.selected.find(x=>String(x.id)===b.dataset.remove);if(!r)return;if(r.salePending&&!confirm("Chưa xác nhận kết quả. Bạn đã kiểm tra tab bán và muốn bỏ dòng này khỏi danh sách?"))return;state.selected=state.selected.filter(x=>r.saleDone?!x.saleDone:String(x.id)!==String(r.id));saveSelected();renderSelected()});
   box.querySelectorAll("[data-sale]").forEach(b=>b.onclick=()=>pushOneToSale(b.dataset.sale));
 }
 
@@ -756,54 +764,52 @@ function waitAckIsolated(id,ackKey,timeout=30000){
   });
 }
 
+// ACK riêng từng dòng; không suy đoán thành công từ việc mở tab.
+function reconcileSaleAck(ack){
+  if(!ack?.id||!Array.isArray(ack.results))return false;
+  const rows=state.selected.filter(r=>r.salePending===ack.id);
+  if(!rows.length)return false;
+  for(const r of rows){
+    const result=ack.results.find(x=>String(x.row_id)===String(r.id));
+    if(!result)continue;
+    if(result.ok===true){r.saleDone=true;r.saleChecked=false;delete r.salePending;}
+    else if(result.status==="failed"||result.status==="not_processed"){delete r.salePending;}
+    // Trạng thái không chắc chắn/chờ KM: giữ khóa, tránh gửi lại trùng.
+  }
+  saveSelected();renderSelected();return true;
+}
+function recoverSaleAcks(){
+  for(const tx of new Set(state.selected.map(r=>r.salePending).filter(Boolean))){
+    try{const ack=JSON.parse(localStorage.getItem(saleTransferStorageKeys(tx).ack)||"null");if(ack)reconcileSaleAck(ack)}catch{}
+  }
+}
+window.addEventListener("storage",e=>{if(e.key?.startsWith("sales_copilot_ack_v2_")&&e.newValue){try{reconcileSaleAck(JSON.parse(e.newValue))}catch{}}});
+window.addEventListener("focus",recoverSaleAcks);
 async function pushOneToSale(id){
-  const row=state.selected.find(x=>String(x.id)===String(id));if(!row)return;
+  if(saleBusy)return;
+  const row=state.selected.find(x=>String(x.id)===String(id));if(!row||row.saleDone||row.salePending)return;
   if(!validBranch()){toast("Không xác định được cơ sở bán.",5000);return}
-
-  // V1.2.14: mỗi lần Sang bán là một phiên chuyển riêng, chỉ tab bán MỚI được nhận.
-  const payloadId=`TKN_${Date.now()}_${Math.random().toString(36).slice(2,8)}_${row.masp}_${row.size}`;
+  const rows=row.saleChecked?state.selected.filter(x=>x.saleChecked&&!x.saleDone&&!x.salePending):[row];
+  const payloadId=`TKN_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
   const keys=saleTransferStorageKeys(payloadId);
-  const payload={
-    id:payloadId,
-    transfer_id:payloadId,
-    created_at:new Date().toISOString(),
-    phien_id:null,
-    diadiem:state.diadiem,
-    makh:null,
-    tenkh:null,
-    items:[{masp:row.masp,size:row.size,soluong:Number(row.soluong||1)}]
-  };
-
+  const payload={id:payloadId,transfer_id:payloadId,created_at:new Date().toISOString(),phien_id:null,diadiem:state.diadiem,makh:null,tenkh:null,tkn_batch_v1:true,items:rows.map(r=>({row_id:r.id,masp:r.masp,size:r.size,soluong:Number(r.soluong||1)}))};
+  saleBusy=true;
   try{
-    localStorage.removeItem(keys.ack);
     localStorage.setItem(keys.pending,JSON.stringify(payload));
-  }catch(e){
-    console.error("[TimKiemNhanh] Không tạo được phiên Sang bán:",e);
-    toast("Không chuẩn bị được dữ liệu Sang bán.",5000);
-    return;
-  }
-
-  // Gắn transfer_id vào URL + _blank: không tái sử dụng bất kỳ tab bán đang mở nào.
-  const page=state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html";
-  const saleUrl=`${page}?copilot_tx=${encodeURIComponent(payloadId)}`;
-  const saleWindow=window.open(saleUrl,"_blank");
-  if(!saleWindow){
-    localStorage.removeItem(keys.pending);
-    toast("Trình duyệt đang chặn mở trang bán mới. Hãy cho phép pop-up cho app.hoantuyet.vn.",7000);
-    return;
-  }
-  try{saleWindow.focus()}catch{}
-
-  const ackPromise=waitAckIsolated(payloadId,keys.ack,30000);
-  toast(`Đã mở trang bán mới cho ${row.masp} / ${row.size}. Đang chờ nhận dữ liệu...`,4500);
-  const ack=await ackPromise;
-  try{localStorage.removeItem(keys.ack)}catch{}
-
-  if(!ack){
-    toast("Trang bán mới chưa xác nhận dữ liệu. Hãy kiểm tra tab vừa mở.",7000);
-    return;
-  }
-  toast(`Đã đưa ${row.masp} / ${row.size} sang trang bán mới.`);
+    for(const r of rows)r.salePending=payloadId;
+    saveSelected();renderSelected();
+    const page=state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html";
+    const saleWindow=window.open(`${page}?copilot_tx=${encodeURIComponent(payloadId)}`,"_blank");
+    if(!saleWindow){localStorage.removeItem(keys.pending);for(const r of rows)delete r.salePending;saveSelected();toast("Trình duyệt chặn mở trang bán mới.",6000);return;}
+    try{saleWindow.focus()}catch{}
+    toast(`Đang chuyển ${rows.length} sản phẩm sang trang bán mới...`,4500);
+    const ack=await waitAckIsolated(payloadId,keys.ack,90000);
+    if(!ack||!Array.isArray(ack.results)){toast("Chưa có xác nhận từng dòng. Kiểm tra tab bán; không gửi lại để tránh trùng.",9000);return;}
+    reconcileSaleAck(ack);
+    const ok=ack.results.filter(x=>x.ok===true).length;
+    toast(`Đã sang bán ${ok}/${rows.length} sản phẩm.${ok<rows.length?' Kiểm tra các dòng chưa thành công.':''}`,7000);
+  }catch(e){console.error(e);toast("Không hoàn tất chuyển dữ liệu. Kiểm tra tab bán trước khi thử lại.",7000);}
+  finally{saleBusy=false;renderSelected();}
 }
 
 let suggestTimer=null;
@@ -1045,7 +1051,7 @@ async function startApp(){
   const input=$("codeInput");
   if(incomingMasp&&input)input.value=incomingMasp;
 
-  loadSelected();renderSourceLocation();renderSelected();renderSizes();renderModes();clearResults("Quét mã hoặc nhập mã sản phẩm rồi nhấn Enter để bắt đầu.");
+  loadSelected();recoverSaleAcks();renderSourceLocation();renderSelected();renderSizes();renderModes();clearResults("Quét mã hoặc nhập mã sản phẩm rồi nhấn Enter để bắt đầu.");
   try{
     if(!validBranch())throw new Error("Không xác định được CS1/CS2 từ phiên đăng nhập.");
     await loadConfig();

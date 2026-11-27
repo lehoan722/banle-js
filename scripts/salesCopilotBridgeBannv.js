@@ -155,6 +155,37 @@
     }catch(_){}
   }
 
+  // Chỉ dùng cho V2 FAST mới; các nguồn Copilot cũ giữ nguyên consume cũ.
+  async function consumeTknBatch(payload){
+    const results=[];
+    // Claim trước khi sửa hóa đơn: reload không tự phát lại phiên đang xử lý.
+    localStorage.removeItem(KEY);
+    let stop=false;
+    try{
+      if(!await waitUntil(()=>pageBasicReady(),12000,60))throw new Error("Trang bán chưa sẵn sàng.");
+      if(!await getDirectApi())throw new Error("Không tìm thấy API hóa đơn.");
+      for(const item of payload.items){
+        const base={row_id:item.row_id,masp:item.masp,size:item.size};
+        if(stop){results.push({...base,ok:false,status:"not_processed"});continue;}
+        try{
+          const result=await addOne(item);
+          if(result?.pending_clearance){results.push({...base,ok:false,status:"pending_clearance"});stop=true;}
+          else if(result?.ok===true){results.push({...base,ok:true,status:"added"});}
+          else{results.push({...base,ok:false,status:"uncertain"});stop=true;}
+        }catch(e){
+          // Không ghi đè form nếu API lỗi giữa chừng; các dòng còn lại có thể gửi lại.
+          results.push({...base,ok:false,status:"uncertain",error:String(e?.message||e)});stop=true;
+        }
+      }
+    }catch(e){for(const item of payload.items)results.push({row_id:item.row_id,masp:item.masp,size:item.size,ok:false,status:"not_processed",error:String(e?.message||e)});}
+    finished=true;
+    const ack={id:payload.id,transfer_id:tx,consumed_at:new Date().toISOString(),results,count:results.filter(r=>r.ok).length,ok:results.every(r=>r.ok),mode:"tkn-batch-v1"};
+    try{localStorage.setItem(ACK_KEY,JSON.stringify(ack));localStorage.removeItem(KEY);}catch(e){console.error("Không ghi được ACK",e);}
+    cleanTxFromAddressBar();
+    if(!ack.ok)alert(`Đã nhận ${ack.count}/${payload.items.length} sản phẩm. Kiểm tra dòng đang xử lý trước khi tiếp tục.`);
+    return ack.ok;
+  }
+
   async function consume(){
     if(running||finished)return false;
     const payload=getPayload();
@@ -163,6 +194,7 @@
 
     running=true;
     try{
+      if(payload.tkn_batch_v1===true)return await consumeTknBatch(payload);
       const basicReady=await waitUntil(()=>pageBasicReady(),12000,60);
       if(!basicReady)throw new Error("Trang bán chưa tạo xong các ô mã/size/số lượng.");
 
