@@ -784,7 +784,7 @@ async function pushOneToSale(id){
   }
 
   // Gắn transfer_id vào URL + _blank: không tái sử dụng bất kỳ tab bán đang mở nào.
-  const page=state.diadiem==="cs2"?"/bannvcs2.html":"/bannvcs1.html";
+  const page=state.diadiem==="cs2"?"/bannvcs222.html":"/bannvcs111.html";
   const saleUrl=`${page}?copilot_tx=${encodeURIComponent(payloadId)}`;
   const saleWindow=window.open(saleUrl,"_blank");
   if(!saleWindow){
