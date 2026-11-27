@@ -963,7 +963,8 @@
             // Copy đoạn đăng xuất cũ ở đây hoặc gọi hàm logout bạn đã viết
             if (window.supabase && window.supabase.auth) {
                 await window.supabase.auth.signOut();
-                localStorage.clear();
+                if (window.KhongInHoaDon) window.KhongInHoaDon.clearStorageKeepingPreferences();
+                else localStorage.clear();
                 sessionStorage.clear();
                 localStorage.removeItem("quyen_sua_hoadon");
             }
@@ -1262,62 +1263,23 @@
     <script type="module">
         import { saveBanLe111 } from "./scripts/services/banlemtcs111SaveEntry.js";
 
-        // ✅ Lưu xong chỉ báo thành công, không hỏi/in/xem hóa đơn nữa
-        async function luuHoaDonNVKhongIn(context) {
+        // Chính sách in tự động do module khongInHoaDon quản lý.
+        async function luuHoaDonNV(context) {
             // Chan truoc KHI goi dich vu luu: ca nut Luu va phim F2.
             if (!window.BANNV_PHOTO_GUARD?.checkBeforeSave?.()) {
                 if (!window.BANNV_PHOTO_GUARD) alert('Module xac nhan anh chua tai. Vui long tai lai trang.');
                 return { ok:false, code:'PHOTO_NOT_CONFIRMED' };
             }
-            const oldConfirm = window.confirm;
-            const oldPrint = window.print;
-            const oldOpen = window.open;
-
-            window.__SKIP_PRINT_AFTER_SAVE = true;
-            window.__KHONG_IN_HOA_DON_SAU_LUU = true;
-
-            window.confirm = function (msg) {
-                const text = String(msg || "").toLowerCase();
-                if (text.includes("in") || text.includes("hóa đơn") || text.includes("hoá đơn") || text.includes("xem in")) {
-                    return false;
-                }
-                return oldConfirm.call(window, msg);
-            };
-
-            window.print = function () {
-                console.log("Đã chặn lệnh in hóa đơn sau khi lưu.");
-            };
-
-            window.open = function (url, target, features) {
-                const text = String(url || "").toLowerCase();
-                if (text.includes("xemhoadon") || text.includes("hoadon") || text.includes("print") || text.includes("invoice")) {
-                    console.log("Đã chặn mở trang in hóa đơn sau khi lưu:", url);
-                    return null;
-                }
-                return oldOpen.call(window, url, target, features);
-            };
-
-            try {
-                const result = await saveBanLe111(context);
-
-                if (result?.ok) {
-                    window.resetQLMK?.();
-                    alert("✅ Đã lưu dữ liệu thành công");
-                }
-
-                return result;
-            } finally {
-                window.confirm = oldConfirm;
-                window.print = oldPrint;
-                window.open = oldOpen;
-                window.__SKIP_PRINT_AFTER_SAVE = false;
-                window.__KHONG_IN_HOA_DON_SAU_LUU = false;
+            const result = await saveBanLe111(context);
+            if (result?.ok) {
+                window.resetQLMK?.();
             }
+            return result;
         }
 
         setTimeout(function () {
             window.LUU_HOADON_F2 = async () => {
-                return await luuHoaDonNVKhongIn("F2-NV");
+                return await luuHoaDonNV("F2-NV");
             };
         }, 1000);
 
@@ -1339,7 +1301,7 @@
             }
 
             try {
-                const result = await luuHoaDonNVKhongIn("BTN-LUU-NV");
+                const result = await luuHoaDonNV("BTN-LUU-NV");
 
                 if (!result?.ok) {
                     console.warn("saveBanLe111 NV không trả ok=true:", result);
@@ -1902,8 +1864,9 @@ Shop chân thành cảm ơn!`;
     <script type="module" src="scripts/viettelInvoice.js"></script>
     <script src="scripts/stockQuickSimilar.js"></script>
 
-    <script src="/scripts/salesCopilotBridgeBannv.js?v=5"></script>
+    <script src="/scripts/salesCopilotBridgeBannv.js?v=20261127-batch1"></script>
 
+    <script type="module" src="./scripts/khongInHoaDon.js?v=20261127v1"></script>
 </body>
 
 </html>

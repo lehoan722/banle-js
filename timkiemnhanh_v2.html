@@ -184,7 +184,20 @@
       border:1px solid #f1d56a;
     }
 
-  </style>
+  
+    #pageCodeBtn{left:60px;font-size:16px;}
+    #codeInput{scroll-margin-top:80px;}
+    #selectedSection .sel-actions{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.5fr) 36px;}
+    #selectedSection .sel-index{min-width:30px;text-align:center;background:#fff;font-size:20px;color:#334155;margin-right:12px;}
+    #selectedSection .sale-checked{background:#eaf8ec;}
+    #selectedSection .sale-done{background:#dcefe1;}
+    #selectedSection .sale-tick{border:1px solid #aab8bf;background:#fff;color:#52616b;font-size:20px!important;}
+    #selectedSection .sale-tick.active{background:#15945d;color:white;}
+    #selectedSection .sale-done .sale{background:#b3d9bf;color:#17612e;}
+    #selectedSection .remove-sold{background:#fce4e4;color:#a51d1d;}
+    #selectedSection button:disabled{cursor:default;}
+    @media(max-width:520px){#selectedSection .sel-actions button{font-size:12px!important;}#selectedSection .sel-actions{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.65fr) 32px;}}
+</style>
 </head>
 <body>
   <div id="login-container"></div>
@@ -232,6 +245,7 @@
   </main>
 
   <button id="pageJumpBtn" class="page-jump-btn" type="button" aria-label="Đi đến cuối trang" title="Cuối trang">↓</button>
+  <button id="pageCodeBtn" class="page-jump-btn" type="button" title="Về ô nhập mã sản phẩm" aria-label="Về ô nhập mã sản phẩm">Mã</button>
   <div id="toast" class="status"></div>
   <div id="scanOverlay" class="overlay">
     <video id="scanVideo" autoplay playsinline></video>
@@ -262,7 +276,7 @@
 
 
   <script src="/scripts/stockQuickPopup.js?v=79"></script>
-  <script type="module" src="/scripts/timKiemNhanh_v2.js?v=20261122-nhap-cuoi-1"></script>
+  <script type="module" src="/scripts/timKiemNhanh_v2.js?v=20261127-batch1"></script>
   <script type="module" src="/scripts/timKiemAnhModule.js?v=9-v2-zalo-cart-1"></script>
 </body>
 </html>
