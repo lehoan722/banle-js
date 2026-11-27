@@ -61,7 +61,7 @@ const CART_KEY="tim_kiem_nhanh_selected_v2";
 const RELATED_SHIRT_GROUPS = new Set(["AP", "APB", "APTR", "SM", "SMC", "SMD"]);
 
 const MAIN_GROUPS={
-  AO_HE:{label:"Áo hè",defaultGroup:"AP",groups:["AP","APB","APTR","SM","SMC","SMD","3LO","BOC"]},
+  AO_HE:{label:"Áo hè",defaultGroup:"APB",groups:["APB","APTR","SM","SMC","SMD","3LO","BOC"]},
   QUAN:{label:"Quần",defaultGroup:"QB",groups:["QB","QT","QV","NGO","QNI"]},
   AO_RET:{label:"Áo rét",defaultGroup:"AOKHOAC",groups:["AOKHOAC","TD","SO","LEN","AODA","BOD"]},
   GIAY_DEP:{label:"Giày dép",defaultGroup:"GIAYTHOITRANG",groups:["DEP","GIAYDA","GIAYSUC","GIAYTHOITRANG"]}
@@ -319,6 +319,9 @@ function renderSubgroups(forceOpen=false){
     }
   }
   if(state.group&&cfg.groups.some(x=>norm(x)===norm(state.group))&&!known.has(norm(state.group))){rows.unshift({manhom:state.group,ten_hien_thi:state.group})}
+  if(state.mainGroup==="AO_HE"){
+    rows.sort((a,b)=>cfg.groups.indexOf(norm(a.manhom))-cfg.groups.indexOf(norm(b.manhom)));
+  }
   box.innerHTML=rows.map(g=>`<button type="button" class="subgroup ${norm(g.manhom)===norm(state.group)?"on":""}" data-group="${esc(g.manhom)}">${esc(g.ten_hien_thi||g.manhom)}</button>`).join("");
   box.classList.toggle("show",forceOpen);
   box.querySelectorAll(".subgroup").forEach(b=>b.onclick=async()=>{
