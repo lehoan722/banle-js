@@ -2290,7 +2290,7 @@ export function suaDongDangChon() {
     if (giaEl) giaEl.value = gia.toLocaleString("vi-VN");
     if (kmEl) kmEl.value = km.toLocaleString("vi-VN");
     if (thanhtienEl) thanhtienEl.value = ((gia - km) * soluong).toLocaleString("vi-VN");
-    if (sizeEl) sizeEl.value = size;
+    if (sizeEl) sizeEl.value = "";
 
     delete data[entryKey];
     if (Array.isArray(window.groupOrder)) {
