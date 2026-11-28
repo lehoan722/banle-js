@@ -189,7 +189,10 @@
     #codeInput{scroll-margin-top:80px;}
     #selectedSection .sel-actions{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.5fr) 36px;}
     #selectedSection .sel-index{min-width:30px;text-align:center;background:#fff;font-size:20px;color:#334155;margin-right:12px;}
-    #selectedSection .sale-checked{background:#eaf8ec;}
+    /* V4: tách từng sản phẩm đã chọn, giữ màu xanh khi tích bán */
+    #selectedSection .selected-item{background:#eef0f3;border:1px solid #aeb7c1;border-radius:6px;padding:7px 6px;margin-bottom:7px;}
+    #selectedSection .selected-item:last-child{border-bottom:1px solid #aeb7c1;margin-bottom:0;}
+    #selectedSection .selected-item.sale-checked{background:#eaf8ec;border-color:#81b894;}
     #selectedSection .sale-done{background:#dcefe1;}
     #selectedSection .sale-tick{border:1px solid #aab8bf;background:#fff;color:#52616b;font-size:20px!important;}
     #selectedSection .sale-tick.active{background:#15945d;color:white;}
@@ -276,7 +279,7 @@
 
 
   <script src="/scripts/stockQuickPopup.js?v=79"></script>
-  <script type="module" src="/scripts/timKiemNhanh_v2.js?v=20261127-size-direct-v3"></script>
+  <script type="module" src="/scripts/timKiemNhanh_v2.js?v=20261128-search-ux-v4"></script>
   <script type="module" src="/scripts/timKiemAnhModule.js?v=9-v2-zalo-cart-1"></script>
 </body>
 </html>
