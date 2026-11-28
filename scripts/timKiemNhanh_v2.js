@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=32";
 
-window.TIM_KIEM_NHANH_BUILD = "2.4.1-FAST-SEARCH-UX-V5";
-console.log("[TimKiemNhanh V2] BUILD 2.4.1-FAST-SEARCH-UX-V5");
+window.TIM_KIEM_NHANH_BUILD = "2.4.1-FAST-SEARCH-UX-V5.3";
+console.log("[TimKiemNhanh V2] BUILD 2.4.1-FAST-SEARCH-UX-V5.3");
 
 const supabase = getSupabaseClient();
 
@@ -633,7 +633,7 @@ function jumpPageEdge(){
   else{window.scrollTo({top:0,behavior:"auto"});}
   requestAnimationFrame(()=>{root.style.scrollBehavior=prev;updatePageJumpButton();});
 }
-// V5.2: align once at entry, once after the keyboard opens; never on typing.
+// V5.3: only the Mã button starts custom alignment. Typing cancels any pending correction.
 let codeAlignTimers=[];
 function clearCodeAlignment(){
   codeAlignTimers.forEach(clearTimeout);
@@ -674,14 +674,12 @@ function initPageJump(){
   },{passive:true});
   $("pageCodeBtn")?.addEventListener("click",focusCodeNearTop);
   const codeInput=$("codeInput");
-  codeInput?.addEventListener("focus",()=>{
-    document.body.classList.add("code-editing");
-    scheduleCodeAlignment();
-  });
   codeInput?.addEventListener("blur",()=>{
     clearCodeAlignment();
-    // Keep the layout stable until a tapped suggestion has received its click.
-    setTimeout(()=>{if(document.activeElement!==codeInput)document.body.classList.remove("code-editing");},250);
+    // Only clean up temporary space created by the Mã button.
+    if(document.body.classList.contains("code-editing")){
+      setTimeout(()=>{if(document.activeElement!==codeInput)document.body.classList.remove("code-editing");},250);
+    }
   });
   updatePageJumpButton();
 }
@@ -750,7 +748,7 @@ function resetToInitialState(){
   hideSizeWarning();renderSourceLocation();renderSelected();renderSizes();renderGroups();renderModes();
   clearResults("Quét mã hoặc nhập mã sản phẩm rồi nhấn Enter để bắt đầu.");
   jumpToElement($("selectedSection"),"start");
-  setTimeout(()=>$("codeInput")?.focus(),0);
+  setTimeout(()=>$("codeInput")?.focus({preventScroll:true}),0);
   toast("Đã tạo lượt tìm kiếm mới.");
 }
 
@@ -1096,12 +1094,15 @@ function bind(){
   };
   const codeInput=$("codeInput");
   codeInput.addEventListener("input",e=>{
-    changedSearchConditions();
+    clearCodeAlignment(); // Cancel a pending button-only correction as soon as typing starts.
+    invalidateLookup();
+    if(state.mode!=="similar")resetSearchModeToDefault();
+    const hadSource=!!(state.sourceMasp||state.sourceStockAfterCheck||state.sizeGuideOpen);
     clearSourceForManualFilter();
-    renderSizes();
+    if(hadSource)renderSizes();
     clearResults("Nhập hoặc chọn mã sản phẩm để tiếp tục.");
     const value=e.target.value,version=suggestionVersion;
-    if(norm(value))suggestTimer=setTimeout(()=>loadSuggestions(value,version),400);
+    if(norm(value))suggestTimer=setTimeout(()=>loadSuggestions(value,version),200);
   });
 
   // Chạm/focus vào ô mã sản phẩm: bôi đen toàn bộ để nhập/quét mã mới nhanh hơn.
@@ -1180,7 +1181,7 @@ async function startApp(){
       console.warn("[TimKiemNhanh] Yêu cầu bày mẫu lỗi nhưng không chặn tìm kiếm:",bayMauErr);
     }
 
-    if(!openedFromStockQuick)setTimeout(()=>$('codeInput')?.focus(),50);
+    if(!openedFromStockQuick)setTimeout(()=>$('codeInput')?.focus({preventScroll:true}),50);
   }catch(e){
     appStarted=false;
     console.error(e);
