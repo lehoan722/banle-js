@@ -633,7 +633,7 @@ function jumpPageEdge(){
   else{window.scrollTo({top:0,behavior:"auto"});}
   requestAnimationFrame(()=>{root.style.scrollBehavior=prev;updatePageJumpButton();});
 }
-// V5: align to the visible viewport, including the iOS keyboard.
+// V5.2: align once at entry, once after the keyboard opens; never on typing.
 let codeAlignTimers=[];
 function clearCodeAlignment(){
   codeAlignTimers.forEach(clearTimeout);
@@ -650,8 +650,11 @@ function alignCodeNearTop(){
 function scheduleCodeAlignment(){
   if(document.activeElement!==$("codeInput"))return;
   clearCodeAlignment();
-  // Keyboard animation may finish after focus or the first resize event.
-  codeAlignTimers=[0,100,300,550].map(ms=>setTimeout(alignCodeNearTop,ms));
+  // One bounded correction after keyboard animation; do not rearm on input/resize.
+  codeAlignTimers=[setTimeout(()=>{
+    codeAlignTimers=[];
+    alignCodeNearTop();
+  },550)];
 }
 function focusCodeNearTop(){
   const el=$("codeInput");if(!el)return;
@@ -675,14 +678,11 @@ function initPageJump(){
     document.body.classList.add("code-editing");
     scheduleCodeAlignment();
   });
-  codeInput?.addEventListener("input",()=>scheduleCodeAlignment());
   codeInput?.addEventListener("blur",()=>{
     clearCodeAlignment();
     // Keep the layout stable until a tapped suggestion has received its click.
     setTimeout(()=>{if(document.activeElement!==codeInput)document.body.classList.remove("code-editing");},250);
   });
-  window.visualViewport?.addEventListener("resize",scheduleCodeAlignment);
-  window.addEventListener("resize",scheduleCodeAlignment);
   updatePageJumpButton();
 }
 
