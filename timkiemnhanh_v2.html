@@ -186,7 +186,9 @@
 
   
     #pageCodeBtn{left:60px;font-size:16px;}
-    #codeInput{scroll-margin-top:80px;}
+    #codeInput{scroll-margin-top:12px;}
+    /* V5: allow the input to reach the top even with an empty result list. */
+    body.code-editing main.wrap{padding-bottom:100vh;overflow-anchor:none;}
     #selectedSection .sel-actions{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.5fr) 36px;}
     #selectedSection .sel-index{min-width:30px;text-align:center;background:#fff;font-size:20px;color:#334155;margin-right:12px;}
     /* V4: tách từng sản phẩm đã chọn, giữ màu xanh khi tích bán */
@@ -279,7 +281,7 @@
 
 
   <script src="/scripts/stockQuickPopup.js?v=79"></script>
-  <script type="module" src="/scripts/timKiemNhanh_v2.js?v=20261128-search-ux-v4"></script>
+  <script type="module" src="/scripts/timKiemNhanh_v2.js?v=20261128-search-ux-v5"></script>
   <script type="module" src="/scripts/timKiemAnhModule.js?v=9-v2-zalo-cart-1"></script>
 </body>
 </html>
