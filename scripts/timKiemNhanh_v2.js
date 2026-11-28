@@ -4,8 +4,8 @@ import { playSuccessBeep, setupBeepUnlockOnce } from "./soundBeep.js";
 import { initYeuCauBayMau } from "./yeuCauBayMau.js?v=3";
 import { getXaHangSuggestions, attachXaHangSuggestions } from "./xaHangRules.js?v=32";
 
-window.TIM_KIEM_NHANH_BUILD = "2.4.1-FAST-SEARCH-UX-V4";
-console.log("[TimKiemNhanh V2] BUILD 2.4.1-FAST-SEARCH-UX-V4");
+window.TIM_KIEM_NHANH_BUILD = "2.4.1-FAST-SEARCH-UX-V5";
+console.log("[TimKiemNhanh V2] BUILD 2.4.1-FAST-SEARCH-UX-V5");
 
 const supabase = getSupabaseClient();
 
@@ -344,7 +344,6 @@ function renderSubgroups(forceOpen=false){
 let requestVersion=0;
 let activeCode="";
 let suggestionVersion=0;
-let lastAutoOpen=null;
 function cancelSuggestions(){
   clearTimeout(suggestTimer);
   suggestionVersion++;
@@ -634,6 +633,35 @@ function jumpPageEdge(){
   else{window.scrollTo({top:0,behavior:"auto"});}
   requestAnimationFrame(()=>{root.style.scrollBehavior=prev;updatePageJumpButton();});
 }
+// V5: align to the visible viewport, including the iOS keyboard.
+let codeAlignTimers=[];
+function clearCodeAlignment(){
+  codeAlignTimers.forEach(clearTimeout);
+  codeAlignTimers=[];
+}
+function alignCodeNearTop(){
+  const el=$("codeInput");
+  if(!el||document.activeElement!==el)return;
+  const bar=el.closest(".quickbar")||el;
+  const visibleTop=window.visualViewport?.offsetTop||0;
+  const delta=bar.getBoundingClientRect().top-visibleTop-12;
+  if(Math.abs(delta)>3)window.scrollTo({top:Math.max(0,window.scrollY+delta),behavior:"instant"});
+}
+function scheduleCodeAlignment(){
+  if(document.activeElement!==$("codeInput"))return;
+  clearCodeAlignment();
+  // Keyboard animation may finish after focus or the first resize event.
+  codeAlignTimers=[0,100,300,550].map(ms=>setTimeout(alignCodeNearTop,ms));
+}
+function focusCodeNearTop(){
+  const el=$("codeInput");if(!el)return;
+  document.body.classList.add("code-editing");
+  // Focus synchronously in the click handler so iOS opens the keyboard.
+  el.focus({preventScroll:true});
+  el.select();
+  alignCodeNearTop();
+  scheduleCodeAlignment();
+}
 function initPageJump(){
   const btn=$("pageJumpBtn");if(!btn)return;
   btn.addEventListener("click",jumpPageEdge);
@@ -641,7 +669,20 @@ function initPageJump(){
     if(pageJumpTicking)return;pageJumpTicking=true;
     requestAnimationFrame(()=>{pageJumpTicking=false;updatePageJumpButton();});
   },{passive:true});
-  $("pageCodeBtn")?.addEventListener("click",()=>{const el=$("codeInput");if(!el)return;jumpToElement(el,"center");el.focus({preventScroll:true});el.select();});
+  $("pageCodeBtn")?.addEventListener("click",focusCodeNearTop);
+  const codeInput=$("codeInput");
+  codeInput?.addEventListener("focus",()=>{
+    document.body.classList.add("code-editing");
+    scheduleCodeAlignment();
+  });
+  codeInput?.addEventListener("input",()=>scheduleCodeAlignment());
+  codeInput?.addEventListener("blur",()=>{
+    clearCodeAlignment();
+    // Keep the layout stable until a tapped suggestion has received its click.
+    setTimeout(()=>{if(document.activeElement!==codeInput)document.body.classList.remove("code-editing");},250);
+  });
+  window.visualViewport?.addEventListener("resize",scheduleCodeAlignment);
+  window.addEventListener("resize",scheduleCodeAlignment);
   updatePageJumpButton();
 }
 
@@ -696,7 +737,6 @@ function resetToInitialState(){
   if(saleBusy){toast("Đang chuyển sản phẩm, vui lòng chờ xác nhận.");return;}
   if(state.selected.some(r=>r.salePending)&&!confirm("Có sản phẩm chưa xác nhận kết quả. Bạn đã kiểm tra tab bán và muốn tạo lượt mới?"))return;
   invalidateLookup();
-  lastAutoOpen=null;
   closeMissingSizePrompt();
   try{state.scanner?.stopScan?.()}catch{}
   $("scanOverlay")?.classList.remove("show");
@@ -862,11 +902,6 @@ async function loadSuggestions(text,version){
     const {data,error}=await supabase.rpc("sales_copilot_goi_y_ma_v1111",{p_text:q,p_limit:12});
     if(error||!current())return;
     const rows=data||[];
-    const exact=rows.find(x=>norm(x.masp)===norm(q));
-    if(exact){
-      await processCode(exact.masp,{openStockQuick:true,autoExact:true});
-      return;
-    }
     const box=$("suggestBox");
     box.innerHTML=rows.map(x=>`<button type="button" data-code="${esc(x.masp)}"><b>${esc(x.masp)}</b><small>${esc(x.tensp||"")}</small></button>`).join("");
     box.style.display=rows.length?"block":"none";
@@ -929,7 +964,6 @@ async function processIncomingMaspFromUrl(maspRaw=""){
 async function processCode(raw,options={}){
   const code=norm(raw);if(!code)return;
   if(activeCode===code)return;
-  if(options.openStockQuick&&lastAutoOpen?.code===code&&Date.now()-lastAutoOpen.at<1200)return;
   if(!validBranch()){toast("Không xác định được cơ sở đăng nhập. Hãy đăng nhập lại.",6000);return}
   invalidateLookup();
   const version=requestVersion;
@@ -945,7 +979,7 @@ async function processCode(raw,options={}){
     if(version!==requestVersion)return;
     if(error)throw error;
     const sp=(data||[])[0];
-    if(!sp||(options.autoExact&&norm(sp.masp)!==code)){toast("Mã sản phẩm không tồn tại.");return}
+    if(!sp){toast("Mã sản phẩm không tồn tại.");return}
 
     $("codeInput").value=sp.masp;$("suggestBox").style.display="none";
     clearResults("Chọn size để bắt đầu tìm kiếm.");
@@ -983,7 +1017,6 @@ async function processCode(raw,options={}){
       try{
         const popup=window.StockQuick?.showFor($("codeInput"),sp.masp);
         Promise.resolve(popup).catch(stockErr=>console.warn("[TimKiemNhanh V2] Lỗi mở StockQuickPopup:",stockErr));
-        if(options.autoExact)lastAutoOpen={code:norm(sp.masp),at:Date.now()};
       }
       catch(stockErr){console.warn("[TimKiemNhanh V2] Không mở được StockQuickPopup:",stockErr)}
     }
@@ -1043,7 +1076,6 @@ function bind(){
       try{sessionStorage.removeItem("diadiem");}catch{}
       try{window.diadiem="";}catch{}
       invalidateLookup();
-      lastAutoOpen=null;
       state.diadiem="";
 
       // Xóa trắng riêng ô Cơ sở; vẫn giữ mã nhân viên/identifier để đăng nhập lại nhanh.
@@ -1065,7 +1097,6 @@ function bind(){
   const codeInput=$("codeInput");
   codeInput.addEventListener("input",e=>{
     changedSearchConditions();
-    lastAutoOpen=null;
     clearSourceForManualFilter();
     renderSizes();
     clearResults("Nhập hoặc chọn mã sản phẩm để tiếp tục.");
