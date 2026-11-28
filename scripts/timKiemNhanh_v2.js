@@ -211,7 +211,7 @@ async function selectSizeFromUi(selected,fromGuide=false){
   if(!SIZE_LIST.includes(selected))return;
 
   // Trong bảng quy đổi: chạm cột là xác nhận luôn. Ở hàng gọn: bấm lại size đang chọn thì bỏ chọn như trước.
-  changedSearchConditions();
+  changedSearchConditions({keepMode:true});
   state.size=fromGuide?selected:(state.size===selected?"":selected);
   state.sizeGuideOpen=false;
   renderSizes();
@@ -359,9 +359,9 @@ function resetSearchModeToDefault(){
   state.mode="similar";
   renderModes();
 }
-function changedSearchConditions(){
+function changedSearchConditions({keepMode=false}={}){
   invalidateLookup();
-  resetSearchModeToDefault();
+  if(!keepMode)resetSearchModeToDefault();
   clearResults();
 }
 
